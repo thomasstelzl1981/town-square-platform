@@ -14,16 +14,203 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      memberships: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["membership_role"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["membership_role"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["membership_role"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_delegations: {
+        Row: {
+          created_at: string
+          delegate_org_id: string
+          expires_at: string | null
+          granted_at: string
+          granted_by: string
+          id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          scopes: Json
+          status: Database["public"]["Enums"]["delegation_status"]
+          target_org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delegate_org_id: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scopes?: Json
+          status?: Database["public"]["Enums"]["delegation_status"]
+          target_org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delegate_org_id?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scopes?: Json
+          status?: Database["public"]["Enums"]["delegation_status"]
+          target_org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_delegations_delegate_org_id_fkey"
+            columns: ["delegate_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_delegations_target_org_id_fkey"
+            columns: ["target_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          depth: number
+          id: string
+          materialized_path: string
+          name: string
+          org_type: Database["public"]["Enums"]["org_type"]
+          parent_id: string | null
+          settings: Json
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          depth?: number
+          id?: string
+          materialized_path?: string
+          name: string
+          org_type: Database["public"]["Enums"]["org_type"]
+          parent_id?: string | null
+          settings?: Json
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          depth?: number
+          id?: string
+          materialized_path?: string
+          name?: string
+          org_type?: Database["public"]["Enums"]["org_type"]
+          parent_id?: string | null
+          settings?: Json
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active_tenant_id: string | null
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          active_tenant_id?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          active_tenant_id?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_tenant_id_fkey"
+            columns: ["active_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_platform_admin: { Args: never; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
-      [_ in never]: never
+      delegation_status: "active" | "revoked" | "expired"
+      membership_role:
+        | "platform_admin"
+        | "org_admin"
+        | "internal_ops"
+        | "sales_partner"
+      org_type: "internal" | "partner" | "sub_partner" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +337,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      delegation_status: ["active", "revoked", "expired"],
+      membership_role: [
+        "platform_admin",
+        "org_admin",
+        "internal_ops",
+        "sales_partner",
+      ],
+      org_type: ["internal", "partner", "sub_partner", "client"],
+    },
   },
 } as const
