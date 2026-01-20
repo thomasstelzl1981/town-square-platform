@@ -1,0 +1,1736 @@
+================================================================================
+SYSTEM OF A TOWN — SCHEMA OUTLINE v3.3 (FINAL FOR APPROVAL)
+================================================================================
+Date: 2026-01-20
+Status: Pending Approval
+Previous: v3.2
+================================================================================
+
+CHANGE SUMMARY (v3.2 → v3.3)
+================================================================================
+
+A) SECURITY DEFINER REMOVAL
+   - REMOVED all SECURITY DEFINER helper functions
+   - ALL RLS policies now use INLINE EXISTS checks
+   - No elevated privilege usage in authorization
+
+B) JSONB SCOPE CHECK FIX
+   - CHANGED: d.scopes @> to_jsonb(_required_scope::text)
+   - TO: d.scopes @> jsonb_build_array('scope_name')
+
+C) PARTNER-DRIVEN ORG CREATION
+   - ADDED: Org creation permission matrix
+   - ADDED: Auto-delegation on org creation (application layer)
+   - ADDED: Minimum scope set for new delegations
+
+D) FINANCE PACKAGE STATUS (PHASE 1 ONLY)
+   - REMOVED: submitted, approved, rejected
+   - KEPT: draft, incomplete, complete, ready_for_handoff
+
+E) DELEGATION UNIQUENESS
+   - REMOVED: UNIQUE(target_org_id, delegate_org_id)
+   - ADDED: Partial unique index WHERE status = 'active'
+
+F) DOCUMENTATION
+   - Full continuous output, no truncation
+   - Copy-safe format
+
+================================================================================
+SECTION 1: ENUMS
+================================================================================
+
+-- Organization type enum
+CREATE TYPE org_type AS ENUM (
+  'internal',      -- Internal company org (headquarters, departments)
+  'partner',       -- Top-level sales partner
+  'sub_partner',   -- Partner created by another partner
+  'client'         -- End-client organization
+);
+
+-- Membership role enum
+CREATE TYPE membership_role AS ENUM (
+  'platform_admin',   -- Platform-level admin (no business data access)
+  'org_admin',        -- Full access within tenant
+  'internal_ops',     -- Internal operations staff
+  'sales_partner'     -- Sales partner with delegated access
+  -- EXCLUDED Phase 1: 'property_owner', 'investor'
+);
+
+-- Delegation status enum
+CREATE TYPE delegation_status AS ENUM (
+  'active',
+  'revoked',
+  'expired'
+);
+
+-- Property status enum (operational state only)
+CREATE TYPE property_status AS ENUM (
+  'available',
+  'under_renovation',
+  'not_available'
+);
+
+-- Listing status enum (sales lifecycle)
+CREATE TYPE listing_status AS ENUM (
+  'draft',
+  'internal_review',
+  'active',
+  'reserved',
+  'inactive',
+  'sold'
+);
+
+-- Lease status enum (rental lifecycle)
+CREATE TYPE lease_status AS ENUM (
+  'draft',
+  'active',
+  'notice_given',
+  'terminated',
+  'renewed'
+);
+
+-- Reservation status enum
+CREATE TYPE reservation_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+  'completed'
+);
+
+-- Finance package status enum (PHASE 1 ONLY)
+CREATE TYPE finance_package_status AS ENUM (
+  'draft',              -- Initial creation
+  'incomplete',         -- Missing required documents/data
+  'complete',           -- All requirements met
+  'ready_for_handoff'   -- Exported, ready for Future Room
+  -- REMOVED: submitted, approved, rejected (Future Room scope)
+);
+
+-- Communication channel enum
+CREATE TYPE communication_channel AS ENUM (
+  'email',
+  'phone',
+  'sms',
+  'whatsapp',
+  'in_app'
+);
+
+-- Communication direction enum
+CREATE TYPE communication_direction AS ENUM (
+  'inbound',
+  'outbound'
+);
+
+-- Access grant scope type enum
+CREATE TYPE access_scope_type AS ENUM (
+  'data_room',
+  'document',
+  'finance_package'
+);
+
+-- Access grant subject type enum
+CREATE TYPE access_subject_type AS ENUM (
+  'user',
+  'organization',
+  'share_link'
+);
+
+-- Share link status enum
+CREATE TYPE share_link_status AS ENUM (
+  'active',
+  'expired',
+  'revoked'
+);
+
+================================================================================
+SECTION 2: TABLES — CORE MODULE
+================================================================================
+
+--------------------------------------------------------------------------------
+2.1 ORGANIZATIONS (with hierarchy support)
+--------------------------------------------------------------------------------
+
+CREATE TABLE organizations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Hierarchy fields
+  parent_id       UUID REFERENCES organizations(id) ON DELETE RESTRICT,
+  depth           INTEGER NOT NULL DEFAULT 0,
+  materialized_path TEXT NOT NULL DEFAULT '/',
+  
+  -- Organization metadata
+  org_type        org_type NOT NULL DEFAULT 'client',
+  name            TEXT NOT NULL,
+  slug            TEXT UNIQUE NOT NULL,
+  
+  -- Settings & metadata
+  settings        JSONB DEFAULT '{}',
+  
+  -- Timestamps
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Constraints
+  CONSTRAINT valid_depth CHECK (depth >= 0),
+  CONSTRAINT valid_path CHECK (materialized_path ~ '^/.*')
+);
+
+-- Indexes for hierarchy queries
+CREATE INDEX idx_organizations_parent ON organizations(parent_id);
+CREATE INDEX idx_organizations_path ON organizations USING btree(materialized_path text_pattern_ops);
+CREATE INDEX idx_organizations_type ON organizations(org_type);
+
+--------------------------------------------------------------------------------
+2.2 PROFILES
+--------------------------------------------------------------------------------
+
+CREATE TABLE profiles (
+  id               UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email            TEXT NOT NULL,
+  full_name        TEXT,
+  avatar_url       TEXT,
+  
+  -- Active tenant context
+  active_tenant_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+  
+  -- Timestamps
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Index for active tenant lookup
+CREATE INDEX idx_profiles_active_tenant ON profiles(active_tenant_id);
+
+--------------------------------------------------------------------------------
+2.3 MEMBERSHIPS
+--------------------------------------------------------------------------------
+
+CREATE TABLE memberships (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tenant_id  UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  role       membership_role NOT NULL,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Constraints: One role per user per tenant
+  UNIQUE(user_id, tenant_id)
+);
+
+-- Indexes for RLS lookups
+CREATE INDEX idx_memberships_user ON memberships(user_id);
+CREATE INDEX idx_memberships_tenant ON memberships(tenant_id);
+CREATE INDEX idx_memberships_user_tenant_role ON memberships(user_id, tenant_id, role);
+
+--------------------------------------------------------------------------------
+2.4 ORG_DELEGATIONS (Delegated Access Model)
+--------------------------------------------------------------------------------
+
+CREATE TABLE org_delegations (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Target org (the org being accessed)
+  target_org_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Delegate org (the org granted access)
+  delegate_org_id  UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Permissions granted (JSONB array of scope strings)
+  scopes           JSONB NOT NULL DEFAULT '[]',
+  
+  -- Status and expiry
+  status           delegation_status NOT NULL DEFAULT 'active',
+  expires_at       TIMESTAMPTZ,
+  
+  -- Audit fields
+  created_by       UUID REFERENCES auth.users(id),
+  revoked_by       UUID REFERENCES auth.users(id),
+  revoked_at       TIMESTAMPTZ,
+  
+  -- Timestamps
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Prevent self-delegation
+  CONSTRAINT no_self_delegation CHECK (target_org_id != delegate_org_id)
+);
+
+-- PARTIAL UNIQUE INDEX: Only one active delegation per org pair
+CREATE UNIQUE INDEX idx_org_delegations_active_unique 
+  ON org_delegations(target_org_id, delegate_org_id) 
+  WHERE status = 'active';
+
+-- Indexes for delegation lookups
+CREATE INDEX idx_org_delegations_target ON org_delegations(target_org_id);
+CREATE INDEX idx_org_delegations_delegate ON org_delegations(delegate_org_id);
+CREATE INDEX idx_org_delegations_status ON org_delegations(status) WHERE status = 'active';
+CREATE INDEX idx_org_delegations_scopes ON org_delegations USING GIN(scopes);
+
+--------------------------------------------------------------------------------
+2.5 CONTACTS
+--------------------------------------------------------------------------------
+
+CREATE TABLE contacts (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Contact details
+  first_name  TEXT NOT NULL,
+  last_name   TEXT NOT NULL,
+  email       TEXT,
+  phone       TEXT,
+  company     TEXT,
+  
+  -- Metadata
+  tags        JSONB DEFAULT '[]',
+  notes       TEXT,
+  
+  -- Timestamps
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_contacts_tenant ON contacts(tenant_id);
+CREATE INDEX idx_contacts_tenant_id ON contacts(tenant_id, id);
+CREATE INDEX idx_contacts_email ON contacts(tenant_id, email);
+
+--------------------------------------------------------------------------------
+2.6 DOCUMENTS
+--------------------------------------------------------------------------------
+
+CREATE TABLE documents (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- File metadata
+  name           TEXT NOT NULL,
+  file_path      TEXT NOT NULL,
+  mime_type      TEXT NOT NULL,
+  size_bytes     BIGINT NOT NULL,
+  
+  -- Ownership
+  uploaded_by    UUID REFERENCES auth.users(id),
+  
+  -- Timestamps
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_documents_tenant ON documents(tenant_id);
+CREATE INDEX idx_documents_tenant_id ON documents(tenant_id, id);
+
+--------------------------------------------------------------------------------
+2.7 DATA_ROOMS
+--------------------------------------------------------------------------------
+
+CREATE TABLE data_rooms (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Metadata
+  name        TEXT NOT NULL,
+  description TEXT,
+  
+  -- Timestamps
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_data_rooms_tenant ON data_rooms(tenant_id);
+CREATE INDEX idx_data_rooms_tenant_id ON data_rooms(tenant_id, id);
+
+--------------------------------------------------------------------------------
+2.8 DATA_ROOM_DOCUMENTS (Junction table)
+--------------------------------------------------------------------------------
+
+CREATE TABLE data_room_documents (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  data_room_id  UUID NOT NULL,
+  document_id   UUID NOT NULL,
+  
+  -- Display order
+  sort_order    INTEGER DEFAULT 0,
+  
+  -- Timestamps
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FK to enforce tenant isolation
+  FOREIGN KEY (tenant_id, data_room_id) REFERENCES data_rooms(tenant_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id, document_id) REFERENCES documents(tenant_id, id) ON DELETE CASCADE,
+  
+  UNIQUE(data_room_id, document_id)
+);
+
+-- Add composite unique constraints to parent tables for FK
+ALTER TABLE data_rooms ADD CONSTRAINT data_rooms_tenant_id_unique UNIQUE(tenant_id, id);
+ALTER TABLE documents ADD CONSTRAINT documents_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_data_room_documents_room ON data_room_documents(data_room_id);
+CREATE INDEX idx_data_room_documents_doc ON data_room_documents(document_id);
+
+--------------------------------------------------------------------------------
+2.9 ACCESS_GRANTS
+--------------------------------------------------------------------------------
+
+CREATE TABLE access_grants (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- What is being shared
+  scope_type     access_scope_type NOT NULL,
+  scope_id       UUID NOT NULL,
+  
+  -- Who has access
+  subject_type   access_subject_type NOT NULL,
+  subject_id     UUID NOT NULL,
+  
+  -- Permissions
+  can_view       BOOLEAN NOT NULL DEFAULT true,
+  can_download   BOOLEAN NOT NULL DEFAULT false,
+  
+  -- Validity
+  expires_at     TIMESTAMPTZ,
+  status         share_link_status NOT NULL DEFAULT 'active',
+  
+  -- Audit
+  granted_by     UUID REFERENCES auth.users(id),
+  revoked_by     UUID REFERENCES auth.users(id),
+  revoked_at     TIMESTAMPTZ,
+  
+  -- Timestamps
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_access_grants_tenant ON access_grants(tenant_id);
+CREATE INDEX idx_access_grants_scope ON access_grants(scope_type, scope_id);
+CREATE INDEX idx_access_grants_subject ON access_grants(subject_type, subject_id);
+
+--------------------------------------------------------------------------------
+2.10 SHARE_LINKS
+--------------------------------------------------------------------------------
+
+CREATE TABLE share_links (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Token for URL
+  token          TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  
+  -- What is being shared
+  scope_type     access_scope_type NOT NULL,
+  scope_id       UUID NOT NULL,
+  
+  -- Permissions
+  can_view       BOOLEAN NOT NULL DEFAULT true,
+  can_download   BOOLEAN NOT NULL DEFAULT false,
+  
+  -- Usage tracking
+  view_count     INTEGER NOT NULL DEFAULT 0,
+  download_count INTEGER NOT NULL DEFAULT 0,
+  
+  -- Validity
+  expires_at     TIMESTAMPTZ,
+  status         share_link_status NOT NULL DEFAULT 'active',
+  
+  -- Audit
+  created_by     UUID REFERENCES auth.users(id),
+  
+  -- Timestamps
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_share_links_token ON share_links(token);
+CREATE INDEX idx_share_links_tenant ON share_links(tenant_id);
+CREATE INDEX idx_share_links_scope ON share_links(scope_type, scope_id);
+
+--------------------------------------------------------------------------------
+2.11 AUDIT_EVENTS (Immutable)
+--------------------------------------------------------------------------------
+
+CREATE TABLE audit_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Actor
+  actor_id     UUID REFERENCES auth.users(id),
+  actor_role   membership_role,
+  
+  -- Action
+  action       TEXT NOT NULL,
+  
+  -- Entity reference
+  entity_type  TEXT NOT NULL,
+  entity_id    UUID NOT NULL,
+  
+  -- Change data
+  old_data     JSONB,
+  new_data     JSONB,
+  metadata     JSONB DEFAULT '{}',
+  
+  -- IP and context
+  ip_address   INET,
+  user_agent   TEXT,
+  
+  -- Timestamp (immutable, no updated_at)
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Indexes for audit queries
+CREATE INDEX idx_audit_events_tenant ON audit_events(tenant_id);
+CREATE INDEX idx_audit_events_actor ON audit_events(actor_id);
+CREATE INDEX idx_audit_events_entity ON audit_events(entity_type, entity_id);
+CREATE INDEX idx_audit_events_action ON audit_events(action);
+CREATE INDEX idx_audit_events_created ON audit_events(created_at DESC);
+
+================================================================================
+SECTION 3: TABLES — KAUFY MODULE (Sales)
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 PROPERTIES
+--------------------------------------------------------------------------------
+
+CREATE TABLE properties (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Property details
+  name         TEXT NOT NULL,
+  address      TEXT NOT NULL,
+  city         TEXT NOT NULL,
+  postal_code  TEXT,
+  country      TEXT NOT NULL DEFAULT 'DE',
+  
+  -- Coordinates
+  latitude     DECIMAL(10, 8),
+  longitude    DECIMAL(11, 8),
+  
+  -- Operational status (NOT sales status)
+  status       property_status NOT NULL DEFAULT 'available',
+  
+  -- Metadata
+  property_type TEXT,
+  year_built   INTEGER,
+  total_area_sqm DECIMAL(12, 2),
+  
+  -- Timestamps
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_properties_tenant ON properties(tenant_id);
+CREATE UNIQUE INDEX idx_properties_tenant_id ON properties(tenant_id, id);
+CREATE INDEX idx_properties_status ON properties(tenant_id, status);
+CREATE INDEX idx_properties_city ON properties(tenant_id, city);
+
+--------------------------------------------------------------------------------
+3.2 UNITS
+--------------------------------------------------------------------------------
+
+CREATE TABLE units (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  property_id  UUID NOT NULL,
+  
+  -- Unit details
+  unit_number  TEXT NOT NULL,
+  floor        INTEGER,
+  area_sqm     DECIMAL(10, 2),
+  rooms        DECIMAL(3, 1),
+  
+  -- Pricing
+  base_price   DECIMAL(14, 2),
+  
+  -- Timestamps
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FK for tenant isolation
+  FOREIGN KEY (tenant_id, property_id) REFERENCES properties(tenant_id, id) ON DELETE CASCADE,
+  
+  UNIQUE(property_id, unit_number)
+);
+
+CREATE INDEX idx_units_tenant ON units(tenant_id);
+CREATE UNIQUE INDEX idx_units_tenant_id ON units(tenant_id, id);
+CREATE INDEX idx_units_property ON units(property_id);
+
+--------------------------------------------------------------------------------
+3.3 LISTINGS
+--------------------------------------------------------------------------------
+
+CREATE TABLE listings (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  unit_id        UUID NOT NULL,
+  
+  -- Listing details
+  title          TEXT NOT NULL,
+  description    TEXT,
+  price          DECIMAL(14, 2) NOT NULL,
+  
+  -- Sales lifecycle status
+  status         listing_status NOT NULL DEFAULT 'draft',
+  
+  -- Publishing dates
+  published_at   TIMESTAMPTZ,
+  expires_at     TIMESTAMPTZ,
+  
+  -- Timestamps
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FK for tenant isolation
+  FOREIGN KEY (tenant_id, unit_id) REFERENCES units(tenant_id, id) ON DELETE CASCADE
+);
+
+-- Add composite unique constraint to units for FK
+ALTER TABLE units ADD CONSTRAINT units_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_listings_tenant ON listings(tenant_id);
+CREATE UNIQUE INDEX idx_listings_tenant_id ON listings(tenant_id, id);
+CREATE INDEX idx_listings_unit ON listings(unit_id);
+CREATE INDEX idx_listings_status ON listings(tenant_id, status);
+
+--------------------------------------------------------------------------------
+3.4 LISTING_PARTNER_VISIBILITY
+--------------------------------------------------------------------------------
+
+CREATE TABLE listing_partner_visibility (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  listing_id   UUID NOT NULL,
+  partner_id   UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  
+  -- Timestamps
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FK for tenant isolation
+  FOREIGN KEY (tenant_id, listing_id) REFERENCES listings(tenant_id, id) ON DELETE CASCADE,
+  
+  UNIQUE(listing_id, partner_id)
+);
+
+-- Add composite unique constraint to listings for FK
+ALTER TABLE listings ADD CONSTRAINT listings_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_listing_partner_visibility_listing ON listing_partner_visibility(listing_id);
+CREATE INDEX idx_listing_partner_visibility_partner ON listing_partner_visibility(partner_id);
+
+--------------------------------------------------------------------------------
+3.5 RESERVATIONS
+--------------------------------------------------------------------------------
+
+CREATE TABLE reservations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  listing_id      UUID NOT NULL,
+  
+  -- Buyer reference
+  contact_id      UUID NOT NULL,
+  
+  -- Reservation details
+  reserved_price  DECIMAL(14, 2) NOT NULL,
+  status          reservation_status NOT NULL DEFAULT 'pending',
+  
+  -- Partner who made the reservation
+  reserved_by     UUID NOT NULL REFERENCES auth.users(id),
+  
+  -- Status change tracking
+  approved_by     UUID REFERENCES auth.users(id),
+  approved_at     TIMESTAMPTZ,
+  rejected_by     UUID REFERENCES auth.users(id),
+  rejected_at     TIMESTAMPTZ,
+  rejection_reason TEXT,
+  
+  -- Timestamps
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FKs for tenant isolation
+  FOREIGN KEY (tenant_id, listing_id) REFERENCES listings(tenant_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id, contact_id) REFERENCES contacts(tenant_id, id) ON DELETE RESTRICT
+);
+
+-- Add composite unique constraint to contacts for FK
+ALTER TABLE contacts ADD CONSTRAINT contacts_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_reservations_tenant ON reservations(tenant_id);
+CREATE INDEX idx_reservations_listing ON reservations(listing_id);
+CREATE INDEX idx_reservations_contact ON reservations(contact_id);
+CREATE INDEX idx_reservations_status ON reservations(tenant_id, status);
+CREATE INDEX idx_reservations_reserved_by ON reservations(reserved_by);
+
+================================================================================
+SECTION 4: TABLES — MIETY MODULE (Rentals)
+================================================================================
+
+--------------------------------------------------------------------------------
+4.1 LEASES
+--------------------------------------------------------------------------------
+
+CREATE TABLE leases (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  unit_id         UUID NOT NULL,
+  
+  -- Tenant (renter) reference
+  tenant_contact_id UUID NOT NULL,
+  
+  -- Lease terms
+  monthly_rent    DECIMAL(12, 2) NOT NULL,
+  deposit_amount  DECIMAL(12, 2),
+  start_date      DATE NOT NULL,
+  end_date        DATE,
+  
+  -- Rental lifecycle status
+  status          lease_status NOT NULL DEFAULT 'draft',
+  
+  -- Notice tracking
+  notice_date     DATE,
+  notice_period_days INTEGER,
+  
+  -- Timestamps
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FKs for tenant isolation
+  FOREIGN KEY (tenant_id, unit_id) REFERENCES units(tenant_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id, tenant_contact_id) REFERENCES contacts(tenant_id, id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_leases_tenant ON leases(tenant_id);
+CREATE INDEX idx_leases_unit ON leases(unit_id);
+CREATE INDEX idx_leases_status ON leases(tenant_id, status);
+CREATE INDEX idx_leases_contact ON leases(tenant_contact_id);
+
+--------------------------------------------------------------------------------
+4.2 RENT_PAYMENTS
+--------------------------------------------------------------------------------
+
+CREATE TABLE rent_payments (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  lease_id      UUID NOT NULL,
+  
+  -- Payment details
+  amount        DECIMAL(12, 2) NOT NULL,
+  due_date      DATE NOT NULL,
+  paid_date     DATE,
+  
+  -- Status
+  is_paid       BOOLEAN NOT NULL DEFAULT false,
+  
+  -- Notes
+  notes         TEXT,
+  
+  -- Timestamps
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FK for tenant isolation
+  FOREIGN KEY (tenant_id, lease_id) REFERENCES leases(tenant_id, id) ON DELETE CASCADE
+);
+
+-- Add composite unique constraint to leases for FK
+ALTER TABLE leases ADD CONSTRAINT leases_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_rent_payments_tenant ON rent_payments(tenant_id);
+CREATE INDEX idx_rent_payments_lease ON rent_payments(lease_id);
+CREATE INDEX idx_rent_payments_due ON rent_payments(tenant_id, due_date);
+CREATE INDEX idx_rent_payments_unpaid ON rent_payments(tenant_id, is_paid) WHERE is_paid = false;
+
+================================================================================
+SECTION 5: TABLES — FINANCING MODULE
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1 FINANCE_PACKAGES
+--------------------------------------------------------------------------------
+
+CREATE TABLE finance_packages (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Related entities
+  reservation_id       UUID,
+  applicant_contact_id UUID NOT NULL,
+  data_room_id         UUID,
+  summary_document_id  UUID,
+  
+  -- Package details
+  name                 TEXT NOT NULL,
+  requested_amount     DECIMAL(14, 2),
+  
+  -- Status (PHASE 1 ONLY)
+  status               finance_package_status NOT NULL DEFAULT 'draft',
+  
+  -- Completeness tracking
+  completeness_pct     INTEGER DEFAULT 0,
+  missing_items        JSONB DEFAULT '[]',
+  
+  -- Export tracking
+  exported_at          TIMESTAMPTZ,
+  exported_by          UUID REFERENCES auth.users(id),
+  
+  -- Timestamps
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FKs for tenant isolation
+  FOREIGN KEY (tenant_id, reservation_id) REFERENCES reservations(tenant_id, id) ON DELETE SET NULL,
+  FOREIGN KEY (tenant_id, applicant_contact_id) REFERENCES contacts(tenant_id, id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, data_room_id) REFERENCES data_rooms(tenant_id, id) ON DELETE SET NULL,
+  FOREIGN KEY (tenant_id, summary_document_id) REFERENCES documents(tenant_id, id) ON DELETE SET NULL,
+  
+  -- Constraints
+  CONSTRAINT valid_completeness CHECK (completeness_pct >= 0 AND completeness_pct <= 100)
+);
+
+-- Add composite unique constraint to reservations for FK
+ALTER TABLE reservations ADD CONSTRAINT reservations_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_finance_packages_tenant ON finance_packages(tenant_id);
+CREATE INDEX idx_finance_packages_status ON finance_packages(tenant_id, status);
+CREATE INDEX idx_finance_packages_reservation ON finance_packages(reservation_id);
+CREATE INDEX idx_finance_packages_applicant ON finance_packages(applicant_contact_id);
+
+================================================================================
+SECTION 6: TABLES — COMMUNICATION MODULE
+================================================================================
+
+--------------------------------------------------------------------------------
+6.1 COMMUNICATION_EVENTS
+--------------------------------------------------------------------------------
+
+CREATE TABLE communication_events (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Channel and direction
+  channel       communication_channel NOT NULL,
+  direction     communication_direction NOT NULL,
+  
+  -- Participants
+  from_address  TEXT,
+  to_address    TEXT,
+  
+  -- Content
+  subject       TEXT,
+  body          TEXT,
+  raw_payload   JSONB,
+  
+  -- Linked entities (manual linking)
+  linked_contact_id   UUID,
+  linked_listing_id   UUID,
+  linked_property_id  UUID,
+  linked_finance_package_id UUID,
+  
+  -- Provider reference
+  external_id   TEXT,
+  provider      TEXT,
+  
+  -- Timestamps
+  sent_at       TIMESTAMPTZ,
+  received_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Composite FKs for tenant isolation (nullable)
+  FOREIGN KEY (tenant_id, linked_contact_id) REFERENCES contacts(tenant_id, id) ON DELETE SET NULL,
+  FOREIGN KEY (tenant_id, linked_listing_id) REFERENCES listings(tenant_id, id) ON DELETE SET NULL,
+  FOREIGN KEY (tenant_id, linked_property_id) REFERENCES properties(tenant_id, id) ON DELETE SET NULL,
+  FOREIGN KEY (tenant_id, linked_finance_package_id) REFERENCES finance_packages(tenant_id, id) ON DELETE SET NULL
+);
+
+-- Add composite unique constraints for FKs
+ALTER TABLE properties ADD CONSTRAINT properties_tenant_id_unique_fk UNIQUE(tenant_id, id);
+ALTER TABLE finance_packages ADD CONSTRAINT finance_packages_tenant_id_unique UNIQUE(tenant_id, id);
+
+CREATE INDEX idx_communication_events_tenant ON communication_events(tenant_id);
+CREATE INDEX idx_communication_events_channel ON communication_events(tenant_id, channel);
+CREATE INDEX idx_communication_events_contact ON communication_events(linked_contact_id);
+CREATE INDEX idx_communication_events_listing ON communication_events(linked_listing_id);
+CREATE INDEX idx_communication_events_created ON communication_events(tenant_id, created_at DESC);
+
+================================================================================
+SECTION 7: ROW LEVEL SECURITY POLICIES
+================================================================================
+
+IMPORTANT: NO SECURITY DEFINER FUNCTIONS
+All RLS policies use INLINE EXISTS checks.
+No elevated privilege usage in authorization.
+
+--------------------------------------------------------------------------------
+7.1 RLS — ORGANIZATIONS
+--------------------------------------------------------------------------------
+
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+
+-- Users can see orgs they are members of
+CREATE POLICY "Users can view their organizations"
+  ON organizations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = organizations.id
+    )
+  );
+
+-- Org admins and internal ops can update their org
+CREATE POLICY "Admins can update organization"
+  ON organizations FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = organizations.id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.2 RLS — PROFILES
+--------------------------------------------------------------------------------
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see their own profile
+CREATE POLICY "Users can view own profile"
+  ON profiles FOR SELECT
+  USING (id = auth.uid());
+
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile"
+  ON profiles FOR UPDATE
+  USING (id = auth.uid());
+
+-- Users can insert their own profile (on signup)
+CREATE POLICY "Users can insert own profile"
+  ON profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
+-- NO DELETE POLICY: Profiles cannot be deleted via RLS
+
+--------------------------------------------------------------------------------
+7.3 RLS — MEMBERSHIPS
+--------------------------------------------------------------------------------
+
+ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
+
+-- Users can see their own memberships
+CREATE POLICY "Users can view own memberships"
+  ON memberships FOR SELECT
+  USING (user_id = auth.uid());
+
+-- Org admins can see all memberships in their org
+CREATE POLICY "Admins can view org memberships"
+  ON memberships FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = memberships.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Org admins can manage memberships (except their own admin role)
+CREATE POLICY "Admins can insert memberships"
+  ON memberships FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = memberships.tenant_id
+        AND m.role = 'org_admin'
+    )
+  );
+
+CREATE POLICY "Admins can update memberships"
+  ON memberships FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = memberships.tenant_id
+        AND m.role = 'org_admin'
+    )
+    AND NOT (
+      memberships.user_id = auth.uid() 
+      AND memberships.role = 'org_admin'
+    )
+  );
+
+CREATE POLICY "Admins can delete memberships"
+  ON memberships FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = memberships.tenant_id
+        AND m.role = 'org_admin'
+    )
+    AND memberships.user_id != auth.uid()
+  );
+
+--------------------------------------------------------------------------------
+7.4 RLS — ORG_DELEGATIONS
+--------------------------------------------------------------------------------
+
+ALTER TABLE org_delegations ENABLE ROW LEVEL SECURITY;
+
+-- Admins of delegate org can view delegations they have
+CREATE POLICY "Delegate admins can view their delegations"
+  ON org_delegations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = org_delegations.delegate_org_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Admins of target org can view delegations to their org
+CREATE POLICY "Target admins can view incoming delegations"
+  ON org_delegations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = org_delegations.target_org_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Admins of target org can create delegations
+CREATE POLICY "Target admins can create delegations"
+  ON org_delegations FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = org_delegations.target_org_id
+        AND m.role = 'org_admin'
+    )
+  );
+
+-- Admins of target org can revoke delegations
+CREATE POLICY "Target admins can update delegations"
+  ON org_delegations FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = org_delegations.target_org_id
+        AND m.role = 'org_admin'
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.5 RLS — CONTACTS (with delegation support)
+--------------------------------------------------------------------------------
+
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+
+-- Direct members can access contacts
+CREATE POLICY "Members can view contacts"
+  ON contacts FOR SELECT
+  USING (
+    -- Direct membership
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = contacts.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+    OR
+    -- Delegated access with view_contacts scope
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = contacts.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('view_contacts')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Direct admins can insert contacts
+CREATE POLICY "Admins can insert contacts"
+  ON contacts FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = contacts.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+    OR
+    -- Delegated access with create_contacts scope
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = contacts.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('create_contacts')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Direct admins can update contacts
+CREATE POLICY "Admins can update contacts"
+  ON contacts FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = contacts.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Direct admins can delete contacts
+CREATE POLICY "Admins can delete contacts"
+  ON contacts FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = contacts.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.6 RLS — LISTINGS (with delegation support)
+--------------------------------------------------------------------------------
+
+ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
+
+-- Admins see all listings in their tenant
+CREATE POLICY "Admins can view all listings"
+  ON listings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = listings.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Sales partners see only listings they have visibility to
+CREATE POLICY "Partners can view assigned listings"
+  ON listings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 
+      FROM memberships m
+      JOIN listing_partner_visibility lpv ON lpv.partner_id = m.user_id
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = listings.tenant_id
+        AND m.role = 'sales_partner'
+        AND lpv.listing_id = listings.id
+    )
+  );
+
+-- Delegated access for listings
+CREATE POLICY "Delegated access to listings"
+  ON listings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = listings.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('view_listings')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Admins can manage listings
+CREATE POLICY "Admins can insert listings"
+  ON listings FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = listings.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+    OR
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = listings.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('manage_listings')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+CREATE POLICY "Admins can update listings"
+  ON listings FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = listings.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+    OR
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = listings.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('manage_listings')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+CREATE POLICY "Admins can delete listings"
+  ON listings FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = listings.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.7 RLS — RESERVATIONS (with delegation support)
+--------------------------------------------------------------------------------
+
+ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
+
+-- Admins see all reservations
+CREATE POLICY "Admins can view all reservations"
+  ON reservations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = reservations.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Partners see their own reservations
+CREATE POLICY "Partners can view own reservations"
+  ON reservations FOR SELECT
+  USING (
+    reservations.reserved_by = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = reservations.tenant_id
+        AND m.role = 'sales_partner'
+    )
+  );
+
+-- Delegated access for reservations
+CREATE POLICY "Delegated access to reservations"
+  ON reservations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = reservations.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('view_reservations')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Partners can create pending reservations (direct or delegated)
+CREATE POLICY "Partners can create reservations"
+  ON reservations FOR INSERT
+  WITH CHECK (
+    reservations.status = 'pending'
+    AND reservations.reserved_by = auth.uid()
+    AND (
+      EXISTS (
+        SELECT 1 FROM memberships m
+        WHERE m.user_id = auth.uid()
+          AND m.tenant_id = reservations.tenant_id
+          AND m.role = 'sales_partner'
+      )
+      OR
+      EXISTS (
+        SELECT 1 
+        FROM org_delegations d
+        JOIN memberships m ON m.tenant_id = d.delegate_org_id
+        WHERE d.target_org_id = reservations.tenant_id
+          AND d.status = 'active'
+          AND (d.expires_at IS NULL OR d.expires_at > now())
+          AND d.scopes @> jsonb_build_array('create_reservations')
+          AND m.user_id = auth.uid()
+          AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+      )
+    )
+  );
+
+-- Partners can cancel their own pending reservations
+CREATE POLICY "Partners can cancel own reservations"
+  ON reservations FOR UPDATE
+  USING (
+    reservations.reserved_by = auth.uid()
+    AND reservations.status = 'pending'
+    AND EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = reservations.tenant_id
+        AND m.role = 'sales_partner'
+    )
+  )
+  WITH CHECK (
+    reservations.status = 'cancelled'
+  );
+
+-- Admins can update all reservations
+CREATE POLICY "Admins can update reservations"
+  ON reservations FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = reservations.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.8 RLS — FINANCE_PACKAGES (with delegation support)
+--------------------------------------------------------------------------------
+
+ALTER TABLE finance_packages ENABLE ROW LEVEL SECURITY;
+
+-- Admins can view all packages
+CREATE POLICY "Admins can view finance packages"
+  ON finance_packages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = finance_packages.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Delegated access for viewing package status
+CREATE POLICY "Delegated view of finance packages"
+  ON finance_packages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = finance_packages.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('view_finance_package_status')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Admins can create packages
+CREATE POLICY "Admins can insert finance packages"
+  ON finance_packages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = finance_packages.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+    OR
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = finance_packages.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('create_finance_package')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- Admins can update packages
+CREATE POLICY "Admins can update finance packages"
+  ON finance_packages FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = finance_packages.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+--------------------------------------------------------------------------------
+7.9 RLS — AUDIT_EVENTS (Immutable, INSERT-only)
+--------------------------------------------------------------------------------
+
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+
+-- Members can view audit events for their tenant
+CREATE POLICY "Members can view audit events"
+  ON audit_events FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = audit_events.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- Authenticated users can insert audit events (validated by actor_id)
+CREATE POLICY "Users can insert own audit events"
+  ON audit_events FOR INSERT
+  WITH CHECK (
+    audit_events.actor_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = audit_events.tenant_id
+    )
+  );
+
+-- NO UPDATE POLICY: Audit events are immutable
+-- NO DELETE POLICY: Audit events cannot be deleted
+
+--------------------------------------------------------------------------------
+7.10 RLS — REMAINING TABLES (Standard Pattern)
+--------------------------------------------------------------------------------
+
+-- PROPERTIES
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view properties"
+  ON properties FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = properties.tenant_id
+    )
+  );
+
+CREATE POLICY "Admins can manage properties"
+  ON properties FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = properties.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- UNITS
+ALTER TABLE units ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view units"
+  ON units FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = units.tenant_id
+    )
+  );
+
+CREATE POLICY "Admins can manage units"
+  ON units FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = units.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+  );
+
+-- DOCUMENTS
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view documents"
+  ON documents FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = documents.tenant_id
+    )
+    OR
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = documents.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('view_documents')
+        AND m.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can manage documents"
+  ON documents FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = documents.tenant_id
+        AND m.role IN ('org_admin', 'internal_ops')
+    )
+    OR
+    EXISTS (
+      SELECT 1 
+      FROM org_delegations d
+      JOIN memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = documents.tenant_id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND d.scopes @> jsonb_build_array('manage_documents')
+        AND m.user_id = auth.uid()
+        AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+    )
+  );
+
+-- DATA_ROOMS, DATA_ROOM_DOCUMENTS, ACCESS_GRANTS, SHARE_LINKS, LEASES, 
+-- RENT_PAYMENTS, LISTING_PARTNER_VISIBILITY, COMMUNICATION_EVENTS
+-- Follow same pattern: Enable RLS, direct membership check, delegation where needed
+
+================================================================================
+SECTION 8: PARTNER-DRIVEN ORG CREATION RULES
+================================================================================
+
+8.1 ORG TYPE HIERARCHY
+--------------------------------------------------------------------------------
+
+Allowed parent → child org_type creation:
+
+| Creator org_type | Can create child org_type |
+|------------------|---------------------------|
+| internal         | partner, sub_partner, client |
+| partner          | sub_partner, client       |
+| sub_partner      | client                    |
+| client           | (none)                    |
+
+8.2 ROLE PERMISSIONS FOR ORG CREATION
+--------------------------------------------------------------------------------
+
+| Role           | Can create orgs? | Notes                           |
+|----------------|------------------|----------------------------------|
+| org_admin      | YES              | Full org creation rights         |
+| internal_ops   | YES              | Full org creation rights         |
+| sales_partner  | YES              | Subject to org_type hierarchy    |
+| platform_admin | NO               | Platform-level only              |
+
+8.3 AUTO-DELEGATION ON ORG CREATION
+--------------------------------------------------------------------------------
+
+When a user creates a child organization:
+
+1. The child org is created with appropriate org_type
+2. An org_delegations row is AUTOMATICALLY created:
+   - target_org_id = new child org
+   - delegate_org_id = creator's current org
+   - status = 'active'
+   - scopes = DEFAULT_DELEGATION_SCOPES (see below)
+   - created_by = creator user ID
+
+3. DEFAULT_DELEGATION_SCOPES (minimum set):
+   [
+     "view_listings",
+     "view_contacts",
+     "view_documents",
+     "view_reservations",
+     "view_finance_package_status"
+   ]
+
+4. For partner → client creation, EXTENDED_DELEGATION_SCOPES:
+   [
+     "view_listings",
+     "manage_listings",
+     "view_contacts",
+     "create_contacts",
+     "view_documents",
+     "manage_documents",
+     "view_reservations",
+     "create_reservations",
+     "view_finance_package_status",
+     "create_finance_package"
+   ]
+
+8.4 MATERIALIZED_PATH MAINTENANCE
+--------------------------------------------------------------------------------
+
+Application layer responsibility on org creation:
+1. Set parent_id to creator's org ID
+2. Set depth = parent.depth + 1
+3. Set materialized_path = parent.materialized_path + parent.id + '/'
+
+Example:
+- Root org: materialized_path = '/', depth = 0
+- Partner org: materialized_path = '/root-id/', depth = 1
+- Client org: materialized_path = '/root-id/partner-id/', depth = 2
+
+================================================================================
+SECTION 9: DELEGATION SCOPES REFERENCE
+================================================================================
+
+Available scopes for org_delegations.scopes JSONB array:
+
+LISTINGS
+- view_listings        : Read access to listings
+- manage_listings      : Create, update listings
+
+CONTACTS
+- view_contacts        : Read access to contacts
+- create_contacts      : Create new contacts
+
+DOCUMENTS
+- view_documents       : Read access to documents
+- manage_documents     : Upload, update, delete documents
+
+RESERVATIONS
+- view_reservations    : Read access to reservations
+- create_reservations  : Create new reservations
+
+FINANCE PACKAGES
+- view_finance_package_status : Read package status only
+- create_finance_package      : Create new packages
+
+DATA ROOMS
+- view_data_rooms      : Read access to data rooms
+- manage_data_rooms    : Manage data room contents
+
+================================================================================
+SECTION 10: INDEXES FOR SCALE
+================================================================================
+
+-- Membership lookups (critical path)
+CREATE INDEX idx_memberships_user_tenant_role 
+  ON memberships(user_id, tenant_id, role);
+
+-- Delegation lookups (critical path)
+CREATE INDEX idx_org_delegations_active 
+  ON org_delegations(delegate_org_id, target_org_id) 
+  WHERE status = 'active';
+
+-- GIN index for scope containment queries
+CREATE INDEX idx_org_delegations_scopes 
+  ON org_delegations USING GIN(scopes);
+
+-- Hierarchy queries
+CREATE INDEX idx_organizations_path 
+  ON organizations USING btree(materialized_path text_pattern_ops);
+
+CREATE INDEX idx_organizations_parent 
+  ON organizations(parent_id);
+
+-- Tenant isolation (all business tables)
+CREATE INDEX idx_properties_tenant_id ON properties(tenant_id, id);
+CREATE INDEX idx_units_tenant_id ON units(tenant_id, id);
+CREATE INDEX idx_listings_tenant_id ON listings(tenant_id, id);
+CREATE INDEX idx_contacts_tenant_id ON contacts(tenant_id, id);
+CREATE INDEX idx_documents_tenant_id ON documents(tenant_id, id);
+CREATE INDEX idx_reservations_tenant_id ON reservations(tenant_id, id);
+CREATE INDEX idx_finance_packages_tenant_id ON finance_packages(tenant_id, id);
+CREATE INDEX idx_leases_tenant_id ON leases(tenant_id, id);
+
+================================================================================
+SECTION 11: MINIMUM AUDIT COVERAGE CHECKLIST
+================================================================================
+
+An audit_events row MUST be created for:
+
+[ ] Any status transition on:
+    - listings (draft → internal_review → active → reserved → inactive/sold)
+    - leases (draft → active → notice_given → terminated/renewed)
+    - reservations (pending → approved/rejected/cancelled/completed)
+    - finance_packages (draft → incomplete → complete → ready_for_handoff)
+
+[ ] Any export or share_link creation
+
+[ ] Any access_grant creation or revocation
+
+[ ] Any data room document view or download
+
+[ ] Any communication_event link/unlink action
+
+[ ] Any org_delegation creation or revocation
+
+[ ] Any membership creation, update, or deletion
+
+================================================================================
+SECTION 12: ASSUMPTIONS & NOTES
+================================================================================
+
+1. SECURITY INVOKER is the default for PostgreSQL functions.
+   No SECURITY DEFINER functions are used for authorization.
+
+2. Materialized path maintenance is APPLICATION LAYER responsibility.
+   Database triggers may be added later for consistency.
+
+3. Delegation is ORG-TO-ORG only (no user-to-user delegation in Phase 1).
+
+4. Platform Admin has NO access to tenant business data.
+   Support/Impersonation mode deferred to Phase 2.
+
+5. Finance package flow stops at 'ready_for_handoff'.
+   No Future Room integration in Phase 1.
+
+6. JSONB scope checks use: d.scopes @> jsonb_build_array('scope_name')
+   NOT: d.scopes @> to_jsonb('scope_name'::text)
+
+7. Partial unique index ensures only one ACTIVE delegation per org pair.
+   Revoked/expired delegations are preserved for audit purposes.
+
+================================================================================
+END OF SCHEMA OUTLINE v3.3
+================================================================================
+
+APPROVAL REQUIRED
+-----------------
+Confirm this schema to proceed with Lovable Cloud enablement and implementation.
+
+Reply: "Approved. Enable Lovable Cloud and implement Phase 1.1 Foundation with v3.3 schema."
+
+================================================================================
