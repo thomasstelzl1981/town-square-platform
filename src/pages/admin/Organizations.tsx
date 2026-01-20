@@ -1,0 +1,340 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Tables, Enums } from '@/integrations/supabase/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Loader2, Building2, Eye, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
+
+type Organization = Tables<'organizations'>;
+type OrgType = Enums<'org_type'>;
+
+const ORG_TYPE_HIERARCHY: Record<OrgType, OrgType[]> = {
+  internal: ['partner'],
+  partner: ['sub_partner', 'client'],
+  sub_partner: ['client'],
+  client: [],
+};
+
+export default function Organizations() {
+  const { isPlatformAdmin } = useAuth();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Create form state
+  const [newOrg, setNewOrg] = useState({
+    name: '',
+    slug: '',
+    org_type: '' as OrgType | '',
+    parent_id: '' as string,
+  });
+
+  async function fetchOrganizations() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch organizations');
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  const getOrgTypeVariant = (type: OrgType) => {
+    switch (type) {
+      case 'internal': return 'default';
+      case 'partner': return 'secondary';
+      case 'sub_partner': return 'outline';
+      case 'client': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  const formatOrgType = (type: OrgType) => {
+    return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
+  const getAllowedChildTypes = (parentType: OrgType | null): OrgType[] => {
+    if (!parentType) return ['internal'];
+    return ORG_TYPE_HIERARCHY[parentType] || [];
+  };
+
+  const handleCreate = async () => {
+    if (!newOrg.name || !newOrg.slug || !newOrg.org_type) {
+      setCreateError('All fields are required');
+      return;
+    }
+
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      const parent = newOrg.parent_id 
+        ? organizations.find(o => o.id === newOrg.parent_id) 
+        : null;
+
+      const depth = parent ? parent.depth + 1 : 0;
+      const materialized_path = parent 
+        ? `${parent.materialized_path}${parent.id}/`
+        : '/';
+
+      const { error } = await supabase
+        .from('organizations')
+        .insert({
+          name: newOrg.name,
+          slug: newOrg.slug,
+          org_type: newOrg.org_type as OrgType,
+          parent_id: newOrg.parent_id || null,
+          depth,
+          materialized_path,
+        });
+
+      if (error) throw error;
+
+      setCreateOpen(false);
+      setNewOrg({ name: '', slug: '', org_type: '', parent_id: '' });
+      fetchOrganizations();
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create organization');
+    }
+    setCreating(false);
+  };
+
+  // Determine available org types based on parent selection
+  const selectedParent = newOrg.parent_id 
+    ? organizations.find(o => o.id === newOrg.parent_id) 
+    : null;
+  const allowedTypes = getAllowedChildTypes(selectedParent?.org_type || null);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Organizations</h2>
+          <p className="text-muted-foreground">Manage tenants and organization hierarchy</p>
+        </div>
+        {isPlatformAdmin && (
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Organization
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Organization</DialogTitle>
+                <DialogDescription>
+                  Add a new organization to the system. Hierarchy rules are enforced.
+                </DialogDescription>
+              </DialogHeader>
+              
+              {createError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{createError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="parent">Parent Organization</Label>
+                  <Select
+                    value={newOrg.parent_id}
+                    onValueChange={(value) => setNewOrg(prev => ({ 
+                      ...prev, 
+                      parent_id: value === 'none' ? '' : value,
+                      org_type: '' // Reset type when parent changes
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select parent (or none for root)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Root (no parent) —</SelectItem>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name} ({formatOrgType(org.org_type)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="org_type">Organization Type</Label>
+                  <Select
+                    value={newOrg.org_type}
+                    onValueChange={(value) => setNewOrg(prev => ({ ...prev, org_type: value as OrgType }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allowedTypes.map(type => (
+                        <SelectItem key={type} value={type}>
+                          {formatOrgType(type)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {!newOrg.parent_id 
+                      ? 'Root organizations must be of type "Internal"' 
+                      : `Allowed under ${selectedParent?.org_type}: ${allowedTypes.map(formatOrgType).join(', ')}`}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={newOrg.name}
+                    onChange={(e) => setNewOrg(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Acme Corp"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug</Label>
+                  <Input
+                    id="slug"
+                    value={newOrg.slug}
+                    onChange={(e) => setNewOrg(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))}
+                    placeholder="acme-corp"
+                  />
+                  <p className="text-xs text-muted-foreground">URL-friendly identifier</p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreate} disabled={creating}>
+                  {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Organizations</CardTitle>
+          <CardDescription>
+            {isPlatformAdmin 
+              ? 'Viewing all organizations (Platform Admin)'
+              : 'Viewing organizations you have access to'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : organizations.length === 0 ? (
+            <div className="text-center py-8">
+              <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <p className="mt-2 text-muted-foreground">No organizations found</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Depth</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {organizations.map((org) => (
+                  <TableRow key={org.id}>
+                    <TableCell className="font-medium">{org.name}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{org.slug}</TableCell>
+                    <TableCell>
+                      <Badge variant={getOrgTypeVariant(org.org_type)}>
+                        {formatOrgType(org.org_type)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{org.depth}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(org.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link to={`/admin/organizations/${org.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
