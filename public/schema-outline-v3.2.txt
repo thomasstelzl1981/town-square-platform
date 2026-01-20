@@ -1,0 +1,810 @@
+================================================================================
+SYSTEM OF A TOWN - SCHEMA OUTLINE v3.2 (FINAL)
+Organigram + Delegated Admin für Enterprise Scale
+================================================================================
+
+--------------------------------------------------------------------------------
+DESIGN DECISIONS
+--------------------------------------------------------------------------------
+| Entscheidung        | Wahl                              | Begründung                                    |
+|---------------------|-----------------------------------|-----------------------------------------------|
+| Hierarchy Model     | parent_id + materialized_path     | Einfache Writes, schnelle Subtree-Queries     |
+| Delegation Scope    | JSONB Array mit Permission-Strings| Flexibel, erweiterbar, einfach abfragbar      |
+| Delegation Target   | delegate_org_id (nicht User)      | Partner delegieren als Orgs; User erben via Membership |
+
+--------------------------------------------------------------------------------
+1. ENUMS
+--------------------------------------------------------------------------------
+
+-- Membership Roles (Phase 1)
+CREATE TYPE public.membership_role AS ENUM (
+  'org_admin',
+  'internal_ops',
+  'sales_partner'
+);
+
+-- Organization Types
+CREATE TYPE public.org_type AS ENUM (
+  'internal',      -- Platform Operator Orgs
+  'partner',       -- Top-Level Sales Partner
+  'sub_partner',   -- Partner's Sub-Agent
+  'client'         -- End-Client Organization
+);
+
+-- Delegation Status
+CREATE TYPE public.delegation_status AS ENUM (
+  'active',
+  'revoked',
+  'expired'
+);
+
+-- Listing Status
+CREATE TYPE public.listing_status AS ENUM (
+  'draft',
+  'internal_review',
+  'active',
+  'reserved',
+  'inactive',
+  'sold'
+);
+
+-- Lease Status
+CREATE TYPE public.lease_status AS ENUM (
+  'draft',
+  'active',
+  'notice_given',
+  'terminated',
+  'renewed'
+);
+
+-- Reservation Status
+CREATE TYPE public.reservation_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+  'expired'
+);
+
+-- Finance Package Status
+CREATE TYPE public.finance_package_status AS ENUM (
+  'draft',
+  'ready',
+  'submitted',
+  'approved',
+  'rejected'
+);
+
+-- Audit Event Types
+CREATE TYPE public.audit_event_type AS ENUM (
+  'listing_status_change',
+  'lease_status_change',
+  'reservation_status_change',
+  'finance_package_status_change',
+  'access_granted',
+  'access_revoked',
+  'share_link_created',
+  'document_viewed',
+  'document_downloaded',
+  'finance_package_exported',
+  'communication_linked',
+  'communication_unlinked'
+);
+
+-- Valid Delegation Scopes (documentation):
+-- 'manage_listings', 'view_listings',
+-- 'create_reservations', 'view_reservations',
+-- 'view_contacts', 'create_contacts', 'manage_contacts',
+-- 'view_finance_packages', 'create_finance_packages',
+-- 'view_documents', 'manage_documents',
+-- 'view_data_rooms'
+
+--------------------------------------------------------------------------------
+2. CORE TABLES
+--------------------------------------------------------------------------------
+
+-- PROFILES
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ORGANIZATIONS (mit Hierarchy)
+CREATE TABLE public.organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  org_type org_type NOT NULL DEFAULT 'client',
+  
+  -- Hierarchy
+  parent_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+  materialized_path TEXT NOT NULL DEFAULT '',
+  depth INTEGER NOT NULL DEFAULT 0,
+  
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  CONSTRAINT valid_path CHECK (materialized_path ~ '^(/[0-9a-f-]+)*$')
+);
+
+-- MEMBERSHIPS
+CREATE TABLE public.memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  role membership_role NOT NULL DEFAULT 'sales_partner',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  CONSTRAINT unique_user_tenant UNIQUE(user_id, tenant_id)
+);
+
+-- ORG DELEGATIONS (NEU)
+CREATE TABLE public.org_delegations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  target_org_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  delegate_org_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  scopes JSONB NOT NULL DEFAULT '[]',
+  status delegation_status NOT NULL DEFAULT 'active',
+  expires_at TIMESTAMPTZ,
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revoked_at TIMESTAMPTZ,
+  revoked_by UUID REFERENCES auth.users(id),
+  
+  CONSTRAINT unique_active_delegation UNIQUE (target_org_id, delegate_org_id),
+  CONSTRAINT no_self_delegation CHECK (target_org_id != delegate_org_id)
+);
+
+--------------------------------------------------------------------------------
+3. BUSINESS TABLES
+--------------------------------------------------------------------------------
+
+-- CONTACTS
+CREATE TABLE public.contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  email TEXT,
+  phone TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  company_name TEXT,
+  contact_type TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id)
+);
+
+-- PROPERTIES
+CREATE TABLE public.properties (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  address_street TEXT,
+  address_city TEXT,
+  address_zip TEXT,
+  address_country TEXT DEFAULT 'DE',
+  property_type TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id)
+);
+
+-- UNITS
+CREATE TABLE public.units (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  property_id UUID NOT NULL,
+  unit_number TEXT NOT NULL,
+  floor INTEGER,
+  area_sqm NUMERIC(10,2),
+  rooms NUMERIC(3,1),
+  is_occupied BOOLEAN DEFAULT false,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id),
+  FOREIGN KEY (property_id, tenant_id) REFERENCES public.properties(id, tenant_id)
+);
+
+-- LISTINGS (Kaufy)
+CREATE TABLE public.listings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  property_id UUID NOT NULL,
+  unit_id UUID,
+  status listing_status NOT NULL DEFAULT 'draft',
+  price NUMERIC(14,2),
+  currency TEXT DEFAULT 'EUR',
+  title TEXT,
+  description TEXT,
+  published_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id),
+  FOREIGN KEY (property_id, tenant_id) REFERENCES public.properties(id, tenant_id),
+  FOREIGN KEY (unit_id, tenant_id) REFERENCES public.units(id, tenant_id)
+);
+
+-- LISTING PARTNER VISIBILITY
+CREATE TABLE public.listing_partner_visibility (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  listing_id UUID NOT NULL,
+  partner_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(listing_id, partner_user_id),
+  FOREIGN KEY (listing_id, tenant_id) REFERENCES public.listings(id, tenant_id)
+);
+
+-- RESERVATIONS
+CREATE TABLE public.reservations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  listing_id UUID NOT NULL,
+  client_contact_id UUID NOT NULL,
+  requested_by UUID NOT NULL REFERENCES auth.users(id),
+  status reservation_status NOT NULL DEFAULT 'pending',
+  notes TEXT,
+  reviewed_by UUID REFERENCES auth.users(id),
+  reviewed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id),
+  FOREIGN KEY (listing_id, tenant_id) REFERENCES public.listings(id, tenant_id),
+  FOREIGN KEY (client_contact_id, tenant_id) REFERENCES public.contacts(id, tenant_id)
+);
+
+-- LEASES (Miety)
+CREATE TABLE public.leases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  unit_id UUID NOT NULL,
+  tenant_contact_id UUID NOT NULL,
+  status lease_status NOT NULL DEFAULT 'draft',
+  start_date DATE,
+  end_date DATE,
+  monthly_rent NUMERIC(10,2),
+  deposit NUMERIC(10,2),
+  currency TEXT DEFAULT 'EUR',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id),
+  FOREIGN KEY (unit_id, tenant_id) REFERENCES public.units(id, tenant_id),
+  FOREIGN KEY (tenant_contact_id, tenant_id) REFERENCES public.contacts(id, tenant_id)
+);
+
+-- RENT PAYMENTS
+CREATE TABLE public.rent_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  lease_id UUID NOT NULL,
+  amount NUMERIC(10,2) NOT NULL,
+  currency TEXT DEFAULT 'EUR',
+  due_date DATE NOT NULL,
+  paid_date DATE,
+  payment_method TEXT,
+  reference TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  FOREIGN KEY (lease_id, tenant_id) REFERENCES public.leases(id, tenant_id)
+);
+
+--------------------------------------------------------------------------------
+4. DOCUMENTS & DATA ROOMS
+--------------------------------------------------------------------------------
+
+-- DOCUMENTS
+CREATE TABLE public.documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_type TEXT,
+  file_size_bytes BIGINT,
+  uploaded_by UUID NOT NULL REFERENCES auth.users(id),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id)
+);
+
+-- DATA ROOMS
+CREATE TABLE public.data_rooms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(id, tenant_id)
+);
+
+-- DATA ROOM DOCUMENTS (Junction mit tenant_id)
+CREATE TABLE public.data_room_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  data_room_id UUID NOT NULL,
+  document_id UUID NOT NULL,
+  added_by UUID NOT NULL REFERENCES auth.users(id),
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  UNIQUE(data_room_id, document_id),
+  FOREIGN KEY (data_room_id, tenant_id) REFERENCES public.data_rooms(id, tenant_id),
+  FOREIGN KEY (document_id, tenant_id) REFERENCES public.documents(id, tenant_id)
+);
+
+-- ACCESS GRANTS
+CREATE TABLE public.access_grants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  data_room_id UUID NOT NULL,
+  grantee_user_id UUID REFERENCES auth.users(id),
+  grantee_email TEXT,
+  permissions JSONB DEFAULT '["view"]',
+  granted_by UUID NOT NULL REFERENCES auth.users(id),
+  granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revoked_at TIMESTAMPTZ,
+  revoked_by UUID REFERENCES auth.users(id),
+  
+  FOREIGN KEY (data_room_id, tenant_id) REFERENCES public.data_rooms(id, tenant_id)
+);
+
+-- SHARE LINKS
+CREATE TABLE public.share_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  data_room_id UUID NOT NULL,
+  token TEXT NOT NULL UNIQUE DEFAULT gen_random_uuid()::text,
+  permissions JSONB DEFAULT '["view"]',
+  expires_at TIMESTAMPTZ,
+  password_hash TEXT,
+  max_uses INTEGER,
+  use_count INTEGER DEFAULT 0,
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  FOREIGN KEY (data_room_id, tenant_id) REFERENCES public.data_rooms(id, tenant_id)
+);
+
+--------------------------------------------------------------------------------
+5. FINANCING
+--------------------------------------------------------------------------------
+
+-- FINANCE PACKAGES
+CREATE TABLE public.finance_packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  
+  -- References
+  applicant_contact_id UUID NOT NULL,
+  data_room_id UUID,
+  summary_document_id UUID,
+  
+  -- Status
+  status finance_package_status NOT NULL DEFAULT 'draft',
+  
+  -- Structured Data
+  applicant_data JSONB NOT NULL DEFAULT '{}',
+  object_data JSONB NOT NULL DEFAULT '{}',
+  
+  -- Metadata
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  submitted_at TIMESTAMPTZ,
+  
+  UNIQUE(id, tenant_id),
+  FOREIGN KEY (applicant_contact_id, tenant_id) REFERENCES public.contacts(id, tenant_id),
+  FOREIGN KEY (data_room_id, tenant_id) REFERENCES public.data_rooms(id, tenant_id),
+  FOREIGN KEY (summary_document_id, tenant_id) REFERENCES public.documents(id, tenant_id)
+);
+
+--------------------------------------------------------------------------------
+6. AUDIT & COMMUNICATION
+--------------------------------------------------------------------------------
+
+-- AUDIT EVENTS (Strategy C: User INSERT mit Constraints)
+CREATE TABLE public.audit_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  actor_id UUID NOT NULL REFERENCES auth.users(id),
+  event_type audit_event_type NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id UUID NOT NULL,
+  old_value JSONB,
+  new_value JSONB,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- COMMUNICATION EVENTS
+CREATE TABLE public.communication_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  direction TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  channel TEXT NOT NULL CHECK (channel IN ('email', 'webhook')),
+  external_id TEXT,
+  subject TEXT,
+  body_preview TEXT,
+  raw_payload JSONB,
+  linked_entity_type TEXT,
+  linked_entity_id UUID,
+  linked_by UUID REFERENCES auth.users(id),
+  linked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+--------------------------------------------------------------------------------
+7. HELPER FUNCTIONS
+--------------------------------------------------------------------------------
+
+-- Check Tenant Role
+CREATE OR REPLACE FUNCTION public.has_tenant_role(
+  _user_id UUID,
+  _tenant_id UUID,
+  _roles membership_role[]
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.memberships
+    WHERE user_id = _user_id
+      AND tenant_id = _tenant_id
+      AND role = ANY(_roles)
+  )
+$$;
+
+-- Check Delegated Access
+CREATE OR REPLACE FUNCTION public.has_delegated_access(
+  _user_id UUID,
+  _target_org_id UUID,
+  _required_scope TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.org_delegations d
+    JOIN public.memberships m ON m.tenant_id = d.delegate_org_id
+    WHERE d.target_org_id = _target_org_id
+      AND d.status = 'active'
+      AND (d.expires_at IS NULL OR d.expires_at > now())
+      AND d.scopes @> to_jsonb(_required_scope::text)
+      AND m.user_id = _user_id
+      AND m.role IN ('org_admin', 'internal_ops', 'sales_partner')
+  )
+$$;
+
+-- Combined Access Check
+CREATE OR REPLACE FUNCTION public.can_access_tenant(
+  _user_id UUID,
+  _tenant_id UUID,
+  _required_scope TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 
+    public.has_tenant_role(_user_id, _tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[])
+    OR
+    (_required_scope IS NOT NULL AND public.has_delegated_access(_user_id, _tenant_id, _required_scope))
+$$;
+
+--------------------------------------------------------------------------------
+8. RLS POLICIES
+--------------------------------------------------------------------------------
+
+=== PROFILES ===
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users_select_own_profile"
+  ON public.profiles FOR SELECT
+  USING (id = auth.uid());
+
+CREATE POLICY "users_update_own_profile"
+  ON public.profiles FOR UPDATE
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
+
+CREATE POLICY "users_insert_own_profile"
+  ON public.profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
+-- NO DELETE POLICY (profiles cannot be deleted via RLS)
+
+=== ORGANIZATIONS ===
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_internal_ops_select_own"
+  ON public.organizations FOR SELECT
+  USING (
+    public.has_tenant_role(auth.uid(), id, ARRAY['org_admin', 'internal_ops']::membership_role[])
+  );
+
+CREATE POLICY "delegated_select_target_orgs"
+  ON public.organizations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.org_delegations d
+      JOIN public.memberships m ON m.tenant_id = d.delegate_org_id
+      WHERE d.target_org_id = organizations.id
+        AND d.status = 'active'
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND m.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "org_admin_insert_child"
+  ON public.organizations FOR INSERT
+  WITH CHECK (
+    parent_id IS NOT NULL 
+    AND public.has_tenant_role(auth.uid(), parent_id, ARRAY['org_admin']::membership_role[])
+  );
+
+CREATE POLICY "org_admin_update_own"
+  ON public.organizations FOR UPDATE
+  USING (public.has_tenant_role(auth.uid(), id, ARRAY['org_admin']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), id, ARRAY['org_admin']::membership_role[]));
+
+=== MEMBERSHIPS ===
+ALTER TABLE public.memberships ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_all"
+  ON public.memberships FOR ALL
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin']::membership_role[]));
+
+CREATE POLICY "users_select_own"
+  ON public.memberships FOR SELECT
+  USING (user_id = auth.uid());
+
+=== ORG DELEGATIONS ===
+ALTER TABLE public.org_delegations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "target_org_admin_all"
+  ON public.org_delegations FOR ALL
+  USING (public.has_tenant_role(auth.uid(), target_org_id, ARRAY['org_admin']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), target_org_id, ARRAY['org_admin']::membership_role[]));
+
+CREATE POLICY "delegate_org_select"
+  ON public.org_delegations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.memberships m
+      WHERE m.tenant_id = org_delegations.delegate_org_id
+        AND m.user_id = auth.uid()
+    )
+  );
+
+=== LISTINGS ===
+ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_internal_ops_all"
+  ON public.listings FOR ALL
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]));
+
+CREATE POLICY "delegated_view_listings"
+  ON public.listings FOR SELECT
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'view_listings'));
+
+CREATE POLICY "delegated_manage_listings"
+  ON public.listings FOR UPDATE
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'manage_listings'))
+  WITH CHECK (public.has_delegated_access(auth.uid(), tenant_id, 'manage_listings'));
+
+CREATE POLICY "sales_partner_select_visible"
+  ON public.listings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.listing_partner_visibility lpv
+      JOIN public.memberships m ON m.user_id = auth.uid() AND m.tenant_id = listings.tenant_id
+      WHERE lpv.listing_id = listings.id
+        AND lpv.partner_user_id = auth.uid()
+        AND m.role = 'sales_partner'
+    )
+  );
+
+=== RESERVATIONS ===
+ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_internal_ops_all"
+  ON public.reservations FOR ALL
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]));
+
+CREATE POLICY "delegated_view_reservations"
+  ON public.reservations FOR SELECT
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'view_reservations'));
+
+CREATE POLICY "delegated_create_reservations"
+  ON public.reservations FOR INSERT
+  WITH CHECK (
+    public.has_delegated_access(auth.uid(), tenant_id, 'create_reservations')
+    AND status = 'pending'
+  );
+
+CREATE POLICY "sales_partner_select_own"
+  ON public.reservations FOR SELECT
+  USING (requested_by = auth.uid());
+
+CREATE POLICY "sales_partner_insert_pending"
+  ON public.reservations FOR INSERT
+  WITH CHECK (
+    requested_by = auth.uid()
+    AND status = 'pending'
+    AND EXISTS (
+      SELECT 1 FROM public.listing_partner_visibility lpv
+      WHERE lpv.listing_id = reservations.listing_id
+        AND lpv.partner_user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "sales_partner_cancel_own"
+  ON public.reservations FOR UPDATE
+  USING (requested_by = auth.uid() AND status = 'pending')
+  WITH CHECK (requested_by = auth.uid() AND status = 'cancelled');
+
+=== CONTACTS ===
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_internal_ops_all"
+  ON public.contacts FOR ALL
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]));
+
+CREATE POLICY "delegated_view_contacts"
+  ON public.contacts FOR SELECT
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'view_contacts'));
+
+CREATE POLICY "delegated_create_contacts"
+  ON public.contacts FOR INSERT
+  WITH CHECK (public.has_delegated_access(auth.uid(), tenant_id, 'create_contacts'));
+
+CREATE POLICY "delegated_manage_contacts"
+  ON public.contacts FOR UPDATE
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'manage_contacts'))
+  WITH CHECK (public.has_delegated_access(auth.uid(), tenant_id, 'manage_contacts'));
+
+=== FINANCE PACKAGES ===
+ALTER TABLE public.finance_packages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_internal_ops_all"
+  ON public.finance_packages FOR ALL
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]))
+  WITH CHECK (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin', 'internal_ops']::membership_role[]));
+
+CREATE POLICY "delegated_view_finance_packages"
+  ON public.finance_packages FOR SELECT
+  USING (public.has_delegated_access(auth.uid(), tenant_id, 'view_finance_packages'));
+
+CREATE POLICY "delegated_create_finance_packages"
+  ON public.finance_packages FOR INSERT
+  WITH CHECK (public.has_delegated_access(auth.uid(), tenant_id, 'create_finance_packages'));
+
+=== AUDIT EVENTS (Strategy C) ===
+ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_admin_select"
+  ON public.audit_events FOR SELECT
+  USING (public.has_tenant_role(auth.uid(), tenant_id, ARRAY['org_admin']::membership_role[]));
+
+CREATE POLICY "authenticated_insert_own"
+  ON public.audit_events FOR INSERT
+  WITH CHECK (
+    actor_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM public.memberships m
+      WHERE m.user_id = auth.uid()
+        AND m.tenant_id = audit_events.tenant_id
+    )
+  );
+
+-- NO UPDATE OR DELETE POLICIES (immutable)
+
+=== OTHER TABLES ===
+-- properties, units, leases, rent_payments, documents, data_rooms, 
+-- data_room_documents, access_grants, share_links, communication_events:
+-- All follow same pattern: org_admin/internal_ops FOR ALL + delegation policies where applicable
+
+--------------------------------------------------------------------------------
+9. SCALE INDEXES
+--------------------------------------------------------------------------------
+
+-- Memberships (kritischer Pfad)
+CREATE INDEX idx_memberships_user_tenant ON public.memberships(user_id, tenant_id);
+CREATE INDEX idx_memberships_tenant_role ON public.memberships(tenant_id, role);
+
+-- Delegations
+CREATE INDEX idx_delegations_target_active ON public.org_delegations(target_org_id) WHERE status = 'active';
+CREATE INDEX idx_delegations_delegate_active ON public.org_delegations(delegate_org_id) WHERE status = 'active';
+CREATE INDEX idx_delegations_scopes ON public.org_delegations USING gin(scopes);
+
+-- Organizations Hierarchy
+CREATE INDEX idx_organizations_path ON public.organizations(materialized_path text_pattern_ops);
+CREATE INDEX idx_organizations_parent ON public.organizations(parent_id);
+CREATE INDEX idx_organizations_type ON public.organizations(org_type);
+
+-- Tenant-scoped Business Tables
+CREATE INDEX idx_properties_tenant ON public.properties(tenant_id);
+CREATE INDEX idx_units_tenant ON public.units(tenant_id);
+CREATE INDEX idx_listings_tenant_status ON public.listings(tenant_id, status);
+CREATE INDEX idx_reservations_tenant ON public.reservations(tenant_id);
+CREATE INDEX idx_contacts_tenant ON public.contacts(tenant_id);
+CREATE INDEX idx_finance_packages_tenant ON public.finance_packages(tenant_id);
+
+-- Partner Visibility
+CREATE INDEX idx_lpv_listing ON public.listing_partner_visibility(listing_id);
+CREATE INDEX idx_lpv_partner ON public.listing_partner_visibility(partner_user_id);
+
+--------------------------------------------------------------------------------
+10. ASSUMPTIONS
+--------------------------------------------------------------------------------
+
+| Assumption                    | Notes                                                     |
+|-------------------------------|-----------------------------------------------------------|
+| Delegation ist Org-to-Org     | User-Delegationen nicht unterstützt; via Membership geerbt|
+| Scopes sind additiv           | Mehrere Delegationen = Union der Scopes                   |
+| Path via App gepflegt         | App muss materialized_path bei Org-Create/Move updaten    |
+| Kein cascading Revoke         | Parent-Delegation-Revoke revoked nicht Sub-Partner        |
+| Expiry zur Query-Zeit geprüft | Kein Background-Job; expires_at in RLS-Functions          |
+
+--------------------------------------------------------------------------------
+11. MINIMUM AUDIT COVERAGE (Pflicht)
+--------------------------------------------------------------------------------
+
+Folgende Aktionen MÜSSEN einen audit_events Eintrag erzeugen:
+
+[ ] Status-Transitions:
+  - listings: draft -> internal_review -> active -> reserved -> sold/inactive
+  - leases: draft -> active -> notice_given -> terminated/renewed
+  - reservations: pending -> approved/rejected/cancelled/expired
+  - finance_packages: draft -> ready -> submitted -> approved/rejected
+
+[ ] Access/Sharing:
+  - access_grants: grant/revoke
+  - share_links: creation
+
+[ ] Data Activity:
+  - Data Room document views
+  - Data Room document downloads
+  - Finance Package exports
+
+[ ] Communication:
+  - Link event to entity
+  - Unlink event from entity
+
+================================================================================
+END OF SCHEMA OUTLINE v3.2
+================================================================================
