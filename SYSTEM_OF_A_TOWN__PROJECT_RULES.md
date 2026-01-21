@@ -1,7 +1,29 @@
 # System of a Town — Project Rules
 
-> **Status**: Phase 1 — Approved & Locked  
-> **Last Updated**: 2026-01-20
+> **Status**: Phase 1.2 — Foundation + Admin Portal FROZEN  
+> **Last Updated**: 2026-01-21
+
+---
+
+## Architecture Overview
+
+### Three-Zone Model (DNA)
+
+| Zone | Name | Purpose | UX Pattern |
+|------|------|---------|------------|
+| **Zone 1** | Admin Portal | Internal control center for operators | Sidebar-based, desktop-first |
+| **Zone 2** | User Portals | End-user workspaces | Mobile-first, tile-based (Apple Homescreen logic) |
+| **Zone 3** | Websites | Public-facing sales & advisory | AI-assisted, conversational, conversion-oriented |
+
+**Important**: These zones are separate frontends sharing the same DB/RLS foundation.
+
+### Terminology Rules
+
+| Term | Definition | Zone |
+|------|------------|------|
+| **Modules** | Tile-features in User Portals (one main tile + sub-tiles) | Zone 2 only |
+| **AI/Automation** | Cross-cutting capability, not a module | Enhances Zone 2 + Zone 3 |
+| **Integrations** | Backend API connections | Configured in Zone 1 |
 
 ---
 
@@ -42,7 +64,6 @@
 | Nylas, Unipile, Apify | Not allowed |
 | OAuth / Magic links | Not required |
 | SECURITY DEFINER for auth | Explicitly forbidden |
-| Platform Admin cross-tenant access | Phase 2 (Support Mode) |
 
 ---
 
@@ -73,25 +94,30 @@
 
 ---
 
-## Domain Truth Rules
-
-| Entity | Truth Source | Notes |
-|--------|--------------|-------|
-| Property | Neutral asset | No lifecycle status; operational status only |
-| Sales lifecycle | `listing.status` | draft → internal_review → active → reserved → inactive/sold |
-| Rental lifecycle | `lease.status` + `rent_payments` | draft → active → notice_given → terminated/renewed |
-| Occupancy | Derived from active leases | No separate occupancy field |
-| Financing readiness | `finance_packages.status` | draft → complete → ready_for_handoff |
-
----
-
 ## Multi-Tenancy Rules
 
 1. **Multi-org per user**: Users can belong to multiple organizations via memberships
 2. **Active tenant context**: Users explicitly switch their active organization (stored in profiles.active_tenant_id)
 3. **Strict tenant isolation**: All business data is scoped to tenant_id
 4. **No cross-tenant visibility**: User A in Org A cannot see Org B data, even if they belong to Org B (must switch context)
-5. **Platform Admin isolation**: Platform Admins have NO cross-tenant business data access (provisioning only)
+5. **Platform Admin = God Mode**: Platform Admins have unrestricted access across ALL tenants (read/write/admin)
+6. **Child Privacy Lockdown**: Child orgs can block parent-derived access via `parent_access_blocked` flag (platform_admin bypasses)
+
+---
+
+## Platform Admin Rules (God Mode)
+
+| Capability | Allowed |
+|------------|---------|
+| Read ANY row in ANY tenant | ✅ |
+| Write/Update ANY row in ANY tenant | ✅ |
+| Bypass lockdown flags | ✅ |
+| Manage all organizations | ✅ |
+| Manage all memberships | ✅ |
+| Manage all delegations | ✅ |
+| Access audit events | ✅ |
+
+**Implementation**: `is_platform_admin()` SECURITY INVOKER function checks membership role.
 
 ---
 
