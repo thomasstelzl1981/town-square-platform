@@ -153,6 +153,83 @@ export type Database = {
           },
         ]
       }
+      commissions: {
+        Row: {
+          agreement_consent_id: string | null
+          amount: number
+          contact_id: string | null
+          created_at: string
+          id: string
+          invoiced_at: string | null
+          notes: string | null
+          paid_at: string | null
+          percentage: number | null
+          pipeline_id: string
+          status: Database["public"]["Enums"]["commission_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_consent_id?: string | null
+          amount: number
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          invoiced_at?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          percentage?: number | null
+          pipeline_id: string
+          status?: Database["public"]["Enums"]["commission_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_consent_id?: string | null
+          amount?: number
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          invoiced_at?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          percentage?: number | null
+          pipeline_id?: string
+          status?: Database["public"]["Enums"]["commission_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_agreement_consent_id_fkey"
+            columns: ["agreement_consent_id"]
+            isOneToOne: false
+            referencedRelation: "user_consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "partner_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company: string | null
@@ -237,6 +314,144 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_documents: {
+        Row: {
+          created_at: string
+          document_id: string
+          document_type: string
+          finance_package_id: string
+          id: string
+          is_required: boolean
+          tenant_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          document_type: string
+          finance_package_id: string
+          id?: string
+          is_required?: boolean
+          tenant_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          document_type?: string
+          finance_package_id?: string
+          id?: string
+          is_required?: boolean
+          tenant_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_documents_finance_package_id_fkey"
+            columns: ["finance_package_id"]
+            isOneToOne: false
+            referencedRelation: "finance_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_packages: {
+        Row: {
+          contact_id: string
+          created_at: string
+          data_room_id: string | null
+          data_sharing_consent_id: string | null
+          exported_at: string | null
+          exported_by: string | null
+          external_reference: string | null
+          id: string
+          notes: string | null
+          property_id: string
+          requested_amount: number | null
+          status: Database["public"]["Enums"]["finance_package_status"]
+          summary_document_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          data_room_id?: string | null
+          data_sharing_consent_id?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          property_id: string
+          requested_amount?: number | null
+          status?: Database["public"]["Enums"]["finance_package_status"]
+          summary_document_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          data_room_id?: string | null
+          data_sharing_consent_id?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string
+          requested_amount?: number | null
+          status?: Database["public"]["Enums"]["finance_package_status"]
+          summary_document_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_packages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_packages_data_sharing_consent_id_fkey"
+            columns: ["data_sharing_consent_id"]
+            isOneToOne: false
+            referencedRelation: "user_consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_packages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_packages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -376,6 +591,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      investment_profiles: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          max_investment: number | null
+          max_yield: number | null
+          min_investment: number | null
+          min_yield: number | null
+          notes: string | null
+          preferred_cities: string[] | null
+          preferred_property_types: string[] | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_investment?: number | null
+          max_yield?: number | null
+          min_investment?: number | null
+          min_yield?: number | null
+          notes?: string | null
+          preferred_cities?: string[] | null
+          preferred_property_types?: string[] | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_investment?: number | null
+          max_yield?: number | null
+          min_investment?: number | null
+          min_yield?: number | null
+          notes?: string | null
+          preferred_cities?: string[] | null
+          preferred_property_types?: string[] | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_profiles_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investment_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {
@@ -674,6 +952,70 @@ export type Database = {
           },
         ]
       }
+      partner_pipelines: {
+        Row: {
+          assigned_to: string | null
+          contact_id: string | null
+          created_at: string
+          deal_value: number | null
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          property_id: string | null
+          stage: Database["public"]["Enums"]["pipeline_stage"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_pipelines_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_pipelines_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_pipelines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string
@@ -773,6 +1115,7 @@ export type Database = {
           energy_source: string | null
           heating_type: string | null
           id: string
+          is_public_listing: boolean
           land_register_court: string | null
           land_register_sheet: string | null
           land_register_volume: string | null
@@ -782,6 +1125,8 @@ export type Database = {
           parcel_number: string | null
           postal_code: string | null
           property_type: string
+          public_listing_approved_at: string | null
+          public_listing_approved_by: string | null
           purchase_price: number | null
           renovation_year: number | null
           status: string
@@ -804,6 +1149,7 @@ export type Database = {
           energy_source?: string | null
           heating_type?: string | null
           id?: string
+          is_public_listing?: boolean
           land_register_court?: string | null
           land_register_sheet?: string | null
           land_register_volume?: string | null
@@ -813,6 +1159,8 @@ export type Database = {
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
+          public_listing_approved_at?: string | null
+          public_listing_approved_by?: string | null
           purchase_price?: number | null
           renovation_year?: number | null
           status?: string
@@ -835,6 +1183,7 @@ export type Database = {
           energy_source?: string | null
           heating_type?: string | null
           id?: string
+          is_public_listing?: boolean
           land_register_court?: string | null
           land_register_sheet?: string | null
           land_register_volume?: string | null
@@ -844,6 +1193,8 @@ export type Database = {
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
+          public_listing_approved_at?: string | null
+          public_listing_approved_by?: string | null
           purchase_price?: number | null
           renovation_year?: number | null
           status?: string
@@ -1064,6 +1415,54 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      self_disclosures: {
+        Row: {
+          created_at: string
+          disclosure_data: Json
+          finance_package_id: string
+          id: string
+          submitted_at: string | null
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          disclosure_data?: Json
+          finance_package_id: string
+          id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          disclosure_data?: Json
+          finance_package_id?: string
+          id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "self_disclosures_finance_package_id_fkey"
+            columns: ["finance_package_id"]
+            isOneToOne: false
+            referencedRelation: "finance_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "self_disclosures_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1360,8 +1759,19 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      commission_status:
+        | "pending"
+        | "approved"
+        | "invoiced"
+        | "paid"
+        | "cancelled"
       consent_status: "accepted" | "declined" | "withdrawn"
       delegation_status: "active" | "revoked" | "expired"
+      finance_package_status:
+        | "draft"
+        | "incomplete"
+        | "complete"
+        | "ready_for_handoff"
       inbound_item_status: "pending" | "assigned" | "archived" | "rejected"
       inbound_source: "caya" | "email" | "upload" | "api"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
@@ -1372,6 +1782,15 @@ export type Database = {
         | "sales_partner"
         | "renter_user"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
+      pipeline_stage:
+        | "lead"
+        | "qualified"
+        | "proposal"
+        | "negotiation"
+        | "reservation"
+        | "closing"
+        | "won"
+        | "lost"
       plan_interval: "monthly" | "yearly"
       subscription_status: "active" | "cancelled" | "past_due" | "trialing"
     }
@@ -1501,8 +1920,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      commission_status: [
+        "pending",
+        "approved",
+        "invoiced",
+        "paid",
+        "cancelled",
+      ],
       consent_status: ["accepted", "declined", "withdrawn"],
       delegation_status: ["active", "revoked", "expired"],
+      finance_package_status: [
+        "draft",
+        "incomplete",
+        "complete",
+        "ready_for_handoff",
+      ],
       inbound_item_status: ["pending", "assigned", "archived", "rejected"],
       inbound_source: ["caya", "email", "upload", "api"],
       invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
@@ -1514,6 +1946,16 @@ export const Constants = {
         "renter_user",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
+      pipeline_stage: [
+        "lead",
+        "qualified",
+        "proposal",
+        "negotiation",
+        "reservation",
+        "closing",
+        "won",
+        "lost",
+      ],
       plan_interval: ["monthly", "yearly"],
       subscription_status: ["active", "cancelled", "past_due", "trialing"],
     },
