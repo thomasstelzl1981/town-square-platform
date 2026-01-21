@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_events: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          target_org_id: string | null
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          target_org_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          target_org_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_target_org_id_fkey"
+            columns: ["target_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -117,6 +152,7 @@ export type Database = {
           materialized_path: string
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
+          parent_access_blocked: boolean
           parent_id: string | null
           settings: Json
           slug: string
@@ -129,6 +165,7 @@ export type Database = {
           materialized_path?: string
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
+          parent_access_blocked?: boolean
           parent_id?: string | null
           settings?: Json
           slug: string
@@ -141,6 +178,7 @@ export type Database = {
           materialized_path?: string
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          parent_access_blocked?: boolean
           parent_id?: string | null
           settings?: Json
           slug?: string
@@ -199,6 +237,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_parent_access_blocked: {
+        Args: { target_org_id: string }
+        Returns: boolean
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
