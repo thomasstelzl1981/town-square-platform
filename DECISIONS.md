@@ -432,7 +432,109 @@
 
 ---
 
+## ADR-028: Payment/Billing Backbone
+
+**Date**: 2026-01-21  
+**Decision**: Billing als separate Backbone-Tabellen (`plans`, `subscriptions`, `invoices`, `payment_methods`).  
+**Reason**: Monetarisierung ist Kernvoraussetzung für Plattformbetrieb. Stripe als primärer Provider, aber Schema bleibt provider-agnostisch.  
+**Implications**:
+- Admin Portal benötigt Billing-Sektion (`/admin/billing`)
+- Zone 2 benötigt Abo-Übersicht (in Einstellungen oder eigenes Modul)
+- Stripe-Integration als Phase 2, Skeleton-UI in Phase 1
+- Tenant-basierte Abrechnung, optional Modul-basierte Zusatzgebühren
+
+---
+
+## ADR-029: Agreements/Consents Backbone
+
+**Date**: 2026-01-21  
+**Decision**: Generisches `agreement_templates` + `user_consents` Modell für alle rechtsverbindlichen Zustimmungen.  
+**Reason**: Mandate, Finanzierungsvermittlung, Datenfreigaben erfordern nachweisbaren Consent vor Datenverarbeitung/-weitergabe.  
+**Implications**:
+- `agreement_templates`: type, version, content_url, active
+- `user_consents`: user_id, template_id, accepted_at, ip_address, context_json
+- Modale Consent-Flows in Zone 2 bei relevanten Aktionen
+- Admin verwaltet Templates und sieht Consent-Logs (read-only)
+- Types: `sales_mandate`, `finance_brokerage`, `data_sharing_future_room`, `msv_agreement`, `terms_of_service`, `privacy_policy`
+
+---
+
+## ADR-030: Vertriebspartner als Kernmodul
+
+**Date**: 2026-01-21  
+**Decision**: Sales Partner Portal ist NICHT optional, sondern Kern-Usability #3 der Plattform.  
+**Reason**: Ohne Vertriebspartner-Funktionalität fehlt ein Drittel des Geschäftsmodells. Die Plattform verbindet Eigentümer, Käufer UND Vermittler.  
+**Implications**:
+- Eigenes Tile-Modul in Zone 2 (`/portal/vertriebspartner`)
+- Tabellen: `partner_pipelines`, `partner_watchlists`, `investment_profiles`, `commissions`
+- Dashboard zeigt alle freigegebenen Listings (nicht nur eigene Properties)
+- Integration mit Kaufy-Modul für Deal-Handoff
+- Provisionsabrechnung erfordert vorherige Consent (ADR-029)
+
+---
+
+## ADR-031: Finanzierung Handoff-Modell
+
+**Date**: 2026-01-21  
+**Decision**: `finance_packages` als zentrales Objekt mit Status-Log für Future-Room-Sync.  
+**Reason**: Vorbereitung + Übergabe erfolgt intern, Orchestrierung extern (Future Room). Klare Handoff-Grenze vereinfacht System.  
+**Implications**:
+- Status-Enum: `draft`, `collecting`, `ready`, `submitted`, `in_review`, `approved`, `rejected`
+- `finance_packages`: contact_id, property_id, status, future_room_id (nullable)
+- `self_disclosures`: strukturierte Selbstauskunftsdaten
+- `finance_documents`: Zuordnung von Dokumenten zu Paketen
+- `finance_status_log`: Statusverlauf inkl. externer Events
+- Webhook für Future-Room-Status-Updates (Phase 2)
+
+---
+
+## ADR-032: Posteingang/Caya Ingestion
+
+**Date**: 2026-01-21  
+**Decision**: `inbound_items` Tabelle mit flexiblem JSON-Metadata-Feld für Caya und andere Quellen.  
+**Reason**: Caya liefert PDF + JSON; Routing muss flexibel auf Empfängeradresse, Token oder manuelle Zuordnung reagieren.  
+**Implications**:
+- `inbound_items`: source, status, raw_pdf_url, parsed_metadata (JSONB)
+- `inbound_routing_rules`: recipient_pattern → tenant_id, entity_type, entity_id
+- Status-Enum: `received`, `parsing`, `pending_assignment`, `assigned`, `archived`
+- Admin-Inbox für plattformweites Routing
+- Tenant-Inbox für zugeordnete Dokumente
+- Integration (Caya API) bleibt Phase 2, Datenmodell + Routes in Phase 1
+
+---
+
+## ADR-033: Zone 3 Kaufy Website Architektur
+
+**Date**: 2026-01-21  
+**Decision**: Kaufy Website queryt dieselben `properties`-Daten mit `is_public_listing` Filter (Single Source of Truth).  
+**Reason**: Keine Datenduplikation, keine Sync-Probleme. Property-Daten werden einmal gepflegt und selektiv veröffentlicht.  
+**Implications**:
+- Neues Feld: `properties.is_public_listing BOOLEAN DEFAULT FALSE`
+- Neues Feld: `properties.public_listing_approved_at TIMESTAMP`
+- Neues Feld: `properties.public_listing_approved_by UUID`
+- Admin/Owner muss Listing explizit freigeben
+- Zone 3 hat eigene RLS-Policies (nur public listings lesbar)
+- Lead-Capture: Neue Contacts mit `source: 'kaufy_website'`
+- Investment-Matching basiert auf `property_financing` + `investment_profiles`
+
+---
+
 ## Changelog
+
+### 2026-01-21: Strategy v3.0 Reset
+
+**Neue ADRs:**
+- ADR-028: Payment/Billing Backbone
+- ADR-029: Agreements/Consents Backbone
+- ADR-030: Vertriebspartner als Kernmodul
+- ADR-031: Finanzierung Handoff-Modell
+- ADR-032: Posteingang/Caya Ingestion
+- ADR-033: Zone 3 Kaufy Website Architektur
+
+**Strategie-Update:**
+- 6-Etappen-Plan definiert (Admin → Backbone → Sales/Financing DB → Portal Shell → Migration → Iteration)
+- 50-Route-Matrix für Super-User Musterportal
+- Zone 3 explizit in Architektur aufgenommen
 
 ### 2026-01-21: Architecture Reset
 
