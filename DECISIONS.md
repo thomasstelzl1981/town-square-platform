@@ -521,6 +521,41 @@
 
 ## Changelog
 
+### 2026-01-21: Etappe 2 Implementation
+
+**Backbone DB-Schema (7 Tabellen):**
+- `plans`: Preispläne (name, price_cents, interval, features JSONB, stripe_ids)
+- `subscriptions`: Tenant → Plan Mapping (status, period, cancel_at_period_end)
+- `invoices`: Rechnungen (amount_cents, status, issued_at, due_at, paid_at)
+- `agreement_templates`: Vereinbarungsvorlagen (code, title, content, version, requires_consent)
+- `user_consents`: Audit-Trail für Zustimmungen (INSERT-only, kein UPDATE/DELETE)
+- `inbound_items`: Eingehende Dokumente (source, file_info, status, assignment)
+- `inbound_routing_rules`: Automatische Zuweisungsregeln (match_conditions, action_config)
+
+**Enums (6 neu):**
+- `plan_interval`: monthly, yearly
+- `subscription_status`: active, cancelled, past_due, trialing
+- `invoice_status`: draft, pending, paid, overdue, cancelled
+- `consent_status`: accepted, declined, withdrawn
+- `inbound_item_status`: pending, assigned, archived, rejected
+- `inbound_source`: caya, email, upload, api
+
+**RLS-Strategie:**
+- `plans`, `agreement_templates`: SELECT für alle authenticated, CUD nur platform_admin
+- `subscriptions`, `invoices`: SELECT für org_admin (tenant-scoped) + platform_admin full
+- `user_consents`: INSERT nur self, SELECT für self + platform_admin, NO UPDATE/DELETE
+- `inbound_items`, `inbound_routing_rules`: Full access nur platform_admin
+
+**Admin UI (3 Seiten):**
+- `/admin/billing`: Plans CRUD, Subscriptions-Liste, Invoices-Übersicht
+- `/admin/agreements`: Templates CRUD, Consent-Log (Read-Only)
+- `/admin/inbox`: Inbound-Items mit Assignment, Routing-Regeln (Phase 2)
+
+**Sidebar Update:**
+- Neue Gruppe "Backbone" mit Billing, Agreements, Post & Documents
+
+---
+
 ### 2026-01-21: Strategy v3.0 Reset
 
 **Neue ADRs:**
