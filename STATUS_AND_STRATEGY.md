@@ -53,13 +53,16 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 **Gesamt: 16 Tabellen produktiv**
 
-**Fehlende Backbone-Tabellen:**
+**Backbone-Tabellen (implementiert):**
+- ✅ `plans`, `subscriptions`, `invoices` (Billing - Etappe 2)
+- ✅ `agreement_templates`, `user_consents` (Agreements - Etappe 2)
+- ✅ `inbound_items`, `inbound_routing_rules` (Posteingang - Etappe 2)
+- ✅ `partner_pipelines`, `investment_profiles`, `commissions` (Vertriebspartner - Etappe 3)
+- ✅ `finance_packages`, `self_disclosures`, `finance_documents` (Finanzierung - Etappe 3)
+
+**Noch fehlende Backbone-Tabellen:**
 - ❌ `profile_extensions`, `bank_accounts` (Stammdaten)
-- ❌ `plans`, `subscriptions`, `invoices`, `payment_methods` (Billing)
-- ❌ `partner_pipelines`, `partner_watchlists`, `investment_profiles`, `commissions` (Vertriebspartner)
-- ❌ `finance_packages`, `self_disclosures`, `finance_documents`, `finance_status_log` (Finanzierung)
-- ❌ `agreement_templates`, `user_consents` (Agreements)
-- ❌ `inbound_items`, `inbound_routing_rules`, `document_assignments` (Posteingang)
+- ❌ `payment_methods` (Billing-Erweiterung)
 
 ---
 
@@ -283,17 +286,25 @@ MEETY.IO (Marketing)
 
 ---
 
-### Etappe 3: Sales & Financing DB
-**Scope:** DB-Schema für Vertriebspartner + Finanzierung
+### Etappe 3: Sales & Financing DB ✅ ABGESCHLOSSEN (21.01.2026)
+**Scope:** DB-Schema für Vertriebspartner + Finanzierung + Ownership Map
 
-**Definition of Done:**
-- [ ] DB: `partner_pipelines`, `partner_watchlists`, `investment_profiles`, `commissions`
-- [ ] DB: `finance_packages`, `self_disclosures`, `finance_documents`, `finance_status_log`
-- [ ] Properties: `is_public_listing`, `public_listing_approved_at/by`
-- [ ] Enums: `finance_status`, `pipeline_stage`, `commission_status`
+**Umgesetzt:**
+- [x] DB: `partner_pipelines`, `investment_profiles`, `commissions` (Sales Partner)
+- [x] DB: `finance_packages`, `self_disclosures`, `finance_documents` (Financing)
+- [x] Properties: `is_public_listing`, `public_listing_approved_at/by`
+- [x] Enums: `pipeline_stage`, `commission_status`, `finance_package_status`
+- [x] RLS: Tenant-scoped + Platform Admin, Commissions Platform Admin only
+- [x] Oversight: Erweitert um Finance Packages Tab + is_public_listing Anzeige
+- [x] Consent-Abhängigkeiten: `agreement_consent_id` in commissions, `data_sharing_consent_id` in finance_packages
+- [x] Dokumentation: `MODULE_OWNERSHIP_MAP.md`, `INTERFACES.md` erstellt
 
-**Risiken:** Schema-Komplexität → Iterativ verfeinern  
-**Abhängigkeiten:** Etappe 2 (Agreements für Mandate)
+**Neue Tabellen:** 6 (partner_pipelines, investment_profiles, commissions, finance_packages, self_disclosures, finance_documents)
+**Neue Enums:** 3 (pipeline_stage, commission_status, finance_package_status)
+**Properties-Erweiterung:** 3 Spalten (is_public_listing, public_listing_approved_at, public_listing_approved_by)
+
+**Risiken:** Schema-Komplexität → Iterativ verfeinern in Etappe 6  
+**Abhängigkeiten:** Etappe 2 (Agreements für Mandate) ✅ erfüllt
 
 ---
 
@@ -355,6 +366,7 @@ MEETY.IO (Marketing)
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
+| 2026-01-21 | 3.3 | **Etappe 3 abgeschlossen**: Sales & Financing DB + Properties-Erweiterung + Ownership Map + Interfaces |
 | 2026-01-21 | 3.2 | **Etappe 2 abgeschlossen**: Backbone-Tabellen (Billing, Agreements, Inbox) + Admin UI + Sidebar |
 | 2026-01-21 | 3.1 | **Etappe 1 abgeschlossen**: Memberships Edit/Delete, Scope-Picker, Oversight Drill-Downs, Audit Log |
 | 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan, 50-Route-Matrix |
@@ -366,6 +378,8 @@ MEETY.IO (Marketing)
 
 ## 8. REFERENZEN
 
-- `DECISIONS.md` — ADR-light Decision Log (ADR-001 bis ADR-033)
+- `DECISIONS.md` — ADR-light Decision Log (ADR-001 bis ADR-035)
 - `MODULE_BLUEPRINT.md` — Detaillierte Modul-/Routenstruktur
+- `MODULE_OWNERSHIP_MAP.md` — Modul-Eigentümerschaft und Zugriffsrechte
+- `INTERFACES.md` — Cross-Module Interface Actions
 - `ADMIN_PORTAL_CONCEPT.md` — Zone 1 Konzeptdokumentation

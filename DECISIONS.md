@@ -519,7 +519,74 @@
 
 ---
 
+## ADR-034: Module Ownership Map als Governance-Instrument
+
+**Date**: 2026-01-21  
+**Decision**: Einführung einer verbindlichen `MODULE_OWNERSHIP_MAP.md` die Eigentümerschaft, Lese-/Schreibrechte und Schnittstellen aller Module definiert.  
+**Reason**: 
+- Module müssen wie eigenständige Programme behandelt werden (Bounded Contexts)
+- Verhindert "wilde" Cross-Module-Writes und Daten-Inkonsistenzen
+- Ermöglicht klare Verantwortlichkeiten und Governance  
+**Implications**:
+- Jedes Modul hat einen Owner und definierte Tabellen
+- Cross-Module-Writes nur über `INTERFACES.md` definierte Actions
+- Consent-Gates vor sensiblen Cross-Module-Actions
+- Neue Module müssen vor Implementation dokumentiert werden
+- Änderungen an Ownership erfordern ADR
+
+---
+
+## ADR-035: Consent-Gates für Cross-Module-Actions
+
+**Date**: 2026-01-21  
+**Decision**: Bestimmte Cross-Module-Actions erfordern vorherige `user_consents` Einträge als Gate.  
+**Reason**: 
+- Rechtliche Absicherung bei sensiblen Datenoperationen
+- Nachweisbare Zustimmung vor Commission-Erstellung oder Daten-Export
+- DSGVO-Konformität bei Datenweitergabe  
+**Implications**:
+- `commissions.agreement_consent_id` MUSS gesetzt sein vor Status `approved`
+- `finance_packages.data_sharing_consent_id` MUSS existieren vor Export
+- Consent-Checks erfolgen im App-Layer (nicht DB-Trigger)
+- Audit-Events dokumentieren Consent-Prüfung
+- Consent-Codes: `SALES_MANDATE`, `COMMISSION_AGREEMENT`, `DATA_SHARING_FUTURE_ROOM`
+
+---
+
 ## Changelog
+
+### 2026-01-21: Etappe 3 Implementation
+
+**Sales Partner DB-Schema (3 Tabellen):**
+- `partner_pipelines`: Deal-Tracking (tenant_id, property_id, contact_id, stage, deal_value, expected_close_date)
+- `investment_profiles`: Investor-Suchkriterien (min/max_investment, preferred_cities, preferred_property_types, yields)
+- `commissions`: Provisionen mit Consent-Referenz (pipeline_id, amount, percentage, status, agreement_consent_id)
+
+**Financing DB-Schema (3 Tabellen):**
+- `finance_packages`: Finanzierungspakete (property_id, contact_id, status, data_sharing_consent_id, exported_at/by)
+- `self_disclosures`: Selbstauskünfte (JSONB disclosure_data, submitted_at/by)
+- `finance_documents`: Dokument-Verknüpfungen (document_id, document_type, is_required)
+
+**Properties-Erweiterung (3 Spalten):**
+- `is_public_listing BOOLEAN DEFAULT false`: Öffentliche Freigabe für Zone 3
+- `public_listing_approved_at TIMESTAMPTZ`: Timestamp der Freigabe
+- `public_listing_approved_by UUID`: Genehmigender User
+
+**Enums (3 neu):**
+- `pipeline_stage`: lead, qualified, proposal, negotiation, reservation, closing, won, lost
+- `commission_status`: pending, approved, invoiced, paid, cancelled
+- `finance_package_status`: draft, incomplete, complete, ready_for_handoff
+
+**RLS-Strategie:**
+- `partner_pipelines`, `investment_profiles`: Tenant-scoped READ, sales_partner+internal_ops+org_admin WRITE
+- `commissions`: Tenant-scoped READ, **Platform Admin only** für CUD
+- `finance_packages`, `self_disclosures`, `finance_documents`: Tenant-scoped mit org_admin/internal_ops WRITE
+
+**Governance-Artefakte:**
+- `MODULE_OWNERSHIP_MAP.md`: Modul-Registry mit Ownership, Read/Write-Rechten
+- `INTERFACES.md`: Cross-Module Interface Actions mit Consent-Gates
+
+---
 
 ### 2026-01-21: Etappe 2 Implementation
 
