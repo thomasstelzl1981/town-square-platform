@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -11,21 +15,40 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Loader2, AlertTriangle, Lock, Building2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Lock, Building2, Shield, ShieldOff } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 type Organization = Tables<'organizations'>;
 type Membership = Tables<'memberships'>;
 
 export default function OrganizationDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user, isPlatformAdmin } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [parent, setParent] = useState<Organization | null>(null);
   const [children, setChildren] = useState<Organization[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Lockdown toggle state
+  const [lockdownDialogOpen, setLockdownDialogOpen] = useState(false);
+  const [lockdownReason, setLockdownReason] = useState('');
+  const [pendingLockdownValue, setPendingLockdownValue] = useState(false);
+  const [isTogglingLockdown, setIsTogglingLockdown] = useState(false);
+
+  // Check if current user can toggle lockdown (org_admin of this org or platform_admin)
+  const [canToggleLockdown, setCanToggleLockdown] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -72,6 +95,24 @@ export default function OrganizationDetail() {
           .eq('tenant_id', id);
         setMemberships(membershipData || []);
 
+        // Check if user can toggle lockdown
+        if (user) {
+          // platform_admin can always toggle
+          if (isPlatformAdmin) {
+            setCanToggleLockdown(true);
+          } else {
+            // Check if user is org_admin of THIS org (not parent-derived)
+            const { data: directMembership } = await supabase
+              .from('memberships')
+              .select('role')
+              .eq('user_id', user.id)
+              .eq('tenant_id', id)
+              .eq('role', 'org_admin')
+              .maybeSingle();
+            setCanToggleLockdown(!!directMembership);
+          }
+        }
+
       } catch (err: any) {
         setError(err.message || 'Failed to load organization');
       }
@@ -79,7 +120,47 @@ export default function OrganizationDetail() {
     }
 
     fetchData();
-  }, [id]);
+  }, [id, user, isPlatformAdmin]);
+
+  const handleLockdownToggle = (newValue: boolean) => {
+    setPendingLockdownValue(newValue);
+    setLockdownReason('');
+    setLockdownDialogOpen(true);
+  };
+
+  const confirmLockdownChange = async () => {
+    if (!organization || !user) return;
+    
+    setIsTogglingLockdown(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ parent_access_blocked: pendingLockdownValue })
+        .eq('id', organization.id);
+
+      if (updateError) throw updateError;
+
+      // Insert audit event with reason if provided
+      if (lockdownReason.trim()) {
+        await supabase.from('audit_events').insert({
+          actor_user_id: user.id,
+          target_org_id: organization.id,
+          event_type: 'parent_access_blocked_reason',
+          payload: { reason: lockdownReason.trim() }
+        });
+      }
+
+      setOrganization({ ...organization, parent_access_blocked: pendingLockdownValue });
+      toast.success(pendingLockdownValue 
+        ? 'Parent access blocked successfully' 
+        : 'Parent access restored successfully'
+      );
+      setLockdownDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update lockdown status');
+    }
+    setIsTogglingLockdown(false);
+  };
 
   const formatOrgType = (type: string) => {
     return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -131,11 +212,11 @@ export default function OrganizationDetail() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Organization Details */}
+        {/* Stammdaten / Core Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Organization Details</CardTitle>
-            <CardDescription>Core attributes and hierarchy info</CardDescription>
+            <CardTitle>Stammdaten</CardTitle>
+            <CardDescription>Core attributes and access settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -164,6 +245,46 @@ export default function OrganizationDetail() {
                 <p className="text-sm">{format(new Date(organization.updated_at), 'PPpp')}</p>
               </div>
             </div>
+
+            {/* Parent Access Lockdown Toggle */}
+            {organization.parent_id && (
+              <div className={`p-4 rounded-lg border ${organization.parent_access_blocked ? 'bg-destructive/10 border-destructive/30' : 'bg-muted'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {organization.parent_access_blocked ? (
+                      <Shield className="h-5 w-5 text-destructive" />
+                    ) : (
+                      <ShieldOff className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <Label htmlFor="lockdown-toggle" className="text-sm font-medium">
+                        Parent-Zugriff blockieren
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Wenn aktiviert, kann kein übergeordneter Mandant/Partner auf diese Organisation zugreifen. Plattform-Admin ist ausgenommen.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="lockdown-toggle"
+                    checked={organization.parent_access_blocked}
+                    onCheckedChange={handleLockdownToggle}
+                    disabled={!canToggleLockdown || isTogglingLockdown}
+                  />
+                </div>
+                {organization.parent_access_blocked && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Parent organization access is currently blocked</span>
+                  </div>
+                )}
+                {!canToggleLockdown && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Only org admins of this organization or platform admins can change this setting.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Immutable Fields Warning */}
             <div className="p-3 bg-muted rounded-lg border">
@@ -221,9 +342,16 @@ export default function OrganizationDetail() {
                       <Link to={`/admin/organizations/${child.id}`}>
                         <Building2 className="mr-2 h-4 w-4" />
                         {child.name}
-                        <Badge variant="outline" className="ml-auto">
-                          {formatOrgType(child.org_type)}
-                        </Badge>
+                        <div className="ml-auto flex items-center gap-2">
+                          {child.parent_access_blocked && (
+                            <span title="Parent access blocked">
+                              <Shield className="h-3 w-3 text-destructive" />
+                            </span>
+                          )}
+                          <Badge variant="outline">
+                            {formatOrgType(child.org_type)}
+                          </Badge>
+                        </div>
                       </Link>
                     </Button>
                   ))}
@@ -264,6 +392,46 @@ export default function OrganizationDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Lockdown Confirmation Dialog */}
+      <Dialog open={lockdownDialogOpen} onOpenChange={setLockdownDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingLockdownValue ? 'Block Parent Access?' : 'Restore Parent Access?'}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingLockdownValue 
+                ? 'This will prevent any parent organization from accessing this organization\'s data. Only platform admins will remain unaffected.'
+                : 'This will restore access for parent organizations based on hierarchy. Parent org_admins will be able to manage this organization again.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="reason">Reason (optional)</Label>
+            <Textarea
+              id="reason"
+              placeholder="Enter a reason for this change..."
+              value={lockdownReason}
+              onChange={(e) => setLockdownReason(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLockdownDialogOpen(false)} disabled={isTogglingLockdown}>
+              Cancel
+            </Button>
+            <Button 
+              variant={pendingLockdownValue ? 'destructive' : 'default'}
+              onClick={confirmLockdownChange}
+              disabled={isTogglingLockdown}
+            >
+              {isTogglingLockdown && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {pendingLockdownValue ? 'Block Access' : 'Restore Access'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
