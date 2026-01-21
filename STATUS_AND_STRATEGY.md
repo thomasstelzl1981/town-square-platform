@@ -1,369 +1,383 @@
 # System of a Town — Status, Zielbild & Strategie
 
-> **Datum**: 2026-01-21  
-> **Zweck**: Verbindliche Dokumentation des aktuellen Stands, gemeinsames Zielbild und Umsetzungsstrategie
+> **Datum**: 2026-01-21 (aktualisiert)  
+> **Zweck**: Verbindliche Dokumentation des aktuellen Stands, gemeinsames Zielbild und Umsetzungsstrategie  
+> **Version**: 2.1 — Strategische Reflexion
 
 ---
 
-## 1) IST-STATUS
+## 1) IST-STATUS — Ehrliche Bestandsaufnahme
 
-### A) Datenbank & Foundation
-
-#### Core Foundation (produktiv & stabil)
-
-| Tabelle | Kategorie | Beschreibung | RLS |
-|---------|-----------|--------------|-----|
-| `organizations` | Core | Multi-Tenant-Hierarchie mit `materialized_path`, `parent_access_blocked` | ✅ Vollständig |
-| `profiles` | Core | User-Profile mit `active_tenant_id` | ✅ Vollständig |
-| `memberships` | Core | User-Org-Zuordnung mit Rollen (5 Rollen-Enum) | ✅ Vollständig |
-| `org_delegations` | Core | Cross-Org-Zugriffe mit Scopes (JSONB) | ✅ Vollständig |
-| `audit_events` | Core | Immutables Audit-Log | ✅ INSERT-only |
-| `tile_catalog` | Core | Zone-2-Modul-Definitionen (7 Module seeded) | ✅ Vollständig |
-| `tenant_tile_activation` | Core | Per-Tenant Modul-Aktivierung | ✅ Vollständig |
-
-#### Referenz-/Beispielimplementierung (Phase 1.3/1.4)
-
-| Tabelle | Kategorie | Beschreibung | RLS |
-|---------|-----------|--------------|-----|
-| `properties` | Referenz | Immobilien-Stammdaten | ✅ Vollständig |
-| `units` | Referenz | Einheiten pro Immobilie | ✅ Vollständig |
-| `property_features` | Referenz | Feature-Aktivierung pro Property (MSV, Kaufy, etc.) | ✅ Vollständig |
-| `property_financing` | Referenz | Finanzierungsdaten | ✅ Vollständig |
-| `contacts` | Referenz | Kontaktdaten pro Tenant | ✅ Vollständig |
-| `documents` | Referenz | Dokument-Metadaten | ✅ Vollständig |
-| `leases` | Referenz | Mietverträge mit `renter_org_id` | ✅ Vollständig |
-| `renter_invites` | Referenz | Mieter-Einladungen | ✅ Vollständig |
-| `access_grants` | Referenz | Explizite Zugriffsfreigaben | ✅ Vollständig |
-
-#### Platzhalter für spätere Module
-
-| Tabelle | Status | Anmerkung |
-|---------|--------|-----------|
-| `listings` | ❌ Nicht vorhanden | Kaufy-Modul (Vertrieb) |
-| `reservations` | ❌ Nicht vorhanden | Kaufy-Modul |
-| `rent_payments` | ❌ Nicht vorhanden | Miety-Modul (Zahlungsverfolgung) |
-| `finance_packages` | ❌ Nicht vorhanden | Finanzierungspaket-Builder |
-| `communication_events` | ❌ Nicht vorhanden | Kommunikation |
-| `data_rooms` | ❌ Nicht vorhanden | Datenraum für Finanzierung |
-| `share_links` | ❌ Nicht vorhanden | Token-basiertes Teilen |
-
-#### Enums (produktiv)
-
-```
-org_type: platform, partner, client, sub_partner, renter
-membership_role: platform_admin, org_admin, internal_ops, sales_partner, renter_user
-delegation_status: active, revoked, expired
-```
-
-#### Funktionen (produktiv)
-
-- `is_platform_admin()` → God Mode Check
-- `is_parent_access_blocked(target_org_id)` → Hierarchie-Lockdown
-
----
-
-### B) Zone 1 — Admin-Portal
+### A) Zone 1 — Admin-Portal
 
 **Route-Prefix**: `/admin/*`  
-**Layout**: Sidebar-basiert (`AdminLayout` + `AdminSidebar`)
+**Layout**: `AdminLayout` mit `AdminSidebar`
 
-| Menüpunkt | Route | Status | Zweck | Was fehlt für "fertig" |
-|-----------|-------|--------|-------|------------------------|
-| **Dashboard** | `/admin` | ⬜ Teilfunktional | Session-Info, Basis-Stats | Erweiterte KPIs, Alerts |
-| **Organizations** | `/admin/organizations` | ✅ Fachlich nutzbar | Org-CRUD, Hierarchie | — |
-| **Organizations Detail** | `/admin/organizations/:id` | ✅ Fachlich nutzbar | Org-Details, Mitglieder | — |
-| **Users & Memberships** | `/admin/users` | ⬜ Teilfunktional | User-Übersicht | Membership-Management UI |
-| **Delegations** | `/admin/delegations` | ⬜ Nur Scaffold | Delegierungs-Verwaltung | CRUD-UI fehlt komplett |
-| **Master Contacts** | `/admin/contacts` | ✅ Fachlich nutzbar | Zentrale Kontakt-CRUD | — |
-| **Tile Catalog** | `/admin/tiles` | ✅ Fachlich nutzbar | Modul-Definitionen, Tenant-Aktivierung | Inline-Edit für Tiles |
-| **Integrations** | `/admin/integrations` | ⬜ Nur Scaffold | API-Key-Verwaltung, Service-Status | Komplette Implementierung |
-| **Communication Hub** | `/admin/communication` | ⬜ Nur Scaffold | Campaigns, Templates, Audiences | Komplette Implementierung |
-| **Oversight** | `/admin/oversight` | ⬜ Teilfunktional | System-Übersicht (Read-only) | Immobilien-/Modul-Details |
-| **Support Mode** | `/admin/support` | ⬜ Nur Scaffold | Tenant-Impersonation | Komplette Implementierung |
+| Menüpunkt | Route | Status | Zweck | Fehlend für "fertig" |
+|-----------|-------|--------|-------|----------------------|
+| **Dashboard** | `/admin` | ⬜ Teilfunktional | Session-Info, Basis-Navigation | KPIs, Alerts, Quick-Actions |
+| **Organizations** | `/admin/organizations` | ✅ Nutzbar | Org-CRUD, Hierarchie-Ansicht | Bulk-Operationen |
+| **Organizations Detail** | `/admin/organizations/:id` | ✅ Nutzbar | Org-Details, Mitglieder-Übersicht | — |
+| **Users & Memberships** | `/admin/users` | ⬜ Teilfunktional | User-Liste | Membership-CRUD fehlt |
+| **Delegations** | `/admin/delegations` | 🔴 Nur Scaffold | Delegations-Verwaltung | **Gesamte UI fehlt** |
+| **Master Contacts** | `/admin/contacts` | ✅ Nutzbar | Kontakt-CRUD mit Tenant-Scoping | — |
+| **Tile Catalog** | `/admin/tiles` | ✅ Nutzbar | Modul-Definitionen, Tenant-Aktivierung | Inline-Edit |
+| **Integrations** | `/admin/integrations` | 🔴 Nur Scaffold | API-Keys, Services | **Komplett leer** |
+| **Communication Hub** | `/admin/communication` | 🔴 Nur Scaffold | Templates, Campaigns | **Komplett leer** |
+| **Oversight** | `/admin/oversight` | ⬜ Teilfunktional | System-Monitoring (Read-only) | Drill-Down, Details |
+| **Support Mode** | `/admin/support` | 🔴 Nur Scaffold | Impersonation | **Komplett leer** |
 
-**Legende:**
-- ⬜ Nur Scaffold = UI-Shell ohne Funktionalität
-- ⬜ Teilfunktional = Basis-Funktionen vorhanden, aber unvollständig
-- ✅ Fachlich nutzbar = CRUD/Workflow funktioniert
+**Legende:**  
+- ✅ Nutzbar = CRUD funktioniert, fachlich einsetzbar  
+- ⬜ Teilfunktional = Basis-UI vorhanden, aber unvollständig  
+- 🔴 Nur Scaffold = Leere Shell ohne Funktionalität
+
+**Ehrliche Bewertung Zone 1:**  
+- **4 von 11** Menüpunkten sind fachlich nutzbar  
+- **3** sind teilfunktional  
+- **4** sind reine Platzhalter  
 
 ---
 
-### C) Zone 2 — User-Portal
+### B) Zone 2 — User-Portal
 
 **Route-Prefix**: `/portal/*`  
-**Layout**: Kein Sidebar, eigenes mobil-first Layout (aktuell in `PortalHome`)
+**Layout**: Aktuell **kein dediziertes Layout** — `PortalHome` ist standalone
 
-#### Framework-Status
+#### Framework-Komponenten
 
 | Komponente | Status | Beschreibung |
 |------------|--------|--------------|
-| **PortalHome** | ✅ Implementiert | iOS-Style Kachel-Homescreen, dynamisches Rendering |
-| **ModulePlaceholder** | ✅ Implementiert | Generischer Platzhalter für alle Sub-Routes |
-| **Tile Catalog Integration** | ✅ Implementiert | Liest aus `tile_catalog` + `tenant_tile_activation` |
-| **Tenant-Switcher** | ⬜ Teilweise | Nutzt `AuthContext`, aber kein dediziertes UI in Zone 2 |
-| **Dedizierte Shell/Layout** | ❌ Fehlt | Zone 2 braucht eigenes Layout (kein AdminLayout) |
+| `PortalHome.tsx` | ✅ Implementiert | iOS-Style Kachel-Homescreen |
+| `ModulePlaceholder.tsx` | ✅ Implementiert | Generischer "Coming soon" Platzhalter |
+| Tile-Catalog-Integration | ✅ Funktioniert | Liest aus `tile_catalog` + `tenant_tile_activation` |
+| **Dediziertes Portal-Layout** | ❌ Fehlt | Zone 2 nutzt KEIN eigenes Shell/Layout |
+| **Tenant-Switcher in Zone 2** | ❌ Fehlt | Kein UI zum Wechseln im Portal |
+| **Mobile-Navigation** | ❌ Fehlt | Hamburger-Menü, Bottom-Nav etc. |
 
 #### Modul-Status
 
-| Modul (tile_code) | Typ | Main-Route | Status |
-|-------------------|-----|------------|--------|
-| `immobilien` | Referenz | `/portal/immobilien` | ⬜ Platzhalter (echte UI unter `/portfolio`) |
-| `kaufy` | Dummy | `/portal/kaufy` | ⬜ Platzhalter |
-| `miety` | Dummy | `/portal/miety` | ⬜ Platzhalter |
-| `dokumente` | Dummy | `/portal/dokumente` | ⬜ Platzhalter |
-| `kommunikation` | Dummy | `/portal/kommunikation` | ⬜ Platzhalter |
-| `services` | Dummy | `/portal/services` | ⬜ Platzhalter |
-| `einstellungen` | Dummy | `/portal/einstellungen` | ⬜ Platzhalter |
+| Modul | tile_code | Main-Route | Reale Implementierung? |
+|-------|-----------|------------|------------------------|
+| Immobilien | `immobilien` | `/portal/immobilien` | ❌ Nur Platzhalter (echte UI unter `/portfolio`) |
+| Kaufy | `kaufy` | `/portal/kaufy` | ❌ Platzhalter |
+| Miety | `miety` | `/portal/miety` | ❌ Platzhalter |
+| Dokumente | `dokumente` | `/portal/dokumente` | ❌ Platzhalter |
+| Kommunikation | `kommunikation` | `/portal/kommunikation` | ❌ Platzhalter |
+| Services | `services` | `/portal/services` | ❌ Platzhalter |
+| Einstellungen | `einstellungen` | `/portal/einstellungen` | ❌ Platzhalter |
 
-**Legende:**
-- Referenz = Hat funktionale UI-Komponenten (PropertyList, PropertyDetail, etc.)
-- Dummy = Nur `ModulePlaceholder` mit "Coming soon"
+**Ehrliche Bewertung Zone 2:**  
+- Das **Kachel-Rendering funktioniert** (Tile Catalog → Homescreen)  
+- **Kein einziges Modul** hat echte Funktionalität unter `/portal/*`  
+- Das Immobilien-Referenzmodul liegt unter **Legacy-Routen** `/portfolio/*`  
+- **Kein dediziertes Layout/Shell** für Zone 2 existiert
 
 ---
 
-## 2) ZIELBILD — Mein Verständnis
+### C) Datenbank & Governance (Zusammenfassung)
 
-### Was bedeutet ein "fertiges Admin-Portal" (Zone 1)?
+| Kategorie | Tabellen | Status |
+|-----------|----------|--------|
+| **Core Foundation** | organizations, profiles, memberships, org_delegations, audit_events, tile_catalog, tenant_tile_activation | ✅ Produktiv, RLS vollständig |
+| **Referenz-Modul** | properties, units, property_features, property_financing, contacts, documents, leases, renter_invites, access_grants | ✅ Produktiv, RLS vollständig |
+| **Platzhalter** | listings, reservations, communication_events, data_rooms, share_links, finance_packages | ❌ Nicht vorhanden |
 
-Ein **fertiges Admin-Portal** ist eine vollständige Steuerzentrale für Plattform-Operationen:
+**Enums:** `org_type`, `membership_role`, `delegation_status`  
+**Funktionen:** `is_platform_admin()`, `is_parent_access_blocked()`  
+**God Mode:** Platform Admin hat uneingeschränkten Zugriff (ADR-013)
+
+---
+
+## 2) ZIELBILD — Mein Verständnis (gespiegelt)
+
+### Was bedeutet ein "fertiges Admin-Portal"?
+
+Ein **fertiges Admin-Portal** (Zone 1) ist die **zentrale Steuerzentrale** für Plattform-Operationen:
 
 1. **Tenants & Access vollständig verwaltbar**
-   - Organisationen erstellen, bearbeiten (nicht löschen)
-   - Hierarchien visualisieren (Baumansicht)
-   - Lockdown pro Org konfigurieren
-   - Memberships zuweisen/entziehen
-   - Delegationen erstellen/widerrufen mit Scope-Auswahl
+   - Organizations: CRUD, Hierarchie-Visualisierung, Lockdown-Toggle
+   - Memberships: User-zu-Tenant-Zuordnung mit Rollen-Auswahl
+   - Delegations: Cross-Org-Zugriffe mit Scope-Picker erstellen/widerrufen
 
 2. **Master Data zentral gepflegt**
-   - Kontakte mit/ohne Account verwalten
-   - Import/Export-Fähigkeit
-   - Tenant-übergreifende Suche (nur Platform Admin)
+   - Kontakte mit/ohne Account verwalten (bereits fertig)
+   - Tenant-übergreifende Suche für Platform Admin
 
-3. **Feature Activation als zentrale Steuerung**
-   - Tile Catalog vollständig CRUD (Platform Admin)
+3. **Feature Activation als Kontrollzentrum**
+   - Tile Catalog verwalten (bereits fertig)
    - Per-Tenant-Aktivierung mit Audit-Trail
-   - Aktivierungs-Status auf einen Blick
 
-4. **System-Übersicht (Oversight)**
-   - Read-only Dashboard mit System-KPIs
-   - Drill-down in Tenants, Immobilien, Module
-   - Keine Schreiboperationen — nur Monitoring
+4. **System-Oversight (Read-only)**
+   - Dashboard mit System-KPIs
+   - Drill-down in Tenants → Mitglieder → Immobilien → Module
 
-5. **Skeletons für zukünftige Funktionen**
-   - Integrations: API-Key-Management, Webhook-Status
-   - Communication Hub: Template-Verwaltung, Kampagnen
-   - Support Mode: Tenant-Impersonation für Debugging
+5. **Skeletons bewusst als Skeletons**
+   - Integrations, Communication Hub, Support: UI vorhanden, aber explizit als "Phase 2" markiert
 
-### Was bedeutet ein "fertiges Muster-User-Portal" (Zone 2)?
+**Mein Verständnis:** Das Admin-Portal muss **nicht perfekt**, aber **vollständig navigierbar und für Basis-Operationen nutzbar** sein.
 
-Ein **fertiges Muster-Portal** ist das technische Framework für alle End-User-Portale:
+---
+
+### Was bedeutet ein "fertiges Muster-User-Portal"?
+
+Ein **fertiges Muster-Portal** (Zone 2) ist das **technische Framework** für alle End-User-Portale:
 
 1. **Dedizierte Shell**
-   - Eigenes Layout (kein AdminLayout)
-   - Mobil-first Responsive Design
-   - Header mit Tenant-Switcher und User-Menü
-   - Kein Sidebar — Tile-Navigation
+   - Eigenes Layout (NICHT AdminLayout)
+   - Header mit Tenant-Switcher, User-Menü
+   - Mobile-first (Bottom-Nav oder Hamburger)
+   - Keine Sidebar — Tile-Navigation
 
 2. **Homescreen als Zentrale**
-   - iOS-Style Kachel-Grid
-   - Dynamisches Rendering aus `tile_catalog` + `tenant_tile_activation`
-   - Nur aktivierte Module sichtbar
+   - iOS-Style Kachel-Grid (bereits implementiert)
+   - Dynamisches Rendering aus tile_catalog + tenant_tile_activation
+   - Rücknavigation immer möglich
 
 3. **Modul-Pattern etabliert**
    - Jedes Modul: 1 Hauptkachel + 4 Sub-Kacheln
-   - Routing-Konvention: `/portal/:moduleCode/:subRoute`
-   - Registry im Code für Komponenten-Mapping
+   - Routing: `/portal/:moduleCode/:subRoute`
+   - Zentrale Registry im Code
 
-4. **Alle Module als navigierbare Struktur**
-   - Auch wenn Inhalt "Coming soon" ist
-   - Routing MUSS funktionieren
-   - Rücknavigation zum Homescreen
+4. **Alle Module navigierbar**
+   - Auch wenn Inhalt "Coming soon"
+   - Einheitliches UX-Pattern
+   - Konsistente Back-Navigation
+
+**Mein Verständnis:** Das Muster-Portal ist eine **Blaupause**, kein fertiges Produkt. Es beweist, dass das Framework funktioniert.
+
+---
 
 ### Rolle des Musterportals
 
-Das Muster-Portal ist:
-- **Blaupause**: Definiert UI/UX-Pattern für alle künftigen Portale
-- **Test-Umgebung**: Ort, wo alle Module koexistieren und getestet werden
-- **Framework-Nachweis**: Beweist, dass Tile-System funktioniert
+Das Muster-Portal dient als:
+- **Blaupause**: Definiert UI/UX-Patterns für alle künftigen Portale
+- **Test-Umgebung**: Alle Module koexistieren und können getestet werden
+- **Framework-Nachweis**: Beweist, dass Tile-System, Routing und Aktivierung funktionieren
 
 ### Super-User-Konstellation
 
 Ein Nutzer, der gleichzeitig:
-- **Vertriebspartner** (Kaufy-Zugang)
-- **Eigentümer** (Immobilien-Zugang)
-- **Vermieter** (Miety-Zugang)
+- **Vertriebspartner** (Kaufy)
+- **Eigentümer** (Immobilien)
+- **Vermieter** (Miety)
 
-...sieht auf seinem Homescreen ALLE aktivierten Module, weil:
-- Der Tenant alle Module aktiviert hat (`tenant_tile_activation`)
-- Seine Rolle(n) Zugriff erlauben
-- Das Tile-System alle freigegebenen Kacheln rendert
+...sieht auf seinem Homescreen **ALLE aktivierten Module**, weil:
+1. Sein Tenant alle Module aktiviert hat (`tenant_tile_activation`)
+2. Das Tile-System alle freigegebenen Kacheln rendert
+3. Aktuell: **Keine Rollen-basierte Filterung** (siehe Frage 1)
 
-Das ist der **"Maximum-Visibility"-Testfall** für das Framework.
+**Meine Bewertung dieses Ansatzes:**
 
----
+| Aspekt | Bewertung | Begründung |
+|--------|-----------|------------|
+| **Technisch sauber** | ✅ Ja | Tile-System ist entkoppelt, DB-gesteuert |
+| **Skalierbar** | ✅ Ja | Neue Module = neue tile_catalog-Einträge |
+| **Wartbar** | ✅ Ja | Aktivierung zentral in einem Ort |
+| **Erweiterbar** | ⚠️ Mit Einschränkung | Rollen-basierte Visibility müsste separat implementiert werden |
 
-## 3) STRATEGIE — Umsetzungsvorschlag
-
-### Etappe 1: Admin-Portal Feature-Complete
-**Ziel**: Zone 1 ist fachlich vollständig nutzbar für alle Basis-Operationen.
-
-**Scope:**
-- ✅ Organizations (bereits fertig)
-- ✅ Master Contacts (bereits fertig)
-- ✅ Tile Catalog (bereits fertig)
-- 🔧 Users & Memberships: Vollständiges CRUD für Memberships
-- 🔧 Delegations: CRUD-UI mit Scope-Picker
-- 🔧 Oversight: Drill-down in Tenants mit Details
-- ⬜ Integrations & Communication Hub: Bleiben Skeletons
-
-**Definition of Done:**
-- [ ] Platform Admin kann alle Tenants und deren Mitglieder verwalten
-- [ ] Delegationen können erstellt und widerrufen werden
-- [ ] Oversight zeigt alle Tenants mit Mitgliedern, Immobilien, Modulen
-- [ ] Keine TypeScript-Fehler, alle Routen funktional
-
-**Risiken:**
-- Komplexität bei Scope-Picker für Delegationen
-- UX für Hierarchie-Visualisierung
-
-**Geschätzter Aufwand**: 3-4 Sessions
+**Verbesserungsvorschlag:** Das aktuelle Modell ist für Phase 1 korrekt. Rollen-basierte Visibility sollte als **optionale Erweiterung** geplant werden, nicht als Blocker.
 
 ---
 
-### Etappe 2: Zone-2-Shell & Navigation
-**Ziel**: Dediziertes Layout für Zone 2, Tenant-Switcher, Modul-Registry.
+## 3) STRATEGIEVORSCHLAG — Prüfung & Empfehlung
 
-**Scope:**
-- 🔧 Neues `PortalLayout` (Header, kein Sidebar)
-- 🔧 Tenant-Switcher im Header
-- 🔧 Modul-Registry als Code-Mapping
-- 🔧 Back-Navigation zu Homescreen
+### Eure vorgeschlagene Reihenfolge
+
+1. Admin-Portal zuerst vollständig fertigstellen
+2. Dann Super-User-Musterportal
+3. Dann modulweise Iteration
+
+### Meine Bewertung
+
+| Schritt | Bewertung | Begründung |
+|---------|-----------|------------|
+| **1. Admin zuerst** | ✅ Bestätigt | Zone 1 steuert Zone 2. Ohne fertige Aktivierung keine Tests möglich. |
+| **2. Musterportal danach** | ✅ Bestätigt | Framework muss beweisen, dass es funktioniert, bevor Module gebaut werden. |
+| **3. Modulweise Iteration** | ✅ Bestätigt | Erlaubt fokussierte Entwicklung ohne Ablenkung. |
+
+**Ich bestätige diese Reihenfolge ohne Änderungen.**
+
+---
+
+### Konkretisierte Etappen
+
+#### Etappe 1: Admin-Portal Feature-Complete
+**Ziel:** Alle kritischen Admin-Funktionen nutzbar.
+
+| Aufgabe | Priorität | Status |
+|---------|-----------|--------|
+| Memberships: CRUD in Users-Page | P0 | 🔧 |
+| Delegations: Vollständige CRUD-UI mit Scope-Picker | P0 | 🔧 |
+| Oversight: Drill-down in Tenants/Immobilien/Module | P1 | 🔧 |
+| Dashboard: Quick-Stats und Alerts | P2 | 🔧 |
+
+**Skeletons bleiben:** Integrations, Communication Hub, Support
 
 **Definition of Done:**
-- [ ] Zone 2 hat eigenes Layout (nicht AdminLayout)
+- [ ] Memberships können erstellt, geändert, gelöscht werden
+- [ ] Delegations können mit Scopes erstellt/widerrufen werden
+- [ ] Oversight zeigt Tenant → Member → Property → Module Hierarchie
+- [ ] Alle Routen fehlerfrei, keine TypeScript-Errors
+
+---
+
+#### Etappe 2: Zone-2-Shell & Navigation
+**Ziel:** Dediziertes Layout für Zone 2 mit Mobile-First UX.
+
+| Aufgabe | Priorität |
+|---------|-----------|
+| `PortalLayout.tsx` erstellen (Header, Mobile-Nav) | P0 |
+| Tenant-Switcher im Header | P0 |
+| Back-Navigation zu Homescreen | P0 |
+| Mobile Breakpoints (< 768px) | P1 |
+
+**Definition of Done:**
+- [ ] Zone 2 nutzt eigenes Layout (nicht AdminLayout)
 - [ ] Tenant-Switcher funktioniert
-- [ ] Alle 7 Module navigierbar (auch wenn Inhalt leer)
-- [ ] Mobile-Breakpoints korrekt
-
-**Risiken:**
-- Layout-Konsistenz mit zukünftigen Modulen
-
-**Geschätzter Aufwand**: 1-2 Sessions
+- [ ] Alle Module navigierbar
+- [ ] Mobile-Ansicht korrekt
 
 ---
 
-### Etappe 3: Referenz-Modul Integration
-**Ziel**: Bestehendes Immobilien-Modul in Zone-2-Framework integrieren.
+#### Etappe 3: Referenz-Modul Integration
+**Ziel:** Immobilien-Modul in Zone 2 integrieren.
 
-**Scope:**
-- 🔧 PropertyList, PropertyDetail, PropertyForm unter `/portal/immobilien/*`
-- 🔧 Sub-Tiles für Immobilien befüllen (Exposé, MSV, Vertrieb, Dokumente)
-- 🔧 Legacy `/portfolio/*` deprecaten
+| Aufgabe | Priorität |
+|---------|-----------|
+| PropertyList/Detail/Form unter `/portal/immobilien/*` | P0 |
+| Sub-Tiles mit echten Komponenten verbinden | P1 |
+| Legacy `/portfolio/*` → Redirect | P2 |
 
 **Definition of Done:**
 - [ ] Immobilien-CRUD funktioniert unter `/portal/immobilien`
-- [ ] Sub-Tiles navigieren zu echten Komponenten
-- [ ] `/portfolio/*` zeigt Redirect-Hinweis
-
-**Risiken:**
-- Routing-Konflikte mit Legacy-Routen
-
-**Geschätzter Aufwand**: 2 Sessions
+- [ ] Mindestens 2 Sub-Tiles haben echte Komponenten
+- [ ] Legacy-Routen zeigen Redirect-Hinweis
 
 ---
 
-### Etappe 4: Super-User Testfall
-**Ziel**: Ein Tenant mit allen Modulen, ein User mit allen Rollen — Volltest.
+#### Etappe 4: Super-User Testfall
+**Ziel:** Volltest mit maximal aktiviertem Tenant.
 
-**Scope:**
-- 🔧 Test-Tenant mit allen 7 Modulen aktiviert
-- 🔧 Test-User mit multiplen Memberships (oder org_admin mit Vollzugriff)
-- 🔧 Homescreen zeigt alle Kacheln
-- 🔧 Jede Kachel navigierbar
+| Aufgabe | Priorität |
+|---------|-----------|
+| Test-Tenant mit allen 7 Modulen aktivieren | P0 |
+| Homescreen zeigt alle Kacheln | P0 |
+| Jede Route navigierbar | P0 |
+| Tenant-Switch zeigt unterschiedliche Sets | P1 |
 
 **Definition of Done:**
-- [ ] Homescreen zeigt 7 Kacheln
-- [ ] Jede Kachel → Main-Route funktioniert
-- [ ] Jede Sub-Kachel → Sub-Route funktioniert
-- [ ] Tenant-Switch zeigt unterschiedliche Kachel-Sets
-
-**Risiken:**
-- Testdaten-Konsistenz
-
-**Geschätzter Aufwand**: 1 Session
+- [ ] 7 Kacheln sichtbar auf Homescreen
+- [ ] Alle 35 Routen (7 × 5) navigierbar
+- [ ] Tenant-Switch funktioniert
 
 ---
 
-### Etappe 5: Dokumentation & Freeze
-**Ziel**: Architektur dokumentiert, Memories aktualisiert, Baseline frozen.
+#### Etappe 5: Dokumentation & Freeze
+**Ziel:** Architektur dokumentiert und eingefroren.
 
-**Scope:**
-- 📝 ADR-028: "Zone 1 & Zone 2 Backbone Complete"
-- 📝 Memories aktualisieren (Status, Architektur)
-- 📝 README mit Architektur-Übersicht
-- 📝 Changelog finalisieren
-
-**Definition of Done:**
-- [ ] DECISIONS.md aktuell
-- [ ] Memories reflektieren finalen Status
-- [ ] README beschreibt 3-Zonen-Architektur
-- [ ] Expliziter Freeze-Vermerk
-
-**Geschätzter Aufwand**: 1 Session
+| Aufgabe | Priorität |
+|---------|-----------|
+| ADR-028: "Backbone Complete" | P0 |
+| Memories aktualisieren | P0 |
+| README mit Architektur-Übersicht | P1 |
+| Changelog finalisieren | P1 |
 
 ---
 
-## 4) GOVERNANCE & ARBEITSWEISE
+## 4) ANTWORTEN AUF OFFENE FRAGEN
+
+### Frage 1: Rollen-basierte Tile-Visibility
+
+**Empfehlung: Nein, nicht in Phase 1.**
+
+**Begründung:**
+- Aktuelles Modell: Tenant-Aktivierung = primärer Filter
+- Rollen-Visibility wäre ein **zusätzlicher** Filter, kein Ersatz
+- Komplexität steigt erheblich (tile_catalog müsste `required_roles` bekommen)
+- Für Phase 1: Wenn ein Tenant ein Modul aktiviert, sehen es alle Mitglieder
+
+**Für Phase 2:** Optional `required_roles` in `tile_catalog` oder separates `tile_role_visibility` Mapping.
+
+---
+
+### Frage 2: Legacy `/portfolio/*`
+
+**Empfehlung: Temporär als Referenz behalten, dann Redirect.**
+
+**Ablauf:**
+1. **Etappe 1-2:** `/portfolio/*` bleibt funktional (Referenz zum Testen)
+2. **Etappe 3:** Immobilien-Modul nach `/portal/immobilien/*` migrieren
+3. **Etappe 4:** `/portfolio/*` → Redirect nach `/portal/immobilien`
+4. **Nach Freeze:** Legacy-Routen entfernen
+
+---
+
+### Frage 3: Integrations & Communication Hub
+
+**Empfehlung: Als stabile Skeletons belassen.**
+
+**Begründung:**
+- Beide sind **Infrastruktur-Features**, keine Business-Module
+- Erfordern externe Abhängigkeiten (API-Keys, Email-Provider)
+- Priorisierung: Zone 1 + Zone 2 Backbone > Infrastruktur-Erweiterungen
+
+**Für Phase 2:** Integrations zuerst (API-Key-Vault), dann Communication Hub.
+
+---
+
+### Frage 4: Zone 3 (Websites)
+
+**Empfehlung: Bewusst aus aktuellem Scope heraushalten.**
+
+**Begründung:**
+- Zone 3 hat andere Anforderungen (public-facing, SEO, Lead-Gen)
+- Kein gemeinsamer Code mit Zone 1/2 außer DB/RLS
+- Würde Fokus vom Backbone ablenken
+
+**Für Phase 2:** Separate Strategie-Session, wenn Zone 1 + Zone 2 frozen sind.
+
+---
+
+## 5) GOVERNANCE — Vorschlag
 
 ### Dokumentation (leichtgewichtig, verbindlich)
 
 | Artefakt | Wann aktualisieren | Inhalt |
 |----------|-------------------|--------|
-| `DECISIONS.md` | Bei jeder architekturellen Entscheidung | ADR-Format (Date, Decision, Reason, Implications) |
-| `STATUS_AND_STRATEGY.md` (dieses Dokument) | Bei Etappen-Abschluss | IST-Status, offene Punkte |
-| Memories | Bei signifikanten Änderungen | Kurzfassung für Kontext-Erhalt |
-| Changelog in DECISIONS.md | Bei jeder Session mit Änderungen | Was wurde gebaut/geändert |
+| `DECISIONS.md` | Bei ADR-würdigen Entscheidungen | Date, Decision, Reason, Implications |
+| `STATUS_AND_STRATEGY.md` | Bei Etappen-Abschluss | IST-Status, offene Punkte |
+| Changelog in Chat | Bei jeder Session | Was wurde geändert |
 
 ### Etappen-Freeze
 
-**Prinzip**: Nach jeder Etappe explizite Abnahme, bevor nächste Etappe beginnt.
-
-**Ablauf:**
-1. Etappe abgeschlossen → Statusbericht an User
+1. Etappe abgeschlossen → Statusbericht
 2. User bestätigt "Done" oder listet offene Punkte
-3. Offene Punkte werden in aktueller Etappe geschlossen ODER explizit in nächste Etappe verschoben
-4. Erst nach Bestätigung: Nächste Etappe beginnen
-
-**Kein globaler Stillstand**: Fixes und kleine Verbesserungen innerhalb einer Etappe sind erlaubt, solange sie das Etappen-Ziel nicht gefährden.
+3. Offene Punkte werden geschlossen ODER explizit verschoben
+4. Erst nach Bestätigung: Nächste Etappe
 
 ### Vermeidung von Detail-Optimierung
 
-**Regeln:**
-1. **Scope-Check**: Vor jeder Implementierung fragen: "Ist das Teil der aktuellen Etappe?"
-2. **No Gold-Plating**: Funktional > Perfekt. Erst Struktur, dann Optimierung.
-3. **Explicit Deferral**: Wenn etwas "nice to have" ist, explizit notieren und in spätere Etappe verschieben.
-4. **Time-Boxing**: Komplexe Features maximal 2 Sessions, dann Status-Check.
+- **Scope-Check:** "Ist das Teil der aktuellen Etappe?"
+- **No Gold-Plating:** Funktional > Perfekt
+- **Explicit Deferral:** "Nice to have" → spätere Etappe
+- **Time-Boxing:** Max 2 Sessions pro Feature
 
 ---
 
-## 5) OFFENE FRAGEN (Klärungsbedarf)
+## 6) EMPFEHLUNG FÜR NÄCHSTE ETAPPE
 
-1. **Rollen-basierte Tile-Visibility**: Soll das Tile-System Rollen prüfen (z.B. "Kaufy nur für sales_partner")? Aktuell: Nur Tenant-Aktivierung, keine Rollen-Prüfung.
+**Empfehlung: Etappe 1 starten — Admin-Portal Feature-Complete**
 
-2. **Legacy `/portfolio/*` Handling**: Sofort entfernen oder als Redirect behalten?
+**Erste Aktion:**
+1. **Memberships CRUD** in `/admin/users` implementieren
+2. **Delegations UI** mit Scope-Picker
 
-3. **Integrations & Communication Hub**: Bleiben diese dauerhaft Skeletons oder sollen sie in einer späteren Phase implementiert werden?
-
-4. **Zone 3 (Websites)**: Wann und wie wird diese Zone geplant? Separate Strategie-Session nötig?
-
----
-
-## 6) NÄCHSTER SCHRITT
-
-**Empfehlung**: Mit **Etappe 1 (Admin-Portal Feature-Complete)** beginnen, da Zone 1 die Steuerung für Zone 2 ist.
-
-**Erste Aktion**: Users & Memberships CRUD vervollständigen, dann Delegations UI.
+**Warum:**
+- Zone 1 steuert Zone 2
+- Ohne funktionierende Memberships/Delegations kein vollständiger Admin-Test
+- Überschaubare Scope, klare DoD
 
 ---
 
-*Dieses Dokument ersetzt keine Entscheidungen, sondern dokumentiert den aktuellen Stand und schlägt einen Weg vor. Alle strategischen Entscheidungen erfordern explizite Bestätigung.*
+*Dieses Dokument ist die verbindliche Referenz für Status und Strategie. Änderungen erfordern explizite Bestätigung.*
