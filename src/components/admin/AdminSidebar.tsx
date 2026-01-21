@@ -11,7 +11,8 @@ import {
   Grid3X3,
   Plug,
   Mail,
-  Eye
+  Eye,
+  FileText
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,6 +62,7 @@ const systemItems = [
   { title: 'Integrations', url: '/admin/integrations', icon: Plug },
   { title: 'Communication Hub', url: '/admin/communication', icon: Mail },
   { title: 'Oversight', url: '/admin/oversight', icon: Eye },
+  { title: 'Audit Log', url: '/admin/audit', icon: FileText },
 ];
 
 // Platform Admin Only
