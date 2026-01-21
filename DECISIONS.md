@@ -190,6 +190,105 @@
 
 ---
 
+## ADR-013: Platform Admin God Mode
+
+**Date**: 2026-01-20  
+**Decision**: Platform Admin has unrestricted access across all tenants ("God Mode"), explicitly overriding previous ADR-006.  
+**Reason**: 
+- Business cannot operate without a super-role that can see, fix, and support everything
+- Support mode and troubleshooting require full visibility
+- Previous restriction made system unoperatable  
+**Implications**:
+- `is_platform_admin()` function grants full bypass in all RLS policies
+- Platform Admin can read/write ANY row in ANY tenant
+- Platform Admin always bypasses lockdown flags
+- ADR-006 is superseded
+
+---
+
+## ADR-014: Child Privacy Lockdown (Parent Access Block)
+
+**Date**: 2026-01-21  
+**Decision**: Organizations can block parent-derived access via `parent_access_blocked` flag.  
+**Reason**: 
+- Child organizations may need privacy from parent hierarchy
+- Sub-partners or clients may require data isolation from partners
+- Enables true multi-tenant privacy within hierarchies  
+**Implications**:
+- `organizations.parent_access_blocked BOOLEAN NOT NULL DEFAULT FALSE`
+- When enabled, parent org cannot access child's data via hierarchy
+- Platform Admin ALWAYS bypasses this lockdown
+- Only org_admin of the child org or platform_admin can toggle
+- All changes logged in `audit_events`
+
+---
+
+## ADR-015: Three-Zone Architecture
+
+**Date**: 2026-01-21  
+**Decision**: System is structured into three distinct frontend zones sharing the same DB/RLS foundation.  
+**Reason**: 
+- Clear separation of concerns between operator tools, user workspaces, and public-facing sites
+- Different UX patterns for different audiences
+- Enables independent evolution of each zone  
+**Implications**:
+- Zone 1: Admin Portal (internal control center, sidebar-based, operators/admins)
+- Zone 2: User Portals (end-user workspaces, mobile-first, tile-based, modular features)
+- Zone 3: Websites (public-facing, AI-assisted, conversion-oriented)
+- All zones share database, RLS, and core authentication
+- "Modules" terminology reserved for Zone 2 tile-features only
+
+---
+
+## ADR-016: Immutable Organization Hierarchy
+
+**Date**: 2026-01-21  
+**Decision**: Critical organization hierarchy fields are immutable after creation.  
+**Reason**: 
+- Reparenting organizations creates audit complexity
+- Materialized paths and depth become inconsistent
+- Business rules depend on stable hierarchy  
+**Implications**:
+- `org_type`, `parent_id`, `depth`, `materialized_path` cannot be updated
+- Enforced via BEFORE UPDATE trigger
+- Organizations cannot be deleted in Phase 1
+- Revocation model used instead of deletion
+
+---
+
+## ADR-017: Immutable Delegation History
+
+**Date**: 2026-01-21  
+**Decision**: Delegations are never deleted, only revoked.  
+**Reason**: 
+- Audit trail must preserve who had access when
+- Legal/compliance requires historical access records
+- Enables forensic investigation of past access  
+**Implications**:
+- `org_delegations.status` enum: active, revoked, expired
+- Revocation sets `status = 'revoked'`, `revoked_by`, `revoked_at`
+- No DELETE policy on delegations
+- Active delegation enforced via partial unique index
+
+---
+
+## ADR-018: Module/Feature Framework for Zone 2
+
+**Date**: 2026-01-21  
+**Decision**: Zone 2 uses a modular framework with tenant-specific feature activation.  
+**Reason**: 
+- Different tenants need different capabilities
+- Avoids one-size-fits-all approach
+- Enables future business model flexibility (feature-based pricing)  
+**Implications**:
+- `module_catalog`: defines available tile-modules
+- `tenant_features`: maps activated modules per organization
+- `module_dependencies`: defines inter-module requirements
+- UI in Zone 2 renders only activated tiles
+- Admin Portal (Zone 1) manages feature activation
+
+---
+
 ## Template for Future Decisions
 
 ```markdown
