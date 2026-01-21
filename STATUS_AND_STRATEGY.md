@@ -264,24 +264,22 @@ MEETY.IO (Marketing)
 - [x] Oversight: Klickbare Tenant-Details + Immobilien-/Modul-Listen
 - [x] Audit Log: Event-Viewer mit Filter (`/admin/audit`)
 
-**Neue Dateien:**
-- `src/components/admin/ScopePicker.tsx`
-- `src/pages/admin/AuditLog.tsx`
-
 ---
 
-### Etappe 2: Backbone Migration (Admin + DB)
+### Etappe 2: Backbone Migration ✅ ABGESCHLOSSEN (21.01.2026)
 **Scope:** DB-Schema + Admin-UI für Billing, Agreements, Inbox
 
-**Definition of Done:**
-- [ ] DB: `plans`, `subscriptions`, `invoices`
-- [ ] DB: `agreement_templates`, `user_consents`
-- [ ] DB: `inbound_items`, `inbound_routing_rules`
-- [ ] Admin: `/admin/billing`, `/admin/agreements`, `/admin/inbox`
-- [ ] RLS: Policies für alle neuen Tabellen
+**Umgesetzt:**
+- [x] DB: `plans`, `subscriptions`, `invoices` mit RLS
+- [x] DB: `agreement_templates`, `user_consents` (INSERT-only für Audit)
+- [x] DB: `inbound_items`, `inbound_routing_rules` mit RLS
+- [x] Admin: `/admin/billing` (Plans CRUD, Subscriptions, Invoices)
+- [x] Admin: `/admin/agreements` (Templates CRUD, Consent-Log Read-Only)
+- [x] Admin: `/admin/inbox` (Inbound-Items, Assignment, Routing-Regeln)
+- [x] Sidebar: Neue "Backbone" Gruppe mit 3 Einträgen
 
-**Risiken:** Payment-Komplexität (Stripe) → Skeleton first  
-**Abhängigkeiten:** Keine
+**Neue Tabellen:** 7 (plans, subscriptions, invoices, agreement_templates, user_consents, inbound_items, inbound_routing_rules)
+**Neue Enums:** 6 (plan_interval, subscription_status, invoice_status, consent_status, inbound_item_status, inbound_source)
 
 ---
 
@@ -357,6 +355,7 @@ MEETY.IO (Marketing)
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
+| 2026-01-21 | 3.2 | **Etappe 2 abgeschlossen**: Backbone-Tabellen (Billing, Agreements, Inbox) + Admin UI + Sidebar |
 | 2026-01-21 | 3.1 | **Etappe 1 abgeschlossen**: Memberships Edit/Delete, Scope-Picker, Oversight Drill-Downs, Audit Log |
 | 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan, 50-Route-Matrix |
 | 2026-01-21 | 2.2 | Etappenplan v2, Super-User Blueprint |
