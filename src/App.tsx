@@ -14,6 +14,10 @@ import OrganizationDetail from "./pages/admin/OrganizationDetail";
 import Users from "./pages/admin/Users";
 import Delegations from "./pages/admin/Delegations";
 import Support from "./pages/admin/Support";
+// Zone 2: Portfolio
+import PropertyList from "./pages/portfolio/PropertyList";
+import PropertyDetail from "./pages/portfolio/PropertyDetail";
+import PropertyForm from "./pages/portfolio/PropertyForm";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +38,12 @@ const App = () => (
               <Route path="users" element={<Users />} />
               <Route path="delegations" element={<Delegations />} />
               <Route path="support" element={<Support />} />
+            </Route>
+            {/* Zone 2: Portfolio Routes */}
+            <Route path="/portfolio" element={<AdminLayout />}>
+              <Route index element={<PropertyList />} />
+              <Route path="new" element={<PropertyForm />} />
+              <Route path=":id" element={<PropertyDetail />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
