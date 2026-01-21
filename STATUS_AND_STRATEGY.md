@@ -207,20 +207,34 @@ Jedes Zone-2-Modul folgt diesem Muster:
 
 ---
 
-#### Etappe 2: Zone-2-Shell & Navigation
+#### Etappe 2: Zone-2-Shell & 35-Routen-Skeleton
 
-**Ziel:** Dediziertes Layout für Zone 2 mit Mobile-First UX.
+**Ziel:** Dediziertes Layout für Zone 2 + vollständige Navigation als Blaupause.
 
 | Aufgabe | Priorität | Beschreibung |
 |---------|-----------|--------------|
 | `PortalLayout.tsx` | P0 | Header mit Logo, Tenant-Switcher, User-Menü |
 | Mobile-Navigation | P0 | Hamburger oder Bottom-Nav für Mobile |
 | Back-Navigation | P0 | Immer zurück zum Homescreen möglich |
+| **35-Routen-Skeleton** | P0 | Alle Module mit allen Sub-Tiles als navigierbare Platzhalter |
+
+**35-Routen-Matrix (7 Module × 5 Tiles):**
+
+| Modul | Main-Tile | Sub-Tile 1 | Sub-Tile 2 | Sub-Tile 3 | Sub-Tile 4 |
+|-------|-----------|------------|------------|------------|------------|
+| **Immobilien** | `/portal/immobilien` | `/portal/immobilien/objekte` | `/portal/immobilien/einheiten` | `/portal/immobilien/finanzierung` | `/portal/immobilien/dokumente` |
+| **Kaufy** | `/portal/kaufy` | `/portal/kaufy/listings` | `/portal/kaufy/anfragen` | `/portal/kaufy/expose` | `/portal/kaufy/transaktionen` |
+| **Miety** | `/portal/miety` | `/portal/miety/mietvertraege` | `/portal/miety/mieter` | `/portal/miety/zahlungen` | `/portal/miety/kommunikation` |
+| **Dokumente** | `/portal/dokumente` | `/portal/dokumente/alle` | `/portal/dokumente/freigaben` | `/portal/dokumente/vorlagen` | `/portal/dokumente/archiv` |
+| **Kommunikation** | `/portal/kommunikation` | `/portal/kommunikation/nachrichten` | `/portal/kommunikation/historie` | `/portal/kommunikation/kontakte` | `/portal/kommunikation/vorlagen` |
+| **Services** | `/portal/services` | `/portal/services/partner` | `/portal/services/buchungen` | `/portal/services/bewertungen` | `/portal/services/rechnungen` |
+| **Einstellungen** | `/portal/einstellungen` | `/portal/einstellungen/profil` | `/portal/einstellungen/benachrichtigungen` | `/portal/einstellungen/sicherheit` | `/portal/einstellungen/abrechnung` |
 
 **DoD Etappe 2:**
 - [ ] Zone 2 nutzt eigenes Layout (nicht AdminLayout)
 - [ ] Tenant-Switcher funktioniert im Portal
-- [ ] Alle Module navigierbar (auch als Platzhalter)
+- [ ] **Alle 35 Routen navigierbar** (7 Main + 28 Sub-Tiles)
+- [ ] Jede Route zeigt mindestens Platzhalter mit Titel
 - [ ] Mobile-Ansicht korrekt (< 768px)
 
 ---
