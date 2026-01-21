@@ -38,11 +38,6 @@ interface Lease {
   rent_increase: string | null;
   renter_org_id: string | null;
   tenant_contact_id: string;
-  contact?: {
-    first_name: string;
-    last_name: string;
-    email: string | null;
-  };
 }
 
 interface Contact {
@@ -70,6 +65,7 @@ interface TenancyTabProps {
 export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const { user } = useAuth();
   const [lease, setLease] = useState<Lease | null>(null);
+  const [leaseContact, setLeaseContact] = useState<Contact | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [invites, setInvites] = useState<RenterInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +105,18 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .maybeSingle();
 
       setLease(leaseData);
+
+      // Fetch contact for this lease
+      if (leaseData?.tenant_contact_id) {
+        const { data: contactData } = await supabase
+          .from('contacts')
+          .select('id, first_name, last_name, email')
+          .eq('id', leaseData.tenant_contact_id)
+          .single();
+        setLeaseContact(contactData);
+      } else {
+        setLeaseContact(null);
+      }
 
       // Fetch contacts for creating lease
       const { data: contactsData } = await supabase
@@ -219,8 +227,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   }
 
   async function handleSendInvite() {
-    if (!lease || !lease.contact?.email) {
-      toast.error('Kein E-Mail-Adresse hinterlegt');
+    if (!lease || !leaseContact?.email) {
+      toast.error('Keine E-Mail-Adresse hinterlegt');
       return;
     }
 
@@ -233,7 +241,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           lease_id: lease.id,
           unit_id: unitId,
           contact_id: lease.tenant_contact_id,
-          email: lease.contact.email,
+          email: leaseContact.email,
           created_by: user?.id,
         });
 
@@ -356,9 +364,9 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">
-                    {lease.contact?.last_name}, {lease.contact?.first_name}
+                    {leaseContact?.last_name}, {leaseContact?.first_name}
                   </p>
-                  <p className="text-sm text-muted-foreground">{lease.contact?.email || 'Keine E-Mail'}</p>
+                  <p className="text-sm text-muted-foreground">{leaseContact?.email || 'Keine E-Mail'}</p>
                 </div>
                 {getStatusBadge(lease.status)}
               </div>
@@ -409,7 +417,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                       <DialogHeader>
                         <DialogTitle>Mieter zum Portal einladen</DialogTitle>
                         <DialogDescription>
-                          Eine Einladung wird an {lease.contact?.email} gesendet.
+                          Eine Einladung wird an {leaseContact?.email} gesendet.
                         </DialogDescription>
                       </DialogHeader>
                       <DialogFooter>

@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 
 const navItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
+  { title: 'Immobilien', url: '/portfolio', icon: Building2 },
   { title: 'Organizations', url: '/admin/organizations', icon: Building2 },
   { title: 'Users & Memberships', url: '/admin/users', icon: Users },
   { title: 'Delegations', url: '/admin/delegations', icon: Link2 },

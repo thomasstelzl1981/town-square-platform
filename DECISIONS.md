@@ -1,7 +1,7 @@
 # System of a Town — Decision Log
 
 > **Format**: ADR-light (Date, Decision, Reason, Implications)  
-> **Last Updated**: 2026-01-20
+> **Last Updated**: 2026-01-21
 
 ---
 
@@ -286,6 +286,99 @@
 - `module_dependencies`: defines inter-module requirements
 - UI in Zone 2 renders only activated tiles
 - Admin Portal (Zone 1) manages feature activation
+
+---
+
+## ADR-019: Mieter als eigenständiger Tenant
+
+**Date**: 2026-01-21  
+**Decision**: Mieter erhalten bei Invite-Akzeptanz einen eigenen Tenant (org_type: 'renter') mit membership_role: 'renter_user'.  
+**Reason**: 
+- Mieter-Daten sind strikt getrennt von Vermieter-Daten
+- Mieter können später eigene Immobilien besitzen
+- Klare RLS-Trennung möglich  
+**Implications**:
+- org_type Enum erweitert um 'renter'
+- membership_role Enum erweitert um 'renter_user'
+- renter_org ist root-level (kein parent_id)
+- leases.renter_org_id verknüpft Mieter mit Mietvertrag
+
+---
+
+## ADR-020: Lease-Exklusivität pro Unit
+
+**Date**: 2026-01-21  
+**Decision**: Pro Unit kann nur ein aktiver Mietvertrag existieren (status IN active, notice_given).  
+**Reason**: 
+- Business-Regel: Eine Wohnung kann nicht doppelt vermietet sein
+- Verhindert Dateninkonsistenzen  
+**Implications**:
+- Partial Unique Index auf leases(unit_id) WHERE status IN ('active', 'notice_given')
+- Constraint wird auf DB-Ebene erzwungen
+- UI verhindert doppelte Anlage
+
+---
+
+## ADR-021: Property-Features (Option B)
+
+**Date**: 2026-01-21  
+**Decision**: Feature-Aktivierung pro Property über eigenständige property_features Tabelle (Option B).  
+**Reason**: 
+- Flexibilität für zukünftige Features
+- Audit-Trail für Aktivierungen/Deaktivierungen
+- Keine JSONB-Komplexität  
+**Implications**:
+- property_features Tabelle mit feature_code: 'msv' | 'kaufy' | 'website_visibility'
+- UNIQUE(property_id, feature_code)
+- Status-Tracking: active/inactive mit Timestamps
+- RLS: nur Tenant-Owner + Platform Admin
+
+---
+
+## ADR-022: Immobilienportfolio als Source of Truth
+
+**Date**: 2026-01-21  
+**Decision**: Das Immobilienportfolio (Zone 2) ist die einzige Quelle der Wahrheit für alle Immobiliendaten.  
+**Reason**: 
+- Eigentümer/Vermieter pflegen Daten zentral
+- Mieter haben keinen Schreibzugriff auf Immobiliendaten
+- Alle Workflows (Miety, Kaufy) entstehen aus dem Portfolio  
+**Implications**:
+- Properties, Units nur durch Eigentümer editierbar
+- Mieter sehen nur eigene Leases (via renter_org_id)
+- Verkaufsaufträge, MSV entstehen aus Portfolio
+
+---
+
+## ADR-023: Vermieter-initiierter Invite-Flow
+
+**Date**: 2026-01-21  
+**Decision**: Mieter werden aktiv vom Vermieter per Einladung ins System geholt.  
+**Reason**: 
+- Vermieter kontrolliert wer Zugang erhält
+- Audit-Trail für alle Einladungen
+- Token-basierte Registrierung  
+**Implications**:
+- renter_invites Tabelle mit Token, Status, Ablaufdatum
+- Nur 1 pending Invite pro Lease (Partial Unique Index)
+- Bei Akzeptanz: renter_org erstellen, leases.renter_org_id setzen
+- 14 Tage Standardgültigkeit
+
+---
+
+## ADR-024: Explizites Document-Sharing
+
+**Date**: 2026-01-21  
+**Decision**: Dokumente werden nur über explizite access_grants geteilt, keine impliziten Berechtigungen.  
+**Reason**: 
+- Datenschutz: Mieter sehen nur freigegebene Dokumente
+- Audit-Trail für alle Freigaben
+- Granulare Kontrolle (view/download)  
+**Implications**:
+- access_grants Tabelle mit scope_type='document', subject_type='organization'
+- Status-Tracking: active/revoked/expired
+- Mieter-RLS prüft access_grants vor Dokumentzugriff
+- Keine automatischen Freigaben
 
 ---
 
