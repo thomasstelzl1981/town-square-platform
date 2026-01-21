@@ -12,7 +12,10 @@ import {
   Plug,
   Mail,
   Eye,
-  FileText
+  FileText,
+  CreditCard,
+  FileCheck,
+  Inbox
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,9 +55,11 @@ const masterDataItems = [
   { title: 'Master Contacts', url: '/admin/contacts', icon: Contact },
 ];
 
-// Module Management
-const moduleItems = [
-  { title: 'Tile Catalog', url: '/admin/tiles', icon: Grid3X3 },
+// Backbone
+const backboneItems = [
+  { title: 'Billing & Plans', url: '/admin/billing', icon: CreditCard },
+  { title: 'Agreements', url: '/admin/agreements', icon: FileCheck },
+  { title: 'Post & Documents', url: '/admin/inbox', icon: Inbox },
 ];
 
 // System
@@ -148,12 +153,33 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Module Management */}
+        {/* Feature Activation */}
         <SidebarGroup>
           <SidebarGroupLabel>Feature Activation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {moduleItems.map((item) => (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink 
+                    to="/admin/tiles"
+                    className="flex items-center gap-2 hover:bg-muted/50" 
+                    activeClassName="bg-muted text-primary font-medium"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                    <span>Tile Catalog</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Backbone */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Backbone</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {backboneItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 

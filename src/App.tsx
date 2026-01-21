@@ -22,6 +22,9 @@ import Integrations from "./pages/admin/Integrations";
 import CommunicationHub from "./pages/admin/CommunicationHub";
 import Oversight from "./pages/admin/Oversight";
 import AuditLog from "./pages/admin/AuditLog";
+import Billing from "./pages/admin/Billing";
+import Agreements from "./pages/admin/Agreements";
+import Inbox from "./pages/admin/Inbox";
 
 // Zone 2: Portfolio (Legacy - kept for reference)
 import PropertyList from "./pages/portfolio/PropertyList";
@@ -58,6 +61,9 @@ const App = () => (
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="oversight" element={<Oversight />} />
               <Route path="audit" element={<AuditLog />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="agreements" element={<Agreements />} />
+              <Route path="inbox" element={<Inbox />} />
               <Route path="support" element={<Support />} />
             </Route>
 

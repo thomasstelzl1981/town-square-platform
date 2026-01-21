@@ -76,6 +76,48 @@ export type Database = {
           },
         ]
       }
+      agreement_templates: {
+        Row: {
+          code: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          requires_consent: boolean
+          title: string
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+          version: number
+        }
+        Insert: {
+          code: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          requires_consent?: boolean
+          title: string
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+          version?: number
+        }
+        Update: {
+          code?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          requires_consent?: boolean
+          title?: string
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           actor_user_id: string
@@ -195,6 +237,208 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_items: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_contact_id: string | null
+          assigned_property_id: string | null
+          assigned_tenant_id: string | null
+          created_at: string
+          external_id: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size_bytes: number | null
+          id: string
+          metadata: Json
+          mime_type: string | null
+          notes: string | null
+          processed_at: string | null
+          recipient_info: Json
+          sender_info: Json
+          source: Database["public"]["Enums"]["inbound_source"]
+          status: Database["public"]["Enums"]["inbound_item_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_contact_id?: string | null
+          assigned_property_id?: string | null
+          assigned_tenant_id?: string | null
+          created_at?: string
+          external_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          recipient_info?: Json
+          sender_info?: Json
+          source: Database["public"]["Enums"]["inbound_source"]
+          status?: Database["public"]["Enums"]["inbound_item_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_contact_id?: string | null
+          assigned_property_id?: string | null
+          assigned_tenant_id?: string | null
+          created_at?: string
+          external_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          recipient_info?: Json
+          sender_info?: Json
+          source?: Database["public"]["Enums"]["inbound_source"]
+          status?: Database["public"]["Enums"]["inbound_item_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_items_assigned_contact_id_fkey"
+            columns: ["assigned_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_items_assigned_property_id_fkey"
+            columns: ["assigned_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_items_assigned_tenant_id_fkey"
+            columns: ["assigned_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_routing_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          match_conditions: Json
+          name: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          match_conditions?: Json
+          name: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          match_conditions?: Json
+          name?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          due_at: string | null
+          id: string
+          invoice_number: string
+          issued_at: string | null
+          line_items: Json
+          paid_at: string | null
+          pdf_url: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          stripe_invoice_id: string | null
+          subscription_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          due_at?: string | null
+          id?: string
+          invoice_number: string
+          issued_at?: string | null
+          line_items?: Json
+          paid_at?: string | null
+          pdf_url?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          due_at?: string | null
+          id?: string
+          invoice_number?: string
+          issued_at?: string | null
+          line_items?: Json
+          paid_at?: string | null
+          pdf_url?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -429,6 +673,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          display_order: number
+          features: Json
+          id: string
+          interval: Database["public"]["Enums"]["plan_interval"]
+          is_active: boolean
+          name: string
+          price_cents: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          id?: string
+          interval?: Database["public"]["Enums"]["plan_interval"]
+          is_active?: boolean
+          name: string
+          price_cents?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          id?: string
+          interval?: Database["public"]["Enums"]["plan_interval"]
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -775,6 +1067,66 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string
+          id: string
+          plan_id: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan_id: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_tile_activation: {
         Row: {
           activated_at: string
@@ -937,6 +1289,63 @@ export type Database = {
           },
         ]
       }
+      user_consents: {
+        Row: {
+          consented_at: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+          status: Database["public"]["Enums"]["consent_status"]
+          template_id: string
+          template_version: number
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          consented_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          status?: Database["public"]["Enums"]["consent_status"]
+          template_id: string
+          template_version: number
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          consented_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          status?: Database["public"]["Enums"]["consent_status"]
+          template_id?: string
+          template_version?: number
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_consents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_consents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -951,7 +1360,11 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      consent_status: "accepted" | "declined" | "withdrawn"
       delegation_status: "active" | "revoked" | "expired"
+      inbound_item_status: "pending" | "assigned" | "archived" | "rejected"
+      inbound_source: "caya" | "email" | "upload" | "api"
+      invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
       membership_role:
         | "platform_admin"
         | "org_admin"
@@ -959,6 +1372,8 @@ export type Database = {
         | "sales_partner"
         | "renter_user"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
+      plan_interval: "monthly" | "yearly"
+      subscription_status: "active" | "cancelled" | "past_due" | "trialing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1086,7 +1501,11 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      consent_status: ["accepted", "declined", "withdrawn"],
       delegation_status: ["active", "revoked", "expired"],
+      inbound_item_status: ["pending", "assigned", "archived", "rejected"],
+      inbound_source: ["caya", "email", "upload", "api"],
+      invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
       membership_role: [
         "platform_admin",
         "org_admin",
@@ -1095,6 +1514,8 @@ export const Constants = {
         "renter_user",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
+      plan_interval: ["monthly", "yearly"],
+      subscription_status: ["active", "cancelled", "past_due", "trialing"],
     },
   },
 } as const
