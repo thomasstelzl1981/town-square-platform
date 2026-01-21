@@ -255,17 +255,18 @@ MEETY.IO (Marketing)
 
 ## 5. UMSETZUNGSSTRATEGIE (6 Etappen)
 
-### Etappe 1: Admin Feature-Complete
+### Etappe 1: Admin Feature-Complete ✅ ABGESCHLOSSEN (21.01.2026)
 **Scope:** Memberships CRUD, Delegations Scope-Picker, Oversight Drill-Down, Audit Log
 
-**Definition of Done:**
-- [ ] Memberships: Edit + Delete mit Confirmation
-- [ ] Delegations: visueller Scope-Picker
-- [ ] Oversight: Klickbare Tenant-Details
-- [ ] Audit Log: Event-Viewer mit Filter
+**Umgesetzt:**
+- [x] Memberships: Edit-Dialog + Delete mit Confirmation
+- [x] Delegations: visueller Scope-Picker (20 Scopes, kategorisiert)
+- [x] Oversight: Klickbare Tenant-Details + Immobilien-/Modul-Listen
+- [x] Audit Log: Event-Viewer mit Filter (`/admin/audit`)
 
-**Risiken:** Gering  
-**Abhängigkeiten:** Keine
+**Neue Dateien:**
+- `src/components/admin/ScopePicker.tsx`
+- `src/pages/admin/AuditLog.tsx`
 
 ---
 
@@ -356,7 +357,8 @@ MEETY.IO (Marketing)
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
-| 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan, 50-Route-Matrix, Zone 3 Integration, ADRs 028-033 |
+| 2026-01-21 | 3.1 | **Etappe 1 abgeschlossen**: Memberships Edit/Delete, Scope-Picker, Oversight Drill-Downs, Audit Log |
+| 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan, 50-Route-Matrix |
 | 2026-01-21 | 2.2 | Etappenplan v2, Super-User Blueprint |
 | 2026-01-20 | 2.0 | Tile-Catalog, Portal-Framework |
 | 2026-01-19 | 1.0 | Initiale Foundation |

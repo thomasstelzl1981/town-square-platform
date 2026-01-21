@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -12,16 +14,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Building2, 
   Users, 
   LayoutGrid, 
   Building,
   Loader2,
-  CheckCircle,
-  Clock,
-  AlertCircle
+  Eye,
+  ArrowRight,
+  Home,
+  FileText
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface OverviewStats {
   organizations: number;
@@ -40,8 +51,30 @@ interface OrgOverview {
   activeTileCount: number;
 }
 
+interface PropertyOverview {
+  id: string;
+  name: string;
+  street: string;
+  city: string;
+  tenant_id: string;
+  tenant_name: string;
+  unit_count: number;
+  created_at: string;
+}
+
+interface TileActivation {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  tile_code: string;
+  tile_name: string;
+  status: string;
+  activated_at: string;
+}
+
 export default function Oversight() {
   const { isPlatformAdmin } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<OverviewStats>({
     organizations: 0,
@@ -50,6 +83,12 @@ export default function Oversight() {
     activeTiles: 0,
   });
   const [orgOverviews, setOrgOverviews] = useState<OrgOverview[]>([]);
+  const [propertyOverviews, setPropertyOverviews] = useState<PropertyOverview[]>([]);
+  const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
+
+  // Detail dialogs
+  const [selectedOrg, setSelectedOrg] = useState<OrgOverview | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyOverview | null>(null);
 
   useEffect(() => {
     if (isPlatformAdmin) {
@@ -60,20 +99,23 @@ export default function Oversight() {
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch counts
-      const [orgsRes, profilesRes, propertiesRes, tilesRes, membershipsRes, activationsRes] = await Promise.all([
+      const [orgsRes, profilesRes, propertiesRes, tilesRes, membershipsRes, activationsRes, unitsRes, catalogRes] = await Promise.all([
         supabase.from('organizations').select('*'),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('properties').select('*'),
         supabase.from('tenant_tile_activation').select('*').eq('status', 'active'),
         supabase.from('memberships').select('*'),
-        supabase.from('tenant_tile_activation').select('*').eq('status', 'active'),
+        supabase.from('tenant_tile_activation').select('*'),
+        supabase.from('units').select('*'),
+        supabase.from('tile_catalog').select('*'),
       ]);
 
       const orgs = orgsRes.data || [];
       const properties = propertiesRes.data || [];
       const memberships = membershipsRes.data || [];
       const activations = activationsRes.data || [];
+      const units = unitsRes.data || [];
+      const catalog = catalogRes.data || [];
 
       setStats({
         organizations: orgs.length,
@@ -90,10 +132,35 @@ export default function Oversight() {
         created_at: org.created_at,
         memberCount: memberships.filter(m => m.tenant_id === org.id).length,
         propertyCount: properties.filter(p => p.tenant_id === org.id).length,
-        activeTileCount: activations.filter(a => a.tenant_id === org.id).length,
+        activeTileCount: activations.filter(a => a.tenant_id === org.id && a.status === 'active').length,
       }));
-
       setOrgOverviews(overviews);
+
+      // Build property overviews
+      const propOverviews: PropertyOverview[] = properties.map(prop => ({
+        id: prop.id,
+        name: prop.address || prop.code || 'Unnamed',
+        street: prop.address || '',
+        city: prop.city || '',
+        tenant_id: prop.tenant_id,
+        tenant_name: orgs.find(o => o.id === prop.tenant_id)?.name || 'Unknown',
+        unit_count: units.filter(u => u.property_id === prop.id).length,
+        created_at: prop.created_at,
+      }));
+      setPropertyOverviews(propOverviews);
+
+      // Build tile activations
+      const tileActs: TileActivation[] = activations.map(act => ({
+        id: act.id,
+        tenant_id: act.tenant_id,
+        tenant_name: orgs.find(o => o.id === act.tenant_id)?.name || 'Unknown',
+        tile_code: act.tile_code,
+        tile_name: catalog.find(c => c.tile_code === act.tile_code)?.title || act.tile_code,
+        status: act.status,
+        activated_at: act.activated_at || act.created_at,
+      }));
+      setTileActivations(tileActs);
+
     } catch (error) {
       console.error('Error fetching oversight data:', error);
     } finally {
@@ -200,6 +267,7 @@ export default function Oversight() {
                   <TableHead className="text-right">Immobilien</TableHead>
                   <TableHead className="text-right">Module</TableHead>
                   <TableHead>Erstellt</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,7 +281,23 @@ export default function Oversight() {
                     <TableCell className="text-right">{org.propertyCount}</TableCell>
                     <TableCell className="text-right">{org.activeTileCount}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(org.created_at).toLocaleDateString('de-DE')}
+                      {format(new Date(org.created_at), 'dd.MM.yyyy', { locale: de })}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedOrg(org)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/admin/organizations/${org.id}`)}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -223,31 +307,213 @@ export default function Oversight() {
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
-          <Card className="p-8 text-center text-muted-foreground">
-            <Building className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">Immobilien-Übersicht</p>
-            <p className="text-sm">
-              Systemweite Sicht auf alle {stats.properties} Immobilien
-            </p>
-            <p className="text-xs mt-2">
-              Detailansicht in Entwicklung
-            </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Alle Immobilien</CardTitle>
+              <CardDescription>Systemweite Übersicht aller {propertyOverviews.length} Immobilien</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {propertyOverviews.length === 0 ? (
+                <div className="text-center py-8">
+                  <Home className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                  <p className="mt-2 text-muted-foreground">Keine Immobilien gefunden</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Adresse</TableHead>
+                      <TableHead>Eigentümer</TableHead>
+                      <TableHead className="text-right">Einheiten</TableHead>
+                      <TableHead>Erstellt</TableHead>
+                      <TableHead className="text-right">Aktionen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {propertyOverviews.map(prop => (
+                      <TableRow key={prop.id}>
+                        <TableCell className="font-medium">{prop.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {prop.street ? `${prop.street}, ${prop.city}` : prop.city || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{prop.tenant_name}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{prop.unit_count}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(prop.created_at), 'dd.MM.yyyy', { locale: de })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedProperty(prop)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="modules" className="space-y-4">
-          <Card className="p-8 text-center text-muted-foreground">
-            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">Modul-Status</p>
-            <p className="text-sm">
-              {stats.activeTiles} aktive Modul-Aktivierungen im System
-            </p>
-            <p className="text-xs mt-2">
-              Detailansicht in Entwicklung
-            </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Modul-Aktivierungen</CardTitle>
+              <CardDescription>{tileActivations.length} Aktivierungen im System</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {tileActivations.length === 0 ? (
+                <div className="text-center py-8">
+                  <LayoutGrid className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                  <p className="mt-2 text-muted-foreground">Keine Modul-Aktivierungen gefunden</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Modul</TableHead>
+                      <TableHead>Tenant</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Aktiviert</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tileActivations.map(act => (
+                      <TableRow key={act.id}>
+                        <TableCell className="font-medium">{act.tile_name}</TableCell>
+                        <TableCell>{act.tenant_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={act.status === 'active' ? 'default' : 'secondary'}>
+                            {act.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(act.activated_at), 'dd.MM.yyyy', { locale: de })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Org Detail Dialog */}
+      <Dialog open={!!selectedOrg} onOpenChange={() => setSelectedOrg(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Organisation: {selectedOrg?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedOrg && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Typ</p>
+                  <Badge variant="outline" className="mt-1">{selectedOrg.org_type}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Erstellt</p>
+                  <p className="mt-1">{format(new Date(selectedOrg.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <Users className="h-6 w-6 mx-auto text-primary" />
+                    <p className="text-2xl font-bold mt-2">{selectedOrg.memberCount}</p>
+                    <p className="text-xs text-muted-foreground">Mitglieder</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <Building className="h-6 w-6 mx-auto text-primary" />
+                    <p className="text-2xl font-bold mt-2">{selectedOrg.propertyCount}</p>
+                    <p className="text-xs text-muted-foreground">Immobilien</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <LayoutGrid className="h-6 w-6 mx-auto text-primary" />
+                    <p className="text-2xl font-bold mt-2">{selectedOrg.activeTileCount}</p>
+                    <p className="text-xs text-muted-foreground">Module</p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedOrg(null);
+                    navigate(`/admin/users?org=${selectedOrg.id}`);
+                  }}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Mitglieder verwalten
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedOrg(null);
+                    navigate(`/admin/organizations/${selectedOrg.id}`);
+                  }}
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Zur Organisation
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Property Detail Dialog */}
+      <Dialog open={!!selectedProperty} onOpenChange={() => setSelectedProperty(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Immobilie: {selectedProperty?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedProperty && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Adresse</p>
+                  <p className="mt-1">
+                    {selectedProperty.street || '—'}<br />
+                    {selectedProperty.city || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Eigentümer</p>
+                  <Badge variant="outline" className="mt-1">{selectedProperty.tenant_name}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Einheiten</p>
+                  <p className="text-2xl font-bold mt-1">{selectedProperty.unit_count}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Erstellt</p>
+                  <p className="mt-1">{format(new Date(selectedProperty.created_at), 'dd.MM.yyyy', { locale: de })}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Property ID</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{selectedProperty.id}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

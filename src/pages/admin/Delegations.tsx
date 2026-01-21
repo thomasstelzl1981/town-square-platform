@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -49,8 +48,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Loader2, Link2, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, Loader2, Link2, XCircle, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { ScopePicker, AVAILABLE_SCOPES } from '@/components/admin/ScopePicker';
 
 type OrgDelegation = Tables<'org_delegations'>;
 type Organization = Tables<'organizations'>;
@@ -70,9 +70,12 @@ export default function DelegationsPage() {
   const [newDelegation, setNewDelegation] = useState({
     delegate_org_id: '',
     target_org_id: '',
-    scopes: '["listings:read", "contacts:read"]',
+    scopes: [] as string[],
     expires_at: '',
   });
+
+  // Detail view dialog
+  const [viewTarget, setViewTarget] = useState<OrgDelegation | null>(null);
 
   // Revoke confirmation
   const [revokeTarget, setRevokeTarget] = useState<OrgDelegation | null>(null);
@@ -115,6 +118,10 @@ export default function DelegationsPage() {
     }
   };
 
+  const getScopeLabel = (scopeValue: string) => {
+    return AVAILABLE_SCOPES.find(s => s.value === scopeValue)?.label || scopeValue;
+  };
+
   const handleCreate = async () => {
     if (!newDelegation.delegate_org_id || !newDelegation.target_org_id) {
       setCreateError('Delegate and target organizations are required');
@@ -126,13 +133,8 @@ export default function DelegationsPage() {
       return;
     }
 
-    // Validate scopes JSON
-    let parsedScopes;
-    try {
-      parsedScopes = JSON.parse(newDelegation.scopes);
-      if (!Array.isArray(parsedScopes)) throw new Error('Scopes must be an array');
-    } catch {
-      setCreateError('Invalid scopes JSON. Must be a valid JSON array.');
+    if (newDelegation.scopes.length === 0) {
+      setCreateError('At least one scope must be selected');
       return;
     }
 
@@ -145,7 +147,7 @@ export default function DelegationsPage() {
         .insert({
           delegate_org_id: newDelegation.delegate_org_id,
           target_org_id: newDelegation.target_org_id,
-          scopes: parsedScopes,
+          scopes: newDelegation.scopes,
           granted_by: user!.id,
           expires_at: newDelegation.expires_at || null,
         });
@@ -156,7 +158,7 @@ export default function DelegationsPage() {
       setNewDelegation({
         delegate_org_id: '',
         target_org_id: '',
-        scopes: '["listings:read", "contacts:read"]',
+        scopes: [],
         expires_at: '',
       });
       fetchData();
@@ -191,7 +193,9 @@ export default function DelegationsPage() {
 
   const formatScopes = (scopes: any) => {
     if (Array.isArray(scopes)) {
-      return scopes.slice(0, 3).join(', ') + (scopes.length > 3 ? ` +${scopes.length - 3} more` : '');
+      if (scopes.length === 0) return 'Keine';
+      return scopes.slice(0, 2).map(s => getScopeLabel(s)).join(', ') + 
+        (scopes.length > 2 ? ` +${scopes.length - 2}` : '');
     }
     return JSON.stringify(scopes);
   };
@@ -210,7 +214,7 @@ export default function DelegationsPage() {
               New Delegation
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Delegation</DialogTitle>
               <DialogDescription>
@@ -226,57 +230,54 @@ export default function DelegationsPage() {
             )}
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="delegate_org">Delegate Organization (who gets access)</Label>
-                <Select
-                  value={newDelegation.delegate_org_id}
-                  onValueChange={(value) => setNewDelegation(prev => ({ ...prev, delegate_org_id: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map(org => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="delegate_org">Delegate Organization</Label>
+                  <Select
+                    value={newDelegation.delegate_org_id}
+                    onValueChange={(value) => setNewDelegation(prev => ({ ...prev, delegate_org_id: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Who gets access" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Who gets access</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="target_org">Target Organization</Label>
+                  <Select
+                    value={newDelegation.target_org_id}
+                    onValueChange={(value) => setNewDelegation(prev => ({ ...prev, target_org_id: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Whose resources" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Whose resources</p>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="target_org">Target Organization (whose resources)</Label>
-                <Select
-                  value={newDelegation.target_org_id}
-                  onValueChange={(value) => setNewDelegation(prev => ({ ...prev, target_org_id: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map(org => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="scopes">Scopes (JSON array)</Label>
-                <Textarea
-                  id="scopes"
+                <Label>Scopes (Berechtigungen)</Label>
+                <ScopePicker
                   value={newDelegation.scopes}
-                  onChange={(e) => setNewDelegation(prev => ({ ...prev, scopes: e.target.value }))}
-                  placeholder='["listings:read", "contacts:read"]'
-                  rows={3}
-                  className="font-mono text-sm"
+                  onChange={(scopes) => setNewDelegation(prev => ({ ...prev, scopes }))}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Example scopes: listings:read, listings:write, contacts:read, documents:read
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -371,7 +372,14 @@ export default function DelegationsPage() {
                         ? format(new Date(delegation.expires_at), 'MMM d, yyyy')
                         : '—'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewTarget(delegation)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       {delegation.status === 'active' && (
                         <Button
                           variant="ghost"
@@ -381,11 +389,6 @@ export default function DelegationsPage() {
                           <XCircle className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
-                      {delegation.status === 'revoked' && delegation.revoked_at && (
-                        <span className="text-xs text-muted-foreground">
-                          Revoked {format(new Date(delegation.revoked_at), 'MMM d')}
-                        </span>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -394,6 +397,64 @@ export default function DelegationsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail View Dialog */}
+      <Dialog open={!!viewTarget} onOpenChange={() => setViewTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delegation Details</DialogTitle>
+          </DialogHeader>
+          {viewTarget && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Delegate</p>
+                  <p className="mt-1">{getOrgName(viewTarget.delegate_org_id)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Target</p>
+                  <p className="mt-1">{getOrgName(viewTarget.target_org_id)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Status</p>
+                  <Badge variant={getStatusVariant(viewTarget.status)} className="mt-1">
+                    {viewTarget.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Granted</p>
+                  <p className="mt-1">{format(new Date(viewTarget.granted_at), 'dd.MM.yyyy HH:mm')}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Scopes ({Array.isArray(viewTarget.scopes) ? viewTarget.scopes.length : 0})</p>
+                <div className="flex flex-wrap gap-1">
+                  {Array.isArray(viewTarget.scopes) && viewTarget.scopes.map((scope: string) => (
+                    <Badge key={scope} variant="secondary" className="text-xs">
+                      {getScopeLabel(scope)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {viewTarget.status === 'revoked' && viewTarget.revoked_at && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revoked</p>
+                  <p className="mt-1 text-destructive">
+                    {format(new Date(viewTarget.revoked_at), 'dd.MM.yyyy HH:mm')}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Delegation ID</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{viewTarget.id}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Revoke Confirmation */}
       <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>

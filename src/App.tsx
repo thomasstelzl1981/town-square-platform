@@ -21,6 +21,7 @@ import TileCatalog from "./pages/admin/TileCatalog";
 import Integrations from "./pages/admin/Integrations";
 import CommunicationHub from "./pages/admin/CommunicationHub";
 import Oversight from "./pages/admin/Oversight";
+import AuditLog from "./pages/admin/AuditLog";
 
 // Zone 2: Portfolio (Legacy - kept for reference)
 import PropertyList from "./pages/portfolio/PropertyList";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="integrations" element={<Integrations />} />
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="oversight" element={<Oversight />} />
+              <Route path="audit" element={<AuditLog />} />
               <Route path="support" element={<Support />} />
             </Route>
 

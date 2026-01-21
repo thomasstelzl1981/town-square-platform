@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Loader2, Users, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Membership = Tables<'memberships'>;
@@ -86,6 +86,12 @@ export default function UsersPage() {
     tenant_id: orgFilter || '',
     role: '' as MembershipRole | '',
   });
+
+  // Edit membership dialog
+  const [editTarget, setEditTarget] = useState<Membership | null>(null);
+  const [editRole, setEditRole] = useState<MembershipRole | ''>('');
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Membership | null>(null);
@@ -131,7 +137,19 @@ export default function UsersPage() {
     return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
+  const canEditMembership = (membership: Membership) => {
+    // Can't edit your own membership
+    if (membership.user_id === user?.id) return false;
+    // Platform admin can edit any
+    if (isPlatformAdmin) return true;
+    // org_admin cannot edit platform_admin memberships
+    if (membership.role === 'platform_admin') return false;
+    return true;
+  };
+
   const canDeleteMembership = (membership: Membership) => {
+    // Can't delete your own membership
+    if (membership.user_id === user?.id) return false;
     // Platform admin can delete any
     if (isPlatformAdmin) return true;
     // org_admin cannot delete platform_admin memberships
@@ -178,6 +196,35 @@ export default function UsersPage() {
     setCreating(false);
   };
 
+  const handleEdit = async () => {
+    if (!editTarget || !editRole) return;
+
+    // Only platform_admin can assign platform_admin role
+    if (editRole === 'platform_admin' && !isPlatformAdmin) {
+      setEditError('Only platform admins can assign the platform_admin role');
+      return;
+    }
+
+    setEditing(true);
+    setEditError(null);
+
+    try {
+      const { error } = await supabase
+        .from('memberships')
+        .update({ role: editRole as MembershipRole })
+        .eq('id', editTarget.id);
+
+      if (error) throw error;
+
+      setEditTarget(null);
+      setEditRole('');
+      fetchData();
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update membership');
+    }
+    setEditing(false);
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
@@ -195,6 +242,12 @@ export default function UsersPage() {
     }
     setDeleting(false);
     setDeleteTarget(null);
+  };
+
+  const openEditDialog = (membership: Membership) => {
+    setEditTarget(membership);
+    setEditRole(membership.role as MembershipRole);
+    setEditError(null);
   };
 
   const availableRoles = isPlatformAdmin 
@@ -355,8 +408,17 @@ export default function UsersPage() {
                     <TableCell className="text-muted-foreground">
                       {format(new Date(membership.created_at), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {canDeleteMembership(membership) && membership.user_id !== user?.id && (
+                    <TableCell className="text-right space-x-1">
+                      {canEditMembership(membership) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(membership)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDeleteMembership(membership) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -373,6 +435,71 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Membership</DialogTitle>
+            <DialogDescription>
+              Change the role for this membership.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{editError}</AlertDescription>
+            </Alert>
+          )}
+
+          {editTarget && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>User ID</Label>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {editTarget.user_id}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Organization</Label>
+                <p className="text-sm">
+                  {getOrgName(editTarget.tenant_id)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">New Role</Label>
+                <Select
+                  value={editRole}
+                  onValueChange={(value) => setEditRole(value as MembershipRole)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                        {role.restricted && ' ⚠️'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={editing || !editRole}>
+              {editing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
