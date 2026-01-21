@@ -50,6 +50,7 @@ const ORG_TYPE_HIERARCHY: Record<OrgType, OrgType[]> = {
   partner: ['sub_partner', 'client'],
   sub_partner: ['client'],
   client: [],
+  renter: [], // Renters cannot create child organizations
 };
 
 export default function Organizations() {
