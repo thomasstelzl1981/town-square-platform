@@ -1,0 +1,447 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Tables } from '@/integrations/supabase/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Search, Loader2, Users, Mail, Phone, Building } from 'lucide-react';
+import { toast } from 'sonner';
+
+type Contact = Tables<'contacts'>;
+type Organization = Tables<'organizations'>;
+
+export default function MasterContacts() {
+  const { isPlatformAdmin, activeOrganization } = useAuth();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTenant, setFilterTenant] = useState<string>('all');
+
+  // Form state
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    company: '',
+    notes: '',
+    tenant_id: '',
+  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const [contactsRes, orgsRes] = await Promise.all([
+        supabase.from('contacts').select('*').order('last_name'),
+        supabase.from('organizations').select('*').order('name'),
+      ]);
+
+      if (contactsRes.error) throw contactsRes.error;
+      if (orgsRes.error) throw orgsRes.error;
+
+      setContacts(contactsRes.data || []);
+      setOrganizations(orgsRes.data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Fehler beim Laden der Kontakte');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function resetForm() {
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      company: '',
+      notes: '',
+      tenant_id: activeOrganization?.id || '',
+    });
+    setEditingId(null);
+  }
+
+  async function handleSave() {
+    if (!formData.first_name || !formData.last_name || !formData.tenant_id) {
+      toast.error('Vorname, Nachname und Tenant sind erforderlich');
+      return;
+    }
+
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from('contacts')
+          .update({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            company: formData.company || null,
+            notes: formData.notes || null,
+          })
+          .eq('id', editingId);
+
+        if (error) throw error;
+        toast.success('Kontakt aktualisiert');
+      } else {
+        const { error } = await supabase.from('contacts').insert({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          company: formData.company || null,
+          notes: formData.notes || null,
+          tenant_id: formData.tenant_id,
+        });
+
+        if (error) throw error;
+        toast.success('Kontakt erstellt');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error('Error saving contact:', error);
+      toast.error(error.message || 'Fehler beim Speichern');
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Kontakt wirklich löschen?')) return;
+
+    try {
+      const { error } = await supabase.from('contacts').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Kontakt gelöscht');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Fehler beim Löschen');
+    }
+  }
+
+  function handleEdit(contact: Contact) {
+    setFormData({
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email || '',
+      phone: contact.phone || '',
+      company: contact.company || '',
+      notes: contact.notes || '',
+      tenant_id: contact.tenant_id,
+    });
+    setEditingId(contact.id);
+    setDialogOpen(true);
+  }
+
+  function getOrgName(tenantId: string) {
+    return organizations.find(o => o.id === tenantId)?.name || 'Unbekannt';
+  }
+
+  const filteredContacts = contacts.filter(c => {
+    const matchesSearch =
+      searchQuery === '' ||
+      `${c.first_name} ${c.last_name} ${c.email || ''} ${c.company || ''}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+    const matchesTenant = filterTenant === 'all' || c.tenant_id === filterTenant;
+    return matchesSearch && matchesTenant;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Master Contacts</h1>
+          <p className="text-muted-foreground">
+            Zentrale Kontaktverwaltung für alle Tenants
+          </p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetForm();
+        }}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Neuer Kontakt
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? 'Kontakt bearbeiten' : 'Neuer Kontakt'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Vorname *</Label>
+                  <Input
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nachname *</Label>
+                  <Input
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>E-Mail</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefon</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Firma</Label>
+                <Input
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                />
+              </div>
+              {!editingId && (
+                <div className="space-y-2">
+                  <Label>Tenant *</Label>
+                  <Select
+                    value={formData.tenant_id}
+                    onValueChange={(val) => setFormData({ ...formData, tenant_id: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tenant wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Notizen</Label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSave}>
+                  {editingId ? 'Aktualisieren' : 'Erstellen'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Gesamt
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <span className="text-2xl font-bold">{contacts.length}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Mit E-Mail
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              <span className="text-2xl font-bold">
+                {contacts.filter(c => c.email).length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Mit Telefon
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              <span className="text-2xl font-bold">
+                {contacts.filter(c => c.phone).length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Firmen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Building className="h-4 w-4 text-primary" />
+              <span className="text-2xl font-bold">
+                {contacts.filter(c => c.company).length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Suchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {isPlatformAdmin && (
+          <Select value={filterTenant} onValueChange={setFilterTenant}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Alle Tenants" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Tenants</SelectItem>
+              {organizations.map(org => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>E-Mail</TableHead>
+              <TableHead>Telefon</TableHead>
+              <TableHead>Firma</TableHead>
+              <TableHead>Tenant</TableHead>
+              <TableHead className="w-24">Aktionen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredContacts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  Keine Kontakte gefunden
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredContacts.map(contact => (
+                <TableRow key={contact.id}>
+                  <TableCell className="font-medium">
+                    {contact.first_name} {contact.last_name}
+                  </TableCell>
+                  <TableCell>{contact.email || '—'}</TableCell>
+                  <TableCell>{contact.phone || '—'}</TableCell>
+                  <TableCell>{contact.company || '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{getOrgName(contact.tenant_id)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(contact)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => handleDelete(contact.id)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}

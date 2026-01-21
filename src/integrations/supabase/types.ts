@@ -775,6 +775,108 @@ export type Database = {
           },
         ]
       }
+      tenant_tile_activation: {
+        Row: {
+          activated_at: string
+          activated_by: string | null
+          created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
+          id: string
+          status: string
+          tenant_id: string
+          tile_code: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string
+          activated_by?: string | null
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          id?: string
+          status?: string
+          tenant_id: string
+          tile_code: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string
+          activated_by?: string | null
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          id?: string
+          status?: string
+          tenant_id?: string
+          tile_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_tile_activation_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_tile_activation_tile_code_fkey"
+            columns: ["tile_code"]
+            isOneToOne: false
+            referencedRelation: "tile_catalog"
+            referencedColumns: ["tile_code"]
+          },
+        ]
+      }
+      tile_catalog: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          icon_key: string
+          id: string
+          is_active: boolean
+          main_tile_route: string
+          main_tile_title: string
+          sub_tiles: Json
+          tile_code: string
+          title: string
+          updated_at: string
+          zone: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon_key?: string
+          id?: string
+          is_active?: boolean
+          main_tile_route: string
+          main_tile_title: string
+          sub_tiles?: Json
+          tile_code: string
+          title: string
+          updated_at?: string
+          zone?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon_key?: string
+          id?: string
+          is_active?: boolean
+          main_tile_route?: string
+          main_tile_title?: string
+          sub_tiles?: Json
+          tile_code?: string
+          title?: string
+          updated_at?: string
+          zone?: number
+        }
+        Relationships: []
+      }
       units: {
         Row: {
           ancillary_costs: number | null
