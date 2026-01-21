@@ -1,5 +1,18 @@
 import { useLocation } from 'react-router-dom';
-import { Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown } from 'lucide-react';
+import { 
+  Building2, 
+  Users, 
+  Link2, 
+  LifeBuoy, 
+  LayoutDashboard, 
+  LogOut, 
+  ChevronDown,
+  Contact,
+  Grid3X3,
+  Plug,
+  Mail,
+  Eye
+} from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -13,7 +26,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -26,14 +38,32 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-const navItems = [
+// Core Foundation
+const foundationItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
-  { title: 'Immobilien', url: '/portfolio', icon: Building2 },
   { title: 'Organizations', url: '/admin/organizations', icon: Building2 },
   { title: 'Users & Memberships', url: '/admin/users', icon: Users },
   { title: 'Delegations', url: '/admin/delegations', icon: Link2 },
 ];
 
+// Master Data
+const masterDataItems = [
+  { title: 'Master Contacts', url: '/admin/contacts', icon: Contact },
+];
+
+// Module Management
+const moduleItems = [
+  { title: 'Tile Catalog', url: '/admin/tiles', icon: Grid3X3 },
+];
+
+// System
+const systemItems = [
+  { title: 'Integrations', url: '/admin/integrations', icon: Plug },
+  { title: 'Communication Hub', url: '/admin/communication', icon: Mail },
+  { title: 'Oversight', url: '/admin/oversight', icon: Eye },
+];
+
+// Platform Admin Only
 const platformAdminItems = [
   { title: 'Support Mode', url: '/admin/support', icon: LifeBuoy },
 ];
@@ -69,11 +99,12 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Foundation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Tenants & Access</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {foundationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 
@@ -92,6 +123,76 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Master Data */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Master Data</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {masterDataItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-2 hover:bg-muted/50" 
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Module Management */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Feature Activation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {moduleItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-2 hover:bg-muted/50" 
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* System */}
+        <SidebarGroup>
+          <SidebarGroupLabel>System</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {systemItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-2 hover:bg-muted/50" 
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Platform Admin */}
         {isPlatformAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Platform Admin</SidebarGroupLabel>
