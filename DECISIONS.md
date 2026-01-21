@@ -382,6 +382,79 @@
 
 ---
 
+## ADR-025: Tile Catalog & Tenant Activation for Zone 2 Modules
+
+**Date**: 2026-01-21  
+**Decision**: Zone 2 module visibility is controlled by `tile_catalog` (module definitions) and `tenant_tile_activation` (per-tenant activation).  
+**Reason**: 
+- Centralized module registry enables consistent UI rendering
+- Per-tenant activation allows business flexibility
+- Decouples module definitions from code  
+**Implications**:
+- `tile_catalog`: tile_code, title, description, icon_key, zone, display_order, main_tile (title + route), sub_tiles (4 items)
+- `tenant_tile_activation`: tenant_id + tile_code + status (active/inactive) + audit fields
+- Zone 2 UI queries both tables to render available modules
+- Admin Portal manages catalog and activations
+- Platform Admin can define new modules without code changes
+
+---
+
+## ADR-026: Admin Portal as Zone 1 Control Center
+
+**Date**: 2026-01-21  
+**Decision**: Admin Portal (Zone 1) is the exclusive control center for platform operations, managing tenants, users, modules, and system configuration.  
+**Reason**: 
+- Clear separation between operator tools and end-user workspaces
+- Scalable architecture for enterprise operations
+- Enables Zone 2 to focus purely on business workflows  
+**Implications**:
+- Admin Portal contains: Organizations, Users, Delegations, Master Contacts, Tile Catalog, Integrations, Communication Hub, Oversight
+- No business modules (Immobilien, Kaufy, Miety) in Admin Portal
+- Platform Admin has God Mode access across all sections
+- All configuration changes audited
+
+---
+
+## ADR-027: Zone 2 User Portal Framework
+
+**Date**: 2026-01-21  
+**Decision**: Zone 2 is a modular, tile-based user portal with mobile-first design and dynamic module rendering.  
+**Reason**: 
+- End users need a focused, task-oriented interface
+- Tile-based UI enables intuitive navigation
+- Dynamic rendering from tile_catalog enables flexible feature activation  
+**Implications**:
+- Homescreen displays activated tiles only (from tenant_tile_activation)
+- Each module has 1 main tile + 4 sub-tiles
+- Routing follows pattern: /portal/:moduleCode/:subRoute
+- Module registry in code maps tile_code to routes and components
+- Tenant switcher available in portal shell
+
+---
+
+## Changelog
+
+### 2026-01-21: Architecture Reset
+
+**Admin Portal (Zone 1) Backbone:**
+- New pages: MasterContacts, TileCatalog, Integrations, CommunicationHub, Oversight
+- Sidebar restructured: Tenants & Access, Master Data, Feature Activation, System, Platform Admin
+- All routes registered in App.tsx
+
+**User Portal (Zone 2) Framework:**
+- PortalHome with iOS-style tile homescreen
+- ModulePlaceholder for sub-routes
+- Dynamic rendering from tile_catalog + tenant_tile_activation
+- 7 modules seeded: immobilien, kaufy, miety, dokumente, kommunikation, services, einstellungen
+
+**Database:**
+- tile_catalog table with module definitions
+- tenant_tile_activation table with per-tenant status
+- RLS policies for both tables
+- Default modules seeded
+
+---
+
 ## Template for Future Decisions
 
 ```markdown
