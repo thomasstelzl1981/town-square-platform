@@ -1,0 +1,475 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, Loader2, AlertTriangle, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+
+const PROPERTY_TYPES = ['MFH', 'DHH', 'RH', 'ETW', 'EFH', 'Gewerbe', 'Grundstück'];
+const USAGE_TYPES = ['Vermietung', 'Verkauf', 'Leerstand', 'Eigennutzung'];
+const ENERGY_SOURCES = ['Gas', 'Öl', 'Strom', 'Fernwärme', 'Wärmepumpe', 'Solar', 'Pellets'];
+const HEATING_TYPES = ['Zentralheizung', 'Etagenheizung', 'Gastherme', 'Fußbodenheizung', 'Wärmepumpe'];
+
+export default function PropertyForm() {
+  const navigate = useNavigate();
+  const { activeOrganization, user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // DB-Felder (Dashboard)
+  const [dbFields, setDbFields] = useState({
+    code: '',
+    property_type: 'MFH',
+    city: '',
+    address: '',
+    total_area_sqm: '',
+    usage_type: 'Vermietung',
+    annual_income: '',
+    market_value: '',
+    management_fee: '',
+  });
+
+  // E-Felder (Exposé)
+  const [eFields, setEFields] = useState({
+    postal_code: '',
+    year_built: '',
+    renovation_year: '',
+    land_register_court: '',
+    land_register_sheet: '',
+    land_register_volume: '',
+    parcel_number: '',
+    unit_ownership_nr: '',
+    notary_date: '',
+    bnl_date: '',
+    purchase_price: '',
+    energy_source: '',
+    heating_type: '',
+    description: '',
+  });
+
+  const handleDbChange = (field: string, value: string) => {
+    setDbFields(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEChange = (field: string, value: string) => {
+    setEFields(prev => ({ ...prev, [field]: value }));
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    
+    if (!activeOrganization) {
+      setError('Keine Organisation ausgewählt');
+      return;
+    }
+
+    if (!dbFields.city || !dbFields.address) {
+      setError('Ort und Adresse sind Pflichtfelder');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const propertyData = {
+        tenant_id: activeOrganization.id,
+        // DB-Felder
+        code: dbFields.code || null,
+        property_type: dbFields.property_type,
+        city: dbFields.city,
+        address: dbFields.address,
+        total_area_sqm: dbFields.total_area_sqm ? parseFloat(dbFields.total_area_sqm) : null,
+        usage_type: dbFields.usage_type,
+        annual_income: dbFields.annual_income ? parseFloat(dbFields.annual_income) : null,
+        market_value: dbFields.market_value ? parseFloat(dbFields.market_value) : null,
+        management_fee: dbFields.management_fee ? parseFloat(dbFields.management_fee) : null,
+        // E-Felder
+        postal_code: eFields.postal_code || null,
+        year_built: eFields.year_built ? parseInt(eFields.year_built) : null,
+        renovation_year: eFields.renovation_year ? parseInt(eFields.renovation_year) : null,
+        land_register_court: eFields.land_register_court || null,
+        land_register_sheet: eFields.land_register_sheet || null,
+        land_register_volume: eFields.land_register_volume || null,
+        parcel_number: eFields.parcel_number || null,
+        unit_ownership_nr: eFields.unit_ownership_nr || null,
+        notary_date: eFields.notary_date || null,
+        bnl_date: eFields.bnl_date || null,
+        purchase_price: eFields.purchase_price ? parseFloat(eFields.purchase_price) : null,
+        energy_source: eFields.energy_source || null,
+        heating_type: eFields.heating_type || null,
+        description: eFields.description || null,
+      };
+
+      const { data, error: insertError } = await supabase
+        .from('properties')
+        .insert(propertyData)
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      toast.success('Immobilie erfolgreich angelegt');
+      navigate(`/portfolio/${data.id}`);
+    } catch (err: any) {
+      setError(err.message || 'Fehler beim Speichern');
+    }
+    setSaving(false);
+  }
+
+  if (!activeOrganization) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-muted-foreground">Bitte wählen Sie eine Organisation aus.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/portfolio">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Neue Immobilie</h2>
+          <p className="text-muted-foreground">Legen Sie eine neue Immobilie an</p>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* DB-Felder (Dashboard-sichtbar) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stammdaten (DB)</CardTitle>
+            <CardDescription>
+              Diese Felder sind in der Immobilienübersicht sichtbar
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="code">Objekt-Code</Label>
+                <Input
+                  id="code"
+                  value={dbFields.code}
+                  onChange={(e) => handleDbChange('code', e.target.value)}
+                  placeholder="z.B. OBJ-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="property_type">Objektart *</Label>
+                <Select
+                  value={dbFields.property_type}
+                  onValueChange={(v) => handleDbChange('property_type', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROPERTY_TYPES.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="usage_type">Nutzung *</Label>
+                <Select
+                  value={dbFields.usage_type}
+                  onValueChange={(v) => handleDbChange('usage_type', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USAGE_TYPES.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">Ort *</Label>
+                <Input
+                  id="city"
+                  value={dbFields.city}
+                  onChange={(e) => handleDbChange('city', e.target.value)}
+                  placeholder="Berlin"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Adresse *</Label>
+                <Input
+                  id="address"
+                  value={dbFields.address}
+                  onChange={(e) => handleDbChange('address', e.target.value)}
+                  placeholder="Musterstraße 123"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="total_area_sqm">Größe (qm)</Label>
+                <Input
+                  id="total_area_sqm"
+                  type="number"
+                  step="0.01"
+                  value={dbFields.total_area_sqm}
+                  onChange={(e) => handleDbChange('total_area_sqm', e.target.value)}
+                  placeholder="120"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="annual_income">Einnahmen (€/Jahr)</Label>
+                <Input
+                  id="annual_income"
+                  type="number"
+                  step="0.01"
+                  value={dbFields.annual_income}
+                  onChange={(e) => handleDbChange('annual_income', e.target.value)}
+                  placeholder="14400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="market_value">Verkehrswert (€)</Label>
+                <Input
+                  id="market_value"
+                  type="number"
+                  step="0.01"
+                  value={dbFields.market_value}
+                  onChange={(e) => handleDbChange('market_value', e.target.value)}
+                  placeholder="350000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="management_fee">Hausgeld (€/Monat)</Label>
+                <Input
+                  id="management_fee"
+                  type="number"
+                  step="0.01"
+                  value={dbFields.management_fee}
+                  onChange={(e) => handleDbChange('management_fee', e.target.value)}
+                  placeholder="250"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* E-Felder (Exposé) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Exposé-Details (E)</CardTitle>
+            <CardDescription>
+              Diese Felder sind nur in der Detailansicht sichtbar
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="postal_code">PLZ</Label>
+                <Input
+                  id="postal_code"
+                  value={eFields.postal_code}
+                  onChange={(e) => handleEChange('postal_code', e.target.value)}
+                  placeholder="10115"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="year_built">Baujahr</Label>
+                <Input
+                  id="year_built"
+                  type="number"
+                  value={eFields.year_built}
+                  onChange={(e) => handleEChange('year_built', e.target.value)}
+                  placeholder="1990"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="renovation_year">Sanierungsjahr</Label>
+                <Input
+                  id="renovation_year"
+                  type="number"
+                  value={eFields.renovation_year}
+                  onChange={(e) => handleEChange('renovation_year', e.target.value)}
+                  placeholder="2020"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="purchase_price">Kaufpreis (€)</Label>
+                <Input
+                  id="purchase_price"
+                  type="number"
+                  step="0.01"
+                  value={eFields.purchase_price}
+                  onChange={(e) => handleEChange('purchase_price', e.target.value)}
+                  placeholder="300000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="land_register_court">Grundbuch von</Label>
+                <Input
+                  id="land_register_court"
+                  value={eFields.land_register_court}
+                  onChange={(e) => handleEChange('land_register_court', e.target.value)}
+                  placeholder="Berlin-Mitte"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="land_register_sheet">Grundbuchblatt</Label>
+                <Input
+                  id="land_register_sheet"
+                  value={eFields.land_register_sheet}
+                  onChange={(e) => handleEChange('land_register_sheet', e.target.value)}
+                  placeholder="12345"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="land_register_volume">Band</Label>
+                <Input
+                  id="land_register_volume"
+                  value={eFields.land_register_volume}
+                  onChange={(e) => handleEChange('land_register_volume', e.target.value)}
+                  placeholder="67"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parcel_number">Flurstück</Label>
+                <Input
+                  id="parcel_number"
+                  value={eFields.parcel_number}
+                  onChange={(e) => handleEChange('parcel_number', e.target.value)}
+                  placeholder="123/4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit_ownership_nr">TE-Nummer</Label>
+                <Input
+                  id="unit_ownership_nr"
+                  value={eFields.unit_ownership_nr}
+                  onChange={(e) => handleEChange('unit_ownership_nr', e.target.value)}
+                  placeholder="5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notary_date">Notartermin</Label>
+                <Input
+                  id="notary_date"
+                  type="date"
+                  value={eFields.notary_date}
+                  onChange={(e) => handleEChange('notary_date', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bnl_date">BNL</Label>
+                <Input
+                  id="bnl_date"
+                  type="date"
+                  value={eFields.bnl_date}
+                  onChange={(e) => handleEChange('bnl_date', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="energy_source">Energieträger</Label>
+                <Select
+                  value={eFields.energy_source}
+                  onValueChange={(v) => handleEChange('energy_source', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ENERGY_SOURCES.map(source => (
+                      <SelectItem key={source} value={source}>{source}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="heating_type">Heizart</Label>
+                <Select
+                  value={eFields.heating_type}
+                  onValueChange={(v) => handleEChange('heating_type', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HEATING_TYPES.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Beschreibung</Label>
+              <Textarea
+                id="description"
+                value={eFields.description}
+                onChange={(e) => handleEChange('description', e.target.value)}
+                placeholder="Freitext-Beschreibung der Immobilie..."
+                rows={4}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Submit */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/portfolio">Abbrechen</Link>
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Save className="mr-2 h-4 w-4" />
+            Speichern
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
