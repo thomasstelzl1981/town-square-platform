@@ -1,7 +1,7 @@
 # System of a Town — Status, Zielbild & Strategie
 
 > **Datum**: 2026-01-23  
-> **Version**: 4.0 — Fundament-Phase abgeschlossen  
+> **Version**: 4.1 — ID-System & Integration Registry implementiert  
 > **Zweck**: Copy/Paste-fähige Dokumentation für IST, SOLL und Umsetzungsstrategie
 
 ---
@@ -45,7 +45,7 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 ---
 
-## 3. ID-SYSTEM (ADR-036, verbindlich)
+## 3. ID-SYSTEM (ADR-036, ✅ implementiert)
 
 ### Dreischichtiges Hybrid-Modell
 
@@ -57,23 +57,23 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 ### Entity Prefixes (verbindlich)
 
-| Entität | Prefix | Beispiel | Kapazität |
-|---------|--------|----------|-----------|
-| Tenant/Organization | `T` | `SOT-T-7HK29` | 33.5M |
-| Vertriebspartner | `V` | `SOT-V-8XK29` | 33.5M |
-| Kunde/Contact | `K` | `SOT-K-3MN12` | 33.5M |
-| Immobilie (Objekt) | `I` | `SOT-I-9PQ45` | 33.5M |
-| Einheit (Unit) | `E` | `SOT-E-2RS67` | 33.5M |
-| Lead | `L` | `SOT-L-4TU89` | 33.5M |
-| Integration/API | `X` | `SOT-X-1VW01` | 33.5M |
-| Dokument | `D` | `SOT-D-5AB23` | 33.5M |
-| Finanzpaket | `F` | `SOT-F-6CD34` | 33.5M |
+| Entität | Prefix | Beispiel | Status |
+|---------|--------|----------|--------|
+| Tenant/Organization | `T` | `SOT-T-7HK29XXX` | ✅ Implementiert |
+| Vertriebspartner | `V` | `SOT-V-8XK29XXX` | ⏳ Nutzt T-Prefix |
+| Kunde/Contact | `K` | `SOT-K-3MN12XXX` | ✅ Implementiert |
+| Immobilie (Objekt) | `I` | `SOT-I-9PQ45XXX` | ✅ Implementiert |
+| Einheit (Unit) | `E` | `SOT-E-2RS67XXX` | ✅ Implementiert |
+| Lead | `L` | `SOT-L-4TU89XXX` | ⏳ Wartend |
+| Integration/API | `X` | `SOT-X-1VW01XXX` | ✅ Implementiert |
+| Dokument | `D` | `SOT-D-5AB23XXX` | ✅ Implementiert |
+| Finanzpaket | `F` | `SOT-F-6CD34XXX` | ✅ Implementiert |
 
 **Technische Spezifikation:**
-- Base32 = Crockford-Encoding (0-9, A-Z ohne I/L/O/U)
-- 5-stellig = 32^5 = 33.554.432 IDs pro Prefix
-- Kollisionsfrei durch PostgreSQL SEQUENCE
-- Case-insensitive, URL-safe, typo-resistant
+- Base32 = 8-Zeichen (A-Z, 2-7, ohne I/L/O/U)
+- PostgreSQL `generate_public_id(prefix)` Funktion
+- BEFORE INSERT Trigger auf allen Core-Tabellen
+- Unique Constraints garantieren Kollisionsfreiheit
 
 ---
 
@@ -94,11 +94,14 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 | **Posteingang** | `inbound_items`, `inbound_routing_rules` | 🟢 Stabil |
 | **Sales Partner** | `partner_pipelines`, `investment_profiles`, `commissions` | 🟢 Stabil |
 | **Financing** | `finance_packages`, `self_disclosures`, `finance_documents` | 🟢 Stabil |
+| **Integration Registry** | `integration_registry` | 🟢 **NEU** |
 
-**Gesamt: 28 Tabellen produktiv**
+**Gesamt: 29 Tabellen produktiv**
 
-**Fehlende Spalten (für ID-System):**
-- ❌ `public_id` auf allen relevanten Tabellen
+**Public-ID-System:**
+- ✅ `public_id` Spalten auf: `organizations`, `properties`, `units`, `contacts`, `documents`, `finance_packages`, `integration_registry`
+- ✅ Auto-Generation via BEFORE INSERT Trigger
+- ✅ Unique Constraints auf allen `public_id` Spalten
 
 ### 4.2 Zone 1 — Admin-Portal
 
@@ -115,17 +118,18 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 | Agreements | `/admin/agreements` | 🟢 Nutzbar |
 | Inbox | `/admin/inbox` | 🟡 Teilfunktional |
 | Audit Log | `/admin/audit` | 🟢 Nutzbar |
-| Integrations | `/admin/integrations` | 🔴 Scaffold |
+| Integrations | `/admin/integrations` | 🟡 **DB Ready** |
 
 ### 4.3 Zone 2 — User-Portal
 
 | Komponente | Status |
 |------------|--------|
-| PortalHome | 🟢 Funktional |
-| ModulePlaceholder | 🟢 Funktional |
-| PortalLayout/Shell | ❌ **Fehlt** |
-| Tenant-Switcher | ❌ **Fehlt** |
-| 9-Modul-Navigation | ❌ **Fehlt** |
+| PortalLayout/Shell | ✅ Funktional |
+| PortalHeader | ✅ Funktional |
+| PortalNav | ✅ Funktional |
+| Tenant-Switcher | ✅ Funktional |
+| 9-Modul-Navigation | ✅ Funktional |
+| 45 Placeholder-Routes | ✅ Funktional |
 
 ---
 
@@ -174,7 +178,7 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 ---
 
-## 6. INTEGRATION REGISTRY (ADR-037)
+## 6. INTEGRATION REGISTRY (ADR-037, ✅ implementiert)
 
 ### Governance-Regeln
 
@@ -193,6 +197,17 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 | Webhook | `sot-webhook-{provider}-{event}` | `sot-webhook-stripe-invoice` |
 | Connector | `sot-connector-{provider}` | `sot-connector-caya` |
 
+### Registrierte Integrationen (Seed Data)
+
+| Code | Name | Type | Status |
+|------|------|------|--------|
+| `RESEND` | Resend Email API | integration | active |
+| `STRIPE` | Stripe Payment | integration | active |
+| `CAYA` | Caya Document Inbox | connector | active |
+| `FUTURE_ROOM` | Future Room Financing | connector | active |
+| `SEND_EMAIL` | Send System Email | edge_function | active |
+| `PROCESS_INBOUND` | Process Inbound Documents | edge_function | active |
+
 ---
 
 ## 7. UMSETZUNGSSTRATEGIE
@@ -204,25 +219,25 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 | 1 | Admin Feature-Complete | ✅ 21.01.2026 |
 | 2 | Backbone Migration (Billing, Agreements, Inbox) | ✅ 21.01.2026 |
 | 3 | Sales & Financing DB + Ownership Map | ✅ 21.01.2026 |
+| 4 | Portal Shell + 45-Route Skeleton | ✅ 23.01.2026 |
+| 4.1 | **Public-ID-System (ADR-036)** | ✅ 23.01.2026 |
+| 4.2 | **Integration Registry (ADR-037)** | ✅ 23.01.2026 |
 
 ### Offene Etappen
 
 | Etappe | Scope | Status | Abhängigkeiten |
 |--------|-------|--------|----------------|
-| **4** | Portal Shell + 45-Route Skeleton | ⏳ Bereit | Fundament-Phase abgeschlossen |
-| 5 | Module Migration (`/portfolio` → `/portal/immobilien`) | ⏳ Wartend | Etappe 4 |
+| **5** | Module Migration (`/portfolio` → `/portal/immobilien`) | ⏳ Bereit | Etappe 4 abgeschlossen |
 | 6 | Iterative Modul-Entwicklung | ⏳ Wartend | Etappe 5 |
-| 7 | ID-System Implementation (`public_id` Spalten) | ⏳ Wartend | Nach Etappe 4 |
+| 7 | Zone 3 Websites (KAUFY.IO, MIETY.de) | ⏳ Wartend | Nach Core-Modules |
 
-### Etappe 4 — Definition of Done
+### Etappe 5 — Definition of Done
 
-- [ ] `PortalLayout.tsx`: Dediziertes Mobile-First Layout (KEIN AdminLayout)
-- [ ] `PortalHeader.tsx`: Tenant-Switcher + Profile
-- [ ] `PortalNav.tsx`: Bottom-Nav (Mobile) + Header-Nav (Desktop)
-- [ ] `tile_catalog`: 9 Module mit je 4 Unterpunkten
-- [ ] Alle 45 Routes navigierbar (Placeholder mit "Coming Soon")
-- [ ] Super-User Test: Alle 9 Module sichtbar
-- [ ] Keine Zone-1-Komponenten in Zone-2-Code
+- [ ] `/portfolio/*` Routes nach `/portal/immobilien/*` migrieren
+- [ ] PropertyList, PropertyDetail, PropertyForm in Immobilien-Modul integrieren
+- [ ] Unit-Management in `/portal/immobilien/verwaltung`
+- [ ] Verkaufsaktivierung in `/portal/immobilien/verkauf`
+- [ ] Alle Legacy-Portfolio-Routes entfernen
 
 ---
 
@@ -263,7 +278,8 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
-| 2026-01-23 | **4.0** | **Fundament-Phase**: 9-Modul-Grid finalisiert, ID-System (ADR-036), Integration Registry (ADR-037), 3-Zonen-Architektur bestätigt |
+| 2026-01-23 | **4.1** | **ID-System & Integration Registry implementiert**: `public_id` auf 7 Tabellen, `integration_registry` mit 6 Seed-Einträgen, Enums für type/status |
+| 2026-01-23 | 4.0 | Fundament-Phase: 9-Modul-Grid finalisiert, ID-System (ADR-036), Integration Registry (ADR-037), 3-Zonen-Architektur bestätigt |
 | 2026-01-21 | 3.3 | Etappe 3 abgeschlossen: Sales & Financing DB + Properties-Erweiterung + Ownership Map + Interfaces |
 | 2026-01-21 | 3.2 | Etappe 2 abgeschlossen: Backbone-Tabellen + Admin UI |
 | 2026-01-21 | 3.1 | Etappe 1 abgeschlossen: Memberships, Scope-Picker, Oversight, Audit Log |
