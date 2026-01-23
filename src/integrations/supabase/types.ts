@@ -601,6 +601,68 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_registry: {
+        Row: {
+          code: string
+          config_schema: Json
+          created_at: string
+          created_by: string | null
+          default_config: Json
+          description: string | null
+          documentation_url: string | null
+          id: string
+          name: string
+          public_id: string
+          status: Database["public"]["Enums"]["integration_status"]
+          tenant_id: string | null
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          code: string
+          config_schema?: Json
+          created_at?: string
+          created_by?: string | null
+          default_config?: Json
+          description?: string | null
+          documentation_url?: string | null
+          id?: string
+          name: string
+          public_id: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          tenant_id?: string | null
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          code?: string
+          config_schema?: Json
+          created_at?: string
+          created_by?: string | null
+          default_config?: Json
+          description?: string | null
+          documentation_url?: string | null
+          id?: string
+          name?: string
+          public_id?: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          tenant_id?: string | null
+          type?: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_registry_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investment_profiles: {
         Row: {
           contact_id: string
@@ -1793,6 +1855,8 @@ export type Database = {
         | "ready_for_handoff"
       inbound_item_status: "pending" | "assigned" | "archived" | "rejected"
       inbound_source: "caya" | "email" | "upload" | "api"
+      integration_status: "active" | "inactive" | "deprecated" | "pending_setup"
+      integration_type: "integration" | "connector" | "edge_function" | "secret"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
       membership_role:
         | "platform_admin"
@@ -1956,6 +2020,8 @@ export const Constants = {
       ],
       inbound_item_status: ["pending", "assigned", "archived", "rejected"],
       inbound_source: ["caya", "email", "upload", "api"],
+      integration_status: ["active", "inactive", "deprecated", "pending_setup"],
+      integration_type: ["integration", "connector", "edge_function", "secret"],
       invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
       membership_role: [
         "platform_admin",
