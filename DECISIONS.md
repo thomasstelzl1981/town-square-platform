@@ -1,7 +1,7 @@
 # System of a Town — Decision Log
 
 > **Format**: ADR-light (Date, Decision, Reason, Implications)  
-> **Last Updated**: 2026-01-21
+> **Last Updated**: 2026-01-23
 
 ---
 
@@ -553,7 +553,148 @@
 
 ---
 
+## ADR-036: Hybrid Public ID System (SOT-Prefix + Base32)
+
+**Date**: 2026-01-23  
+**Decision**: Einführung eines dreischichtigen ID-Systems mit stabilen Public IDs (SOT-Prefix + Base32), internen UUIDs und separater Hierarchie-Information.  
+**Reason**: 
+- IDs müssen stabil bleiben auch bei Struktur-Änderungen (z.B. Partner-Reorg)
+- Externe Nutzung erfordert lesbare, kurze, URL-sichere IDs
+- Pfad-kodierte IDs (SOT-V0001-0042) brechen bei Hierarchie-Änderungen
+- Interne UUIDs bleiben für DB-Performance und Joins erhalten  
+**Implications**:
+- **Drei ID-Schichten pro Entität:**
+  1. `id` (UUID): Interne Primary Key, für DB-Joins und RLS
+  2. `public_id` (TEXT): Stabile externe ID im Format `SOT-{PREFIX}-{BASE32}`
+  3. `materialized_path` / `parent_id`: Hierarchie-Information (nur wo relevant)
+- **Public ID Format:** `SOT-{Entity-Prefix}-{5-stellig Base32}`
+  - Base32 = Crockford-Encoding (0-9, A-Z ohne I/L/O/U) = 32^5 = 33.5M IDs pro Prefix
+  - Case-insensitive, URL-safe, typo-resistant
+- **Entity Prefixes (verbindlich):**
+
+| Entität | Prefix | Beispiel | Beschreibung |
+|---------|--------|----------|--------------|
+| System/Plattform | — | `SOT` | Root-Prefix für alle IDs |
+| Tenant/Organization | `T` | `SOT-T-7HK29` | Mandanten-Organisationen |
+| Vertriebspartner | `V` | `SOT-V-8XK29` | Sales Partner (alle Hierarchie-Ebenen) |
+| Kunde/Contact | `K` | `SOT-K-3MN12` | Kontakte mit Account-Potential |
+| Immobilie (Objekt) | `I` | `SOT-I-9PQ45` | Globalobjekte (Haus/Projekt) |
+| Einheit (Unit) | `E` | `SOT-E-2RS67` | Einzelobjekte innerhalb eines Objekts |
+| Lead | `L` | `SOT-L-4TU89` | Noch nicht konvertierte Leads |
+| Integration/API | `X` | `SOT-X-1VW01` | Externe Dienste und Connectoren |
+| Dokument | `D` | `SOT-D-5AB23` | Dokumente (optional, meist intern) |
+| Finanzpaket | `F` | `SOT-F-6CD34` | Finance Packages |
+
+- **Generierung:**
+  - PostgreSQL SEQUENCE pro Prefix (z.B. `sot_id_seq_v`, `sot_id_seq_k`)
+  - Trigger oder App-Layer generiert Base32 aus Sequence-Wert
+  - Kollisionsfrei durch Sequence-Nutzung
+- **Vertriebspartner-Hierarchie:**
+  - `public_id` bleibt stabil (`SOT-V-8XK29`)
+  - Hierarchie über `materialized_path` (`/<uuid>/<uuid>/`) oder `partner_path` separat
+  - Reorg ändert nur Pfad, nicht die ID
+  - Historische Pfad-Änderungen in `audit_events` dokumentiert
+- **DB-Erweiterungen (konzeptionell, Implementation in separater Etappe):**
+  ```sql
+  -- Neue Spalten für relevante Tabellen
+  ALTER TABLE organizations ADD COLUMN public_id TEXT UNIQUE;
+  ALTER TABLE contacts ADD COLUMN public_id TEXT UNIQUE;
+  ALTER TABLE properties ADD COLUMN public_id TEXT UNIQUE;
+  ALTER TABLE units ADD COLUMN public_id TEXT UNIQUE;
+  ALTER TABLE partner_pipelines ADD COLUMN public_id TEXT UNIQUE;
+  ALTER TABLE finance_packages ADD COLUMN public_id TEXT UNIQUE;
+  
+  -- Sequence pro Entity-Typ
+  CREATE SEQUENCE sot_id_seq_t START 1;
+  CREATE SEQUENCE sot_id_seq_v START 1;
+  CREATE SEQUENCE sot_id_seq_k START 1;
+  CREATE SEQUENCE sot_id_seq_i START 1;
+  CREATE SEQUENCE sot_id_seq_e START 1;
+  
+  -- Generator-Funktion (Crockford Base32)
+  CREATE OR REPLACE FUNCTION generate_public_id(prefix TEXT) 
+  RETURNS TEXT AS $$ ... $$ LANGUAGE plpgsql;
+  ```
+- **Migration bestehender Daten:**
+  - Backfill-Script generiert `public_id` für alle existierenden Rows
+  - Keine Breaking Changes, UUIDs bleiben Primary Keys
+  - `public_id` wird UNIQUE NOT NULL nach Migration
+- **API/URL-Nutzung:**
+  - Externe APIs nutzen `public_id` statt UUID
+  - URLs: `/properties/SOT-I-9PQ45` statt `/properties/uuid`
+  - QR-Codes, PDF-Dokumente, Support-Referenzen nutzen `public_id`
+- **Skalierbarkeit:**
+  - 33.5M IDs pro Prefix reicht für 100k+ Partner, 1M+ Kunden, Millionen Objekte
+  - Bei Erschöpfung: Prefix-Erweiterung (z.B. `SOT-V2-XXXXX`)
+
+---
+
+## ADR-037: Integration Registry als Source of Truth
+
+**Date**: 2026-01-23  
+**Decision**: Alle externen APIs, Webhooks und Connectoren werden zentral in einer `integration_registry` verwaltet.  
+**Reason**: 
+- Keine "wilden" API-Keys im Code
+- Zentrale Governance für alle externen Dienste
+- Audit-Trail für Aktivierungen/Deaktivierungen
+- Klare Verantwortlichkeiten (Owner-Modul)  
+**Implications**:
+- **Registry-Schema (konzeptionell):**
+  ```sql
+  CREATE TABLE integration_registry (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    public_id TEXT UNIQUE NOT NULL, -- SOT-X-XXXXX
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- oauth, api_key, webhook, edge_function
+    status TEXT NOT NULL DEFAULT 'inactive', -- active, inactive, deprecated
+    owner_module TEXT NOT NULL, -- Verantwortliches Zone-2-Modul
+    config JSONB NOT NULL DEFAULT '{}',
+    secret_ref TEXT, -- Referenz auf Secret (NIE der Wert!)
+    allowed_scopes JSONB NOT NULL DEFAULT '[]',
+    requires_audit BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  ```
+- **Governance-Regeln:**
+  1. Nur registrierte Integrationen dürfen verwendet werden
+  2. Secrets liegen in Environment/Vault, nie in Code oder DB
+  3. Jede Integration hat genau ein Owner-Modul
+  4. Aktivierung/Deaktivierung erfordert Platform Admin
+  5. Alle externen Calls werden in `audit_events` geloggt
+- **Naming-Konvention:**
+  - Edge Functions: `sot-{module}-{action}` (z.B. `sot-finanzierung-export`)
+  - Webhooks: `sot-webhook-{provider}-{event}`
+  - Connectoren: `sot-connector-{provider}`
+- **Phase 2 Implementation:**
+  - UI in Admin Portal unter `/admin/integrations`
+  - CRUD für Registry-Einträge
+  - Secret-Reference-Verwaltung (ohne Wert-Anzeige)
+  - Audit-Log für alle Registry-Änderungen
+
+---
+
 ## Changelog
+
+### 2026-01-23: Fundament-Phase — ID-System & Integration Governance
+
+**Neue ADRs:**
+- ADR-036: Hybrid Public ID System (SOT-Prefix + Base32)
+- ADR-037: Integration Registry als Source of Truth
+
+**ID-System Entscheidungen:**
+- Dreischichtiges Modell: UUID (intern) + Public ID (extern) + Hierarchie (separat)
+- Format: `SOT-{PREFIX}-{5-stellig Base32}` (Crockford-Encoding)
+- 10 Entity-Prefixes definiert: T (Tenant), V (Partner), K (Kunde), I (Immobilie), E (Einheit), L (Lead), X (Integration), D (Dokument), F (Finanzpaket)
+- Skalierbar auf 33.5M IDs pro Prefix
+
+**Integration Governance:**
+- Zentrale Registry als Source of Truth
+- Secrets nur als Referenzen, nie Werte in DB
+- Naming-Konventionen für Edge Functions, Webhooks, Connectoren
+- Mandatory Audit für alle externen Calls
+
+---
 
 ### 2026-01-21: Etappe 3 Implementation
 
