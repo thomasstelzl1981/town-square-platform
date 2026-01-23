@@ -1,7 +1,7 @@
 # System of a Town — Status, Zielbild & Strategie
 
-> **Datum**: 2026-01-21  
-> **Version**: 3.0 — Verbindliche Referenz  
+> **Datum**: 2026-01-23  
+> **Version**: 4.0 — Fundament-Phase abgeschlossen  
 > **Zweck**: Copy/Paste-fähige Dokumentation für IST, SOLL und Umsetzungsstrategie
 
 ---
@@ -19,366 +19,263 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 **Plus Backbone-Systeme:**
 - Finanzierungsvorbereitung → Handoff an "Future Room" (extern) + Status-Rückfluss
 - Vertrags-/Consent-Backbone (Mandate, Provisionsvereinbarungen, Datenfreigaben)
-- Posteingang/Dokumenteneingang (Caya + Upload + Routing)
-- Payment/Billing (Monetarisierung, Subscriptions, Rechnungen)
-- Stammdaten/Onboarding (Profil, Firma, Bankdaten, Sicherheit)
+- Posteingang/DMS (Caya + Resend Inbound + Upload + Routing)
+- Payment/Billing (in Stammdaten integriert)
+- Stammdaten/Onboarding (Profil, Firma, Abrechnung, Sicherheit)
+- Leadgenerierung (Managed Meta-Ads über SOT-Account)
 
 **Zone 3 (Websites):**
-- **Kaufy Website**: Digitaler Vertriebspartner – öffentliche/halb-öffentliche Listings, Investment-Suche, KI-Berater
-- **Meety Website**: Marketing/Onboarding (geringer Aufwand)
+- **KAUFY.IO**: Digitaler Vertriebspartner – öffentliche Listings, Investment-Suche, KI-Berater
+- **MIETY.de**: Marketing/Onboarding für digitale Mietverwaltung
 
 ---
 
-## 2. IST-STATUS (verifiziert, 21.01.2026)
+## 2. 3-ZONEN-ARCHITEKTUR (verbindlich)
 
-### 2.1 Datenbank-Foundation
+| Zone | Bezeichnung | Zweck | Isolation |
+|------|-------------|-------|-----------|
+| **Zone 1** | Admin Portal | Plattform-Governance, Tenant-Management, Oversight | Eigenständig, KEINE Zone-2-Abhängigkeiten |
+| **Zone 2** | Superuser-Portale | Produktmodule für Kunden, Partner, Eigentümer | 9 Module × 4 Unterpunkte (45 Routes) |
+| **Zone 3** | Websites | Öffentliche Landingpages, KI-Berater, Lead-Capture | Read-Only auf `is_public_listing` |
+
+**Strikte Trennung:**
+- Zone 1 und Zone 2 teilen KEINE Module, UI-Komponenten oder Logik
+- Kommunikation (KI Office) ≠ Dokumente (DMS/Posteingang)
+- System-Mails (Resend) ≠ Persönliche Mailbox (IMAP/Exchange/Gmail)
+
+---
+
+## 3. ID-SYSTEM (ADR-036, verbindlich)
+
+### Dreischichtiges Hybrid-Modell
+
+| Schicht | Feld | Format | Zweck |
+|---------|------|--------|-------|
+| 1. Intern | `id` | UUID | Primary Key, DB-Joins, RLS |
+| 2. Extern | `public_id` | `SOT-{PREFIX}-{BASE32}` | URLs, PDFs, Support, APIs |
+| 3. Hierarchie | `materialized_path` | `/<uuid>/<uuid>/` | Strukturvertrieb, Org-Baum |
+
+### Entity Prefixes (verbindlich)
+
+| Entität | Prefix | Beispiel | Kapazität |
+|---------|--------|----------|-----------|
+| Tenant/Organization | `T` | `SOT-T-7HK29` | 33.5M |
+| Vertriebspartner | `V` | `SOT-V-8XK29` | 33.5M |
+| Kunde/Contact | `K` | `SOT-K-3MN12` | 33.5M |
+| Immobilie (Objekt) | `I` | `SOT-I-9PQ45` | 33.5M |
+| Einheit (Unit) | `E` | `SOT-E-2RS67` | 33.5M |
+| Lead | `L` | `SOT-L-4TU89` | 33.5M |
+| Integration/API | `X` | `SOT-X-1VW01` | 33.5M |
+| Dokument | `D` | `SOT-D-5AB23` | 33.5M |
+| Finanzpaket | `F` | `SOT-F-6CD34` | 33.5M |
+
+**Technische Spezifikation:**
+- Base32 = Crockford-Encoding (0-9, A-Z ohne I/L/O/U)
+- 5-stellig = 32^5 = 33.554.432 IDs pro Prefix
+- Kollisionsfrei durch PostgreSQL SEQUENCE
+- Case-insensitive, URL-safe, typo-resistant
+
+---
+
+## 4. IST-STATUS (verifiziert, 23.01.2026)
+
+### 4.1 Datenbank-Foundation
 
 | Bereich | Tabellen | Status |
 |---------|----------|--------|
 | **Core Foundation** | `organizations`, `profiles`, `memberships`, `org_delegations`, `audit_events` | 🟢 Stabil |
 | **Tile-System** | `tile_catalog`, `tenant_tile_activation` | 🟢 Stabil |
-| **Referenzmodul Immobilien** | `properties`, `units`, `property_features`, `property_financing` | 🟢 Stabil |
+| **Immobilien** | `properties`, `units`, `property_features`, `property_financing` | 🟢 Stabil |
 | **Dokumente/Access** | `documents`, `access_grants` | 🟢 Stabil |
 | **Vermietung** | `leases`, `renter_invites` | 🟢 Stabil |
 | **Kontakte** | `contacts` | 🟢 Stabil |
+| **Billing** | `plans`, `subscriptions`, `invoices` | 🟢 Stabil |
+| **Agreements** | `agreement_templates`, `user_consents` | 🟢 Stabil |
+| **Posteingang** | `inbound_items`, `inbound_routing_rules` | 🟢 Stabil |
+| **Sales Partner** | `partner_pipelines`, `investment_profiles`, `commissions` | 🟢 Stabil |
+| **Financing** | `finance_packages`, `self_disclosures`, `finance_documents` | 🟢 Stabil |
 
-**Enums (produktiv):**
-- `org_type`: internal, partner, sub_partner, client, renter
-- `membership_role`: platform_admin, org_admin, internal_ops, sales_partner, renter_user
-- `delegation_status`: active, revoked, expired
+**Gesamt: 28 Tabellen produktiv**
 
-**RLS-Funktionen:**
-- `is_platform_admin()` ✅
-- `is_parent_access_blocked()` ✅
+**Fehlende Spalten (für ID-System):**
+- ❌ `public_id` auf allen relevanten Tabellen
 
-**Gesamt: 16 Tabellen produktiv**
+### 4.2 Zone 1 — Admin-Portal
 
-**Backbone-Tabellen (implementiert):**
-- ✅ `plans`, `subscriptions`, `invoices` (Billing - Etappe 2)
-- ✅ `agreement_templates`, `user_consents` (Agreements - Etappe 2)
-- ✅ `inbound_items`, `inbound_routing_rules` (Posteingang - Etappe 2)
-- ✅ `partner_pipelines`, `investment_profiles`, `commissions` (Vertriebspartner - Etappe 3)
-- ✅ `finance_packages`, `self_disclosures`, `finance_documents` (Finanzierung - Etappe 3)
+| Sektion | Route | Status |
+|---------|-------|--------|
+| Dashboard | `/admin` | 🟢 Nutzbar |
+| Organizations | `/admin/organizations` | 🟢 Nutzbar |
+| Users & Memberships | `/admin/users` | 🟡 Teilfunktional |
+| Delegations | `/admin/delegations` | 🟢 Nutzbar |
+| Master Contacts | `/admin/contacts` | 🟢 Nutzbar |
+| Tile Catalog | `/admin/tiles` | 🟢 Nutzbar |
+| Oversight | `/admin/oversight` | 🟡 Teilfunktional |
+| Billing | `/admin/billing` | 🟢 Nutzbar |
+| Agreements | `/admin/agreements` | 🟢 Nutzbar |
+| Inbox | `/admin/inbox` | 🟡 Teilfunktional |
+| Audit Log | `/admin/audit` | 🟢 Nutzbar |
+| Integrations | `/admin/integrations` | 🔴 Scaffold |
 
-**Noch fehlende Backbone-Tabellen:**
-- ❌ `profile_extensions`, `bank_accounts` (Stammdaten)
-- ❌ `payment_methods` (Billing-Erweiterung)
+### 4.3 Zone 2 — User-Portal
 
----
-
-### 2.2 Zone 1 — Admin-Portal (11 Seiten implementiert)
-
-| Sektion | Route | Status | Details |
-|---------|-------|--------|---------|
-| Dashboard | `/admin` | 🟢 Nutzbar | Session-Context + Stats |
-| Organizations | `/admin/organizations` | 🟢 Nutzbar | CRUD + Hierarchie |
-| Organization Detail | `/admin/organizations/:id` | 🟡 Teilfunktional | Read + Member-Liste |
-| Users & Memberships | `/admin/users` | 🟡 Teilfunktional | List + Create, **Edit/Delete fehlt** |
-| Delegations | `/admin/delegations` | 🟡 Teilfunktional | Create + Revoke, **Scope-Picker fehlt** |
-| Master Contacts | `/admin/contacts` | 🟢 Nutzbar | CRUD vollständig |
-| Tile Catalog | `/admin/tiles` | 🟢 Nutzbar | Catalog + Tenant-Activation |
-| Oversight | `/admin/oversight` | 🟡 Teilfunktional | KPIs, **Drill-Down fehlt** |
-| Integrations | `/admin/integrations` | 🔴 Scaffold | Placeholder |
-| Communication Hub | `/admin/communication` | 🔴 Scaffold | Placeholder |
-| Support | `/admin/support` | 🔴 Scaffold | Placeholder |
-
-**Fehlende Admin-Sektionen:**
-- ❌ **Billing & Plans** (`/admin/billing`)
-- ❌ **Post & Documents** (`/admin/inbox`)
-- ❌ **Agreements/Consents** (`/admin/agreements`)
-- ❌ **Audit Log** (`/admin/audit`)
+| Komponente | Status |
+|------------|--------|
+| PortalHome | 🟢 Funktional |
+| ModulePlaceholder | 🟢 Funktional |
+| PortalLayout/Shell | ❌ **Fehlt** |
+| Tenant-Switcher | ❌ **Fehlt** |
+| 9-Modul-Navigation | ❌ **Fehlt** |
 
 ---
 
-### 2.3 Zone 2 — User-Portal
+## 5. ZONE 2 — FINALES 9-MODUL-GRID (45 Routes)
 
-| Komponente | Status | Details |
-|------------|--------|---------|
-| PortalHome | 🟢 Funktional | Tile-Grid aus `tenant_tile_activation` |
-| ModulePlaceholder | 🟢 Funktional | Generischer Catch-All für alle Routen |
-| PortalLayout/Shell | ❌ **Fehlt** | Kein dediziertes Layout |
-| Tenant-Switcher | ❌ **Fehlt** | Nur in AdminSidebar vorhanden |
+### Grundregel
+- Exakt **9 Module**
+- Jedes Modul: **1 Dashboard + 4 Unterpunkte**
+- Keine Ausnahmen
 
-**Tile-Catalog (7 Module definiert, alle Zone 2):**
+### 5.1 Modul-Matrix
 
-| Tile | Haupt-Route | Sub-Tiles (4) | Implementiert? |
-|------|-------------|---------------|----------------|
-| Immobilien | `/portal/immobilien` | Objekte, Verwaltung, Vertrieb, Dokumente | ❌ Placeholder |
-| Kaufy | `/portal/kaufy` | Angebote, Reservierungen, Pipeline, Abschlüsse | ❌ Placeholder |
-| Miety | `/portal/miety` | Mietverträge, Kommunikation, Anfragen, Dokumente | ❌ Placeholder |
-| Dokumente | `/portal/dokumente` | Ablage, Vorlagen, Freigaben, Suche | ❌ Placeholder |
-| Kommunikation | `/portal/kommunikation` | Eingang, Ausgang, Kampagnen, Vorlagen | ❌ Placeholder |
-| Services | `/portal/services` | Aufgaben, Tickets, Kalender, Team | ❌ Placeholder |
-| Einstellungen | `/portal/einstellungen` | Profil, Benachrichtigungen, Integrationen, Sicherheit | ❌ Placeholder |
+| # | Modul | Code | Haupt-Route | 4 Unterpunkte |
+|---|-------|------|-------------|---------------|
+| 1 | **Stammdaten** | `stammdaten` | `/portal/stammdaten` | `/profil`, `/firma`, `/abrechnung`, `/sicherheit` |
+| 2 | **KI Office** | `ki-office` | `/portal/ki-office` | `/email`, `/brief`, `/kontakte`, `/kalender` |
+| 3 | **Posteingang (DMS)** | `posteingang` | `/portal/posteingang` | `/eingang`, `/zuordnung`, `/archiv`, `/einstellungen` |
+| 4 | **Immobilien** | `immobilien` | `/portal/immobilien` | `/objekte`, `/verwaltung`, `/verkauf`, `/sanierung` |
+| 5 | **Miet-Sonderverwaltung** | `msv` | `/portal/msv` | `/objekt-mieter`, `/mieteingang`, `/vermietung`, `/einstellungen` |
+| 6 | **Verkauf** | `verkauf` | `/portal/verkauf` | `/objekte`, `/aktivitaeten`, `/anfragen`, `/vorgaenge` |
+| 7 | **Vertriebspartner** | `vertriebspartner` | `/portal/vertriebspartner` | `/pipeline`, `/objektauswahl`, `/beratung`, `/netzwerk` |
+| 8 | **Finanzierung** | `finanzierung` | `/portal/finanzierung` | `/selbstauskunft`, `/unterlagen`, `/pakete`, `/status` |
+| 9 | **Leadgenerierung** | `leadgenerierung` | `/portal/leadgenerierung` | `/kampagnen`, `/studio`, `/landingpages`, `/leads` |
 
-**Fehlende Backbone-Module (Zone 2):**
-- ❌ **Stammdaten** (Onboarding/Profil)
-- ❌ **Payment** (Abo/Rechnungen)
-- ❌ **Posteingang** (Caya/Inbox)
-- ❌ **Vertriebspartner** (KERN-Usability #3)
-- ❌ **Finanzierung** (Handoff Future Room)
+### 5.2 Modul-Beschreibungen
 
-**Legacy-Module (außerhalb Portal-Struktur):**
-- `/portfolio`, `/portfolio/new`, `/portfolio/:id` – Funktional, nutzt AdminLayout
+| Modul | Zweck | Besonderheiten |
+|-------|-------|----------------|
+| **Stammdaten** | Identitäts- und Betriebsbasis | Payment/Billing in `/abrechnung` integriert |
+| **KI Office** | Operativer Arbeitsplatz | Persönliche Mail (IMAP) + KI-Briefgenerator → Systemmail |
+| **Posteingang** | Dokumentenzentrale | Caya + Upload + Resend Inbound |
+| **Immobilien** | Portfolio-Backbone | Source of Truth für alle Objekte/Einheiten |
+| **MSV** | Vermieter-/Verwalterlogik | Mieterlisten, Mieteingänge, Automatisierungen |
+| **Verkauf** | Prozessansicht für Verkäufe | Nur "verkaufsaktivierte" Objekte |
+| **Vertriebspartner** | Strukturvertrieb | Pipeline, Objektauswahl, Netzwerk inkl. @kaufy.app Mail |
+| **Finanzierung** | Handoff Future Room | Selbstauskunft, Unterlagen, Consent-Gates |
+| **Leadgenerierung** | Managed Meta-Ads | Prepayment, Mindestbudget, 30-50% Marge |
 
----
+### 5.3 Strikte Trennungen
 
-### 2.4 Zone 3 — Websites
-
-| Website | Status | Details |
-|---------|--------|---------|
-| Kaufy Website | ❌ **Nicht existent** | Keine Architektur, kein Routing |
-| Meety Website | ❌ **Nicht existent** | Keine Architektur |
-
----
-
-## 3. GAP-ANALYSE
-
-### A) Stammdaten/Onboarding ❌ FEHLT
-- Tabellen: `profile_extensions`, `bank_accounts`
-- Routes: `/portal/stammdaten/*`
-
-### B) Payment/Billing ❌ FEHLT
-- Tabellen: `plans`, `subscriptions`, `invoices`, `payment_methods`
-- Admin: `/admin/billing`
-- Zone 2: in Einstellungen oder eigenes Modul
-
-### C) Vertriebspartner-Modul ❌ FEHLT (KERN!)
-- Tabellen: `partner_pipelines`, `partner_watchlists`, `investment_profiles`, `commissions`
-- Routes: `/portal/vertriebspartner/*`
-
-### D) Finanzierungsvorbereitung + Handoff ❌ FEHLT
-- Tabellen: `finance_packages`, `self_disclosures`, `finance_documents`, `finance_status_log`
-- Routes: `/portal/finanzierung/*`
-
-### E) Agreements/Consents ❌ FEHLT
-- Tabellen: `agreement_templates`, `user_consents`
-- Admin: `/admin/agreements`
-
-### F) Posteingang/Caya ❌ FEHLT
-- Tabellen: `inbound_items`, `inbound_routing_rules`, `document_assignments`
-- Admin: `/admin/inbox`
-- Zone 2: `/portal/posteingang/*`
-
-### G) Zone 3 Kaufy Website ❌ FEHLT
-- Neues Feld: `properties.is_public_listing`
-- Separate App/Routes für öffentliche Listings
+| Bereich A | Bereich B | Regel |
+|-----------|-----------|-------|
+| KI Office `/email` | Posteingang `/eingang` | Kommunikation ≠ DMS |
+| KI Office `/brief` → Systemmail | Persönliche Mailbox | PDF-Versand NUR über Resend |
+| Immobilien `/verkauf` | Verkauf `/objekte` | Aktivierung → Sichtbarkeit |
 
 ---
 
-## 4. ZIELSTRUKTUR
+## 6. INTEGRATION REGISTRY (ADR-037)
 
-### 4.1 Zone 1 — Admin-Portal (15 Sektionen)
+### Governance-Regeln
 
-```
-/admin
-├── Dashboard (KPIs, Session)
-├── Tenants & Access
-│   ├── Organizations (Hierarchie, CRUD)
-│   ├── Users & Memberships (CRUD + Role Assignment)
-│   └── Delegations (Scope-Picker, History)
-├── Master Data
-│   └── Contacts (Registry, Import)
-├── Feature Activation
-│   └── Tile Catalog (Module + Tenant-Activation)
-├── Billing & Plans [NEU]
-│   ├── Plans (CRUD)
-│   ├── Subscriptions (Tenant → Plan)
-│   └── Invoices (Liste, Export)
-├── Post & Documents [NEU]
-│   ├── Inbound Inbox (Routing, Assignment)
-│   └── Document Registry (Suche, Tags)
-├── Agreements [NEU]
-│   ├── Templates (CRUD)
-│   └── Consent Logs (Read-Only)
-├── Oversight
-│   ├── Tenant Stats (Drill-Down)
-│   ├── Immobilien Overview (Read-Only)
-│   └── Finanzierung Status (Read-Only)
-├── System
-│   ├── Integrations (Config)
-│   ├── Communication Hub (Templates)
-│   ├── Audit Log [NEU]
-│   └── Support (Tickets)
-```
+| Regel | Beschreibung |
+|-------|--------------|
+| Nur registrierte APIs | Keine "wilden" API-Keys in Code |
+| Secrets in Vault/Env | Nie in DB oder Repo |
+| Owner-Modul Pflicht | Jede Integration hat Verantwortlichen |
+| Mandatory Audit | Alle externen Calls in `audit_events` |
 
-### 4.2 Zone 2 — Super-User Musterportal (10 Module × 5 Tiles = 50 Routes)
+### Naming-Konventionen
 
-```
-/portal
-├── [1] Stammdaten [NEU]
-│   ├── Main: Übersicht
-│   ├── /profil, /firma, /abrechnung, /sicherheit
-├── [2] Payment [NEU]
-│   ├── Main: Abo-Status
-│   ├── /plan, /rechnungen, /zahlungsmethode, /nutzung
-├── [3] Posteingang [NEU]
-│   ├── Main: Inbox
-│   ├── /eingang, /zuordnung, /archiv, /einstellungen
-├── [4] Immobilien
-│   ├── Main: Portfolio
-│   ├── /objekte, /verwaltung, /vertrieb, /dokumente
-├── [5] Miety
-│   ├── Main: Mieter
-│   ├── /vertraege, /kommunikation, /anfragen, /dokumente
-├── [6] Kaufy
-│   ├── Main: Vertrieb
-│   ├── /angebote, /reservierungen, /pipeline, /abschluesse
-├── [7] Vertriebspartner [NEU – KERN]
-│   ├── Main: Dashboard
-│   ├── /pipeline, /kunden, /matching, /provisionen
-├── [8] Finanzierung [NEU – KERN]
-│   ├── Main: Pakete
-│   ├── /selbstauskunft, /unterlagen, /anfragen, /status
-├── [9] Kommunikation
-│   ├── Main: Nachrichten
-│   ├── /eingang, /ausgang, /kampagnen, /vorlagen
-├── [10] Einstellungen
-│   ├── Main: Settings
-│   ├── /profil, /benachrichtigungen, /integrationen, /sicherheit
-```
-
-### 4.3 Zone 3 — Websites
-
-```
-KAUFY.IO (digitaler Vertriebspartner)
-├── / (Landing)
-├── /immobilien (Listings-Suche)
-├── /immobilien/:slug (Detail)
-├── /investment-suche (Matching)
-├── /kontakt (Lead-Form)
-└── /berater (KI-Assistent, Phase 2)
-
-MEETY.IO (Marketing)
-├── / (Landing)
-├── /features, /preise, /kontakt
-```
+| Typ | Pattern | Beispiel |
+|-----|---------|----------|
+| Edge Function | `sot-{module}-{action}` | `sot-finanzierung-export` |
+| Webhook | `sot-webhook-{provider}-{event}` | `sot-webhook-stripe-invoice` |
+| Connector | `sot-connector-{provider}` | `sot-connector-caya` |
 
 ---
 
-## 5. UMSETZUNGSSTRATEGIE (6 Etappen)
+## 7. UMSETZUNGSSTRATEGIE
 
-### Etappe 1: Admin Feature-Complete ✅ ABGESCHLOSSEN (21.01.2026)
-**Scope:** Memberships CRUD, Delegations Scope-Picker, Oversight Drill-Down, Audit Log
+### Abgeschlossene Etappen
 
-**Umgesetzt:**
-- [x] Memberships: Edit-Dialog + Delete mit Confirmation
-- [x] Delegations: visueller Scope-Picker (20 Scopes, kategorisiert)
-- [x] Oversight: Klickbare Tenant-Details + Immobilien-/Modul-Listen
-- [x] Audit Log: Event-Viewer mit Filter (`/admin/audit`)
+| Etappe | Scope | Status |
+|--------|-------|--------|
+| 1 | Admin Feature-Complete | ✅ 21.01.2026 |
+| 2 | Backbone Migration (Billing, Agreements, Inbox) | ✅ 21.01.2026 |
+| 3 | Sales & Financing DB + Ownership Map | ✅ 21.01.2026 |
 
----
+### Offene Etappen
 
-### Etappe 2: Backbone Migration ✅ ABGESCHLOSSEN (21.01.2026)
-**Scope:** DB-Schema + Admin-UI für Billing, Agreements, Inbox
+| Etappe | Scope | Status | Abhängigkeiten |
+|--------|-------|--------|----------------|
+| **4** | Portal Shell + 45-Route Skeleton | ⏳ Bereit | Fundament-Phase abgeschlossen |
+| 5 | Module Migration (`/portfolio` → `/portal/immobilien`) | ⏳ Wartend | Etappe 4 |
+| 6 | Iterative Modul-Entwicklung | ⏳ Wartend | Etappe 5 |
+| 7 | ID-System Implementation (`public_id` Spalten) | ⏳ Wartend | Nach Etappe 4 |
 
-**Umgesetzt:**
-- [x] DB: `plans`, `subscriptions`, `invoices` mit RLS
-- [x] DB: `agreement_templates`, `user_consents` (INSERT-only für Audit)
-- [x] DB: `inbound_items`, `inbound_routing_rules` mit RLS
-- [x] Admin: `/admin/billing` (Plans CRUD, Subscriptions, Invoices)
-- [x] Admin: `/admin/agreements` (Templates CRUD, Consent-Log Read-Only)
-- [x] Admin: `/admin/inbox` (Inbound-Items, Assignment, Routing-Regeln)
-- [x] Sidebar: Neue "Backbone" Gruppe mit 3 Einträgen
+### Etappe 4 — Definition of Done
 
-**Neue Tabellen:** 7 (plans, subscriptions, invoices, agreement_templates, user_consents, inbound_items, inbound_routing_rules)
-**Neue Enums:** 6 (plan_interval, subscription_status, invoice_status, consent_status, inbound_item_status, inbound_source)
-
----
-
-### Etappe 3: Sales & Financing DB ✅ ABGESCHLOSSEN (21.01.2026)
-**Scope:** DB-Schema für Vertriebspartner + Finanzierung + Ownership Map
-
-**Umgesetzt:**
-- [x] DB: `partner_pipelines`, `investment_profiles`, `commissions` (Sales Partner)
-- [x] DB: `finance_packages`, `self_disclosures`, `finance_documents` (Financing)
-- [x] Properties: `is_public_listing`, `public_listing_approved_at/by`
-- [x] Enums: `pipeline_stage`, `commission_status`, `finance_package_status`
-- [x] RLS: Tenant-scoped + Platform Admin, Commissions Platform Admin only
-- [x] Oversight: Erweitert um Finance Packages Tab + is_public_listing Anzeige
-- [x] Consent-Abhängigkeiten: `agreement_consent_id` in commissions, `data_sharing_consent_id` in finance_packages
-- [x] Dokumentation: `MODULE_OWNERSHIP_MAP.md`, `INTERFACES.md` erstellt
-
-**Neue Tabellen:** 6 (partner_pipelines, investment_profiles, commissions, finance_packages, self_disclosures, finance_documents)
-**Neue Enums:** 3 (pipeline_stage, commission_status, finance_package_status)
-**Properties-Erweiterung:** 3 Spalten (is_public_listing, public_listing_approved_at, public_listing_approved_by)
-
-**Risiken:** Schema-Komplexität → Iterativ verfeinern in Etappe 6  
-**Abhängigkeiten:** Etappe 2 (Agreements für Mandate) ✅ erfüllt
+- [ ] `PortalLayout.tsx`: Dediziertes Mobile-First Layout (KEIN AdminLayout)
+- [ ] `PortalHeader.tsx`: Tenant-Switcher + Profile
+- [ ] `PortalNav.tsx`: Bottom-Nav (Mobile) + Header-Nav (Desktop)
+- [ ] `tile_catalog`: 9 Module mit je 4 Unterpunkten
+- [ ] Alle 45 Routes navigierbar (Placeholder mit "Coming Soon")
+- [ ] Super-User Test: Alle 9 Module sichtbar
+- [ ] Keine Zone-1-Komponenten in Zone-2-Code
 
 ---
 
-### Etappe 4: Portal Shell + 50-Route Skeleton
-**Scope:** PortalLayout, Tenant-Switcher, alle Routen als Placeholder
+## 8. FLOWS & INTERFACES
 
-**Definition of Done:**
-- [ ] `PortalLayout.tsx`: Mobile-first Shell
-- [ ] Tenant-Switcher in Header
-- [ ] Tile-Catalog: 10 Module mit je 5 Tiles
-- [ ] Alle 50 Routes navigierbar
-- [ ] Super-User Test: Alle Tiles sichtbar
+### Kern-Flows (Cross-Module)
 
-**Risiken:** Gering  
-**Abhängigkeiten:** Etappe 3 (für vollständige Tile-Definitionen)
+| Von → Nach | Interface Action | Typ |
+|------------|------------------|-----|
+| Vertriebspartner `/netzwerk` → Kontakte | `CreateContact` | Write |
+| Vertriebspartner `/beratung` → Finanzierung | `CreateFinancePackage` | Write |
+| KI Office `/brief` → Systemmail → DMS | `SendAndArchive` | Write |
+| Immobilien `/verkauf` → Verkauf `/objekte` | `ActivateForSale` | Status |
+| Leadgenerierung `/leads` → Kontakte | `ConvertLead` | Write |
+| Posteingang `/zuordnung` → Kontextlink | `AssignDocument` | Link |
 
----
+### Consent-Gates (Pflicht vor Action)
 
-### Etappe 5: Module Migration
-**Scope:** Legacy `/portfolio` → `/portal/immobilien`
-
-**Definition of Done:**
-- [ ] PropertyList → `/portal/immobilien`
-- [ ] PropertyDetail → `/portal/immobilien/objekte/:id`
-- [ ] Redirects funktional
-- [ ] Legacy-Routes entfernt
-
-**Risiken:** Breaking Changes  
-**Abhängigkeiten:** Etappe 4 (PortalLayout)
+| Action | Consent-Code | Trigger |
+|--------|--------------|---------|
+| Commission erstellen | `SALES_MANDATE` | `commissions.INSERT` |
+| Commission genehmigen | `COMMISSION_AGREEMENT` | `commissions.status → approved` |
+| Finance Package exportieren | `DATA_SHARING_FUTURE_ROOM` | `finance_packages.exported_at` |
 
 ---
 
-### Etappe 6: Iterative Modul-Entwicklung
-**Scope:** Funktionale Logik je Modul
-
-**Priorität:**
-1. Stammdaten (Onboarding-Flow)
-2. Finanzierung (Self-Disclosure + Handoff)
-3. Vertriebspartner (Pipeline + Matching)
-4. Kaufy (Listings + Reservierungen)
-5. Miety (Verträge + Kommunikation)
-6. Posteingang (Caya-Integration)
-7. Payment (Stripe-Integration)
-
-**DoD je Modul:** CRUD + RLS + E2E-Test + Dokumentation
-
----
-
-## 6. GOVERNANCE
+## 9. GOVERNANCE
 
 - **Jede Session:** STATUS_AND_STRATEGY.md + DECISIONS.md Update
 - **Keine Implementation ohne Review**
 - **Neue Module:** Müssen in `tile_catalog` registriert werden
 - **DB-Änderungen:** Changelog im Chat vor Ausführung
+- **Cross-Module-Writes:** Nur über definierte Interface Actions
 
 ---
 
-## 7. CHANGELOG
+## 10. CHANGELOG
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
-| 2026-01-21 | 3.3 | **Etappe 3 abgeschlossen**: Sales & Financing DB + Properties-Erweiterung + Ownership Map + Interfaces |
-| 2026-01-21 | 3.2 | **Etappe 2 abgeschlossen**: Backbone-Tabellen (Billing, Agreements, Inbox) + Admin UI + Sidebar |
-| 2026-01-21 | 3.1 | **Etappe 1 abgeschlossen**: Memberships Edit/Delete, Scope-Picker, Oversight Drill-Downs, Audit Log |
-| 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan, 50-Route-Matrix |
-| 2026-01-21 | 2.2 | Etappenplan v2, Super-User Blueprint |
+| 2026-01-23 | **4.0** | **Fundament-Phase**: 9-Modul-Grid finalisiert, ID-System (ADR-036), Integration Registry (ADR-037), 3-Zonen-Architektur bestätigt |
+| 2026-01-21 | 3.3 | Etappe 3 abgeschlossen: Sales & Financing DB + Properties-Erweiterung + Ownership Map + Interfaces |
+| 2026-01-21 | 3.2 | Etappe 2 abgeschlossen: Backbone-Tabellen + Admin UI |
+| 2026-01-21 | 3.1 | Etappe 1 abgeschlossen: Memberships, Scope-Picker, Oversight, Audit Log |
+| 2026-01-21 | 3.0 | Komplette Neustrukturierung: 3-Kern-Usabilities, 6-Etappen-Plan |
 | 2026-01-20 | 2.0 | Tile-Catalog, Portal-Framework |
 | 2026-01-19 | 1.0 | Initiale Foundation |
 
 ---
 
-## 8. REFERENZEN
+## 11. REFERENZEN
 
-- `DECISIONS.md` — ADR-light Decision Log (ADR-001 bis ADR-035)
+- `DECISIONS.md` — ADR-light Decision Log (ADR-001 bis ADR-037)
 - `MODULE_BLUEPRINT.md` — Detaillierte Modul-/Routenstruktur
 - `MODULE_OWNERSHIP_MAP.md` — Modul-Eigentümerschaft und Zugriffsrechte
 - `INTERFACES.md` — Cross-Module Interface Actions
