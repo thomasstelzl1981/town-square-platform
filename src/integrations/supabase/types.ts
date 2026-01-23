@@ -240,6 +240,7 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string | null
+          public_id: string
           tenant_id: string
           updated_at: string
         }
@@ -252,6 +253,7 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone?: string | null
+          public_id: string
           tenant_id: string
           updated_at?: string
         }
@@ -264,6 +266,7 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string | null
+          public_id?: string
           tenant_id?: string
           updated_at?: string
         }
@@ -284,6 +287,7 @@ export type Database = {
           id: string
           mime_type: string
           name: string
+          public_id: string
           size_bytes: number
           tenant_id: string
           updated_at: string
@@ -295,6 +299,7 @@ export type Database = {
           id?: string
           mime_type: string
           name: string
+          public_id: string
           size_bytes: number
           tenant_id: string
           updated_at?: string
@@ -306,6 +311,7 @@ export type Database = {
           id?: string
           mime_type?: string
           name?: string
+          public_id?: string
           size_bytes?: number
           tenant_id?: string
           updated_at?: string
@@ -388,6 +394,7 @@ export type Database = {
           id: string
           notes: string | null
           property_id: string
+          public_id: string
           requested_amount: number | null
           status: Database["public"]["Enums"]["finance_package_status"]
           summary_document_id: string | null
@@ -405,6 +412,7 @@ export type Database = {
           id?: string
           notes?: string | null
           property_id: string
+          public_id: string
           requested_amount?: number | null
           status?: Database["public"]["Enums"]["finance_package_status"]
           summary_document_id?: string | null
@@ -422,6 +430,7 @@ export type Database = {
           id?: string
           notes?: string | null
           property_id?: string
+          public_id?: string
           requested_amount?: number | null
           status?: Database["public"]["Enums"]["finance_package_status"]
           summary_document_id?: string | null
@@ -912,6 +921,7 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           parent_access_blocked: boolean
           parent_id: string | null
+          public_id: string
           settings: Json
           slug: string
           updated_at: string
@@ -925,6 +935,7 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           parent_access_blocked?: boolean
           parent_id?: string | null
+          public_id: string
           settings?: Json
           slug: string
           updated_at?: string
@@ -938,6 +949,7 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           parent_access_blocked?: boolean
           parent_id?: string | null
+          public_id?: string
           settings?: Json
           slug?: string
           updated_at?: string
@@ -1125,6 +1137,7 @@ export type Database = {
           parcel_number: string | null
           postal_code: string | null
           property_type: string
+          public_id: string
           public_listing_approved_at: string | null
           public_listing_approved_by: string | null
           purchase_price: number | null
@@ -1159,6 +1172,7 @@ export type Database = {
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
+          public_id: string
           public_listing_approved_at?: string | null
           public_listing_approved_by?: string | null
           purchase_price?: number | null
@@ -1193,6 +1207,7 @@ export type Database = {
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
+          public_id?: string
           public_listing_approved_at?: string | null
           public_listing_approved_by?: string | null
           purchase_price?: number | null
@@ -1637,6 +1652,7 @@ export type Database = {
           floor: number | null
           id: string
           property_id: string
+          public_id: string
           rooms: number | null
           tenant_id: string
           unit_number: string
@@ -1651,6 +1667,7 @@ export type Database = {
           floor?: number | null
           id?: string
           property_id: string
+          public_id: string
           rooms?: number | null
           tenant_id: string
           unit_number?: string
@@ -1665,6 +1682,7 @@ export type Database = {
           floor?: number | null
           id?: string
           property_id?: string
+          public_id?: string
           rooms?: number | null
           tenant_id?: string
           unit_number?: string
@@ -1750,6 +1768,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_public_id: { Args: { prefix: string }; Returns: string }
       is_parent_access_blocked: {
         Args: { target_org_id: string }
         Returns: boolean
