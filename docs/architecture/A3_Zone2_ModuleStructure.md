@@ -1,8 +1,9 @@
 # A3 — ZONE 2: USER PORTALS & MODULE
 
 **Version:** A3_Zone2_ModuleStructure_v1.0  
-**Status:** DRAFT  
-**Changelog:** Initial draft — 9 Module, 45 Sub-Routes, Mermaid-Diagramm.
+**Status:** FROZEN  
+**Bezug:** A1_SystemOverview_v1.0 (FROZEN), A2_Zone1_Admin_Governance_v1.0 (FROZEN)  
+**Changelog:** Initial draft — 9 Module, 45 Sub-Routes, Mermaid-Diagramm. Konsistenzprüfung bestanden, Status FROZEN.
 
 ---
 
