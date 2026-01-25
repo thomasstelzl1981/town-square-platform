@@ -12,7 +12,7 @@ import {
   Target
 } from 'lucide-react';
 
-// Fixed navigation items matching the 9-module grid
+// Standard modules (available to all tenants) - primary nav
 const navItems = [
   { code: 'home', label: 'Home', icon: Home, route: '/portal' },
   { code: 'stammdaten', label: 'Stamm', icon: Users, route: '/portal/stammdaten' },
@@ -21,11 +21,16 @@ const navItems = [
   { code: 'immobilien', label: 'Immo', icon: Building2, route: '/portal/immobilien' },
 ];
 
-const moreItems = [
+// Standard modules (available to all tenants) - continued
+const standardModules = [
   { code: 'msv', label: 'MSV', icon: FileText, route: '/portal/msv' },
   { code: 'verkauf', label: 'Verkauf', icon: Briefcase, route: '/portal/verkauf' },
-  { code: 'vertriebspartner', label: 'Partner', icon: Users, route: '/portal/vertriebspartner' },
   { code: 'finanzierung', label: 'Finanz', icon: Wallet, route: '/portal/finanzierung' },
+];
+
+// Addon modules (only for partner tenants)
+const addonModules = [
+  { code: 'vertriebspartner', label: 'Partner', icon: Users, route: '/portal/vertriebspartner' },
   { code: 'leadgenerierung', label: 'Leads', icon: Target, route: '/portal/leadgenerierung' },
 ];
 
@@ -49,7 +54,7 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
           Navigation
         </div>
-        {[...navItems, ...moreItems].map(item => {
+        {[...navItems, ...standardModules, ...addonModules].map(item => {
           const Icon = item.icon;
           const active = isActive(item.route);
           return (

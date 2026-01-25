@@ -1,11 +1,12 @@
-# MOD-07 — VERTRIEBSPARTNER (Sales Partners & Pipeline)
+# MOD-08 — VERTRIEBSPARTNER (Sales Partners & Pipeline)
 
-**Version:** v1.0.0  
+**Version:** v1.1.0  
 **Status:** SPEC READY (Phase 1 MVP)  
 **Letzte Aktualisierung:** 2026-01-25  
 **Zone:** 2 (User Portal)  
+**Typ:** ADDON (nur für Partner-Tenants)  
 **Route-Prefix:** `/portal/vertriebspartner`  
-**Abhängig von:** MOD-06 (Listings), MOD-04 (Properties), MOD-01 (Contacts), Backbone (Consents, Audit)
+**Abhängig von:** MOD-06 (Listings), MOD-04 (Properties), MOD-01 (Contacts), MOD-07 (Finanzierung), Backbone (Consents, Audit)
 
 ---
 
@@ -13,7 +14,7 @@
 
 ### 1.1 Ziel
 
-MOD-07 „Vertriebspartner" ist das operative Modul für Vertriebspartner (sales_partner Rolle). Es ermöglicht das Browsen von partner-sichtbaren Listings, die Verwaltung einer eigenen Deal-Pipeline, Investmentberatung und Provisionsabwicklung.
+MOD-08 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner (sales_partner Rolle). Es ermöglicht das Browsen von partner-sichtbaren Listings, die Verwaltung einer eigenen Deal-Pipeline, Investmentberatung und Provisionsabwicklung. **Dieses Modul ist nur für Partner-Tenants verfügbar.**
 
 ### 1.2 Nutzerrollen
 
@@ -36,7 +37,7 @@ MOD-07 „Vertriebspartner" ist das operative Modul für Vertriebspartner (sales
 
 - Listing-Erstellung (→ MOD-06)
 - Property-Bearbeitung (→ MOD-04)
-- Financing Package Erstellung (→ MOD-08)
+- Financing Package Erstellung (→ MOD-07)
 - Reservation-Abschluss ohne Owner-Confirmation (→ MOD-06)
 
 ### 1.5 Dependencies
@@ -46,7 +47,7 @@ MOD-07 „Vertriebspartner" ist das operative Modul für Vertriebspartner (sales
 | MOD-06 Verkauf | Read | listings (partner_visible=true) |
 | MOD-04 Immobilien | Read | properties (Stammdaten) |
 | MOD-01 Stammdaten | Read | contacts (Kunden) |
-| MOD-08 Finanzierung | Link | Handoff für finance_packages |
+| MOD-07 Finanzierung | Link | Handoff für finance_packages |
 | Backbone | Read/Write | user_consents (COMMISSION_AGREEMENT) |
 | Backbone | Write | audit_events |
 
@@ -54,10 +55,10 @@ MOD-07 „Vertriebspartner" ist das operative Modul für Vertriebspartner (sales
 
 | Domäne | SoT-Modul | Andere Module |
 |--------|-----------|---------------|
-| Partner Pipelines | **MOD-07** | MOD-06: Status-Read |
-| Investment Profiles | **MOD-07** | — |
-| Commissions | **MOD-07** | MOD-06: Trigger |
-| Listings | MOD-06 | MOD-07: Read-only |
+| Partner Pipelines | **MOD-08** | MOD-06: Status-Read |
+| Investment Profiles | **MOD-08** | — |
+| Commissions | **MOD-08** | MOD-06: Trigger |
+| Listings | MOD-06 | MOD-08: Read-only |
 | Properties | MOD-04 | MOD-07: Read-only |
 
 ---
