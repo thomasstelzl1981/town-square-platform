@@ -24,8 +24,8 @@
 | Q5.16 | MOD-05 | Renter-Adresse in contacts? | contacts.address erweitern | Mittel | Gering | P1 |
 | Q6.2 | MOD-06 | Commission-Rate pro Listing? | Ja, pro Listing konfigurierbar | Mittel | Gering | P1 |
 | Q6.3 | MOD-06 | Buyer Confirmation Phase? | Phase 2 | Gering | Gering | P1 |
-| Q7.1 | MOD-07 | Commission Split fix? | Konfigurierbar pro Listing | Mittel | Mittel | P1 |
-| Q7.5 | MOD-07 | Commission Payout? | Manuell Phase 1 | Gering | Gering | P1 |
+| Q8.1 | MOD-08 | Commission Split fix? | Konfigurierbar pro Listing | Mittel | Mittel | P1 |
+| Q8.5 | MOD-08 | Commission Payout? | Manuell Phase 1 | Gering | Gering | P1 |
 
 ### Top 5 Freeze Candidates (P0)
 
@@ -41,11 +41,11 @@
 
 ### Kritische Verständnisfrage
 
-**Frage:** Ist die Annahme korrekt, dass MOD-06 (Verkauf) primär aus **Eigentümersicht** operiert (Listings erstellen, Verkaufsprozess steuern), während MOD-07 (Vertriebspartner) aus **Partnersicht** operiert (Listings browsen, Deals vermitteln, Provision erhalten)?
+**Frage:** Ist die Annahme korrekt, dass MOD-06 (Verkauf) primär aus **Eigentümersicht** operiert (Listings erstellen, Verkaufsprozess steuern), während MOD-08 (Vertriebspartner) aus **Partnersicht** operiert (Listings browsen, Deals vermitteln, Provision erhalten)?
 
 **Meine Hypothese:**
 - MOD-06 = Der Property-Owner/Verwalter verkauft seine Immobilie
-- MOD-07 = Externe Partner vermitteln Käufer und erhalten Provision
+- MOD-08 = Externe Partner vermitteln Käufer und erhalten Provision
 - Partner können KEINE Listings erstellen, nur lesen + Inquiries/Deals einbringen
 - Die Plattform (Zone 1) approved Commissions, nicht der Property-Owner
 
@@ -60,14 +60,14 @@ Falsche Rollenabgrenzung → falsche RLS-Policies → Sicherheitslücken oder Fu
 
 1. **MOD-01..05 IST-Zustand vollständig auditiert** — Routes, Datenmodell, APIs, Integrations
 2. **MOD-06 Verkauf spezifiziert** — Listings, Inquiries, Reservations, Transactions mit SALES_MANDATE
-3. **MOD-07 Vertriebspartner spezifiziert** — Pipeline, Investment Engine, Commissions mit COMMISSION_AGREEMENT
+3. **MOD-08 Vertriebspartner spezifiziert** — Pipeline, Investment Engine, Commissions mit COMMISSION_AGREEMENT
 4. **Shared Domain dokumentiert** — Ownership-Matrix, Lifecycle-Diagramme, Cross-Module APIs
 5. **Open Questions bereinigt** — 5 resolved, 5 verbleibend mit Empfehlungen
 
 ### Nächste 5 Schritte:
 
 1. Route-Drift MOD-03 in App.tsx bereinigen
-2. Dynamische Routes für MOD-04/06/07 in App.tsx ergänzen
+2. Dynamische Routes für MOD-04/06/08 in App.tsx ergänzen
 3. DB-Schema für listings, inquiries, reservations, transactions erstellen
 4. Investment Engine Edge Function implementieren
 5. Consent-Templates für SALES_MANDATE + COMMISSION_AGREEMENT anlegen
@@ -85,5 +85,5 @@ Falsche Rollenabgrenzung → falsche RLS-Policies → Sicherheitslücken oder Fu
 **Dokumente erstellt:**
 - `docs/architecture/AUDIT_REPORT_MOD01-05_2026-01-25.md`
 - `docs/modules/MOD-06_VERKAUF.md`
-- `docs/modules/MOD-07_VERTRIEBSPARTNER.md`
-- `docs/modules/MOD-06_07_SHARED_DOMAIN_AND_APIS.md`
+- `docs/modules/MOD-08_VERTRIEBSPARTNER.md`
+- `docs/modules/MOD-06_08_SHARED_DOMAIN_AND_APIS.md`

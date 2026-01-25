@@ -1,9 +1,9 @@
-# MOD-06 & MOD-07 — SHARED DOMAIN & APIs
+# MOD-06 & MOD-08 — SHARED DOMAIN & APIs
 
-**Version:** v1.0.0  
+**Version:** v1.1.0  
 **Status:** SPEC READY  
 **Datum:** 2026-01-25  
-**Zweck:** Gemeinsame Domänen-Definitionen und API-Contracts für MOD-06 (Verkauf) und MOD-07 (Vertriebspartner)
+**Zweck:** Gemeinsame Domänen-Definitionen und API-Contracts für MOD-06 (Verkauf) und MOD-08 (Vertriebspartner)
 
 ---
 
@@ -11,26 +11,26 @@
 
 ### Tabellen-Ownership
 
-| Tabelle | Owner | MOD-06 Access | MOD-07 Access |
+| Tabelle | Owner | MOD-06 Access | MOD-08 Access |
 |---------|-------|---------------|---------------|
 | `listings` | MOD-06 | CRUD | Read (partner_visible only) |
 | `listing_inquiries` | MOD-06 | CRUD | Write (via Partner-Referral) |
 | `reservations` | MOD-06 | CRUD | Read (Status) |
 | `transactions` | MOD-06 | CRUD | Read (nach Completion) |
-| `partner_pipelines` | MOD-07 | Read (Status-Sync) | CRUD |
-| `investment_profiles` | MOD-07 | — | CRUD |
-| `commissions` | MOD-07 | Trigger | CRUD |
-| `investment_simulations` | MOD-07 | — | CRUD |
-| `partner_listing_views` | MOD-07 | Read (Analytics) | Write |
+| `partner_pipelines` | MOD-08 | Read (Status-Sync) | CRUD |
+| `investment_profiles` | MOD-08 | — | CRUD |
+| `commissions` | MOD-08 | Trigger | CRUD |
+| `investment_simulations` | MOD-08 | — | CRUD |
+| `partner_listing_views` | MOD-08 | Read (Analytics) | Write |
 
 ### Shared Read Contracts
 
 | Contract | Anbieter | Konsument | Filter |
 |----------|----------|-----------|--------|
-| Partner-Listings | MOD-06 | MOD-07 | `partner_visible = true` |
-| Listing-Status | MOD-06 | MOD-07 | Via listing_id FK |
-| Reservation-Status | MOD-06 | MOD-07 | Via reservation_id FK |
-| Property-Data | MOD-04 | MOD-06, MOD-07 | Via property_id FK |
+| Partner-Listings | MOD-06 | MOD-08 | `partner_visible = true` |
+| Listing-Status | MOD-06 | MOD-08 | Via listing_id FK |
+| Reservation-Status | MOD-06 | MOD-08 | Via reservation_id FK |
+| Property-Data | MOD-04 | MOD-06, MOD-08 | Via property_id FK |
 
 ---
 
@@ -53,7 +53,7 @@ stateDiagram-v2
     withdrawn --> [*]
 ```
 
-### 2.2 Pipeline Lifecycle (MOD-07)
+### 2.2 Pipeline Lifecycle (MOD-08)
 
 ```mermaid
 stateDiagram-v2
@@ -77,10 +77,10 @@ stateDiagram-v2
 
 ```mermaid
 sequenceDiagram
-    participant P as Partner (MOD-07)
+    participant P as Partner (MOD-08)
     participant L as Listings (MOD-06)
     participant R as Reservations (MOD-06)
-    participant C as Commissions (MOD-07)
+    participant C as Commissions (MOD-08)
     
     P->>L: Browse partner_visible Listings
     L-->>P: Return Listings
@@ -142,8 +142,8 @@ flowchart LR
 | Gate | Code | Trigger | Required By |
 |------|------|---------|-------------|
 | Sales Mandate | `SALES_MANDATE` | Listing Activation | MOD-06 |
-| Commission Agreement | `COMMISSION_AGREEMENT` | Commission Trigger | MOD-07 |
-| Data Sharing | `DATA_SHARING_FUTURE_ROOM` | Data Room Handoff | MOD-08 |
+| Commission Agreement | `COMMISSION_AGREEMENT` | Commission Trigger | MOD-08 |
+| Data Sharing | `DATA_SHARING_FUTURE_ROOM` | Data Room Handoff | MOD-07 |
 
 ### 3.2 Audit Events (Standardisiert)
 
@@ -167,7 +167,7 @@ flowchart LR
 | `transaction.notarized` | sales | transaction_id, notary_date |
 | `transaction.completed` | sales | transaction_id, final_price |
 
-#### MOD-07 Events
+#### MOD-08 Events
 
 | Event | Category | Payload Minimum |
 |-------|----------|-----------------|
@@ -278,7 +278,7 @@ interface YearlyData {
 
 ## 5) CROSS-MODULE API ENDPOINTS
 
-### 5.1 MOD-06 → MOD-07 (Listings for Partners)
+### 5.1 MOD-06 → MOD-08 (Listings for Partners)
 
 ```
 GET /verkauf/listings/partner-visible
@@ -287,7 +287,7 @@ Response: Listing[] (filtered by partner_visible=true)
 Auth: sales_partner
 ```
 
-### 5.2 MOD-07 → MOD-06 (Partner Referral)
+### 5.2 MOD-08 → MOD-06 (Partner Referral)
 
 ```
 POST /verkauf/inquiries
@@ -302,7 +302,7 @@ Response: Inquiry
 Auth: sales_partner
 ```
 
-### 5.3 MOD-07 → MOD-08 (Financing Handoff)
+### 5.3 MOD-08 → MOD-07 (Financing Handoff)
 
 ```
 Link: /portal/finanzierung?property_id={id}&contact_id={id}&pipeline_id={id}
@@ -399,11 +399,11 @@ FOR UPDATE USING (
 
 | Check | Status | Erklärung |
 |-------|--------|-----------|
-| Route-Overlap | ✓ | MOD-06 = `/verkauf/*`, MOD-07 = `/vertriebspartner/*` |
+| Route-Overlap | ✓ | MOD-06 = `/verkauf/*`, MOD-08 = `/vertriebspartner/*` |
 | Tabellen-Overlap | ✓ | Ownership klar getrennt |
 | Zone-Trennung | ✓ | Beide in Zone 2, keine Zone-1-Workflows |
-| Consent-Codes | ✓ | SALES_MANDATE (MOD-06), COMMISSION_AGREEMENT (MOD-07) |
-| Trigger-Flags | ✓ | sale_enabled (MOD-04) triggert MOD-06, partner_visible (MOD-06) triggert MOD-07 |
+| Consent-Codes | ✓ | SALES_MANDATE (MOD-06), COMMISSION_AGREEMENT (MOD-08) |
+| Trigger-Flags | ✓ | sale_enabled (MOD-04) triggert MOD-06, partner_visible (MOD-06) triggert MOD-08 |
 
 ---
 
@@ -417,7 +417,7 @@ FOR UPDATE USING (
    - Reservations (Owner Confirmation only)
    - Transactions (Manual)
 
-2. **MOD-07:**
+2. **MOD-08:**
    - Pipeline Kanban
    - Listings Read-only
    - Investment Engine Basic
@@ -430,7 +430,7 @@ FOR UPDATE USING (
    - Zone 3 Public Listings
    - Automated Transaction Docs
 
-2. **MOD-07:**
+2. **MOD-08:**
    - Commission Payout (Stripe Connect)
    - Multi-Level Partners
    - Advanced Matching Algorithm
@@ -444,7 +444,7 @@ FOR UPDATE USING (
 - IST-Zustand Prüfbericht (MOD-01..05)
 - Open Questions Re-Audit
 - MOD-06 Spezifikation
-- MOD-07 Spezifikation
+- MOD-08 Spezifikation
 - Shared Domain & APIs
 
 **Nächste Schritte:**

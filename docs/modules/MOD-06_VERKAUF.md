@@ -21,7 +21,7 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 |-------|--------|--------------|
 | org_admin | Full | Listings erstellen, aktivieren, Deals abschließen |
 | internal_ops | Write | Listings bearbeiten, Anfragen bearbeiten |
-| sales_partner | Read | Nur Partner-sichtbare Listings (via MOD-07) |
+| sales_partner | Read | Nur Partner-sichtbare Listings (via MOD-08) |
 
 ### 1.3 Scope IN (testbar)
 
@@ -35,9 +35,9 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 
 ### 1.4 Scope OUT (Nicht-Ziele)
 
-- Partner-Pipeline Management (→ MOD-07)
-- Commission Berechnung (→ MOD-07)
-- Financing Package Creation (→ MOD-08)
+- Partner-Pipeline Management (→ MOD-08)
+- Commission Berechnung (→ MOD-08)
+- Financing Package Creation (→ MOD-07)
 - Public Listing auf Zone 3 Websites (Phase 2)
 
 ### 1.5 Dependencies
@@ -47,7 +47,7 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 | MOD-04 Immobilien | Read | properties, units (Struktur-SoT) |
 | MOD-01 Stammdaten | Read | contacts (Käufer, Interessenten) |
 | MOD-03 DMS | Link | documents für Exposés, Verträge |
-| MOD-07 Vertriebspartner | Read | Partner lesen Listings |
+| MOD-08 Vertriebspartner | Read | Partner lesen Listings |
 | Backbone | Read | user_consents (SALES_MANDATE) |
 | Backbone | Write | audit_events |
 
@@ -55,12 +55,12 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 
 | Domäne | SoT-Modul | Andere Module |
 |--------|-----------|---------------|
-| Listings | **MOD-06** | MOD-07: Read-only |
+| Listings | **MOD-06** | MOD-08: Read-only |
 | Inquiries | **MOD-06** | — |
-| Reservations | **MOD-06** | MOD-07: Status-Read |
+| Reservations | **MOD-06** | MOD-08: Status-Read |
 | Transactions | **MOD-06** | — |
 | Properties | MOD-04 | MOD-06: Read-only |
-| Partner Pipelines | MOD-07 | MOD-06: — |
+| Partner Pipelines | MOD-08 | MOD-06: — |
 
 ---
 
@@ -346,7 +346,7 @@ transaction_status: pending, notarized, bnl_received, completed, cancelled
 2. Prüfe: Pflichtfelder (Preis, Exposé empfohlen)
 3. Status-Update: → 'active'
 4. published_at = now()
-5. Wenn partner_visible=true: Sichtbar für MOD-07
+5. Wenn partner_visible=true: Sichtbar für MOD-08
 6. Audit: listing.activated
 
 ### Flow 3: Anfrage bearbeiten
@@ -479,11 +479,11 @@ transaction_status: pending, notarized, bnl_received, completed, cancelled
 | Property.sale_enabled | Property erscheint in Listing-Kandidaten |
 | Transaction.completed | Optional: sale_enabled=false |
 
-### MOD-06 → MOD-07
+### MOD-06 → MOD-08
 
 | Trigger | Effect |
 |---------|--------|
-| Listing.partner_visible=true | Listing in MOD-07 sichtbar |
+| Listing.partner_visible=true | Listing in MOD-08 sichtbar |
 | Inquiry via Partner | partner_pipeline_id verknüpft |
 | Reservation via Partner | Commission-Trigger |
 
