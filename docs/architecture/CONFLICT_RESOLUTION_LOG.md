@@ -41,10 +41,12 @@ Dieses Dokument trackt alle identifizierten Konflikte zwischen Spezifikationen, 
 | **ID** | K2 |
 | **Bereich** | MOD-03 DMS |
 | **IST (Spec)** | `/portal/dms` |
-| **IST (Code)** | `/portal/posteingang` (App.tsx) |
+| **IST (Code)** | `/portal/dms` ✅ |
 | **SOLL** | `/portal/dms` |
-| **Resolution** | Spec hat Vorrang (DMS ist korrekter Begriff). Code anpassen. |
-| **Status** | 🟡 IN_PROGRESS |
+| **Resolution** | Code angepasst: `App.tsx` und `PortalNav.tsx` aktualisiert |
+| **Status** | 🟢 RESOLVED |
+| **Datum** | 2026-01-25 |
+| **Betroffene Dateien** | `src/App.tsx`, `src/components/portal/PortalNav.tsx` |
 | **Datum** | 2026-01-25 |
 | **Betroffene Dateien** | `src/App.tsx`, `src/components/portal/PortalNav.tsx` |
 
@@ -204,9 +206,11 @@ Dieses Dokument trackt alle identifizierten Konflikte zwischen Spezifikationen, 
 Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
 
 - [x] K1: Route MOD-02 → RESOLVED (Spec angepasst)
-- [ ] K2: Route MOD-03 → IN_PROGRESS (Code-Änderung nötig)
+- [x] K2: Route MOD-03 → RESOLVED (Code angepasst)
 - [x] K3: Contacts Ownership → RESOLVED (Ownership Map aktualisiert)
 - [x] K4: Communication Events → RESOLVED (Ownership Map aktualisiert)
+
+✅ **Alle kritischen Konflikte gelöst — Ready for Implementation**
 
 ---
 

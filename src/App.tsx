@@ -86,12 +86,12 @@ const App = () => (
               <Route path="ki-office/kontakte" element={<ModulePage />} />
               <Route path="ki-office/kalender" element={<ModulePage />} />
               
-              {/* Module 3: Posteingang / DMS */}
-              <Route path="posteingang" element={<ModulePage />} />
-              <Route path="posteingang/eingang" element={<ModulePage />} />
-              <Route path="posteingang/zuordnung" element={<ModulePage />} />
-              <Route path="posteingang/archiv" element={<ModulePage />} />
-              <Route path="posteingang/einstellungen" element={<ModulePage />} />
+              {/* Module 3: DMS (Posteingang / Dokumentenmanagement) */}
+              <Route path="dms" element={<ModulePage />} />
+              <Route path="dms/eingang" element={<ModulePage />} />
+              <Route path="dms/zuordnung" element={<ModulePage />} />
+              <Route path="dms/archiv" element={<ModulePage />} />
+              <Route path="dms/einstellungen" element={<ModulePage />} />
               
               {/* Module 4: Immobilien */}
               <Route path="immobilien" element={<ModulePage />} />
