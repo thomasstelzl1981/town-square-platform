@@ -196,6 +196,77 @@ Armstrong kennt:
 
 ---
 
+### 4.5 Armstrong Document Tools (MOD-03 Integration)
+
+Armstrong hat Zugriff auf DMS-Funktionen für Dokumentensuche und -analyse:
+
+#### Tool: search_documents
+
+| Aspekt | Beschreibung |
+|--------|--------------|
+| **Input** | `query` (text), `filters` (node_id, doc_type, date_range) |
+| **Action** | `SELECT FROM document_chunks WHERE text @@ to_tsquery(?)` |
+| **Output** | Liste von Dokumenten mit Snippet |
+| **RLS** | Nur tenant-eigene Dokumente |
+
+**Beispiel-Prompt**: "Finde den Mietvertrag für Hauptstr. 15"
+
+#### Tool: get_document_content
+
+| Aspekt | Beschreibung |
+|--------|--------------|
+| **Input** | `document_id` |
+| **Action** | `SELECT text FROM document_chunks WHERE document_id=?` |
+| **Output** | Volltext (alle Chunks konkateniert) |
+| **Use Case** | Zusammenfassung, Analyse |
+
+**Beispiel-Prompt**: "Was steht in diesem Dokument?"
+
+#### Tool: summarize_document
+
+| Aspekt | Beschreibung |
+|--------|--------------|
+| **Input** | `document_id` |
+| **Action** | Load chunks → LLM Summarization |
+| **Output** | Strukturierte Zusammenfassung |
+
+**Beispiel-Prompt**: "Fasse das Dokument zusammen"
+
+#### Tool: link_document (Confirmation-First!)
+
+| Aspekt | Beschreibung |
+|--------|--------------|
+| **Input** | `document_id`, `target_type`, `target_id` |
+| **Action** | User-Bestätigung → UPDATE document_links |
+| **Output** | Bestätigungsmeldung |
+| **KRITISCH** | Erfordert explizite User-Bestätigung! |
+
+**Beispiel-Prompt**: "Ordne dieses Dokument der Immobilie zu"
+
+#### Voraussetzungen für Document Tools
+
+- Dokument muss `extraction_status = 'done'` haben
+- Chunks müssen in `document_chunks` existieren
+- Nur Dokumente des aktuellen Tenants
+
+#### UI-Integration
+
+- Armstrong-Stripe zeigt "Dokumentsuche" als Fähigkeit
+- Drag & Drop Dokument auf Armstrong → Analyse starten
+- Armstrong kann Dokumente vorschlagen für Sortierung
+
+---
+
+### 4.6 Kontext-Awareness (Details)
+
+Armstrong kennt:
+- Aktuellen Tenant + User
+- Aktive Route / Screen
+- Ausgewählte Entities (Kontakt, Objekt, Dokument)
+- Letzte Aktionen
+
+---
+
 ## 5. Communication Events (Backbone)
 
 ### 5.1 Tabelle: `communication_events`

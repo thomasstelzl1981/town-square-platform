@@ -163,11 +163,23 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 | `storage_nodes` | DMS | ✅ | Tenant Members | Org Admin, Internal Ops |
 | `document_links` | DMS | ✅ | Tenant Members | Tenant Members |
 | `extractions` | DMS | ✅ | Tenant Members | Worker (service role) |
-| `document_chunks` | DMS | ✅ | Tenant Members | Worker (service role) |
-| `jobs` | DMS | ✅ | Tenant Members | Worker (service role) |
-| `connectors` | DMS | ✅ | Tenant Members | Org Admin |
+| `document_chunks` | DMS | ✅ | Tenant Members + **Armstrong** | Worker (service role) |
+| `jobs` | DMS | ✅ | Internal only | Worker (service role) |
+| `connectors` | DMS | ✅ | User (self) | User (self) |
+| `billing_usage` | DMS / MOD-01 | ✅ | Tenant Members | System |
 
-**Hinweis**: `documents` ist ein Backbone Object (siehe 2.1). `connectors` speichert **Tenant-Instanzen** von Integrationen, während `integration_registry` (Zone 1) die **Definitionen** enthält.
+**Hinweise:**
+- `documents` ist ein Backbone Object (siehe 2.1)
+- `connectors` speichert **User-scoped OAuth Tokens** für Dropbox/OneDrive/GDrive (GDPR-konform, User-Ownership)
+- `integration_registry` (Zone 1) enthält **Platform-API-Definitionen**, nicht User-Connectors
+- **Armstrong-Zugriff**: `document_chunks` ist READ-only für Armstrong (MOD-02) zur Dokumentensuche
+
+### Cross-Module Access (DMS → MOD-02)
+
+| Access | Von | Zu | Tabelle | Permission |
+|--------|-----|------|---------|------------|
+| Armstrong Search | MOD-02 | MOD-03 | `document_chunks` | READ |
+| Armstrong Link | MOD-02 | MOD-03 | `document_links` | WRITE (mit Consent) |
 
 ---
 
@@ -255,3 +267,4 @@ Diese Aktionen MÜSSEN als `audit_events` erfasst werden:
 |---------|-------|----------|
 | 1.0 | 2026-01-21 | Initial |
 | 1.1 | 2026-01-25 | K3/K4 Resolutions: `contacts`, `documents`, `communication_events` → Backbone. MOD-02 (2.10), MOD-03 (2.11) Tabellen hinzugefügt. Append-Only erweitert. |
+| 1.2 | 2026-01-25 | K6 Resolution: `connectors` als User-scoped definiert. Armstrong-Zugriff auf `document_chunks` dokumentiert. `billing_usage` hinzugefügt. |
