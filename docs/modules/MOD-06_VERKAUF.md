@@ -1,10 +1,11 @@
 # MOD-06 — VERKAUF (Sales & Listings)
 
-**Version:** v1.0.0  
-**Status:** SPEC READY (Phase 1 MVP)  
+**Version:** v2.0.0  
+**Status:** SPEC COMPLETE  
 **Letzte Aktualisierung:** 2026-01-25  
 **Zone:** 2 (User Portal)  
 **Route-Prefix:** `/portal/verkauf`  
+**Typ:** Standard-Modul (alle Tenants)  
 **Abhängig von:** MOD-04 (Properties), MOD-01 (Contacts), MOD-03 (DMS), Backbone (Consents, Audit)
 
 ---
@@ -13,7 +14,9 @@
 
 ### 1.1 Ziel
 
-MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigentümersicht. Es transformiert Properties (MOD-04) in verkaufsfähige Listings und verwaltet den gesamten Sales-Lifecycle bis zur Transaktion.
+MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus **Eigentümersicht**. Es transformiert Properties (MOD-04) in verkaufsfähige Listings und verwaltet den gesamten Sales-Lifecycle bis zur Transaktion.
+
+**Kernfunktion:** Veröffentlichung von Objekten über 4 Kanäle + Management des gesamten Verkaufsprozesses.
 
 ### 1.2 Nutzerrollen
 
@@ -27,35 +30,27 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 
 - Listing aus Property erstellen (mit SALES_MANDATE Consent)
 - Listing-Lifecycle: draft → review → active → reserved → sold/withdrawn
+- **4 Publishing-Kanäle:** Kaufy, Scout24, Kleinanzeigen, Partner-Netzwerk
 - Partner-Visibility Flags setzen
 - Inquiry Management (Anfragen erfassen, zuordnen)
-- Reservation Workflow (minimal Phase 1)
+- Reservation Workflow
 - Transaction Documentation (Notartermin, BNL)
 - DMS-Integration für Verkaufsunterlagen
 
 ### 1.4 Scope OUT (Nicht-Ziele)
 
 - Partner-Pipeline Management (→ MOD-08)
-- Commission Berechnung (→ MOD-08)
+- Commission Berechnung/Auszahlung (→ MOD-08)
 - Financing Package Creation (→ MOD-07)
-- Public Listing auf Zone 3 Websites (Phase 2)
+- Lead-Generierung/Ads (→ MOD-09)
 
-### 1.5 Dependencies
-
-| Modul/Backbone | Art | Beschreibung |
-|----------------|-----|--------------|
-| MOD-04 Immobilien | Read | properties, units (Struktur-SoT) |
-| MOD-01 Stammdaten | Read | contacts (Käufer, Interessenten) |
-| MOD-03 DMS | Link | documents für Exposés, Verträge |
-| MOD-08 Vertriebspartner | Read | Partner lesen Listings |
-| Backbone | Read | user_consents (SALES_MANDATE) |
-| Backbone | Write | audit_events |
-
-### 1.6 Source of Truth Matrix
+### 1.5 Source of Truth Matrix
 
 | Domäne | SoT-Modul | Andere Module |
 |--------|-----------|---------------|
 | Listings | **MOD-06** | MOD-08: Read-only |
+| listing_publications | **MOD-06** | — |
+| listing_partner_terms | **MOD-06** | MOD-08: Read |
 | Inquiries | **MOD-06** | — |
 | Reservations | **MOD-06** | MOD-08: Status-Read |
 | Transactions | **MOD-06** | — |
@@ -64,32 +59,157 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus Eigent
 
 ---
 
-## 2) TRIGGER-LOGIK (FROZEN)
+## 2) ROUTE-STRUKTUR (SoT App.tsx)
 
-### 2.1 Aktivierung in MOD-04
+| Route | UI-Label | Screen | Beschreibung |
+|-------|----------|--------|--------------|
+| `/portal/verkauf` | Dashboard | VerkaufDashboard | KPIs, Pipeline-Overview, Alerts |
+| `/portal/verkauf/objekte` | Objekte | VerkaufObjekte | Listing-Liste mit Filtern |
+| `/portal/verkauf/aktivitaeten` | Aktivitäten | VerkaufAktivitaeten | Timeline, Logs |
+| `/portal/verkauf/anfragen` | Anfragen | VerkaufAnfragen | Inquiry Management |
+| `/portal/verkauf/vorgaenge` | Vorgänge | VerkaufVorgaenge | Reservations + Transactions |
 
-Ein Property wird verkaufsfähig durch:
-- `property_features.feature_code = 'sale'` mit `status = 'active'`
-- ODER: `sale_enabled = true` (falls als direktes Flag implementiert)
+### Dynamische Routes (Phase 2)
 
-**Konsistenzregel:** 
-- MOD-04 setzt das Flag
-- MOD-06 reagiert auf das Flag und zeigt Property in Listing-Kandidaten
-
-### 2.2 Listing-Aktivierung erfordert SALES_MANDATE
-
-Bevor ein Listing den Status `active` erreichen kann:
-1. User muss `SALES_MANDATE` Consent erteilen
-2. Consent wird in `user_consents` gespeichert
-3. Audit Event: `consent.sales_mandate.granted`
+| Route | Screen |
+|-------|--------|
+| `/portal/verkauf/objekte/new` | Listing erstellen |
+| `/portal/verkauf/objekte/:id` | Listing Detail |
+| `/portal/verkauf/objekte/:id/publish` | Publishing Wizard |
+| `/portal/verkauf/anfragen/:id` | Inquiry Detail |
+| `/portal/verkauf/vorgaenge/:id` | Reservation/Transaction Detail |
 
 ---
 
-## 3) DATENMODELL
+## 3) PUBLISHING-KANÄLE (4 Channels)
 
-### 3.1 Neue Tabellen
+### 3.1 Übersicht
 
-#### `listings` (NEU)
+| Kanal | Kosten | Gate/Agreements | Zielgruppe |
+|-------|--------|-----------------|------------|
+| **Kaufy** | Kostenlos | SALES_MANDATE | Öffentlich (Zone 3) |
+| **Immobilienscout24** | Bezahlt (Credits) | SCOUT24_CREDITS | Öffentlich |
+| **eBay Kleinanzeigen** | Link-Eintrag | — | Öffentlich (extern) |
+| **Partner-Netzwerk** | Kostenlos | PARTNER_RELEASE + SYSTEM_FEE | Finanzvertrieb |
+
+### 3.2 Kaufy Publishing Wizard (kostenfrei)
+
+**Route:** `/portal/verkauf/objekte/:id/publish?channel=kaufy`
+
+| Step | Titel | Validierung | Output |
+|------|-------|-------------|--------|
+| 1 | Kanal bestätigen | — | channel='kaufy' |
+| 2 | Readiness Check | Pflichtfelder prüfen | validation_result |
+| 3 | Exposé Preview | Web-Preview anzeigen | preview_rendered |
+| 4 | Partner-Freigabe (optional) | Toggle global/selektiv | partner_config |
+| 5 | Publish | — | publication_record |
+
+**Readiness Pflichtfelder:**
+- Adresse, Ort, PLZ
+- Objektart, Nutzungsart
+- Gesamtfläche
+- Preis (Angebotspreis ODER Marktwert)
+- Mindestens 3 Fotos
+- Kurzbeschreibung (min. 100 Zeichen)
+- Energieausweis-Infos
+- Rechtlicher Disclaimer akzeptiert
+
+**Output:**
+- `listing_publications` INSERT (channel='kaufy', status='published')
+- Zone 3 Listing wird sichtbar
+- Audit: `publication.kaufy.created`
+
+### 3.3 Scout24 Publishing Wizard (bezahlt)
+
+**Route:** `/portal/verkauf/objekte/:id/publish?channel=scout24`
+
+| Step | Titel | Validierung | Output |
+|------|-------|-------------|--------|
+| 1 | Kostenhinweis | Credits anzeigen | cost_acknowledged |
+| 2 | Feld-Mapping | Scout24-Pflichtfelder | mapping_complete |
+| 3 | Credit-Approval | Zahlung/Credit-Check | payment_approved |
+| 4 | Export Job | Status-Tracking | export_job_id |
+| 5 | Bestätigung | — | publication_record |
+
+**Scout24 Pflichtfelder (Mapping-Liste):**
+- objektart, nutzungsart, baujahr
+- wohnflaeche, grundstuecksflaeche
+- zimmer, etage
+- kaufpreis, provision
+- heizungsart, energieausweis
+- Mindestens 5 Fotos
+
+**Kosten:** Via Credits-System (Action Cost Catalog, Phase 2 definiert)
+
+**Fehlerfälle:**
+- Fehlende Pflichtfelder → Wizard blockiert in Step 2
+- Zahlung fehlgeschlagen → Retry oder Abbruch
+- API-Fehler → Status 'failed' + Retry-Option
+
+### 3.4 eBay Kleinanzeigen Wizard (Link-Eintrag)
+
+**Route:** `/portal/verkauf/objekte/:id/publish?channel=kleinanzeigen`
+
+| Step | Titel | Validierung | Output |
+|------|-------|-------------|--------|
+| 1 | URL eingeben | URL-Format | external_url |
+| 2 | Optional: Screenshot | DMS-Upload | screenshot_doc_id |
+| 3 | Speichern | — | publication_record |
+
+**Output:**
+- `listing_publications` INSERT (channel='kleinanzeigen', status='published_external', external_url)
+- Audit: `publication.kleinanzeigen.linked`
+
+**Aktionen:**
+- Link aktualisieren
+- Link entfernen (status → 'removed')
+
+### 3.5 Partner-Netzwerk / Finanzvertrieb Wizard
+
+**Route:** `/portal/verkauf/objekte/:id/publish?channel=partner`
+
+| Step | Titel | Validierung | Output |
+|------|-------|-------------|--------|
+| 1 | Finanzvertrieb aktivieren | Toggle | finance_distribution_enabled |
+| 2 | Provision festlegen | 5–15% Range | partner_commission_rate |
+| 3 | Provisionsvereinbarung | PARTNER_RELEASE Consent | consent_partner_release_id |
+| 4 | Systemgebühr Agreement | SYSTEM_SUCCESS_FEE Consent | consent_system_fee_id |
+| 5 | PDF generieren | DMS-Link | agreement_doc_id |
+| 6 | Freischalten | — | publication_record |
+
+**Partner-Provisions-Modell:**
+- **Partner-Provision:** 5–15% (Eigentümer wählt)
+- **Split bei Zone-1-Leads:** 1/3 Platform : 2/3 Partner
+- **Systemgebühr:** 2.000€ erfolgsabhängig (nur bei Closing)
+
+**Consent Codes:**
+- `PARTNER_RELEASE`: Freigabe für Partner-Netzwerk
+- `SYSTEM_SUCCESS_FEE_2000`: Erfolgsgebühr bei Closing
+
+**Output:**
+- `listing_partner_terms` INSERT/UPDATE
+- `listing_publications` INSERT (channel='partner_network')
+- Listing erscheint in MOD-08 Objektkatalog
+- Agreement-PDF in DMS
+- Audit: `publication.partner.released`
+
+---
+
+## 4) DATENMODELL
+
+### 4.1 Tabellen-Übersicht
+
+| Tabelle | Owner | Beschreibung |
+|---------|-------|--------------|
+| listings | MOD-06 | Haupt-Listing-Objekte |
+| listing_publications | MOD-06 | Pro Kanal: Status, Config |
+| listing_partner_terms | MOD-06 | Provision, Gebühren, Agreements |
+| listing_inquiries | MOD-06 | Anfragen/Interessenten |
+| listing_activities | MOD-06 | Timeline/Audit-Stream |
+| reservations | MOD-06 | Reservierungs-Workflow |
+| transactions | MOD-06 | Notarielle Abwicklung |
+
+### 4.2 `listings` (Haupt-Tabelle)
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
@@ -97,149 +217,239 @@ Bevor ein Listing den Status `active` erreichen kann:
 | tenant_id | uuid FK | Ja | Tenant-Isolation |
 | public_id | text | Ja | `SOT-L-XXXXXXXX` |
 | property_id | uuid FK | Ja | Referenz zu properties |
-| status | enum | Ja | Listing-Status |
+| status | listing_status | Ja | Lifecycle-Status |
 | asking_price | numeric | Nein | Angebotspreis |
 | min_price | numeric | Nein | Mindestpreis (intern) |
-| partner_visible | boolean | Ja | Sichtbar für Partner (Default: false) |
-| partner_commission_rate | numeric | Nein | Provisionssatz für Partner |
 | expose_document_id | uuid FK | Nein | Haupt-Exposé im DMS |
-| sales_mandate_consent_id | uuid FK | Ja | Referenz zu user_consents |
-| published_at | timestamptz | Nein | Aktivierungsdatum |
-| reserved_at | timestamptz | Nein | Reservierungsdatum |
-| sold_at | timestamptz | Nein | Verkaufsdatum |
-| withdrawn_at | timestamptz | Nein | Rückzugsdatum |
+| sales_mandate_consent_id | uuid FK | Ja | SALES_MANDATE Consent |
+| published_at | timestamptz | Nein | Erstaktivierung |
+| reserved_at | timestamptz | Nein | Reservierungszeitpunkt |
+| sold_at | timestamptz | Nein | Verkaufszeitpunkt |
+| withdrawn_at | timestamptz | Nein | Rückzugszeitpunkt |
+| created_by | uuid FK | Ja | Ersteller |
 | created_at | timestamptz | Ja | — |
 | updated_at | timestamptz | Ja | — |
 
-**Listing Status-Maschine:**
-```
-draft → internal_review → active → reserved → sold
-                       ↘ withdrawn
-active → withdrawn
-reserved → active (Reservation cancelled)
-reserved → withdrawn
-```
-
-**RLS:** tenant_id Match + Membership-Check
-
-#### `listing_inquiries` (NEU)
+### 4.3 `listing_publications` (Pro Kanal)
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
 | id | uuid PK | Ja | — |
-| tenant_id | uuid FK | Ja | Tenant-Isolation |
+| tenant_id | uuid FK | Ja | — |
+| listing_id | uuid FK | Ja | — |
+| channel | publication_channel | Ja | kaufy, scout24, kleinanzeigen, partner_network |
+| status | publication_status | Ja | draft, ready, published, paused, removed, failed |
+| external_url | text | Nein | Für Kleinanzeigen |
+| external_id | text | Nein | Scout24 ID etc. |
+| published_at | timestamptz | Nein | — |
+| paused_at | timestamptz | Nein | — |
+| removed_at | timestamptz | Nein | — |
+| error_message | text | Nein | Bei failed |
+| config | jsonb | Nein | Channel-spezifische Config |
+| created_at | timestamptz | Ja | — |
+| updated_at | timestamptz | Ja | — |
+
+### 4.4 `listing_partner_terms` (Provision + Gebühren)
+
+| Feld | Typ | Pflicht | Beschreibung |
+|------|-----|---------|--------------|
+| id | uuid PK | Ja | — |
+| tenant_id | uuid FK | Ja | — |
+| listing_id | uuid FK | Ja | UNIQUE |
+| partner_commission_rate | numeric | Ja | 5.00–15.00 (Prozent) |
+| finance_distribution_enabled | boolean | Ja | Finanzvertrieb aktiv |
+| system_success_fee_enabled | boolean | Ja | 2.000€ Gebühr aktiv |
+| partner_release_consent_id | uuid FK | Nein | PARTNER_RELEASE |
+| system_fee_consent_id | uuid FK | Nein | SYSTEM_SUCCESS_FEE_2000 |
+| agreement_document_id | uuid FK | Nein | PDF im DMS |
+| global_release | boolean | Ja | Alle Partner oder selektiv |
+| released_at | timestamptz | Nein | — |
+| created_at | timestamptz | Ja | — |
+| updated_at | timestamptz | Ja | — |
+
+### 4.5 `listing_inquiries` (Anfragen)
+
+| Feld | Typ | Pflicht | Beschreibung |
+|------|-----|---------|--------------|
+| id | uuid PK | Ja | — |
+| tenant_id | uuid FK | Ja | — |
 | public_id | text | Ja | `SOT-A-XXXXXXXX` |
-| listing_id | uuid FK | Ja | Referenz zu listings |
-| contact_id | uuid FK | Nein | Interessent (wenn bekannt) |
-| source | enum | Ja | website, partner, direct, referral |
-| status | enum | Ja | new, qualified, rejected, converted |
-| contact_name | text | Nein | Name (wenn kein Contact) |
-| contact_email | text | Nein | Email |
-| contact_phone | text | Nein | Telefon |
+| listing_id | uuid FK | Ja | — |
+| contact_id | uuid FK | Nein | Interessent (wenn verknüpft) |
+| source | inquiry_source | Ja | website, partner, direct, referral |
+| status | inquiry_status | Ja | new, contacted, qualified, scheduled, won, lost |
+| contact_name | text | Nein | — |
+| contact_email | text | Nein | — |
+| contact_phone | text | Nein | — |
 | message | text | Nein | Anfrage-Text |
-| assigned_to | uuid FK | Nein | Bearbeiter (User) |
-| partner_pipeline_id | uuid FK | Nein | Wenn via Partner |
+| assigned_to | uuid FK | Nein | Bearbeiter |
+| partner_pipeline_id | uuid FK | Nein | Wenn via MOD-08 |
+| qualified_at | timestamptz | Nein | — |
+| converted_at | timestamptz | Nein | — |
 | created_at | timestamptz | Ja | — |
 | updated_at | timestamptz | Ja | — |
 
-**Inquiry Status-Maschine:**
-```
-new → qualified → converted (→ Reservation)
-    → rejected
-```
-
-#### `reservations` (NEU)
+### 4.6 `reservations`
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
 | id | uuid PK | Ja | — |
-| tenant_id | uuid FK | Ja | Tenant-Isolation |
+| tenant_id | uuid FK | Ja | — |
 | public_id | text | Ja | `SOT-R-XXXXXXXX` |
-| listing_id | uuid FK | Ja | Referenz zu listings |
+| listing_id | uuid FK | Ja | — |
 | buyer_contact_id | uuid FK | Ja | Käufer |
+| inquiry_id | uuid FK | Nein | Ursprüngliche Anfrage |
 | partner_pipeline_id | uuid FK | Nein | Wenn via Partner |
-| status | enum | Ja | pending_owner, pending_buyer, confirmed, cancelled, completed |
-| reserved_price | numeric | Nein | Vereinbarter Preis |
-| reservation_fee | numeric | Nein | Reservierungsgebühr |
-| reservation_expires_at | timestamptz | Nein | Ablauf |
-| owner_confirmed_at | timestamptz | Nein | Eigentümer-Bestätigung |
+| status | reservation_status | Ja | — |
+| reserved_price | numeric | Nein | — |
+| reservation_fee | numeric | Nein | — |
+| reservation_expires_at | timestamptz | Nein | — |
+| owner_confirmed_at | timestamptz | Nein | — |
 | owner_confirmed_by | uuid FK | Nein | — |
-| buyer_confirmed_at | timestamptz | Nein | Käufer-Bestätigung |
-| notary_date | date | Nein | Geplanter Notartermin |
+| buyer_confirmed_at | timestamptz | Nein | — |
+| notary_date | date | Nein | — |
 | created_at | timestamptz | Ja | — |
 | updated_at | timestamptz | Ja | — |
 
-**Reservation Status-Maschine:**
-```
-pending_owner → pending_buyer → confirmed → completed
-            ↘ cancelled
-pending_buyer → cancelled
-confirmed → cancelled
-confirmed → completed
-```
-
-#### `transactions` (NEU)
+### 4.7 `transactions`
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
 | id | uuid PK | Ja | — |
-| tenant_id | uuid FK | Ja | Tenant-Isolation |
+| tenant_id | uuid FK | Ja | — |
 | public_id | text | Ja | `SOT-TX-XXXXXXXX` |
-| reservation_id | uuid FK | Ja | Referenz zu reservations |
-| listing_id | uuid FK | Ja | Referenz zu listings |
-| property_id | uuid FK | Ja | Referenz zu properties |
-| buyer_contact_id | uuid FK | Ja | Käufer |
+| reservation_id | uuid FK | Ja | — |
+| listing_id | uuid FK | Ja | — |
+| property_id | uuid FK | Ja | — |
+| buyer_contact_id | uuid FK | Ja | — |
 | final_price | numeric | Ja | Finaler Kaufpreis |
-| notary_date | date | Nein | Notartermin |
+| notary_date | date | Nein | — |
 | bnl_date | date | Nein | BNL-Datum |
-| handover_date | date | Nein | Übergabedatum |
-| status | enum | Ja | pending, notarized, bnl_received, completed, cancelled |
+| handover_date | date | Nein | Übergabe |
+| status | transaction_status | Ja | — |
+| commission_amount | numeric | Nein | Berechnete Provision |
+| system_fee_amount | numeric | Nein | 2.000€ wenn fällig |
 | notes | text | Nein | — |
 | created_at | timestamptz | Ja | — |
 | updated_at | timestamptz | Ja | — |
 
-**Transaction Status-Maschine:**
-```
-pending → notarized → bnl_received → completed
-       ↘ cancelled
-```
+### 4.8 Enums
 
-### 3.2 Enums
+```sql
+CREATE TYPE listing_status AS ENUM (
+  'draft', 'internal_review', 'active', 'reserved', 'sold', 'withdrawn'
+);
 
-```
-listing_status: draft, internal_review, active, reserved, sold, withdrawn
-inquiry_source: website, partner, direct, referral
-inquiry_status: new, qualified, rejected, converted
-reservation_status: pending_owner, pending_buyer, confirmed, cancelled, completed
-transaction_status: pending, notarized, bnl_received, completed, cancelled
+CREATE TYPE publication_channel AS ENUM (
+  'kaufy', 'scout24', 'kleinanzeigen', 'partner_network'
+);
+
+CREATE TYPE publication_status AS ENUM (
+  'draft', 'ready', 'published', 'published_external', 'paused', 'removed', 'failed'
+);
+
+CREATE TYPE inquiry_source AS ENUM (
+  'website', 'partner', 'direct', 'referral'
+);
+
+CREATE TYPE inquiry_status AS ENUM (
+  'new', 'contacted', 'qualified', 'scheduled', 'won', 'lost'
+);
+
+CREATE TYPE reservation_status AS ENUM (
+  'pending_owner', 'pending_buyer', 'confirmed', 'cancelled', 'completed'
+);
+
+CREATE TYPE transaction_status AS ENUM (
+  'pending', 'notarized', 'bnl_received', 'completed', 'cancelled'
+);
 ```
 
 ---
 
-## 4) ROUTE-STRUKTUR (BINDING)
+## 5) STATUS-MASCHINEN
 
-| Route | Screen | Beschreibung |
-|-------|--------|--------------|
-| `/portal/verkauf` | Dashboard | KPIs, Pipeline-Overview, Alerts |
-| `/portal/verkauf/objekte` | Listings | Listing-Liste mit Filtern |
-| `/portal/verkauf/aktivitaeten` | Aktivitäten | Timeline, Logs |
-| `/portal/verkauf/anfragen` | Anfragen | Inquiry Management |
-| `/portal/verkauf/vorgaenge` | Vorgänge | Reservations + Transactions |
+### 5.1 Listing Status
 
-### Dynamische Routes (nicht in App.tsx, aber geplant)
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> internal_review: Submit for Review
+    internal_review --> active: Approve + Publish
+    internal_review --> draft: Request Changes
+    active --> reserved: Create Reservation
+    active --> withdrawn: Withdraw Listing
+    reserved --> active: Cancel Reservation
+    reserved --> sold: Complete Transaction
+    reserved --> withdrawn: Withdraw
+    sold --> [*]
+    withdrawn --> [*]
+```
 
-| Route | Screen |
-|-------|--------|
-| `/portal/verkauf/objekte/new` | Listing erstellen |
-| `/portal/verkauf/objekte/:id` | Listing Detail |
-| `/portal/verkauf/anfragen/:id` | Inquiry Detail |
-| `/portal/verkauf/vorgaenge/:id` | Reservation/Transaction Detail |
+### 5.2 Publication Status (per Channel)
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> ready: Readiness Check Passed
+    ready --> published: Execute Publish
+    ready --> published_external: Link Entry (Kleinanzeigen)
+    published --> paused: Pause
+    published --> removed: Remove
+    paused --> published: Resume
+    published --> failed: API Error
+    failed --> ready: Retry
+    removed --> [*]
+```
+
+### 5.3 Inquiry Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> new
+    new --> contacted: First Contact
+    contacted --> qualified: Qualify Lead
+    contacted --> lost: Reject
+    qualified --> scheduled: Book Viewing
+    scheduled --> won: Create Reservation
+    scheduled --> lost: Lost Deal
+    won --> [*]
+    lost --> [*]
+```
+
+### 5.4 Reservation Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending_owner
+    pending_owner --> pending_buyer: Owner Confirms
+    pending_owner --> cancelled: Owner Declines
+    pending_buyer --> confirmed: Buyer Confirms
+    pending_buyer --> cancelled: Buyer Declines
+    confirmed --> completed: Notarized + BNL
+    confirmed --> cancelled: Cancel
+    completed --> [*]
+    cancelled --> [*]
+```
+
+### 5.5 Transaction Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+    pending --> notarized: Notartermin Done
+    pending --> cancelled: Cancel
+    notarized --> bnl_received: BNL Received
+    bnl_received --> completed: Handover Done
+    completed --> [*]
+    cancelled --> [*]
+```
 
 ---
 
-## 5) SCREEN SPECIFICATIONS
+## 6) SCREEN SPECIFICATIONS
 
-### 5.1 Dashboard (`/portal/verkauf`)
+### 6.1 Dashboard (`/portal/verkauf`)
 
 **KPIs:**
 | KPI | Berechnung |
@@ -249,181 +459,190 @@ transaction_status: pending, notarized, bnl_received, completed, cancelled
 | Verkauft (YTD) | COUNT(transactions WHERE status='completed' AND year=current) |
 | Offene Anfragen | COUNT(inquiries WHERE status='new') |
 | Pipeline Value | SUM(listings.asking_price WHERE status IN ('active','reserved')) |
+| Partner-Freigaben | COUNT(listing_partner_terms WHERE finance_distribution_enabled) |
 
 **Alerts:**
 - Anfragen > 48h unbearbeitet
 - Reservierungen mit ablaufendem Datum
 - Listings ohne Exposé
+- Publikationen mit Status 'failed'
 
 **Quick Actions:**
 - Neues Listing erstellen
+- Publishing Wizard starten
 - Anfrage bearbeiten
-- Exposé generieren
 
-### 5.2 Listings (`/portal/verkauf/objekte`)
+### 6.2 Objekte (`/portal/verkauf/objekte`)
 
-**Layout:** Liste + Detail-Panel
+**Layout:** DataTable + Detail-Drawer
 
-**Tabellen-Spalten:**
+**Spalten:**
 | # | Spalte | Quelle |
 |---|--------|--------|
 | 1 | ID | listings.public_id |
-| 2 | Objekt | properties.address via FK |
-| 3 | Status | Badge |
+| 2 | Objekt | property.address + city |
+| 3 | Status | Badge (listing.status) |
 | 4 | Angebotspreis | listings.asking_price |
-| 5 | Partner-Sichtbar | Toggle |
-| 6 | Anfragen | COUNT(inquiries) |
-| 7 | Erstellt | listings.created_at |
-| 8 | Aktionen | Dropdown |
+| 5 | Kanäle | Icons für aktive Publications |
+| 6 | Partner | Toggle (finance_distribution_enabled) |
+| 7 | Provision | listing_partner_terms.partner_commission_rate |
+| 8 | Anfragen | COUNT(inquiries) |
+| 9 | Erstellt | listings.created_at |
 
 **Filter:**
 - Status (Multi-Select)
-- Partner-Sichtbar (Ja/Nein)
+- Kanal (Multi-Select)
+- Partner-Freigabe (Ja/Nein)
 - Preis-Range
 
-**Aktionen:**
-- Status ändern
-- Partner-Visibility Toggle
+**Aktionen (Dropdown):**
+- Details anzeigen
+- Publishing Wizard (pro Kanal)
+- Partner-Freigabe konfigurieren
 - Exposé generieren
+- Status ändern
 - Anfragen anzeigen
-- Reservation erstellen
 
-### 5.3 Anfragen (`/portal/verkauf/anfragen`)
+### 6.3 Aktivitäten (`/portal/verkauf/aktivitaeten`)
 
-**Layout:** Kanban ODER Liste
+**Layout:** Timeline (chronologisch absteigend)
 
-**Kanban-Spalten:** new | qualified | converted | rejected
+**Event-Types:**
+- Listing erstellt/geändert
+- Publication gestartet/beendet
+- Anfrage eingegangen
+- Reservation erstellt
+- Owner/Buyer Confirmation
+- Transaction-Meilensteine
 
-**Aktionen pro Anfrage:**
-- Qualifizieren
-- Ablehnen
-- In Reservation umwandeln
+### 6.4 Anfragen (`/portal/verkauf/anfragen`)
+
+**Layout:** Kanban ODER DataTable (Toggle)
+
+**Kanban-Spalten:** new | contacted | qualified | scheduled | won/lost
+
+**Aktionen:**
+- Status ändern (Drag & Drop)
 - Kontakt erstellen/verknüpfen
+- Notizen hinzufügen
+- Reservation erstellen (bei qualified+)
+- Als verloren markieren
 
-### 5.4 Vorgänge (`/portal/verkauf/vorgaenge`)
+### 6.5 Vorgänge (`/portal/verkauf/vorgaenge`)
 
-**Layout:** Tabelle mit Status-Tabs
+**Layout:** Tabs + DataTable
 
 **Tabs:**
-- Reservierungen
-- Transaktionen
+- Reservierungen (aktive)
+- Transaktionen (laufende)
 - Abgeschlossen
 
-**Reservation Detail:**
+**Reservation Detail (Drawer/Modal):**
 - Status-Timeline
-- Owner/Buyer Confirmation Status
-- Notartermin-Kalender
-- Dokumenten-Links (DMS)
+- Owner/Buyer Confirmation Actions
+- Notartermin-Picker
+- Dokumente (DMS-Links)
 - "In Transaktion umwandeln" CTA
 
----
-
-## 6) END-TO-END FLOWS
-
-### Flow 1: Listing erstellen
-
-**Trigger:** User klickt "Neues Listing" für Property mit sale_enabled
-
-**Schritte:**
-1. Property auswählen (nur sale_enabled)
-2. Angebotspreis eingeben
-3. Partner-Visibility setzen
-4. **CONSENT GATE: SALES_MANDATE**
-   - Modal: "Verkaufsauftrag erteilen"
-   - User bestätigt
-   - user_consents INSERT
-5. listings INSERT (status='draft')
-6. Audit: listing.created
-
-**Output:** Listing in status='draft'
-
-### Flow 2: Listing aktivieren
-
-**Trigger:** User klickt "Aktivieren" für draft/internal_review Listing
-
-**Schritte:**
-1. Prüfe: SALES_MANDATE vorhanden?
-2. Prüfe: Pflichtfelder (Preis, Exposé empfohlen)
-3. Status-Update: → 'active'
-4. published_at = now()
-5. Wenn partner_visible=true: Sichtbar für MOD-08
-6. Audit: listing.activated
-
-### Flow 3: Anfrage bearbeiten
-
-**Trigger:** Neue Inquiry (via API, manuell, oder Partner)
-
-**Schritte:**
-1. Inquiry erscheint in Queue
-2. User qualifiziert oder lehnt ab
-3. Bei Qualifizierung: Kontakt erstellen/verknüpfen
-4. Bei Conversion: Reservation-Workflow starten
-5. Audit: inquiry.qualified / inquiry.rejected / inquiry.converted
-
-### Flow 4: Reservation erstellen
-
-**Trigger:** Qualifizierte Inquiry → "Reservation erstellen"
-
-**Schritte:**
-1. Käufer-Kontakt bestätigen
-2. Preis eingeben
-3. Reservation INSERT (status='pending_owner')
-4. **Owner Confirmation Required**
-5. Nach Owner-Bestätigung: status='pending_buyer'
-6. **Buyer Confirmation Required** (konzeptionell, Phase 2)
-7. Nach beiden: status='confirmed'
-8. Listing-Status → 'reserved'
-9. Audit: reservation.created, reservation.owner_confirmed
-
-### Flow 5: Transaction abschließen
-
-**Trigger:** Reservation confirmed → Notartermin erfasst
-
-**Schritte:**
-1. Transaction INSERT (status='pending')
-2. Notartermin eintragen
-3. Nach Notartermin: status='notarized'
-4. BNL-Datum eintragen: status='bnl_received'
-5. Übergabe: status='completed'
-6. Listing: status='sold'
-7. Property in MOD-04: sale_enabled=false (optional)
-8. Audit: transaction.notarized, transaction.completed
+**Transaction Detail:**
+- Meilenstein-Tracker
+- Datum-Felder (Notar, BNL, Übergabe)
+- Provision + Systemgebühr Berechnung
+- Abschluss-Button
 
 ---
 
-## 7) CONSENT & AUDIT
+## 7) PUBLISHING FLOW DIAGRAMS
 
-### Consent Gates
+### 7.1 Kaufy Publishing Flow
 
-| Aktion | Consent Code | Pflicht |
-|--------|--------------|---------|
-| Listing erstellen | SALES_MANDATE | Ja |
-| Listing aktivieren | — (Mandate bereits vorhanden) | — |
-| Reservation Owner-Confirm | User Confirmation | Ja |
+```mermaid
+flowchart TD
+    A[Listing in status 'active'] --> B{Kaufy Wizard starten}
+    B --> C[Step 1: Kanal bestätigen]
+    C --> D[Step 2: Readiness Check]
+    D --> E{Pflichtfelder OK?}
+    E -->|Nein| F[Felder ergänzen in MOD-04]
+    F --> D
+    E -->|Ja| G[Step 3: Exposé Preview]
+    G --> H[Step 4: Partner-Freigabe optional]
+    H --> I[Step 5: Publish]
+    I --> J[listing_publications INSERT]
+    J --> K[Zone 3 Listing aktiv]
+    K --> L[Audit: publication.kaufy.created]
+```
 
-### Audit Events
+### 7.2 Partner-Netzwerk Publishing Flow
+
+```mermaid
+flowchart TD
+    A[Listing in status 'active'] --> B{Partner Wizard starten}
+    B --> C[Step 1: Finanzvertrieb aktivieren]
+    C --> D[Step 2: Provision wählen 5-15%]
+    D --> E[Step 3: PARTNER_RELEASE Consent]
+    E --> F{Consent erteilt?}
+    F -->|Nein| G[Wizard abbrechen]
+    F -->|Ja| H[Step 4: SYSTEM_SUCCESS_FEE Consent]
+    H --> I{2.000€ Gebühr akzeptiert?}
+    I -->|Nein| G
+    I -->|Ja| J[Step 5: Agreement PDF generieren]
+    J --> K[DMS Document erstellen]
+    K --> L[Step 6: Freischalten]
+    L --> M[listing_partner_terms INSERT]
+    M --> N[listing_publications INSERT]
+    N --> O[Listing in MOD-08 Objektkatalog]
+    O --> P[Audit: publication.partner.released]
+```
+
+---
+
+## 8) CONSENT & AGREEMENTS
+
+### 8.1 Consent Gates
+
+| Aktion | Consent Code | Pflicht | Trigger |
+|--------|--------------|---------|---------|
+| Listing erstellen | SALES_MANDATE | Ja | Vor INSERT |
+| Kaufy Publishing | — | — | SALES_MANDATE reicht |
+| Scout24 Publishing | SCOUT24_CREDITS | Ja | Zahlung/Credits |
+| Partner Publishing | PARTNER_RELEASE | Ja | Vor Freigabe |
+| Partner Publishing | SYSTEM_SUCCESS_FEE_2000 | Ja | Vor Freigabe |
+
+### 8.2 Agreement Templates
+
+| Code | Titel | Inhalt |
+|------|-------|--------|
+| SALES_MANDATE | Verkaufsauftrag | Beauftragung zur Veröffentlichung |
+| PARTNER_RELEASE | Partner-Freigabe | Zustimmung zur Vertriebspartner-Nutzung |
+| SYSTEM_SUCCESS_FEE_2000 | Systemgebühr | 2.000€ erfolgsabhängig bei Closing |
+
+### 8.3 Audit Events
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
-| listing.created | INSERT | listing_id, property_id |
-| listing.activated | Status → active | listing_id, published_at |
+| listing.created | INSERT | listing_id, property_id, consent_id |
+| listing.activated | Status → active | listing_id |
 | listing.reserved | Status → reserved | listing_id, reservation_id |
 | listing.sold | Status → sold | listing_id, transaction_id |
 | listing.withdrawn | Status → withdrawn | listing_id, reason |
+| publication.kaufy.created | Kaufy publish | listing_id, publication_id |
+| publication.scout24.created | Scout24 publish | listing_id, publication_id, cost |
+| publication.kleinanzeigen.linked | Link entry | listing_id, external_url |
+| publication.partner.released | Partner release | listing_id, commission_rate, consents |
 | inquiry.created | INSERT | inquiry_id, source |
 | inquiry.qualified | Status → qualified | inquiry_id |
-| inquiry.converted | Status → converted | inquiry_id, reservation_id |
+| inquiry.converted | Status → won | inquiry_id, reservation_id |
 | reservation.created | INSERT | reservation_id |
 | reservation.owner_confirmed | Owner confirms | reservation_id |
 | reservation.confirmed | Both confirm | reservation_id |
 | transaction.notarized | Notartermin | transaction_id, date |
-| transaction.completed | Abschluss | transaction_id, final_price |
+| transaction.completed | Abschluss | transaction_id, final_price, commission, system_fee |
 
 ---
 
-## 8) API CONTRACT
+## 9) API CONTRACT (API-200..279)
 
-### Listings (API-200 bis API-215)
+### 9.1 Listings (API-200..215)
 
 | API-ID | Endpoint | Method | Auth | Audit |
 |--------|----------|--------|------|-------|
@@ -433,107 +652,151 @@ transaction_status: pending, notarized, bnl_received, completed, cancelled
 | API-203 | `/verkauf/listings/:id` | PATCH | org_admin | listing.updated |
 | API-204 | `/verkauf/listings/:id/activate` | POST | org_admin | listing.activated |
 | API-205 | `/verkauf/listings/:id/withdraw` | POST | org_admin | listing.withdrawn |
-| API-206 | `/verkauf/listings/:id/toggle-partner` | POST | org_admin | listing.partner_toggled |
 
-### Inquiries (API-220 bis API-230)
-
-| API-ID | Endpoint | Method | Auth | Audit |
-|--------|----------|--------|------|-------|
-| API-220 | `/verkauf/inquiries` | GET | Tenant | — |
-| API-221 | `/verkauf/inquiries` | POST | Tenant | inquiry.created |
-| API-222 | `/verkauf/inquiries/:id` | GET | Tenant | — |
-| API-223 | `/verkauf/inquiries/:id/qualify` | POST | Tenant | inquiry.qualified |
-| API-224 | `/verkauf/inquiries/:id/reject` | POST | Tenant | inquiry.rejected |
-| API-225 | `/verkauf/inquiries/:id/convert` | POST | org_admin | inquiry.converted |
-
-### Reservations (API-240 bis API-250)
+### 9.2 Publications (API-216..225)
 
 | API-ID | Endpoint | Method | Auth | Audit |
 |--------|----------|--------|------|-------|
-| API-240 | `/verkauf/reservations` | GET | Tenant | — |
-| API-241 | `/verkauf/reservations` | POST | org_admin | reservation.created |
-| API-242 | `/verkauf/reservations/:id` | GET | Tenant | — |
-| API-243 | `/verkauf/reservations/:id/owner-confirm` | POST | org_admin | reservation.owner_confirmed |
-| API-244 | `/verkauf/reservations/:id/cancel` | POST | org_admin | reservation.cancelled |
-| API-245 | `/verkauf/reservations/:id/complete` | POST | org_admin | reservation.completed |
+| API-216 | `/verkauf/listings/:id/publications` | GET | Tenant | — |
+| API-217 | `/verkauf/listings/:id/publish/kaufy` | POST | org_admin | publication.kaufy.created |
+| API-218 | `/verkauf/listings/:id/publish/scout24` | POST | org_admin | publication.scout24.created |
+| API-219 | `/verkauf/listings/:id/publish/kleinanzeigen` | POST | org_admin | publication.kleinanzeigen.linked |
+| API-220 | `/verkauf/listings/:id/publish/partner` | POST | org_admin | publication.partner.released |
+| API-221 | `/verkauf/publications/:id/pause` | POST | org_admin | publication.paused |
+| API-222 | `/verkauf/publications/:id/resume` | POST | org_admin | publication.resumed |
+| API-223 | `/verkauf/publications/:id/remove` | POST | org_admin | publication.removed |
 
-### Transactions (API-260 bis API-270)
+### 9.3 Partner Terms (API-226..230)
 
 | API-ID | Endpoint | Method | Auth | Audit |
 |--------|----------|--------|------|-------|
-| API-260 | `/verkauf/transactions` | GET | Tenant | — |
-| API-261 | `/verkauf/transactions` | POST | org_admin | transaction.created |
-| API-262 | `/verkauf/transactions/:id` | GET | Tenant | — |
-| API-263 | `/verkauf/transactions/:id/notarize` | POST | org_admin | transaction.notarized |
-| API-264 | `/verkauf/transactions/:id/bnl` | POST | org_admin | transaction.bnl_received |
-| API-265 | `/verkauf/transactions/:id/complete` | POST | org_admin | transaction.completed |
+| API-226 | `/verkauf/listings/:id/partner-terms` | GET | Tenant | — |
+| API-227 | `/verkauf/listings/:id/partner-terms` | PUT | org_admin | partner_terms.updated |
+
+### 9.4 Inquiries (API-240..250)
+
+| API-ID | Endpoint | Method | Auth | Audit |
+|--------|----------|--------|------|-------|
+| API-240 | `/verkauf/inquiries` | GET | Tenant | — |
+| API-241 | `/verkauf/inquiries` | POST | Tenant | inquiry.created |
+| API-242 | `/verkauf/inquiries/:id` | GET | Tenant | — |
+| API-243 | `/verkauf/inquiries/:id` | PATCH | Tenant | inquiry.updated |
+| API-244 | `/verkauf/inquiries/:id/qualify` | POST | Tenant | inquiry.qualified |
+| API-245 | `/verkauf/inquiries/:id/reject` | POST | Tenant | inquiry.rejected |
+| API-246 | `/verkauf/inquiries/:id/convert` | POST | org_admin | inquiry.converted |
+
+### 9.5 Reservations (API-260..270)
+
+| API-ID | Endpoint | Method | Auth | Audit |
+|--------|----------|--------|------|-------|
+| API-260 | `/verkauf/reservations` | GET | Tenant | — |
+| API-261 | `/verkauf/reservations` | POST | org_admin | reservation.created |
+| API-262 | `/verkauf/reservations/:id` | GET | Tenant | — |
+| API-263 | `/verkauf/reservations/:id/owner-confirm` | POST | org_admin | reservation.owner_confirmed |
+| API-264 | `/verkauf/reservations/:id/buyer-confirm` | POST | Tenant | reservation.buyer_confirmed |
+| API-265 | `/verkauf/reservations/:id/cancel` | POST | org_admin | reservation.cancelled |
+
+### 9.6 Transactions (API-270..279)
+
+| API-ID | Endpoint | Method | Auth | Audit |
+|--------|----------|--------|------|-------|
+| API-270 | `/verkauf/transactions` | GET | Tenant | — |
+| API-271 | `/verkauf/transactions` | POST | org_admin | transaction.created |
+| API-272 | `/verkauf/transactions/:id` | GET | Tenant | — |
+| API-273 | `/verkauf/transactions/:id/notarize` | POST | org_admin | transaction.notarized |
+| API-274 | `/verkauf/transactions/:id/bnl` | POST | org_admin | transaction.bnl_received |
+| API-275 | `/verkauf/transactions/:id/complete` | POST | org_admin | transaction.completed |
 
 ---
 
-## 9) CROSS-MODULE BERÜHRUNGSWEGE
+## 10) CROSS-MODULE DEPENDENCIES
 
-### MOD-06 → MOD-04
+### MOD-06 → MOD-04 (Properties)
 
 | Trigger | Effect |
 |---------|--------|
-| Property.sale_enabled | Property erscheint in Listing-Kandidaten |
+| property.sale_enabled=true | Property in Listing-Kandidaten |
+| Listing erstellt | property_id FK |
 | Transaction.completed | Optional: sale_enabled=false |
 
-### MOD-06 → MOD-08
+### MOD-06 → MOD-08 (Vertriebspartner)
 
 | Trigger | Effect |
 |---------|--------|
-| Listing.partner_visible=true | Listing in MOD-08 sichtbar |
+| finance_distribution_enabled=true | Listing in MOD-08 Objektkatalog |
+| partner_commission_rate gesetzt | Rate sichtbar in Katalog |
 | Inquiry via Partner | partner_pipeline_id verknüpft |
-| Reservation via Partner | Commission-Trigger |
+| Transaction.completed via Partner | Commission-Trigger |
 
-### MOD-06 → MOD-08
+### MOD-06 → MOD-03 (DMS)
 
 | Trigger | Effect |
 |---------|--------|
-| Reservation.confirmed | CTA "Finanzierung starten" → MOD-08 |
-| finance_packages.property_id | Read-only Reference |
+| Exposé generiert | document_id Referenz |
+| Agreement PDF | document_id Referenz |
+| Transaktionsdokumente | Mehrere document_ids |
+
+### MOD-06 → Zone 3 (Websites)
+
+| Trigger | Effect |
+|---------|--------|
+| publication.kaufy.status='published' | Listing auf kaufy.io sichtbar |
+| Listing-Daten Update | Sync zu Zone 3 (read-only) |
 
 ---
 
-## 10) OPEN QUESTIONS
+## 11) RLS KONZEPT
 
-| ID | Frage | Vorschlag | Prio |
-|----|-------|-----------|------|
-| Q6.1 | Listing ohne Exposé erlauben? | Ja, aber Warnung | P2 |
-| Q6.2 | Partner-Commission-Rate: Pro Listing oder global? | Pro Listing (Override möglich) | P1 |
-| Q6.3 | Buyer Confirmation: Phase 1 oder Phase 2? | Phase 2 (nur Owner Phase 1) | P1 |
-| Q6.4 | Public Listing auf Zone 3: Automatisch oder manuell? | Manuell mit Flag | P2 |
-| Q6.5 | Transaction Dokumente: Pflicht oder optional? | Optional Phase 1 | P2 |
+```sql
+-- listings: Tenant-isoliert
+CREATE POLICY "Tenant members can view listings"
+ON listings FOR SELECT
+USING (tenant_id IN (
+  SELECT tenant_id FROM memberships WHERE user_id = auth.uid()
+));
+
+CREATE POLICY "Org admins can manage listings"
+ON listings FOR ALL
+USING (tenant_id IN (
+  SELECT tenant_id FROM memberships 
+  WHERE user_id = auth.uid() 
+  AND role IN ('org_admin', 'internal_ops')
+));
+
+-- listing_publications: Analog
+-- listing_inquiries: Analog
+-- reservations: Analog
+-- transactions: Analog
+
+-- Partner-Sichtbarkeit (für MOD-08 Queries):
+CREATE POLICY "Partners can view released listings"
+ON listings FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM listing_partner_terms lpt
+    WHERE lpt.listing_id = listings.id
+    AND lpt.finance_distribution_enabled = true
+  )
+  AND EXISTS (
+    SELECT 1 FROM memberships 
+    WHERE user_id = auth.uid() 
+    AND role = 'sales_partner'
+  )
+);
+```
 
 ---
 
-## 11) MVP ACCEPTANCE CRITERIA
+## 12) OPEN QUESTIONS (MOD-06)
 
-| # | Kriterium | Testbar |
-|---|-----------|---------|
-| AC1 | Listing kann aus sale_enabled Property erstellt werden | Flow |
-| AC2 | SALES_MANDATE Consent wird vor Aktivierung geprüft | Consent Gate |
-| AC3 | Listing-Status-Maschine funktioniert | Status-Tests |
-| AC4 | Partner-Visibility Toggle funktioniert | Flag-Test |
-| AC5 | Inquiry kann erfasst werden | CRUD |
-| AC6 | Inquiry kann qualifiziert/abgelehnt werden | Status |
-| AC7 | Reservation kann aus Inquiry erstellt werden | Flow |
-| AC8 | Owner Confirmation funktioniert | Confirmation |
-| AC9 | Listing wird auf 'reserved' gesetzt | Status-Sync |
-| AC10 | Transaction kann erstellt werden | CRUD |
-| AC11 | Transaction-Lifecycle funktioniert | Status |
-| AC12 | Alle kritischen Aktionen erzeugen Audit Events | audit_events |
-| AC13 | RLS verhindert Cross-Tenant-Zugriff | Security |
-| AC14 | Dashboard zeigt korrekte KPIs | Berechnung |
-| AC15 | DMS-Integration für Dokumente funktioniert | Links |
+| ID | Frage | Status | Empfehlung |
+|----|-------|--------|------------|
+| Q6.1 | Scout24 Credit-Kosten: Fix oder variabel? | PENDING | Fix pro Listing (P1) |
+| Q6.2 | Buyer-Confirmation: Digital oder nur dokumentiert? | PENDING | Dokumentiert Phase 1 (P2) |
+| Q6.3 | Systemgebühr 2.000€: Trigger bei Notartermin oder BNL? | PENDING | BNL-Datum (P0) |
+| Q6.4 | Exposé-Generator: Edge Function oder Client-side? | PENDING | Edge Function (P1) |
+| Q6.5 | Kleinanzeigen: Screenshot-Upload Pflicht? | PENDING | Optional (P2) |
 
 ---
 
-## 12) FREEZE CANDIDATES
-
-1. **Listing Status-Enum** (FROZEN)
-2. **SALES_MANDATE als Consent Gate** (FROZEN)
-3. **Partner-Visibility Flag** (FROZEN)
-4. **Reservation erfordert Owner-Confirmation** (FROZEN)
-5. **listings Tabelle Struktur** (FROZEN)
+*Version 2.0.0 — Vollständige Spezifikation inkl. 4 Publishing-Kanäle, Agreements, APIs.*

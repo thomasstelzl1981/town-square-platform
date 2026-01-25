@@ -63,11 +63,36 @@
 
 ---
 
+## MOD-06: Verkauf
+
+| ID | Question | Vorschlag | Status |
+|----|----------|-----------|--------|
+| Q6.1 | Scout24 Credit-Kosten: Fix oder variabel? | Fix pro Listing | PENDING |
+| Q6.2 | Buyer-Confirmation: Digital oder nur dokumentiert? | Dokumentiert Phase 1 | PENDING |
+| Q6.3 | Systemgebühr 2.000€: Trigger bei Notartermin oder BNL? | BNL-Datum | PENDING (P0) |
+| Q6.4 | Exposé-Generator: Edge Function oder Client-side? | Edge Function | PENDING |
+| Q6.5 | Kleinanzeigen: Screenshot-Upload Pflicht? | Optional | PENDING |
+
+---
+
+## MOD-08: Vertriebspartner
+
+| ID | Question | Vorschlag | Status |
+|----|----------|-----------|--------|
+| Q8.1 | Sub-Partner Management in Phase 1? | Nein, Phase 2 | PENDING |
+| Q8.2 | Verifikation: Automatische Ablauf-Warnung? | Ja, 30 Tage vorher | PENDING |
+| Q8.3 | Simulation: Alle AfA-Modelle Phase 1? | Nur linear_2 | PENDING |
+| Q8.4 | Commission Export/Rechnung: PDF-Generator? | Phase 2 | PENDING |
+| Q8.5 | Lead-Pool Zugang: Push oder Pull? | Push (Admin assigned) | PENDING (P0) |
+
+---
+
 ## Cross-Module Questions
 
 | ID | Question | Vorschlag | Status |
 |----|----------|-----------|--------|
 | QX.4 | Armstrong Edge Function: Single vs Multi-Function? | Single mit Action-Dispatcher | PENDING |
+| QX.6 | Route-Label-Aliase: Wo dokumentieren? | MODULE_BLUEPRINT.md | RESOLVED |
 
 ---
 
