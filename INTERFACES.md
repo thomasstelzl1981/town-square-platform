@@ -424,9 +424,104 @@ async function logCommunication(data: {
 
 ---
 
-## 16. Changelog
+## 16. KI Office (MOD-02) ↔ DMS (MOD-03) — Armstrong Document Integration
+
+### READ Actions (Armstrong → DMS)
+
+Armstrong greift auf DMS-Daten zu für Dokumentensuche und -analyse:
+
+| Action | Beschreibung | Tabelle | RLS |
+|--------|--------------|---------|-----|
+| `SearchDocuments` | Volltextsuche in Chunks | `document_chunks` | tenant_id |
+| `GetDocumentContent` | Chunks für Analyse laden | `document_chunks` | tenant_id |
+| `GetDocumentMetadata` | Status, Links, Metadaten | `documents`, `extractions` | tenant_id |
+
+### WRITE Actions (mit Confirmation-First Policy!)
+
+| Action | Beschreibung | Consent Required |
+|--------|--------------|------------------|
+| `LinkDocumentToEntity` | Dokument mit Property/Contact/Unit verknüpfen | **JA - User-Bestätigung** |
+
+### Implementation (Edge Function: armstrong-chat)
+
+Die Armstrong Edge Function erhält folgende DMS-Tools:
+
+```typescript
+const dmsTools = [
+  {
+    name: 'search_documents',
+    description: 'Suche in ausgelesenen Dokumenten',
+    parameters: {
+      query: { type: 'string', description: 'Suchbegriff' },
+      filters: { 
+        type: 'object', 
+        properties: {
+          node_id: { type: 'string' },
+          doc_type: { type: 'string' },
+          date_range: { type: 'object' }
+        }
+      }
+    },
+    implementation: async (params) => {
+      return supabase.rpc('search_document_chunks', {
+        search_query: params.query,
+        tenant_id: context.tenant_id
+      });
+    }
+  },
+  {
+    name: 'get_document_content',
+    description: 'Lade Volltext eines Dokuments für Analyse',
+    parameters: {
+      document_id: { type: 'uuid' }
+    },
+    implementation: async (params) => {
+      const chunks = await supabase
+        .from('document_chunks')
+        .select('text, chunk_index')
+        .eq('document_id', params.document_id)
+        .eq('tenant_id', context.tenant_id)
+        .order('chunk_index');
+      return chunks.data.map(c => c.text).join('\n\n');
+    }
+  },
+  {
+    name: 'link_document',
+    description: 'Verknüpfe Dokument mit Entity (erfordert User-Bestätigung)',
+    parameters: {
+      document_id: { type: 'uuid' },
+      target_type: { type: 'string', enum: ['property', 'contact', 'unit'] },
+      target_id: { type: 'uuid' }
+    },
+    requires_confirmation: true, // KRITISCH!
+    confirmation_message: (params) => 
+      `Dokument mit ${params.target_type} verknüpfen?`
+  }
+];
+```
+
+### RLS-Regeln
+
+- Armstrong agiert im User-Context (auth.uid())
+- Nur tenant_id-gefilterte Ergebnisse
+- Keine Cross-Tenant-Leaks möglich
+- Extraction muss `status = 'done'` haben
+
+### Voraussetzungen
+
+Damit Armstrong auf ein Dokument zugreifen kann:
+
+1. Dokument gehört zum aktuellen Tenant
+2. Extraction wurde durchgeführt (`status = 'done'`)
+3. Chunks existieren in `document_chunks`
+4. User hat Leseberechtigung (Tenant Member)
+
+---
+
+## 17. Changelog
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 1.0 | 2026-01-21 | Initial (Sections 1-9) |
 | 1.1 | 2026-01-25 | Sections 10-14 hinzugefügt (MOD-01, MOD-02, MOD-03 Interfaces) |
+| 1.2 | 2026-01-25 | Section 16 hinzugefügt (Armstrong Document Integration) |

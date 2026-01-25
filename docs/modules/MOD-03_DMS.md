@@ -311,17 +311,40 @@ LIMIT 1
 
 ## 9) Consent + Billing Model
 
-**Free Tier (product-controlled):**
-- Storage: 1 GB included
-- Documents: 1000 included
+### A) Native Storage (Lovable Cloud)
 
-**Extraction:**
-- Always consent-gated
-- UI shows page estimate + cost estimate before confirm
+| Tier | Storage | Docs | Extractions/Mo | Preis |
+|------|---------|------|----------------|-------|
+| **Free** | 1 GB | 1.000 | 50 Seiten | Inkl. |
+| **Pro** | 10 GB | 10.000 | 500 Seiten | 9.90€/Mo |
+| **Enterprise** | 100 GB | Unlim. | Unlim. | Custom |
 
-**Pricing:**
-- `price_per_page_cents` by engine
-- Optional minimum fee per document
+### B) Extraction Pricing
+
+| Engine | Preis/Seite | Use Case |
+|--------|-------------|----------|
+| `unstructured_fast` | 0.02€ | Digitale PDFs |
+| `unstructured_hires` | 0.05€ | Gescannte Dokumente |
+
+### C) Consent Flow (KRITISCH)
+
+Extraction ist **IMMER consent-gated**:
+
+1. User wählt Dokument(e) zum Auslesen
+2. UI zeigt Schätzung: "5 Seiten = ca. 0.10€"
+3. User bestätigt explizit: "Ja, auslesen"
+4. System prüft Credits-Verfügbarkeit
+5. Wenn ja: Job erstellt, Credits reserviert
+6. Nach Completion: Credits final gebucht
+7. Bei Fehler: Credits refunded
+
+### D) Upselling Flow
+
+1. User erreicht 80% Storage-Quota
+2. Dashboard zeigt Warnung
+3. Armstrong schlägt Upgrade vor: "Fast voll - Upgrade?"
+4. Click → MOD-01 Billing → Stripe Checkout
+5. Quota-Erhöhung sofort aktiv
 
 ---
 
@@ -373,10 +396,82 @@ LIMIT 1
 
 ## 13) Open Items (See ZONE2_OPEN_QUESTIONS.md)
 
-- Q3.1: Armstrong-Rolle in MOD-03
+- ~~Q3.1: Armstrong-Rolle in MOD-03~~ → Section 14 klärt
 - Q3.2: documents-Tabelle Migration
 - Q3.3: inbound_items Memory vs Spec
 - Q3.4: Worker-Deployment
-- Q3.5: audit_log vs audit_events
-- Q3.6: connectors vs integration_registry
+- ~~Q3.5: audit_log vs audit_events~~ → N1 resolved
+- ~~Q3.6: connectors vs integration_registry~~ → ADR-037 klärt
 - Q3.7: Caya-Webhook-Format
+
+---
+
+## 14) Armstrong-Anbindung (KI-Integration)
+
+### Datenfluss KI → DMS
+
+Armstrong (MOD-02) kann auf DMS-Daten zugreifen:
+
+| Aktion | Methode | Tabelle |
+|--------|---------|---------|
+| **Suche** | `document_chunks` mit Volltext-Index | `document_chunks` |
+| **Inhalt** | Chunks laden für Analyse | `document_chunks` |
+| **Metadaten** | Status, Links, Typ | `documents`, `extractions` |
+| **Verknüpfung** | Mit User-Bestätigung | `document_links` |
+
+### Voraussetzungen
+
+- Dokument muss `extraction_status = 'done'` haben
+- Chunks müssen in `document_chunks` existieren
+- RLS: Nur Tenant-eigene Dokumente
+
+### Armstrong Document Tools
+
+Definiert in MOD-02 Section 4.5:
+
+| Tool | Beschreibung | Consent |
+|------|--------------|---------|
+| `search_documents` | Volltextsuche | Nein (READ) |
+| `get_document_content` | Chunks laden | Nein (READ) |
+| `summarize_document` | LLM Summary | Nein (READ) |
+| `link_document` | Verknüpfung erstellen | **Ja (WRITE)** |
+
+### UI-Integration
+
+- Armstrong-Stripe zeigt "Dokumentsuche" als verfügbare Fähigkeit
+- Drag & Drop Dokument auf Armstrong → Analyse starten
+- Armstrong kann Dokumente vorschlagen für Sortierung
+- Sortiervorschläge erfordern User-Bestätigung
+
+### Verwendbare Befehle (Beispiele)
+
+| User sagt | Armstrong tut |
+|-----------|---------------|
+| "Finde den Mietvertrag für Hauptstr. 15" | `search_documents({query: "mietvertrag hauptstr"})` |
+| "Was steht in diesem Dokument?" | `get_document_content({document_id})` → Summarize |
+| "Wie hoch ist die Miete laut Vertrag?" | RAG-Query auf Chunks → Antwort mit Quellenangabe |
+| "Ordne das der Immobilie zu" | `link_document({...})` → User-Bestätigung erforderlich |
+
+### Edge Function: armstrong-chat
+
+```typescript
+// Relevante Tools für DMS-Integration
+const dmsTools = [
+  {
+    name: 'search_documents',
+    description: 'Suche in Dokumenten des aktuellen Tenants',
+    parameters: { query: 'string', filters?: 'object' }
+  },
+  {
+    name: 'get_document_content',
+    description: 'Lade Volltext eines Dokuments',
+    parameters: { document_id: 'uuid' }
+  },
+  {
+    name: 'link_document',
+    description: 'Verknüpfe Dokument mit Entity (erfordert Bestätigung)',
+    parameters: { document_id: 'uuid', target_type: 'string', target_id: 'uuid' },
+    requires_confirmation: true
+  }
+];
+```

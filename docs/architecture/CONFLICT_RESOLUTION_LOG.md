@@ -201,6 +201,22 @@ Dieses Dokument trackt alle identifizierten Konflikte zwischen Spezifikationen, 
 
 ---
 
+### K6: User-Data-Spaces falsch kategorisiert
+
+| Aspekt | Wert |
+|--------|------|
+| **ID** | K6 |
+| **Bereich** | Storage Architecture / Integration Registry |
+| **IST (Plan)** | Dropbox/OneDrive/GDrive in Zone 1 `integration_registry` |
+| **SOLL** | User-scoped Connectors in Zone 2 MOD-03 `connectors` Tabelle |
+| **Resolution** | ADR-037 + ADR-038 erstellt. User-Data-Connectors sind KEINE Platform-APIs. |
+| **Status** | 🟢 RESOLVED |
+| **Datum** | 2026-01-25 |
+| **Grund** | GDPR-Compliance, User-Ownership, keine Platform-APIs |
+| **Betroffene Dateien** | `ADR-037_Integration_Registry.md`, `ADR-038_Storage_Architecture.md`, `MOD-03_DMS.md` |
+
+---
+
 ## Validation Checklist (vor Implementation)
 
 Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
@@ -209,6 +225,7 @@ Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
 - [x] K2: Route MOD-03 → RESOLVED (Code angepasst)
 - [x] K3: Contacts Ownership → RESOLVED (Ownership Map aktualisiert)
 - [x] K4: Communication Events → RESOLVED (Ownership Map aktualisiert)
+- [x] K6: User-Data-Spaces → RESOLVED (ADR-037, ADR-038 erstellt)
 
 ✅ **Alle kritischen Konflikte gelöst — Ready for Implementation**
 
@@ -220,3 +237,4 @@ Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
 |-------|----------|-------|
 | 2026-01-25 | Initial erstellt mit K1-K4, M1-M4, N1-N3, A1-A3 | System |
 | 2026-01-25 | K1, K3, K4, N1, N2, N3, A1, A2, A3, M4 → RESOLVED | System |
+| 2026-01-25 | K6 hinzugefügt + RESOLVED (User-Data-Spaces) | System |
