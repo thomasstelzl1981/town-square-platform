@@ -17,8 +17,16 @@ import {
   Shield,
   CheckCircle2,
   Circle,
-  AlertCircle
+  AlertCircle,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
+import { 
+  MermaidDiagram, 
+  SYSTEM_OVERVIEW_CHART, 
+  MODULE_DEPENDENCIES_CHART,
+  DATA_FLOW_CHART 
+} from "@/components/presentation/MermaidDiagram";
 
 // Module data with readiness status
 const modules = [
@@ -145,8 +153,9 @@ export default function PresentationPage() {
       {/* Navigation Tabs */}
       <div className="container mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto">
+          <TabsList className="grid w-full grid-cols-5 max-w-3xl mx-auto">
             <TabsTrigger value="overview">Übersicht</TabsTrigger>
+            <TabsTrigger value="system">System</TabsTrigger>
             <TabsTrigger value="architecture">Architektur</TabsTrigger>
             <TabsTrigger value="modules">Module</TabsTrigger>
             <TabsTrigger value="matrix">Readiness</TabsTrigger>
@@ -240,7 +249,89 @@ export default function PresentationPage() {
             </div>
           </TabsContent>
 
-          {/* Architecture Tab */}
+          {/* Full System Diagram Tab */}
+          <TabsContent value="system" className="space-y-6">
+            <Card className="border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">System Overview — Interaktiv</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Vollständige Darstellung aller 3 Zonen mit Modulen und Datenflüssen
+                  </p>
+                </div>
+                <Badge className="bg-primary/20 text-primary">A1 FROZEN</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-surface-2 rounded-lg p-4 min-h-[600px] flex items-center justify-center">
+                  <MermaidDiagram 
+                    chart={SYSTEM_OVERVIEW_CHART} 
+                    className="w-full [&_svg]:max-w-full [&_svg]:h-auto"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Module Dependencies */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Modul-Abhängigkeiten</CardTitle>
+                  <p className="text-sm text-muted-foreground">Lead-to-Transaction Flow</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-surface-2 rounded-lg p-4">
+                    <MermaidDiagram 
+                      chart={MODULE_DEPENDENCIES_CHART} 
+                      className="w-full [&_svg]:max-w-full [&_svg]:h-auto"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Datenfluss</CardTitle>
+                  <p className="text-sm text-muted-foreground">Zone 3 → Zone 1 → Zone 2 → External</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-surface-2 rounded-lg p-4">
+                    <MermaidDiagram 
+                      chart={DATA_FLOW_CHART} 
+                      className="w-full [&_svg]:max-w-full [&_svg]:h-auto"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Legend */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-wrap items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[#1e40af]"></div>
+                    <span>Zone 1 — Admin</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[#166534]"></div>
+                    <span>Zone 2 — Portals</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[#0e7490]"></div>
+                    <span>Zone 3 — Websites</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[#7c3aed]"></div>
+                    <span>Kernobjekte</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[#475569]"></div>
+                    <span>Externe Systeme</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="architecture" className="space-y-8">
             <Card>
               <CardHeader>
