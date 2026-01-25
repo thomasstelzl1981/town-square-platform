@@ -57,33 +57,76 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Status colors
+        status: {
+          success: "hsl(var(--status-success))",
+          warn: "hsl(var(--status-warn))",
+          error: "hsl(var(--status-error))",
+          info: "hsl(var(--status-info))",
+        },
+        // Surface layers
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          2: "hsl(var(--surface-2))",
+        },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius)",
+        sm: "var(--radius-sm)",
+      },
+      spacing: {
+        // CI spacing system
+        "spacing-xs": "var(--spacing-xs)",
+        "spacing-sm": "var(--spacing-sm)",
+        "spacing-md": "var(--spacing-md)",
+        "spacing-lg": "var(--spacing-lg)",
+        "spacing-xl": "var(--spacing-xl)",
+        "spacing-2xl": "var(--spacing-2xl)",
+        // Layout variables
+        "sidebar": "var(--sidebar-width)",
+        "sidebar-collapsed": "var(--sidebar-collapsed-width)",
+        "chat-panel": "var(--chat-panel-width)",
+        "header": "var(--header-height)",
+      },
+      boxShadow: {
+        "card": "var(--shadow-card)",
+        "elevated": "var(--shadow-elevated)",
+        "glow": "var(--shadow-glow)",
+      },
+      fontSize: {
+        // KPI typography
+        "kpi": ["1.75rem", { lineHeight: "2rem", fontWeight: "600" }],
+        "kpi-lg": ["2rem", { lineHeight: "2.25rem", fontWeight: "700" }],
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+        "slide-in-bottom": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.2s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
+        "slide-in-bottom": "slide-in-bottom 0.3s ease-out",
       },
     },
   },
