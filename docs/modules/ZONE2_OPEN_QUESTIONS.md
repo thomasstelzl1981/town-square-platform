@@ -24,8 +24,6 @@
 | Q2.1 | Email scope: Phase 1 = READ + SEND? | Ja | PENDING |
 | Q2.2 | Calendar: Phase 1 = internal only? | Ja | PENDING |
 | Q2.3 | Fax/Briefdienst in Phase 1 oder Phase 2? | Phase 2 (abhängig von registrierten Integrations) | PENDING |
-| Q2.4 | Contacts Ownership: Core Object statt MOD-spezifisch? | Ja, in Backbone verschieben | PENDING |
-| Q2.5 | `communication_events` Owner? | Backbone oder MOD-02 | PENDING |
 | Q2.6 | Mail-Sync: Full-Sync vs On-Demand? | On-Demand + Metadata-Cache | PENDING |
 | Q2.7 | Whisperflow: OpenAI Whisper direkt oder via Armstrong? | Via Armstrong (centralized) | PENDING |
 | Q2.8 | Briefgenerator PDF: Server-side (Edge Function) oder Client-side? | Server-side (Edge Function) | PENDING |
@@ -40,7 +38,6 @@
 | Q3.2 | Existierende `documents`-Tabelle vs. Spec-Schema: Migration-Strategie? | Erweitern (Spalten hinzufügen) statt ersetzen | PENDING |
 | Q3.3 | `inbound_items` (Memory FROZEN) vs. Spec-Architektur: Alignment? | Spec hat Vorrang, Memory aktualisieren | PENDING |
 | Q3.4 | Worker-Deployment: Container vs. Edge Functions? | Container (horizontal skalierbar) | PENDING |
-| Q3.5 | `audit_log` vs. existierendes `audit_events`: Naming? | `audit_events` beibehalten | PENDING |
 | Q3.6 | `connectors` (MOD-03) vs. `integration_registry` (Zone 1): Overlap? | `connectors` = Tenant-Instanzen, Registry = Definitionen | PENDING |
 | Q3.7 | Caya-Webhook-Format und Zone-1-Ingestion-Flow Details? | Noch zu spezifizieren | PENDING |
 
@@ -62,18 +59,29 @@
 
 | ID | Question | Vorschlag | Status |
 |----|----------|-----------|--------|
-| QX.1 | `contacts` Ownership: Core/Backbone vs MOD-02? | Core/Backbone (Cross-Module-Nutzung) | PENDING |
-| QX.2 | `communication_events` Ownership: Backbone vs MOD-02? | Backbone | PENDING |
-| QX.3 | Zentrale `connectors` Tabelle oder pro Modul? | Zentral in Zone 1, Tenant-Instanzen in `connectors` | PENDING |
 | QX.4 | Armstrong Edge Function: Single vs Multi-Function? | Single mit Action-Dispatcher | PENDING |
-| QX.5 | Audit-Events: Einheitliches Schema für alle Module? | Ja, `audit_events` mit `entity_type` Feld | PENDING |
 
 ---
 
 ## Resolution Log
 
-_Questions will be moved here once resolved with final decisions._
+Questions moved here once resolved with final decisions.
 
-| ID | Resolution | Date | ADR |
-|----|------------|------|-----|
-| - | - | - | - |
+| ID | Question | Resolution | Date | Reference |
+|----|----------|------------|------|-----------|
+| Q2.4 | Contacts Ownership: Core Object statt MOD-spezifisch? | ✅ Ja, `contacts` ist Core/Backbone Object | 2026-01-25 | K3 |
+| Q2.5 | `communication_events` Owner? | ✅ Backbone (Cross-Module-Nutzung) | 2026-01-25 | K4 |
+| Q3.5 | `audit_log` vs existierendes `audit_events`: Naming? | ✅ `audit_events` beibehalten | 2026-01-25 | N1 |
+| QX.1 | `contacts` Ownership: Core/Backbone vs MOD-02? | ✅ Core/Backbone | 2026-01-25 | K3 |
+| QX.2 | `communication_events` Ownership: Backbone vs MOD-02? | ✅ Backbone | 2026-01-25 | K4 |
+| QX.3 | Zentrale `connectors` Tabelle oder pro Modul? | ✅ Zone 1 = Definitionen (`integration_registry`), MOD-03 = Instanzen (`connectors`) | 2026-01-25 | N3 |
+| QX.5 | Audit-Events: Einheitliches Schema für alle Module? | ✅ Ja, `audit_events` mit `entity_type` in payload | 2026-01-25 | N1 |
+
+---
+
+## Decision References
+
+Alle Resolutions referenzieren Einträge im `CONFLICT_RESOLUTION_LOG.md`:
+- **K1-K4**: Kritische Konflikte
+- **N1-N3**: Naming-Inkonsistenzen  
+- **A1-A3**: Architektur-Klärungen

@@ -1,8 +1,9 @@
 # Module Ownership Map
 
-> **Version**: 1.0  
-> **Datum**: 2026-01-21  
-> **Status**: Verbindlich
+> **Version**: 1.1  
+> **Datum**: 2026-01-25  
+> **Status**: Verbindlich  
+> **Conflict Resolution**: K3, K4 applied (see CONFLICT_RESOLUTION_LOG.md)
 
 Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnittstellen aller Module im "System of a Town".
 
@@ -20,7 +21,7 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 
 ## 2. Module-Registry
 
-### 2.1 Core/Foundation (Zone 1)
+### 2.1 Core/Foundation (Zone 1 + Backbone)
 
 | Tabelle | Owner | Source of Truth | Read | Write |
 |---------|-------|-----------------|------|-------|
@@ -31,6 +32,11 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 | `tile_catalog` | Core | ✅ | Authenticated | Platform Admin |
 | `tenant_tile_activation` | Core | ✅ | Tenant Members | Org Admin + Platform Admin |
 | `audit_events` | Core | ✅ | Tenant Members + Platform Admin | INSERT only (App-Layer) |
+| `contacts` | **Backbone** | ✅ | Tenant Members | Org Admin, Internal Ops |
+| `documents` | **Backbone** | ✅ | Tenant Members + via `access_grants` | Tenant (org_admin, internal_ops) |
+| `communication_events` | **Backbone** | ✅ | Tenant Members | INSERT only (App-Layer) |
+
+**Hinweis**: `contacts`, `documents` und `communication_events` sind **Cross-Module Objects** und werden von mehreren Modulen referenziert (MOD-02, MOD-03, MOD-04, MOD-05, MOD-06, MOD-07, MOD-08).
 
 ---
 
@@ -67,12 +73,21 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 |---------|-------|-----------------|------|-------|
 | `inbound_items` | Inbox | ✅ | Platform Admin | Platform Admin |
 | `inbound_routing_rules` | Inbox | ✅ | Platform Admin | Platform Admin |
-| `documents` | Documents | ✅ | Tenant Members + via `access_grants` | Tenant (org_admin, internal_ops) |
 | `access_grants` | Documents | ✅ | Tenant + Subject Org | Tenant Admin |
 
 ---
 
-### 2.5 Immobilienportfolio (Zone 2)
+### 2.5 Integration Registry (Zone 1)
+
+| Tabelle | Owner | Source of Truth | Read | Write |
+|---------|-------|-----------------|------|-------|
+| `integration_registry` | Core | ✅ | Authenticated | Platform Admin |
+
+**Hinweis**: Dies sind die **Definitionen** von Integrationen. Tenant-spezifische Instanzen werden in `connectors` (MOD-03) gespeichert.
+
+---
+
+### 2.6 Immobilienportfolio (Zone 2 - MOD-04)
 
 | Tabelle | Owner | Source of Truth | Read | Write |
 |---------|-------|-----------------|------|-------|
@@ -87,7 +102,7 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 
 ---
 
-### 2.6 Sales Partner (Zone 2 - KERN)
+### 2.7 Sales Partner (Zone 2 - MOD-07)
 
 | Tabelle | Owner | Source of Truth | Read | Write |
 |---------|-------|-----------------|------|-------|
@@ -102,7 +117,7 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 
 ---
 
-### 2.7 Financing (Zone 2 - KERN)
+### 2.8 Financing (Zone 2 - MOD-08)
 
 | Tabelle | Owner | Source of Truth | Read | Write |
 |---------|-------|-----------------|------|-------|
@@ -117,13 +132,42 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 
 ---
 
-### 2.8 Vermietung/Miety (Zone 2)
+### 2.9 Vermietung/Miety (Zone 2 - MOD-05)
 
 | Tabelle | Owner | Source of Truth | Read | Write |
 |---------|-------|-----------------|------|-------|
 | `leases` | Miety | ✅ | Landlord + Renter (via renter_org_id) | Landlord (Org Admin, Internal Ops) |
 | `renter_invites` | Miety | ✅ | Landlord | Landlord (Org Admin, Internal Ops) |
-| `contacts` | Master Data | ✅ | Tenant Members | Org Admin, Internal Ops |
+
+---
+
+### 2.10 KI Office (Zone 2 - MOD-02)
+
+| Tabelle | Owner | Source of Truth | Read | Write |
+|---------|-------|-----------------|------|-------|
+| `mail_accounts` | KI Office | ✅ | User (self) | User (self) |
+| `mail_sync_status` | KI Office | ✅ | User (self) | Worker (service role) |
+| `letter_drafts` | KI Office | ✅ | Tenant Members | Tenant Members |
+| `letter_sent` | KI Office | ✅ | Tenant Members | **INSERT only** (App-Layer) |
+| `calendar_events` | KI Office | ✅ | Tenant Members | Tenant Members |
+| `calendar_reminders` | KI Office | ✅ | Tenant Members | Tenant Members |
+
+**Hinweis**: `contacts` und `communication_events` sind Backbone Objects (siehe 2.1).
+
+---
+
+### 2.11 DMS / Posteingang (Zone 2 - MOD-03)
+
+| Tabelle | Owner | Source of Truth | Read | Write |
+|---------|-------|-----------------|------|-------|
+| `storage_nodes` | DMS | ✅ | Tenant Members | Org Admin, Internal Ops |
+| `document_links` | DMS | ✅ | Tenant Members | Tenant Members |
+| `extractions` | DMS | ✅ | Tenant Members | Worker (service role) |
+| `document_chunks` | DMS | ✅ | Tenant Members | Worker (service role) |
+| `jobs` | DMS | ✅ | Tenant Members | Worker (service role) |
+| `connectors` | DMS | ✅ | Tenant Members | Org Admin |
+
+**Hinweis**: `documents` ist ein Backbone Object (siehe 2.1). `connectors` speichert **Tenant-Instanzen** von Integrationen, während `integration_registry` (Zone 1) die **Definitionen** enthält.
 
 ---
 
@@ -161,6 +205,8 @@ Dieses Dokument definiert die Eigentümerschaft, Lese-/Schreibrechte und Schnitt
 |---------|------------|
 | `audit_events` | Forensische Integrität |
 | `user_consents` | Rechtlicher Nachweis, DSGVO |
+| `communication_events` | Kommunikations-Audit-Trail |
+| `letter_sent` | Versand-Nachweis |
 
 ### 4.3 Sensitive Tabellen (Platform Admin Only für CUD)
 
@@ -188,6 +234,9 @@ Diese Aktionen MÜSSEN als `audit_events` erfasst werden:
 | `delegation_revoked` | Core | Delegation widerrufen |
 | `membership_created` | Core | Neues Mitglied |
 | `membership_deleted` | Core | Mitglied entfernt |
+| `letter_sent` | KI Office | Brief versendet |
+| `document_archived` | DMS | Dokument archiviert |
+| `inbound_item_assigned` | DMS | Posteingang zugeordnet |
 
 ---
 
@@ -197,3 +246,12 @@ Diese Aktionen MÜSSEN als `audit_events` erfasst werden:
 - **Neue Module** müssen hier eingetragen werden vor Implementation
 - **Änderungen an Ownership** erfordern Review durch Architektur-Owner
 - **GitHub-Sync**: Dieses Dokument ist Teil des versionierten Repositories
+
+---
+
+## 7. Changelog
+
+| Version | Datum | Änderung |
+|---------|-------|----------|
+| 1.0 | 2026-01-21 | Initial |
+| 1.1 | 2026-01-25 | K3/K4 Resolutions: `contacts`, `documents`, `communication_events` → Backbone. MOD-02 (2.10), MOD-03 (2.11) Tabellen hinzugefügt. Append-Only erweitert. |

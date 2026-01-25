@@ -1,10 +1,11 @@
 # MOD-02 — KI OFFICE (Communication & AI Workspace)
 
-> **Version**: 1.0  
+> **Version**: 1.1  
 > **Status**: SPEC READY  
 > **Datum**: 2026-01-25  
 > **Zone**: 2 (User Portal)  
-> **Route-Prefix**: `/portal/office`
+> **Route-Prefix**: `/portal/ki-office`  
+> **Conflict Resolution**: K1 (see CONFLICT_RESOLUTION_LOG.md)
 
 ---
 
@@ -22,11 +23,11 @@ MOD-02 "KI Office" ist der primäre Arbeitsbereich für Kommunikation und KI-ges
 
 | # | Name | Route | Beschreibung |
 |---|------|-------|--------------|
-| 0 | Dashboard | `/portal/office` | Übersicht, Quick Actions, Armstrong |
-| 1 | Email | `/portal/office/email` | Persönliche Mailbox (IMAP/Gmail/Exchange) |
-| 2 | Brief | `/portal/office/brief` | KI-Briefgenerator (AI-assisted drafts) |
-| 3 | Kontakte | `/portal/office/kontakte` | Master-Kontakte des Tenants |
-| 4 | Kalender | `/portal/office/kalender` | Termine, Erinnerungen |
+| 0 | Dashboard | `/portal/ki-office` | Übersicht, Quick Actions, Armstrong |
+| 1 | Email | `/portal/ki-office/email` | Persönliche Mailbox (IMAP/Gmail/Exchange) |
+| 2 | Brief | `/portal/ki-office/brief` | KI-Briefgenerator (AI-assisted drafts) |
+| 3 | Kontakte | `/portal/ki-office/kontakte` | Master-Kontakte des Tenants |
+| 4 | Kalender | `/portal/ki-office/kalender` | Termine, Erinnerungen |
 
 ---
 
@@ -225,35 +226,35 @@ Zentrale Tabelle für alle Kommunikations-Ereignisse (Audit + History).
 ## 6. API Contract
 
 ### Email
-- `GET /office/email/accounts` → Konfigurierte Mailboxen
-- `POST /office/email/accounts` → Mailbox hinzufügen
-- `DELETE /office/email/accounts/:id`
-- `GET /office/email/folders/:accountId`
-- `GET /office/email/messages` → query: folder, q, page
-- `GET /office/email/messages/:id`
-- `POST /office/email/messages/send`
-- `POST /office/email/messages/:id/archive-to-dms`
+- `GET /ki-office/email/accounts` → Konfigurierte Mailboxen
+- `POST /ki-office/email/accounts` → Mailbox hinzufügen
+- `DELETE /ki-office/email/accounts/:id`
+- `GET /ki-office/email/folders/:accountId`
+- `GET /ki-office/email/messages` → query: folder, q, page
+- `GET /ki-office/email/messages/:id`
+- `POST /ki-office/email/messages/send`
+- `POST /ki-office/email/messages/:id/archive-to-dms`
 
 ### Brief (Briefgenerator)
-- `POST /office/brief/draft` → { recipients[], prompt } => draft
-- `PATCH /office/brief/draft/:id` → Entwurf bearbeiten
-- `POST /office/brief/draft/:id/preview-pdf` → PDF generieren
-- `POST /office/brief/draft/:id/send` → { channel } + Confirmation
-- `GET /office/brief/sent` → Versendete Briefe
+- `POST /ki-office/brief/draft` → { recipients[], prompt } => draft
+- `PATCH /ki-office/brief/draft/:id` → Entwurf bearbeiten
+- `POST /ki-office/brief/draft/:id/preview-pdf` → PDF generieren
+- `POST /ki-office/brief/draft/:id/send` → { channel } + Confirmation
+- `GET /ki-office/brief/sent` → Versendete Briefe
 
 ### Kontakte
-- `GET /office/contacts` → query: q, tags, page
-- `GET /office/contacts/:id`
-- `POST /office/contacts`
-- `PATCH /office/contacts/:id`
-- `DELETE /office/contacts/:id` (soft delete)
+- `GET /ki-office/contacts` → query: q, tags, page
+- `GET /ki-office/contacts/:id`
+- `POST /ki-office/contacts`
+- `PATCH /ki-office/contacts/:id`
+- `DELETE /ki-office/contacts/:id` (soft delete)
 
 ### Kalender
-- `GET /office/calendar/events` → query: start, end
-- `GET /office/calendar/events/:id`
-- `POST /office/calendar/events`
-- `PATCH /office/calendar/events/:id`
-- `DELETE /office/calendar/events/:id`
+- `GET /ki-office/calendar/events` → query: start, end
+- `GET /ki-office/calendar/events/:id`
+- `POST /ki-office/calendar/events`
+- `PATCH /ki-office/calendar/events/:id`
+- `DELETE /ki-office/calendar/events/:id`
 
 ---
 
