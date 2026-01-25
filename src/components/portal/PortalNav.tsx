@@ -17,7 +17,7 @@ const navItems = [
   { code: 'home', label: 'Home', icon: Home, route: '/portal' },
   { code: 'stammdaten', label: 'Stamm', icon: Users, route: '/portal/stammdaten' },
   { code: 'ki-office', label: 'Office', icon: Sparkles, route: '/portal/ki-office' },
-  { code: 'posteingang', label: 'Post', icon: Inbox, route: '/portal/posteingang' },
+  { code: 'dms', label: 'DMS', icon: Inbox, route: '/portal/dms' },
   { code: 'immobilien', label: 'Immo', icon: Building2, route: '/portal/immobilien' },
 ];
 
@@ -66,7 +66,7 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
               <Icon className="h-4 w-4" />
               {item.label === 'Stamm' ? 'Stammdaten' : 
                item.label === 'Office' ? 'KI Office' :
-               item.label === 'Post' ? 'Posteingang' :
+               item.label === 'DMS' ? 'Dokumentenmanagement' :
                item.label === 'Immo' ? 'Immobilien' :
                item.label === 'Finanz' ? 'Finanzierung' :
                item.label === 'Partner' ? 'Vertriebspartner' :
