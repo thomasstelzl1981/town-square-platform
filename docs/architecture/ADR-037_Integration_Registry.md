@@ -39,6 +39,7 @@ Diese Integrationen werden zentral verwaltet und stehen allen Tenants zur Verfü
 | `SIMPLEFAX` | integration | platform | 2 | Fax-Versand | SEC-SIMPLEFAX |
 | `BRIEFDIENST` | integration | platform | 2 | Brief-Versand (Post) | SEC-BRIEFDIENST |
 | `GOOGLE_PLACES` | integration | platform | 2 | Contractor Search | SEC-GPLACES |
+| `SPRENGNETTER` | integration | platform | 1 | Immobilien-Bewertung | SEC-SPRENGNETTER |
 
 ### Scope-Erklärung
 
@@ -91,6 +92,10 @@ Die folgenden sind **KEINE Platform-APIs**. Sie gehören dem User und werden in 
 | `caya-webhook` | MOD-03 | Webhook | Inbound Post Ingestion |
 | `send-email` | MOD-02 | HTTP | Systemmail via Resend |
 | `briefgenerator` | MOD-02 | HTTP | AI Draft + PDF |
+| `investment-engine` | MOD-04 | HTTP | ROI/Tax Calculation (40y Projection) |
+| `valuation-worker` | MOD-04 | Job Queue | Sprengnetter API Integration |
+| `sanierung-outbound` | MOD-04 | HTTP | Ausschreibungs-Mails (Draft + Send) |
+| `sanierung-inbound` | MOD-04 | Webhook | Angebots-Parsing (Tender-ID Matching) |
 
 ---
 

@@ -43,7 +43,7 @@
 
 ---
 
-## MOD-04: Immobilien (Vorbereitung)
+## MOD-04: Immobilien
 
 | ID | Question | Vorschlag | Status |
 |----|----------|-----------|--------|
@@ -51,7 +51,15 @@
 | Q4.2 | Investment-Engine Edge Function: Scope Phase 1? | Kaufpreis-Kalkulation, Rendite, Steuer-Schätzung | PENDING |
 | Q4.3 | MOD-04 vs MOD-06 Abgrenzung: Verkaufsaktivierung wo? | MOD-04 = Aktivierung Toggle, MOD-06 = Sales-Prozess | PENDING |
 | Q4.4 | Property-Features: Separate Tabelle oder JSONB in `properties`? | Separate Tabelle (existiert bereits: `property_features`) | PENDING |
-| Q4.5 | Sanierung Sub-Tile: Scope Phase 1? | Basic Tracking (Status, Budget, Timeline) | PENDING |
+| Q4.5 | Sanierung Sub-Tile: Scope Phase 1? | Full E2E-Prozess (Tender-ID, Outbound, Inbound, Vergabe) | PENDING |
+| Q4.6 | Route-Migration `/portfolio` → `/portal/immobilien`? | Ja, Etappe 5 | PENDING |
+| Q4.7 | Finanzierung: Inline-Felder vs. separate `property_financing`? | Separate Tabelle beibehalten (existiert) | PENDING |
+| Q4.8 | Spalten-Naming: DE (Spec) vs. EN (DB)? | EN in DB, DE im UI (siehe MOD-04_FIELD_MAPPING.md) | PENDING |
+| Q4.9 | Sanierung Resend-Sender: Dedizierte Adresse? | `sanierung@sot.app` (oder Subdomain) | PENDING |
+| Q4.10 | Bewertung-Provider: Multi oder Sprengnetter only? | Nur Sprengnetter Phase 1 | RESOLVED |
+| Q4.11 | Tender-ID Format Details? | `T-{PROPERTY_PUBLIC_ID}-{YYMMDD}-{SEQ}` | PENDING |
+| Q4.12 | DMS im Exposé: Upload + Link oder nur Link? | Beides erlaubt (Upload via DMS API) | PENDING |
+| Q4.13 | Flags `sale_enabled`/`rental_managed`: Direkte Spalten oder via `property_features`? | Via `property_features` (existiert) | PENDING |
 
 ---
 
