@@ -36,6 +36,9 @@ import PropertyList from "./pages/portfolio/PropertyList";
 import PropertyDetail from "./pages/portfolio/PropertyDetail";
 import PropertyForm from "./pages/portfolio/PropertyForm";
 
+// Presentation (non-guessable URL)
+import PresentationPage from "./pages/presentation/PresentationPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -142,6 +145,9 @@ const App = () => (
               <Route path="new" element={<PropertyForm />} />
               <Route path=":id" element={<PropertyDetail />} />
             </Route>
+
+            {/* Presentation Page (non-guessable URL for demos) */}
+            <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
