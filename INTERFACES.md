@@ -518,10 +518,112 @@ Damit Armstrong auf ein Dokument zugreifen kann:
 
 ---
 
-## 17. Changelog
+## 17. MOD-04 (Immobilien) ↔ Cross-Module Interfaces
+
+### 17.1 MOD-04 → MOD-03 (DMS)
+
+| Action | Type | Description | Tabelle |
+|--------|------|-------------|---------|
+| `GetDocumentsByObject` | READ | Dokumente für property_id | `document_links` → `documents` |
+| `LinkDocument` | WRITE | document_links erstellen | `document_links` |
+| `UploadToObject` | WRITE | Upload mit auto-link | `documents` + `document_links` |
+| `GetSignedUrl` | READ | Download/Preview URL | via Storage |
+
+**RLS:** `tenant_id` Match + `object_id` Filter
+
+**Implementation:**
+```typescript
+async function getPropertyDocuments(propertyId: string) {
+  return supabase
+    .from('document_links')
+    .select('*, document:documents(*)')
+    .eq('object_type', 'property')
+    .eq('object_id', propertyId);
+}
+```
+
+### 17.2 MOD-04 → MOD-05 (MSV)
+
+| Trigger | Effect | Direction |
+|---------|--------|-----------|
+| `rental_managed = true` | Property/Units sichtbar in MOD-05 | MOD-04 → MOD-05 |
+| Deep Link | `/portal/msv?property_id=:id` | MOD-04 UI → MOD-05 Route |
+
+**Regel:** MOD-04 setzt Flag, MOD-05 liest Flag und zeigt nur entsprechende Properties.
+
+**Keine direkten Writes** - MOD-05 besitzt eigene Lease/Payment-Tabellen.
+
+### 17.3 MOD-04 → MOD-06/07 (Verkauf/Partner)
+
+| Trigger | Effect | Direction |
+|---------|--------|-----------|
+| `sale_enabled = true` | Property sichtbar in MOD-06/07 | MOD-04 → MOD-06/07 |
+| Consent Gate | `SALES_MANDATE` erforderlich | MOD-06 prüft vor Aktion |
+
+**Regel:** MOD-04 setzt nur das Flag, keine Partner-/Deal-Logik.
+
+### 17.4 MOD-04 → MOD-08 (Finanzierung)
+
+| Action | Type | Description | FK |
+|--------|------|-------------|-----|
+| `GetPropertyForPackage` | READ | Stammdaten für finance_packages | `finance_packages.property_id` → `properties.id` |
+
+**Implementation:**
+```typescript
+async function getPropertyForFinancePackage(propertyId: string) {
+  return supabase
+    .from('properties')
+    .select(`
+      *,
+      financing:property_financing(*),
+      units(*)
+    `)
+    .eq('id', propertyId)
+    .single();
+}
+```
+
+### 17.5 MOD-04 → Zone 1 (Oversight)
+
+| View | Description | Access |
+|------|-------------|--------|
+| `ImmobilienStatusView` | Alle Properties mit Flags/Status | platform_admin READ |
+| `SanierungQueueView` | Offene Service Cases | platform_admin READ |
+| `BewertungHistoryView` | Valuations aller Tenants | platform_admin READ |
+
+**Regel:** Zone 1 hat nur READ-Zugriff, keine Writes.
+
+### 17.6 MOD-04 Sanierung → Resend (Integration)
+
+| Action | Direction | Description |
+|--------|-----------|-------------|
+| `SendOutbound` | MOD-04 → Resend | Ausschreibungs-Mail senden |
+| `InboundWebhook` | Resend → MOD-04 | Angebot empfangen + parsen |
+
+**Edge Functions:**
+- `sanierung-outbound`: Draft erstellen, nach Confirmation senden
+- `sanierung-inbound`: Webhook empfangen, Tender-ID extrahieren, zuordnen
+
+### 17.7 MOD-04 Bewertung → Sprengnetter (Integration)
+
+| Action | Direction | Description |
+|--------|-----------|-------------|
+| `Estimate` | MOD-04 → Sprengnetter | Kosten/Credits abfragen |
+| `RequestValuation` | MOD-04 → Sprengnetter | Bewertung starten |
+| `ReceiveResult` | Sprengnetter → MOD-04 | Ergebnis + Report |
+
+**Edge Function:** `valuation-worker`
+- Job Queue basiert
+- Consent-Check vor Start
+- Report-PDF im DMS ablegen
+
+---
+
+## 18. Changelog
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 1.0 | 2026-01-21 | Initial (Sections 1-9) |
 | 1.1 | 2026-01-25 | Sections 10-14 hinzugefügt (MOD-01, MOD-02, MOD-03 Interfaces) |
 | 1.2 | 2026-01-25 | Section 16 hinzugefügt (Armstrong Document Integration) |
+| 1.3 | 2026-01-25 | **Section 17 hinzugefügt (MOD-04 Immobilien Cross-Module Interfaces)** |

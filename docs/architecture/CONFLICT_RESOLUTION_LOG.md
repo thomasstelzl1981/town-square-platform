@@ -215,6 +215,45 @@ Dieses Dokument trackt alle identifizierten Konflikte zwischen Spezifikationen, 
 | **Grund** | GDPR-Compliance, User-Ownership, keine Platform-APIs |
 | **Betroffene Dateien** | `ADR-037_Integration_Registry.md`, `ADR-038_Storage_Architecture.md`, `MOD-03_DMS.md` |
 
+### K7: Route-Migration Portfolio → Immobilien
+
+| Aspekt | Wert |
+|--------|------|
+| **ID** | K7 |
+| **Bereich** | MOD-04 Immobilien |
+| **IST (Code)** | `/portfolio/*` (Legacy Routes) |
+| **SOLL (Spec)** | `/portal/immobilien/*` |
+| **Resolution** | Migration in Etappe 5 |
+| **Status** | 🟡 IN_PROGRESS |
+| **Datum** | 2026-01-25 |
+| **Betroffene Dateien** | `src/App.tsx`, `src/pages/portfolio/*`, `src/components/portal/PortalNav.tsx` |
+
+---
+
+## M: Missing (Fehlende Elemente) — Fortsetzung
+
+### M5: MOD-04 Tabellen nicht in DB
+
+| Aspekt | Wert |
+|--------|------|
+| **ID** | M5 |
+| **Bereich** | MOD-04 Immobilien |
+| **Fehlend** | `landlord_contexts`, `context_property_assignment`, `property_valuations`, `service_cases`, `service_case_outbound`, `service_case_offers` |
+| **Resolution** | Migration bei Implementation erstellen (siehe `MOD-04_DB_SCHEMA.md`) |
+| **Status** | 🟡 IN_PROGRESS |
+| **Priorität** | Phase 1 (Kontexte + Bewertung), Phase 2 (Sanierung) |
+
+### M6: MOD-04 Properties-Spalte fehlt
+
+| Aspekt | Wert |
+|--------|------|
+| **ID** | M6 |
+| **Bereich** | MOD-04 Immobilien |
+| **Fehlend** | `properties.utility_prepayment` (NK-Vorauszahlung) |
+| **Resolution** | `ALTER TABLE properties ADD COLUMN utility_prepayment numeric;` |
+| **Status** | 🟡 IN_PROGRESS |
+| **Priorität** | Phase 1 MVP |
+
 ---
 
 ## Validation Checklist (vor Implementation)
@@ -226,8 +265,9 @@ Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
 - [x] K3: Contacts Ownership → RESOLVED (Ownership Map aktualisiert)
 - [x] K4: Communication Events → RESOLVED (Ownership Map aktualisiert)
 - [x] K6: User-Data-Spaces → RESOLVED (ADR-037, ADR-038 erstellt)
+- [ ] K7: Route-Migration Portfolio → Immobilien → IN_PROGRESS (Etappe 5)
 
-✅ **Alle kritischen Konflikte gelöst — Ready for Implementation**
+⚠️ **K7 offen — Migration vor MOD-04 Implementation erforderlich**
 
 ---
 
@@ -238,3 +278,4 @@ Vor Start der Implementation müssen alle K-Konflikte RESOLVED sein:
 | 2026-01-25 | Initial erstellt mit K1-K4, M1-M4, N1-N3, A1-A3 | System |
 | 2026-01-25 | K1, K3, K4, N1, N2, N3, A1, A2, A3, M4 → RESOLVED | System |
 | 2026-01-25 | K6 hinzugefügt + RESOLVED (User-Data-Spaces) | System |
+| 2026-01-25 | K7 (Route-Migration), M5 (MOD-04 Tabellen), M6 (utility_prepayment) hinzugefügt | System |

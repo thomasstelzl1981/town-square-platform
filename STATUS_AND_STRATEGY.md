@@ -1,7 +1,7 @@
 # System of a Town — Status, Zielbild & Strategie
 
-> **Datum**: 2026-01-23  
-> **Version**: 4.1 — ID-System & Integration Registry implementiert  
+> **Datum**: 2026-01-25  
+> **Version**: 4.2 — MOD-04 Immobilien Spec erstellt  
 > **Zweck**: Copy/Paste-fähige Dokumentation für IST, SOLL und Umsetzungsstrategie
 
 ---
@@ -85,7 +85,9 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 |---------|----------|--------|
 | **Core Foundation** | `organizations`, `profiles`, `memberships`, `org_delegations`, `audit_events` | 🟢 Stabil |
 | **Tile-System** | `tile_catalog`, `tenant_tile_activation` | 🟢 Stabil |
-| **Immobilien** | `properties`, `units`, `property_features`, `property_financing` | 🟢 Stabil |
+| **Immobilien (existierend)** | `properties`, `units`, `property_features`, `property_financing` | 🟢 Stabil |
+| **Immobilien (Phase 1 Pending)** | `landlord_contexts`, `context_property_assignment`, `property_valuations` | 🟡 Spec Ready |
+| **Immobilien (Phase 2 Pending)** | `service_cases`, `service_case_outbound`, `service_case_offers` | 🟡 Spec Ready |
 | **Dokumente/Access** | `documents`, `access_grants` | 🟢 Stabil |
 | **Vermietung** | `leases`, `renter_invites` | 🟢 Stabil |
 | **Kontakte** | `contacts` | 🟢 Stabil |
@@ -94,9 +96,9 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 | **Posteingang** | `inbound_items`, `inbound_routing_rules` | 🟢 Stabil |
 | **Sales Partner** | `partner_pipelines`, `investment_profiles`, `commissions` | 🟢 Stabil |
 | **Financing** | `finance_packages`, `self_disclosures`, `finance_documents` | 🟢 Stabil |
-| **Integration Registry** | `integration_registry` | 🟢 **NEU** |
+| **Integration Registry** | `integration_registry` | 🟢 Stabil |
 
-**Gesamt: 29 Tabellen produktiv**
+**Gesamt: 29 Tabellen produktiv + 6 Tabellen geplant (MOD-04)**
 
 **Public-ID-System:**
 - ✅ `public_id` Spalten auf: `organizations`, `properties`, `units`, `contacts`, `documents`, `finance_packages`, `integration_registry`
@@ -142,19 +144,33 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 ### 5.1 Modul-Matrix
 
-| # | Modul | Code | Haupt-Route | 4 Unterpunkte |
-|---|-------|------|-------------|---------------|
-| 1 | **Stammdaten** | `stammdaten` | `/portal/stammdaten` | `/profil`, `/firma`, `/abrechnung`, `/sicherheit` |
-| 2 | **KI Office** | `ki-office` | `/portal/ki-office` | `/email`, `/brief`, `/kontakte`, `/kalender` |
-| 3 | **Posteingang (DMS)** | `posteingang` | `/portal/posteingang` | `/eingang`, `/zuordnung`, `/archiv`, `/einstellungen` |
-| 4 | **Immobilien** | `immobilien` | `/portal/immobilien` | `/objekte`, `/verwaltung`, `/verkauf`, `/sanierung` |
-| 5 | **Miet-Sonderverwaltung** | `msv` | `/portal/msv` | `/objekt-mieter`, `/mieteingang`, `/vermietung`, `/einstellungen` |
-| 6 | **Verkauf** | `verkauf` | `/portal/verkauf` | `/objekte`, `/aktivitaeten`, `/anfragen`, `/vorgaenge` |
-| 7 | **Vertriebspartner** | `vertriebspartner` | `/portal/vertriebspartner` | `/pipeline`, `/objektauswahl`, `/beratung`, `/netzwerk` |
-| 8 | **Finanzierung** | `finanzierung` | `/portal/finanzierung` | `/selbstauskunft`, `/unterlagen`, `/pakete`, `/status` |
-| 9 | **Leadgenerierung** | `leadgenerierung` | `/portal/leadgenerierung` | `/kampagnen`, `/studio`, `/landingpages`, `/leads` |
+| # | Modul | Code | Haupt-Route | 4 Unterpunkte | Spec Status |
+|---|-------|------|-------------|---------------|-------------|
+| 1 | **Stammdaten** | `stammdaten` | `/portal/stammdaten` | `/profil`, `/firma`, `/abrechnung`, `/sicherheit` | 🟢 READY |
+| 2 | **KI Office** | `ki-office` | `/portal/ki-office` | `/email`, `/brief`, `/kontakte`, `/kalender` | 🟢 READY |
+| 3 | **Posteingang (DMS)** | `dms` | `/portal/dms` | `/eingang`, `/zuordnung`, `/archiv`, `/einstellungen` | 🟢 READY |
+| 4 | **Immobilien** | `immobilien` | `/portal/immobilien` | `/kontexte`, `/sanierung`, `/bewertung`, `/:id` (Exposé) | 🟢 **READY (v1.1)** |
+| 5 | **Miet-Sonderverwaltung** | `msv` | `/portal/msv` | `/objekt-mieter`, `/mieteingang`, `/vermietung`, `/einstellungen` | 🟡 PENDING |
+| 6 | **Verkauf** | `verkauf` | `/portal/verkauf` | `/objekte`, `/aktivitaeten`, `/anfragen`, `/vorgaenge` | 🟡 PENDING |
+| 7 | **Vertriebspartner** | `vertriebspartner` | `/portal/vertriebspartner` | `/pipeline`, `/objektauswahl`, `/beratung`, `/netzwerk` | 🟡 PENDING |
+| 8 | **Finanzierung** | `finanzierung` | `/portal/finanzierung` | `/selbstauskunft`, `/unterlagen`, `/pakete`, `/status` | 🟡 PENDING |
+| 9 | **Leadgenerierung** | `leadgenerierung` | `/portal/leadgenerierung` | `/kampagnen`, `/studio`, `/landingpages`, `/leads` | 🟡 PENDING |
 
-### 5.2 Modul-Beschreibungen
+### 5.2 Module Readiness Matrix
+
+| Modul | Spec | DB-Tabellen | Edge Functions | UI | Readiness |
+|-------|------|-------------|----------------|-----|-----------|
+| MOD-01 Stammdaten | ✅ READY | 6 existierend | 0 | Shell | 85% |
+| MOD-02 KI Office | ✅ READY | +6 geplant | 4 Spec | Shell | 75% |
+| MOD-03 DMS | ✅ READY | +7 geplant | 2 Spec | Shell | 90% |
+| **MOD-04 Immobilien** | ✅ **READY v1.1** | 4 exist + 6 geplant | 4 Spec | Legacy | **70%** |
+| MOD-05 MSV | ⏳ PENDING | 2 existierend | 0 | - | 5% |
+| MOD-06 Verkauf | ⏳ PENDING | 0 | 0 | - | 5% |
+| MOD-07 Vertriebspartner | ⏳ PENDING | 3 existierend | 0 | - | 15% |
+| MOD-08 Finanzierung | ⏳ PENDING | 3 existierend | 1 Spec | - | 15% |
+| MOD-09 Leadgenerierung | ⏳ PENDING | 0 | 1 Spec | - | 5% |
+
+### 5.3 Modul-Beschreibungen
 
 | Modul | Zweck | Besonderheiten |
 |-------|-------|----------------|
@@ -278,7 +294,8 @@ Eine Plattform mit **drei Kern-Usabilities** in EINEM System:
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
-| 2026-01-23 | **4.1** | **ID-System & Integration Registry implementiert**: `public_id` auf 7 Tabellen, `integration_registry` mit 6 Seed-Einträgen, Enums für type/status |
+| 2026-01-25 | **4.2** | **MOD-04 Immobilien Spec v1.1 erstellt**: Master-Spec, Field-Mapping, DB-Schema, K7 Route-Migration, M5/M6 fehlende Tabellen/Spalten, Module Readiness Matrix |
+| 2026-01-23 | 4.1 | ID-System & Integration Registry implementiert: `public_id` auf 7 Tabellen, `integration_registry` mit 6 Seed-Einträgen |
 | 2026-01-23 | 4.0 | Fundament-Phase: 9-Modul-Grid finalisiert, ID-System (ADR-036), Integration Registry (ADR-037), 3-Zonen-Architektur bestätigt |
 | 2026-01-21 | 3.3 | Etappe 3 abgeschlossen: Sales & Financing DB + Properties-Erweiterung + Ownership Map + Interfaces |
 | 2026-01-21 | 3.2 | Etappe 2 abgeschlossen: Backbone-Tabellen + Admin UI |
