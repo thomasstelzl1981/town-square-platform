@@ -264,9 +264,169 @@ Bei jeder neuen Cross-Module-Aktion prüfen:
 
 ---
 
-## 9. Governance
+---
+
+## 10. KI Office (MOD-02) → DMS (MOD-03)
+
+### READ Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `GetDocumentForPreview` | Dokument für Brief-Anhang | `documents` |
+
+### WRITE Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `ArchiveLetterAsDMS` | Versendeten Brief als Dokument archivieren | `documents`, `letter_sent` |
+
+### Implementation
+
+```typescript
+async function archiveLetterToDMS(letterId: string): Promise<void> {
+  const { data: letter } = await supabase
+    .from('letter_sent')
+    .select('*')
+    .eq('id', letterId)
+    .single();
+
+  // 1. PDF als Document speichern
+  const { data: doc } = await supabase
+    .from('documents')
+    .insert({
+      tenant_id: letter.tenant_id,
+      name: `Brief_${letter.recipient_name}_${letter.created_at}`,
+      file_path: letter.pdf_path,
+      mime_type: 'application/pdf',
+      size_bytes: letter.pdf_size
+    })
+    .select()
+    .single();
+
+  // 2. Link zum Kontakt erstellen
+  await supabase.from('document_links').insert({
+    tenant_id: letter.tenant_id,
+    document_id: doc.id,
+    object_type: 'contact',
+    object_id: letter.contact_id
+  });
+
+  // 3. Audit-Event
+  await supabase.from('audit_events').insert({
+    event_type: 'document_archived',
+    actor_user_id: auth.uid(),
+    target_org_id: letter.tenant_id,
+    payload: { letter_id: letterId, document_id: doc.id }
+  });
+}
+```
+
+---
+
+## 11. KI Office (MOD-02) → Core/Backbone
+
+### READ Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `GetContactsForLetter` | Kontakte für Briefgenerator | `contacts` |
+| `GetSenderIdentity` | Absenderdaten für Brief-PDF | `profiles`, `organizations` |
+
+### WRITE Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `CreateCommunicationEvent` | Kommunikation protokollieren | `communication_events` |
+
+### Implementation
+
+```typescript
+async function logCommunication(data: {
+  channel: 'email_system' | 'fax' | 'post';
+  direction: 'outbound';
+  contactId: string;
+  subject: string;
+  bodyPreview: string;
+  metadata: Record<string, unknown>;
+}): Promise<void> {
+  await supabase.from('communication_events').insert({
+    tenant_id: await getActiveTenantId(),
+    channel: data.channel,
+    direction: data.direction,
+    contact_id: data.contactId,
+    subject: data.subject,
+    body_preview: data.bodyPreview.substring(0, 500),
+    status: 'sent',
+    metadata: data.metadata
+  });
+}
+```
+
+---
+
+## 12. DMS (MOD-03) → Core/Backbone
+
+### READ Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `GetContactForAssignment` | Kontakt für Dokument-Zuordnung | `contacts` |
+| `GetOrganizationForRouting` | Org für Inbound-Routing | `organizations` |
+
+### WRITE Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `LogInboundAssignment` | Zuordnung protokollieren | `audit_events` |
+
+---
+
+## 13. DMS (MOD-03) → Immobilien (MOD-04)
+
+### READ Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `GetPropertyForDocumentLink` | Property für Zuordnung | `properties` |
+| `GetUnitForDocumentLink` | Unit für Zuordnung | `units` |
+
+### WRITE Actions
+
+**Keine** - DMS schreibt nicht in Immobilien-Tabellen. Verknüpfung erfolgt über `document_links` (DMS-eigene Tabelle).
+
+---
+
+## 14. Stammdaten (MOD-01) → Core/Backbone
+
+### READ Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `GetTeamMembers` | Mitglieder der Organisation | `memberships`, `profiles` |
+| `GetDelegations` | Aktive Delegations | `org_delegations` |
+
+### WRITE Actions
+
+| Action | Beschreibung | Tabelle |
+|--------|--------------|---------|
+| `UpdateProfile` | Eigenes Profil aktualisieren | `profiles` |
+| `CreateDelegation` | Neue Delegation anlegen | `org_delegations` |
+| `InviteTeamMember` | Mitglied einladen | `memberships` |
+
+---
+
+## 15. Governance
 
 - **Neue Interface Actions** erfordern ADR in `DECISIONS.md`
 - **Änderungen an Consent-Gates** erfordern Security-Review
 - **Alle Actions müssen testbar sein** (Unit Tests für Consent-Checks)
 - **Dokumentation vor Implementation** - Keine undokumentierten Cross-Module-Writes
+
+---
+
+## 16. Changelog
+
+| Version | Datum | Änderung |
+|---------|-------|----------|
+| 1.0 | 2026-01-21 | Initial (Sections 1-9) |
+| 1.1 | 2026-01-25 | Sections 10-14 hinzugefügt (MOD-01, MOD-02, MOD-03 Interfaces) |
