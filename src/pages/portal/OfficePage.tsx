@@ -22,10 +22,10 @@ const OfficePage = () => {
   }
 
   const subTiles = data?.sub_tiles || [
-    { title: 'E-Mail', route: '/portal/ki-office/email' },
-    { title: 'Briefgenerator', route: '/portal/ki-office/brief' },
-    { title: 'Kontakte', route: '/portal/ki-office/kontakte' },
-    { title: 'Kalender', route: '/portal/ki-office/kalender' },
+    { title: 'E-Mail', route: '/portal/office/email' },
+    { title: 'Briefgenerator', route: '/portal/office/brief' },
+    { title: 'Kontakte', route: '/portal/office/kontakte' },
+    { title: 'Kalender', route: '/portal/office/kalender' },
   ];
 
   // Determine which sub-page to render
