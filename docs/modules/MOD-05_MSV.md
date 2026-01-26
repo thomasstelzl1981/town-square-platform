@@ -371,133 +371,131 @@ Alle Base-Drafts und Notizen werden als DMS-Dokumente persistiert:
 
 | Route | Zweck |
 |-------|-------|
-| /portal/msv | Dashboard |
-| /portal/msv/listen | Arbeitsliste (Hauptansicht) |
-| /portal/msv/mieteingang | Zahlungen (Base: Info, Premium: aktiv) |
-| /portal/msv/vermietung | Templates + Vorgänge |
-| /portal/msv/einstellungen | Konfiguration |
+| /portal/msv | Redirect zu /portal/msv/objekte |
+| /portal/msv/objekte | Objektliste mit Actions (Freemium) |
+| /portal/msv/mieteingang | Zahlungsverwaltung (Premium) |
+| /portal/msv/vermietung | Vermietungsexposé + Publishing (Freemium) |
+| /portal/msv/einstellungen | Konfiguration + Kontoanbindung |
 
-### 4.2 Dashboard (`/portal/msv`)
+**Hinweis:** Dashboard-Tab wurde entfernt. Der Standard-Tab ist "Objekte".
 
-**Layout:**
-- Header: Modul-Titel, Premium-Badge (wenn aktiv)
-- KPI-Grid
-- Alerts/Benachrichtigungen
-- Quick Actions
+### 4.2 Objekte (`/portal/msv/objekte`)
 
-**KPIs Base:**
-| KPI | Berechnung |
-|-----|------------|
-| Units gesamt | COUNT(units) |
-| Aktive Leases | COUNT(leases WHERE status='active') |
-| Leerstand | COUNT(units ohne aktiven Lease) |
-| Offene Drafts | COUNT(document_links WHERE type LIKE 'msv_draft_%') |
+**Zweck:** Zentrale Arbeitsliste ALLER Units aus MOD-04
 
-**KPIs Premium (zusätzlich):**
-| KPI | Berechnung |
-|-----|------------|
-| Offene Zahlungen | SUM(expected - matched) |
-| Überfällig | COUNT WHERE status = 'overdue' |
-| Mahnquote | reminders_sent / overdue_count |
+**Tabellen-Spalten (8 Spalten):**
 
-**Alerts:**
-- Base: „X Units ohne Lease", „Premium aktivieren"
-- Premium: „X Zahlungen überfällig"
+| # | Spalte | DB-Quelle | Beschreibung |
+|---|--------|-----------|--------------|
+| 1 | Objekt-ID | `properties.code` | Kurzcode |
+| 2 | Objektadresse | `properties.address` | Straße, Nr, Ort + Einheit + Fläche |
+| 3 | Mieter | `contacts.last_name, first_name` (via lease) | Name oder "Leerstand" Badge |
+| 4 | Kaltmiete | `leases.monthly_rent` | Nettokaltmiete |
+| 5 | Nebenkosten | `lease_components.amount` (type=utilities) | NK-Vorauszahlung |
+| 6 | Vorauszahlung | `lease_components.amount` (type=prepayment) | Sonstige |
+| 7 | Warmmiete | Berechnet: Kaltmiete + NK + Vorauszahlung | Gesamtmiete |
+| 8 | Aktionen | Dropdown | Briefe erstellen, Premium, MOD-04 |
 
-### 4.3 Listen (`/portal/msv/listen`)
-
-**Zweck:** Zentrale Arbeitsliste ALLER Units
-
-**Tabellen-Spalten:**
-
-| # | Spalte | Quelle | Sichtbar |
-|---|--------|--------|----------|
-| 1 | Property | properties.address | Immer |
-| 2 | Unit | units.unit_number | Immer |
-| 3 | Mieter | contacts.name oder „—" | Immer |
-| 4 | Lease-Status | Badge oder „Leerstand" | Immer |
-| 5 | Miete (Soll) | leases.monthly_rent | Immer |
-| 6 | Premium-Status | Toggle (inactive/active/blocked) | Immer |
-| 7 | Kontakt-Status | Icon (E-Mail/Adresse ok?) | Immer |
-| 8 | Comm-Pref | Channel-Badge | Immer |
-| 9 | Zahlungsstatus | Aggregiert | Premium |
-| 10 | Aktionen | Dropdown | Immer |
-
-**Filter:**
-- Property (Dropdown)
-- Lease-Status (Multi-Select: Leerstand, draft, active, notice_given, terminated)
-- Premium-Status (inactive/active/blocked)
-- Kontakt-Status (vollständig/unvollständig)
-- Suche (Mieter-Name, Adresse)
-
-**Quick Actions:**
+**Action-Buttons (Dropdown):**
 
 | Action | Tier | Beschreibung |
 |--------|------|--------------|
-| Lease anlegen | Base | Für Units ohne Lease |
-| Lease bearbeiten | Base | Status ändern, Daten aktualisieren |
+| Mahnung erstellen | Base | Template-Generator |
+| Kündigung schreiben | Base | Template-Generator → Briefgenerator |
+| Mieterhöhung schreiben | Base | Template-Generator → Briefgenerator |
+| Datenanforderung | Base | Template-Generator |
+| Mietvertrag anlegen | Base | Für Units ohne Lease |
 | Premium aktivieren | Base | Startet Activation Gate |
-| Premium deaktivieren | Premium | Setzt auf inactive |
-| Readiness anzeigen | Beide | Modal mit Checkliste |
-| Kündigung erstellen | Base | Template-Generator |
-| Mieterhöhung erstellen | Base | Template-Generator |
-| Daten anfordern | Base | Request-Template |
-| Mieter einladen | Base | Miety Invite-Flow |
-| Objekt öffnen | Beide | → MOD-04 |
-| DMS öffnen | Beide | → MOD-03 |
+| Objekt öffnen (MOD-04) | Beide | Deep-Link zu /portfolio/:id |
 
 **Empty State:**
-- „Keine Units gefunden. Legen Sie Objekte in MOD-04 an."
-- CTA: „Zu Immobilien" → /portal/immobilien
+- "Keine Objekte gefunden"
+- Objekte werden aus MOD-04 geladen
 
-**Permissions:**
-- Read: Alle Tenant-Members
-- Write: org_admin, internal_ops
+### 4.3 Mieteingang (`/portal/msv/mieteingang`) — Premium
 
-### 4.4 Mieteingang (`/portal/msv/mieteingang`)
+**Konzept:** Objekt-zentrierte Ansicht mit Accordion-Erweiterung
 
-**Base-Ansicht:**
-- Info-Banner: „Basis: Manuelle Verwaltung. Upgrade für vollständiges Tracking."
-- Lease-Liste mit manuellem Status-Feld
-- Notiz-Button pro Lease
+**Haupttabelle (collapsed):**
 
-**Premium-Ansicht:**
-- Monats-Filter
-- Zahlungs-Tabelle mit Match-Status
-- „Perioden generieren" Button
-- Manuell buchen Modal
-- Mahnung erstellen CTA
+| # | Spalte | Beschreibung |
+|---|--------|--------------|
+| 1 | Expand-Icon | ChevronRight/Down |
+| 2 | Objekt-Nr. | properties.code |
+| 3 | Adresse | properties.address |
+| 4 | Mieter | contacts.name |
+| 5 | Sollmiete | leases.monthly_rent |
+| 6 | Mieteingang | SUM der Zahlungen (aktueller Monat) |
+| 7 | Status | Badge: Bezahlt/Teilzahlung/Offen/Überfällig |
 
-**Paywall:** Zeigt Upgrade-CTA wenn nicht Premium
+**Expandierte Zeile (Accordion):**
 
-### 4.5 Vermietung (`/portal/msv/vermietung`)
+Bei Klick auf Zeile:
+- **Letzte 10 Mieteingänge** (Tabelle: Fällig am, Gezahlt am, Betrag, Status, Quelle)
+- **Action-Buttons:**
+  - Zahlung buchen (manuell) — Premium
+  - Mahnung erstellen → Template-Wizard
+  - Mietbericht senden → Edge Function Trigger — Premium
 
-**Tabs:**
-- Kündigung (Base)
-- Mieterhöhung (Base)
-- Datenanforderung (Base)
-- Vorgänge (Premium)
+**Stats-Cards:**
+- Eingegangen (Summe + Anzahl)
+- Offen (Summe + Anzahl)
+- Überfällig (Summe + Anzahl)
 
-**Template-Wizard (Base):**
-1. Unit/Lease auswählen
-2. Template auswählen
-3. Platzhalter ausfüllen
-4. Preview
-5. Aktionen: Download / DMS-Ablage / Versand (mit Confirmation)
+**Premium-Gate:**
+- PaywallBanner wenn nicht Premium
+- "Premium aktivieren" Button → Readiness Gate
 
-### 4.6 Einstellungen (`/portal/msv/einstellungen`)
+### 4.4 Vermietung (`/portal/msv/vermietung`) — Freemium
+
+**Zweck:** Vermietungsexposés erstellen und auf Portalen veröffentlichen
+
+**Verfügbare Kanäle:**
+
+| Kanal | Typ | Beschreibung |
+|-------|-----|--------------|
+| ImmobilienScout24 | API | Direkte Veröffentlichung (Credits) |
+| Kleinanzeigen | Export | Text + Bilder exportieren |
+
+**Hinweis:** Kaufy ist NICHT für Mietobjekte verfügbar (nur MOD-06 Verkauf).
+
+### 4.5 Einstellungen (`/portal/msv/einstellungen`)
 
 **Sections:**
 
 | Section | Tier | Beschreibung |
 |---------|------|--------------|
-| Kommunikationspräferenz | Base | Default-Kanal, Fallback, Confirmation |
-| Zahlungsziele | Premium | Fälligkeitstag, Karenzzeit |
-| Mahnfristen | Premium | Tage pro Stufe |
-| Vorlagen | Beide | System + Tenant-Templates |
-| Kontoanschluss | Premium | FinAPI Connect Stub |
+| Premium-Status | Beide | Aktivierungsstatus, Credits-Verbrauch |
+| Automatisierung | Premium | Mahntag, Kommunikationsweg, Auto-Mahnung, Mietbericht-Tag, Auto-Report |
+| Mietkonten | Premium | FinAPI Kontoanbindung (Coming Soon) |
+| E-Mail-Versand | Beide | Info über Resend-System |
 
-**Paywall:** Premium-Sections zeigen Upgrade-CTA
+**Automatisierungs-Einstellungen:**
+
+| Einstellung | UI-Element | Beschreibung |
+|-------------|------------|--------------|
+| Mahntag | Number (1-28) | Wann Mahnung versenden |
+| Kommunikationsweg | Radio: E-Mail / Brief | Wie wird gemahnt |
+| Auto-Mahnung aktiv | Switch | Automatischer Versand |
+| Mietbericht-Tag | Number (1-28) | Default: 15 |
+| Auto-Mietbericht | Switch | Automatischer Versand |
+
+**Kontoanbindung (FinAPI — Coming Soon):**
+
+Tabelle `msv_bank_accounts`:
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| id | uuid PK | — |
+| tenant_id | uuid FK | Tenant-Isolation |
+| account_name | text | Anzeigename |
+| iban | text | IBAN |
+| bank_name | text | Bankname |
+| finapi_account_id | text | FinAPI Referenz |
+| is_default | boolean | Standard-Konto |
+| status | enum | connected, pending, error |
+
+**Paywall:** Premium-Sections zeigen Upgrade-CTA wenn nicht Premium
 
 ---
 
