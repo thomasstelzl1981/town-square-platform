@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useMSVPremium } from '@/hooks/useMSVPremium';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/collapsible';
 import { PaywallBanner } from '@/components/msv/PaywallBanner';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
+import { PaymentBookingDialog } from '@/components/msv/PaymentBookingDialog';
 import { 
   Euro, 
   CheckCircle, 
@@ -57,9 +59,10 @@ interface PaymentEntry {
 }
 
 const MieteingangTab = () => {
-  const [isPremium] = useState(false); // TODO: Check from msv_enrollments
+  const { isPremium, isLoading: premiumLoading } = useMSVPremium();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [templateWizardOpen, setTemplateWizardOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertyWithPayments | null>(null);
 
   // Fetch property-centric payment data
@@ -218,6 +221,11 @@ const MieteingangTab = () => {
       default:
         return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" />Offen</Badge>;
     }
+  };
+
+  const handlePaymentBooking = (property: PropertyWithPayments) => {
+    setSelectedProperty(property);
+    setPaymentDialogOpen(true);
   };
 
   const handleMahnung = (property: PropertyWithPayments) => {
@@ -386,7 +394,15 @@ const MieteingangTab = () => {
 
                             {/* Action Buttons */}
                             <div className="flex gap-2 pt-2 border-t">
-                              <Button size="sm" variant="outline" disabled={!isPremium}>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                disabled={!isPremium}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePaymentBooking(row);
+                                }}
+                              >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Zahlung buchen
                               </Button>
@@ -428,6 +444,16 @@ const MieteingangTab = () => {
           properties: { address: selectedProperty.address, code: selectedProperty.code }
         } : null}
       />
+
+      {selectedProperty?.leaseId && (
+        <PaymentBookingDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          leaseId={selectedProperty.leaseId}
+          sollmiete={selectedProperty.sollmiete}
+          mieterName={selectedProperty.mieterName}
+        />
+      )}
     </div>
   );
 };

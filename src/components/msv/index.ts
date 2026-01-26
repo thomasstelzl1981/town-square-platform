@@ -5,3 +5,4 @@ export { ReadinessChecklist } from './ReadinessChecklist';
 export { CreditsDisplay } from './CreditsDisplay';
 export { RentalListingWizard } from './RentalListingWizard';
 export { RentalPublishDialog } from './RentalPublishDialog';
+export { PaymentBookingDialog } from './PaymentBookingDialog';
