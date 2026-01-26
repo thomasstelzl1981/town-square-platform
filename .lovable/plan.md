@@ -1,281 +1,182 @@
 
+# Plan: Klassische Menüstruktur und Module-Pages korrigieren
 
-# Fix: RLS Infinite Recursion
+## Problemanalyse
 
-## Problem
+Nach gründlicher Analyse habe ich folgende Diskrepanzen gefunden:
 
-Die RLS-Policies verursachen eine zirkuläre Abhängigkeit:
-- `organizations` SELECT Policy fragt `memberships` ab
-- `memberships` SELECT Policy (`membership_select_org_admin`) fragt ebenfalls `memberships` ab
-- Die `is_platform_admin()` Funktion fragt auch `memberships` ab
+### 1. Navigation-Problem
+Die aktuelle `PortalNav.tsx` ist **hardcoded** und nutzt die `tile_catalog`-Datenbank NICHT. Wenn du auf "Stammdaten" klickst, öffnen sich keine Untermenüpunkte.
 
-**Ergebnis:** `infinite recursion detected in policy for relation "memberships"`
+### 2. Falsche Sub-Tiles in den Module-Pages
+Die Module-Pages zeigen falsche Cards:
+
+| Modul | IST (falsch) | SOLL (laut Docs) |
+|-------|--------------|------------------|
+| MOD-01 Stammdaten | Kontakte, Adressen, Bankdaten, Einstellungen | Profil, Firma, Abrechnung, Sicherheit |
+| MOD-02 KI Office | Chat, Aufgaben, Kalender, Notizen | E-Mail, Brief, Kontakte, Kalender |
+| MOD-03 DMS | Ablage, Posteingang, Sortieren, Einstellungen | Storage, Posteingang, Sortieren, Einstellungen |
+
+Die DB hat die richtigen Sub-Tiles, aber die Pages sind hardcoded mit falschen Daten.
+
+### 3. Keine funktionalen Sub-Routes
+Klick auf die Cards führt nirgendwo hin (keine onClick-Handler).
 
 ---
 
-## Ursache
+## Lösungsplan
 
-PostgreSQL evaluiert bei PERMISSIVE Policies **alle** Policies mit OR. Wenn ein User die `organizations` Tabelle abfragt:
+### Phase 1: Klassische Sidebar-Navigation mit Collapsible-Menü
 
-```text
-organizations.org_select_member
-    └─> SELECT FROM memberships (triggert RLS)
-            ├─> membership_select_self     ✓ (user_id = auth.uid())
-            ├─> membership_select_org_admin ✗ (SELECT FROM memberships → REKURSION)
-            └─> membership_select_platform_admin ✗ (is_platform_admin() → SELECT FROM memberships → REKURSION)
+**Datei:** `src/components/portal/PortalNav.tsx`
+
+Änderungen:
+1. Navigation aus `tile_catalog` laden (nicht hardcoded)
+2. Collapsible/Accordion-Menü implementieren
+3. Wenn Modul geklickt → 4 Sub-Tiles aufklappen
+4. Active-State für Parent und Children
+
+```
+Menü-Struktur:
+├── Home
+├── ▼ Stammdaten (klickbar → aufklappen)
+│   ├── Profil
+│   ├── Firma
+│   ├── Abrechnung
+│   └── Sicherheit
+├── ▼ KI Office
+│   ├── E-Mail
+│   ├── Brief
+│   ├── Kontakte
+│   └── Kalender
+├── ...
+```
+
+### Phase 2: tile_catalog Sub-Tiles korrigieren (DB)
+
+Die DB hat teilweise noch falsche Sub-Tiles:
+
+| MOD | Aktuell in DB | Korrektur nötig |
+|-----|---------------|-----------------|
+| MOD-01 | Profil, Kontakte, Adressen, Einstellungen | → Profil, Firma, Abrechnung, Sicherheit |
+| MOD-02 | E-Mail, Brief, Kontakte, Kalender | Korrekt |
+| MOD-03 | Ablage, Posteingang, Sortieren, Einstellungen | → Storage, Posteingang, Sortieren, DMS-Einstellungen |
+| MOD-04 | Liste, Neu, Karte, Analyse | → Kontexte, Portfolio, Sanierung, Bewertung |
+| MOD-05 | Übersicht, Mieter, Zahlungen, Mahnungen | → Dashboard, Listen, Mieteingang, Vermietung |
+| MOD-06 | Inserate, Anfragen, Reservierungen, Transaktionen | → Objekte, Aktivitäten, Anfragen, Vorgänge |
+| MOD-07 | Fälle, Dokumente, Export, Status | Korrekt |
+| MOD-08 | Suche, Favoriten, Profile, Alerts | → Suche, Favoriten, Mandat, Simulation |
+| MOD-09 | Dashboard, Katalog, Auswahl, Netzwerk | → Objektkatalog, Auswahl, Beratung, Netzwerk |
+| MOD-10 | Inbox, Kampagnen, Pipeline, Quellen | → Inbox, Meine Leads, Pipeline, Werbung |
+
+### Phase 3: Module-Pages dynamisch machen
+
+**Änderung für alle Module-Pages:**
+
+Statt hardcodierter Cards:
+1. Sub-Tiles aus `tile_catalog` laden (oder Props übergeben)
+2. Jede Card ist ein Link zur entsprechenden Sub-Route
+3. Icon-Mapping basierend auf Route/Title
+
+### Phase 4: Sub-Routes in App.tsx vervollständigen
+
+Für jedes Modul alle 4 Sub-Routes registrieren:
+
+```tsx
+// MOD-01: Stammdaten
+<Route path="stammdaten" element={<StammdatenPage />} />
+<Route path="stammdaten/profil" element={<StammdatenProfilPage />} />
+<Route path="stammdaten/firma" element={<StammdatenFirmaPage />} />
+<Route path="stammdaten/abrechnung" element={<StammdatenAbrechnungPage />} />
+<Route path="stammdaten/sicherheit" element={<StammdatenSicherheitPage />} />
 ```
 
 ---
 
-## Lösung
+## Umsetzungsreihenfolge
 
-Die rekursiven Policies müssen die `memberships`-Tabelle **ohne RLS** abfragen. Dazu erstellen wir eine `SECURITY DEFINER` Hilfsfunktion, die RLS umgeht.
-
-### Migration
-
-```sql
--- 1. Sichere Hilfsfunktion zum Abrufen der User-Memberships (umgeht RLS)
-CREATE OR REPLACE FUNCTION public.get_user_memberships(p_user_id uuid)
-RETURNS TABLE(tenant_id uuid, role membership_role)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT m.tenant_id, m.role
-  FROM public.memberships m
-  WHERE m.user_id = p_user_id
-$$;
-
--- 2. is_platform_admin() aktualisieren (nutzt neue Funktion)
-CREATE OR REPLACE FUNCTION public.is_platform_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.get_user_memberships(auth.uid())
-    WHERE role = 'platform_admin'
-  )
-$$;
-
--- 3. Rekursive memberships Policies ersetzen
-DROP POLICY IF EXISTS membership_select_org_admin ON memberships;
-DROP POLICY IF EXISTS membership_select_platform_admin ON memberships;
-
-CREATE POLICY membership_select_org_admin ON memberships
-  FOR SELECT
-  USING (
-    -- User kann alle Memberships seiner eigenen Orgs sehen (als org_admin)
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid()) um
-      WHERE um.tenant_id = memberships.tenant_id
-        AND um.role = 'org_admin'
-    )
-    -- ODER Child-Orgs (über Hierarchie)
-    OR EXISTS (
-      SELECT 1 
-      FROM public.get_user_memberships(auth.uid()) um
-      JOIN organizations my_org ON um.tenant_id = my_org.id
-      JOIN organizations target_org ON target_org.id = memberships.tenant_id
-      WHERE um.role = 'org_admin'
-        AND target_org.materialized_path LIKE my_org.materialized_path || '%'
-        AND target_org.id <> my_org.id
-        AND NOT target_org.parent_access_blocked
-    )
-  );
-
-CREATE POLICY membership_select_platform_admin ON memberships
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid())
-      WHERE role = 'platform_admin'
-    )
-  );
-
--- 4. Organizations Policy aktualisieren (nutzt neue Funktion)
-DROP POLICY IF EXISTS org_select_member ON organizations;
-DROP POLICY IF EXISTS org_select_platform_admin ON organizations;
-
-CREATE POLICY org_select_member ON organizations
-  FOR SELECT
-  USING (
-    -- Direkte Membership
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid()) um
-      WHERE um.tenant_id = organizations.id
-    )
-    -- ODER via Delegation
-    OR (
-      NOT parent_access_blocked
-      AND EXISTS (
-        SELECT 1 
-        FROM public.get_user_memberships(auth.uid()) um
-        JOIN org_delegations d ON d.delegate_org_id = um.tenant_id
-        WHERE d.target_org_id = organizations.id
-          AND d.status = 'active'
-          AND (d.expires_at IS NULL OR d.expires_at > now())
-      )
-    )
-    -- ODER Child-Org (org_admin sieht Children)
-    OR (
-      NOT parent_access_blocked
-      AND EXISTS (
-        SELECT 1 
-        FROM public.get_user_memberships(auth.uid()) um
-        JOIN organizations parent_org ON um.tenant_id = parent_org.id
-        WHERE um.role = 'org_admin'
-          AND organizations.materialized_path LIKE parent_org.materialized_path || '%'
-          AND organizations.id <> parent_org.id
-      )
-    )
-  );
-
-CREATE POLICY org_select_platform_admin ON organizations
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid())
-      WHERE role = 'platform_admin'
-    )
-  );
-
--- 5. Auch INSERT/UPDATE/DELETE Policies auf memberships aktualisieren
-DROP POLICY IF EXISTS membership_insert_org_admin ON memberships;
-DROP POLICY IF EXISTS membership_insert_platform_admin ON memberships;
-DROP POLICY IF EXISTS membership_update_org_admin ON memberships;
-DROP POLICY IF EXISTS membership_update_platform_admin ON memberships;
-DROP POLICY IF EXISTS membership_delete_org_admin ON memberships;
-DROP POLICY IF EXISTS membership_delete_platform_admin ON memberships;
-
--- INSERT für org_admin
-CREATE POLICY membership_insert_org_admin ON memberships
-  FOR INSERT
-  WITH CHECK (
-    role <> 'platform_admin'
-    AND (
-      EXISTS (
-        SELECT 1 FROM public.get_user_memberships(auth.uid()) um
-        WHERE um.tenant_id = memberships.tenant_id
-          AND um.role = 'org_admin'
-      )
-      OR EXISTS (
-        SELECT 1 
-        FROM public.get_user_memberships(auth.uid()) um
-        JOIN organizations my_org ON um.tenant_id = my_org.id
-        JOIN organizations target_org ON target_org.id = memberships.tenant_id
-        WHERE um.role = 'org_admin'
-          AND target_org.materialized_path LIKE my_org.materialized_path || '%'
-          AND target_org.id <> my_org.id
-          AND NOT target_org.parent_access_blocked
-      )
-    )
-  );
-
-CREATE POLICY membership_insert_platform_admin ON memberships
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid())
-      WHERE role = 'platform_admin'
-    )
-  );
-
--- UPDATE für org_admin
-CREATE POLICY membership_update_org_admin ON memberships
-  FOR UPDATE
-  USING (
-    role <> 'platform_admin'
-    AND (
-      EXISTS (
-        SELECT 1 FROM public.get_user_memberships(auth.uid()) um
-        WHERE um.tenant_id = memberships.tenant_id
-          AND um.role = 'org_admin'
-      )
-      OR EXISTS (
-        SELECT 1 
-        FROM public.get_user_memberships(auth.uid()) um
-        JOIN organizations my_org ON um.tenant_id = my_org.id
-        JOIN organizations target_org ON target_org.id = memberships.tenant_id
-        WHERE um.role = 'org_admin'
-          AND target_org.materialized_path LIKE my_org.materialized_path || '%'
-          AND target_org.id <> my_org.id
-          AND NOT target_org.parent_access_blocked
-      )
-    )
-  );
-
-CREATE POLICY membership_update_platform_admin ON memberships
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid())
-      WHERE role = 'platform_admin'
-    )
-  );
-
--- DELETE für org_admin
-CREATE POLICY membership_delete_org_admin ON memberships
-  FOR DELETE
-  USING (
-    role <> 'platform_admin'
-    AND (
-      EXISTS (
-        SELECT 1 FROM public.get_user_memberships(auth.uid()) um
-        WHERE um.tenant_id = memberships.tenant_id
-          AND um.role = 'org_admin'
-      )
-      OR EXISTS (
-        SELECT 1 
-        FROM public.get_user_memberships(auth.uid()) um
-        JOIN organizations my_org ON um.tenant_id = my_org.id
-        JOIN organizations target_org ON target_org.id = memberships.tenant_id
-        WHERE um.role = 'org_admin'
-          AND target_org.materialized_path LIKE my_org.materialized_path || '%'
-          AND target_org.id <> my_org.id
-          AND NOT target_org.parent_access_blocked
-      )
-    )
-  );
-
-CREATE POLICY membership_delete_platform_admin ON memberships
-  FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.get_user_memberships(auth.uid())
-      WHERE role = 'platform_admin'
-    )
-  );
-```
+1. **Sidebar-Navigation mit Collapsible** erstellen
+2. **tile_catalog** in DB korrigieren (Sub-Tiles gemäß Docs)
+3. **Module-Dashboard-Pages** auf dynamische Sub-Tile-Anzeige umstellen
+4. **Sub-Route-Pages** als Placeholder erstellen (40 Seiten: 10 Module × 4 Sub-Tiles)
+5. **App.tsx** mit allen Sub-Routes aktualisieren
 
 ---
 
 ## Technische Details
 
-| Komponente | Vorher | Nachher |
-|------------|--------|---------|
-| `is_platform_admin()` | Direkter Query auf `memberships` | Nutzt `get_user_memberships()` |
-| `get_user_memberships()` | - | Neue SECURITY DEFINER Funktion |
-| `membership_select_*` | Rekursiver Self-Query | Query via Hilfsfunktion |
-| `org_select_*` | Triggert rekursive Membership-Policies | Nutzt Hilfsfunktion |
+### Neue Komponente: CollapsibleNavItem
 
-**Warum SECURITY DEFINER?**
-- Die Funktion läuft mit den Rechten des Erstellers (Superuser)
-- Umgeht RLS auf der `memberships` Tabelle
-- Verhindert die Rekursion
+```tsx
+interface NavItem {
+  code: string;
+  label: string;
+  icon: LucideIcon;
+  route: string;
+  subItems?: {
+    title: string;
+    route: string;
+  }[];
+}
 
-**Sicherheit bleibt gewahrt:**
-- Die Funktion gibt nur Daten für den übergebenen `p_user_id` zurück
-- Wird immer mit `auth.uid()` aufgerufen
-- Der User kann nur seine eigenen Memberships sehen
+function CollapsibleNavItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
+  const [isOpen, setIsOpen] = useState(isActive);
+  
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="...">
+          <Icon /> {item.label}
+          <ChevronDown className={isOpen ? "rotate-180" : ""} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {item.subItems?.map(sub => (
+          <Link to={sub.route}>{sub.title}</Link>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+```
+
+### Datenbankänderung (Migration)
+
+```sql
+-- MOD-01 korrigieren
+UPDATE tile_catalog 
+SET sub_tiles = '[
+  {"title": "Profil", "route": "/portal/stammdaten/profil"},
+  {"title": "Firma", "route": "/portal/stammdaten/firma"},
+  {"title": "Abrechnung", "route": "/portal/stammdaten/abrechnung"},
+  {"title": "Sicherheit", "route": "/portal/stammdaten/sicherheit"}
+]'::jsonb
+WHERE tile_code = 'MOD-01';
+
+-- (Analog für alle 10 Module)
+```
 
 ---
 
-## Nach dem Fix
+## Erwartetes Ergebnis
 
-1. Login unter `/auth` funktioniert
-2. Weiterleitung zu `/portal` zeigt das Dashboard
-3. Die Organisation wird korrekt geladen und angezeigt
+Nach Umsetzung:
+- Sidebar zeigt alle 10 Module als aufklappbare Menüpunkte
+- Klick auf "Stammdaten" öffnet 4 Untermenüpunkte
+- Klick auf "Profil" → navigiert zu `/portal/stammdaten/profil`
+- Module-Dashboard zeigt die 4 Sub-Tiles als klickbare Cards
+- Alle 40 Sub-Routes funktionieren (zunächst als Placeholder)
 
+---
+
+## Zeitschätzung
+
+| Phase | Aufwand |
+|-------|---------|
+| Collapsible Sidebar | 1 Session |
+| DB Sub-Tiles korrigieren | 1 Migration |
+| 10 Module-Pages anpassen | 1-2 Sessions |
+| 40 Sub-Pages erstellen | 2-3 Sessions |
+| App.tsx Routes | 1 Session |
+
+**Gesamt:** 5-7 Sessions für vollständige Umsetzung
