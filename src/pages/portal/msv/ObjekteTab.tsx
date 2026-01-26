@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Table,
   TableBody,
@@ -19,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle } from 'lucide-react';
+import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { LeaseFormDialog } from '@/components/msv/LeaseFormDialog';
@@ -180,7 +181,7 @@ const ObjekteTab = () => {
         setLeaseFormOpen(true);
         break;
       case 'property':
-        navigate(`/portfolio/${unit.property_id}`);
+        navigate(`/portal/immobilien/${unit.property_id}`);
         break;
     }
   };
@@ -188,6 +189,89 @@ const ObjekteTab = () => {
   const formatCurrency = (value: number) => {
     return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   };
+
+  // Mobile Card Component
+  const MobileCard = ({ row }: { row: UnitWithDetails }) => (
+    <Card className="mb-3">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="font-mono text-xs text-muted-foreground">
+                {row.properties?.code || row.unit_number}
+              </span>
+            </div>
+            <p className="font-medium truncate">{row.properties?.address || '—'}</p>
+            <p className="text-xs text-muted-foreground">{row.unit_number} · {row.area_sqm || '—'} m²</p>
+            
+            <div className="mt-2">
+              {!row.lease ? (
+                <Badge variant="outline" className="text-status-warning border-status-warning/30">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Leerstand
+                </Badge>
+              ) : (
+                <p className="text-sm">
+                  {row.lease.contact?.last_name}, {row.lease.contact?.first_name}
+                </p>
+              )}
+            </div>
+            
+            <div className="mt-2">
+              <span className="text-sm font-semibold">
+                Warmmiete: {row.warmmiete > 0 ? formatCurrency(row.warmmiete) : '—'}
+              </span>
+            </div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {row.lease ? (
+                <>
+                  <DropdownMenuItem onClick={() => handleAction('mahnung', row)}>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Mahnung erstellen
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction('kuendigung', row)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Kündigung schreiben
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction('mieterhoehung', row)}>
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Mieterhöhung schreiben
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction('datenanforderung', row)}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Datenanforderung
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem onClick={() => handleAction('lease', row)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Mietvertrag anlegen
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleAction('premium', row)}>
+                <Star className="h-4 w-4 mr-2" />
+                Premium aktivieren
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAction('property', row)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Objekt öffnen (MOD-04)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-4">
@@ -201,7 +285,8 @@ const ObjekteTab = () => {
         />
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -319,6 +404,23 @@ const ObjekteTab = () => {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card List */}
+      <div className="lg:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : filteredUnits?.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Keine Objekte gefunden
+          </div>
+        ) : (
+          filteredUnits?.map((row) => (
+            <MobileCard key={row.id} row={row} />
+          ))
+        )}
       </div>
 
       <TemplateWizard
