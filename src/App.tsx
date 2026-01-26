@@ -18,7 +18,6 @@ import Delegations from "./pages/admin/Delegations";
 import Support from "./pages/admin/Support";
 import MasterContacts from "./pages/admin/MasterContacts";
 import TileCatalog from "./pages/admin/TileCatalog";
-import TileDetail from "./pages/admin/TileDetail";
 import Integrations from "./pages/admin/Integrations";
 import CommunicationHub from "./pages/admin/CommunicationHub";
 import Oversight from "./pages/admin/Oversight";
@@ -52,10 +51,6 @@ import PropertyList from "./pages/portfolio/PropertyList";
 import PropertyDetail from "./pages/portfolio/PropertyDetail";
 import PropertyForm from "./pages/portfolio/PropertyForm";
 import ExposeVorlage from "./pages/portfolio/ExposeVorlage";
-
-// MOD-05 MSV Detail Pages
-import RentalExposeDetail from "./pages/portal/msv/RentalExposeDetail";
-import RentalExposeVorlage from "./pages/portal/msv/RentalExposeVorlage";
 
 // Presentation (non-guessable URL)
 import PresentationPage from "./pages/presentation/PresentationPage";
@@ -120,7 +115,6 @@ const App = () => (
               <Route path="contacts" element={<MasterContacts />} />
               <Route path="master-templates" element={<MasterTemplates />} />
               <Route path="tiles" element={<TileCatalog />} />
-              <Route path="tiles/:code" element={<TileDetail />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="oversight" element={<Oversight />} />
@@ -170,14 +164,12 @@ const App = () => (
               <Route path="immobilien/:id" element={<PropertyDetail />} />
               <Route path="immobilien/:id/edit" element={<PropertyForm />} />
               
-              {/* MOD-05: MSV (Objekte, Mieteingang, Vermietung, Einstellungen) */}
+              {/* MOD-05: MSV (Dashboard, Listen, Mieteingang, Vermietung) */}
               <Route path="msv" element={<MSVPage />} />
-              <Route path="msv/objekte" element={<MSVPage />} />
+              <Route path="msv/dashboard" element={<MSVPage />} />
+              <Route path="msv/listen" element={<MSVPage />} />
               <Route path="msv/mieteingang" element={<MSVPage />} />
               <Route path="msv/vermietung" element={<MSVPage />} />
-              <Route path="msv/vermietung/vorlage" element={<RentalExposeVorlage />} />
-              <Route path="msv/vermietung/:id" element={<RentalExposeDetail />} />
-              <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
               <Route path="verkauf" element={<VerkaufPage />} />

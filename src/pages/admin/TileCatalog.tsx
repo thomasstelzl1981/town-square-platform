@@ -43,10 +43,8 @@ import {
   Settings,
   Plus,
   Check,
-  X,
-  ExternalLink
+  X
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type TileCatalog = Tables<'tile_catalog'>;
@@ -77,7 +75,6 @@ function getIcon(iconKey: string) {
 
 export default function TileCatalogPage() {
   const { isPlatformAdmin, user } = useAuth();
-  const navigate = useNavigate();
   const [tiles, setTiles] = useState<TileCatalog[]>([]);
   const [activations, setActivations] = useState<TenantTileActivation[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -286,19 +283,9 @@ export default function TileCatalogPage() {
                       <Badge variant={tile.is_active ? 'default' : 'secondary'}>
                         {tile.is_active ? 'Aktiv' : 'Inaktiv'}
                       </Badge>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          {getActivationCount(tile.tile_code)} Tenants
-                        </span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => navigate(`/admin/tiles/${tile.tile_code}`)}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {getActivationCount(tile.tile_code)} Tenants
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
