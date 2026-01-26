@@ -7,38 +7,90 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProfileFormData {
   display_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   avatar_url: string | null;
+  // Address
+  street: string;
+  house_number: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  // Contact
+  phone_landline: string;
+  phone_mobile: string;
+  phone_whatsapp: string;
+  // Tax
+  tax_number: string;
+  tax_id: string;
 }
 
 export function ProfilTab() {
-  const { user } = useAuth();
+  const { user, isDevelopmentMode } = useAuth();
   const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState<ProfileFormData>({
     display_name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     avatar_url: null,
+    street: '',
+    house_number: '',
+    postal_code: '',
+    city: '',
+    country: 'DE',
+    phone_landline: '',
+    phone_mobile: '',
+    phone_whatsapp: '',
+    tax_number: '',
+    tax_id: '',
   });
 
   // Fetch profile
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id && !isDevelopmentMode) return null;
+      
+      const userId = user?.id || 'dev-user';
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('id', userId)
+        .maybeSingle();
+      
+      // In development mode, return mock data if no profile exists
+      if (!data && isDevelopmentMode) {
+        return {
+          id: 'dev-user',
+          display_name: 'Entwickler',
+          first_name: 'Max',
+          last_name: 'Mustermann',
+          email: 'dev@systemofatown.de',
+          avatar_url: null,
+          street: 'Musterstraße',
+          house_number: '1',
+          postal_code: '80331',
+          city: 'München',
+          country: 'DE',
+          phone_landline: '+49 89 12345678',
+          phone_mobile: '+49 170 1234567',
+          phone_whatsapp: '+49 170 1234567',
+          tax_number: '123/456/78901',
+          tax_id: 'DE123456789',
+        };
+      }
+      
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id || isDevelopmentMode,
   });
 
   // Update form when profile loads
@@ -46,8 +98,20 @@ export function ProfilTab() {
     if (profile) {
       setFormData({
         display_name: profile.display_name || '',
+        first_name: (profile as any).first_name || '',
+        last_name: (profile as any).last_name || '',
         email: profile.email || '',
         avatar_url: profile.avatar_url,
+        street: (profile as any).street || '',
+        house_number: (profile as any).house_number || '',
+        postal_code: (profile as any).postal_code || '',
+        city: (profile as any).city || '',
+        country: (profile as any).country || 'DE',
+        phone_landline: (profile as any).phone_landline || '',
+        phone_mobile: (profile as any).phone_mobile || '',
+        phone_whatsapp: (profile as any).phone_whatsapp || '',
+        tax_number: (profile as any).tax_number || '',
+        tax_id: (profile as any).tax_id || '',
       });
     }
   }, [profile]);
@@ -55,7 +119,13 @@ export function ProfilTab() {
   // Update mutation
   const updateProfile = useMutation({
     mutationFn: async (data: Partial<ProfileFormData>) => {
-      if (!user?.id) throw new Error('Not authenticated');
+      if (!user?.id && !isDevelopmentMode) throw new Error('Not authenticated');
+      
+      if (isDevelopmentMode && !user?.id) {
+        // In development mode, just simulate success
+        return;
+      }
+      
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -63,7 +133,7 @@ export function ProfilTab() {
           avatar_url: data.avatar_url,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('id', user!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -81,7 +151,14 @@ export function ProfilTab() {
   };
 
   const handleAvatarUpload = async (files: File[]) => {
-    if (files.length === 0 || !user?.id) return;
+    if (files.length === 0) return;
+    
+    if (isDevelopmentMode && !user?.id) {
+      toast.info('Avatar-Upload im Entwicklungsmodus nicht verfügbar');
+      return;
+    }
+    
+    if (!user?.id) return;
     
     const file = files[0];
     const fileExt = file.name.split('.').pop();
@@ -121,6 +198,7 @@ export function ProfilTab() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Persönliche Daten */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -128,7 +206,7 @@ export function ProfilTab() {
             Persönliche Daten
           </CardTitle>
           <CardDescription>
-            Verwalten Sie Ihre persönlichen Informationen und Ihr Profilbild.
+            Ihre persönlichen Informationen und Ihr Profilbild.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -153,6 +231,22 @@ export function ProfilTab() {
           <FormSection>
             <FormRow>
               <FormInput
+                label="Vorname"
+                name="first_name"
+                value={formData.first_name}
+                onChange={e => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+                placeholder="Max"
+              />
+              <FormInput
+                label="Nachname"
+                name="last_name"
+                value={formData.last_name}
+                onChange={e => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
+                placeholder="Mustermann"
+              />
+            </FormRow>
+            <FormRow>
+              <FormInput
                 label="Anzeigename"
                 name="display_name"
                 value={formData.display_name}
@@ -167,6 +261,145 @@ export function ProfilTab() {
                 value={formData.email}
                 disabled
                 hint="E-Mail kann nicht geändert werden (Login-Identität)"
+              />
+            </FormRow>
+          </FormSection>
+        </CardContent>
+      </Card>
+
+      {/* Adresse */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Adresse
+          </CardTitle>
+          <CardDescription>
+            Ihre Postanschrift für Korrespondenz und Dokumente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FormSection>
+            <FormRow>
+              <FormInput
+                label="Straße"
+                name="street"
+                value={formData.street}
+                onChange={e => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                placeholder="Musterstraße"
+                className="flex-[3]"
+              />
+              <FormInput
+                label="Hausnummer"
+                name="house_number"
+                value={formData.house_number}
+                onChange={e => setFormData(prev => ({ ...prev, house_number: e.target.value }))}
+                placeholder="1"
+                className="flex-1"
+              />
+            </FormRow>
+            <FormRow>
+              <FormInput
+                label="Postleitzahl"
+                name="postal_code"
+                value={formData.postal_code}
+                onChange={e => setFormData(prev => ({ ...prev, postal_code: e.target.value }))}
+                placeholder="80331"
+                className="flex-1"
+              />
+              <FormInput
+                label="Stadt"
+                name="city"
+                value={formData.city}
+                onChange={e => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                placeholder="München"
+                className="flex-[2]"
+              />
+              <FormInput
+                label="Land"
+                name="country"
+                value={formData.country}
+                onChange={e => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                placeholder="DE"
+                className="flex-1"
+              />
+            </FormRow>
+          </FormSection>
+        </CardContent>
+      </Card>
+
+      {/* Kontaktdaten */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Kontaktdaten
+          </CardTitle>
+          <CardDescription>
+            Ihre Telefonnummern für die Erreichbarkeit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FormSection>
+            <FormRow>
+              <FormInput
+                label="Telefon (Festnetz)"
+                name="phone_landline"
+                type="tel"
+                value={formData.phone_landline}
+                onChange={e => setFormData(prev => ({ ...prev, phone_landline: e.target.value }))}
+                placeholder="+49 89 12345678"
+              />
+              <FormInput
+                label="Telefon (Mobil)"
+                name="phone_mobile"
+                type="tel"
+                value={formData.phone_mobile}
+                onChange={e => setFormData(prev => ({ ...prev, phone_mobile: e.target.value }))}
+                placeholder="+49 170 1234567"
+              />
+              <FormInput
+                label="WhatsApp"
+                name="phone_whatsapp"
+                type="tel"
+                value={formData.phone_whatsapp}
+                onChange={e => setFormData(prev => ({ ...prev, phone_whatsapp: e.target.value }))}
+                placeholder="+49 170 1234567"
+              />
+            </FormRow>
+          </FormSection>
+        </CardContent>
+      </Card>
+
+      {/* Steuerliche Daten */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Steuerliche Daten
+          </CardTitle>
+          <CardDescription>
+            Ihre Steuernummern für Abrechnungen und Dokumente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FormSection>
+            <FormRow>
+              <FormInput
+                label="Steuernummer"
+                name="tax_number"
+                value={formData.tax_number}
+                onChange={e => setFormData(prev => ({ ...prev, tax_number: e.target.value }))}
+                placeholder="123/456/78901"
+                hint="Ihre Steuernummer vom Finanzamt"
+              />
+              <FormInput
+                label="Steuer-ID"
+                name="tax_id"
+                value={formData.tax_id}
+                onChange={e => setFormData(prev => ({ ...prev, tax_id: e.target.value }))}
+                placeholder="DE123456789"
+                hint="Ihre persönliche Steuer-Identifikationsnummer"
               />
             </FormRow>
           </FormSection>

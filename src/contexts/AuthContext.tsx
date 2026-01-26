@@ -17,6 +17,7 @@ interface AuthContextType {
   activeTenantId: string | null;
   isPlatformAdmin: boolean;
   isLoading: boolean;
+  isDevelopmentMode: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -26,6 +27,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Development mode detection - enables bypass for Lovable preview
+const isDevelopmentEnvironment = () => {
+  const hostname = window.location.hostname;
+  return hostname.includes('lovable.app') || 
+         hostname.includes('localhost') || 
+         hostname.includes('127.0.0.1') ||
+         hostname.includes('preview');
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -33,10 +43,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDevelopmentMode] = useState(isDevelopmentEnvironment());
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
   const activeTenantId = profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null;
+
+  // Fetch development data for preview without auth
+  const fetchDevelopmentData = useCallback(async () => {
+    try {
+      // Get first organization for development mode
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .limit(1)
+        .single();
+      
+      if (orgData) {
+        setActiveOrganization(orgData);
+        
+        // Create a mock membership for development
+        const mockMembership: Membership = {
+          id: 'dev-membership',
+          user_id: 'dev-user',
+          tenant_id: orgData.id,
+          role: 'platform_admin',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setMemberships([mockMembership]);
+        
+        // Create a mock profile for development
+        const mockProfile = {
+          id: 'dev-user',
+          display_name: 'Entwickler',
+          email: 'dev@systemofatown.de',
+          avatar_url: null,
+          active_tenant_id: orgData.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as Profile;
+        setProfile(mockProfile);
+      }
+    } catch (error) {
+      console.error('Error fetching development data:', error);
+    }
+  }, []);
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
@@ -83,8 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAuth = useCallback(async () => {
     if (user) {
       await fetchUserData(user.id);
+    } else if (isDevelopmentMode) {
+      await fetchDevelopmentData();
     }
-  }, [user, fetchUserData]);
+  }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -95,6 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchUserData(session.user.id);
+          }, 0);
+        } else if (isDevelopmentMode) {
+          // In development mode, load data without auth
+          setTimeout(() => {
+            fetchDevelopmentData();
           }, 0);
         } else {
           setProfile(null);
@@ -110,12 +169,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserData(session.user.id);
+      } else if (isDevelopmentMode) {
+        // In development mode, load data without auth
+        fetchDevelopmentData();
       }
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserData]);
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -137,12 +199,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchTenant = async (tenantId: string) => {
-    if (!user) return;
+    if (!user && !isDevelopmentMode) return;
+    
+    if (isDevelopmentMode && !user) {
+      // In development mode, just switch the active organization
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', tenantId)
+        .maybeSingle();
+      
+      if (orgData) {
+        setActiveOrganization(orgData);
+      }
+      return;
+    }
     
     const { error } = await supabase
       .from('profiles')
       .update({ active_tenant_id: tenantId })
-      .eq('id', user.id);
+      .eq('id', user!.id);
     
     if (!error) {
       await refreshAuth();
@@ -160,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeTenantId,
       isPlatformAdmin,
       isLoading,
+      isDevelopmentMode,
       signIn,
       signUp,
       signOut,
