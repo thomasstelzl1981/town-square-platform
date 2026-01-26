@@ -155,11 +155,12 @@ const App = () => (
               {/* MOD-04: Immobilien (Kontexte, Portfolio, Sanierung, Bewertung) */}
               <Route path="immobilien" element={<ImmobilienPage />} />
               <Route path="immobilien/kontexte" element={<ImmobilienPage />} />
-              <Route path="immobilien/portfolio" element={<PropertyList />} />
+              <Route path="immobilien/portfolio" element={<ImmobilienPage />} />
               <Route path="immobilien/sanierung" element={<ImmobilienPage />} />
               <Route path="immobilien/bewertung" element={<ImmobilienPage />} />
               <Route path="immobilien/neu" element={<PropertyForm />} />
               <Route path="immobilien/:id" element={<PropertyDetail />} />
+              <Route path="immobilien/:id/edit" element={<PropertyForm />} />
               
               {/* MOD-05: MSV (Dashboard, Listen, Mieteingang, Vermietung) */}
               <Route path="msv" element={<MSVPage />} />
