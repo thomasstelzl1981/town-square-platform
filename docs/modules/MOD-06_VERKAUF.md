@@ -1,12 +1,14 @@
 # MOD-06 — VERKAUF (Sales & Listings)
 
-**Version:** v2.0.0  
+**Version:** v2.1.0  
 **Status:** SPEC COMPLETE  
 **Letzte Aktualisierung:** 2026-01-25  
 **Zone:** 2 (User Portal)  
 **Route-Prefix:** `/portal/verkauf`  
 **Typ:** Standard-Modul (alle Tenants)  
 **Abhängig von:** MOD-04 (Properties), MOD-01 (Contacts), MOD-03 (DMS), Backbone (Consents, Audit)
+
+> **UPDATE v2.1:** MOD-08 → MOD-09 Referenzen aktualisiert. "Kaufi" ist jetzt explizit als Channel/Marke gekennzeichnet.
 
 ---
 
@@ -18,31 +20,39 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus **Eige
 
 **Kernfunktion:** Veröffentlichung von Objekten über 4 Kanäle + Management des gesamten Verkaufsprozesses.
 
-### 1.2 Nutzerrollen
+### 1.2 Marken-Hinweis (FROZEN)
+
+| Element | Kontext | Bedeutung |
+|---------|---------|-----------|
+| **Kaufi** | Publishing-Channel | Kaufi ist die Zone-3-Marktplatz-MARKE, nicht ein Modul |
+| **Kaufi** | Im Wizard | "Auf Kaufi veröffentlichen" ist Channel-Name |
+| **Kaufi** | Im Code | `channel = 'kaufi'` |
+
+### 1.3 Nutzerrollen
 
 | Rolle | Zugang | Beschreibung |
 |-------|--------|--------------|
 | org_admin | Full | Listings erstellen, aktivieren, Deals abschließen |
 | internal_ops | Write | Listings bearbeiten, Anfragen bearbeiten |
-| sales_partner | Read | Nur Partner-sichtbare Listings (via MOD-08) |
+| sales_partner | Read | Nur Partner-sichtbare Listings (via MOD-09) |
 
-### 1.3 Scope IN (testbar)
+### 1.4 Scope IN (testbar)
 
 - Listing aus Property erstellen (mit SALES_MANDATE Consent)
 - Listing-Lifecycle: draft → review → active → reserved → sold/withdrawn
-- **4 Publishing-Kanäle:** Kaufy, Scout24, Kleinanzeigen, Partner-Netzwerk
+- **4 Publishing-Kanäle:** Kaufi (Zone 3), Scout24, Kleinanzeigen, Partner-Netzwerk
 - Partner-Visibility Flags setzen
 - Inquiry Management (Anfragen erfassen, zuordnen)
 - Reservation Workflow
 - Transaction Documentation (Notartermin, BNL)
 - DMS-Integration für Verkaufsunterlagen
 
-### 1.4 Scope OUT (Nicht-Ziele)
+### 1.5 Scope OUT (Nicht-Ziele)
 
-- Partner-Pipeline Management (→ MOD-08)
-- Commission Berechnung/Auszahlung (→ MOD-08)
+- Partner-Pipeline Management (→ MOD-09)
+- Commission Berechnung/Auszahlung (→ MOD-09)
 - Financing Package Creation (→ MOD-07)
-- Lead-Generierung/Ads (→ MOD-09)
+- Lead-Generierung/Ads (→ MOD-10)
 
 ### 1.5 Source of Truth Matrix
 

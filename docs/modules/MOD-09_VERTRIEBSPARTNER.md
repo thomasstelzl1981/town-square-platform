@@ -1,12 +1,14 @@
-# MOD-08 — VERTRIEBSPARTNER (Sales Partners & Pipeline)
+# MOD-09 — VERTRIEBSPARTNER (Sales Partners & Advisor Network)
 
-**Version:** v1.1.0  
-**Status:** SPEC READY (Phase 1 MVP)  
+**Version:** v2.0.0  
+**Status:** SPEC COMPLETE  
 **Letzte Aktualisierung:** 2026-01-25  
 **Zone:** 2 (User Portal)  
 **Typ:** ADDON (nur für Partner-Tenants)  
 **Route-Prefix:** `/portal/vertriebspartner`  
-**Abhängig von:** MOD-06 (Listings), MOD-04 (Properties), MOD-01 (Contacts), MOD-07 (Finanzierung), Backbone (Consents, Audit)
+**Abhängig von:** MOD-06 (Listings), MOD-08 (Investment-Suche), MOD-04 (Properties), MOD-01 (Contacts), MOD-07 (Finanzierung), Backbone (Consents, Audit)
+
+> **WICHTIG:** Dieses Modul war zuvor MOD-08. Es wurde auf MOD-09 verschoben, da MOD-08 jetzt "Investment-Suche / Ankauf" ist.
 
 ---
 
@@ -39,6 +41,8 @@ MOD-08 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner 
 - Property-Bearbeitung (→ MOD-04)
 - Financing Package Erstellung (→ MOD-07)
 - Reservation-Abschluss ohne Owner-Confirmation (→ MOD-06)
+- **Lead/Deal-Pipeline-Management (→ MOD-10)**
+- Eigene Investment-Suche (→ MOD-08)
 
 ### 1.5 Dependencies
 
@@ -162,22 +166,32 @@ pending → approved → invoiced → paid → cancelled
 
 ---
 
-## 4) ROUTE-STRUKTUR (BINDING)
+## 4) ROUTE-STRUKTUR (BINDING + KORRIGIERT)
 
-| Route | Screen | Beschreibung |
-|-------|--------|--------------|
-| `/portal/vertriebspartner` | Dashboard | KPIs, Pipeline-Overview |
-| `/portal/vertriebspartner/pipeline` | Pipeline | Kanban/Liste |
-| `/portal/vertriebspartner/auswahl` | Objektauswahl | Listings browsen |
-| `/portal/vertriebspartner/beratung` | Beratung | Investment Engine |
-| `/portal/vertriebspartner/team` | Netzwerk/Team | Team, Kunden |
+> **KORREKTUR:** Die Route `/pipeline` zeigt NICHT Lead/Deal-Pipeline (→ MOD-10), sondern den **Objektkatalog**.
+> UI-Labels wurden angepasst, Routen bleiben stabil.
 
-### Dynamische Routes (geplant)
+| Route | UI-Label (NEU) | Screen | Beschreibung |
+|-------|----------------|--------|--------------|
+| `/portal/vertriebspartner` | Dashboard | Dashboard | KPIs, Aktivitäts-Stream |
+| `/portal/vertriebspartner/pipeline` | **Objektkatalog** | Objektkatalog | Alle partner-sichtbaren Listings |
+| `/portal/vertriebspartner/auswahl` | **Meine Auswahl** | MeineAuswahl | Partner-spezifische Shortlist |
+| `/portal/vertriebspartner/beratung` | Beratung | Beratung | Investment Engine + Matching |
+| `/portal/vertriebspartner/team` | **Netzwerk** | Netzwerk | Team, Provisionen, Compliance |
+
+### Route-Label-Alias (FROZEN)
+
+| Route | Technisch | UI-Label |
+|-------|-----------|----------|
+| `/portal/vertriebspartner/pipeline` | pipeline | Objektkatalog |
+| `/portal/vertriebspartner/team` | team | Netzwerk |
+
+### Dynamische Routes
 
 | Route | Screen |
 |-------|--------|
-| `/portal/vertriebspartner/pipeline/:id` | Deal Detail |
-| `/portal/vertriebspartner/auswahl/:listing_id` | Listing Detail (Read-only) |
+| `/portal/vertriebspartner/pipeline/:listing_id` | Listing Detail (Read-only) |
+| `/portal/vertriebspartner/auswahl/:selection_id` | Auswahl Detail + Advisory Case |
 | `/portal/vertriebspartner/beratung/:property_id` | Investment Simulation |
 | `/portal/vertriebspartner/kunden/:contact_id` | Kunden-Profil |
 
