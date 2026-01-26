@@ -139,11 +139,11 @@ const App = () => (
               <Route path="stammdaten/sicherheit" element={<StammdatenPage />} />
               
               {/* MOD-02: KI Office (E-Mail, Brief, Kontakte, Kalender) */}
-              <Route path="office" element={<OfficePage />} />
-              <Route path="office/email" element={<OfficePage />} />
-              <Route path="office/brief" element={<OfficePage />} />
-              <Route path="office/kontakte" element={<OfficePage />} />
-              <Route path="office/kalender" element={<OfficePage />} />
+              <Route path="ki-office" element={<OfficePage />} />
+              <Route path="ki-office/email" element={<OfficePage />} />
+              <Route path="ki-office/brief" element={<OfficePage />} />
+              <Route path="ki-office/kontakte" element={<OfficePage />} />
+              <Route path="ki-office/kalender" element={<OfficePage />} />
               
               {/* MOD-03: DMS (Storage, Posteingang, Sortieren, Einstellungen) */}
               <Route path="dms" element={<DMSPage />} />
