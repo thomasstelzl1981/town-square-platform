@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, Link2, Shield, ExternalLink } from 'lucide-react';
+import { PdfExportFooter } from '@/components/pdf';
 
 interface Stats {
   organizations: number;
@@ -48,8 +49,10 @@ export default function Dashboard() {
     return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
+  const contentRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">Welcome to the System of a Town Admin Portal</p>
@@ -209,6 +212,16 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Admin Dashboard',
+          subtitle: 'System of a Town – Übersicht',
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, Enums } from '@/integrations/supabase/types';
@@ -51,6 +51,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Link2, XCircle, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ScopePicker, AVAILABLE_SCOPES } from '@/components/admin/ScopePicker';
+import { PdfExportFooter } from '@/components/pdf';
 
 type OrgDelegation = Tables<'org_delegations'>;
 type Organization = Tables<'organizations'>;
@@ -58,6 +59,7 @@ type DelegationStatus = Enums<'delegation_status'>;
 
 export default function DelegationsPage() {
   const { isPlatformAdmin, user } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [delegations, setDelegations] = useState<OrgDelegation[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,7 +203,7 @@ export default function DelegationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Delegations</h2>
@@ -474,6 +476,16 @@ export default function DelegationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Delegationen',
+          subtitle: `${delegations.length} Cross-Org-Zugriffsrechte`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

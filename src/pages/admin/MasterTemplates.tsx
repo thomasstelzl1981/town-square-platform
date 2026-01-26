@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Save, RefreshCw, Percent, Calculator, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PdfExportFooter } from '@/components/pdf';
 
 // Interest rate table structure
 interface InterestRateTable {
@@ -27,6 +28,7 @@ const defaultInterestRates: InterestRateTable[] = [
 ];
 
 export default function MasterTemplates() {
+  const contentRef = useRef<HTMLDivElement>(null);
   const [interestRates, setInterestRates] = useState<InterestRateTable[]>(defaultInterestRates);
   const [defaultAfaRate, setDefaultAfaRate] = useState(2.0);
   const [maintenanceCost, setMaintenanceCost] = useState(0.40);
@@ -54,7 +56,7 @@ export default function MasterTemplates() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Master-Vorlagen</h1>
@@ -381,6 +383,19 @@ export default function MasterTemplates() {
           </div>
         </CardContent>
       </Card>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Master-Vorlagen',
+          subtitle: 'Investment Engine Konfiguration',
+          module: 'Zone 1 Admin',
+          metadata: {
+            'Stand': lastUpdated,
+          }
+        }}
+      />
     </div>
   );
 }

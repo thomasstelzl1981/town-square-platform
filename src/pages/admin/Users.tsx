@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
+import { PdfExportFooter } from '@/components/pdf';
 
 type Membership = Tables<'memberships'>;
 type Organization = Tables<'organizations'>;
@@ -71,6 +72,7 @@ export default function UsersPage() {
   const { isPlatformAdmin, user } = useAuth();
   const [searchParams] = useSearchParams();
   const orgFilter = searchParams.get('org');
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const [memberships, setMemberships] = useState<MembershipWithOrg[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -255,7 +257,7 @@ export default function UsersPage() {
     : ROLES.filter(r => !r.restricted);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Users & Memberships</h2>
@@ -519,6 +521,16 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Users & Memberships',
+          subtitle: `${memberships.length} Mitgliedschaften`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

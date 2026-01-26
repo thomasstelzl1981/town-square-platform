@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PdfExportFooter } from '@/components/pdf';
 
 interface Commission {
   id: string;
@@ -39,6 +40,7 @@ interface Commission {
 
 export default function CommissionApproval() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [stats, setStats] = useState({
@@ -135,7 +137,7 @@ export default function CommissionApproval() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div>
         <h1 className="text-2xl font-bold">Provisionen</h1>
         <p className="text-muted-foreground">
@@ -249,6 +251,19 @@ export default function CommissionApproval() {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Provisionen',
+          subtitle: `${commissions.length} Provisionen im System`,
+          module: 'Zone 1 Admin',
+          metadata: {
+            'Ausstehend': `${stats.pending}`,
+          }
+        }}
+      />
     </div>
   );
 }

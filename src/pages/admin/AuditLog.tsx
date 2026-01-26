@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
@@ -37,6 +37,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Search, FileText, RefreshCw, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PdfExportFooter } from '@/components/pdf';
 
 type AuditEvent = Tables<'audit_events'>;
 type Organization = Tables<'organizations'>;
@@ -55,6 +56,7 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; variant: 'default' | 's
 
 export default function AuditLog() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function AuditLog() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Audit Log</h1>
@@ -326,6 +328,19 @@ export default function AuditLog() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Audit Log',
+          subtitle: `${filteredEvents.length} Ereignisse`,
+          module: 'Zone 1 Admin',
+          metadata: {
+            'Ereignisse': filteredEvents.length.toString(),
+          }
+        }}
+      />
     </div>
   );
 }
