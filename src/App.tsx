@@ -18,6 +18,7 @@ import Delegations from "./pages/admin/Delegations";
 import Support from "./pages/admin/Support";
 import MasterContacts from "./pages/admin/MasterContacts";
 import TileCatalog from "./pages/admin/TileCatalog";
+import TileDetail from "./pages/admin/TileDetail";
 import Integrations from "./pages/admin/Integrations";
 import CommunicationHub from "./pages/admin/CommunicationHub";
 import Oversight from "./pages/admin/Oversight";
@@ -115,6 +116,7 @@ const App = () => (
               <Route path="contacts" element={<MasterContacts />} />
               <Route path="master-templates" element={<MasterTemplates />} />
               <Route path="tiles" element={<TileCatalog />} />
+              <Route path="tiles/:code" element={<TileDetail />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="oversight" element={<Oversight />} />
@@ -164,12 +166,12 @@ const App = () => (
               <Route path="immobilien/:id" element={<PropertyDetail />} />
               <Route path="immobilien/:id/edit" element={<PropertyForm />} />
               
-              {/* MOD-05: MSV (Dashboard, Listen, Mieteingang, Vermietung) */}
+              {/* MOD-05: MSV (Objekte, Mieteingang, Vermietung, Einstellungen) */}
               <Route path="msv" element={<MSVPage />} />
-              <Route path="msv/dashboard" element={<MSVPage />} />
-              <Route path="msv/listen" element={<MSVPage />} />
+              <Route path="msv/objekte" element={<MSVPage />} />
               <Route path="msv/mieteingang" element={<MSVPage />} />
               <Route path="msv/vermietung" element={<MSVPage />} />
+              <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
               <Route path="verkauf" element={<VerkaufPage />} />
