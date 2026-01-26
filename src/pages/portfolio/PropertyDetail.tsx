@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Loader2, AlertTriangle, Edit } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
@@ -69,12 +70,14 @@ interface Unit {
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const { activeOrganization } = useAuth();
+  const { toast } = useToast();
   const [property, setProperty] = useState<Property | null>(null);
   const [financing, setFinancing] = useState<PropertyFinancing[]>([]);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('expose');
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const contentRef = usePdfContentRef();
 
   async function fetchProperty() {
@@ -133,6 +136,55 @@ export default function PropertyDetail() {
     }
   };
 
+  const handleGenerateDescription = async () => {
+    if (!property) return;
+    
+    setIsGeneratingDescription(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('sot-expose-description', {
+        body: { 
+          property: {
+            address: property.address,
+            city: property.city,
+            postal_code: property.postal_code,
+            property_type: property.property_type,
+            year_built: property.year_built,
+            total_area_sqm: property.total_area_sqm,
+            heating_type: property.heating_type,
+            energy_source: property.energy_source,
+            renovation_year: property.renovation_year,
+            description: property.description
+          }
+        }
+      });
+      
+      if (fnError) throw fnError;
+      
+      if (data?.description) {
+        // Update the property description in the database
+        const { error: updateError } = await supabase
+          .from('properties')
+          .update({ description: data.description })
+          .eq('id', property.id);
+        
+        if (updateError) throw updateError;
+        
+        // Update local state
+        setProperty({ ...property, description: data.description });
+        toast({ title: 'Beschreibung generiert und gespeichert' });
+      }
+    } catch (err: any) {
+      console.error('Error generating description:', err);
+      toast({
+        title: 'Fehler bei KI-Generierung',
+        description: err.message || 'Unbekannter Fehler',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -186,6 +238,19 @@ export default function PropertyDetail() {
               <Edit className="mr-2 h-4 w-4" />
               Bearbeiten
             </Link>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleGenerateDescription}
+            disabled={isGeneratingDescription}
+            className="no-print"
+          >
+            {isGeneratingDescription ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Beschreibung generieren
           </Button>
         </div>
 

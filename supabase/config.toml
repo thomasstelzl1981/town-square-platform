@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.sot-msv-rent-report]
 verify_jwt = false
+
+[functions.sot-expose-description]
+verify_jwt = false

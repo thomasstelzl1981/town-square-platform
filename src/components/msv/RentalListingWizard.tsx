@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface RentalListingWizardProps {
   open: boolean;
@@ -50,6 +50,7 @@ export function RentalListingWizard({
 }: RentalListingWizardProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   
   const [formData, setFormData] = useState({
     property_id: '',
@@ -183,6 +184,50 @@ export function RentalListingWizard({
 
   const warmMiete = (parseFloat(formData.cold_rent) || 0) + (parseFloat(formData.utilities_estimate) || 0);
 
+  const handleGenerateDescription = async () => {
+    if (!formData.property_id) {
+      toast({
+        title: 'Fehler',
+        description: 'Bitte wählen Sie zuerst ein Objekt aus.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsGeneratingDescription(true);
+    try {
+      // Fetch property data for AI
+      const { data: property, error: propError } = await supabase
+        .from('properties')
+        .select('address, city, postal_code, property_type, year_built, total_area_sqm, heating_type, energy_source, renovation_year, description')
+        .eq('id', formData.property_id)
+        .single();
+      
+      if (propError) throw propError;
+      if (!property) throw new Error('Property not found');
+      
+      const { data, error } = await supabase.functions.invoke('sot-expose-description', {
+        body: { property }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.description) {
+        setFormData(prev => ({ ...prev, description: data.description }));
+        toast({ title: 'Beschreibung generiert' });
+      }
+    } catch (error: any) {
+      console.error('Error generating description:', error);
+      toast({
+        title: 'Fehler bei KI-Generierung',
+        description: error.message || 'Unbekannter Fehler',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -304,18 +349,31 @@ export function RentalListingWizard({
             />
           </div>
 
-          {/* Description */}
+          {/* Description with AI Button */}
           <div className="space-y-2">
-            <Label>Beschreibung</Label>
+            <div className="flex items-center justify-between">
+              <Label>Beschreibung</Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={handleGenerateDescription}
+                disabled={isGeneratingDescription || !formData.property_id}
+              >
+                {isGeneratingDescription ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                Mit KI generieren
+              </Button>
+            </div>
             <Textarea
               placeholder="Beschreiben Sie das Mietobjekt..."
-              rows={4}
+              rows={5}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">
-              Tipp: Die Beschreibung kann aus den MOD-04 Objektdaten automatisch generiert werden.
-            </p>
           </div>
 
           {/* Channel hint */}
