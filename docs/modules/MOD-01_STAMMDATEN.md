@@ -204,6 +204,11 @@ MOD-01 "Stammdaten" ist das zentrale Modul für Benutzer- und Organisationsverwa
 |-------|--------------|
 | Zone 1 | `tile_catalog`, `tenant_tile_activation` für Modul-Zugang |
 | MOD-03 DMS | `billing_usage` für Storage-Quotas |
+| MOD-06 Verkauf | Kontakte für Inquiries |
+| MOD-07 Finanzierung | Kontakte für Finance Packages |
+| MOD-08 Investment-Suche | Kontakte für Favoriten-Verknüpfung |
+| MOD-09 Vertriebspartner | Kontakte für Partner-Pipelines |
+| MOD-10 Leadgenerierung | Kontakte für Lead-Konvertierung |
 | Alle Module | `profiles`, `organizations`, `memberships` als Basis |
 
 ---
