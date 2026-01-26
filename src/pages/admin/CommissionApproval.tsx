@@ -255,14 +255,9 @@ export default function CommissionApproval() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Provisionen',
-          subtitle: `${commissions.length} Provisionen im System`,
-          module: 'Zone 1 Admin',
-          metadata: {
-            'Ausstehend': `${stats.pending}`,
-          }
-        }}
+        documentTitle="Provisionen"
+        subtitle={`${commissions.length} Provisionen – ${stats.pending} ausstehend`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

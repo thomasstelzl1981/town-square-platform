@@ -387,14 +387,9 @@ export default function MasterTemplates() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Master-Vorlagen',
-          subtitle: 'Investment Engine Konfiguration',
-          module: 'Zone 1 Admin',
-          metadata: {
-            'Stand': lastUpdated,
-          }
-        }}
+        documentTitle="Master-Vorlagen"
+        subtitle={`Investment Engine Konfiguration – Stand: ${lastUpdated}`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

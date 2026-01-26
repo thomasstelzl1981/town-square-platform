@@ -525,11 +525,9 @@ export default function UsersPage() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Users & Memberships',
-          subtitle: `${memberships.length} Mitgliedschaften`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Users & Memberships"
+        subtitle={`${memberships.length} Mitgliedschaften`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

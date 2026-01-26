@@ -216,11 +216,9 @@ export default function Dashboard() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Admin Dashboard',
-          subtitle: 'System of a Town – Übersicht',
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Admin Dashboard"
+        subtitle="System of a Town – Übersicht"
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, AlertTriangle, Edit } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
+import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 
 interface Property {
   id: string;
@@ -72,6 +73,8 @@ export default function PropertyDetail() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('expose');
+  const contentRef = usePdfContentRef();
 
   async function fetchProperty() {
     if (!id || !activeOrganization) return;
@@ -79,7 +82,6 @@ export default function PropertyDetail() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch property
       const { data: propData, error: propError } = await supabase
         .from('properties')
         .select('*')
@@ -90,7 +92,6 @@ export default function PropertyDetail() {
       if (propError) throw propError;
       setProperty(propData);
 
-      // Fetch financing
       const { data: finData } = await supabase
         .from('property_financing')
         .select('*')
@@ -100,7 +101,6 @@ export default function PropertyDetail() {
 
       setFinancing(finData || []);
 
-      // Fetch main unit
       const { data: unitData } = await supabase
         .from('units')
         .select('*')
@@ -119,6 +119,17 @@ export default function PropertyDetail() {
   useEffect(() => {
     fetchProperty();
   }, [id, activeOrganization]);
+
+  const getDocumentTitle = () => {
+    if (!property) return 'Immobilie';
+    const prefix = property.code ? `${property.code} – ` : '';
+    switch (activeTab) {
+      case 'expose': return `Exposé: ${prefix}${property.address}`;
+      case 'features': return `Features: ${prefix}${property.address}`;
+      case 'tenancy': return `Mietverhältnis: ${prefix}${property.address}`;
+      default: return `${prefix}${property.address}`;
+    }
+  };
 
   if (loading) {
     return (
@@ -147,66 +158,74 @@ export default function PropertyDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/portfolio">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h2 className="text-2xl font-bold tracking-tight">
-              {property.code ? `${property.code} – ` : ''}{property.address}
-            </h2>
+      <div ref={contentRef}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" asChild className="no-print">
+                <Link to="/portfolio">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <h2 className="text-2xl font-bold tracking-tight">
+                {property.code ? `${property.code} – ` : ''}{property.address}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 ml-10">
+              <Badge variant="outline">{property.property_type}</Badge>
+              <span className="text-muted-foreground">
+                {property.postal_code} {property.city}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 ml-10">
-            <Badge variant="outline">{property.property_type}</Badge>
-            <span className="text-muted-foreground">
-              {property.postal_code} {property.city}
-            </span>
-          </div>
+          <Button variant="outline" asChild className="no-print">
+            <Link to={`/portfolio/${id}/edit`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Bearbeiten
+            </Link>
+          </Button>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={`/portfolio/${id}/edit`}>
-            <Edit className="mr-2 h-4 w-4" />
-            Bearbeiten
-          </Link>
-        </Button>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="no-print">
+            <TabsTrigger value="expose">Exposé</TabsTrigger>
+            <TabsTrigger value="features">Features</TabsTrigger>
+            <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="expose">
+            <ExposeTab 
+              property={property} 
+              financing={financing} 
+              unit={unit} 
+            />
+          </TabsContent>
+
+          <TabsContent value="features">
+            <FeaturesTab 
+              propertyId={property.id} 
+              tenantId={property.tenant_id}
+              onUpdate={fetchProperty}
+            />
+          </TabsContent>
+
+          <TabsContent value="tenancy">
+            <TenancyTab 
+              propertyId={property.id}
+              tenantId={property.tenant_id}
+              unitId={unit?.id || ''}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="expose" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="expose">Exposé</TabsTrigger>
-          <TabsTrigger value="features">Features</TabsTrigger>
-          <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="expose">
-          <ExposeTab 
-            property={property} 
-            financing={financing} 
-            unit={unit} 
-          />
-        </TabsContent>
-
-        <TabsContent value="features">
-          <FeaturesTab 
-            propertyId={property.id} 
-            tenantId={property.tenant_id}
-            onUpdate={fetchProperty}
-          />
-        </TabsContent>
-
-        <TabsContent value="tenancy">
-          <TenancyTab 
-            propertyId={property.id}
-            tenantId={property.tenant_id}
-            unitId={unit?.id || ''}
-          />
-        </TabsContent>
-      </Tabs>
+      <PdfExportFooter 
+        contentRef={contentRef} 
+        documentTitle={getDocumentTitle()} 
+        moduleName="MOD-04 Immobilien – Exposé" 
+      />
     </div>
   );
 }

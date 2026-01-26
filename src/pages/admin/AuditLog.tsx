@@ -332,14 +332,9 @@ export default function AuditLog() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Audit Log',
-          subtitle: `${filteredEvents.length} Ereignisse`,
-          module: 'Zone 1 Admin',
-          metadata: {
-            'Ereignisse': filteredEvents.length.toString(),
-          }
-        }}
+        documentTitle="Audit Log"
+        subtitle={`${filteredEvents.length} Ereignisse`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

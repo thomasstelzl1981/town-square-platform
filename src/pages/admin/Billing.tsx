@@ -574,11 +574,9 @@ export default function BillingPage() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Billing & Plans',
-          subtitle: `${plans.length} Pläne, ${subscriptions.length} Abonnements`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Billing & Plans"
+        subtitle={`${plans.length} Pläne, ${subscriptions.length} Abonnements`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

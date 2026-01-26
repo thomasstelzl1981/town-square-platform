@@ -480,11 +480,9 @@ export default function DelegationsPage() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Delegationen',
-          subtitle: `${delegations.length} Cross-Org-Zugriffsrechte`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Delegationen"
+        subtitle={`${delegations.length} Cross-Org-Zugriffsrechte`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

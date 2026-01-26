@@ -332,11 +332,9 @@ export default function LeadPool() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Lead Pool',
-          subtitle: `${stats.totalPool} Leads im Pool`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Lead Pool"
+        subtitle={`${stats.totalPool} Leads im Pool`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );
