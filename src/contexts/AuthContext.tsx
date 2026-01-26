@@ -14,6 +14,7 @@ interface AuthContextType {
   memberships: Membership[];
   activeMembership: Membership | null;
   activeOrganization: Organization | null;
+  activeTenantId: string | null;
   isPlatformAdmin: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
+  const activeTenantId = profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null;
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
@@ -155,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       memberships,
       activeMembership,
       activeOrganization,
+      activeTenantId,
       isPlatformAdmin,
       isLoading,
       signIn,
