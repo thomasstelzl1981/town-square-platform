@@ -1,228 +1,339 @@
 
-# MOD-05 MSV — Korrekturplan
+# MOD-05 MSV — Konsolidierter Umsetzungsplan nach Revert
 
-## Zusammenfassung der Probleme
+## Analyse: IST-Zustand nach Revert
 
-| Problem | Fundstelle | Korrektur |
-|---------|-----------|-----------|
-| Falscher Name "Mieter-Selbstverwaltung" | MSVPage.tsx Zeile 42 | → "Mietsonderverwaltung" |
-| DashboardTab noch vorhanden | index.ts, DashboardTab.tsx | Löschen |
-| ObjekteTab falsche Spalten | ObjekteTab.tsx | 8 Spalten gemäß Spec |
-| MieteingangTab Struktur | MieteingangTab.tsx | Objekt-zentriert + Accordion |
-| EinstellungenTab unvollständig | EinstellungenTab.tsx | FinAPI + Aktionsverwaltung |
-| Dokumentation veraltet | MOD-05_MSV.md | 4-Tab Struktur |
+### Was existiert (funktionsfaehig)
 
----
+| Bereich | Status | Details |
+|---------|--------|---------|
+| **MSVPage.tsx** | OK | 4-Tab-Struktur (Objekte, Mieteingang, Vermietung, Einstellungen) |
+| **ObjekteTab.tsx** | OK | 8-Spalten-Tabelle mit Action-Dropdown (Mahnung, Kuendigung, Mieterhoehung, Datenanforderung) |
+| **MieteingangTab.tsx** | OK | Premium-Tab mit Accordion, PaywallBanner, Stats-Cards |
+| **VermietungTab.tsx** | OK | Vermietungsexpose + Scout24/Kleinanzeigen Publishing |
+| **EinstellungenTab.tsx** | OK | Premium-Status, Automatisierung, Mietkonten (Stub), E-Mail-Versand |
+| **TemplateWizard.tsx** | OK | Template-basierte Briefgenerierung mit Platzhaltern |
+| **LeaseFormDialog.tsx** | OK | Minimal-Formular fuer Mietvertragsanlage |
+| **PaywallBanner.tsx** | OK | Premium-Upsell-Komponente |
 
-## Teil 1: Dateien löschen/bereinigen
+### Datenbank-Tabellen (alle vorhanden)
 
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/portal/msv/DashboardTab.tsx` | **Löschen** |
-| `src/pages/portal/msv/index.ts` | DashboardTab-Export entfernen |
+| Tabelle | Status | Spalten |
+|---------|--------|---------|
+| leases | OK | tenant_id, unit_id, tenant_contact_id, monthly_rent, start_date, end_date, status, deposit_amount, notice_date, rent_increase, tenant_since, renter_org_id |
+| msv_enrollments | OK | tenant_id, property_id, tier, status, blocked_reason, readiness_snapshot, scope_type, settings, credits_per_unit |
+| msv_readiness_items | OK | tenant_id, enrollment_id, requirement_code, status, details, requested_at, resolved_at |
+| msv_communication_prefs | OK | tenant_id, scope_type, scope_id, preferred_channel, fallback_channel, require_confirmation, reminder_day, report_day, auto_reminder_enabled, auto_report_enabled |
+| msv_templates | OK | tenant_id, template_code, title, content, placeholders, locale, version, is_active |
+| msv_bank_accounts | OK | tenant_id, account_name, iban, bank_name, finapi_account_id, is_default, status |
+| rent_payments | OK | tenant_id, lease_id, amount, due_date, paid_date, status, payment_method, notes, expected_amount, matched_amount, matched_source, matched_transaction_id, period_start, period_end |
+| rent_reminders | OK | tenant_id, lease_id, payment_id, reminder_type, stage, content_text, channel, status, document_id, sent_at, confirmed_by, auto_sent |
+| rental_listings | OK | tenant_id, property_id, unit_id, status, cold_rent, warm_rent, utilities_estimate, deposit_months, available_from, minimum_term_months, pets_allowed, description, expose_document_id, public_id |
+| rental_publications | OK | tenant_id, rental_listing_id, channel (scout24, kleinanzeigen), status, external_url, external_id, published_at, expires_at, error_message |
 
----
+### Edge Functions (vorhanden)
 
-## Teil 2: MSVPage.tsx korrigieren
-
-**Zeile 42:** 
-```
-// ALT:
-<p className="text-muted-foreground">Mieter-Selbstverwaltung und Zahlungsübersicht</p>
-
-// NEU:
-<p className="text-muted-foreground">Mietsonderverwaltung - Zahlungen, Mahnungen und Mietberichte</p>
-```
-
----
-
-## Teil 3: ObjekteTab.tsx — Neue Spaltenstruktur
-
-### Geforderte Spalten
-
-| # | Spalte | DB-Quelle | Beschreibung |
-|---|--------|-----------|--------------|
-| 1 | Objekt-ID | `properties.code` | Kurzcode |
-| 2 | Objektadresse | `properties.address` | Straße, Nr, Ort |
-| 3 | Mieter | `contacts.last_name` (via lease) | Name des Mieters |
-| 4 | Kaltmiete | `lease_components.amount` (type=base_rent) oder `leases.monthly_rent` | Nettokaltmiete |
-| 5 | Warmmiete | Berechnet: Kaltmiete + NK + Vorauszahlung | Gesamtmiete |
-| 6 | Nebenkosten | `lease_components.amount` (type=utilities) | NK-Vorauszahlung |
-| 7 | Vorauszahlung | `lease_components.amount` (type=prepayment) | Sonstige |
-| 8 | Aktionen | Dropdown | Briefe erstellen |
-
-### Action-Buttons (bereits korrekt)
-- Kündigung schreiben → Briefgenerator
-- Mieterhöhung schreiben → Briefgenerator  
-- Datenanforderung → Briefgenerator
-- Mietvertrag anlegen (bei Leerstand)
-- Premium aktivieren
-- Objekt öffnen (MOD-04)
-
-### Hinweis zur Datenquelle
-Da `lease_components` verwendet werden soll (granulare Abrechnung), müssen die Komponenten abgefragt werden. Falls keine Komponenten existieren, Fallback auf `leases.monthly_rent`.
+| Function | Status | Funktion |
+|----------|--------|----------|
+| sot-msv-reminder-check | OK | Automatische Mahnungspruefung am 10. des Monats |
+| sot-msv-rent-report | OK | Automatischer Mietbericht am 15. des Monats |
+| sot-listing-publish | OK | Vermietungsinserat veroeffentlichen |
 
 ---
 
-## Teil 4: MieteingangTab.tsx — Premium-Tab Redesign
+## Identifizierte Luecken (Was fehlt/nicht funktioniert)
 
-### Konzept
+### 1. Fehlende Datenbankanbindung in UI-Komponenten
 
-Der Tab zeigt eine **Objekt-zentrierte** Liste mit Mieteingangsstatus.
+| Komponente | Problem | Loesung |
+|------------|---------|---------|
+| EinstellungenTab | States sind lokal (useState), nicht mit DB verbunden | Query/Mutation fuer msv_communication_prefs hinzufuegen |
+| EinstellungenTab | isPremium ist hardcoded false | Query auf msv_enrollments hinzufuegen |
+| MieteingangTab | isPremium ist hardcoded false | Analog zu EinstellungenTab |
+| ObjekteTab | Premium-Aktivierung Button funktioniert nicht | ReadinessChecklist + Activation Flow implementieren |
 
-### Haupttabelle (collapsed)
+### 2. Fehlende Premium-Aktivierung
 
-| # | Spalte | Beschreibung |
-|---|--------|--------------|
-| 1 | Objektnummer | properties.code |
-| 2 | Adresse | properties.address |
-| 3 | Sollmiete | leases.monthly_rent |
-| 4 | Mieteingang | SUM der gebuchten Zahlungen (aktueller Monat) |
-| 5 | Status | Badge: Bezahlt/Offen/Überfällig |
-| 6 | Expandieren | ChevronDown Icon |
+| Feature | Status | Loesung |
+|---------|--------|---------|
+| ReadinessChecklist | Komponente existiert, aber nicht eingebunden | In ObjekteTab bei "Premium aktivieren" oeffnen |
+| Readiness-Check | Kein API-Call | Edge Function oder DB-Query implementieren |
+| Enrollment erstellen | Kein Flow | msv_enrollments INSERT bei Aktivierung |
 
-### Expandierte Zeile (Accordion)
+### 3. Templates nicht vorhanden
 
-Bei Klick auf eine Zeile öffnet sich ein Bereich mit:
-- **Letzte 10 Mieteingänge** (Tabelle: Datum, Betrag, Status, Quelle)
-- **Action-Buttons:**
-  - Zahlung buchen (manuell)
-  - Mahnung erstellen → Template-Wizard
-  - Mietbericht senden → Edge Function Trigger
+| Problem | Details |
+|---------|---------|
+| msv_templates ist leer | Keine System-Templates fuer Kuendigung, Mieterhoehung, Mahnung etc. |
+| TemplateWizard zeigt nichts | Query auf msv_templates liefert keine Daten |
 
-### Premium-Gate
-- PaywallBanner wenn nicht Premium
-- "Premium aktivieren" Button → Readiness Gate
+### 4. Briefgenerator-Verlinkung fehlt
 
-### FinAPI-Kontoauswahl
-- Wenn mehrere Konten hinterlegt sind (in Einstellungen), kann hier das Konto für den Abgleich gewählt werden
+| Problem | Details |
+|---------|---------|
+| TemplateWizard speichert in letter_drafts | Kein Uebergang zum MOD-02 Briefgenerator |
+| PDF-Download deaktiviert | sot-letter-generate nicht angebunden |
+| Versenden deaktiviert | Resend nicht angebunden |
+
+### 5. Manuelles Zahlung buchen fehlt
+
+| Problem | Details |
+|---------|---------|
+| Button "Zahlung buchen" disabled | Kein Modal/Dialog implementiert |
+| rent_payments manuell erstellen | Kein INSERT-Flow |
 
 ---
 
-## Teil 5: EinstellungenTab.tsx — Erweiterte Konfiguration
+## Umsetzungsplan nach Prioritaet
 
-### Sektion 1: Premium-Status (bereits vorhanden)
-- Credits-Anzeige
-- Premium aktivieren Button
+### Phase 1: Kritische Fixes (P0) — Sofort
 
-### Sektion 2: Automatisierung (erweitert)
+#### 1.1 System-Templates einfuegen
 
-| Einstellung | UI-Element | Beschreibung |
-|-------------|------------|--------------|
-| **Mahntag** | Number Input (1-28) | Wann Mahnung versenden |
-| **Kommunikationsweg** | Radio: E-Mail / Brief | Wie wird gemahnt |
-| **Auto-Mahnung aktiv** | Switch | Automatischer Versand |
-| **Mietbericht-Tag** | Number Input (1-28) | Default: 15 |
-| **Auto-Mietbericht** | Switch | Automatischer Versand |
-
-### Sektion 3: Kontoanbindung (FinAPI)
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  🏦 Mietkonten                                    [Premium]   │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Verbundene Konten:                                           │
-│  ┌────────────────────────────────────────────────────────┐   │
-│  │ DE89 3704 0044 0532 0130 00 (Sparkasse)    [Standard]  │   │
-│  │ DE12 5001 0517 0648 4898 90 (Commerzbank)  [Aktiv]     │   │
-│  └────────────────────────────────────────────────────────┘   │
-│                                                               │
-│  [+ Konto hinzufügen]                                         │
-│                                                               │
-│  ℹ️ Coming Soon: Automatische Transaktionserkennung           │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
+```text
+Tabelle: msv_templates
+Eintraege:
+- KUENDIGUNG: Kuendigungsschreiben mit Platzhaltern (mieter_name, adresse, kuendigungsdatum, begruendung)
+- MIETERHOEHUNG: Mieterhoehungsschreiben (mieter_name, adresse, alte_miete, neue_miete, erhoehungsdatum, begruendung)
+- DATENANFORDERUNG: Datenanforderung (mieter_name, adresse, dokumente_liste, frist)
+- MAHNUNG: Zahlungserinnerung (mieter_name, adresse, offener_betrag, faellig_seit)
+- MAHNUNG_2: Erste Mahnung
+- MAHNUNG_3: Letzte Mahnung
 ```
 
-### Datenmodell-Erweiterung
+#### 1.2 Premium-Status aus DB lesen
 
-Neue Tabelle `msv_bank_accounts`:
+```text
+Datei: EinstellungenTab.tsx, MieteingangTab.tsx
+Aenderung: 
+- useQuery auf msv_enrollments (tenant_id, status='active', tier='premium')
+- isPremium = enrollments?.length > 0
+```
 
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| id | uuid PK | — |
-| tenant_id | uuid FK | Tenant-Isolation |
-| account_name | text | Anzeigename |
-| iban | text | IBAN (verschlüsselt) |
-| bank_name | text | Bankname |
-| finapi_account_id | text | FinAPI Referenz |
-| is_default | boolean | Standard-Konto |
-| status | enum | connected, pending, error |
-| created_at | timestamptz | — |
+#### 1.3 Automatisierungs-Einstellungen mit DB verbinden
+
+```text
+Datei: EinstellungenTab.tsx
+Aenderung:
+- useQuery auf msv_communication_prefs (scope_type='tenant')
+- useMutation fuer UPDATE msv_communication_prefs
+- Formular-Werte aus DB laden, bei Aenderung speichern
+```
+
+### Phase 2: Premium-Aktivierung (P1)
+
+#### 2.1 Premium-Aktivierungs-Flow
+
+```text
+Datei: ObjekteTab.tsx
+Aenderung:
+- Bei "Premium aktivieren" → ReadinessChecklist oeffnen
+- Property-Auswahl wenn mehrere vorhanden
+```
+
+#### 2.2 ReadinessChecklist mit Logik
+
+```text
+Datei: src/components/msv/ReadinessChecklist.tsx
+Aenderung:
+- Requirement-Codes pruefen (RENTER_CONTACT_EXISTS, RENTER_EMAIL, COMM_PREF_SET, LEASE_EXISTS)
+- Status anzeigen (missing, provided, waived)
+- "Aktivieren" Button wenn alle Requirements erfuellt
+- INSERT in msv_enrollments bei Aktivierung
+```
+
+#### 2.3 Premium-Kosten anzeigen
+
+```text
+Datei: ReadinessChecklist.tsx
+Aenderung:
+- Credits-Berechnung: Anzahl Units * 40 Credits/Monat
+- Anzeige vor Aktivierung
+```
+
+### Phase 3: Mieteingang funktional (P1)
+
+#### 3.1 Manuelles Zahlung buchen
+
+```text
+Neue Datei: src/components/msv/PaymentBookingDialog.tsx
+Features:
+- Betrag eingeben
+- Datum waehlen
+- Status waehlen (paid, partial)
+- INSERT in rent_payments
+```
+
+#### 3.2 MieteingangTab erweitern
+
+```text
+Datei: MieteingangTab.tsx
+Aenderung:
+- "Zahlung buchen" Button oeffnet PaymentBookingDialog
+- Nach Buchung: refetch der Zahlungsdaten
+```
+
+### Phase 4: Briefgenerator-Integration (P2)
+
+#### 4.1 TemplateWizard zum Briefgenerator
+
+```text
+Datei: TemplateWizard.tsx
+Aenderung:
+- Nach Speichern als Entwurf: Weiterleitung zu /portal/office/brief mit letter_draft_id
+- Oder: Modal mit "Zum Briefgenerator" Button
+```
+
+#### 4.2 PDF-Generierung aktivieren
+
+```text
+Datei: TemplateWizard.tsx
+Aenderung:
+- Aufruf von sot-letter-generate Edge Function
+- Download des generierten PDFs
+```
+
+### Phase 5: Vermietung vollstaendig (P2)
+
+#### 5.1 RentalListingWizard erweitern
+
+```text
+Datei: src/components/msv/RentalListingWizard.tsx
+Aenderung:
+- Property/Unit-Auswahl aus MOD-04
+- Daten aus property/unit uebernehmen
+- Expose-Felder erweitern (Energieausweis, Baujahr, etc.)
+```
+
+#### 5.2 Scout24-Veroeffentlichung
+
+```text
+Datei: src/components/msv/RentalPublishDialog.tsx, sot-listing-publish
+Aenderung:
+- Pflichtfelder-Check gemaess Scout24 API
+- Status-Updates in rental_publications
+- Hinweis auf Coming Soon (API-Integration Phase 2)
+```
 
 ---
 
-## Teil 6: Dokumentation MOD-05_MSV.md
+## Zusammenfassung der Aenderungen
 
-### Zu aktualisierende Abschnitte
+### Datenbank-Migrationen
 
-**Sektion 4.1 Routen (Zeile 370-379):**
+| Aktion | Details |
+|--------|---------|
+| INSERT msv_templates | 6 System-Templates (Kuendigung, Mieterhoehung, Datenanforderung, Mahnung 1-3) |
 
-```markdown
-| Route | Zweck |
+### Frontend-Dateien zu aendern
+
+| Datei | Aenderungen |
+|-------|-------------|
+| EinstellungenTab.tsx | DB-Queries fuer Premium-Status + Communication Prefs |
+| MieteingangTab.tsx | DB-Query fuer Premium-Status, PaymentBookingDialog einbinden |
+| ObjekteTab.tsx | ReadinessChecklist bei Premium-Aktivierung oeffnen |
+| TemplateWizard.tsx | Briefgenerator-Verlinkung, PDF-Download aktivieren |
+| ReadinessChecklist.tsx | Komplette Implementierung mit Requirement-Checks |
+
+### Neue Dateien
+
+| Datei | Zweck |
 |-------|-------|
-| /portal/msv | Redirect zu /portal/msv/objekte |
-| /portal/msv/objekte | Objektliste mit Actions (Freemium) |
-| /portal/msv/mieteingang | Zahlungsverwaltung (Premium) |
-| /portal/msv/vermietung | Vermietungsexposé + Publishing (Freemium) |
-| /portal/msv/einstellungen | Konfiguration + Kontoanbindung |
+| src/components/msv/PaymentBookingDialog.tsx | Manuelles Buchen von Zahlungen |
+
+### Edge Functions (keine neuen noetig)
+
+Bestehende Functions sind ausreichend:
+- sot-msv-reminder-check: Mahnungspruefung
+- sot-msv-rent-report: Mietbericht
+- sot-listing-publish: Vermietungsinserat
+- sot-letter-generate: PDF-Generierung
+
+---
+
+## Implementierungs-Reihenfolge
+
+```text
+Schritt 1: System-Templates einfuegen (Migration)
+Schritt 2: EinstellungenTab mit DB verbinden
+Schritt 3: Premium-Status in MieteingangTab + ObjekteTab
+Schritt 4: ReadinessChecklist implementieren
+Schritt 5: PaymentBookingDialog erstellen
+Schritt 6: TemplateWizard → Briefgenerator Verlinkung
+Schritt 7: PDF-Download aktivieren
 ```
 
-**Sektion 4.2 Dashboard:** Komplett löschen
+---
 
-**Sektion 4.3 Listen → Objekte:** Umbenennen und Spalten aktualisieren
+## Technische Details
 
-**Sektion 4.6 Einstellungen:** FinAPI-Kontoanbindung + Aktionsverwaltung hinzufügen
+### Premium-Status Query (wiederverwendbar)
+
+```typescript
+// Hook: src/hooks/useMSVPremium.ts
+const { data: isPremium } = useQuery({
+  queryKey: ['msv-premium-status'],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('msv_enrollments')
+      .select('id')
+      .eq('tier', 'premium')
+      .eq('status', 'active')
+      .limit(1);
+    return (data?.length || 0) > 0;
+  }
+});
+```
+
+### Communication Prefs Query
+
+```typescript
+// In EinstellungenTab
+const { data: prefs } = useQuery({
+  queryKey: ['msv-communication-prefs'],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('msv_communication_prefs')
+      .select('*')
+      .eq('scope_type', 'tenant')
+      .single();
+    return data;
+  }
+});
+```
+
+### Readiness-Check Logik
+
+```typescript
+// Requirements pruefen
+const requirements = [
+  { code: 'LEASE_EXISTS', check: leases?.length > 0 },
+  { code: 'RENTER_CONTACT_EXISTS', check: leases?.every(l => l.tenant_contact_id) },
+  { code: 'RENTER_EMAIL', check: contacts?.every(c => c.email) },
+  { code: 'COMM_PREF_SET', check: !!commPrefs?.preferred_channel }
+];
+```
 
 ---
 
-## Technische Implementierung
+## Risiken und Abhaengigkeiten
 
-### Schritt 1: Bereinigung
-1. DashboardTab.tsx löschen
-2. index.ts: DashboardTab-Export entfernen
-3. MSVPage.tsx: Text "Mieter-Selbstverwaltung" → "Mietsonderverwaltung"
-
-### Schritt 2: ObjekteTab.tsx
-1. Spalten umstrukturieren auf 8 Spalten
-2. Query erweitern für lease_components (falls vorhanden)
-3. Warmmiete berechnen: Kaltmiete + NK + Vorauszahlung
-
-### Schritt 3: MieteingangTab.tsx
-1. Objekt-zentrierte Ansicht statt Payment-zentriert
-2. Collapsible/Accordion für Zahlungshistorie
-3. Action-Buttons im expandierten Bereich
-4. Premium-Gate und PaywallBanner
-
-### Schritt 4: EinstellungenTab.tsx
-1. Mahntag-Konfiguration (Number Input)
-2. Kommunikationsweg-Auswahl (E-Mail/Brief)
-3. Mietbericht-Tag-Konfiguration
-4. FinAPI-Kontoübersicht (Coming Soon Stub)
-
-### Schritt 5: Datenbank
-1. Neue Tabelle `msv_bank_accounts` erstellen
-2. `msv_automation_settings` erweitern (falls nicht vorhanden):
-   - reminder_day
-   - reminder_channel (email/letter)
-   - report_day
-   - auto_reminder_enabled
-   - auto_report_enabled
-
-### Schritt 6: Dokumentation
-1. MOD-05_MSV.md aktualisieren auf 4-Tab-Struktur
-2. Dashboard-Sektion entfernen
-3. Routen korrigieren
+| Risiko | Mitigation |
+|--------|------------|
+| Templates nicht vorhanden | Migration mit INSERT in msv_templates |
+| Resend nicht konfiguriert | E-Mail-Versand als "Coming Soon" markieren |
+| FinAPI nicht verfuegbar | Stub UI mit "Coming Soon" Hinweis |
+| Scout24 API nicht integriert | Export-Funktion + manuelle Veroeffentlichung |
 
 ---
 
-## Zusammenfassung
+## Aufwandsschaetzung
 
-| Bereich | Änderungen |
-|---------|------------|
-| Dateien löschen | 1 (DashboardTab.tsx) |
-| Frontend-Dateien | 4 Überarbeitungen |
-| Datenbank | 1 neue Tabelle, 1 Erweiterung |
-| Dokumentation | 1 Datei aktualisieren |
-| Edge Functions | Keine neuen (bereits vorhanden) |
+| Phase | Aufwand |
+|-------|---------|
+| Phase 1 (Kritische Fixes) | 1-2 Iterationen |
+| Phase 2 (Premium-Aktivierung) | 2 Iterationen |
+| Phase 3 (Mieteingang) | 1 Iteration |
+| Phase 4 (Briefgenerator) | 1-2 Iterationen |
+| Phase 5 (Vermietung) | 1-2 Iterationen |
+| **Gesamt** | **6-9 Iterationen** |
