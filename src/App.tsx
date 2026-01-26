@@ -28,6 +28,7 @@ import Inbox from "./pages/admin/Inbox";
 import LeadPool from "./pages/admin/LeadPool";
 import PartnerVerification from "./pages/admin/PartnerVerification";
 import CommissionApproval from "./pages/admin/CommissionApproval";
+import MasterTemplates from "./pages/admin/MasterTemplates";
 
 // Zone 2: User Portal Layout
 import { PortalLayout } from "./components/portal/PortalLayout";
@@ -111,6 +112,7 @@ const App = () => (
               <Route path="users" element={<Users />} />
               <Route path="delegations" element={<Delegations />} />
               <Route path="contacts" element={<MasterContacts />} />
+              <Route path="master-templates" element={<MasterTemplates />} />
               <Route path="tiles" element={<TileCatalog />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="communication" element={<CommunicationHub />} />

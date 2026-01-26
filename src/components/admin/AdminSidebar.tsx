@@ -15,7 +15,8 @@ import {
   FileText,
   CreditCard,
   FileCheck,
-  Inbox
+  Inbox,
+  Settings2
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,6 +54,7 @@ const foundationItems = [
 // Master Data
 const masterDataItems = [
   { title: 'Master Contacts', url: '/admin/contacts', icon: Contact },
+  { title: 'Master-Vorlagen', url: '/admin/master-templates', icon: Settings2 },
 ];
 
 // Backbone
