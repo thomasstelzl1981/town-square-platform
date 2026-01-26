@@ -53,6 +53,10 @@ import PropertyDetail from "./pages/portfolio/PropertyDetail";
 import PropertyForm from "./pages/portfolio/PropertyForm";
 import ExposeVorlage from "./pages/portfolio/ExposeVorlage";
 
+// MOD-05 MSV Detail Pages
+import RentalExposeDetail from "./pages/portal/msv/RentalExposeDetail";
+import RentalExposeVorlage from "./pages/portal/msv/RentalExposeVorlage";
+
 // Presentation (non-guessable URL)
 import PresentationPage from "./pages/presentation/PresentationPage";
 
@@ -171,6 +175,8 @@ const App = () => (
               <Route path="msv/objekte" element={<MSVPage />} />
               <Route path="msv/mieteingang" element={<MSVPage />} />
               <Route path="msv/vermietung" element={<MSVPage />} />
+              <Route path="msv/vermietung/vorlage" element={<RentalExposeVorlage />} />
+              <Route path="msv/vermietung/:id" element={<RentalExposeDetail />} />
               <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
