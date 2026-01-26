@@ -251,6 +251,86 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          all_day: boolean | null
+          contact_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_at: string | null
+          id: string
+          location: string | null
+          property_id: string | null
+          reminder_minutes: number | null
+          start_at: string
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          all_day?: boolean | null
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          location?: string | null
+          property_id?: string | null
+          reminder_minutes?: number | null
+          start_at: string
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          all_day?: boolean | null
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          location?: string | null
+          property_id?: string | null
+          reminder_minutes?: number | null
+          start_at?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       church_tax_rates: {
         Row: {
           created_at: string
@@ -1409,6 +1489,73 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      letter_drafts: {
+        Row: {
+          body: string | null
+          channel: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          prompt: string | null
+          recipient_contact_id: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          body?: string | null
+          channel?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          prompt?: string | null
+          recipient_contact_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          body?: string | null
+          channel?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          prompt?: string | null
+          recipient_contact_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letter_drafts_recipient_contact_id_fkey"
+            columns: ["recipient_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letter_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
