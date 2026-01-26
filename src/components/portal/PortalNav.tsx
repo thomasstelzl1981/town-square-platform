@@ -9,36 +9,42 @@ import {
   Wallet,
   Sparkles,
   Inbox,
-  Target
+  Target,
+  Search,
+  Handshake,
+  Tag,
+  Landmark,
+  FolderOpen
 } from 'lucide-react';
 
-// Standard modules (available to all tenants) - primary nav
-const navItems = [
-  { code: 'home', label: 'Home', icon: Home, route: '/portal' },
-  { code: 'stammdaten', label: 'Stamm', icon: Users, route: '/portal/stammdaten' },
-  { code: 'ki-office', label: 'Office', icon: Sparkles, route: '/portal/ki-office' },
-  { code: 'dms', label: 'DMS', icon: Inbox, route: '/portal/dms' },
-  { code: 'immobilien', label: 'Immo', icon: Building2, route: '/portal/immobilien' },
-];
-
-// Standard modules (available to all tenants) - continued
+// MOD-01 to MOD-08: Standard modules (available to all SoT/Kaufy tenants)
 const standardModules = [
+  { code: 'home', label: 'Home', icon: Home, route: '/portal' },
+  { code: 'stammdaten', label: 'Stammdaten', icon: Users, route: '/portal/stammdaten' },
+  { code: 'office', label: 'Office', icon: Sparkles, route: '/portal/office' },
+  { code: 'dms', label: 'DMS', icon: FolderOpen, route: '/portal/dms' },
+  { code: 'immobilien', label: 'Immobilien', icon: Building2, route: '/portal/immobilien' },
   { code: 'msv', label: 'MSV', icon: FileText, route: '/portal/msv' },
-  { code: 'verkauf', label: 'Verkauf', icon: Briefcase, route: '/portal/verkauf' },
-  { code: 'finanzierung', label: 'Finanz', icon: Wallet, route: '/portal/finanzierung' },
+  { code: 'verkauf', label: 'Verkauf', icon: Tag, route: '/portal/verkauf' },
+  { code: 'finanzierung', label: 'Finanzierung', icon: Landmark, route: '/portal/finanzierung' },
+  { code: 'investments', label: 'Investments', icon: Search, route: '/portal/investments' },
 ];
 
-// Addon modules (only for partner tenants)
-const addonModules = [
-  { code: 'vertriebspartner', label: 'Partner', icon: Users, route: '/portal/vertriebspartner' },
-  { code: 'leadgenerierung', label: 'Leads', icon: Target, route: '/portal/leadgenerierung' },
+// MOD-09 to MOD-10: Kaufy Addon modules (only for partner/Kaufy tenants)
+const kaufyAddonModules = [
+  { code: 'vertriebspartner', label: 'Partner', icon: Handshake, route: '/portal/vertriebspartner' },
+  { code: 'leads', label: 'Leads', icon: Target, route: '/portal/leads' },
 ];
+
+// Bottom nav (mobile) - first 5 items
+const bottomNavItems = standardModules.slice(0, 5);
 
 interface PortalNavProps {
   variant?: 'bottom' | 'sidebar';
+  showKaufyModules?: boolean;
 }
 
-export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
+export function PortalNav({ variant = 'bottom', showKaufyModules = true }: PortalNavProps) {
   const location = useLocation();
   
   const isActive = (route: string) => {
@@ -48,13 +54,17 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
     return location.pathname.startsWith(route);
   };
 
+  const allModules = showKaufyModules 
+    ? [...standardModules, ...kaufyAddonModules]
+    : standardModules;
+
   if (variant === 'sidebar') {
     return (
       <nav className="hidden lg:flex flex-col gap-1 p-4 w-64 border-r bg-muted/30">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
-          Navigation
+          Module
         </div>
-        {[...navItems, ...standardModules, ...addonModules].map(item => {
+        {allModules.map(item => {
           const Icon = item.icon;
           const active = isActive(item.route);
           return (
@@ -69,17 +79,37 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label === 'Stamm' ? 'Stammdaten' : 
-               item.label === 'Office' ? 'KI Office' :
-               item.label === 'DMS' ? 'Dokumentenmanagement' :
-               item.label === 'Immo' ? 'Immobilien' :
-               item.label === 'Finanz' ? 'Finanzierung' :
-               item.label === 'Partner' ? 'Vertriebspartner' :
-               item.label === 'Leads' ? 'Leadgenerierung' :
-               item.label}
+              {item.label}
             </Link>
           );
         })}
+        
+        {showKaufyModules && (
+          <>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 mb-2 px-3">
+              Kaufy Module
+            </div>
+            {kaufyAddonModules.map(item => {
+              const Icon = item.icon;
+              const active = isActive(item.route);
+              return (
+                <Link
+                  key={item.code}
+                  to={item.route}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    active 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
     );
   }
@@ -88,7 +118,7 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-inset-bottom">
       <div className="flex justify-around items-center h-16">
-        {navItems.map(item => {
+        {bottomNavItems.map(item => {
           const Icon = item.icon;
           const active = isActive(item.route);
           return (

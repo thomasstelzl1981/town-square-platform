@@ -76,6 +76,104 @@ export type Database = {
           },
         ]
       }
+      ad_campaign_leads: {
+        Row: {
+          campaign_id: string
+          cost_cents: number | null
+          created_at: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          campaign_id: string
+          cost_cents?: number | null
+          created_at?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          campaign_id?: string
+          cost_cents?: number | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaign_leads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaigns: {
+        Row: {
+          budget_cents: number | null
+          campaign_type: string | null
+          created_at: string | null
+          ended_at: string | null
+          external_campaign_id: string | null
+          id: string
+          name: string
+          platform: string | null
+          property_id: string | null
+          started_at: string | null
+          status: string | null
+          targeting: Json | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          budget_cents?: number | null
+          campaign_type?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          name: string
+          platform?: string | null
+          property_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          targeting?: Json | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          budget_cents?: number | null
+          campaign_type?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          name?: string
+          platform?: string | null
+          property_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          targeting?: Json | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agreement_templates: {
         Row: {
           code: string
@@ -320,6 +418,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_cases: {
+        Row: {
+          case_code: string | null
+          created_at: string | null
+          id: string
+          included_property_ids: string[] | null
+          notes: string | null
+          primary_property_id: string | null
+          public_id: string | null
+          purpose: string | null
+          responsible_user_id: string | null
+          scope_type: string | null
+          status: Database["public"]["Enums"]["finance_case_status"] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          case_code?: string | null
+          created_at?: string | null
+          id?: string
+          included_property_ids?: string[] | null
+          notes?: string | null
+          primary_property_id?: string | null
+          public_id?: string | null
+          purpose?: string | null
+          responsible_user_id?: string | null
+          scope_type?: string | null
+          status?: Database["public"]["Enums"]["finance_case_status"] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          case_code?: string | null
+          created_at?: string | null
+          id?: string
+          included_property_ids?: string[] | null
+          notes?: string | null
+          primary_property_id?: string | null
+          public_id?: string | null
+          purpose?: string | null
+          responsible_user_id?: string | null
+          scope_type?: string | null
+          status?: Database["public"]["Enums"]["finance_case_status"] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_cases_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -663,6 +817,75 @@ export type Database = {
           },
         ]
       }
+      investment_favorites: {
+        Row: {
+          created_at: string | null
+          external_listing_id: string | null
+          external_listing_url: string | null
+          id: string
+          investment_profile_id: string
+          location: string | null
+          notes: string | null
+          price: number | null
+          property_data: Json | null
+          source: string | null
+          status: string | null
+          synced_at: string | null
+          tenant_id: string
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          external_listing_id?: string | null
+          external_listing_url?: string | null
+          id?: string
+          investment_profile_id: string
+          location?: string | null
+          notes?: string | null
+          price?: number | null
+          property_data?: Json | null
+          source?: string | null
+          status?: string | null
+          synced_at?: string | null
+          tenant_id: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          external_listing_id?: string | null
+          external_listing_url?: string | null
+          id?: string
+          investment_profile_id?: string
+          location?: string | null
+          notes?: string | null
+          price?: number | null
+          property_data?: Json | null
+          source?: string | null
+          status?: string | null
+          synced_at?: string | null
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "if_tenant_profile_fk"
+            columns: ["tenant_id", "investment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "investment_profiles"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "investment_favorites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investment_profiles: {
         Row: {
           contact_id: string
@@ -723,6 +946,60 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      investment_searches: {
+        Row: {
+          created_at: string | null
+          id: string
+          investment_profile_id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          name: string
+          result_count: number | null
+          search_criteria: Json
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          investment_profile_id: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name: string
+          result_count?: number | null
+          search_criteria?: Json
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          investment_profile_id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name?: string
+          result_count?: number | null
+          search_criteria?: Json
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_searches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "is_tenant_profile_fk"
+            columns: ["tenant_id", "investment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "investment_profiles"
+            referencedColumns: ["tenant_id", "id"]
           },
         ]
       }
@@ -788,6 +1065,200 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_activities: {
+        Row: {
+          activity_type: string
+          deal_id: string | null
+          description: string | null
+          id: string
+          lead_id: string | null
+          metadata: Json | null
+          performed_at: string | null
+          performed_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          activity_type: string
+          deal_id?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          activity_type?: string
+          deal_id?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "partner_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignments: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          id: string
+          lead_id: string
+          offered_at: string | null
+          partner_org_id: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          status: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          offered_at?: string | null
+          partner_org_id: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          offered_at?: string | null
+          partner_org_id?: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignments_partner_org_id_fkey"
+            columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_partner_id: string | null
+          budget_max: number | null
+          budget_min: number | null
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          interest_type: string | null
+          notes: string | null
+          property_interest_id: string | null
+          public_id: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          source_campaign_id: string | null
+          status: Database["public"]["Enums"]["lead_status"] | null
+          tenant_id: string | null
+          updated_at: string | null
+          zone1_pool: boolean | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_partner_id?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          interest_type?: string | null
+          notes?: string | null
+          property_interest_id?: string | null
+          public_id?: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          source_campaign_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          zone1_pool?: boolean | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_partner_id?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          interest_type?: string | null
+          notes?: string | null
+          property_interest_id?: string | null
+          public_id?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          source_campaign_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          zone1_pool?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_partner_id_fkey"
+            columns: ["assigned_partner_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -878,6 +1349,79 @@ export type Database = {
           },
         ]
       }
+      listings: {
+        Row: {
+          asking_price: number | null
+          commission_rate: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          expose_document_id: string | null
+          id: string
+          partner_visibility: string | null
+          property_id: string
+          public_id: string | null
+          status: Database["public"]["Enums"]["listing_status"] | null
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          asking_price?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expose_document_id?: string | null
+          id?: string
+          partner_visibility?: string | null
+          property_id: string
+          public_id?: string | null
+          status?: Database["public"]["Enums"]["listing_status"] | null
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          asking_price?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expose_document_id?: string | null
+          id?: string
+          partner_visibility?: string | null
+          property_id?: string
+          public_id?: string | null
+          status?: Database["public"]["Enums"]["listing_status"] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listings_expose_document_id_fkey"
+            columns: ["expose_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_tenant_property_fk"
+            columns: ["tenant_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -906,6 +1450,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_enrollments: {
+        Row: {
+          created_at: string | null
+          enrolled_at: string | null
+          enrolled_by: string | null
+          id: string
+          property_id: string
+          settings: Json | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enrolled_at?: string | null
+          enrolled_by?: string | null
+          id?: string
+          property_id: string
+          settings?: Json | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enrolled_at?: string | null
+          enrolled_by?: string | null
+          id?: string
+          property_id?: string
+          settings?: Json | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "me_tenant_property_fk"
+            columns: ["tenant_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "msv_enrollments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1026,6 +1621,76 @@ export type Database = {
           },
         ]
       }
+      partner_deals: {
+        Row: {
+          actual_close_date: string | null
+          commission_rate: number | null
+          contact_id: string | null
+          created_at: string | null
+          deal_value: number | null
+          expected_close_date: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          property_id: string | null
+          stage: Database["public"]["Enums"]["deal_stage"] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_close_date?: string | null
+          commission_rate?: number | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_close_date?: string | null
+          commission_rate?: number | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_deals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_deals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_pipelines: {
         Row: {
           assigned_to: string | null
@@ -1084,6 +1749,62 @@ export type Database = {
           {
             foreignKeyName: "partner_pipelines_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_verifications: {
+        Row: {
+          created_at: string | null
+          documents: Json | null
+          expires_at: string | null
+          id: string
+          notes: string | null
+          partner_org_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status:
+            | Database["public"]["Enums"]["partner_verification_status"]
+            | null
+          submitted_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          documents?: Json | null
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          partner_org_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?:
+            | Database["public"]["Enums"]["partner_verification_status"]
+            | null
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          documents?: Json | null
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          partner_org_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?:
+            | Database["public"]["Enums"]["partner_verification_status"]
+            | null
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_verifications_partner_org_id_fkey"
+            columns: ["partner_org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -1415,6 +2136,121 @@ export type Database = {
           },
         ]
       }
+      rent_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          due_date: string
+          id: string
+          lease_id: string
+          notes: string | null
+          paid_date: string | null
+          payment_method: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          due_date: string
+          id?: string
+          lease_id: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          lease_id?: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rp_tenant_lease_fk"
+            columns: ["tenant_id", "lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      rent_reminders: {
+        Row: {
+          channel: string | null
+          created_at: string | null
+          id: string
+          lease_id: string
+          payment_id: string | null
+          reminder_type: string
+          sent_at: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string | null
+          id?: string
+          lease_id: string
+          payment_id?: string | null
+          reminder_type: string
+          sent_at?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string | null
+          id?: string
+          lease_id?: string
+          payment_id?: string | null
+          reminder_type?: string
+          sent_at?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_reminders_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "rent_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rr_tenant_lease_fk"
+            columns: ["tenant_id", "lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       renter_invites: {
         Row: {
           accepted_at: string | null
@@ -1492,6 +2328,141 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      scraper_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          investment_search_id: string | null
+          provider_id: string
+          result_count: number | null
+          started_at: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          investment_search_id?: string | null
+          provider_id: string
+          result_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          investment_search_id?: string | null
+          provider_id?: string
+          result_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraper_jobs_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scraper_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scraper_providers: {
+        Row: {
+          code: string
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          provider_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          provider_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          provider_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      scraper_results: {
+        Row: {
+          created_at: string | null
+          data: Json
+          external_id: string | null
+          id: string
+          job_id: string
+          processed: boolean | null
+          source_url: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json
+          external_id?: string | null
+          id?: string
+          job_id: string
+          processed?: boolean | null
+          source_url?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          external_id?: string | null
+          id?: string
+          job_id?: string
+          processed?: boolean | null
+          source_url?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraper_results_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scraper_results_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1847,7 +2818,25 @@ export type Database = {
         | "paid"
         | "cancelled"
       consent_status: "accepted" | "declined" | "withdrawn"
+      deal_stage:
+        | "lead"
+        | "qualified"
+        | "proposal"
+        | "negotiation"
+        | "reservation"
+        | "closing"
+        | "won"
+        | "lost"
       delegation_status: "active" | "revoked" | "expired"
+      finance_case_status:
+        | "draft"
+        | "collecting"
+        | "ready"
+        | "blocked"
+        | "exported"
+        | "submitted"
+        | "acknowledged"
+        | "failed"
       finance_package_status:
         | "draft"
         | "incomplete"
@@ -1858,6 +2847,21 @@ export type Database = {
       integration_status: "active" | "inactive" | "deprecated" | "pending_setup"
       integration_type: "integration" | "connector" | "edge_function" | "secret"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
+      lead_source:
+        | "zone1_pool"
+        | "meta_self"
+        | "meta_property"
+        | "referral"
+        | "manual"
+        | "kaufy_website"
+      lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
+      listing_status:
+        | "draft"
+        | "internal_review"
+        | "active"
+        | "reserved"
+        | "sold"
+        | "withdrawn"
       membership_role:
         | "platform_admin"
         | "org_admin"
@@ -1865,6 +2869,13 @@ export type Database = {
         | "sales_partner"
         | "renter_user"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
+      partner_verification_status:
+        | "pending"
+        | "documents_submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "expired"
       pipeline_stage:
         | "lead"
         | "qualified"
@@ -1875,6 +2886,12 @@ export type Database = {
         | "won"
         | "lost"
       plan_interval: "monthly" | "yearly"
+      publication_channel:
+        | "kaufy"
+        | "scout24"
+        | "kleinanzeigen"
+        | "partner_network"
+      publication_status: "pending" | "active" | "paused" | "expired" | "failed"
       subscription_status: "active" | "cancelled" | "past_due" | "trialing"
     }
     CompositeTypes: {
@@ -2011,7 +3028,27 @@ export const Constants = {
         "cancelled",
       ],
       consent_status: ["accepted", "declined", "withdrawn"],
+      deal_stage: [
+        "lead",
+        "qualified",
+        "proposal",
+        "negotiation",
+        "reservation",
+        "closing",
+        "won",
+        "lost",
+      ],
       delegation_status: ["active", "revoked", "expired"],
+      finance_case_status: [
+        "draft",
+        "collecting",
+        "ready",
+        "blocked",
+        "exported",
+        "submitted",
+        "acknowledged",
+        "failed",
+      ],
       finance_package_status: [
         "draft",
         "incomplete",
@@ -2023,6 +3060,23 @@ export const Constants = {
       integration_status: ["active", "inactive", "deprecated", "pending_setup"],
       integration_type: ["integration", "connector", "edge_function", "secret"],
       invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
+      lead_source: [
+        "zone1_pool",
+        "meta_self",
+        "meta_property",
+        "referral",
+        "manual",
+        "kaufy_website",
+      ],
+      lead_status: ["new", "contacted", "qualified", "converted", "lost"],
+      listing_status: [
+        "draft",
+        "internal_review",
+        "active",
+        "reserved",
+        "sold",
+        "withdrawn",
+      ],
       membership_role: [
         "platform_admin",
         "org_admin",
@@ -2031,6 +3085,14 @@ export const Constants = {
         "renter_user",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
+      partner_verification_status: [
+        "pending",
+        "documents_submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "expired",
+      ],
       pipeline_stage: [
         "lead",
         "qualified",
@@ -2042,6 +3104,13 @@ export const Constants = {
         "lost",
       ],
       plan_interval: ["monthly", "yearly"],
+      publication_channel: [
+        "kaufy",
+        "scout24",
+        "kleinanzeigen",
+        "partner_network",
+      ],
+      publication_status: ["pending", "active", "paused", "expired", "failed"],
       subscription_status: ["active", "cancelled", "past_due", "trialing"],
     },
   },
