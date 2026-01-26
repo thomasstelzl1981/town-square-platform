@@ -1835,12 +1835,63 @@ export type Database = {
           },
         ]
       }
+      msv_bank_accounts: {
+        Row: {
+          account_name: string
+          bank_name: string | null
+          created_at: string
+          finapi_account_id: string | null
+          iban: string
+          id: string
+          is_default: boolean | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          bank_name?: string | null
+          created_at?: string
+          finapi_account_id?: string | null
+          iban: string
+          id?: string
+          is_default?: boolean | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          bank_name?: string | null
+          created_at?: string
+          finapi_account_id?: string | null
+          iban?: string
+          id?: string
+          is_default?: boolean | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_bank_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       msv_communication_prefs: {
         Row: {
+          auto_reminder_enabled: boolean | null
+          auto_report_enabled: boolean | null
           created_at: string | null
           fallback_channel: string | null
           id: string
           preferred_channel: string
+          reminder_day: number | null
+          report_day: number | null
           require_confirmation: boolean | null
           scope_id: string
           scope_type: string
@@ -1848,10 +1899,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_reminder_enabled?: boolean | null
+          auto_report_enabled?: boolean | null
           created_at?: string | null
           fallback_channel?: string | null
           id?: string
           preferred_channel: string
+          reminder_day?: number | null
+          report_day?: number | null
           require_confirmation?: boolean | null
           scope_id: string
           scope_type: string
@@ -1859,10 +1914,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_reminder_enabled?: boolean | null
+          auto_report_enabled?: boolean | null
           created_at?: string | null
           fallback_channel?: string | null
           id?: string
           preferred_channel?: string
+          reminder_day?: number | null
+          report_day?: number | null
           require_confirmation?: boolean | null
           scope_id?: string
           scope_type?: string

@@ -39,7 +39,7 @@ const MSVPage = () => {
       <div ref={contentRef}>
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">{data?.title || 'Mietmanagement'}</h1>
-          <p className="text-muted-foreground">{data?.description || 'Mieter-Selbstverwaltung und Zahlungsübersicht'}</p>
+          <p className="text-muted-foreground">{data?.description || 'Mietsonderverwaltung – Zahlungen, Mahnungen und Mietberichte'}</p>
         </div>
 
         <Tabs value={currentSubTab} onValueChange={handleTabChange} className="space-y-4">

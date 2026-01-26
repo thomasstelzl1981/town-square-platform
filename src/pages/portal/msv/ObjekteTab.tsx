@@ -19,21 +19,57 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2 } from 'lucide-react';
+import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { LeaseFormDialog } from '@/components/msv/LeaseFormDialog';
 
-const ListenTab = () => {
+interface PropertyData {
+  id: string;
+  address: string;
+  code: string | null;
+}
+
+interface LeaseData {
+  id: string;
+  unit_id: string;
+  status: string;
+  monthly_rent: number;
+  start_date: string;
+  tenant_contact_id: string;
+}
+
+interface ContactData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+}
+
+interface UnitWithDetails {
+  id: string;
+  unit_number: string;
+  area_sqm: number | null;
+  property_id: string;
+  tenant_id: string;
+  properties: PropertyData | null;
+  lease: (LeaseData & { contact: ContactData | null }) | null;
+  kaltmiete: number;
+  nebenkosten: number;
+  vorauszahlung: number;
+  warmmiete: number;
+}
+
+const ObjekteTab = () => {
   const navigate = useNavigate();
   const [templateWizardOpen, setTemplateWizardOpen] = useState(false);
   const [leaseFormOpen, setLeaseFormOpen] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState<any>(null);
+  const [selectedUnit, setSelectedUnit] = useState<UnitWithDetails | null>(null);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
   const [search, setSearch] = useState('');
 
   const { data: units, isLoading } = useQuery({
-    queryKey: ['msv-units-list'],
+    queryKey: ['msv-objekte-list'],
     queryFn: async () => {
       const { data: unitsData, error } = await supabase
         .from('units')
@@ -53,7 +89,7 @@ const ListenTab = () => {
 
       if (error) throw error;
 
-      // Fetch leases separately
+      // Fetch active leases
       const { data: leasesData } = await supabase
         .from('leases')
         .select(`
@@ -71,24 +107,41 @@ const ListenTab = () => {
       const { data: contactsData } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, email')
-        .in('id', contactIds);
+        .in('id', contactIds.length > 0 ? contactIds : ['00000000-0000-0000-0000-000000000000']);
 
-      const contactMap = new Map();
+      const contactMap = new Map<string, ContactData>();
       contactsData?.forEach(c => contactMap.set(c.id, c));
 
       // Map leases to units
-      const leaseMap = new Map();
+      const leaseMap = new Map<string, LeaseData & { contact: ContactData | null }>();
       leasesData?.forEach(lease => {
         leaseMap.set(lease.unit_id, {
           ...lease,
-          contacts: contactMap.get(lease.tenant_contact_id)
+          contact: contactMap.get(lease.tenant_contact_id) || null
         });
       });
 
-      return unitsData?.map(unit => ({
-        ...unit,
-        lease: leaseMap.get(unit.id) || null
-      })) || [];
+      // Build unit data with calculated rent components
+      return unitsData?.map(unit => {
+        const lease = leaseMap.get(unit.id) || null;
+        
+        // For now, use monthly_rent as Kaltmiete
+        // In future: fetch from lease_components table
+        const kaltmiete = lease?.monthly_rent || 0;
+        const nebenkosten = 0; // TODO: from lease_components (type=utilities)
+        const vorauszahlung = 0; // TODO: from lease_components (type=prepayment)
+        const warmmiete = kaltmiete + nebenkosten + vorauszahlung;
+
+        return {
+          ...unit,
+          properties: unit.properties as unknown as PropertyData | null,
+          lease,
+          kaltmiete,
+          nebenkosten,
+          vorauszahlung,
+          warmmiete
+        };
+      }) || [];
     }
   });
 
@@ -97,12 +150,13 @@ const ListenTab = () => {
     const searchLower = search.toLowerCase();
     return (
       u.properties?.address?.toLowerCase().includes(searchLower) ||
+      u.properties?.code?.toLowerCase().includes(searchLower) ||
       u.unit_number?.toLowerCase().includes(searchLower) ||
-      u.lease?.contacts?.last_name?.toLowerCase().includes(searchLower)
+      u.lease?.contact?.last_name?.toLowerCase().includes(searchLower)
     );
   });
 
-  const handleAction = (action: string, unit: any) => {
+  const handleAction = (action: string, unit: UnitWithDetails) => {
     setSelectedUnit(unit);
     
     switch (action) {
@@ -118,6 +172,10 @@ const ListenTab = () => {
         setSelectedTemplateCode('DATENANFORDERUNG');
         setTemplateWizardOpen(true);
         break;
+      case 'mahnung':
+        setSelectedTemplateCode('MAHNUNG');
+        setTemplateWizardOpen(true);
+        break;
       case 'lease':
         setLeaseFormOpen(true);
         break;
@@ -127,87 +185,89 @@ const ListenTab = () => {
     }
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  };
+
   return (
     <div className="space-y-4">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Objekte durchsuchen..."
+          placeholder="Objekte durchsuchen (Adresse, Code, Mieter)..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
         />
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Objekt</TableHead>
-              <TableHead>Einheit</TableHead>
-              <TableHead>Mieter</TableHead>
-              <TableHead>Miete</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="min-w-[80px]">Objekt-ID</TableHead>
+              <TableHead className="min-w-[180px]">Objektadresse</TableHead>
+              <TableHead className="min-w-[140px]">Mieter</TableHead>
+              <TableHead className="min-w-[100px] text-right">Kaltmiete</TableHead>
+              <TableHead className="min-w-[100px] text-right">Nebenkosten</TableHead>
+              <TableHead className="min-w-[100px] text-right">Vorauszahlung</TableHead>
+              <TableHead className="min-w-[100px] text-right">Warmmiete</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : filteredUnits?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  Keine Einheiten gefunden
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  Keine Objekte gefunden
                 </TableCell>
               </TableRow>
             ) : (
               filteredUnits?.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium">{row.properties?.address || '—'}</p>
-                      {row.properties?.code && (
-                        <p className="text-xs text-muted-foreground">{row.properties.code}</p>
-                      )}
+                    <div className="font-mono text-xs">
+                      {row.properties?.code || row.unit_number}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{row.unit_number}</p>
-                      <p className="text-xs text-muted-foreground">{row.area_sqm} m²</p>
+                      <p className="font-medium">{row.properties?.address || '—'}</p>
+                      <p className="text-xs text-muted-foreground">{row.unit_number} · {row.area_sqm || '—'} m²</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     {!row.lease ? (
-                      <Badge variant="outline" className="text-status-warning">Leerstand</Badge>
+                      <Badge variant="outline" className="text-status-warning border-status-warning/30">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Leerstand
+                      </Badge>
                     ) : (
                       <div>
                         <p className="font-medium">
-                          {row.lease.contacts?.first_name} {row.lease.contacts?.last_name}
+                          {row.lease.contact?.last_name}, {row.lease.contact?.first_name}
                         </p>
-                        <p className="text-xs text-muted-foreground">{row.lease.contacts?.email}</p>
+                        <p className="text-xs text-muted-foreground">{row.lease.contact?.email || '—'}</p>
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      {row.lease?.monthly_rent 
-                        ? `${row.lease.monthly_rent.toLocaleString('de-DE')} €` 
-                        : '—'}
-                    </span>
+                  <TableCell className="text-right font-medium">
+                    {row.kaltmiete > 0 ? formatCurrency(row.kaltmiete) : '—'}
                   </TableCell>
-                  <TableCell>
-                    {!row.lease ? (
-                      <Badge variant="secondary">Leer</Badge>
-                    ) : (
-                      <Badge variant="default" className="bg-status-success">
-                        Aktiv
-                      </Badge>
-                    )}
+                  <TableCell className="text-right text-muted-foreground">
+                    {row.nebenkosten > 0 ? formatCurrency(row.nebenkosten) : '—'}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {row.vorauszahlung > 0 ? formatCurrency(row.vorauszahlung) : '—'}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {row.warmmiete > 0 ? formatCurrency(row.warmmiete) : '—'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -219,6 +279,10 @@ const ListenTab = () => {
                       <DropdownMenuContent align="end">
                         {row.lease ? (
                           <>
+                            <DropdownMenuItem onClick={() => handleAction('mahnung', row)}>
+                              <AlertTriangle className="h-4 w-4 mr-2" />
+                              Mahnung erstellen
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleAction('kuendigung', row)}>
                               <FileText className="h-4 w-4 mr-2" />
                               Kündigung schreiben
@@ -273,4 +337,4 @@ const ListenTab = () => {
   );
 };
 
-export default ListenTab;
+export default ObjekteTab;
