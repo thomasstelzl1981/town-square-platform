@@ -2,7 +2,7 @@
 SYSTEM OF A TOWN — MASTER SNAPSHOT
 ================================================================================
 Datum: 2026-01-26
-Version: v3.0 (10-Modul-Architektur)
+Version: v4.0 (10-Modul-Architektur COMPLETE)
 Status: FROZEN (Planungsphase abgeschlossen, bereit für Implementierung)
 ================================================================================
 
@@ -19,6 +19,7 @@ BEGRIFFE:
 │ SoT                 │ Abkürzung für System of a Town                         │
 │ Kaufy (mit y)       │ Marktplatz-Marke (Zone 3) + Channel/Source in Zone 2   │
 │ Miety               │ Mieter-App (Renter Portal) — Andockpunkt, nicht bauen  │
+│ Future Room         │ Externes Finanzierungs-Zielsystem (Handoff aus MOD-07) │
 └─────────────────────┴────────────────────────────────────────────────────────┘
 
 MARKENLOGIK:
@@ -60,7 +61,7 @@ ZONE 2 — USER PORTALS (10 Module)
 ├── MOD-04: Immobilien          /portal/immobilien
 ├── MOD-05: MSV                 /portal/msv
 ├── MOD-06: Verkauf             /portal/verkauf
-├── MOD-07: Finanzierung        /portal/finanzierung
+├── MOD-07: Finanzierung        /portal/finanzierung     [NEU COMPLETE]
 ├── MOD-08: Investment-Suche    /portal/investments
 ├── MOD-09: Vertriebspartner    /portal/vertriebspartner  [ADDON]
 └── MOD-10: Leadgenerierung     /portal/leads             [ADDON]
@@ -79,23 +80,23 @@ KERNOBJEKTE (Zonenübergreifend):
 └── Contact
 
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 3: MODULKATALOG (10 Module)
+TEIL 3: MODULKATALOG (10 Module COMPLETE)
 ────────────────────────────────────────────────────────────────────────────────
 
-┌─────┬─────────────────────────┬──────────┬────────────┬────────────────────────┐
-│ MOD │ Name                    │ Typ      │ Sichtbar   │ Route-Prefix           │
-├─────┼─────────────────────────┼──────────┼────────────┼────────────────────────┤
-│ 01  │ Stammdaten              │ Core     │ Alle       │ /portal/stammdaten     │
-│ 02  │ KI Office               │ Core     │ Alle       │ /portal/office         │
-│ 03  │ DMS                     │ Core     │ Alle       │ /portal/dms            │
-│ 04  │ Immobilien              │ Core     │ Alle       │ /portal/immobilien     │
-│ 05  │ MSV                     │ Freemium │ Alle       │ /portal/msv            │
-│ 06  │ Verkauf                 │ Standard │ Alle       │ /portal/verkauf        │
-│ 07  │ Finanzierung            │ Standard │ Alle       │ /portal/finanzierung   │
-│ 08  │ Investment-Suche/Ankauf │ Standard │ Alle       │ /portal/investments    │
-│ 09  │ Vertriebspartner        │ Addon    │ Kaufy      │ /portal/vertriebspartner│
-│ 10  │ Leadgenerierung         │ Addon    │ Kaufy      │ /portal/leads          │
-└─────┴─────────────────────────┴──────────┴────────────┴────────────────────────┘
+┌─────┬─────────────────────────┬──────────┬────────────┬────────────────────────┬────────────┐
+│ MOD │ Name                    │ Typ      │ Sichtbar   │ Route-Prefix           │ Spec-Status│
+├─────┼─────────────────────────┼──────────┼────────────┼────────────────────────┼────────────┤
+│ 01  │ Stammdaten              │ Core     │ Alle       │ /portal/stammdaten     │ COMPLETE   │
+│ 02  │ KI Office               │ Core     │ Alle       │ /portal/office         │ COMPLETE   │
+│ 03  │ DMS                     │ Core     │ Alle       │ /portal/dms            │ COMPLETE   │
+│ 04  │ Immobilien              │ Core     │ Alle       │ /portal/immobilien     │ COMPLETE   │
+│ 05  │ MSV                     │ Freemium │ Alle       │ /portal/msv            │ COMPLETE   │
+│ 06  │ Verkauf                 │ Standard │ Alle       │ /portal/verkauf        │ COMPLETE   │
+│ 07  │ Finanzierung            │ Standard │ Alle       │ /portal/finanzierung   │ COMPLETE   │
+│ 08  │ Investment-Suche/Ankauf │ Standard │ Alle       │ /portal/investments    │ COMPLETE   │
+│ 09  │ Vertriebspartner        │ Addon    │ Kaufy      │ /portal/vertriebspartner│ COMPLETE  │
+│ 10  │ Leadgenerierung         │ Addon    │ Kaufy      │ /portal/leads          │ COMPLETE   │
+└─────┴─────────────────────────┴──────────┴────────────┴────────────────────────┴────────────┘
 
 ────────────────────────────────────────────────────────────────────────────────
 TEIL 4: MOD-06 VERKAUF — PUBLISHING CHANNELS
@@ -123,7 +124,43 @@ CONSENT CODES:
 • COMMISSION_AGREEMENT — Provisionsvereinbarung
 
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 5: MOD-08 INVESTMENT-SUCHE / ANKAUF
+TEIL 5: MOD-07 FINANZIERUNG (NEU COMPLETE)
+────────────────────────────────────────────────────────────────────────────────
+
+ZWECK:
+Strukturierte Erstellung von Finanzierungsfällen (Cases), Dokumenten-Sammlung,
+Readiness-Prüfung und Handoff an externes System "Future Room".
+
+SCREENS:
+┌────────────────────────────────────────┬──────────────────┬────────────────────────┐
+│ Route                                  │ UI-Label         │ Beschreibung           │
+├────────────────────────────────────────┼──────────────────┼────────────────────────┤
+│ /portal/finanzierung                   │ Dashboard        │ KPIs, offene Cases     │
+│ /portal/finanzierung/faelle            │ Fälle            │ Case-Liste + Filter    │
+│ /portal/finanzierung/faelle/:id        │ Case Detail      │ Tabs: Daten/Docs/Export│
+│ /portal/finanzierung/dokumente         │ Dokumente        │ Checklist, DMS-Links   │
+│ /portal/finanzierung/einstellungen     │ Einstellungen    │ Templates, Regeln      │
+└────────────────────────────────────────┴──────────────────┴────────────────────────┘
+
+DATENMODELL:
+• finance_cases — Finanzierungsfälle (draft → submitted → acknowledged)
+• finance_case_parties — Beteiligte (borrower, co_borrower, guarantor)
+• finance_case_documents — Dokument-Checklist mit Status
+• finance_readiness_snapshots — Vollständigkeitsprüfung
+• finance_exports — Export-Bundles (PDF, ZIP)
+• finance_handoffs — Übergabe an Future Room
+
+STATUS-MASCHINE:
+draft → collecting → ready → exported → submitted → acknowledged
+                  ↘ blocked (fehlende Pflichtdokumente)
+
+CONSENT GATES:
+• FINANCING_SUBMISSION_ACK — Datenweitergabe an Future Room
+
+API-RANGE: API-600 bis API-699
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 6: MOD-08 INVESTMENT-SUCHE / ANKAUF
 ────────────────────────────────────────────────────────────────────────────────
 
 SOURCES (Multi-Source-Suche):
@@ -146,8 +183,10 @@ SCREENS:
 • Mandat: /portal/investments/mandat (Placeholder)
 • Simulation: /portal/investments/simulation
 
+API-RANGE: API-400 bis API-499
+
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 6: MOD-09 VERTRIEBSPARTNER (VOLLSTÄNDIGES MODUL)
+TEIL 7: MOD-09 VERTRIEBSPARTNER (VOLLSTÄNDIGES MODUL)
 ────────────────────────────────────────────────────────────────────────────────
 
 SCREENS (Route → UI-Label):
@@ -163,8 +202,10 @@ SCREENS (Route → UI-Label):
 
 WICHTIG: MOD-09 ist ein VOLLSTÄNDIGES Partner-Modul, NICHT auf "nur Objektkatalog" reduziert.
 
+API-RANGE: API-300 bis API-399
+
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 7: MOD-10 LEADGENERIERUNG
+TEIL 8: MOD-10 LEADGENERIERUNG (COMPLETE v2.0)
 ────────────────────────────────────────────────────────────────────────────────
 
 FLOW:
@@ -174,33 +215,58 @@ LEAD-SPLIT (FROZEN):
 • Platform-Anteil: 1/3 der Provision
 • Partner-Anteil: 2/3 der Provision
 
+META-ADS SELBSTBUCHUNG (NEU):
+• Partner kann selbst Meta-Werbung buchen (Kapitalanlage-Immobilien)
+• Leads aus eigener Kampagne: 100% Partner (kein Split)
+• Kosten: Partner zahlt direkt an Meta
+• Objektbezogene Werbung: Phase 2
+
 SCREENS:
-• Dashboard: /portal/leads
-• Inbox: /portal/leads/inbox
-• Pipeline: /portal/leads/pipeline
-• Quellen: /portal/leads/sources
-• Reports: /portal/leads/reports
+┌────────────────────────────────────┬──────────────────┬────────────────────────┐
+│ Route                              │ UI-Label         │ Beschreibung           │
+├────────────────────────────────────┼──────────────────┼────────────────────────┤
+│ /portal/leads                      │ Dashboard        │ Lead-KPIs              │
+│ /portal/leads/inbox                │ Inbox            │ Pool-Leads (zugewiesen)│
+│ /portal/leads/meine-leads          │ Meine Leads      │ Eigene Meta-Leads      │
+│ /portal/leads/pipeline             │ Pipeline         │ Deal-Kanban            │
+│ /portal/leads/werbung              │ Werbung          │ Meta-Ads Buchung       │
+│ /portal/leads/sources              │ Quellen          │ Lead-Quellen-Analyse   │
+│ /portal/leads/reports              │ Reports          │ Konversions-Reports    │
+└────────────────────────────────────┴──────────────────┴────────────────────────┘
+
+LEAD-QUELLEN:
+┌───────────────┬────────────────────────────────────────────────────────────────┐
+│ Source        │ Beschreibung                                                   │
+├───────────────┼────────────────────────────────────────────────────────────────┤
+│ zone1_pool    │ Aus Admin-Pool zugewiesene Leads (1/3:2/3 Split)              │
+│ meta_self     │ Eigene Meta-Kampagne (100% Partner)                           │
+│ meta_property │ Objektbezogene Werbung (Phase 2)                              │
+│ referral      │ Empfehlung                                                     │
+│ manual        │ Manuell erfasst                                               │
+└───────────────┴────────────────────────────────────────────────────────────────┘
+
+API-RANGE: API-500 bis API-599
 
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 8: API-NUMMERNKREISE
+TEIL 9: API-NUMMERNKREISE (COMPLETE)
 ────────────────────────────────────────────────────────────────────────────────
 
-┌────────────────┬─────────────────────────────────────┐
-│ Range          │ Modul/Bereich                       │
-├────────────────┼─────────────────────────────────────┤
-│ API-001..099   │ Backbone (Auth, Profiles)           │
-│ API-100..199   │ Zone 1 (Admin)                      │
-│ API-200..299   │ MOD-06 Verkauf                      │
-│ API-300..399   │ MOD-09 Vertriebspartner             │
-│ API-400..499   │ MOD-08 Investment-Suche             │
-│ API-500..599   │ MOD-10 Leadgenerierung              │
-│ API-600..699   │ MOD-07 Finanzierung                 │
-│ API-700..799   │ MOD-04 Immobilien                   │
-│ API-800..899   │ MOD-05 MSV                          │
-└────────────────┴─────────────────────────────────────┘
+┌────────────────┬─────────────────────────────────────┬────────────────────────┐
+│ Range          │ Modul/Bereich                       │ Status                 │
+├────────────────┼─────────────────────────────────────┼────────────────────────┤
+│ API-001..099   │ Backbone (Auth, Profiles)           │ SPEC                   │
+│ API-100..199   │ Zone 1 (Admin)                      │ SPEC                   │
+│ API-200..299   │ MOD-06 Verkauf                      │ COMPLETE               │
+│ API-300..399   │ MOD-09 Vertriebspartner             │ COMPLETE               │
+│ API-400..499   │ MOD-08 Investment-Suche             │ COMPLETE               │
+│ API-500..599   │ MOD-10 Leadgenerierung              │ COMPLETE               │
+│ API-600..699   │ MOD-07 Finanzierung                 │ COMPLETE               │
+│ API-700..799   │ MOD-04 Immobilien                   │ SPEC                   │
+│ API-800..899   │ MOD-05 MSV                          │ SPEC                   │
+└────────────────┴─────────────────────────────────────┴────────────────────────┘
 
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 9: FREEZE CANDIDATES (P0)
+TEIL 10: FREEZE CANDIDATES (P0) — ALLE FROZEN
 ────────────────────────────────────────────────────────────────────────────────
 
 ✅ FROZEN:
@@ -211,51 +277,152 @@ TEIL 9: FREEZE CANDIDATES (P0)
 5. Partner-Provision — 5-15% + 2.000€ Systemgebühr
 6. Lead-Split — 1/3 Platform : 2/3 Partner
 7. MOD-09 Scope — Vollständiges Partner-Modul
-
-⏳ PENDING:
-• MOD-07 Finanzierung — Spec in Arbeit
-
-────────────────────────────────────────────────────────────────────────────────
-TEIL 10: NÄCHSTE SCHRITTE
-────────────────────────────────────────────────────────────────────────────────
-
-1. MOD-07 Finanzierung spezifizieren
-2. App.tsx Routes aktualisieren (dynamische Routes für alle 10 Module)
-3. tile_catalog Einträge für MOD-08, 09, 10 prüfen/ergänzen
-4. DB-Schema für neue Tabellen erstellen (listings, favorites, partner_selections)
-5. Investment Engine Edge Function implementieren
-6. Consent-Templates für alle FROZEN Consents anlegen
+8. MOD-07 Finanzierung — Handoff zu Future Room
+9. MOD-10 Meta-Ads — Partner-Selbstbuchung + Pool-Zuweisung
+10. API-Nummernkreise — Keine Überschneidungen
 
 ────────────────────────────────────────────────────────────────────────────────
-TEIL 11: DOKUMENT-REFERENZEN
+TEIL 11: CROSS-MODULE ABHÄNGIGKEITEN
 ────────────────────────────────────────────────────────────────────────────────
 
-Architekturdokumente:
-• docs/architecture/A1_SystemOverview.md — Systemübersicht (10 Module)
-• docs/architecture/A2_Zone1_Admin_Governance.md — Zone 1 Governance
-• docs/architecture/A3_Zone2_ModuleStructure.md — Zone 2 Modulstruktur
-• docs/architecture/ARCHITEKTUR_UPDATE_10MODULE_2026-01-25.md — Architektur-Entscheidung
+┌─────────┬─────────────────────────────────────────────────────────────────────┐
+│ Modul   │ Abhängigkeiten (READ/WRITE)                                        │
+├─────────┼─────────────────────────────────────────────────────────────────────┤
+│ MOD-01  │ Backbone (profiles, organizations, memberships)                    │
+│ MOD-02  │ MOD-01 (Absender), MOD-03 (Archivieren), Backbone (contacts)      │
+│ MOD-03  │ MOD-01 (Tenant), Backbone (documents)                             │
+│ MOD-04  │ MOD-03 (DMS), MOD-01 (Contacts), Backbone (properties, units)     │
+│ MOD-05  │ MOD-04 (Properties), MOD-01 (Contacts/Mieter)                     │
+│ MOD-06  │ MOD-04 (Properties), MOD-01 (Contacts), MOD-03 (Exposé-Docs)      │
+│ MOD-07  │ MOD-04 (Properties), MOD-05 (Rent), MOD-03 (Docs), MOD-01 (Parties)│
+│ MOD-08  │ MOD-06 (Listings), MOD-01 (Contacts), Zone 3 (Kaufy Favorites)    │
+│ MOD-09  │ MOD-06 (Listings), MOD-08 (Simulations), MOD-01 (Contacts)        │
+│ MOD-10  │ MOD-09 (Partner), MOD-06 (Listings), Zone 1 (Pool), Meta API      │
+└─────────┴─────────────────────────────────────────────────────────────────────┘
 
-Modulspezifikationen:
-• docs/modules/MOD-01_STAMMDATEN.md
-• docs/modules/MOD-02_KI_OFFICE.md
-• docs/modules/MOD-03_DMS.md
-• docs/modules/MOD-04_IMMOBILIEN.md
-• docs/modules/MOD-05_MSV.md
-• docs/modules/MOD-06_VERKAUF.md
-• docs/modules/MOD-08_INVESTMENTS.md
-• docs/modules/MOD-09_VERTRIEBSPARTNER.md
-• docs/modules/MOD-10_LEADGENERIERUNG.md
+────────────────────────────────────────────────────────────────────────────────
+TEIL 12: DATENMODELL-ÜBERSICHT (TABELLEN-OWNER)
+────────────────────────────────────────────────────────────────────────────────
 
-Diagramme:
-• docs/presentation/SYSTEM_DIAGRAM.md — Alle Mermaid-Flows
+BACKBONE / CORE:
+• profiles, organizations, memberships
+• contacts, communication_events
+• documents, document_links
+• agreement_templates, user_consents
+• audit_events
 
-Open Questions:
-• docs/modules/ZONE2_OPEN_QUESTIONS.md
+MOD-04 IMMOBILIEN (SoT für Properties):
+• properties, units, property_features, property_financing
 
-Blueprint:
-• MODULE_BLUEPRINT.md — Modul-Matrix und Routes
+MOD-05 MSV:
+• leases, rent_payments, rent_reminders, renter_invites
+
+MOD-06 VERKAUF:
+• listings, listing_channels, inquiries, reservations, transactions
+
+MOD-07 FINANZIERUNG:
+• finance_cases, finance_case_parties, finance_case_documents
+• finance_readiness_snapshots, finance_exports, finance_handoffs
+
+MOD-08 INVESTMENT-SUCHE:
+• investment_profiles, favorites, investment_searches
+
+MOD-09 VERTRIEBSPARTNER:
+• partner_selections, partner_pipelines, commissions
+
+MOD-10 LEADGENERIERUNG:
+• leads, lead_assignments, partner_deals, lead_activities
+• ad_campaigns, ad_campaign_leads
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 13: CONSENT GATES (VOLLSTÄNDIG)
+────────────────────────────────────────────────────────────────────────────────
+
+┌────────────────────────────────┬─────────┬────────────────────────────────────┐
+│ Consent Code                   │ Modul   │ Trigger                            │
+├────────────────────────────────┼─────────┼────────────────────────────────────┤
+│ SALES_MANDATE                  │ MOD-06  │ Listing-Erstellung                 │
+│ PARTNER_RELEASE                │ MOD-06  │ Partner-Netzwerk-Freigabe          │
+│ SYSTEM_SUCCESS_FEE_2000        │ MOD-06  │ Erfolgsgebühr bei Closing          │
+│ COMMISSION_AGREEMENT           │ MOD-09  │ Provisionsvereinbarung             │
+│ FINANCING_SUBMISSION_ACK       │ MOD-07  │ Handoff an Future Room             │
+│ FINANCING_DATA_PROCESSING      │ MOD-07  │ Case-Erstellung (optional)         │
+│ LEAD_SPLIT_AGREEMENT           │ MOD-10  │ Pool-Lead Akzeptanz                │
+│ META_ADS_TOS                   │ MOD-10  │ Erste Meta-Kampagne                │
+│ DATA_SHARING_FUTURE_ROOM       │ MOD-07  │ Externe Datenweitergabe            │
+└────────────────────────────────┴─────────┴────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 14: NÄCHSTE SCHRITTE (IMPLEMENTATION)
+────────────────────────────────────────────────────────────────────────────────
+
+PRIORITÄT 0 (Immediate):
+1. App.tsx Routes für alle 10 Module aktualisieren
+2. tile_catalog Einträge für MOD-07, 08, 09, 10 prüfen/ergänzen
+3. DB-Schema für finance_cases, finance_exports, finance_handoffs erstellen
+4. DB-Schema für leads, ad_campaigns, partner_deals erstellen
+
+PRIORITÄT 1 (Core):
+5. MOD-07 Finanzierung UI implementieren (5 Screens)
+6. MOD-10 Leadgenerierung UI implementieren (7 Screens)
+7. Readiness-Engine für MOD-07 entwickeln
+8. Investment Engine Edge Function implementieren
+
+PRIORITÄT 2 (Integration):
+9. Meta Ads API Integration (Managed Ads)
+10. Future Room Handoff-Schnittstelle
+11. Zone 1 Lead Pool Management UI
+12. Consent Gate UI-Komponenten
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 15: OPEN QUESTIONS (MIT EMPFEHLUNGEN)
+────────────────────────────────────────────────────────────────────────────────
+
+MOD-07 FINANZIERUNG:
+┌───────┬───────────────────────────────────────────┬─────────────────────────────┐
+│ Q-ID  │ Frage                                     │ Empfehlung                  │
+├───────┼───────────────────────────────────────────┼─────────────────────────────┤
+│ FR-1  │ Handoff-Methode: download/link/api?      │ Download (Phase 1)          │
+│ FR-2  │ Mindestfelder im Manifest?               │ Standard-Set definiert      │
+│ FR-3  │ Dokumenttypen je Case-Type?              │ Matrix in Spec              │
+│ FR-4  │ Mehrere Borrower (joint)?                │ Ja, via finance_case_parties│
+│ FR-5  │ Exportformate?                           │ PDF + ZIP (Phase 1)         │
+└───────┴───────────────────────────────────────────┴─────────────────────────────┘
+
+MOD-10 LEADGENERIERUNG:
+┌───────┬───────────────────────────────────────────┬─────────────────────────────┐
+│ Q-ID  │ Frage                                     │ Empfehlung                  │
+├───────┼───────────────────────────────────────────┼─────────────────────────────┤
+│ Q10.3 │ Lead-Timeout bei Nicht-Akzeptanz?        │ 48h, dann re-assign         │
+│ Q10.4 │ Lead-Kosten für Partner?                 │ Kostenlos, nur Split        │
+│ Q10.5 │ Meta API Integration Scope?              │ Managed Ads (Plattform bucht│
+│ Q10.6 │ Kampagnen-Templates?                     │ 3-5 Standard-Templates      │
+└───────┴───────────────────────────────────────────┴─────────────────────────────┘
 
 ================================================================================
-ENDE DES MASTER SNAPSHOTS
+DOKUMENT-REFERENZEN
+================================================================================
+
+docs/modules/MOD-01_STAMMDATEN.md
+docs/modules/MOD-02_KI_OFFICE.md
+docs/modules/MOD-03_DMS.md
+docs/modules/MOD-04_IMMOBILIEN.md
+docs/modules/MOD-05_MSV.md
+docs/modules/MOD-06_VERKAUF.md
+docs/modules/MOD-07_FINANZIERUNG.md        ← NEU COMPLETE
+docs/modules/MOD-08_INVESTMENTS.md
+docs/modules/MOD-09_VERTRIEBSPARTNER.md
+docs/modules/MOD-10_LEADGENERIERUNG.md     ← UPDATED v2.0
+
+docs/architecture/A1_SystemOverview.md
+docs/architecture/A2_Zone1_Admin_Governance.md
+docs/architecture/A3_Zone2_ModuleStructure.md
+docs/presentation/SYSTEM_DIAGRAM.md
+
+MODULE_BLUEPRINT.md
+INTERFACES.md
+DECISIONS.md
+
+================================================================================
+END OF MASTER SNAPSHOT v4.0
 ================================================================================

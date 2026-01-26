@@ -52,16 +52,16 @@
 
 | MOD | Name | Typ | Sichtbarkeit | Route-Prefix | Spec-Status |
 |-----|------|-----|--------------|--------------|-------------|
-| 01 | Stammdaten | Core | Alle | `/portal/stammdaten` | SPEC |
-| 02 | KI Office | Core | Alle | `/portal/office` | SPEC |
-| 03 | DMS | Core | Alle | `/portal/dms` | SPEC |
-| 04 | Immobilien | Core | Alle | `/portal/immobilien` | SPEC |
-| 05 | MSV | Freemium | Alle | `/portal/msv` | SPEC |
+| 01 | Stammdaten | Core | Alle | `/portal/stammdaten` | COMPLETE |
+| 02 | KI Office | Core | Alle | `/portal/office` | COMPLETE |
+| 03 | DMS | Core | Alle | `/portal/dms` | COMPLETE |
+| 04 | Immobilien | Core | Alle | `/portal/immobilien` | COMPLETE |
+| 05 | MSV | Freemium | Alle | `/portal/msv` | COMPLETE |
 | 06 | Verkauf | Standard | Alle | `/portal/verkauf` | COMPLETE |
-| 07 | Finanzierung | Standard | Alle | `/portal/finanzierung` | PENDING |
+| 07 | Finanzierung | Standard | Alle | `/portal/finanzierung` | COMPLETE |
 | 08 | Investment-Suche / Ankauf | Standard | Alle | `/portal/investments` | COMPLETE |
 | 09 | Vertriebspartner | Addon | Kaufy-Registrierte | `/portal/vertriebspartner` | COMPLETE |
-| 10 | Leadgenerierung | Addon | Kaufy-Registrierte | `/portal/leads` | PLACEHOLDER |
+| 10 | Leadgenerierung | Addon | Kaufy-Registrierte | `/portal/leads` | COMPLETE |
 
 ### Sichtbarkeitsregeln (FROZEN)
 
