@@ -346,7 +346,13 @@ Zentrale Tabelle für alle Kommunikations-Ereignisse (Audit + History).
 |-------|--------------|
 | MOD-01 | Absender-Identität für Briefe (Profil, Firma) |
 | MOD-03 | "Archivieren zu DMS" Action |
-| MOD-04+ | `contacts` als Backbone-Object |
+| MOD-04 Immobilien | `contacts` als Backbone-Object |
+| MOD-05 MSV | Kommunikation mit Mietern |
+| MOD-06 Verkauf | Korrespondenz mit Interessenten |
+| MOD-07 Finanzierung | Dokumente für Finance Packages |
+| MOD-08 Investment-Suche | Notizen zu Favoriten |
+| MOD-09 Vertriebspartner | Partner-Kommunikation |
+| MOD-10 Leadgenerierung | Lead-Ansprache |
 | Zone 1 | `integration_registry` für Mail-Connector-Definitionen |
 
 ---
