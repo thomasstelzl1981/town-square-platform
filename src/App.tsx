@@ -53,6 +53,30 @@ import PropertyForm from "./pages/portfolio/PropertyForm";
 // Presentation (non-guessable URL)
 import PresentationPage from "./pages/presentation/PresentationPage";
 
+// Zone 3: Kaufy Website
+import KaufyLayout from "./pages/zone3/kaufy/KaufyLayout";
+import KaufyHome from "./pages/zone3/kaufy/KaufyHome";
+import KaufyVermieter from "./pages/zone3/kaufy/KaufyVermieter";
+import KaufyVerkaeufer from "./pages/zone3/kaufy/KaufyVerkaeufer";
+import KaufyVertrieb from "./pages/zone3/kaufy/KaufyVertrieb";
+import KaufyBeratung from "./pages/zone3/kaufy/KaufyBeratung";
+import KaufyMeety from "./pages/zone3/kaufy/KaufyMeety";
+
+// Zone 3: Miety Website
+import MietyLayout from "./pages/zone3/miety/MietyLayout";
+import MietyHome from "./pages/zone3/miety/MietyHome";
+import MietyLeistungen from "./pages/zone3/miety/MietyLeistungen";
+import MietyVermieter from "./pages/zone3/miety/MietyVermieter";
+import MietyApp from "./pages/zone3/miety/MietyApp";
+import MietyPreise from "./pages/zone3/miety/MietyPreise";
+import MietySoFunktioniert from "./pages/zone3/miety/MietySoFunktioniert";
+import MietyKontakt from "./pages/zone3/miety/MietyKontakt";
+import MietyRegistrieren from "./pages/zone3/miety/MietyRegistrieren";
+
+// Zone 3: System of a Town Website
+import SotLayout from "./pages/zone3/sot/SotLayout";
+import SotHome from "./pages/zone3/sot/SotHome";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -173,6 +197,33 @@ const App = () => (
 
             {/* Presentation Page (non-guessable URL for demos) */}
             <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
+
+            {/* Zone 3: Kaufy Website */}
+            <Route path="/kaufy" element={<KaufyLayout />}>
+              <Route index element={<KaufyHome />} />
+              <Route path="vermieter" element={<KaufyVermieter />} />
+              <Route path="verkaeufer" element={<KaufyVerkaeufer />} />
+              <Route path="vertrieb" element={<KaufyVertrieb />} />
+              <Route path="beratung" element={<KaufyBeratung />} />
+              <Route path="meety" element={<KaufyMeety />} />
+            </Route>
+
+            {/* Zone 3: Miety Website */}
+            <Route path="/miety" element={<MietyLayout />}>
+              <Route index element={<MietyHome />} />
+              <Route path="leistungen" element={<MietyLeistungen />} />
+              <Route path="vermieter" element={<MietyVermieter />} />
+              <Route path="app" element={<MietyApp />} />
+              <Route path="preise" element={<MietyPreise />} />
+              <Route path="so-funktioniert" element={<MietySoFunktioniert />} />
+              <Route path="kontakt" element={<MietyKontakt />} />
+              <Route path="registrieren" element={<MietyRegistrieren />} />
+            </Route>
+
+            {/* Zone 3: System of a Town Website */}
+            <Route path="/sot" element={<SotLayout />}>
+              <Route index element={<SotHome />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
