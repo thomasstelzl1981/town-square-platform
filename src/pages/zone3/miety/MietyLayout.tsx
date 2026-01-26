@@ -8,7 +8,7 @@ const navItems = [
   { href: '/miety/vermieter', label: 'Für Vermieter' },
   { href: '/miety/app', label: 'Miety-App' },
   { href: '/miety/preise', label: 'Preise' },
-  { href: '/miety/so-funktioniert', label: 'So funktioniert Miety' },
+  { href: '/miety/invite', label: 'Einladung' },
 ];
 
 export default function MietyLayout() {

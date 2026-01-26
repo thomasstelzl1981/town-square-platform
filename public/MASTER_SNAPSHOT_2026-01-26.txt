@@ -400,6 +400,50 @@ MOD-10 LEADGENERIERUNG:
 └───────┴───────────────────────────────────────────┴─────────────────────────────┘
 
 ================================================================================
+ZONE 3 — WEBSITE IMPLEMENTATION STATUS (2026-01-26)
+================================================================================
+
+KAUFY (/kaufy):
+[x] Home: Hero + Benefits Grid + Trust Section
+[x] Immobilien: Marketplace Listing
+[x] Module: 10-Module Grid + Detail Pages
+[x] Berater: Advisor Benefits + CTA
+[x] Anbieter: Provider Benefits + CTA
+[x] FAQ: Comprehensive FAQ
+[x] Chatbot: Floating Armstrong button
+
+SYSTEM OF A TOWN (/sot):
+[x] Home: Hero + Outcomes + 8-Module Grid
+[x] Produkt: Product Overview
+[x] Module: 8-Module Overview + Detail Pages
+[x] Use Cases: Scenario Descriptions
+[x] Preise: Tier Comparison (Placeholder)
+[x] FAQ: Comprehensive FAQ
+[x] Chatbot: Floating Armstrong button
+
+MIETY (/miety):
+[x] Home: Tenant Focus Hero + Features + How It Works
+[x] Invite: Code Entry + Success Flow
+[x] Leistungen: Service Overview
+[x] Vermieter: Landlord Benefits
+[x] App: Miety App Features
+[x] Preise: Pricing Tiers
+[x] Chatbot: Floating Armstrong button
+
+ZONE 1 QUICK ACTIONS:
+[x] Portal Super User: /portal
+[x] Kaufy Website: /kaufy
+[x] System of a Town: /sot
+[x] Miety Website: /miety
+
+ZONE 2 ARMSTRONG CHATBOT:
+[x] Floating button on all portal pages
+[x] Docked panel on desktop (380px)
+[x] Bottom sheet on mobile
+[x] Context-aware (zone/module/entity)
+[x] Voice input ready (Whisperflow UI)
+
+================================================================================
 DOKUMENT-REFERENZEN
 ================================================================================
 
@@ -414,6 +458,12 @@ docs/modules/MOD-08_INVESTMENTS.md
 docs/modules/MOD-09_VERTRIEBSPARTNER.md
 docs/modules/MOD-10_LEADGENERIERUNG.md     ← UPDATED v2.0
 
+docs/zone3/ZONE3_MASTER_CONCEPT.md
+docs/zone3/KAUFY_COPYKIT.md
+docs/zone3/MIETY_COPYKIT.md
+docs/zone3/SOT_WEBSITE_FULLSPEC.md
+docs/zone3/ASSUMPTIONS_ZONE3.md
+
 docs/architecture/A1_SystemOverview.md
 docs/architecture/A2_Zone1_Admin_Governance.md
 docs/architecture/A3_Zone2_ModuleStructure.md
@@ -424,5 +474,5 @@ INTERFACES.md
 DECISIONS.md
 
 ================================================================================
-END OF MASTER SNAPSHOT v4.0
+END OF MASTER SNAPSHOT v4.1 (Zone 3 Complete)
 ================================================================================
