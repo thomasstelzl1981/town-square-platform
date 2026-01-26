@@ -140,10 +140,10 @@ const App = () => (
               
               {/* MOD-02: KI Office */}
               <Route path="office" element={<OfficePage />} />
-              <Route path="office/chat" element={<OfficePage />} />
-              <Route path="office/aufgaben" element={<OfficePage />} />
+              <Route path="office/email" element={<OfficePage />} />
+              <Route path="office/brief" element={<OfficePage />} />
+              <Route path="office/kontakte" element={<OfficePage />} />
               <Route path="office/kalender" element={<OfficePage />} />
-              <Route path="office/notizen" element={<OfficePage />} />
               
               {/* MOD-03: DMS */}
               <Route path="dms" element={<DMSPage />} />
