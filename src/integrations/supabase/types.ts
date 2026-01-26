@@ -251,6 +251,33 @@ export type Database = {
           },
         ]
       }
+      church_tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          rate: number
+          state_code: string
+          state_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rate: number
+          state_code: string
+          state_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rate?: number
+          state_code?: string
+          state_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commissions: {
         Row: {
           agreement_consent_id: string | null
@@ -816,6 +843,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      interest_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          interest_rate: number
+          ltv_percent: number
+          term_years: number
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interest_rate: number
+          ltv_percent: number
+          term_years: number
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interest_rate?: number
+          ltv_percent?: number
+          term_years?: number
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       investment_favorites: {
         Row: {
@@ -2573,6 +2636,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tax_parameters: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          unit: string
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+          value: number
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          unit?: string
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+          value: number
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          unit?: string
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+          value?: number
+        }
+        Relationships: []
       }
       tenant_tile_activation: {
         Row: {
