@@ -12,7 +12,7 @@ import {
   Minimize2, 
   Maximize2,
   Sparkles,
-  ChevronRight
+  Upload
 } from "lucide-react";
 export interface ChatContext {
   zone?: string;
@@ -120,7 +120,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
               <Bot className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">AI Assistant</h3>
+              <h3 className="text-sm font-semibold">Armstrong</h3>
               <div className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
                 <span className="text-xs text-muted-foreground">Online</span>
@@ -155,27 +155,6 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           </div>
         )}
 
-        {/* Quick Actions */}
-        {quickActions.length > 0 && (
-          <div className="px-4 py-3 border-b space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Schnellaktionen</p>
-            <div className="flex flex-wrap gap-2">
-              {quickActions.map((action, i) => (
-                <Button
-                  key={i}
-                  variant="secondary"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => onQuickAction?.(action.action)}
-                >
-                  {action.icon}
-                  {action.label}
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
@@ -226,21 +205,24 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           </div>
         </ScrollArea>
 
-        {/* Upload Zone */}
-        <div className="px-4 pb-2 border-t pt-3">
+        {/* Upload Zone - Compact */}
+        <div className="px-4 py-2 border-t">
           <FileUploader
             onFilesSelected={handleFilesSelected}
             accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
             multiple
-            label="📎 Dokumente ablegen"
-            hint="PDF, Excel, Bilder für Analyse"
             className="text-xs"
-          />
+          >
+            <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer py-1">
+              <Upload className="h-3.5 w-3.5" />
+              <span>Upload</span>
+            </div>
+          </FileUploader>
           {uploadedFiles.length > 0 && (
             <div className="mt-2 space-y-1">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1">
-                  <span className="truncate max-w-[120px]">{file.name}</span>
+                  <span className="truncate max-w-[100px]">{file.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"
