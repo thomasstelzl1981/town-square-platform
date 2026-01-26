@@ -6,8 +6,7 @@ import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  DashboardTab, 
-  ListenTab, 
+  ObjekteTab, 
   MieteingangTab, 
   VermietungTab, 
   EinstellungenTab 
@@ -21,7 +20,7 @@ const MSVPage = () => {
 
   // Parse current sub-tab from URL
   const pathParts = location.pathname.split('/');
-  const currentSubTab = pathParts[3] || 'dashboard';
+  const currentSubTab = pathParts[3] || 'objekte';
 
   const handleTabChange = (value: string) => {
     navigate(`/portal/msv/${value}`);
@@ -44,20 +43,15 @@ const MSVPage = () => {
         </div>
 
         <Tabs value={currentSubTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="listen">Listen</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="objekte">Objekte</TabsTrigger>
             <TabsTrigger value="mieteingang">Mieteingang</TabsTrigger>
             <TabsTrigger value="vermietung">Vermietung</TabsTrigger>
             <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
-            <DashboardTab />
-          </TabsContent>
-
-          <TabsContent value="listen">
-            <ListenTab />
+          <TabsContent value="objekte">
+            <ObjekteTab />
           </TabsContent>
 
           <TabsContent value="mieteingang">

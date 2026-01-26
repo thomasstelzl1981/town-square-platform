@@ -1,6 +1,6 @@
 
 
-# MOD-05 MSV — Tab "Vermietung" Korrigierter Plan
+# MOD-05 MSV — 4-Tab Struktur (Implementiert)
 
 ## Korrektur: Kaufy nur für Verkauf
 
@@ -11,143 +11,63 @@
 | Kaufy Marketplace | ❌ **Nein** | ✅ Ja |
 | Partner-Netzwerk | ❌ Nein | ✅ Ja |
 
-**Begründung:** Kaufy ist der Marketplace für Kaufobjekte. Mietobjekte werden dort nicht gelistet.
+---
+
+## Finale 4-Tab Struktur
+
+| Tab | Route | Funktion | Tier |
+|-----|-------|----------|------|
+| **Objekte** | /portal/msv/objekte | MOD-04 Liste + Brief-Actions | Freemium |
+| **Mieteingang** | /portal/msv/mieteingang | Zahlungen + Mahnungen | Premium |
+| **Vermietung** | /portal/msv/vermietung | Exposé + Scout24/Kleinanzeigen | Freemium |
+| **Einstellungen** | /portal/msv/einstellungen | Automation + Credits | Beide |
 
 ---
 
-## Tab "Vermietung" — Korrigierte Struktur
+## Implementierte Komponenten
+
+### Neue Dateien
+
+| Datei | Status |
+|-------|--------|
+| `src/pages/portal/msv/VermietungTab.tsx` | ✅ Komplett neu |
+| `src/pages/portal/msv/ObjekteTab.tsx` | ✅ Umbenannt von ListenTab |
+| `src/components/msv/RentalListingWizard.tsx` | ✅ Erstellt |
+| `src/components/msv/RentalPublishDialog.tsx` | ✅ Erstellt |
+
+### Datenbank
+
+| Tabelle | Status |
+|---------|--------|
+| `rental_listings` | ✅ Erstellt mit RLS |
+| `rental_publications` | ✅ Erstellt (channel: scout24, kleinanzeigen) |
+
+---
+
+## Tab "Vermietung" — Funktionen
 
 ### Verfügbare Kanäle (nur 2)
 
 | Kanal | Typ | Beschreibung |
 |-------|-----|--------------|
-| **ImmobilienScout24** | API | Direkte Veröffentlichung über Credits |
-| **Kleinanzeigen** | Export | Text + Bilder exportieren, manuell einstellen |
+| **ImmobilienScout24** | API | Phase 2 - Entwurf wird gespeichert |
+| **Kleinanzeigen** | Export | Text kopieren, Link eintragen |
 
----
-
-## Hauptansicht: Liste der Vermietungsinserate
-
-| # | Spalte | Beschreibung |
-|---|--------|--------------|
-| 1 | Objekt-ID | Kurzcode |
-| 2 | Adresse | Straße, Nr, Ort |
-| 3 | Typ | Wohnung, Haus, Gewerbe |
-| 4 | Fläche | qm |
-| 5 | Kaltmiete | Angebots-Kaltmiete |
-| 6 | Warmmiete | Kalt + NK |
-| 7 | Status | draft, active, paused, rented |
-| 8 | Kanäle | 🏠 Scout24, 📢 Kleinanzeigen |
-| 9 | Aktionen | Dropdown |
-
-### Action-Buttons (korrigiert)
+### Action-Buttons
 
 | Aktion | Icon | Beschreibung |
 |--------|------|--------------|
 | Vermietungsexposé erstellen/bearbeiten | FileText | Wizard für Exposé |
-| Bei ImmobilienScout24 veröffentlichen | Building | Publishing Wizard |
-| Zu Kleinanzeigen exportieren | ExternalLink | Export-Dialog |
+| Bei ImmobilienScout24 veröffentlichen | Home | Publishing Wizard |
+| Zu Kleinanzeigen exportieren | Megaphone | Export-Dialog |
 | Exposé als PDF | Download | PDF-Export |
 | Deaktivieren | X | Inserat pausieren |
 
-~~Auf Kaufy veröffentlichen~~ — **entfernt**
-
 ---
 
-## UI-Wireframe (korrigiert)
+## Nächste Schritte (Phase 2)
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  MSV — Mietmanagement                                             │
-├──────────────────────────────────────────────────────────────────┤
-│  [Objekte] [Mieteingang] [Vermietung] [Einstellungen]            │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  Vermietung — Ihre Inserate                                       │
-│                                                                   │
-│  [+ Neues Vermietungsexposé erstellen]                           │
-│                                                                   │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │ Objekt     │ Adresse        │ Fläche │ Miete  │ Kanäle │ ⚡│  │
-│  ├────────────────────────────────────────────────────────────┤  │
-│  │ ZL002      │ Marktstr. 12   │ 85 qm  │ 950 €  │ 🏠     │[▼]│  │
-│  │ ZL005      │ Bahnhofstr. 5  │ 62 qm  │ 720 €  │ —      │[▼]│  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                   │
-│  Dropdown [▼]:                                                   │
-│  ├─ 📋 Exposé bearbeiten                                         │
-│  ├─ 🏠 Bei Scout24 veröffentlichen                               │
-│  ├─ 📢 Zu Kleinanzeigen exportieren                              │
-│  └─ 📄 Als PDF exportieren                                       │
-│                                                                   │
-│  ────────────────────────────────────────────────────────────    │
-│                                                                   │
-│  💡 Veröffentlichen Sie Ihre Mietobjekte direkt auf              │
-│     ImmobilienScout24 oder exportieren Sie für Kleinanzeigen.    │
-│                                                                   │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Datenmodell (korrigiert)
-
-### rental_publications.channel ENUM
-
-```sql
-CHECK (channel IN ('scout24', 'kleinanzeigen'))
-```
-
-~~'kaufy'~~ — **entfernt**
-
----
-
-## Gesamte 4-Tab Struktur (Final)
-
-| Tab | Funktion | Tier |
-|-----|----------|------|
-| **Objekte** | MOD-04 Liste + Brief-Actions (Kündigung etc.) | Freemium |
-| **Mieteingang** | Zahlungen + Mahnungen + Accordion | Premium |
-| **Vermietung** | Exposé + Scout24/Kleinanzeigen Publishing | Freemium |
-| **Einstellungen** | Automation (Mahntag, Reporttag) + Credits | Beide |
-
----
-
-## Implementierung
-
-### Dateien zu erstellen/ändern
-
-| Datei | Aktion |
-|-------|--------|
-| `VermietungTab.tsx` | Komplett neu: Rental Listings + 2 Kanäle |
-| `RentalListingWizard.tsx` | Exposé-Erstellung |
-| `RentalPublishDialog.tsx` | Scout24 + Kleinanzeigen (kein Kaufy) |
-| `ObjekteTab.tsx` | Brief-Buttons hinzufügen |
-
-### Datenbank
-
-```sql
--- rental_publications mit 2 Kanälen
-CREATE TABLE rental_publications (
-  ...
-  channel text NOT NULL CHECK (channel IN ('scout24', 'kleinanzeigen')),
-  ...
-);
-```
-
-### Edge Function
-
-| Name | Zweck |
-|------|-------|
-| `sot-rental-listing-publish` | Scout24 API (Miete) |
-
----
-
-## Zusammenfassung der Korrektur
-
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Kanäle | Scout24, Kleinanzeigen, Kaufy | Scout24, Kleinanzeigen |
-| Kaufy | Für Miete geplant | ❌ Nur für Verkauf (MOD-06) |
-| channel ENUM | 3 Werte | 2 Werte |
-
+1. Scout24 API-Integration aktivieren
+2. Bilder-Export für Kleinanzeigen (ZIP)
+3. PDF-Export für Vermietungsexposé
+4. Automatisierungs-Einstellungen (Mahntag, Reporttag)
