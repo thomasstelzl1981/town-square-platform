@@ -201,7 +201,7 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
 
   if (variant === 'sidebar') {
     return (
-      <nav className="hidden lg:flex flex-col gap-1 p-4 w-64 border-r bg-muted/30 overflow-y-auto max-h-[calc(100vh-4rem)]">
+      <nav className="hidden lg:flex flex-col gap-1 p-4 w-64 border-r bg-sidebar overflow-y-auto max-h-[calc(100vh-4rem)]">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
           Module
         </div>

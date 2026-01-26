@@ -84,70 +84,70 @@
   }
 
   /* =========================================================================
-     DARK MODE (Perplexity-inspirierter heller Pergament-Look)
+     DARK MODE (Dark UI beibehalten; Pergament nur als Seiten-Hintergrund via bg-surface)
      ========================================================================= */
   .dark {
-    /* Core Backgrounds - Warm cream pergament aesthetic */
-    --background: 40 30% 96%;
-    --foreground: 222 47% 11%;
+    /* Core Backgrounds - Dark enterprise UI */
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 222 30% 10%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 222 35% 9%;
+    --popover-foreground: 210 40% 98%;
 
     /* Primary Colors */
-    --primary: 217 91% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
 
-    --secondary: 40 20% 92%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 40 15% 90%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 222 25% 16%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 40 20% 92%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 222 30% 14%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 40 20% 88%;
-    --input: 40 15% 94%;
-    --ring: 217 91% 50%;
+    --border: 222 20% 18%;
+    --input: 222 25% 16%;
+    --ring: 217 91% 60%;
 
-    /* Sidebar - Slightly tinted cream */
-    --sidebar-background: 40 25% 98%;
-    --sidebar-foreground: 222 47% 20%;
-    --sidebar-primary: 217 91% 50%;
+    /* Sidebar - Dark (Menu bleibt dunkel) */
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 30% 85%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 20% 94%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 40 15% 88%;
-    --sidebar-ring: 217 91% 50%;
+    --sidebar-accent: 222 30% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 20% 15%;
+    --sidebar-ring: 217 91% 60%;
 
     /* Status Colors */
-    --status-success: 142 71% 40%;
-    --status-warn: 38 92% 45%;
-    --status-error: 0 84% 55%;
-    --status-info: 199 89% 45%;
+    --status-success: 142 71% 45%;
+    --status-warn: 38 92% 50%;
+    --status-error: 0 84% 60%;
+    --status-info: 199 89% 48%;
 
-    /* Surface Layers - Subtle cream elevation */
+    /* Surface Layers - Light parchment for page background behind cards */
     --surface: 40 20% 94%;
     --surface-2: 40 15% 92%;
-    --border-subtle: 40 15% 85%;
-    --border-glow: 217 50% 60%;
+    --border-subtle: 222 20% 18%;
+    --border-glow: 217 50% 35%;
 
     /* Text Hierarchy */
-    --text-primary: 222 47% 11%;
-    --text-secondary: 215 16% 47%;
-    --text-dimmed: 215 10% 60%;
+    --text-primary: 210 40% 98%;
+    --text-secondary: 215 20% 65%;
+    --text-dimmed: 215 15% 45%;
 
     /* Accent (CI Primary - konfigurierbar) */
-    --accent-primary: 217 91% 50%;
-    --accent-primary-hover: 217 91% 60%;
+    --accent-primary: 217 91% 60%;
+    --accent-primary-hover: 217 91% 70%;
   }
 }
 
@@ -174,10 +174,10 @@
 }
 
 .dark {
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.06);
-  --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.1);
-  --shadow-elevated: 0 8px 24px -8px rgb(0 0 0 / 0.15);
-  --shadow-glow: 0 0 24px -6px hsl(var(--accent-primary) / 0.25);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.5);
+  --shadow-elevated: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-glow: 0 0 24px -6px hsl(var(--accent-primary) / 0.4);
 }
 
 /* ===========================================================================
@@ -186,7 +186,7 @@
 :root {
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 56px;
-  --chat-panel-width: 380px;
+  --chat-panel-width: 190px;
   --header-height: 56px;
 }
 
