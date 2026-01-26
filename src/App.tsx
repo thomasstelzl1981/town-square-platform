@@ -164,12 +164,12 @@ const App = () => (
               <Route path="immobilien/:id" element={<PropertyDetail />} />
               <Route path="immobilien/:id/edit" element={<PropertyForm />} />
               
-              {/* MOD-05: MSV (Dashboard, Listen, Mieteingang, Vermietung) */}
+              {/* MOD-05: MSV (Objekte, Mieteingang, Vermietung, Einstellungen) */}
               <Route path="msv" element={<MSVPage />} />
-              <Route path="msv/dashboard" element={<MSVPage />} />
-              <Route path="msv/listen" element={<MSVPage />} />
+              <Route path="msv/objekte" element={<MSVPage />} />
               <Route path="msv/mieteingang" element={<MSVPage />} />
               <Route path="msv/vermietung" element={<MSVPage />} />
+              <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
               <Route path="verkauf" element={<VerkaufPage />} />
