@@ -1,16 +1,21 @@
 import { useState } from 'react';
+import { useModuleTiles } from '@/hooks/useModuleTiles';
+import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
+import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Heart, UserCircle, Calculator, TrendingUp } from 'lucide-react';
+import { Search, Heart, UserCircle, Calculator, TrendingUp, Loader2 } from 'lucide-react';
 import { InvestmentCalculator } from '@/components/investment';
 import { CalculationResult } from '@/hooks/useInvestmentEngine';
 import { toast } from 'sonner';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { useLocation } from 'react-router-dom';
 
 const InvestmentsPage = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('search');
   const [lastResult, setLastResult] = useState<CalculationResult | null>(null);
   const contentRef = usePdfContentRef();
+  const { data, isLoading } = useModuleTiles('MOD-08');
 
   const handleResult = (result: CalculationResult) => {
     setLastResult(result);
@@ -19,8 +24,42 @@ const InvestmentsPage = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // If on module dashboard, show sub-tile cards
+  const isOnDashboard = location.pathname === '/portal/investments';
+
+  if (isOnDashboard) {
+    return (
+      <div className="space-y-6">
+        <div ref={contentRef}>
+          <ModuleDashboard
+            title={data?.title || 'Investment-Suche'}
+            description={data?.description || 'Investmentmöglichkeiten analysieren und vergleichen'}
+            subTiles={data?.sub_tiles || []}
+            moduleCode="MOD-08"
+          />
+        </div>
+        <div className="px-6">
+          <PdfExportFooter 
+            contentRef={contentRef} 
+            documentTitle="Investment-Suche" 
+            moduleName="MOD-08 Investments" 
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Otherwise show the detailed tabs view
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div ref={contentRef}>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -29,56 +68,6 @@ const InvestmentsPage = () => {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('search')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Suche</CardTitle>
-              <Search className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Gespeicherte Suchen</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Favoriten</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Gemerkte Objekte</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Profile</CardTitle>
-              <UserCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Investorenprofile</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('calculator')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rechner</CardTitle>
-              <Calculator className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-1">
-                <TrendingUp className="h-5 w-5 text-green-500" />
-              </div>
-              <p className="text-xs text-muted-foreground">Investment Engine aktiv</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="no-print">
             <TabsTrigger value="search">Objektsuche</TabsTrigger>

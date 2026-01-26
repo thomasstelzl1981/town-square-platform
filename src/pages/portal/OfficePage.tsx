@@ -1,69 +1,38 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bot, MessageSquare, Calendar, FileText } from "lucide-react";
-import { PdfExportFooter, usePdfContentRef } from "@/components/pdf";
+import { useModuleTiles } from '@/hooks/useModuleTiles';
+import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
+import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { Loader2 } from 'lucide-react';
 
 const OfficePage = () => {
   const contentRef = usePdfContentRef();
+  const { data, isLoading } = useModuleTiles('MOD-02');
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div ref={contentRef}>
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">KI Office</h1>
-          <p className="text-muted-foreground">KI-gestütztes Backoffice für Ihre Immobilienverwaltung</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Chat</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">KI-Assistent für Fragen</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aufgaben</CardTitle>
-              <Bot className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Offene Aufgaben</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Kalender</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Termine diese Woche</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Notizen</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Gespeicherte Notizen</p>
-            </CardContent>
-          </Card>
-        </div>
+        <ModuleDashboard
+          title={data?.title || 'KI Office'}
+          description={data?.description || 'KI-gestütztes Backoffice für Ihre Immobilienverwaltung'}
+          subTiles={data?.sub_tiles || []}
+          moduleCode="MOD-02"
+        />
       </div>
 
-      <PdfExportFooter 
-        contentRef={contentRef} 
-        documentTitle="KI Office" 
-        moduleName="MOD-02 KI Office" 
-      />
+      <div className="px-6">
+        <PdfExportFooter 
+          contentRef={contentRef} 
+          documentTitle="KI Office" 
+          moduleName="MOD-02 KI Office" 
+        />
+      </div>
     </div>
   );
 };

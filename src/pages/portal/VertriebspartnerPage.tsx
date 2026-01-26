@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useModuleTiles } from '@/hooks/useModuleTiles';
+import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
+import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Handshake, BookOpen, CheckSquare, Network, Calculator, FileText } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Handshake, BookOpen, Calculator, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvestmentCalculator } from '@/components/investment';
 import { CalculationResult } from '@/hooks/useInvestmentEngine';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { useLocation } from 'react-router-dom';
 
 const VertriebspartnerPage = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [lastResult, setLastResult] = useState<CalculationResult | null>(null);
   const contentRef = usePdfContentRef();
+  const { data, isLoading } = useModuleTiles('MOD-09');
 
   const handleResult = (result: CalculationResult) => {
     setLastResult(result);
@@ -25,8 +30,42 @@ const VertriebspartnerPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // If on module dashboard, show sub-tile cards
+  const isOnDashboard = location.pathname === '/portal/vertriebspartner';
+
+  if (isOnDashboard) {
+    return (
+      <div className="space-y-6">
+        <div ref={contentRef}>
+          <ModuleDashboard
+            title={data?.title || 'Vertriebspartner'}
+            description={data?.description || 'Partner-Dashboard, Objektkatalog und Beratung'}
+            subTiles={data?.sub_tiles || []}
+            moduleCode="MOD-09"
+          />
+        </div>
+        <div className="px-6">
+          <PdfExportFooter 
+            contentRef={contentRef} 
+            documentTitle="Partner-Dashboard" 
+            moduleName="MOD-09 Vertriebspartner" 
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Otherwise show the detailed tabs view
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div ref={contentRef}>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -35,63 +74,6 @@ const VertriebspartnerPage = () => {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dashboard</CardTitle>
-              <Handshake className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Übersicht & KPIs</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('katalog')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Objektkatalog</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Verfügbare Objekte</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meine Auswahl</CardTitle>
-              <CheckSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Ausgewählte Objekte</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Netzwerk</CardTitle>
-              <Network className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Verbundene Partner</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer bg-primary/5" onClick={() => setActiveTab('beratung')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Beratung</CardTitle>
-              <Calculator className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-primary font-medium">Investment Engine</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="no-print">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
