@@ -254,11 +254,37 @@ const ObjekteTab = () => {
                 </TableCell>
               </TableRow>
             ) : filteredUnits?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  Keine Objekte gefunden
-                </TableCell>
-              </TableRow>
+              <>
+                {/* Leerzeile mit Platzhaltern wie MOD-04 */}
+                <TableRow 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate('/portal/immobilien/portfolio')}
+                >
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-6">
+                    <p className="text-muted-foreground mb-4">
+                      Keine Immobilien vorhanden — zuerst in MOD-04 anlegen
+                    </p>
+                    <Button onClick={() => navigate('/portal/immobilien/portfolio')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Objekte anlegen (MOD-04)
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </>
             ) : (
               filteredUnits?.map((row) => (
                 <TableRow key={row.id}>

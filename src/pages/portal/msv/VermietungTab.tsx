@@ -32,7 +32,8 @@ import {
   Loader2,
   Home,
   Megaphone,
-  Lightbulb
+  Lightbulb,
+  Eye
 } from 'lucide-react';
 import { RentalListingWizard } from '@/components/msv/RentalListingWizard';
 import { RentalPublishDialog } from '@/components/msv/RentalPublishDialog';
@@ -230,11 +231,38 @@ const VermietungTab = () => {
                 </TableCell>
               </TableRow>
             ) : filteredListings?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  Keine Vermietungsinserate vorhanden
-                </TableCell>
-              </TableRow>
+              <>
+                {/* Leerzeile mit Platzhaltern */}
+                <TableRow 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={handleCreateNew}
+                >
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-6">
+                    <p className="text-muted-foreground mb-4">
+                      Keine Vermietungsinserate — erstellen Sie ein Exposé
+                    </p>
+                    <Button onClick={handleCreateNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Neues Vermietungsexposé erstellen
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </>
             ) : (
               filteredListings?.map((listing) => (
                 <TableRow key={listing.id}>
@@ -277,37 +305,48 @@ const VermietungTab = () => {
                     {getChannelIcons(listing.rental_publications)}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleAction('edit', listing)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Exposé bearbeiten
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleAction('scout24', listing)}>
-                          <Home className="h-4 w-4 mr-2" />
-                          Bei Scout24 veröffentlichen
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAction('kleinanzeigen', listing)}>
-                          <Megaphone className="h-4 w-4 mr-2" />
-                          Zu Kleinanzeigen exportieren
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleAction('pdf', listing)}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Als PDF exportieren
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAction('deactivate', listing)}>
-                          <XIcon className="h-4 w-4 mr-2" />
-                          {listing.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleAction('edit', listing)}
+                        title="Exposé öffnen"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleAction('edit', listing)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Exposé bearbeiten
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleAction('scout24', listing)}>
+                            <Home className="h-4 w-4 mr-2" />
+                            Bei Scout24 veröffentlichen
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('kleinanzeigen', listing)}>
+                            <Megaphone className="h-4 w-4 mr-2" />
+                            Zu Kleinanzeigen exportieren
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleAction('pdf', listing)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Als PDF exportieren
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('deactivate', listing)}>
+                            <XIcon className="h-4 w-4 mr-2" />
+                            {listing.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

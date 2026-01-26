@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMSVPremium } from '@/hooks/useMSVPremium';
@@ -59,6 +60,7 @@ interface PaymentEntry {
 }
 
 const MieteingangTab = () => {
+  const navigate = useNavigate();
   const { isPremium, isLoading: premiumLoading } = useMSVPremium();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [templateWizardOpen, setTemplateWizardOpen] = useState(false);
@@ -306,11 +308,35 @@ const MieteingangTab = () => {
                 </TableCell>
               </TableRow>
             ) : propertyPayments?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  Keine aktiven Mietverhältnisse vorhanden
-                </TableCell>
-              </TableRow>
+              <>
+                {/* Leerzeile mit Platzhaltern */}
+                <TableRow 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate('/portal/msv/objekte')}
+                >
+                  <TableCell className="text-muted-foreground">
+                    <ChevronRight className="h-4 w-4" />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell className="text-right text-muted-foreground">–</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">–</Badge>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-6">
+                    <p className="text-muted-foreground mb-4">
+                      Keine aktiven Mietverhältnisse — Mietvertrag in Objekte anlegen
+                    </p>
+                    <Button onClick={() => navigate('/portal/msv/objekte')}>
+                      Zu Objekte wechseln
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </>
             ) : (
               propertyPayments?.map((row) => (
                 <Collapsible key={row.id} asChild>

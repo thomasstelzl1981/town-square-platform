@@ -9,9 +9,36 @@ Alle Phasen wurden implementiert:
 | Phase A | Navigations-Vereinheitlichung (Tabs entfernt) | ✅ ERLEDIGT |
 | Phase 1 | Routing-Fix (App.tsx) | ✅ ERLEDIGT |
 | Phase 2 | Premium-Aktivierung (ReadinessChecklist) | ✅ ERLEDIGT |
-| Phase 3 | Mieteingang (PaymentBookingDialog) | ✅ BEREITS FUNKTIONAL |
+| Phase 3 | Mieteingang (PaymentBookingDialog) | ✅ ERLEDIGT |
 | Phase 4 | Briefgenerator-Integration | ✅ ERLEDIGT |
 | Phase 5 | Vermietung (RentalListingWizard) | ✅ ERLEDIGT |
+
+---
+
+## UI-Konsistenz & KI-Features (2026-01-27)
+
+### Leerzeilen-Pattern (wie MOD-04)
+
+Alle MOD-05 Tabellen zeigen nun bei leerem Zustand:
+- Eine **Leerzeile mit Platzhaltern (–)** und Action-Button
+- Einen Hinweistext mit Link zur Erstellung
+
+| Tab | Empty State |
+|-----|-------------|
+| ObjekteTab | Leerzeile + "Objekte anlegen (MOD-04)" Button |
+| MieteingangTab | Leerzeile + "Zu Objekte wechseln" Button |
+| VermietungTab | Leerzeile + Eye-Button in Zeilen für Exposé-Zugriff |
+
+### KI-Beschreibungsgenerierung
+
+**Edge Function:** `sot-expose-description`
+- AI-basierte Immobilienbeschreibung
+- Nutzt Lovable AI (google/gemini-3-flash-preview)
+- Prompt-Struktur: Einleitung, Lage, Ausstattung, Besonderheiten
+
+**Integrationen:**
+- `RentalListingWizard.tsx`: "Mit KI generieren" Button
+- `PropertyDetail.tsx`: "Beschreibung generieren" Button im Header
 
 ---
 
@@ -48,6 +75,7 @@ Alle Phasen wurden implementiert:
 
 - Hinweistext zu Kanaelen hinzugefuegt
 - Scout24 / Kleinanzeigen Dokumentation inline
+- Eye-Button in Zeilen für direkten Exposé-Zugriff
 
 ---
 
