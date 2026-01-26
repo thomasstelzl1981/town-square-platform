@@ -136,7 +136,7 @@ const App = () => (
               {/* MOD-01: Stammdaten (Profil, Firma, Abrechnung, Sicherheit) */}
               <Route path="stammdaten" element={<StammdatenPage />} />
               <Route path="stammdaten/profil" element={<StammdatenPage />} />
-              <Route path="stammdaten/firma" element={<StammdatenPage />} />
+              <Route path="stammdaten/personen" element={<StammdatenPage />} />
               <Route path="stammdaten/abrechnung" element={<StammdatenPage />} />
               <Route path="stammdaten/sicherheit" element={<StammdatenPage />} />
               

@@ -1,123 +1,71 @@
-# MOD-05 MSV — Korrekturplan (ABGESCHLOSSEN v2.0)
+# SYSTEM OF A TOWN — MASTER-AUDITPLAN v2.0 ABGESCHLOSSEN
 
-## Zusammenfassung
-
-Alle Phasen wurden implementiert inkl. Master-Komponenten-Architektur:
+## Status: ✅ ALLE 10 PHASEN IMPLEMENTIERT
 
 | Phase | Beschreibung | Status |
 |-------|--------------|--------|
-| Phase A | Navigations-Vereinheitlichung (Tabs entfernt) | ✅ ERLEDIGT |
-| Phase 1 | PropertyTable Master-Komponente | ✅ ERLEDIGT |
-| Phase 2 | ObjekteTab Refactor (PropertyTable) | ✅ ERLEDIGT |
-| Phase 3 | VermietungTab Refactor + Row-Navigation | ✅ ERLEDIGT |
-| Phase 4 | RentalExposeDetail Seite (identisch zu MOD-04) | ✅ ERLEDIGT |
-| Phase 5 | App.tsx Route /portal/msv/vermietung/:id | ✅ ERLEDIGT |
-| Phase 6 | MieteingangTab Konsistenz (Eye-Button) | ✅ ERLEDIGT |
+| Phase 1 | Auth-Bypass (Entwicklungsmodus) | ✅ ERLEDIGT |
+| Phase 2 | E-Mail Client UI (Popup-Fix) | ✅ ERLEDIGT |
+| Phase 3 | Portfolio Charts (EÜR bereits vorhanden) | ✅ ERLEDIGT |
+| Phase 4 | Responsivitäts-Grundstruktur | ✅ ERLEDIGT |
+| Phase 5 | API Registry Ergänzung (SQL) | ✅ ERLEDIGT |
+| Phase 6 | tile_catalog Schema (SQL) | ✅ ERLEDIGT |
+| Phase 7 | MOD-01 Stammdaten (Schema + UI) | ✅ ERLEDIGT |
+| Phase 8 | PortalDashboard leeren | ✅ ERLEDIGT |
+| Phase 9 | PropertyTable Konsolidierung | ✅ VORHANDEN |
+| Phase 10 | Google Maps (Vorbereitung) | ✅ API REGISTRIERT |
 
 ---
 
-## Master-Komponenten Architektur (2026-01-27)
+## Implementierte Änderungen
 
-### PropertyTable (`src/components/shared/PropertyTable.tsx`)
+### Datenbank-Migration
+- 7 neue APIs in `integration_registry` (Sprengnetter, Google Maps, Google Places, Microsoft OAuth, Gmail OAuth, SimpleFax, Briefdienst)
+- `tile_catalog` erweitert: `internal_apis` und `external_api_refs` Spalten
+- Alle 10 Module mit API-Referenzen aktualisiert
+- `profiles` Tabelle erweitert: Vollständige Personendaten (Adresse, Telefon, Steuer-IDs, etc.)
+- MOD-01 Sub-Tile "Firma" → "Personen" umbenannt
 
-Wiederverwendbare Master-Tabelle für alle Immobilien-Listen mit:
-- Konfigurierbare Spalten (PropertyTableColumn)
-- Einheitliches Empty-State-Pattern (Leerzeile + Action-Button)
-- Konsistenter Eye-Button für Row-Actions
-- Row-Click Navigation
-- Integrierte Suche
+### Code-Änderungen
 
-### Utility-Komponenten
+| Datei | Änderung |
+|-------|----------|
+| `AuthContext.tsx` | Entwicklungsmodus-Bypass für Lovable Preview |
+| `PortalDashboard.tsx` | Tile-Grid entfernt, leerer Dashboard-Bereich |
+| `EmailTab.tsx` | 3-Panel UI immer sichtbar, Dialog nur bei Button-Klick |
+| `ProfilTab.tsx` | Erweitert: Adresse, Telefon, Steuer-IDs |
+| `PersonenTab.tsx` | NEU: Ersetzt FirmaTab, 3 Modi (Identisch, Ehepartner, Gewerblich) |
+| `StammdatenPage.tsx` | PersonenTab statt FirmaTab |
+| `App.tsx` | Route /stammdaten/personen |
 
-| Komponente | Verwendung |
-|------------|------------|
-| PropertyCodeCell | Einheitliche Code/ID Darstellung (font-mono) |
-| PropertyAddressCell | Adresse + Subtitle Layout |
-| PropertyCurrencyCell | Währungsformatierung mit Variants |
-| PropertyStatusCell | Badge-basierte Statusanzeige |
+### API-Modul-Mapping (Vollständig)
 
----
-
-## Konsistenz-Pattern
-
-### Empty State (alle MOD-05 Tabs)
-
-```typescript
-// Alle Tables zeigen bei leerem Zustand:
-1. Leerzeile mit Platzhaltern (–) und Eye-Button
-2. Hinweistext + Action-Button zum Erstellen
-```
-
-### Row-Actions
-
-```typescript
-// Alle Tables haben konsistente Actions:
-1. Eye-Button (links) → direkter Zugriff auf Detail/Exposé
-2. DropdownMenu (rechts) → erweiterte Aktionen
-```
-
-### Navigation
-
-```typescript
-// MOD-05 VermietungTab Row-Click navigiert zu:
-/portal/msv/vermietung/:id → RentalExposeDetail
-
-// MOD-05 ObjekteTab Row-Click navigiert zu:
-/portal/immobilien/:id → PropertyDetail (MOD-04)
-```
+| Modul | Internal APIs | External APIs |
+|-------|--------------|---------------|
+| MOD-01 | – | – |
+| MOD-02 | sot-letter-generate | RESEND, GMAIL_OAUTH, MICROSOFT_OAUTH, SIMPLEFAX, BRIEFDIENST |
+| MOD-03 | sot-dms-upload-url, sot-dms-download-url | CAYA |
+| MOD-04 | sot-property-crud, sot-expose-description | SPRENGNETTER, GOOGLE_MAPS, GOOGLE_PLACES, RESEND |
+| MOD-05 | sot-msv-reminder-check, sot-msv-rent-report, sot-listing-publish, sot-expose-description | RESEND, scout24 |
+| MOD-06 | sot-listing-publish | scout24, RESEND |
+| MOD-07 | – | FUTURE_ROOM |
+| MOD-08 | sot-investment-engine | apify |
+| MOD-09 | – | – |
+| MOD-10 | sot-lead-inbox | meta_ads, RESEND |
 
 ---
 
-## RentalExposeDetail Layout
+## Governance-Regeln (BINDING)
 
-Die neue Seite `/portal/msv/vermietung/:id` verwendet:
-- Identische Header-Struktur wie PropertyDetail (MOD-04)
-- Card-Grid Layout (2x2) für Objektdaten
-- Tabs: Daten | Beschreibung | Publikation
-- KI-Beschreibungsgenerierung im Header
-- Integration mit RentalPublishDialog
+1. **Entwicklungs-Account ist führend**: Alle Änderungen an `/portal/*` fließen EINSEITIG nach `/admin/tiles`
+2. **API-Registrierung Pflicht**: Jede externe API muss in `integration_registry` eingetragen sein
+3. **4-Untermenü-Regel**: Jedes Modul hat genau 4 Untermenüpunkte
 
 ---
 
-## KI-Beschreibungsgenerierung
+## Nächste Schritte (Optional)
 
-**Edge Function:** `sot-expose-description`
-- AI-basierte Immobilienbeschreibung (google/gemini-3-flash-preview)
-- Prompt-Struktur: Einleitung, Lage, Ausstattung, Besonderheiten
-
-**Integrationen:**
-- `RentalListingWizard.tsx`: "Mit KI generieren" Button
-- `PropertyDetail.tsx`: "Beschreibung generieren" Button im Header
-- `RentalExposeDetail.tsx`: Beide Buttons (Header + Beschreibung-Tab)
-
----
-
-## Dateien geändert
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/shared/PropertyTable.tsx` | NEU - Master-Komponente |
-| `src/components/shared/index.ts` | Export hinzugefügt |
-| `src/pages/portal/msv/ObjekteTab.tsx` | REFACTOR - PropertyTable |
-| `src/pages/portal/msv/VermietungTab.tsx` | REFACTOR - PropertyTable + Row-Navigation |
-| `src/pages/portal/msv/MieteingangTab.tsx` | UPDATE - Eye-Button + Konsistenz |
-| `src/pages/portal/msv/RentalExposeDetail.tsx` | NEU - Vermietungs-Exposé Seite |
-| `src/pages/portfolio/PropertyDetail.tsx` | UPDATE - Button-Layout korrigiert |
-| `src/App.tsx` | UPDATE - Route hinzugefügt |
-
----
-
-## Source of Truth: MOD-04 → MOD-05
-
-```
-MOD-04 (Immobilien)
-  └── properties, units (Stammdaten)
-       │
-       └── READ-ONLY
-            │
-            ▼
-MOD-05 (MSV)
-  └── leases, rent_payments, msv_enrollments, rental_listings
-```
-
-Alle Objektdaten werden aus MOD-04 gelesen. MOD-05 schreibt NUR in eigene Tabellen.
+- [ ] Google Maps Komponente für Exposé implementieren
+- [ ] Tilgungsverlauf/Wertzuwachs Charts in PortfolioTab hinzufügen
+- [ ] Testdaten-Tab in /admin/tiles implementieren
+- [ ] Rollen-Tab Blueprint definieren

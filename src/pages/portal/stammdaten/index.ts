@@ -1,4 +1,4 @@
 export { ProfilTab } from './ProfilTab';
-export { FirmaTab } from './FirmaTab';
+export { PersonenTab } from './PersonenTab';
 export { AbrechnungTab } from './AbrechnungTab';
 export { SicherheitTab } from './SicherheitTab';

@@ -2460,28 +2460,73 @@ export type Database = {
         Row: {
           active_tenant_id: string | null
           avatar_url: string | null
+          city: string | null
+          country: string | null
           created_at: string
           display_name: string | null
           email: string
+          first_name: string | null
+          house_number: string | null
           id: string
+          is_business: boolean | null
+          last_name: string | null
+          person_mode: string | null
+          phone_landline: string | null
+          phone_mobile: string | null
+          phone_whatsapp: string | null
+          postal_code: string | null
+          spouse_profile_id: string | null
+          street: string | null
+          tax_id: string | null
+          tax_number: string | null
           updated_at: string
         }
         Insert: {
           active_tenant_id?: string | null
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           email: string
+          first_name?: string | null
+          house_number?: string | null
           id: string
+          is_business?: boolean | null
+          last_name?: string | null
+          person_mode?: string | null
+          phone_landline?: string | null
+          phone_mobile?: string | null
+          phone_whatsapp?: string | null
+          postal_code?: string | null
+          spouse_profile_id?: string | null
+          street?: string | null
+          tax_id?: string | null
+          tax_number?: string | null
           updated_at?: string
         }
         Update: {
           active_tenant_id?: string | null
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           email?: string
+          first_name?: string | null
+          house_number?: string | null
           id?: string
+          is_business?: boolean | null
+          last_name?: string | null
+          person_mode?: string | null
+          phone_landline?: string | null
+          phone_mobile?: string | null
+          phone_whatsapp?: string | null
+          postal_code?: string | null
+          spouse_profile_id?: string | null
+          street?: string | null
+          tax_id?: string | null
+          tax_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3866,8 +3911,10 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number
+          external_api_refs: string[] | null
           icon_key: string
           id: string
+          internal_apis: string[] | null
           is_active: boolean
           main_tile_route: string
           main_tile_title: string
@@ -3881,8 +3928,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          external_api_refs?: string[] | null
           icon_key?: string
           id?: string
+          internal_apis?: string[] | null
           is_active?: boolean
           main_tile_route: string
           main_tile_title: string
@@ -3896,8 +3945,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          external_api_refs?: string[] | null
           icon_key?: string
           id?: string
+          internal_apis?: string[] | null
           is_active?: boolean
           main_tile_route?: string
           main_tile_title?: string
