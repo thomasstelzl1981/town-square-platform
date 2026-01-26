@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PdfExportFooter } from '@/components/pdf';
 
 interface Lead {
   id: string;
@@ -51,6 +52,7 @@ interface LeadAssignment {
 
 export default function LeadPool() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [assignments, setAssignments] = useState<LeadAssignment[]>([]);
@@ -147,7 +149,7 @@ export default function LeadPool() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div>
         <h1 className="text-2xl font-bold">Lead Pool (Zone 1)</h1>
         <p className="text-muted-foreground">
@@ -326,6 +328,16 @@ export default function LeadPool() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Lead Pool',
+          subtitle: `${stats.totalPool} Leads im Pool`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PdfExportFooter } from '@/components/pdf';
 
 interface PartnerVerification {
   id: string;
@@ -37,6 +38,7 @@ interface PartnerVerification {
 
 export default function PartnerVerification() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [verifications, setVerifications] = useState<PartnerVerification[]>([]);
   const [stats, setStats] = useState({
@@ -119,7 +121,7 @@ export default function PartnerVerification() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div>
         <h1 className="text-2xl font-bold">Partner-Verifizierung</h1>
         <p className="text-muted-foreground">
@@ -236,6 +238,16 @@ export default function PartnerVerification() {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Partner-Verifizierung',
+          subtitle: `${verifications.length} Partner im System`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

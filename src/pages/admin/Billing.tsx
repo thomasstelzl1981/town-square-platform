@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PdfExportFooter } from '@/components/pdf';
 
 interface Plan {
   id: string;
@@ -97,6 +98,7 @@ interface Organization {
 
 export default function BillingPage() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -252,7 +254,7 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div>
         <h1 className="text-2xl font-bold">Billing & Plans</h1>
         <p className="text-muted-foreground">
@@ -568,6 +570,16 @@ export default function BillingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Billing & Plans',
+          subtitle: `${plans.length} Pläne, ${subscriptions.length} Abonnements`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +41,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Building2, Eye, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { PdfExportFooter } from '@/components/pdf';
 
 type Organization = Tables<'organizations'>;
 type OrgType = Enums<'org_type'>;
@@ -55,6 +56,7 @@ const ORG_TYPE_HIERARCHY: Record<OrgType, OrgType[]> = {
 
 export default function Organizations() {
   const { isPlatformAdmin } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +161,7 @@ export default function Organizations() {
   const allowedTypes = getAllowedChildTypes(selectedParent?.org_type || null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Organizations</h2>
@@ -337,6 +339,16 @@ export default function Organizations() {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF Export */}
+      <PdfExportFooter
+        contentRef={contentRef}
+        options={{
+          title: 'Organisationen',
+          subtitle: `${organizations.length} Organisationen im System`,
+          module: 'Zone 1 Admin',
+        }}
+      />
     </div>
   );
 }
