@@ -12,6 +12,7 @@ interface FileUploaderProps {
   className?: string;
   label?: string;
   hint?: string;
+  children?: React.ReactNode; // Custom trigger element
 }
 
 export function FileUploader({
@@ -23,6 +24,7 @@ export function FileUploader({
   className,
   label = 'Dateien hier ablegen',
   hint = 'oder klicken zum Auswählen',
+  children,
 }: FileUploaderProps) {
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -74,6 +76,27 @@ export function FileUploader({
     // Reset input for re-upload of same file
     e.target.value = '';
   };
+
+  // If children provided, use as custom trigger
+  if (children) {
+    return (
+      <div className={className} onClick={() => !disabled && inputRef.current?.click()}>
+        {children}
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          onChange={handleInputChange}
+          className="hidden"
+          disabled={disabled}
+        />
+        {error && (
+          <p className="mt-2 text-xs text-destructive">{error}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
