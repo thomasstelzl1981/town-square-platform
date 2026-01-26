@@ -1,9 +1,20 @@
 # System of a Town — Modul-Blueprint
 
-> **Datum**: 2026-01-25  
-> **Version**: 2.0 (10 Module)  
+> **Datum**: 2026-01-26  
+> **Version**: 2.1 (10 Module, Kaufy-Korrektur)  
 > **Status**: FROZEN  
 > **Zweck**: Verbindliches Gerüst für Zone 1 (Admin) und Zone 2 (User Portal mit 10 Modulen)
+
+---
+
+## GLOSSAR (FROZEN)
+
+| Begriff | Definition |
+|---------|------------|
+| **Lovable** | Name des Tools/Arbeitsmodus (ohne "e") |
+| **System of a Town (SoT)** | Verwaltungs-/KI-Software (Zone 1 + Zone 2) |
+| **Kaufy** (mit y) | Marktplatz-Marke (Zone 3 Website) + Channel/Source-Name in Zone 2 |
+| **Miety** | Mieter-App (Renter Portal) — Andockpunkt aus MOD-05, nicht bauen |
 
 ---
 
@@ -11,20 +22,27 @@
 
 | Zone | Zweck | Anzahl Bereiche | Anzahl Routen |
 |------|-------|-----------------|---------------|
-| **Zone 1** | Admin-Portal (Steuerzentrale) | 11 Sektionen | ~18 Routen |
+| **Zone 1** | Admin-Portal (Steuerzentrale) | 12 Sektionen | ~20 Routen |
 | **Zone 2** | User-Portal (10 Module) | 10 Module | 50 Routen (10×5) |
-| **Zone 3** | Websites (Kaufi, Landingpages) | 2 Bereiche | ~10 Routen |
+| **Zone 3** | Websites (Kaufy, Landingpages) | 2 Bereiche | ~10 Routen |
 
 ---
 
-## BREAKING CHANGE: 10 Module (nicht mehr 9)
+## MARKEN- & ZUGRIFFSLOGIK (FROZEN)
 
-**Datum:** 2026-01-25
+### Registrierungswege
 
-Die Zone 2 wird von 9 auf 10 Module erweitert:
-- **NEU:** MOD-08 "Investment-Suche / Ankauf"
-- **VERSCHOBEN:** MOD-08 → MOD-09 "Vertriebspartner"
-- **VERSCHOBEN:** MOD-09 → MOD-10 "Leadgenerierung"
+| Registrierung über | Sichtbare Module | Zielgruppe |
+|--------------------|------------------|------------|
+| **SoT** (System of a Town) | MOD-01 bis MOD-08 | Vermieter, Portfoliohalter, KI-Verwaltung |
+| **Kaufy** (Marktplatz) | MOD-01 bis MOD-10 | Kapitalanlageberater, Finanzvertriebe, Aufteiler, Bauträger |
+
+### Zielgruppen-Positionierung
+
+| Marke | Zielgruppe | Tonalität |
+|-------|------------|-----------|
+| **SoT** | Vermieter/Portfoliohalter | Neutral, professionell, keine "Vertriebsangst" |
+| **Kaufy** | Kapitalanleger + Berater + Aufteiler | Marktplatz, Karriere, Vertrieb |
 
 ---
 
@@ -40,18 +58,18 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 | 04 | Immobilien | Core | Alle | `/portal/immobilien` | SPEC |
 | 05 | MSV | Freemium | Alle | `/portal/msv` | SPEC |
 | 06 | Verkauf | Standard | Alle | `/portal/verkauf` | COMPLETE |
-| 07 | Finanzierung | Standard | Alle | `/portal/finanzierung` | SPEC |
-| 08 | Investment-Suche | Standard | Alle | `/portal/investments` | **NEW** COMPLETE |
-| 09 | Vertriebspartner | Addon | Partner | `/portal/vertriebspartner` | COMPLETE |
-| 10 | Leadgenerierung | Addon | Partner | `/portal/leads` | PLACEHOLDER |
+| 07 | Finanzierung | Standard | Alle | `/portal/finanzierung` | PENDING |
+| 08 | Investment-Suche / Ankauf | Standard | Alle | `/portal/investments` | COMPLETE |
+| 09 | Vertriebspartner | Addon | Kaufy-Registrierte | `/portal/vertriebspartner` | COMPLETE |
+| 10 | Leadgenerierung | Addon | Kaufy-Registrierte | `/portal/leads` | PLACEHOLDER |
 
 ### Sichtbarkeitsregeln (FROZEN)
 
-| Nutzertyp | Sichtbare Module |
-|-----------|------------------|
-| Standard-User (Client) | MOD-01 bis MOD-08 |
-| Partner (sales_partner) | MOD-01 bis MOD-10 |
-| Platform Admin | Alle via Oversight |
+| Registrierung | Sichtbare Module | Bemerkung |
+|---------------|------------------|-----------|
+| **SoT-Registrierung** | MOD-01 bis MOD-08 | Standard-Nutzer |
+| **Kaufy-Registrierung** | MOD-01 bis MOD-10 | Vertriebspartner/gewerblich |
+| Platform Admin | Alle via Oversight | God Mode |
 
 ---
 
@@ -117,7 +135,7 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 | `/portal/verkauf/anfragen` | Anfragen | Inquiry-Management |
 | `/portal/verkauf/vorgaenge` | Vorgänge | Reservations + Transactions |
 
-**Publishing Channels:** Kaufi, Scout24, Kleinanzeigen, Partner-Netzwerk
+**Publishing Channels:** Kaufy, Scout24, Kleinanzeigen, Partner-Netzwerk
 
 ### MOD-07: Finanzierung (`/portal/finanzierung`)
 
@@ -129,31 +147,33 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 | `/portal/finanzierung/handoff` | Handoff | Export zu Future Room |
 | `/portal/finanzierung/status` | Status | Tracking |
 
-### MOD-08: Investment-Suche (`/portal/investments`) — NEU
+### MOD-08: Investment-Suche / Ankauf (`/portal/investments`)
 
 | Route | UI-Label | Beschreibung |
 |-------|----------|--------------|
 | `/portal/investments` | Dashboard | Investment-KPIs |
 | `/portal/investments/suche` | Suche | Multi-Source-Suche |
-| `/portal/investments/favoriten` | Favoriten | Watchlist (inkl. Kaufi-Sync) |
+| `/portal/investments/favoriten` | Favoriten | Watchlist (inkl. Kaufy-Sync) |
 | `/portal/investments/mandat` | Mandat | Buy-Side Betreuung (Placeholder) |
 | `/portal/investments/simulation` | Simulation | Portfolio-Impact |
 
-**Sources:** SoT-Verkauf, Kaufi (Marke), Extern
+**Sources:** SoT-Verkauf, Kaufy (Marke), Extern
 
 ### MOD-09: Vertriebspartner (`/portal/vertriebspartner`) — Addon
 
-| Route | UI-Label | Beschreibung |
-|-------|----------|--------------|
-| `/portal/vertriebspartner` | Dashboard | Partner-KPIs |
-| `/portal/vertriebspartner/pipeline` | **Objektkatalog** | Alle partner-sichtbaren Listings |
-| `/portal/vertriebspartner/auswahl` | **Meine Auswahl** | Partner-Shortlist |
-| `/portal/vertriebspartner/beratung` | Beratung | Investment Engine |
-| `/portal/vertriebspartner/team` | **Netzwerk** | Team, Provisionen |
+| Route | UI-Label | Screen | Beschreibung |
+|-------|----------|--------|--------------|
+| `/portal/vertriebspartner` | Dashboard | Dashboard | Partner-KPIs |
+| `/portal/vertriebspartner/pipeline` | **Objektkatalog** | Objektkatalog | Alle partner-sichtbaren Listings |
+| `/portal/vertriebspartner/auswahl` | **Meine Auswahl** | MeineAuswahl | Partner-Shortlist |
+| `/portal/vertriebspartner/beratung` | Beratung | Beratung | Investment Engine |
+| `/portal/vertriebspartner/team` | **Netzwerk** | Netzwerk | Team, Provisionen, Compliance |
 
 **Route-Label-Aliase:**
 - `/pipeline` → UI: "Objektkatalog"
 - `/team` → UI: "Netzwerk"
+
+**Scope:** Vollständiges Partner-Modul (NICHT auf "nur Objektkatalog" reduzieren)
 
 ### MOD-10: Leadgenerierung (`/portal/leads`) — Addon
 
@@ -164,6 +184,8 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 | `/portal/leads/pipeline` | Pipeline | Deal-Kanban |
 | `/portal/leads/sources` | Quellen | Lead-Quellen |
 | `/portal/leads/reports` | Reports | Konversions-Reports |
+
+**Vorstufe:** Zone 1 Lead Pool (Admin qualifiziert/verteilt)
 
 ---
 
@@ -183,12 +205,12 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 ├── Oversight                    [Sektion 7]
 ├── Integrations                 [Sektion 8]
 ├── Billing                      [Sektion 9]
-├── Lead Pool                    [Sektion 10] ← NEU
+├── Lead Pool                    [Sektion 10]
 ├── Support Mode                 [Sektion 11]
 └── Audit Log                    [Sektion 12]
 ```
 
-### Sektion 10: Lead Pool (NEU)
+### Sektion 10: Lead Pool
 
 | Funktion | Beschreibung | Priorität |
 |----------|--------------|-----------|
@@ -204,7 +226,7 @@ Die Zone 2 wird von 9 auf 10 Module erweitert:
 ### Struktur-Übersicht
 
 ```
-Kaufi Marketplace
+Kaufy Marketplace (kaufy.io)
 ├── Home
 ├── Search
 ├── Object Detail
@@ -218,20 +240,20 @@ Landingpages
 └── Lead Capture Forms
 ```
 
-### Kaufi → SoT Sync
+### Kaufy → SoT Sync
 
-Favoriten aus Kaufi-Website werden bei Login in MOD-08 importiert.
+Favoriten aus Kaufy-Website werden bei Login/Signup in MOD-08 importiert.
 
 ---
 
 ## Markenlogik (FROZEN)
 
-| Marke | Bedeutung | Zone |
-|-------|-----------|------|
-| **System of a Town (SoT)** | Verwaltungssoftware | Zone 1 + 2 |
-| **Kaufi** | Marktplatz-Marke | Zone 3 + Channel in MOD-06/08 |
+| Marke | Bedeutung | Zone | Modulname erlaubt? |
+|-------|-----------|------|--------------------|
+| **System of a Town (SoT)** | Verwaltungssoftware | Zone 1 + 2 | Ja |
+| **Kaufy** | Marktplatz-Marke | Zone 3 + Channel in MOD-06/08 | **NEIN** |
 
-**Regel:** "Kaufi" ist KEIN Modulname. Es ist eine Source/Channel-Marke.
+**Regel:** "Kaufy" ist KEIN Modulname. Es ist eine Source/Channel-Marke.
 
 ---
 
@@ -261,6 +283,15 @@ Favoriten aus Kaufi-Website werden bei Login in MOD-08 importiert.
 | `docs/modules/MOD-10_LEADGENERIERUNG.md` | Leads Placeholder Spec |
 | `docs/presentation/SYSTEM_DIAGRAM.md` | Alle Diagramme |
 | `docs/architecture/ARCHITEKTUR_UPDATE_10MODULE_2026-01-25.md` | Architektur-Entscheidung |
+
+---
+
+## Changelog
+
+| Datum | Version | Änderung |
+|-------|---------|----------|
+| 2026-01-26 | 2.1 | "Kaufi" → "Kaufy" korrigiert; Sichtbarkeitsmatrix (SoT vs Kaufy); MOD-09 als vollständiges Modul markiert |
+| 2026-01-25 | 2.0 | 10-Modul-Architektur eingeführt |
 
 ---
 

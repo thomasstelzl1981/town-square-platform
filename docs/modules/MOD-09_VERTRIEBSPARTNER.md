@@ -1,22 +1,22 @@
 # MOD-09 — VERTRIEBSPARTNER (Sales Partners & Advisor Network)
 
-**Version:** v2.0.0  
+**Version:** v2.1.0  
 **Status:** SPEC COMPLETE  
-**Letzte Aktualisierung:** 2026-01-25  
+**Letzte Aktualisierung:** 2026-01-26  
 **Zone:** 2 (User Portal)  
-**Typ:** ADDON (nur für Partner-Tenants)  
+**Typ:** ADDON (nur für Kaufy-Registrierte)  
 **Route-Prefix:** `/portal/vertriebspartner`  
 **Abhängig von:** MOD-06 (Listings), MOD-08 (Investment-Suche), MOD-04 (Properties), MOD-01 (Contacts), MOD-07 (Finanzierung), Backbone (Consents, Audit)
 
-> **WICHTIG:** Dieses Modul war zuvor MOD-08. Es wurde auf MOD-09 verschoben, da MOD-08 jetzt "Investment-Suche / Ankauf" ist.
-
+> **HINWEIS:** Dieses Modul war zuvor MOD-08. Es wurde auf MOD-09 verschoben, da MOD-08 jetzt "Investment-Suche / Ankauf" ist.
+> **KORREKTUR v2.1:** MOD-09 ist ein VOLLSTÄNDIGES Partner-Modul, NICHT auf "nur Objektkatalog" reduziert. Lead/Deal-Pipeline → MOD-10.
 ---
 
 ## 1) MODULDEFINITION
 
 ### 1.1 Ziel
 
-MOD-08 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner (sales_partner Rolle). Es ermöglicht das Browsen von partner-sichtbaren Listings, die Verwaltung einer eigenen Deal-Pipeline, Investmentberatung und Provisionsabwicklung. **Dieses Modul ist nur für Partner-Tenants verfügbar.**
+MOD-09 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner (sales_partner Rolle). Es bietet ein vollständiges Partner-Cockpit: Objektkatalog, Meine Auswahl, Investment-Beratung und Netzwerk/Compliance/Provision. **Dieses Modul ist nur für Kaufy-Registrierte verfügbar.**
 
 ### 1.2 Nutzerrollen
 
