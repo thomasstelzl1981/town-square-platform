@@ -23,18 +23,17 @@ import {
 import { 
   MoreVertical, 
   FileText, 
+  Building, 
   ExternalLink, 
   Download, 
   X as XIcon, 
+  Plus, 
   Search, 
   Loader2,
   Home,
   Megaphone,
-  Lightbulb,
-  Eye,
-  MapPin
+  Lightbulb
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
 import { RentalListingWizard } from '@/components/msv/RentalListingWizard';
 import { RentalPublishDialog } from '@/components/msv/RentalPublishDialog';
 
@@ -65,7 +64,6 @@ type RentalListing = {
 };
 
 const VermietungTab = () => {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -174,9 +172,6 @@ const VermietungTab = () => {
       case 'deactivate':
         handleDeactivate(listing);
         break;
-      case 'expose':
-        navigate(`/portal/msv/vermietung/${listing.id}`);
-        break;
     }
   };
 
@@ -194,81 +189,9 @@ const VermietungTab = () => {
     setWizardOpen(true);
   };
 
-  // Mobile Card Component
-  const MobileCard = ({ listing }: { listing: RentalListing }) => (
-    <Card 
-      className="mb-3 cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={() => navigate(`/portal/msv/vermietung/${listing.id}`)}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="font-mono text-xs text-muted-foreground">
-                {listing.properties?.code || listing.public_id}
-              </span>
-            </div>
-            <p className="font-medium truncate">{listing.properties?.address || '—'}</p>
-            <p className="text-xs text-muted-foreground">
-              {listing.properties?.property_type || 'Wohnung'} · {listing.units?.area_sqm ? `${listing.units.area_sqm} m²` : '—'}
-            </p>
-            
-            <div className="flex items-center gap-2 mt-2">
-              {getStatusBadge(listing.status)}
-              {getChannelIcons(listing.rental_publications)}
-            </div>
-            
-            <div className="mt-2">
-              <span className="text-sm font-semibold">
-                Warmmiete: {listing.warm_rent ? `${listing.warm_rent.toLocaleString('de-DE')} €` : '—'}
-              </span>
-            </div>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('expose', listing); }}>
-                <Eye className="h-4 w-4 mr-2" />
-                Exposé ansehen
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('edit', listing); }}>
-                <FileText className="h-4 w-4 mr-2" />
-                Bearbeiten
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('scout24', listing); }}>
-                <Home className="h-4 w-4 mr-2" />
-                Bei Scout24 veröffentlichen
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('kleinanzeigen', listing); }}>
-                <Megaphone className="h-4 w-4 mr-2" />
-                Zu Kleinanzeigen exportieren
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('pdf', listing); }}>
-                <Download className="h-4 w-4 mr-2" />
-                Als PDF exportieren
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('deactivate', listing); }}>
-                <XIcon className="h-4 w-4 mr-2" />
-                {listing.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -278,22 +201,13 @@ const VermietungTab = () => {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/portal/msv/vermietung/vorlage">
-              <Eye className="h-4 w-4 mr-2" />
-              Beispiel-Exposé
-            </Link>
-          </Button>
-          <Button onClick={handleCreateNew}>
-            <FileText className="h-4 w-4 mr-2" />
-            Objekt vermieten
-          </Button>
-        </div>
+        <Button onClick={handleCreateNew}>
+          <Plus className="h-4 w-4 mr-2" />
+          Neues Vermietungsexposé
+        </Button>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden lg:block rounded-md border">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -305,30 +219,25 @@ const VermietungTab = () => {
               <TableHead>Warmmiete</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Kanäle</TableHead>
-              <TableHead className="w-[80px]">Exposé</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : filteredListings?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                   Keine Vermietungsinserate vorhanden
                 </TableCell>
               </TableRow>
             ) : (
               filteredListings?.map((listing) => (
-                <TableRow 
-                  key={listing.id} 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/portal/msv/vermietung/${listing.id}`)}
-                >
+                <TableRow key={listing.id}>
                   <TableCell>
                     <span className="font-mono text-xs">
                       {listing.properties?.code || listing.public_id}
@@ -368,44 +277,32 @@ const VermietungTab = () => {
                     {getChannelIcons(listing.rental_publications)}
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/portal/msv/vermietung/${listing.id}`);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('edit', listing); }}>
+                        <DropdownMenuItem onClick={() => handleAction('edit', listing)}>
                           <FileText className="h-4 w-4 mr-2" />
                           Exposé bearbeiten
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('scout24', listing); }}>
+                        <DropdownMenuItem onClick={() => handleAction('scout24', listing)}>
                           <Home className="h-4 w-4 mr-2" />
                           Bei Scout24 veröffentlichen
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('kleinanzeigen', listing); }}>
+                        <DropdownMenuItem onClick={() => handleAction('kleinanzeigen', listing)}>
                           <Megaphone className="h-4 w-4 mr-2" />
                           Zu Kleinanzeigen exportieren
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('pdf', listing); }}>
+                        <DropdownMenuItem onClick={() => handleAction('pdf', listing)}>
                           <Download className="h-4 w-4 mr-2" />
                           Als PDF exportieren
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAction('deactivate', listing); }}>
+                        <DropdownMenuItem onClick={() => handleAction('deactivate', listing)}>
                           <XIcon className="h-4 w-4 mr-2" />
                           {listing.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
                         </DropdownMenuItem>
@@ -417,23 +314,6 @@ const VermietungTab = () => {
             )}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Mobile Card List */}
-      <div className="lg:hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : filteredListings?.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Keine Vermietungsinserate vorhanden
-          </div>
-        ) : (
-          filteredListings?.map((listing) => (
-            <MobileCard key={listing.id} listing={listing} />
-          ))
-        )}
       </div>
 
       {/* Info Card */}

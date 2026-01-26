@@ -212,22 +212,73 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
           allTiles.map(tile => {
             const Icon = getIcon(tile.tile_code);
             const active = isActive(tile.route);
-            
-            // All modules use internal tab navigation - no sub-tiles in sidebar
+            const hasSubTiles = tile.sub_tiles && tile.sub_tiles.length > 0;
+            const isOpen = openModules[tile.tile_code] ?? active;
+
+            if (!hasSubTiles) {
+              return (
+                <Link
+                  key={tile.tile_code}
+                  to={tile.route}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    active 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tile.title}
+                </Link>
+              );
+            }
+
             return (
-              <Link
+              <Collapsible
                 key={tile.tile_code}
-                to={tile.route}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  active 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
+                open={isOpen}
+                onOpenChange={() => toggleModule(tile.tile_code)}
               >
-                <Icon className="h-4 w-4" />
-                {tile.title}
-              </Link>
+                <CollapsibleTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      active 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon className="h-4 w-4" />
+                      {tile.title}
+                    </span>
+                    <ChevronDown 
+                      className={cn(
+                        'h-4 w-4 transition-transform duration-200',
+                        isOpen && 'rotate-180'
+                      )} 
+                    />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-4 mt-1 space-y-1 border-l pl-3">
+                    {tile.sub_tiles?.map(sub => (
+                      <Link
+                        key={sub.route}
+                        to={sub.route}
+                        className={cn(
+                          'block px-3 py-1.5 rounded-lg text-sm transition-colors',
+                          isSubActive(sub.route)
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                      >
+                        {sub.title}
+                      </Link>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })
         )}
