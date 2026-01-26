@@ -1,182 +1,340 @@
 
-# Plan: Klassische Menüstruktur und Module-Pages korrigieren
+# Reparaturplan: 10 Module mit Dokumentation synchronisieren
 
-## Problemanalyse
+## Strategische Entscheidung
 
-Nach gründlicher Analyse habe ich folgende Diskrepanzen gefunden:
+**Empfohlene Taktik: Schichtenbasierte Reparatur**
 
-### 1. Navigation-Problem
-Die aktuelle `PortalNav.tsx` ist **hardcoded** und nutzt die `tile_catalog`-Datenbank NICHT. Wenn du auf "Stammdaten" klickst, öffnen sich keine Untermenüpunkte.
-
-### 2. Falsche Sub-Tiles in den Module-Pages
-Die Module-Pages zeigen falsche Cards:
-
-| Modul | IST (falsch) | SOLL (laut Docs) |
-|-------|--------------|------------------|
-| MOD-01 Stammdaten | Kontakte, Adressen, Bankdaten, Einstellungen | Profil, Firma, Abrechnung, Sicherheit |
-| MOD-02 KI Office | Chat, Aufgaben, Kalender, Notizen | E-Mail, Brief, Kontakte, Kalender |
-| MOD-03 DMS | Ablage, Posteingang, Sortieren, Einstellungen | Storage, Posteingang, Sortieren, Einstellungen |
-
-Die DB hat die richtigen Sub-Tiles, aber die Pages sind hardcoded mit falschen Daten.
-
-### 3. Keine funktionalen Sub-Routes
-Klick auf die Cards führt nirgendwo hin (keine onClick-Handler).
+Statt jedes Modul einzeln komplett zu bauen, erstellen wir zunächst eine solide Foundation aus wiederverwendbaren Komponenten. Dies schützt die Architektur (Module bleiben isoliert) und beschleunigt die Folge-Module erheblich.
 
 ---
 
-## Lösungsplan
+## Phase 0: Foundation (einmalig, schützt alle Module)
 
-### Phase 1: Klassische Sidebar-Navigation mit Collapsible-Menü
+### 0.1 Shared UI Components erstellen
 
-**Datei:** `src/components/portal/PortalNav.tsx`
+Neue Komponenten in `src/components/shared/`:
 
-Änderungen:
-1. Navigation aus `tile_catalog` laden (nicht hardcoded)
-2. Collapsible/Accordion-Menü implementieren
-3. Wenn Modul geklickt → 4 Sub-Tiles aufklappen
-4. Active-State für Parent und Children
+| Komponente | Zweck | Verwendet von |
+|------------|-------|---------------|
+| `DataTable.tsx` | Wiederverwendbare Tabelle mit Sortierung, Filter, Pagination | MOD-04, 05, 06, 09, 10 |
+| `FormSection.tsx` | Formular-Gruppe mit Label und Fehlermeldung | MOD-01, 02, 07 |
+| `DetailDrawer.tsx` | Rechtes Panel für Detailansicht | MOD-03, 04, 06 |
+| `FileUploader.tsx` | Drag-Drop-Zone für Dateien | MOD-03 |
+| `ContactPicker.tsx` | Kontakt-Auswahl mit Suche | MOD-02, 07, 10 |
+| `StatusBadge.tsx` | Einheitliche Status-Anzeige | Alle Module |
+| `EmptyState.tsx` | Leere-Liste-Anzeige mit CTA | Alle Module |
+
+### 0.2 Sub-Page-Routing Pattern etablieren
+
+Aktuell zeigen alle Sub-Routes die gleiche Page:
 
 ```
-Menü-Struktur:
-├── Home
-├── ▼ Stammdaten (klickbar → aufklappen)
-│   ├── Profil
-│   ├── Firma
-│   ├── Abrechnung
-│   └── Sicherheit
-├── ▼ KI Office
-│   ├── E-Mail
-│   ├── Brief
-│   ├── Kontakte
-│   └── Kalender
-├── ...
+/portal/office        → OfficePage  (Dashboard)
+/portal/office/email  → OfficePage  (Dashboard!) ← FALSCH
 ```
 
-### Phase 2: tile_catalog Sub-Tiles korrigieren (DB)
+Korrektur durch Route-Parameter:
 
-Die DB hat teilweise noch falsche Sub-Tiles:
+```
+/portal/office        → OfficePage (Dashboard)
+/portal/office/:tab   → OfficePage mit Tab-Erkennung
+```
 
-| MOD | Aktuell in DB | Korrektur nötig |
-|-----|---------------|-----------------|
-| MOD-01 | Profil, Kontakte, Adressen, Einstellungen | → Profil, Firma, Abrechnung, Sicherheit |
-| MOD-02 | E-Mail, Brief, Kontakte, Kalender | Korrekt |
-| MOD-03 | Ablage, Posteingang, Sortieren, Einstellungen | → Storage, Posteingang, Sortieren, DMS-Einstellungen |
-| MOD-04 | Liste, Neu, Karte, Analyse | → Kontexte, Portfolio, Sanierung, Bewertung |
-| MOD-05 | Übersicht, Mieter, Zahlungen, Mahnungen | → Dashboard, Listen, Mieteingang, Vermietung |
-| MOD-06 | Inserate, Anfragen, Reservierungen, Transaktionen | → Objekte, Aktivitäten, Anfragen, Vorgänge |
-| MOD-07 | Fälle, Dokumente, Export, Status | Korrekt |
-| MOD-08 | Suche, Favoriten, Profile, Alerts | → Suche, Favoriten, Mandat, Simulation |
-| MOD-09 | Dashboard, Katalog, Auswahl, Netzwerk | → Objektkatalog, Auswahl, Beratung, Netzwerk |
-| MOD-10 | Inbox, Kampagnen, Pipeline, Quellen | → Inbox, Meine Leads, Pipeline, Werbung |
+Jede ModulePage erkennt den aktuellen Sub-Tab und rendert die entsprechende Komponente.
 
-### Phase 3: Module-Pages dynamisch machen
+---
 
-**Änderung für alle Module-Pages:**
+## Phase 1: MOD-01 Stammdaten (Referenz-Modul)
 
-Statt hardcodierter Cards:
-1. Sub-Tiles aus `tile_catalog` laden (oder Props übergeben)
-2. Jede Card ist ein Link zur entsprechenden Sub-Route
-3. Icon-Mapping basierend auf Route/Title
+### 1.1 Profil-Formular `/portal/stammdaten/profil`
 
-### Phase 4: Sub-Routes in App.tsx vervollständigen
+Funktionen laut Dokumentation:
+- Persönliche Daten anzeigen/bearbeiten (Vorname, Nachname, Telefon)
+- Avatar-Upload
+- E-Mail (read-only, da Auth)
 
-Für jedes Modul alle 4 Sub-Routes registrieren:
+Datenquelle: `profiles` Tabelle
+
+UI-Komponenten:
+- FormSection mit Input-Feldern
+- FileUploader für Avatar
+- Save-Button mit Toast-Feedback
+
+### 1.2 Firma-Formular `/portal/stammdaten/firma`
+
+Funktionen:
+- Organisation bearbeiten (Name, Adresse, Steuernummer)
+- Team-Mitglieder anzeigen
+- Mitglied einladen
+
+Datenquellen: `organizations`, `memberships`, `profiles`
+
+### 1.3 Abrechnung `/portal/stammdaten/abrechnung`
+
+Funktionen:
+- Aktueller Plan anzeigen
+- Rechnungen (invoices) auflisten
+- Credits anzeigen
+
+Datenquellen: `plans`, `invoices` (noch nicht vorhanden → Phase 2 DB-Migration)
+
+### 1.4 Sicherheit `/portal/stammdaten/sicherheit`
+
+Funktionen:
+- Passwort ändern (Supabase Auth)
+- Aktive Sessions anzeigen
+- Session beenden
+
+---
+
+## Phase 2: MOD-03 DMS (Edge Functions verbinden)
+
+### 2.1 Storage `/portal/dms/storage`
+
+Funktionen laut Dokumentation:
+- 3-Panel-Layout: Ordner-Baum | Dokument-Liste | Detail
+- Ordner erstellen/umbenennen
+- Dokument hochladen (mit sot-dms-upload-url Edge Function)
+- Dokument herunterladen (mit sot-dms-download-url Edge Function)
+
+Neue DB-Tabelle: `storage_nodes` (Ordnerstruktur)
+
+UI-Komponenten:
+- TreeView für Ordner
+- DataTable für Dokumente
+- FileUploader (Dropzone)
+- DetailDrawer (rechts)
+
+### 2.2 Posteingang `/portal/dms/posteingang`
+
+Funktionen:
+- Inbound-Items (Caya) anzeigen
+- Download, Preview
+- "Start sorting" Button
+
+Datenquelle: `inbound_items` oder `documents` mit `source = 'caya'`
+
+### 2.3 Sortieren `/portal/dms/sortieren`
+
+Funktionen:
+- Queue-Ansicht
+- Accept / Correct / Reject
+- Zuweisung zu Property/Contact/Unit
+
+Interface-Action: `LinkDocumentToEntity` (aus INTERFACES.md)
+
+### 2.4 Einstellungen `/portal/dms/einstellungen`
+
+Funktionen:
+- Extraction Toggle (automatisches Auslesen)
+- Connectors anzeigen
+
+---
+
+## Phase 3: MOD-02 KI Office (komplexeste UI)
+
+### 3.1 E-Mail Client `/portal/office/email`
+
+Funktionen laut Dokumentation:
+- 3-Panel-Layout: Folders | Mail-Liste | Detail
+- Mail-Account verbinden (IMAP/Gmail/Exchange)
+- E-Mails lesen (kein Senden in Phase 1)
+
+Neue DB-Tabelle: `mail_accounts`, `mail_messages` (falls lokal gecached)
+
+Hinweis: Dies ist ein komplexes Feature — Phase 1 zeigt nur "Account verbinden"-UI.
+
+### 3.2 KI-Briefgenerator `/portal/office/brief`
+
+Funktionen:
+- Kontakt auswählen (ContactPicker)
+- Brief-Template wählen
+- Armstrong KI generiert Inhalt
+- PDF erstellen + Preview
+- Versand via SimpleFax/Briefdienst
+
+Interface-Actions aus INTERFACES.md:
+- `GetContactsForLetter`
+- `GetSenderIdentity`
+- `CreateCommunicationEvent`
+- `ArchiveLetterAsDMS`
+
+### 3.3 Kontakte `/portal/office/kontakte`
+
+Funktionen:
+- Kontakt-Liste (DataTable)
+- Kontakt erstellen/bearbeiten
+- Kontakt-Detail
+
+Datenquelle: `contacts` (Backbone-Tabelle)
+
+### 3.4 Kalender `/portal/office/kalender`
+
+Funktionen:
+- Kalender-Ansicht
+- Termin erstellen
+- Erinnerungen
+
+Phase 1: Einfacher Termin-CRUD
+
+---
+
+## Phase 4: MOD-04 Immobilien (Source of Truth)
+
+### 4.1 Portfolio `/portal/immobilien/portfolio`
+
+Funktionen laut Dokumentation:
+- 13-Spalten DataTable
+- Objekt anlegen (mit sot-property-crud Edge Function)
+- Objekt-Detail bearbeiten
+
+Bereits vorhanden: PropertyList, PropertyDetail, PropertyForm
+
+Aktion: Diese Legacy-Komponenten in das neue Tab-System integrieren.
+
+### 4.2 Kontexte `/portal/immobilien/kontexte`
+
+Funktionen:
+- Vermieter-Kontexte verwalten
+- Eigentumsstrukturen
+
+### 4.3 Sanierung `/portal/immobilien/sanierung`
+
+Funktionen:
+- Service Cases
+- Unzugeordnete Angebote
+- Contractor-Suche (Google Places Integration)
+
+### 4.4 Bewertung `/portal/immobilien/bewertung`
+
+Funktionen:
+- Bewertungs-Jobs anlegen
+- Credits-System
+- Consent für Datenfreigabe
+
+---
+
+## Phase 5: MOD-05 bis MOD-10 (Business-Module)
+
+Jedes Modul folgt dem etablierten Pattern:
+
+| Modul | Haupt-Feature | Wichtigste Integration |
+|-------|---------------|------------------------|
+| MOD-05 MSV | Lease-Verwaltung, Mieteingänge | Miety Invite Flow (DIA-015) |
+| MOD-06 Verkauf | Listing-Publishing, 4 Channels | sot-listing-publish, DIA-011 |
+| MOD-07 Finanzierung | Finance Packages, Handoff | Future Room Export, DIA-Consent |
+| MOD-08 Investments | Multi-Source-Suche, Favoriten | Kaufy Sync (DIA-013), Investment Engine |
+| MOD-09 Vertriebspartner | Partner-Pipeline, Commissions | MOD-06 Listings (DIA-012) |
+| MOD-10 Leads | Lead-Inbox, Deal-Kanban | Zone 1 Pool (DIA-016) |
+
+---
+
+## Cross-Modul-Verbindungen (gemäß Flowcharts)
+
+```text
+Zone 3 Websites
+      │
+      ▼
+┌─────────────────────────────────────────────────────┐
+│  Zone 1: Lead Pool (Admin qualifiziert/verteilt)    │
+└─────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────┐
+│                    Zone 2 Portal                     │
+│  ┌──────┐   ┌──────┐   ┌──────┐   ┌──────┐         │
+│  │MOD-10│◄──│MOD-09│◄──│MOD-06│◄──│MOD-04│         │
+│  │Leads │   │Partner│   │Verkauf│   │Immob.│         │
+│  └──────┘   └──────┘   └──────┘   └──────┘         │
+│      │                      │          ▲            │
+│      │                      │          │            │
+│      ▼                      ▼          │            │
+│  ┌──────┐              ┌──────┐   ┌──────┐         │
+│  │Deals │              │Kaufy │   │MOD-05│         │
+│  │      │              │Publish│   │MSV   │         │
+│  └──────┘              └──────┘   └──────┘         │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementierungs-Reihenfolge
+
+| Schritt | Was | Warum zuerst |
+|---------|-----|--------------|
+| 1 | Shared Components | Basis für alle Module |
+| 2 | Sub-Page-Routing | Jede Sub-URL zeigt eigene Komponente |
+| 3 | MOD-01 Stammdaten | Einfachstes Modul, sofort testbar |
+| 4 | MOD-03 DMS | Edge Functions bereits vorhanden |
+| 5 | MOD-04 Immobilien | Legacy-Code integrieren |
+| 6 | MOD-02 KI Office | Komplexeste UI |
+| 7 | MOD-05 bis MOD-10 | Geschäfts-Module nach Pattern |
+
+---
+
+## Technische Umsetzungsdetails
+
+### Sub-Page-Routing-Lösung
+
+Jede ModulePage wird so umgebaut:
 
 ```tsx
-// MOD-01: Stammdaten
-<Route path="stammdaten" element={<StammdatenPage />} />
-<Route path="stammdaten/profil" element={<StammdatenProfilPage />} />
-<Route path="stammdaten/firma" element={<StammdatenFirmaPage />} />
-<Route path="stammdaten/abrechnung" element={<StammdatenAbrechnungPage />} />
-<Route path="stammdaten/sicherheit" element={<StammdatenSicherheitPage />} />
-```
-
----
-
-## Umsetzungsreihenfolge
-
-1. **Sidebar-Navigation mit Collapsible** erstellen
-2. **tile_catalog** in DB korrigieren (Sub-Tiles gemäß Docs)
-3. **Module-Dashboard-Pages** auf dynamische Sub-Tile-Anzeige umstellen
-4. **Sub-Route-Pages** als Placeholder erstellen (40 Seiten: 10 Module × 4 Sub-Tiles)
-5. **App.tsx** mit allen Sub-Routes aktualisieren
-
----
-
-## Technische Details
-
-### Neue Komponente: CollapsibleNavItem
-
-```tsx
-interface NavItem {
-  code: string;
-  label: string;
-  icon: LucideIcon;
-  route: string;
-  subItems?: {
-    title: string;
-    route: string;
-  }[];
-}
-
-function CollapsibleNavItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
-  const [isOpen, setIsOpen] = useState(isActive);
+// OfficePage.tsx
+const OfficePage = () => {
+  const { tab } = useParams(); // email | brief | kontakte | kalender
+  
+  // Tab-Komponenten dynamisch laden
+  const renderContent = () => {
+    switch (tab) {
+      case 'email': return <OfficeEmailTab />;
+      case 'brief': return <OfficeBriefTab />;
+      case 'kontakte': return <OfficeKontakteTab />;
+      case 'kalender': return <OfficeKalenderTab />;
+      default: return <OfficeDashboard />;
+    }
+  };
   
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <button className="...">
-          <Icon /> {item.label}
-          <ChevronDown className={isOpen ? "rotate-180" : ""} />
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        {item.subItems?.map(sub => (
-          <Link to={sub.route}>{sub.title}</Link>
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
+    <div className="space-y-6">
+      <ModuleHeader title="KI Office" />
+      <SubTabNav tabs={subTiles} currentTab={tab} />
+      {renderContent()}
+    </div>
   );
-}
+};
 ```
 
-### Datenbankänderung (Migration)
+### Datenbank-Erweiterungen
 
-```sql
--- MOD-01 korrigieren
-UPDATE tile_catalog 
-SET sub_tiles = '[
-  {"title": "Profil", "route": "/portal/stammdaten/profil"},
-  {"title": "Firma", "route": "/portal/stammdaten/firma"},
-  {"title": "Abrechnung", "route": "/portal/stammdaten/abrechnung"},
-  {"title": "Sicherheit", "route": "/portal/stammdaten/sicherheit"}
-]'::jsonb
-WHERE tile_code = 'MOD-01';
+Folgende Tabellen werden benötigt:
 
--- (Analog für alle 10 Module)
-```
+1. `storage_nodes` - DMS Ordnerstruktur
+2. `letter_drafts` - KI-Brief Entwürfe
+3. `mail_accounts` - E-Mail Account-Verbindungen
+4. `invoices` - Billing-Rechnungen
 
 ---
 
-## Erwartetes Ergebnis
+## Schutzmechanismen für Architektur
 
-Nach Umsetzung:
-- Sidebar zeigt alle 10 Module als aufklappbare Menüpunkte
-- Klick auf "Stammdaten" öffnet 4 Untermenüpunkte
-- Klick auf "Profil" → navigiert zu `/portal/stammdaten/profil`
-- Module-Dashboard zeigt die 4 Sub-Tiles als klickbare Cards
-- Alle 40 Sub-Routes funktionieren (zunächst als Placeholder)
+1. **Module-Isolation**: Jedes Modul hat eigenen Ordner unter `src/pages/portal/[module]/`
+2. **Interface-Actions**: Cross-Modul-Aktionen nur über dokumentierte Interfaces
+3. **RLS**: Alle Tabellen mit tenant_id-Check
+4. **Consent-Gates**: Sensible Aktionen erfordern User-Zustimmung (aus INTERFACES.md)
 
 ---
 
-## Zeitschätzung
+## Zusammenfassung
 
-| Phase | Aufwand |
-|-------|---------|
-| Collapsible Sidebar | 1 Session |
-| DB Sub-Tiles korrigieren | 1 Migration |
-| 10 Module-Pages anpassen | 1-2 Sessions |
-| 40 Sub-Pages erstellen | 2-3 Sessions |
-| App.tsx Routes | 1 Session |
+**Problem**: Alle 10 Module sind leere Hüllen ohne Funktionen.
 
-**Gesamt:** 5-7 Sessions für vollständige Umsetzung
+**Lösung**: Schichtenbasierte Reparatur in 5 Phasen.
+
+**Ergebnis**: Vollständig funktionale Module mit:
+- Eingabeformularen
+- Datenlisten
+- Edge Function-Anbindung
+- Cross-Modul-Flows gemäß Dokumentation
+
+**Nächster Schritt**: Phase 0 (Shared Components) + Phase 1 (MOD-01 Stammdaten) implementieren.
