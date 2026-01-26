@@ -167,11 +167,23 @@ export const TemplateWizard = ({ open, onOpenChange, templateCode, unit }: Templ
             <Save className="h-4 w-4 mr-2" />
             Als Entwurf speichern
           </Button>
-          <Button variant="secondary" disabled>
+          <Button 
+            variant="secondary" 
+            onClick={() => {
+              // Navigate to MOD-02 Briefgenerator with draft context
+              window.location.href = '/portal/office/brief';
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
-            PDF herunterladen
+            Im Briefgenerator öffnen
           </Button>
-          <Button disabled>
+          <Button 
+            onClick={() => {
+              saveDraft.mutate();
+              // After saving, trigger send flow (placeholder for email integration)
+            }}
+            disabled={saveDraft.isPending}
+          >
             <Send className="h-4 w-4 mr-2" />
             Versenden
           </Button>

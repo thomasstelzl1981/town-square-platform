@@ -1,10 +1,7 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ObjekteTab, 
   MieteingangTab, 
@@ -16,14 +13,31 @@ const MSVPage = () => {
   const contentRef = usePdfContentRef();
   const { data, isLoading } = useModuleTiles('MOD-05');
   const location = useLocation();
-  const navigate = useNavigate();
+  const currentPath = location.pathname;
 
-  // Parse current sub-tab from URL
-  const pathParts = location.pathname.split('/');
-  const currentSubTab = pathParts[3] || 'objekte';
+  // Determine which sub-page to render based on URL (Sidebar-First Pattern)
+  const renderSubPage = () => {
+    if (currentPath.endsWith('/objekte') || currentPath === '/portal/msv') {
+      return <ObjekteTab />;
+    }
+    if (currentPath.endsWith('/mieteingang')) {
+      return <MieteingangTab />;
+    }
+    if (currentPath.endsWith('/vermietung')) {
+      return <VermietungTab />;
+    }
+    if (currentPath.endsWith('/einstellungen')) {
+      return <EinstellungenTab />;
+    }
+    return <ObjekteTab />; // Default
+  };
 
-  const handleTabChange = (value: string) => {
-    navigate(`/portal/msv/${value}`);
+  const getSubPageTitle = () => {
+    if (currentPath.endsWith('/objekte') || currentPath === '/portal/msv') return 'Objekte';
+    if (currentPath.endsWith('/mieteingang')) return 'Mieteingang';
+    if (currentPath.endsWith('/vermietung')) return 'Vermietung';
+    if (currentPath.endsWith('/einstellungen')) return 'Einstellungen';
+    return 'Objekte';
   };
 
   if (isLoading) {
@@ -39,39 +53,20 @@ const MSVPage = () => {
       <div ref={contentRef}>
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">{data?.title || 'Mietmanagement'}</h1>
-          <p className="text-muted-foreground">{data?.description || 'Mietsonderverwaltung – Zahlungen, Mahnungen und Mietberichte'}</p>
+          <p className="text-muted-foreground">
+            {data?.description || 'Mietsonderverwaltung'} — {getSubPageTitle()}
+          </p>
         </div>
 
-        <Tabs value={currentSubTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="objekte">Objekte</TabsTrigger>
-            <TabsTrigger value="mieteingang">Mieteingang</TabsTrigger>
-            <TabsTrigger value="vermietung">Vermietung</TabsTrigger>
-            <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="objekte">
-            <ObjekteTab />
-          </TabsContent>
-
-          <TabsContent value="mieteingang">
-            <MieteingangTab />
-          </TabsContent>
-
-          <TabsContent value="vermietung">
-            <VermietungTab />
-          </TabsContent>
-
-          <TabsContent value="einstellungen">
-            <EinstellungenTab />
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-4">
+          {renderSubPage()}
+        </div>
       </div>
 
       <div className="px-6">
         <PdfExportFooter 
           contentRef={contentRef} 
-          documentTitle="Mietmanagement" 
+          documentTitle={`MSV – ${getSubPageTitle()}`} 
           moduleName="MOD-05 MSV" 
         />
       </div>
