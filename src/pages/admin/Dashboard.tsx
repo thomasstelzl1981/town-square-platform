@@ -55,45 +55,62 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Welcome to the System of a Town Admin Portal</p>
       </div>
 
-      {/* Zone 3 Quick Actions */}
+      {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ExternalLink className="h-5 w-5" />
-            Quick Actions – Zone 3 Websites
+            Quick Actions
           </CardTitle>
-          <CardDescription>Open the public websites in new tabs</CardDescription>
+          <CardDescription>Schnellzugriff auf alle Bereiche</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
+        <CardContent className="space-y-4">
+          {/* Portal Super User Entry */}
+          <div>
+            <p className="text-sm font-medium mb-2">Zone 2 – Portal</p>
             <Button 
-              variant="outline" 
-              onClick={() => window.open('/kaufy', '_blank')}
+              variant="default" 
+              onClick={() => window.location.href = '/portal'}
               className="gap-2"
             >
-              <ExternalLink className="h-4 w-4" />
-              Kaufy Website öffnen
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/sot', '_blank')}
-              className="gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              System of a Town öffnen
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/miety', '_blank')}
-              className="gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Miety Website öffnen
+              <Users className="h-4 w-4" />
+              Portal Super User öffnen
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Final: kaufy.app | systemofatown.app | miety.app
-          </p>
+
+          {/* Zone 3 Websites */}
+          <div>
+            <p className="text-sm font-medium mb-2">Zone 3 – Websites</p>
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => window.open('/kaufy', '_blank')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Kaufy
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open('/sot', '_blank')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                System of a Town
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open('/miety', '_blank')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Miety
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Go-live: kaufy.app | systemofatown.app | miety.app
+            </p>
+          </div>
         </CardContent>
       </Card>
 
