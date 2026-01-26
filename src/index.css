@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './styles/zone3-theme.css';
+
 /* =============================================================================
    SYSTEM OF A TOWN — CI/UI DESIGN SYSTEM
    Version: 1.0.0

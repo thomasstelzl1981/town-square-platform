@@ -1,0 +1,213 @@
+/* =============================================================================
+   ZONE 3 — WEBSITE THEMES (Light Mode)
+   Version: 1.0.0
+   ============================================================================= */
+
+/* ===========================================================================
+   KAUFY THEME
+   =========================================================================== */
+.theme-kaufy {
+  --z3-background: 0 0% 98%;
+  --z3-foreground: 0 0% 7%;
+  --z3-card: 0 0% 100%;
+  --z3-card-foreground: 0 0% 7%;
+  --z3-primary: 0 0% 7%;
+  --z3-primary-foreground: 0 0% 100%;
+  --z3-secondary: 0 0% 96%;
+  --z3-secondary-foreground: 0 0% 7%;
+  --z3-muted: 0 0% 96%;
+  --z3-muted-foreground: 0 0% 45%;
+  --z3-accent: 0 0% 7%;
+  --z3-accent-foreground: 0 0% 100%;
+  --z3-border: 0 0% 90%;
+  --z3-input: 0 0% 90%;
+}
+
+/* ===========================================================================
+   SYSTEM OF A TOWN THEME
+   =========================================================================== */
+.theme-sot {
+  --z3-background: 210 40% 98%;
+  --z3-foreground: 222 47% 11%;
+  --z3-card: 0 0% 100%;
+  --z3-card-foreground: 222 47% 11%;
+  --z3-primary: 217 91% 60%;
+  --z3-primary-foreground: 0 0% 100%;
+  --z3-secondary: 210 40% 96%;
+  --z3-secondary-foreground: 222 47% 11%;
+  --z3-muted: 210 40% 96%;
+  --z3-muted-foreground: 215 16% 47%;
+  --z3-accent: 217 91% 60%;
+  --z3-accent-foreground: 0 0% 100%;
+  --z3-border: 214 32% 91%;
+  --z3-input: 214 32% 91%;
+}
+
+/* ===========================================================================
+   MIETY THEME
+   =========================================================================== */
+.theme-miety {
+  --z3-background: 210 40% 98%;
+  --z3-foreground: 222 47% 11%;
+  --z3-card: 0 0% 100%;
+  --z3-card-foreground: 222 47% 11%;
+  --z3-primary: 199 89% 48%;
+  --z3-primary-foreground: 0 0% 100%;
+  --z3-secondary: 210 40% 96%;
+  --z3-secondary-foreground: 222 47% 11%;
+  --z3-muted: 210 40% 96%;
+  --z3-muted-foreground: 215 16% 47%;
+  --z3-accent: 199 89% 48%;
+  --z3-accent-foreground: 0 0% 100%;
+  --z3-border: 214 32% 91%;
+  --z3-input: 214 32% 91%;
+}
+
+/* ===========================================================================
+   ZONE 3 BASE STYLES
+   =========================================================================== */
+.zone3-page {
+  background-color: hsl(var(--z3-background));
+  color: hsl(var(--z3-foreground));
+  min-height: 100vh;
+}
+
+.zone3-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Cards */
+.zone3-card {
+  background-color: hsl(var(--z3-card));
+  color: hsl(var(--z3-card-foreground));
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+  border: 1px solid hsl(var(--z3-border));
+}
+
+/* Buttons */
+.zone3-btn-primary {
+  background-color: hsl(var(--z3-primary));
+  color: hsl(var(--z3-primary-foreground));
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.zone3-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.zone3-btn-secondary {
+  background-color: transparent;
+  color: hsl(var(--z3-foreground));
+  border: 1px solid hsl(var(--z3-border));
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.zone3-btn-secondary:hover {
+  background-color: hsl(var(--z3-secondary));
+}
+
+/* Section spacing */
+.zone3-section {
+  padding: 5rem 0;
+}
+
+.zone3-section-sm {
+  padding: 3rem 0;
+}
+
+/* Typography */
+.zone3-heading-1 {
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.zone3-heading-2 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.zone3-heading-3 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.zone3-text-large {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: hsl(var(--z3-muted-foreground));
+}
+
+.zone3-text-small {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--z3-muted-foreground));
+}
+
+/* Grid layouts */
+.zone3-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+.zone3-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+.zone3-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .zone3-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .zone3-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .zone3-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .zone3-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .zone3-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Hero sections */
+.zone3-hero {
+  padding: 6rem 0;
+  text-align: center;
+}
+
+.zone3-hero-dark {
+  background-color: hsl(var(--z3-foreground));
+  color: hsl(var(--z3-background));
+}
+
+.zone3-hero-dark .zone3-text-large {
+  color: hsl(var(--z3-border));
+}
