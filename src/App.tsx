@@ -45,6 +45,7 @@ import FinanzierungPage from "./pages/portal/FinanzierungPage";
 import InvestmentsPage from "./pages/portal/InvestmentsPage";
 import VertriebspartnerPage from "./pages/portal/VertriebspartnerPage";
 import LeadsPage from "./pages/portal/LeadsPage";
+import RentalExposeDetail from "./pages/portal/msv/RentalExposeDetail";
 
 // Legacy Portfolio (kept for reference/migration)
 import PropertyList from "./pages/portfolio/PropertyList";
@@ -169,6 +170,7 @@ const App = () => (
               <Route path="msv/objekte" element={<MSVPage />} />
               <Route path="msv/mieteingang" element={<MSVPage />} />
               <Route path="msv/vermietung" element={<MSVPage />} />
+              <Route path="msv/vermietung/:id" element={<RentalExposeDetail />} />
               <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}

@@ -32,7 +32,8 @@ import {
   ChevronDown, 
   ChevronRight,
   Send,
-  FileText
+  FileText,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -298,6 +299,7 @@ const MieteingangTab = () => {
               <TableHead className="text-right">Sollmiete</TableHead>
               <TableHead className="text-right">Mieteingang</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -309,7 +311,7 @@ const MieteingangTab = () => {
               </TableRow>
             ) : propertyPayments?.length === 0 ? (
               <>
-                {/* Leerzeile mit Platzhaltern */}
+                {/* Leerzeile mit Platzhaltern - konsistent mit MOD-04 */}
                 <TableRow 
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => navigate('/portal/msv/objekte')}
@@ -317,7 +319,7 @@ const MieteingangTab = () => {
                   <TableCell className="text-muted-foreground">
                     <ChevronRight className="h-4 w-4" />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">–</TableCell>
                   <TableCell className="text-muted-foreground">–</TableCell>
                   <TableCell className="text-muted-foreground">–</TableCell>
                   <TableCell className="text-right text-muted-foreground">–</TableCell>
@@ -325,9 +327,14 @@ const MieteingangTab = () => {
                   <TableCell>
                     <Badge variant="outline">–</Badge>
                   </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6">
+                  <TableCell colSpan={8} className="text-center py-6">
                     <p className="text-muted-foreground mb-4">
                       Keine aktiven Mietverhältnisse — Mietvertrag in Objekte anlegen
                     </p>
@@ -365,11 +372,22 @@ const MieteingangTab = () => {
                           {row.mieteingang.toLocaleString('de-DE')} €
                         </TableCell>
                         <TableCell>{getStatusBadge(row.status)}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => navigate(`/portal/immobilien/${row.id}`)}
+                            title="Objekt öffnen"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     </CollapsibleTrigger>
                     <CollapsibleContent asChild>
                       <TableRow className="bg-muted/30">
-                        <TableCell colSpan={7} className="p-4">
+                        <TableCell colSpan={8} className="p-4">
                           <div className="space-y-4">
                             {/* Payment History */}
                             <div>

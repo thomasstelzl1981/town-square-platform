@@ -3,15 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -19,12 +10,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  MoreVertical, 
+  FileText, 
+  TrendingUp, 
+  Mail, 
+  Plus, 
+  Star, 
+  Eye, 
+  AlertTriangle, 
+  ShieldCheck 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { LeaseFormDialog } from '@/components/msv/LeaseFormDialog';
 import { ReadinessChecklist } from '@/components/msv/ReadinessChecklist';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  PropertyTable, 
+  PropertyCodeCell, 
+  PropertyAddressCell, 
+  PropertyCurrencyCell,
+  type PropertyTableColumn 
+} from '@/components/shared';
+
 interface PropertyData {
   id: string;
   address: string;
@@ -69,7 +78,6 @@ const ObjekteTab = () => {
   const [selectedUnit, setSelectedUnit] = useState<UnitWithDetails | null>(null);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
 
   const { data: units, isLoading } = useQuery({
     queryKey: ['msv-objekte-list'],
@@ -127,12 +135,9 @@ const ObjekteTab = () => {
       // Build unit data with calculated rent components
       return unitsData?.map(unit => {
         const lease = leaseMap.get(unit.id) || null;
-        
-        // For now, use monthly_rent as Kaltmiete
-        // In future: fetch from lease_components table
         const kaltmiete = lease?.monthly_rent || 0;
-        const nebenkosten = 0; // TODO: from lease_components (type=utilities)
-        const vorauszahlung = 0; // TODO: from lease_components (type=prepayment)
+        const nebenkosten = 0;
+        const vorauszahlung = 0;
         const warmmiete = kaltmiete + nebenkosten + vorauszahlung;
 
         return {
@@ -146,17 +151,6 @@ const ObjekteTab = () => {
         };
       }) || [];
     }
-  });
-
-  const filteredUnits = units?.filter(u => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      u.properties?.address?.toLowerCase().includes(searchLower) ||
-      u.properties?.code?.toLowerCase().includes(searchLower) ||
-      u.unit_number?.toLowerCase().includes(searchLower) ||
-      u.lease?.contact?.last_name?.toLowerCase().includes(searchLower)
-    );
   });
 
   const handleAction = async (action: string, unit: UnitWithDetails) => {
@@ -183,7 +177,6 @@ const ObjekteTab = () => {
         setLeaseFormOpen(true);
         break;
       case 'premium':
-        // Check for existing enrollment or create new
         const { data: enrollment } = await supabase
           .from('msv_enrollments')
           .select('id')
@@ -193,7 +186,6 @@ const ObjekteTab = () => {
         if (enrollment) {
           setSelectedEnrollmentId(enrollment.id);
         } else {
-          // Create a draft enrollment
           const { data: newEnrollment } = await supabase
             .from('msv_enrollments')
             .insert({
@@ -216,167 +208,154 @@ const ObjekteTab = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-  };
+  // Column definitions - consistent with MOD-04 pattern
+  const columns: PropertyTableColumn<UnitWithDetails>[] = [
+    {
+      key: 'code',
+      header: 'Code',
+      minWidth: '80px',
+      render: (_, row) => <PropertyCodeCell code={row.properties?.code || null} fallback={row.unit_number} />
+    },
+    {
+      key: 'address',
+      header: 'Adresse',
+      minWidth: '180px',
+      render: (_, row) => (
+        <PropertyAddressCell 
+          address={row.properties?.address || null}
+          subtitle={`${row.unit_number} · ${row.area_sqm || '–'} m²`}
+        />
+      )
+    },
+    {
+      key: 'tenant',
+      header: 'Mieter',
+      minWidth: '150px',
+      render: (_, row) => {
+        if (!row.lease) {
+          return (
+            <Badge variant="outline" className="text-status-warning border-status-warning/30">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Leerstand
+            </Badge>
+          );
+        }
+        return (
+          <div>
+            <p className="font-medium">
+              {row.lease.contact?.last_name}, {row.lease.contact?.first_name}
+            </p>
+            <p className="text-xs text-muted-foreground">{row.lease.contact?.email || '–'}</p>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'kaltmiete',
+      header: 'Kaltmiete',
+      minWidth: '100px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} />
+    },
+    {
+      key: 'nebenkosten',
+      header: 'NK',
+      minWidth: '80px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} variant="muted" />
+    },
+    {
+      key: 'vorauszahlung',
+      header: 'Voraus.',
+      minWidth: '80px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} variant="muted" />
+    },
+    {
+      key: 'warmmiete',
+      header: 'Warmmiete',
+      minWidth: '100px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} variant="bold" />
+    }
+  ];
+
+  const renderRowActions = (row: UnitWithDetails) => (
+    <div className="flex gap-1">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => navigate(`/portal/immobilien/${row.property_id}`)}
+        title="Objekt öffnen"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {row.lease ? (
+            <>
+              <DropdownMenuItem onClick={() => handleAction('mahnung', row)}>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Mahnung erstellen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAction('kuendigung', row)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Kündigung schreiben
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAction('mieterhoehung', row)}>
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Mieterhöhung schreiben
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAction('datenanforderung', row)}>
+                <Mail className="h-4 w-4 mr-2" />
+                Datenanforderung
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem onClick={() => handleAction('lease', row)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Mietvertrag anlegen
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleAction('premium', row)}>
+            <Star className="h-4 w-4 mr-2" />
+            Premium aktivieren
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Objekte durchsuchen (Adresse, Code, Mieter)..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[80px]">Objekt-ID</TableHead>
-              <TableHead className="min-w-[180px]">Objektadresse</TableHead>
-              <TableHead className="min-w-[140px]">Mieter</TableHead>
-              <TableHead className="min-w-[100px] text-right">Kaltmiete</TableHead>
-              <TableHead className="min-w-[100px] text-right">Nebenkosten</TableHead>
-              <TableHead className="min-w-[100px] text-right">Vorauszahlung</TableHead>
-              <TableHead className="min-w-[100px] text-right">Warmmiete</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                </TableCell>
-              </TableRow>
-            ) : filteredUnits?.length === 0 ? (
-              <>
-                {/* Leerzeile mit Platzhaltern wie MOD-04 */}
-                <TableRow 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate('/portal/immobilien/portfolio')}
-                >
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-6">
-                    <p className="text-muted-foreground mb-4">
-                      Keine Immobilien vorhanden — zuerst in MOD-04 anlegen
-                    </p>
-                    <Button onClick={() => navigate('/portal/immobilien/portfolio')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Objekte anlegen (MOD-04)
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </>
-            ) : (
-              filteredUnits?.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <div className="font-mono text-xs">
-                      {row.properties?.code || row.unit_number}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{row.properties?.address || '—'}</p>
-                      <p className="text-xs text-muted-foreground">{row.unit_number} · {row.area_sqm || '—'} m²</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {!row.lease ? (
-                      <Badge variant="outline" className="text-status-warning border-status-warning/30">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Leerstand
-                      </Badge>
-                    ) : (
-                      <div>
-                        <p className="font-medium">
-                          {row.lease.contact?.last_name}, {row.lease.contact?.first_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{row.lease.contact?.email || '—'}</p>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {row.kaltmiete > 0 ? formatCurrency(row.kaltmiete) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {row.nebenkosten > 0 ? formatCurrency(row.nebenkosten) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {row.vorauszahlung > 0 ? formatCurrency(row.vorauszahlung) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {row.warmmiete > 0 ? formatCurrency(row.warmmiete) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {row.lease ? (
-                          <>
-                            <DropdownMenuItem onClick={() => handleAction('mahnung', row)}>
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Mahnung erstellen
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAction('kuendigung', row)}>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Kündigung schreiben
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAction('mieterhoehung', row)}>
-                              <TrendingUp className="h-4 w-4 mr-2" />
-                              Mieterhöhung schreiben
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAction('datenanforderung', row)}>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Datenanforderung
-                            </DropdownMenuItem>
-                          </>
-                        ) : (
-                          <DropdownMenuItem onClick={() => handleAction('lease', row)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Mietvertrag anlegen
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleAction('premium', row)}>
-                          <Star className="h-4 w-4 mr-2" />
-                          Premium aktivieren
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAction('property', row)}>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Objekt öffnen (MOD-04)
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <PropertyTable
+        data={units || []}
+        columns={columns}
+        isLoading={isLoading}
+        showSearch
+        searchPlaceholder="Objekte durchsuchen (Adresse, Code, Mieter)..."
+        searchFilter={(row, search) => 
+          row.properties?.address?.toLowerCase().includes(search) ||
+          row.properties?.code?.toLowerCase().includes(search) ||
+          row.unit_number?.toLowerCase().includes(search) ||
+          row.lease?.contact?.last_name?.toLowerCase().includes(search) ||
+          false
+        }
+        emptyState={{
+          message: 'Keine Immobilien vorhanden — zuerst in MOD-04 anlegen',
+          actionLabel: 'Objekte anlegen (MOD-04)',
+          actionRoute: '/portal/immobilien/portfolio'
+        }}
+        onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
+        rowActions={renderRowActions}
+      />
 
       <TemplateWizard
         open={templateWizardOpen}
@@ -391,7 +370,6 @@ const ObjekteTab = () => {
         unit={selectedUnit}
       />
 
-      {/* Premium Activation Dialog */}
       <Dialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -403,10 +381,7 @@ const ObjekteTab = () => {
           {selectedEnrollmentId && (
             <ReadinessChecklist
               enrollmentId={selectedEnrollmentId}
-              onComplete={() => {
-                setPremiumDialogOpen(false);
-                // Refetch units to update premium status
-              }}
+              onComplete={() => setPremiumDialogOpen(false)}
             />
           )}
         </DialogContent>

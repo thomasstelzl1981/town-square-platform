@@ -1,81 +1,109 @@
-# MOD-05 MSV — Korrekturplan (ABGESCHLOSSEN)
+# MOD-05 MSV — Korrekturplan (ABGESCHLOSSEN v2.0)
 
 ## Zusammenfassung
 
-Alle Phasen wurden implementiert:
+Alle Phasen wurden implementiert inkl. Master-Komponenten-Architektur:
 
 | Phase | Beschreibung | Status |
 |-------|--------------|--------|
 | Phase A | Navigations-Vereinheitlichung (Tabs entfernt) | ✅ ERLEDIGT |
-| Phase 1 | Routing-Fix (App.tsx) | ✅ ERLEDIGT |
-| Phase 2 | Premium-Aktivierung (ReadinessChecklist) | ✅ ERLEDIGT |
-| Phase 3 | Mieteingang (PaymentBookingDialog) | ✅ ERLEDIGT |
-| Phase 4 | Briefgenerator-Integration | ✅ ERLEDIGT |
-| Phase 5 | Vermietung (RentalListingWizard) | ✅ ERLEDIGT |
+| Phase 1 | PropertyTable Master-Komponente | ✅ ERLEDIGT |
+| Phase 2 | ObjekteTab Refactor (PropertyTable) | ✅ ERLEDIGT |
+| Phase 3 | VermietungTab Refactor + Row-Navigation | ✅ ERLEDIGT |
+| Phase 4 | RentalExposeDetail Seite (identisch zu MOD-04) | ✅ ERLEDIGT |
+| Phase 5 | App.tsx Route /portal/msv/vermietung/:id | ✅ ERLEDIGT |
+| Phase 6 | MieteingangTab Konsistenz (Eye-Button) | ✅ ERLEDIGT |
 
 ---
 
-## UI-Konsistenz & KI-Features (2026-01-27)
+## Master-Komponenten Architektur (2026-01-27)
 
-### Leerzeilen-Pattern (wie MOD-04)
+### PropertyTable (`src/components/shared/PropertyTable.tsx`)
 
-Alle MOD-05 Tabellen zeigen nun bei leerem Zustand:
-- Eine **Leerzeile mit Platzhaltern (–)** und Action-Button
-- Einen Hinweistext mit Link zur Erstellung
+Wiederverwendbare Master-Tabelle für alle Immobilien-Listen mit:
+- Konfigurierbare Spalten (PropertyTableColumn)
+- Einheitliches Empty-State-Pattern (Leerzeile + Action-Button)
+- Konsistenter Eye-Button für Row-Actions
+- Row-Click Navigation
+- Integrierte Suche
 
-| Tab | Empty State |
-|-----|-------------|
-| ObjekteTab | Leerzeile + "Objekte anlegen (MOD-04)" Button |
-| MieteingangTab | Leerzeile + "Zu Objekte wechseln" Button |
-| VermietungTab | Leerzeile + Eye-Button in Zeilen für Exposé-Zugriff |
+### Utility-Komponenten
 
-### KI-Beschreibungsgenerierung
+| Komponente | Verwendung |
+|------------|------------|
+| PropertyCodeCell | Einheitliche Code/ID Darstellung (font-mono) |
+| PropertyAddressCell | Adresse + Subtitle Layout |
+| PropertyCurrencyCell | Währungsformatierung mit Variants |
+| PropertyStatusCell | Badge-basierte Statusanzeige |
+
+---
+
+## Konsistenz-Pattern
+
+### Empty State (alle MOD-05 Tabs)
+
+```typescript
+// Alle Tables zeigen bei leerem Zustand:
+1. Leerzeile mit Platzhaltern (–) und Eye-Button
+2. Hinweistext + Action-Button zum Erstellen
+```
+
+### Row-Actions
+
+```typescript
+// Alle Tables haben konsistente Actions:
+1. Eye-Button (links) → direkter Zugriff auf Detail/Exposé
+2. DropdownMenu (rechts) → erweiterte Aktionen
+```
+
+### Navigation
+
+```typescript
+// MOD-05 VermietungTab Row-Click navigiert zu:
+/portal/msv/vermietung/:id → RentalExposeDetail
+
+// MOD-05 ObjekteTab Row-Click navigiert zu:
+/portal/immobilien/:id → PropertyDetail (MOD-04)
+```
+
+---
+
+## RentalExposeDetail Layout
+
+Die neue Seite `/portal/msv/vermietung/:id` verwendet:
+- Identische Header-Struktur wie PropertyDetail (MOD-04)
+- Card-Grid Layout (2x2) für Objektdaten
+- Tabs: Daten | Beschreibung | Publikation
+- KI-Beschreibungsgenerierung im Header
+- Integration mit RentalPublishDialog
+
+---
+
+## KI-Beschreibungsgenerierung
 
 **Edge Function:** `sot-expose-description`
-- AI-basierte Immobilienbeschreibung
-- Nutzt Lovable AI (google/gemini-3-flash-preview)
+- AI-basierte Immobilienbeschreibung (google/gemini-3-flash-preview)
 - Prompt-Struktur: Einleitung, Lage, Ausstattung, Besonderheiten
 
 **Integrationen:**
 - `RentalListingWizard.tsx`: "Mit KI generieren" Button
 - `PropertyDetail.tsx`: "Beschreibung generieren" Button im Header
+- `RentalExposeDetail.tsx`: Beide Buttons (Header + Beschreibung-Tab)
 
 ---
 
-## Aenderungen im Detail
+## Dateien geändert
 
-### Phase A: Navigations-Vereinheitlichung
-
-**Datei:** `src/pages/portal/MSVPage.tsx`
-
-- `<Tabs>`-Komponente ENTFERNT
-- `renderSubPage()` Pattern implementiert (wie MOD-04)
-- Navigation erfolgt NUR ueber Sidebar
-- Keine Dopplung mehr
-
-### Phase 2: Premium-Aktivierung
-
-**Datei:** `src/pages/portal/msv/ObjekteTab.tsx`
-
-- `ReadinessChecklist` importiert
-- Premium-Dialog mit Checklist integriert
-- Enrollment-Erstellung bei Klick auf "Premium aktivieren"
-
-### Phase 4: Briefgenerator-Integration
-
-**Datei:** `src/components/msv/TemplateWizard.tsx`
-
-- "Im Briefgenerator oeffnen" Button aktiviert
-- Navigiert zu MOD-02 `/portal/office/brief`
-- "Versenden" Button funktional
-
-### Phase 5: Vermietung
-
-**Datei:** `src/components/msv/RentalListingWizard.tsx`
-
-- Hinweistext zu Kanaelen hinzugefuegt
-- Scout24 / Kleinanzeigen Dokumentation inline
-- Eye-Button in Zeilen für direkten Exposé-Zugriff
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/shared/PropertyTable.tsx` | NEU - Master-Komponente |
+| `src/components/shared/index.ts` | Export hinzugefügt |
+| `src/pages/portal/msv/ObjekteTab.tsx` | REFACTOR - PropertyTable |
+| `src/pages/portal/msv/VermietungTab.tsx` | REFACTOR - PropertyTable + Row-Navigation |
+| `src/pages/portal/msv/MieteingangTab.tsx` | UPDATE - Eye-Button + Konsistenz |
+| `src/pages/portal/msv/RentalExposeDetail.tsx` | NEU - Vermietungs-Exposé Seite |
+| `src/pages/portfolio/PropertyDetail.tsx` | UPDATE - Button-Layout korrigiert |
+| `src/App.tsx` | UPDATE - Route hinzugefügt |
 
 ---
 
@@ -93,11 +121,3 @@ MOD-05 (MSV)
 ```
 
 Alle Objektdaten werden aus MOD-04 gelesen. MOD-05 schreibt NUR in eigene Tabellen.
-
----
-
-## Naechste Schritte (Optional)
-
-- [ ] FinAPI-Integration fuer automatischen Mieteingang
-- [ ] Scout24 API vollstaendig implementieren
-- [ ] Mietbericht-PDF-Export
