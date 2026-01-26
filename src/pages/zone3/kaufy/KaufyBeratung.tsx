@@ -1,48 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calculator, PiggyBank, FileText, AlertTriangle, ArrowRight, Download, Search } from 'lucide-react';
-
-interface CalculationResult {
-  monthlyBurden: number;
-  maxPurchasePrice: number;
-  loanAmount: number;
-  interestRate: number;
-}
+import { Calculator, PiggyBank, FileText, AlertTriangle, ArrowRight, Download, Search, TrendingUp, CheckCircle } from 'lucide-react';
+import { useInvestmentEngine, CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 
 export default function KaufyBeratung() {
-  const [taxableIncome, setTaxableIncome] = useState<string>('');
-  const [equity, setEquity] = useState<string>('');
-  const [maritalStatus, setMaritalStatus] = useState<'single' | 'married'>('single');
-  const [churchTax, setChurchTax] = useState<boolean>(false);
-  const [churchTaxRate, setChurchTaxRate] = useState<0.08 | 0.09>(0.09);
-  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [input, setInput] = useState<CalculationInput>({
+    ...defaultInput,
+    purchasePrice: 250000,
+    monthlyRent: 800,
+  });
+  const { calculate, result, isLoading, error } = useInvestmentEngine();
 
-  const handleCalculate = () => {
-    const zve = parseFloat(taxableIncome) || 0;
-    const ek = parseFloat(equity) || 0;
-    
-    if (zve <= 0 || ek <= 0) {
-      return;
-    }
+  const handleCalculate = async () => {
+    await calculate(input);
+  };
 
-    // Simplified calculation (will be replaced by sot-investment-engine)
-    // Assuming 15 years fixed, LTV based on typical equity ratio
-    const interestRate = 4.0; // 15 Jahre, ~80% LTV
-    const repaymentRate = 1.0;
-    const annualRate = (interestRate + repaymentRate) / 100;
-    
-    // Max loan based on 30% of net income as burden
-    const estimatedNetIncome = zve * 0.6; // Rough estimate after tax
-    const maxMonthlyBurden = (estimatedNetIncome / 12) * 0.3;
-    const maxLoan = (maxMonthlyBurden * 12) / annualRate;
-    const maxPurchasePrice = maxLoan + ek;
-    
-    setResult({
-      monthlyBurden: Math.round(maxMonthlyBurden),
-      maxPurchasePrice: Math.round(maxPurchasePrice),
-      loanAmount: Math.round(maxLoan),
-      interestRate: interestRate
-    });
+  const updateInput = <K extends keyof CalculationInput>(key: K, value: CalculationInput[K]) => {
+    setInput(prev => ({ ...prev, [key]: value }));
   };
 
   const formatCurrency = (value: number) => {
@@ -75,7 +49,61 @@ export default function KaufyBeratung() {
             </div>
             
             <div className="grid gap-6 md:grid-cols-2 mb-8">
-              {/* Left Column: Income & Equity */}
+              {/* Left Column: Property & Financing */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Kaufpreis des Objekts *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={input.purchasePrice}
+                      onChange={(e) => updateInput('purchasePrice', Number(e.target.value))}
+                      placeholder="z.B. 250000"
+                      className="w-full p-3 pr-12 rounded-lg border"
+                      style={{ borderColor: 'hsl(var(--z3-border))' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">€</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Monatliche Kaltmiete *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={input.monthlyRent}
+                      onChange={(e) => updateInput('monthlyRent', Number(e.target.value))}
+                      placeholder="z.B. 800"
+                      className="w-full p-3 pr-12 rounded-lg border"
+                      style={{ borderColor: 'hsl(var(--z3-border))' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">€/Monat</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Eigenkapital *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={input.equity}
+                      onChange={(e) => updateInput('equity', Number(e.target.value))}
+                      placeholder="z.B. 50000"
+                      className="w-full p-3 pr-12 rounded-lg border"
+                      style={{ borderColor: 'hsl(var(--z3-border))' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">€</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Column: Tax Details */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -84,64 +112,38 @@ export default function KaufyBeratung() {
                   <div className="relative">
                     <input
                       type="number"
-                      value={taxableIncome}
-                      onChange={(e) => setTaxableIncome(e.target.value)}
-                      placeholder="z.B. 80000"
+                      value={input.taxableIncome}
+                      onChange={(e) => updateInput('taxableIncome', Number(e.target.value))}
+                      placeholder="z.B. 60000"
                       className="w-full p-3 pr-12 rounded-lg border"
                       style={{ borderColor: 'hsl(var(--z3-border))' }}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">€/Jahr</span>
                   </div>
-                  <p className="text-xs opacity-60 mt-1">Aus Ihrem Steuerbescheid</p>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Verfügbares Eigenkapital *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={equity}
-                      onChange={(e) => setEquity(e.target.value)}
-                      placeholder="z.B. 50000"
-                      className="w-full p-3 pr-12 rounded-lg border"
-                      style={{ borderColor: 'hsl(var(--z3-border))' }}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">€</span>
-                  </div>
-                  <p className="text-xs opacity-60 mt-1">Für Kaufpreis und Nebenkosten</p>
-                </div>
-              </div>
-              
-              {/* Right Column: Tax Details */}
-              <div className="space-y-4">
+
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Veranlagung (Familienstand)
                   </label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setMaritalStatus('single')}
-                      className={`flex-1 p-3 rounded-lg border transition-colors ${
-                        maritalStatus === 'single' 
-                          ? 'border-current bg-opacity-10' 
-                          : ''
-                      }`}
+                      onClick={() => updateInput('maritalStatus', 'single')}
+                      className="flex-1 p-3 rounded-lg border transition-colors"
                       style={{ 
-                        borderColor: maritalStatus === 'single' ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
-                        backgroundColor: maritalStatus === 'single' ? 'hsl(var(--z3-secondary))' : 'transparent'
+                        borderColor: input.maritalStatus === 'single' ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
+                        backgroundColor: input.maritalStatus === 'single' ? 'hsl(var(--z3-secondary))' : 'transparent'
                       }}
                     >
                       Grundtabelle
                       <span className="block text-xs opacity-60">Einzelveranlagung</span>
                     </button>
                     <button
-                      onClick={() => setMaritalStatus('married')}
-                      className={`flex-1 p-3 rounded-lg border transition-colors`}
+                      onClick={() => updateInput('maritalStatus', 'married')}
+                      className="flex-1 p-3 rounded-lg border transition-colors"
                       style={{ 
-                        borderColor: maritalStatus === 'married' ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
-                        backgroundColor: maritalStatus === 'married' ? 'hsl(var(--z3-secondary))' : 'transparent'
+                        borderColor: input.maritalStatus === 'married' ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
+                        backgroundColor: input.maritalStatus === 'married' ? 'hsl(var(--z3-secondary))' : 'transparent'
                       }}
                     >
                       Splittingtarif
@@ -156,32 +158,32 @@ export default function KaufyBeratung() {
                   </label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setChurchTax(false)}
-                      className={`flex-1 p-3 rounded-lg border transition-colors`}
+                      onClick={() => updateInput('hasChurchTax', false)}
+                      className="flex-1 p-3 rounded-lg border transition-colors"
                       style={{ 
-                        borderColor: !churchTax ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
-                        backgroundColor: !churchTax ? 'hsl(var(--z3-secondary))' : 'transparent'
+                        borderColor: !input.hasChurchTax ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
+                        backgroundColor: !input.hasChurchTax ? 'hsl(var(--z3-secondary))' : 'transparent'
                       }}
                     >
                       Nein
                     </button>
                     <button
-                      onClick={() => { setChurchTax(true); setChurchTaxRate(0.08); }}
-                      className={`flex-1 p-3 rounded-lg border transition-colors`}
+                      onClick={() => { updateInput('hasChurchTax', true); updateInput('churchTaxState', 'BY'); }}
+                      className="flex-1 p-3 rounded-lg border transition-colors"
                       style={{ 
-                        borderColor: churchTax && churchTaxRate === 0.08 ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
-                        backgroundColor: churchTax && churchTaxRate === 0.08 ? 'hsl(var(--z3-secondary))' : 'transparent'
+                        borderColor: input.hasChurchTax && (input.churchTaxState === 'BY' || input.churchTaxState === 'BW') ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
+                        backgroundColor: input.hasChurchTax && (input.churchTaxState === 'BY' || input.churchTaxState === 'BW') ? 'hsl(var(--z3-secondary))' : 'transparent'
                       }}
                     >
                       8%
                       <span className="block text-xs opacity-60">BY / BW</span>
                     </button>
                     <button
-                      onClick={() => { setChurchTax(true); setChurchTaxRate(0.09); }}
-                      className={`flex-1 p-3 rounded-lg border transition-colors`}
+                      onClick={() => { updateInput('hasChurchTax', true); updateInput('churchTaxState', 'NW'); }}
+                      className="flex-1 p-3 rounded-lg border transition-colors"
                       style={{ 
-                        borderColor: churchTax && churchTaxRate === 0.09 ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
-                        backgroundColor: churchTax && churchTaxRate === 0.09 ? 'hsl(var(--z3-secondary))' : 'transparent'
+                        borderColor: input.hasChurchTax && input.churchTaxState !== 'BY' && input.churchTaxState !== 'BW' ? 'hsl(var(--z3-foreground))' : 'hsl(var(--z3-border))',
+                        backgroundColor: input.hasChurchTax && input.churchTaxState !== 'BY' && input.churchTaxState !== 'BW' ? 'hsl(var(--z3-secondary))' : 'transparent'
                       }}
                     >
                       9%
@@ -194,35 +196,57 @@ export default function KaufyBeratung() {
             
             <button 
               onClick={handleCalculate}
+              disabled={isLoading}
               className="zone3-btn-primary w-full"
             >
               <Calculator className="w-5 h-5 mr-2 inline" />
-              Berechnen
+              {isLoading ? 'Berechne...' : 'Jetzt berechnen'}
             </button>
+
+            {error && (
+              <div className="mt-4 p-4 rounded-lg bg-red-50 text-red-600 text-sm">
+                {error}
+              </div>
+            )}
             
             {/* Result Display */}
             {result && (
               <div className="mt-8 p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
                 <h3 className="zone3-heading-3 mb-4 text-center">Ihr Ergebnis</h3>
                 
-                <div className="grid gap-4 md:grid-cols-2 mb-6">
+                <div className="grid gap-4 md:grid-cols-3 mb-6">
                   <div className="text-center p-4 rounded-lg bg-white/50">
-                    <p className="text-sm opacity-70 mb-1">Maximaler Kaufpreis</p>
-                    <p className="text-2xl font-bold">{formatCurrency(result.maxPurchasePrice)}</p>
+                    <p className="text-sm opacity-70 mb-1">Monatliche Belastung</p>
+                    <p className={`text-2xl font-bold ${result.summary.monthlyBurden < 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {result.summary.monthlyBurden < 0 ? '+' : ''}{formatCurrency(Math.abs(result.summary.monthlyBurden))}
+                    </p>
+                    <p className="text-xs opacity-60 mt-1">
+                      {result.summary.monthlyBurden < 0 ? 'Sie erhalten' : 'Sie zahlen'} monatlich
+                    </p>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-white/50">
-                    <p className="text-sm opacity-70 mb-1">Monatliche Belastung (ca.)</p>
-                    <p className="text-2xl font-bold">{formatCurrency(result.monthlyBurden)}</p>
+                    <p className="text-sm opacity-70 mb-1">Steuerersparnis</p>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(result.summary.yearlyTaxSavings)}</p>
+                    <p className="text-xs opacity-60 mt-1">pro Jahr</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-white/50">
+                    <p className="text-sm opacity-70 mb-1">Rendite n. Steuern</p>
+                    <p className="text-2xl font-bold">{result.summary.roiAfterTax.toFixed(1)}%</p>
+                    <p className="text-xs opacity-60 mt-1">auf Eigenkapital</p>
                   </div>
                 </div>
                 
                 <div className="text-center text-sm opacity-70 mb-6">
-                  <p>Darlehen: {formatCurrency(result.loanAmount)} | Zinssatz: {result.interestRate}% (15 Jahre fix)</p>
+                  <p>
+                    Darlehen: {formatCurrency(result.summary.loanAmount)} | 
+                    Zinssatz: {result.summary.interestRate}% | 
+                    LTV: {result.summary.ltv}%
+                  </p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link 
-                    to={`/kaufy/immobilien?maxPrice=${result.maxPurchasePrice}`}
+                    to={`/kaufy/immobilien?maxPrice=${input.purchasePrice}`}
                     className="zone3-btn-primary inline-flex items-center justify-center gap-2"
                   >
                     <Search className="w-4 h-4" />
@@ -232,6 +256,41 @@ export default function KaufyBeratung() {
                     <Download className="w-4 h-4" />
                     Als PDF speichern
                   </button>
+                </div>
+
+                {/* Projection Preview */}
+                <div className="mt-6 pt-6 border-t border-white/30">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      40-Jahres-Projektion
+                    </h4>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                    {[10, 20, 30, 40].map(year => {
+                      const yearData = result.projection.find(p => p.year === year);
+                      return (
+                        <div key={year} className="p-2 rounded bg-white/30">
+                          <p className="opacity-60">Jahr {year}</p>
+                          <p className="font-bold">{formatCurrency(yearData?.netWealth || 0)}</p>
+                          <p className="text-xs opacity-60">Nettovermögen</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* CTA for Registration */}
+                <div className="mt-6 p-4 rounded-lg bg-white/50 text-center">
+                  <p className="font-medium mb-2">Vollständige Analyse freischalten</p>
+                  <div className="flex flex-wrap justify-center gap-2 text-xs mb-3">
+                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> Detaillierte Charts</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> PDF-Export</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> Berater-Anbindung</span>
+                  </div>
+                  <Link to="/auth?mode=register&source=kaufy" className="zone3-btn-primary text-sm">
+                    Kostenlos registrieren
+                  </Link>
                 </div>
               </div>
             )}
