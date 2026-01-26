@@ -1,168 +1,123 @@
 
 
-# CI-Anpassung: Hellerer Hintergrund + Persistenter KI-Chat mit Upload
+# Korrektur: Zurück zum originalen CI + Armstrong-Stripe optimieren
 
-## Übersicht
+## Übersicht der Änderungen
 
-Diese Anpassung bringt einen moderneren, freundlicheren Look inspiriert von Perplexity:
-- Warmer, heller "Pergament"-Hintergrund (nicht weiß, sondern cremig-durchscheinend)
-- KI-Chat immer sichtbar als rechter Strip
-- Drag-and-Drop Upload-Zone im Chat für Dokumente
+| Änderung | Aktion |
+|----------|--------|
+| CI zurücksetzen | `--surface` wieder dunkel machen, `bg-surface` entfernen |
+| Stripe-Breite | Bleibt bei 190px (aktueller Wert ist gut) |
+| Schnellaktionen | Komplett entfernen |
+| Name | "AI Assistant" → "Armstrong" |
+| Upload-Zone | Kleiner und cleaner, nur "Upload" |
 
-## Teil 1: Hintergrund-Anpassung (Pergamentfarben)
+---
 
-### CSS-Variablen anpassen (src/index.css)
+## Datei 1: src/index.css
 
-Der Dark-Mode Hintergrund wird von fast-schwarz auf einen hellen, warmen Ton umgestellt:
-
-| Variable | Aktuell | Neu (Perplexity-inspiriert) |
-|----------|---------|------------------------------|
-| `--background` | `222 47% 6%` (Dunkelblau) | `40 30% 96%` (Warm Cream) |
-| `--foreground` | `210 40% 98%` (Fast weiß) | `222 47% 11%` (Dunkel) |
-| `--surface` | `222 30% 10%` | `40 20% 94%` (Leicht dunkler Cream) |
-| `--surface-2` | `222 35% 8%` | `40 15% 92%` |
-
-Die Karten (`--card`) und Sidebar (`--sidebar-background`) bleiben kontrastreich, damit die Kacheln weiterhin gut hervorstechen.
-
-### Farbschema-Konzept
-
-```
-Hintergrund: Warm Cream (#F7F5F0) - pergamentfarben
-Karten:      Weiß mit leichtem Schatten - bleiben prominent
-Sidebar:     Leicht dunkler Cream - subtile Abgrenzung
-Text:        Dunkelgrau/Schwarz - gute Lesbarkeit
-```
-
-## Teil 2: KI-Chat immer sichtbar (rechter Strip)
-
-### PortalLayout.tsx anpassen
-
-Der Chat wird von "toggle on click" zu "always visible on desktop" geändert:
-
-**Vorher:**
-- Floating Button zeigt Chat bei Klick
-- Chat ist standardmäßig geschlossen
-
-**Nachher:**
-- Chat-Strip auf Desktop (lg+) immer sichtbar rechts
-- Nur auf Mobile bleibt der Toggle-Button
-- Layout passt sich an: `main` bekommt `mr-[380px]` auf Desktop
-
-### Neues Layout-Konzept
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  HEADER                                                              │
-├──────────┬───────────────────────────────────────────┬───────────────┤
-│          │                                           │               │
-│ SIDEBAR  │              MAIN CONTENT                 │   KI-CHAT    │
-│  (Nav)   │              (Module)                     │   STRIP      │
-│          │                                           │  (380px)     │
-│          │                                           │               │
-│          │                                           │  ┌─────────┐ │
-│          │                                           │  │ Upload  │ │
-│          │                                           │  │  Zone   │ │
-│          │                                           │  └─────────┘ │
-└──────────┴───────────────────────────────────────────┴───────────────┘
-```
-
-## Teil 3: Upload Drag-and-Drop im Chat
-
-### ChatPanel.tsx erweitern
-
-Eine Upload-Zone wird unten im Chat eingefügt (vor dem Input-Feld):
-
-```
-┌─────────────────────────────┐
-│  AI Assistant  [–] [X]      │
-├─────────────────────────────┤
-│  Kontext: Portal > Immo     │
-├─────────────────────────────┤
-│  [Schnellaktionen]          │
-├─────────────────────────────┤
-│                             │
-│      CHAT MESSAGES          │
-│                             │
-├─────────────────────────────┤
-│  ┌───────────────────────┐  │  ← NEU
-│  │ 📎 Dokumente ablegen  │  │
-│  │    für Analyse        │  │
-│  └───────────────────────┘  │
-├─────────────────────────────┤
-│  [Input] [🎤] [➤]           │
-└─────────────────────────────┘
-```
-
-### Funktionalität
-
-- Drag-and-Drop Zone im unteren Bereich des Chats
-- Akzeptiert PDFs, Excel, Bilder
-- Files werden an Storage übergeben (via `sot-dms-upload-url`)
-- Verlinkung in Module erfolgt über `document_links`
-
-## Implementierungs-Schritte
-
-| # | Datei | Änderung |
-|---|-------|----------|
-| 1 | `src/index.css` | Dark-Mode Variablen auf helle Pergamentfarben umstellen |
-| 2 | `src/components/portal/PortalLayout.tsx` | Chat-Strip immer sichtbar auf Desktop |
-| 3 | `src/components/chat/ChatPanel.tsx` | Upload-Zone mit FileUploader integrieren |
-| 4 | `src/index.css` | Text-Farben für hellen Hintergrund anpassen |
-
-## Technische Details
-
-### Neue CSS-Variablen (.dark)
+### Änderungen:
+- Zeile 138-139: `--surface` und `--surface-2` zurück auf dunkle Werte setzen
 
 ```css
-.dark {
-  /* Pergament-Hintergrund (warm cream) */
-  --background: 40 30% 96%;        /* #F7F5F0 */
-  --foreground: 222 47% 11%;       /* Dunkel für Text */
-  
-  /* Karten bleiben weiß/prominent */
-  --card: 0 0% 100%;               /* Reinweiß */
-  --card-foreground: 222 47% 11%;
-  
-  /* Surface Layers (subtil dunkler) */
-  --surface: 40 20% 94%;
-  --surface-2: 40 15% 92%;
-  
-  /* Sidebar - leicht abgesetzt */
-  --sidebar-background: 40 25% 98%;
-  
-  /* Borders für hellen Modus */
-  --border: 40 20% 88%;
-  --border-subtle: 40 15% 85%;
-}
+/* VORHER (Pergament): */
+--surface: 40 20% 94%;
+--surface-2: 40 15% 92%;
+
+/* NACHHER (Original dunkel): */
+--surface: 222 30% 10%;
+--surface-2: 222 35% 8%;
 ```
 
-### ChatPanel mit Upload
+---
+
+## Datei 2: src/components/portal/PortalLayout.tsx
+
+### Änderungen:
+- Zeile 62: `bg-surface` entfernen → zurück zu `bg-background`
+- Zeile 79-82: `quickActions` komplett entfernen (leeres Array)
+- Zeile 109-111: `quickActions` auch im Mobile-Drawer entfernen
 
 ```tsx
-// Neue Props
-interface ChatPanelProps {
-  // ... bestehende Props
-  onFileUpload?: (files: File[]) => void;
-}
+// VORHER:
+<div className="min-h-screen bg-surface">
 
-// Im Chat vor dem Input
-<div className="px-4 pb-2">
-  <FileUploader
-    onFilesSelected={handleUpload}
-    accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg"
-    multiple
-    label="📎 Dokumente ablegen"
-    hint="PDF, Excel, Bilder für Analyse"
-    className="text-xs"
-  />
-</div>
+// NACHHER:
+<div className="min-h-screen bg-background">
 ```
+
+```tsx
+// VORHER:
+quickActions={[
+  { label: 'Hilfe', action: 'help' },
+  { label: 'Dokument analysieren', action: 'analyze' },
+]}
+
+// NACHHER:
+// komplett entfernen (keine quickActions prop mehr übergeben)
+```
+
+---
+
+## Datei 3: src/components/chat/ChatPanel.tsx
+
+### Änderung 1: Name ändern (Zeile 123)
+```tsx
+// VORHER:
+<h3 className="text-sm font-semibold">AI Assistant</h3>
+
+// NACHHER:
+<h3 className="text-sm font-semibold">Armstrong</h3>
+```
+
+### Änderung 2: Schnellaktionen komplett entfernen (Zeilen 158-178)
+Der gesamte Block wird gelöscht:
+```tsx
+// LÖSCHEN:
+{quickActions.length > 0 && (
+  <div className="px-4 py-3 border-b space-y-2">
+    <p className="text-xs font-medium text-muted-foreground">Schnellaktionen</p>
+    ...
+  </div>
+)}
+```
+
+### Änderung 3: Upload-Zone minimieren (Zeilen 229-256)
+Die große FileUploader-Box wird durch eine kompakte einzeilige Version ersetzt:
+
+```tsx
+// VORHER (groß mit Label und Hint):
+<FileUploader
+  onFilesSelected={handleFilesSelected}
+  accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
+  multiple
+  label="📎 Dokumente ablegen"
+  hint="PDF, Excel, Bilder für Analyse"
+  className="text-xs"
+/>
+
+// NACHHER (kompakt, nur Icon + "Upload"):
+<FileUploader
+  onFilesSelected={handleFilesSelected}
+  accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
+  multiple
+  className="text-xs"
+>
+  <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer py-1">
+    <Upload className="h-3.5 w-3.5" />
+    <span>Upload</span>
+  </div>
+</FileUploader>
+```
+
+---
 
 ## Ergebnis
 
-Nach Umsetzung:
-- Moderner, freundlicher Look mit warmem Hintergrund
-- KI-Chat ist immer präsent und erreichbar
-- Dokumente können direkt im Chat hochgeladen werden
-- Kacheln und Karten stechen deutlich vom Hintergrund ab
+Nach den Änderungen:
+- **Dunkler Hintergrund** überall wie ursprünglich
+- **Armstrong** als Name des Assistenten
+- **Keine Schnellaktionen** mehr
+- **Minimale Upload-Zone** – nur "Upload" mit Icon
+- **Stripe-Breite** bleibt bei 190px
 
