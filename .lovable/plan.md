@@ -1,123 +1,153 @@
 
 
-# Korrektur: Zurück zum originalen CI + Armstrong-Stripe optimieren
+# MOD-05 MSV — Tab "Vermietung" Korrigierter Plan
 
-## Übersicht der Änderungen
+## Korrektur: Kaufy nur für Verkauf
 
-| Änderung | Aktion |
-|----------|--------|
-| CI zurücksetzen | `--surface` wieder dunkel machen, `bg-surface` entfernen |
-| Stripe-Breite | Bleibt bei 190px (aktueller Wert ist gut) |
-| Schnellaktionen | Komplett entfernen |
-| Name | "AI Assistant" → "Armstrong" |
-| Upload-Zone | Kleiner und cleaner, nur "Upload" |
+| Kanal | MOD-05 Vermietung | MOD-06 Verkauf |
+|-------|-------------------|----------------|
+| ImmobilienScout24 | ✅ Ja (Miete) | ✅ Ja (Kauf) |
+| Kleinanzeigen | ✅ Ja (Export) | ✅ Ja (Export) |
+| Kaufy Marketplace | ❌ **Nein** | ✅ Ja |
+| Partner-Netzwerk | ❌ Nein | ✅ Ja |
 
----
-
-## Datei 1: src/index.css
-
-### Änderungen:
-- Zeile 138-139: `--surface` und `--surface-2` zurück auf dunkle Werte setzen
-
-```css
-/* VORHER (Pergament): */
---surface: 40 20% 94%;
---surface-2: 40 15% 92%;
-
-/* NACHHER (Original dunkel): */
---surface: 222 30% 10%;
---surface-2: 222 35% 8%;
-```
+**Begründung:** Kaufy ist der Marketplace für Kaufobjekte. Mietobjekte werden dort nicht gelistet.
 
 ---
 
-## Datei 2: src/components/portal/PortalLayout.tsx
+## Tab "Vermietung" — Korrigierte Struktur
 
-### Änderungen:
-- Zeile 62: `bg-surface` entfernen → zurück zu `bg-background`
-- Zeile 79-82: `quickActions` komplett entfernen (leeres Array)
-- Zeile 109-111: `quickActions` auch im Mobile-Drawer entfernen
+### Verfügbare Kanäle (nur 2)
 
-```tsx
-// VORHER:
-<div className="min-h-screen bg-surface">
-
-// NACHHER:
-<div className="min-h-screen bg-background">
-```
-
-```tsx
-// VORHER:
-quickActions={[
-  { label: 'Hilfe', action: 'help' },
-  { label: 'Dokument analysieren', action: 'analyze' },
-]}
-
-// NACHHER:
-// komplett entfernen (keine quickActions prop mehr übergeben)
-```
+| Kanal | Typ | Beschreibung |
+|-------|-----|--------------|
+| **ImmobilienScout24** | API | Direkte Veröffentlichung über Credits |
+| **Kleinanzeigen** | Export | Text + Bilder exportieren, manuell einstellen |
 
 ---
 
-## Datei 3: src/components/chat/ChatPanel.tsx
+## Hauptansicht: Liste der Vermietungsinserate
 
-### Änderung 1: Name ändern (Zeile 123)
-```tsx
-// VORHER:
-<h3 className="text-sm font-semibold">AI Assistant</h3>
+| # | Spalte | Beschreibung |
+|---|--------|--------------|
+| 1 | Objekt-ID | Kurzcode |
+| 2 | Adresse | Straße, Nr, Ort |
+| 3 | Typ | Wohnung, Haus, Gewerbe |
+| 4 | Fläche | qm |
+| 5 | Kaltmiete | Angebots-Kaltmiete |
+| 6 | Warmmiete | Kalt + NK |
+| 7 | Status | draft, active, paused, rented |
+| 8 | Kanäle | 🏠 Scout24, 📢 Kleinanzeigen |
+| 9 | Aktionen | Dropdown |
 
-// NACHHER:
-<h3 className="text-sm font-semibold">Armstrong</h3>
+### Action-Buttons (korrigiert)
+
+| Aktion | Icon | Beschreibung |
+|--------|------|--------------|
+| Vermietungsexposé erstellen/bearbeiten | FileText | Wizard für Exposé |
+| Bei ImmobilienScout24 veröffentlichen | Building | Publishing Wizard |
+| Zu Kleinanzeigen exportieren | ExternalLink | Export-Dialog |
+| Exposé als PDF | Download | PDF-Export |
+| Deaktivieren | X | Inserat pausieren |
+
+~~Auf Kaufy veröffentlichen~~ — **entfernt**
+
+---
+
+## UI-Wireframe (korrigiert)
+
 ```
-
-### Änderung 2: Schnellaktionen komplett entfernen (Zeilen 158-178)
-Der gesamte Block wird gelöscht:
-```tsx
-// LÖSCHEN:
-{quickActions.length > 0 && (
-  <div className="px-4 py-3 border-b space-y-2">
-    <p className="text-xs font-medium text-muted-foreground">Schnellaktionen</p>
-    ...
-  </div>
-)}
-```
-
-### Änderung 3: Upload-Zone minimieren (Zeilen 229-256)
-Die große FileUploader-Box wird durch eine kompakte einzeilige Version ersetzt:
-
-```tsx
-// VORHER (groß mit Label und Hint):
-<FileUploader
-  onFilesSelected={handleFilesSelected}
-  accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
-  multiple
-  label="📎 Dokumente ablegen"
-  hint="PDF, Excel, Bilder für Analyse"
-  className="text-xs"
-/>
-
-// NACHHER (kompakt, nur Icon + "Upload"):
-<FileUploader
-  onFilesSelected={handleFilesSelected}
-  accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
-  multiple
-  className="text-xs"
->
-  <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer py-1">
-    <Upload className="h-3.5 w-3.5" />
-    <span>Upload</span>
-  </div>
-</FileUploader>
+┌──────────────────────────────────────────────────────────────────┐
+│  MSV — Mietmanagement                                             │
+├──────────────────────────────────────────────────────────────────┤
+│  [Objekte] [Mieteingang] [Vermietung] [Einstellungen]            │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Vermietung — Ihre Inserate                                       │
+│                                                                   │
+│  [+ Neues Vermietungsexposé erstellen]                           │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ Objekt     │ Adresse        │ Fläche │ Miete  │ Kanäle │ ⚡│  │
+│  ├────────────────────────────────────────────────────────────┤  │
+│  │ ZL002      │ Marktstr. 12   │ 85 qm  │ 950 €  │ 🏠     │[▼]│  │
+│  │ ZL005      │ Bahnhofstr. 5  │ 62 qm  │ 720 €  │ —      │[▼]│  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                   │
+│  Dropdown [▼]:                                                   │
+│  ├─ 📋 Exposé bearbeiten                                         │
+│  ├─ 🏠 Bei Scout24 veröffentlichen                               │
+│  ├─ 📢 Zu Kleinanzeigen exportieren                              │
+│  └─ 📄 Als PDF exportieren                                       │
+│                                                                   │
+│  ────────────────────────────────────────────────────────────    │
+│                                                                   │
+│  💡 Veröffentlichen Sie Ihre Mietobjekte direkt auf              │
+│     ImmobilienScout24 oder exportieren Sie für Kleinanzeigen.    │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Ergebnis
+## Datenmodell (korrigiert)
 
-Nach den Änderungen:
-- **Dunkler Hintergrund** überall wie ursprünglich
-- **Armstrong** als Name des Assistenten
-- **Keine Schnellaktionen** mehr
-- **Minimale Upload-Zone** – nur "Upload" mit Icon
-- **Stripe-Breite** bleibt bei 190px
+### rental_publications.channel ENUM
+
+```sql
+CHECK (channel IN ('scout24', 'kleinanzeigen'))
+```
+
+~~'kaufy'~~ — **entfernt**
+
+---
+
+## Gesamte 4-Tab Struktur (Final)
+
+| Tab | Funktion | Tier |
+|-----|----------|------|
+| **Objekte** | MOD-04 Liste + Brief-Actions (Kündigung etc.) | Freemium |
+| **Mieteingang** | Zahlungen + Mahnungen + Accordion | Premium |
+| **Vermietung** | Exposé + Scout24/Kleinanzeigen Publishing | Freemium |
+| **Einstellungen** | Automation (Mahntag, Reporttag) + Credits | Beide |
+
+---
+
+## Implementierung
+
+### Dateien zu erstellen/ändern
+
+| Datei | Aktion |
+|-------|--------|
+| `VermietungTab.tsx` | Komplett neu: Rental Listings + 2 Kanäle |
+| `RentalListingWizard.tsx` | Exposé-Erstellung |
+| `RentalPublishDialog.tsx` | Scout24 + Kleinanzeigen (kein Kaufy) |
+| `ObjekteTab.tsx` | Brief-Buttons hinzufügen |
+
+### Datenbank
+
+```sql
+-- rental_publications mit 2 Kanälen
+CREATE TABLE rental_publications (
+  ...
+  channel text NOT NULL CHECK (channel IN ('scout24', 'kleinanzeigen')),
+  ...
+);
+```
+
+### Edge Function
+
+| Name | Zweck |
+|------|-------|
+| `sot-rental-listing-publish` | Scout24 API (Miete) |
+
+---
+
+## Zusammenfassung der Korrektur
+
+| Aspekt | Vorher | Nachher |
+|--------|--------|---------|
+| Kanäle | Scout24, Kleinanzeigen, Kaufy | Scout24, Kleinanzeigen |
+| Kaufy | Für Miete geplant | ❌ Nur für Verkauf (MOD-06) |
+| channel ENUM | 3 Werte | 2 Werte |
 
