@@ -12,8 +12,7 @@ import {
   Minimize2, 
   Maximize2,
   Sparkles,
-  ChevronRight,
-  Upload
+  ChevronRight
 } from "lucide-react";
 export interface ChatContext {
   zone?: string;
@@ -94,7 +93,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
 
     const positionClasses = {
       docked: "h-full w-[var(--chat-panel-width)] border-l",
-      drawer: "fixed right-0 top-0 h-full w-[380px] animate-slide-in-right shadow-elevated z-50",
+      drawer: "fixed right-0 top-0 h-full w-[var(--chat-panel-width)] animate-slide-in-right shadow-elevated z-50",
       bottomsheet: "fixed bottom-0 left-0 right-0 h-[70vh] rounded-t-xl animate-slide-in-bottom shadow-elevated z-50",
       fullscreen: "fixed inset-0 z-50",
     };
@@ -241,7 +240,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
             <div className="mt-2 space-y-1">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1">
-                  <span className="truncate max-w-[200px]">{file.name}</span>
+                  <span className="truncate max-w-[120px]">{file.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"

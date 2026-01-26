@@ -59,7 +59,7 @@ export function PortalLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface">
       <PortalHeader />
       
       <div className="flex">
@@ -67,16 +67,15 @@ export function PortalLayout() {
         <PortalNav variant="sidebar" />
         
         {/* Main Content - with right margin for persistent chat on desktop */}
-        <main className="flex-1 pb-20 lg:pb-0 lg:mr-[380px]">
+        <main className="flex-1 pb-20 lg:pb-0 lg:mr-[var(--chat-panel-width)]">
           <Outlet />
         </main>
 
         {/* Armstrong AI Chat Panel - Always visible on desktop */}
-        <div className="hidden lg:block fixed right-0 top-[var(--header-height)] bottom-0 w-[380px] border-l bg-card shadow-card z-40">
+        <div className="hidden lg:block fixed right-0 top-[var(--header-height)] bottom-0 w-[var(--chat-panel-width)] border-l bg-card shadow-card z-40">
           <ChatPanel 
             context={getContext()}
             position="docked"
-            onClose={() => setChatOpen(false)}
             quickActions={[
               { label: 'Hilfe', action: 'help' },
               { label: 'Dokument analysieren', action: 'analyze' },
