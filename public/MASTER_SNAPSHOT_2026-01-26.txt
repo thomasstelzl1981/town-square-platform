@@ -1,0 +1,261 @@
+================================================================================
+SYSTEM OF A TOWN — MASTER SNAPSHOT
+================================================================================
+Datum: 2026-01-26
+Version: v3.0 (10-Modul-Architektur)
+Status: FROZEN (Planungsphase abgeschlossen, bereit für Implementierung)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 1: GLOSSAR & MARKENLOGIK (FROZEN)
+────────────────────────────────────────────────────────────────────────────────
+
+BEGRIFFE:
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ Begriff             │ Definition                                             │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Lovable             │ Name des Tools/Arbeitsmodus (ohne "e")                 │
+│ System of a Town    │ Verwaltungs-/KI-Software (Zone 1 + Zone 2)             │
+│ SoT                 │ Abkürzung für System of a Town                         │
+│ Kaufy (mit y)       │ Marktplatz-Marke (Zone 3) + Channel/Source in Zone 2   │
+│ Miety               │ Mieter-App (Renter Portal) — Andockpunkt, nicht bauen  │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+
+MARKENLOGIK:
+┌─────────────────┬─────────────────────────────────────────────────────────────┐
+│ Marke           │ Verwendung                                                  │
+├─────────────────┼─────────────────────────────────────────────────────────────┤
+│ SoT             │ Modulnamen, Admin-Portal, User-Portal                       │
+│ Kaufy           │ Source/Channel-Name, Tab-Label, Website-Marke               │
+│ Kaufy           │ ❌ NICHT als Modulname erlaubt                              │
+└─────────────────┴─────────────────────────────────────────────────────────────┘
+
+REGISTRIERUNGS-ZUGRIFFSLOGIK:
+┌─────────────────────┬──────────────────────┬──────────────────────────────────┐
+│ Registrierung über  │ Sichtbare Module     │ Zielgruppe                       │
+├─────────────────────┼──────────────────────┼──────────────────────────────────┤
+│ SoT                 │ MOD-01 bis MOD-08    │ Vermieter, Portfoliohalter       │
+│ Kaufy               │ MOD-01 bis MOD-10    │ Kapitalanlageberater, Vertriebe  │
+└─────────────────────┴──────────────────────┴──────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 2: 3-ZONEN-ARCHITEKTUR
+────────────────────────────────────────────────────────────────────────────────
+
+ZONE 1 — ADMIN / GOVERNANCE
+├── Organizations / Tenants
+├── Users & Memberships
+├── Delegations & Hierarchies
+├── Tile Catalog / Feature Activation
+├── Integrations Registry
+├── Oversight / Monitoring
+├── Partner Verification Review
+├── Commission Approval
+└── Lead Pool Management
+
+ZONE 2 — USER PORTALS (10 Module)
+├── MOD-01: Stammdaten          /portal/stammdaten
+├── MOD-02: KI Office           /portal/office
+├── MOD-03: DMS                 /portal/dms
+├── MOD-04: Immobilien          /portal/immobilien
+├── MOD-05: MSV                 /portal/msv
+├── MOD-06: Verkauf             /portal/verkauf
+├── MOD-07: Finanzierung        /portal/finanzierung
+├── MOD-08: Investment-Suche    /portal/investments
+├── MOD-09: Vertriebspartner    /portal/vertriebspartner  [ADDON]
+└── MOD-10: Leadgenerierung     /portal/leads             [ADDON]
+
+ZONE 3 — WEBSITES
+├── Kaufy Marketplace
+├── Public Websites / Landingpages
+└── Lead Capture
+
+KERNOBJEKTE (Zonenübergreifend):
+├── Organization
+├── User
+├── Property
+├── Lead
+├── Document
+└── Contact
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 3: MODULKATALOG (10 Module)
+────────────────────────────────────────────────────────────────────────────────
+
+┌─────┬─────────────────────────┬──────────┬────────────┬────────────────────────┐
+│ MOD │ Name                    │ Typ      │ Sichtbar   │ Route-Prefix           │
+├─────┼─────────────────────────┼──────────┼────────────┼────────────────────────┤
+│ 01  │ Stammdaten              │ Core     │ Alle       │ /portal/stammdaten     │
+│ 02  │ KI Office               │ Core     │ Alle       │ /portal/office         │
+│ 03  │ DMS                     │ Core     │ Alle       │ /portal/dms            │
+│ 04  │ Immobilien              │ Core     │ Alle       │ /portal/immobilien     │
+│ 05  │ MSV                     │ Freemium │ Alle       │ /portal/msv            │
+│ 06  │ Verkauf                 │ Standard │ Alle       │ /portal/verkauf        │
+│ 07  │ Finanzierung            │ Standard │ Alle       │ /portal/finanzierung   │
+│ 08  │ Investment-Suche/Ankauf │ Standard │ Alle       │ /portal/investments    │
+│ 09  │ Vertriebspartner        │ Addon    │ Kaufy      │ /portal/vertriebspartner│
+│ 10  │ Leadgenerierung         │ Addon    │ Kaufy      │ /portal/leads          │
+└─────┴─────────────────────────┴──────────┴────────────┴────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 4: MOD-06 VERKAUF — PUBLISHING CHANNELS
+────────────────────────────────────────────────────────────────────────────────
+
+4 PUBLISHING-KANÄLE:
+┌──────────────────────┬───────────┬──────────────────────────────────────────────┐
+│ Kanal                │ Kosten    │ Gates/Agreements                             │
+├──────────────────────┼───────────┼──────────────────────────────────────────────┤
+│ Kaufy (Zone 3)       │ Kostenlos │ SALES_MANDATE                                │
+│ Immobilienscout24    │ Bezahlt   │ SCOUT24_CREDITS                              │
+│ eBay Kleinanzeigen   │ Link      │ —                                            │
+│ Partner-Netzwerk     │ Kostenlos │ PARTNER_RELEASE + SYSTEM_SUCCESS_FEE_2000    │
+└──────────────────────┴───────────┴──────────────────────────────────────────────┘
+
+MONETARISIERUNG PARTNER-NETZWERK:
+• Partner-Provision: 5–15% pro Listing (vom Owner festgelegt)
+• Systemgebühr: 2.000€ erfolgsabhängig (nur bei Closing/BNL)
+• Lead-Split bei Pool-Leads: 1/3 Platform : 2/3 Partner
+
+CONSENT CODES:
+• SALES_MANDATE — Listing-Erstellung
+• PARTNER_RELEASE — Partnerfreigabe
+• SYSTEM_SUCCESS_FEE_2000 — Erfolgsgebühr
+• COMMISSION_AGREEMENT — Provisionsvereinbarung
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 5: MOD-08 INVESTMENT-SUCHE / ANKAUF
+────────────────────────────────────────────────────────────────────────────────
+
+SOURCES (Multi-Source-Suche):
+┌───────────────┬────────────────────────────────────────────────────────────────┐
+│ Source-Code   │ Beschreibung                                                   │
+├───────────────┼────────────────────────────────────────────────────────────────┤
+│ sot_verkauf   │ Listings aus MOD-06 (sofern freigegeben)                       │
+│ kaufy         │ Kaufy Marketplace (Zone 3 Favoriten + Listings)                │
+│ external      │ Externe Imports (Phase 2)                                      │
+│ scraper       │ Web-Scraper Ergebnisse (Phase 2)                               │
+└───────────────┴────────────────────────────────────────────────────────────────┘
+
+KAUFY-FAVORITEN-SYNC:
+Zone 3 (Kaufy Website) → LocalStorage → Login/Signup → Import API → MOD-08 Favoriten
+
+SCREENS:
+• Dashboard: /portal/investments
+• Suche: /portal/investments/suche
+• Favoriten: /portal/investments/favoriten
+• Mandat: /portal/investments/mandat (Placeholder)
+• Simulation: /portal/investments/simulation
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 6: MOD-09 VERTRIEBSPARTNER (VOLLSTÄNDIGES MODUL)
+────────────────────────────────────────────────────────────────────────────────
+
+SCREENS (Route → UI-Label):
+┌────────────────────────────────────┬──────────────────┬────────────────────────┐
+│ Route                              │ UI-Label         │ Beschreibung           │
+├────────────────────────────────────┼──────────────────┼────────────────────────┤
+│ /portal/vertriebspartner           │ Dashboard        │ Partner-KPIs           │
+│ /portal/vertriebspartner/pipeline  │ Objektkatalog    │ Partner-sichtbare Lists│
+│ /portal/vertriebspartner/auswahl   │ Meine Auswahl    │ Partner-Shortlist      │
+│ /portal/vertriebspartner/beratung  │ Beratung         │ Investment Engine      │
+│ /portal/vertriebspartner/team      │ Netzwerk         │ Team, Provisionen      │
+└────────────────────────────────────┴──────────────────┴────────────────────────┘
+
+WICHTIG: MOD-09 ist ein VOLLSTÄNDIGES Partner-Modul, NICHT auf "nur Objektkatalog" reduziert.
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 7: MOD-10 LEADGENERIERUNG
+────────────────────────────────────────────────────────────────────────────────
+
+FLOW:
+Zone 3 (Website) → Zone 1 (Lead Pool) → MOD-10 (Partner Inbox)
+
+LEAD-SPLIT (FROZEN):
+• Platform-Anteil: 1/3 der Provision
+• Partner-Anteil: 2/3 der Provision
+
+SCREENS:
+• Dashboard: /portal/leads
+• Inbox: /portal/leads/inbox
+• Pipeline: /portal/leads/pipeline
+• Quellen: /portal/leads/sources
+• Reports: /portal/leads/reports
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 8: API-NUMMERNKREISE
+────────────────────────────────────────────────────────────────────────────────
+
+┌────────────────┬─────────────────────────────────────┐
+│ Range          │ Modul/Bereich                       │
+├────────────────┼─────────────────────────────────────┤
+│ API-001..099   │ Backbone (Auth, Profiles)           │
+│ API-100..199   │ Zone 1 (Admin)                      │
+│ API-200..299   │ MOD-06 Verkauf                      │
+│ API-300..399   │ MOD-09 Vertriebspartner             │
+│ API-400..499   │ MOD-08 Investment-Suche             │
+│ API-500..599   │ MOD-10 Leadgenerierung              │
+│ API-600..699   │ MOD-07 Finanzierung                 │
+│ API-700..799   │ MOD-04 Immobilien                   │
+│ API-800..899   │ MOD-05 MSV                          │
+└────────────────┴─────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 9: FREEZE CANDIDATES (P0)
+────────────────────────────────────────────────────────────────────────────────
+
+✅ FROZEN:
+1. Kaufy Schreibweise — mit y, nicht i
+2. 10-Modul-Architektur — 1-8 Standard, 9-10 Addon
+3. Sichtbarkeitsmatrix — SoT=1-8, Kaufy=1-10
+4. Publishing-Channels — 4 Channels mit klaren Gates
+5. Partner-Provision — 5-15% + 2.000€ Systemgebühr
+6. Lead-Split — 1/3 Platform : 2/3 Partner
+7. MOD-09 Scope — Vollständiges Partner-Modul
+
+⏳ PENDING:
+• MOD-07 Finanzierung — Spec in Arbeit
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 10: NÄCHSTE SCHRITTE
+────────────────────────────────────────────────────────────────────────────────
+
+1. MOD-07 Finanzierung spezifizieren
+2. App.tsx Routes aktualisieren (dynamische Routes für alle 10 Module)
+3. tile_catalog Einträge für MOD-08, 09, 10 prüfen/ergänzen
+4. DB-Schema für neue Tabellen erstellen (listings, favorites, partner_selections)
+5. Investment Engine Edge Function implementieren
+6. Consent-Templates für alle FROZEN Consents anlegen
+
+────────────────────────────────────────────────────────────────────────────────
+TEIL 11: DOKUMENT-REFERENZEN
+────────────────────────────────────────────────────────────────────────────────
+
+Architekturdokumente:
+• docs/architecture/A1_SystemOverview.md — Systemübersicht (10 Module)
+• docs/architecture/A2_Zone1_Admin_Governance.md — Zone 1 Governance
+• docs/architecture/A3_Zone2_ModuleStructure.md — Zone 2 Modulstruktur
+• docs/architecture/ARCHITEKTUR_UPDATE_10MODULE_2026-01-25.md — Architektur-Entscheidung
+
+Modulspezifikationen:
+• docs/modules/MOD-01_STAMMDATEN.md
+• docs/modules/MOD-02_KI_OFFICE.md
+• docs/modules/MOD-03_DMS.md
+• docs/modules/MOD-04_IMMOBILIEN.md
+• docs/modules/MOD-05_MSV.md
+• docs/modules/MOD-06_VERKAUF.md
+• docs/modules/MOD-08_INVESTMENTS.md
+• docs/modules/MOD-09_VERTRIEBSPARTNER.md
+• docs/modules/MOD-10_LEADGENERIERUNG.md
+
+Diagramme:
+• docs/presentation/SYSTEM_DIAGRAM.md — Alle Mermaid-Flows
+
+Open Questions:
+• docs/modules/ZONE2_OPEN_QUESTIONS.md
+
+Blueprint:
+• MODULE_BLUEPRINT.md — Modul-Matrix und Routes
+
+================================================================================
+ENDE DES MASTER SNAPSHOTS
+================================================================================
