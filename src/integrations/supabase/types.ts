@@ -1835,38 +1835,97 @@ export type Database = {
           },
         ]
       }
-      msv_enrollments: {
+      msv_communication_prefs: {
         Row: {
           created_at: string | null
-          enrolled_at: string | null
-          enrolled_by: string | null
+          fallback_channel: string | null
           id: string
-          property_id: string
-          settings: Json | null
-          status: string | null
+          preferred_channel: string
+          require_confirmation: boolean | null
+          scope_id: string
+          scope_type: string
           tenant_id: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          enrolled_at?: string | null
-          enrolled_by?: string | null
+          fallback_channel?: string | null
           id?: string
-          property_id: string
-          settings?: Json | null
-          status?: string | null
+          preferred_channel: string
+          require_confirmation?: boolean | null
+          scope_id: string
+          scope_type: string
           tenant_id: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          fallback_channel?: string | null
+          id?: string
+          preferred_channel?: string
+          require_confirmation?: boolean | null
+          scope_id?: string
+          scope_type?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_communication_prefs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_enrollments: {
+        Row: {
+          blocked_reason: string | null
+          created_at: string | null
+          credits_per_unit: number | null
+          enrolled_at: string | null
+          enrolled_by: string | null
+          id: string
+          property_id: string
+          readiness_snapshot: Json | null
+          scope_type: string | null
+          settings: Json | null
+          status: string | null
+          tenant_id: string
+          tier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          blocked_reason?: string | null
+          created_at?: string | null
+          credits_per_unit?: number | null
+          enrolled_at?: string | null
+          enrolled_by?: string | null
+          id?: string
+          property_id: string
+          readiness_snapshot?: Json | null
+          scope_type?: string | null
+          settings?: Json | null
+          status?: string | null
+          tenant_id: string
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          blocked_reason?: string | null
+          created_at?: string | null
+          credits_per_unit?: number | null
           enrolled_at?: string | null
           enrolled_by?: string | null
           id?: string
           property_id?: string
+          readiness_snapshot?: Json | null
+          scope_type?: string | null
           settings?: Json | null
           status?: string | null
           tenant_id?: string
+          tier?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1879,6 +1938,107 @@ export type Database = {
           },
           {
             foreignKeyName: "msv_enrollments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_readiness_items: {
+        Row: {
+          created_at: string | null
+          details: string | null
+          enrollment_id: string
+          id: string
+          requested_at: string | null
+          requirement_code: string
+          resolved_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          details?: string | null
+          enrollment_id: string
+          id?: string
+          requested_at?: string | null
+          requirement_code: string
+          resolved_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: string | null
+          enrollment_id?: string
+          id?: string
+          requested_at?: string | null
+          requirement_code?: string
+          resolved_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_readiness_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "msv_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "msv_readiness_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          locale: string | null
+          placeholders: Json | null
+          template_code: string
+          tenant_id: string | null
+          title: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          locale?: string | null
+          placeholders?: Json | null
+          template_code: string
+          tenant_id?: string | null
+          title: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          locale?: string | null
+          placeholders?: Json | null
+          template_code?: string
+          tenant_id?: string | null
+          title?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2617,11 +2777,17 @@ export type Database = {
           amount: number
           created_at: string | null
           due_date: string
+          expected_amount: number | null
           id: string
           lease_id: string
+          matched_amount: number | null
+          matched_source: string | null
+          matched_transaction_id: string | null
           notes: string | null
           paid_date: string | null
           payment_method: string | null
+          period_end: string | null
+          period_start: string | null
           status: string | null
           tenant_id: string
           updated_at: string | null
@@ -2630,11 +2796,17 @@ export type Database = {
           amount: number
           created_at?: string | null
           due_date: string
+          expected_amount?: number | null
           id?: string
           lease_id: string
+          matched_amount?: number | null
+          matched_source?: string | null
+          matched_transaction_id?: string | null
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
           status?: string | null
           tenant_id: string
           updated_at?: string | null
@@ -2643,11 +2815,17 @@ export type Database = {
           amount?: number
           created_at?: string | null
           due_date?: string
+          expected_amount?: number | null
           id?: string
           lease_id?: string
+          matched_amount?: number | null
+          matched_source?: string | null
+          matched_transaction_id?: string | null
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
           status?: string | null
           tenant_id?: string
           updated_at?: string | null
@@ -2671,39 +2849,68 @@ export type Database = {
       }
       rent_reminders: {
         Row: {
+          auto_sent: boolean | null
           channel: string | null
+          confirmed_by: string | null
+          content_text: string | null
           created_at: string | null
+          document_id: string | null
           id: string
           lease_id: string
           payment_id: string | null
           reminder_type: string
           sent_at: string | null
+          stage: string | null
           status: string | null
           tenant_id: string
         }
         Insert: {
+          auto_sent?: boolean | null
           channel?: string | null
+          confirmed_by?: string | null
+          content_text?: string | null
           created_at?: string | null
+          document_id?: string | null
           id?: string
           lease_id: string
           payment_id?: string | null
           reminder_type: string
           sent_at?: string | null
+          stage?: string | null
           status?: string | null
           tenant_id: string
         }
         Update: {
+          auto_sent?: boolean | null
           channel?: string | null
+          confirmed_by?: string | null
+          content_text?: string | null
           created_at?: string | null
+          document_id?: string | null
           id?: string
           lease_id?: string
           payment_id?: string | null
           reminder_type?: string
           sent_at?: string | null
+          stage?: string | null
           status?: string | null
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rent_reminders_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_reminders_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rent_reminders_payment_id_fkey"
             columns: ["payment_id"]

@@ -1,11 +1,31 @@
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useModuleTiles } from '@/hooks/useModuleTiles';
 import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  DashboardTab, 
+  ListenTab, 
+  MieteingangTab, 
+  VermietungTab, 
+  EinstellungenTab 
+} from './msv';
 
 const MSVPage = () => {
   const contentRef = usePdfContentRef();
   const { data, isLoading } = useModuleTiles('MOD-05');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Parse current sub-tab from URL
+  const pathParts = location.pathname.split('/');
+  const currentSubTab = pathParts[3] || 'dashboard';
+
+  const handleTabChange = (value: string) => {
+    navigate(`/portal/msv/${value}`);
+  };
 
   if (isLoading) {
     return (
@@ -18,12 +38,40 @@ const MSVPage = () => {
   return (
     <div className="space-y-6">
       <div ref={contentRef}>
-        <ModuleDashboard
-          title={data?.title || 'Mietmanagement'}
-          description={data?.description || 'Mieter-Selbstverwaltung und Zahlungsübersicht'}
-          subTiles={data?.sub_tiles || []}
-          moduleCode="MOD-05"
-        />
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">{data?.title || 'Mietmanagement'}</h1>
+          <p className="text-muted-foreground">{data?.description || 'Mieter-Selbstverwaltung und Zahlungsübersicht'}</p>
+        </div>
+
+        <Tabs value={currentSubTab} onValueChange={handleTabChange} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="listen">Listen</TabsTrigger>
+            <TabsTrigger value="mieteingang">Mieteingang</TabsTrigger>
+            <TabsTrigger value="vermietung">Vermietung</TabsTrigger>
+            <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <DashboardTab />
+          </TabsContent>
+
+          <TabsContent value="listen">
+            <ListenTab />
+          </TabsContent>
+
+          <TabsContent value="mieteingang">
+            <MieteingangTab />
+          </TabsContent>
+
+          <TabsContent value="vermietung">
+            <VermietungTab />
+          </TabsContent>
+
+          <TabsContent value="einstellungen">
+            <EinstellungenTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="px-6">
