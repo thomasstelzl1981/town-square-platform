@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMSVPremium, useMSVCommunicationPrefs } from '@/hooks/useMSVPremium';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { toast } from 'sonner';
 import { 
   CreditCard, 
   Building2, 
@@ -20,7 +23,8 @@ import {
   ExternalLink,
   FileText,
   Plus,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 
 interface BankAccount {
@@ -33,18 +37,94 @@ interface BankAccount {
 }
 
 const EinstellungenTab = () => {
+  const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
+  const { isPremium, activeUnits, isLoading: premiumLoading } = useMSVPremium();
+  const { prefs, isLoading: prefsLoading, refetch: refetchPrefs } = useMSVCommunicationPrefs();
+  
+  // Local state initialized from DB
   const [autoReminders, setAutoReminders] = useState(false);
   const [autoReports, setAutoReports] = useState(false);
   const [reminderDay, setReminderDay] = useState(10);
   const [reportDay, setReportDay] = useState(15);
   const [reminderChannel, setReminderChannel] = useState<'email' | 'letter'>('email');
+  const [hasChanges, setHasChanges] = useState(false);
   
-  // Mock data - in reality would come from msv_bank_accounts
-  const [bankAccounts] = useState<BankAccount[]>([]);
+  // Sync local state with DB prefs
+  useEffect(() => {
+    if (prefs) {
+      setAutoReminders(prefs.auto_reminder_enabled || false);
+      setAutoReports(prefs.auto_report_enabled || false);
+      setReminderDay(prefs.reminder_day || 10);
+      setReportDay(prefs.report_day || 15);
+      setReminderChannel((prefs.preferred_channel as 'email' | 'letter') || 'email');
+    }
+  }, [prefs]);
   
-  const activeUnits = 0; // TODO: Fetch from DB
+  // Fetch bank accounts
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['msv-bank-accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('msv_bank_accounts')
+        .select('*')
+        .order('is_default', { ascending: false });
+      if (error) throw error;
+      return (data || []) as BankAccount[];
+    }
+  });
+  
   const creditsPerUnit = 40;
-  const isPremium = false; // TODO: Check from msv_enrollments
+
+  // Save preferences mutation
+  const savePrefs = useMutation({
+    mutationFn: async () => {
+      if (!activeTenantId) {
+        throw new Error('Keine Organisation aktiv');
+      }
+      
+      if (!prefs?.id) {
+        // No existing prefs - create new
+        const { error } = await supabase.from('msv_communication_prefs').insert([{
+          tenant_id: activeTenantId,
+          scope_type: 'tenant',
+          scope_id: activeTenantId,
+          preferred_channel: reminderChannel,
+          reminder_day: reminderDay,
+          report_day: reportDay,
+          auto_reminder_enabled: autoReminders,
+          auto_report_enabled: autoReports
+        }]);
+        if (error) throw error;
+      } else {
+        // Update existing
+        const { error } = await supabase
+          .from('msv_communication_prefs')
+          .update({
+            preferred_channel: reminderChannel,
+            reminder_day: reminderDay,
+            report_day: reportDay,
+            auto_reminder_enabled: autoReminders,
+            auto_report_enabled: autoReports
+          })
+          .eq('id', prefs.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Einstellungen gespeichert');
+      setHasChanges(false);
+      refetchPrefs();
+    },
+    onError: () => {
+      toast.error('Fehler beim Speichern');
+    }
+  });
+
+  const handleChange = (setter: (val: any) => void, value: any) => {
+    setter(value);
+    setHasChanges(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -89,9 +169,20 @@ const EinstellungenTab = () => {
             </div>
           </div>
 
-          <Button className="w-full" disabled={activeUnits === 0}>
-            Premium aktivieren
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" disabled={activeUnits === 0 || isPremium}>
+              {isPremium ? 'Premium aktiv' : 'Premium aktivieren'}
+            </Button>
+            {hasChanges && (
+              <Button 
+                onClick={() => savePrefs.mutate()} 
+                disabled={savePrefs.isPending}
+              >
+                {savePrefs.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Speichern
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -121,7 +212,7 @@ const EinstellungenTab = () => {
               </div>
               <Switch 
                 checked={autoReminders} 
-                onCheckedChange={setAutoReminders}
+                onCheckedChange={(v) => handleChange(setAutoReminders, v)}
                 disabled={!isPremium}
               />
             </div>
@@ -136,7 +227,7 @@ const EinstellungenTab = () => {
                     min={1}
                     max={28}
                     value={reminderDay}
-                    onChange={(e) => setReminderDay(parseInt(e.target.value) || 10)}
+                    onChange={(e) => handleChange(setReminderDay, parseInt(e.target.value) || 10)}
                     className="w-20"
                     disabled={!isPremium}
                   />
@@ -147,7 +238,7 @@ const EinstellungenTab = () => {
                   <Label className="text-sm">Kommunikationsweg:</Label>
                   <RadioGroup 
                     value={reminderChannel} 
-                    onValueChange={(v) => setReminderChannel(v as 'email' | 'letter')}
+                    onValueChange={(v) => handleChange(setReminderChannel, v as 'email' | 'letter')}
                     disabled={!isPremium}
                     className="flex gap-4"
                   >
@@ -181,7 +272,7 @@ const EinstellungenTab = () => {
               </div>
               <Switch 
                 checked={autoReports} 
-                onCheckedChange={setAutoReports}
+                onCheckedChange={(v) => handleChange(setAutoReports, v)}
                 disabled={!isPremium}
               />
             </div>
@@ -196,7 +287,7 @@ const EinstellungenTab = () => {
                     min={1}
                     max={28}
                     value={reportDay}
-                    onChange={(e) => setReportDay(parseInt(e.target.value) || 15)}
+                    onChange={(e) => handleChange(setReportDay, parseInt(e.target.value) || 15)}
                     className="w-20"
                     disabled={!isPremium}
                   />
