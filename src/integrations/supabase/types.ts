@@ -2934,6 +2934,165 @@ export type Database = {
           },
         ]
       }
+      rental_listings: {
+        Row: {
+          available_from: string | null
+          cold_rent: number | null
+          created_at: string | null
+          created_by: string | null
+          deposit_months: number | null
+          description: string | null
+          expose_document_id: string | null
+          id: string
+          minimum_term_months: number | null
+          pets_allowed: boolean | null
+          property_id: string
+          public_id: string
+          status: string
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string | null
+          utilities_estimate: number | null
+          warm_rent: number | null
+        }
+        Insert: {
+          available_from?: string | null
+          cold_rent?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deposit_months?: number | null
+          description?: string | null
+          expose_document_id?: string | null
+          id?: string
+          minimum_term_months?: number | null
+          pets_allowed?: boolean | null
+          property_id: string
+          public_id?: string
+          status?: string
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string | null
+          utilities_estimate?: number | null
+          warm_rent?: number | null
+        }
+        Update: {
+          available_from?: string | null
+          cold_rent?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deposit_months?: number | null
+          description?: string | null
+          expose_document_id?: string | null
+          id?: string
+          minimum_term_months?: number | null
+          pets_allowed?: boolean | null
+          property_id?: string
+          public_id?: string
+          status?: string
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string | null
+          utilities_estimate?: number | null
+          warm_rent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_listings_expose_document_id_fkey"
+            columns: ["expose_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_listings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_listings_tenant_property_fk"
+            columns: ["tenant_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "rental_listings_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_publications: {
+        Row: {
+          channel: string
+          created_at: string | null
+          error_message: string | null
+          expires_at: string | null
+          external_id: string | null
+          external_url: string | null
+          id: string
+          published_at: string | null
+          rental_listing_id: string
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          published_at?: string | null
+          rental_listing_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          published_at?: string | null
+          rental_listing_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_publications_rental_listing_id_fkey"
+            columns: ["rental_listing_id"]
+            isOneToOne: false
+            referencedRelation: "rental_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_publications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       renter_invites: {
         Row: {
           accepted_at: string | null
