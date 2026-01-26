@@ -1,514 +1,444 @@
 
-# Erweiterter Reparaturplan: MOD-04 Immobilien — Drag-and-Drop, Excel-Import & Ordnerstruktur
+# Komplettierungsplan: MOD-04 Immobilien — Von "In Entwicklung" zur vollständigen UI-Struktur
 
-## Analyse: Was fehlt aktuell?
+## Ausgangslage (IST-Zustand)
 
-| Feature | Aktueller Status | Dokumentations-Anforderung |
-|---------|------------------|---------------------------|
-| **Drag-and-Drop Exposé** | ❌ Nicht vorhanden | Datenraum-Section mit Upload |
-| **Drag-and-Drop Portfolio-Liste** | ❌ Nicht vorhanden | Excel-Import für Portfolio |
-| **Ordnerstruktur pro Objekt** | ❌ Nicht implementiert | Überordner + Einheiten-Ordner |
-| **DMS-Verlinkung** | ❌ Nicht implementiert | `document_links.object_id` |
+| Bereich | Status | Problem |
+|---------|--------|---------|
+| **Portfolio** | ⚠️ Teilweise | Zeigt nur `EmptyProperties` ohne sichtbare Struktur |
+| **Kontexte** | ❌ Placeholder | Nur "in Entwicklung" Text |
+| **Sanierung** | ❌ Placeholder | Nur "in Entwicklung" Text |
+| **Bewertung** | ❌ Placeholder | Nur "in Entwicklung" Text |
+| **Exposé** | ✅ Funktional | Fehlt: Vorlage-Modus ohne Daten |
+| **DB-Tabellen** | ❌ Fehlen | `landlord_contexts`, `service_cases`, `property_valuations` nicht migriert |
 
 ---
 
-## Teil A: Ordnerstruktur im Storage (KRITISCH)
+## Phase 1: Datenbank-Migration (Voraussetzung)
 
-### Architektur-Anforderung (ADR-038 + MOD-04)
+### 1.1 Neue Tabellen erstellen
 
-Jedes Property erhält eine automatische Ordnerstruktur im `tenant-vault`:
+Die folgenden Tabellen aus `MOD-04_DB_SCHEMA.md` müssen migriert werden:
 
-```
-tenant/{tenant_id}/immobilien/{property_id}/
-├── allgemein/                  ← Globale Objekt-Unterlagen
-│   ├── grundbuch/
-│   ├── finanzierung/
-│   ├── versicherung/
-│   └── sonstiges/
-├── einheiten/                  ← Pro Einheit ein Ordner
-│   ├── {unit_id_1}/
-│   │   ├── mietvertrag/
-│   │   ├── protokolle/
-│   │   └── korrespondenz/
-│   └── {unit_id_2}/
-│       └── ...
-└── sanierung/                  ← Sanierungsvorgänge
-    └── {service_case_id}/
-```
+| Tabelle | Zweck |
+|---------|-------|
+| `landlord_contexts` | Vermieter-Kontexte (PRIVATE/BUSINESS) |
+| `context_property_assignment` | Kontext-Objekt-Zuordnung |
+| `property_valuations` | Sprengnetter-Bewertungsergebnisse |
+| `service_cases` | Sanierungsvorgänge |
+| `service_case_outbound` | Versendete Ausschreibungen |
+| `service_case_offers` | Eingegangene Angebote |
 
-### Datenbank: storage_nodes Erweiterung
-
-Die `storage_nodes`-Tabelle benötigt Property-/Unit-Referenzen:
+### 1.2 Properties erweitern
 
 ```sql
-ALTER TABLE storage_nodes ADD COLUMN IF NOT EXISTS property_id uuid REFERENCES properties(id);
-ALTER TABLE storage_nodes ADD COLUMN IF NOT EXISTS unit_id uuid REFERENCES units(id);
-ALTER TABLE storage_nodes ADD COLUMN IF NOT EXISTS auto_created boolean DEFAULT false;
-```
-
-### Automatische Ordner-Erstellung (Trigger)
-
-Bei Anlage eines neuen Property/Unit werden automatisch Ordner erstellt:
-
-```sql
-CREATE OR REPLACE FUNCTION create_property_folder_structure()
-RETURNS TRIGGER AS $$
-DECLARE
-  root_node_id uuid;
-  allgemein_id uuid;
-  einheiten_id uuid;
-BEGIN
-  -- Erstelle Haupt-Ordner für Property
-  INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, auto_created)
-  VALUES (NEW.tenant_id, NULL, NEW.code || ' - ' || NEW.address, 'property_root', NEW.id, true)
-  RETURNING id INTO root_node_id;
-  
-  -- Erstelle Unterordner "Allgemein"
-  INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, auto_created)
-  VALUES (NEW.tenant_id, root_node_id, 'Allgemein', 'folder', NEW.id, true)
-  RETURNING id INTO allgemein_id;
-  
-  -- Weitere Unterordner
-  INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, auto_created)
-  VALUES 
-    (NEW.tenant_id, allgemein_id, 'Grundbuch', 'folder', NEW.id, true),
-    (NEW.tenant_id, allgemein_id, 'Finanzierung', 'folder', NEW.id, true),
-    (NEW.tenant_id, allgemein_id, 'Versicherung', 'folder', NEW.id, true),
-    (NEW.tenant_id, allgemein_id, 'Sonstiges', 'folder', NEW.id, true);
-  
-  -- Erstelle "Einheiten" Container
-  INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, auto_created)
-  VALUES (NEW.tenant_id, root_node_id, 'Einheiten', 'folder', NEW.id, true)
-  RETURNING id INTO einheiten_id;
-  
-  -- Erstelle "Sanierung" Container
-  INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, auto_created)
-  VALUES (NEW.tenant_id, root_node_id, 'Sanierung', 'folder', NEW.id, true);
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER property_folder_structure
-  AFTER INSERT ON properties
-  FOR EACH ROW EXECUTE FUNCTION create_property_folder_structure();
-```
-
-### Einheiten-Ordner (Unit Trigger)
-
-```sql
-CREATE OR REPLACE FUNCTION create_unit_folder()
-RETURNS TRIGGER AS $$
-DECLARE
-  einheiten_parent_id uuid;
-  unit_folder_id uuid;
-BEGIN
-  -- Finde "Einheiten"-Ordner des Properties
-  SELECT id INTO einheiten_parent_id 
-  FROM storage_nodes 
-  WHERE property_id = NEW.property_id 
-    AND name = 'Einheiten' 
-    AND node_type = 'folder';
-  
-  IF einheiten_parent_id IS NOT NULL THEN
-    INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, unit_id, auto_created)
-    VALUES (NEW.tenant_id, einheiten_parent_id, NEW.unit_number, 'unit_folder', NEW.property_id, NEW.id, true)
-    RETURNING id INTO unit_folder_id;
-    
-    -- Standard-Unterordner für Einheit
-    INSERT INTO storage_nodes (tenant_id, parent_id, name, node_type, property_id, unit_id, auto_created)
-    VALUES 
-      (NEW.tenant_id, unit_folder_id, 'Mietvertrag', 'folder', NEW.property_id, NEW.id, true),
-      (NEW.tenant_id, unit_folder_id, 'Protokolle', 'folder', NEW.property_id, NEW.id, true),
-      (NEW.tenant_id, unit_folder_id, 'Korrespondenz', 'folder', NEW.property_id, NEW.id, true);
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER unit_folder_create
-  AFTER INSERT ON units
-  FOR EACH ROW EXECUTE FUNCTION create_unit_folder();
+ALTER TABLE properties ADD COLUMN utility_prepayment numeric;
 ```
 
 ---
 
-## Teil B: Datenraum-Section im Exposé (Drag-and-Drop)
+## Phase 2: KontexteTab — Firma aus Stammdaten + Struktur
 
-### UI-Erweiterung: PropertyDetail.tsx
+### 2.1 Konzept
 
-Neue Section "Datenraum" im Exposé mit:
-1. **Ordnerbaum** (links) — gefiltert auf `property_id`
-2. **Dokument-Liste** (mitte) — Dateien im ausgewählten Ordner
-3. **Drag-and-Drop Zone** — Upload direkt ins Property
+Die Kontexte-Seite zeigt:
+1. **Automatischer Kontext**: Die Firma aus MOD-01 Stammdaten (aus `organizations` Tabelle)
+2. **Weitere Kontexte**: Liste mit CRUD-Funktionalität
+3. **"In Entwicklung"-Hinweis** für erweiterte Funktionen
 
-### Komponenten-Struktur
-
-```
-src/components/portfolio/
-├── ExposeTab.tsx        ← Besteht (Stammdaten)
-├── FeaturesTab.tsx      ← Besteht (Feature-Toggles)
-├── TenancyTab.tsx       ← Besteht (Mietverhältnis)
-└── DatenraumTab.tsx     ← NEU: DMS-Integration im Exposé
-```
-
-### DatenraumTab.tsx — Layout
+### 2.2 UI-Layout
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│  DATENRAUM                                           [+ Upload]   │
-├────────────────────────────────────────────────────────────────────┤
-│  ┌───────────────┬──────────────────────────────────────────────┐ │
-│  │  ORDNER       │  DOKUMENTE                                   │ │
-│  │               │                                              │ │
-│  │  📁 Allgemein │  ┌─────────────────────────────────────────┐ │ │
-│  │    ├ Grundbuch│  │ 📄 Grundbuchauszug.pdf    12.01.2026   │ │ │
-│  │    ├ Finanz.  │  │ 📄 Kaufvertrag.pdf        08.11.2025   │ │ │
-│  │    └ Versich. │  │                                         │ │ │
-│  │  📁 Einheiten │  └─────────────────────────────────────────┘ │ │
-│  │    ├ WE01     │                                              │ │
-│  │    └ WE02     │  ┌─────────────────────────────────────────┐ │ │
-│  │  📁 Sanierung │  │         DRAG & DROP ZONE                │ │ │
-│  │               │  │    Dateien hier ablegen zum Upload      │ │ │
-│  └───────────────┴──└─────────────────────────────────────────┘─┘ │
-└────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  VERMIETER-KONTEXTE                                                    │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  🏢  STANDARD-KONTEXT (aus Stammdaten)                           │ │
+│  │                                                                  │ │
+│  │  Name:    [Firma aus organizations.name]                         │ │
+│  │  Typ:     BUSINESS (oder PRIVATE je nach org_type)               │ │
+│  │  Regime:  FIBU                                                   │ │
+│  │  Objekte: – (alle nicht zugeordneten Properties)                 │ │
+│  │                                                                  │ │
+│  │  [Stammdaten bearbeiten →]                                       │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  ─────────────────────────────────────────────────────────────────    │
+│                                                                        │
+│  WEITERE KONTEXTE                                                      │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │     📋 Keine weiteren Kontexte angelegt                          │ │
+│  │                                                                  │ │
+│  │     Erstellen Sie zusätzliche Vermieter-Kontexte, um Objekte     │ │
+│  │     nach steuerlichen oder organisatorischen Kriterien zu        │ │
+│  │     gruppieren.                                                  │ │
+│  │                                                                  │ │
+│  │     [+ Kontext anlegen] (in Entwicklung)                         │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Upload-Flow (Exposé)
-
-```
-1. User droppt Datei auf Datenraum-Zone
-2. FileUploader erfasst File[]
-3. Edge Function `sot-dms-upload-url` wird aufgerufen mit:
-   - filename, mime_type, size_bytes
-   - folder: `immobilien/{property_id}/{selected_node_path}`
-4. Signed Upload URL wird zurückgegeben
-5. Client lädt Datei hoch
-6. document + document_links Einträge werden erstellt:
-   - document_links.object_id = property_id
-   - document_links.node_id = ausgewählter storage_node
-7. UI aktualisiert Dokument-Liste
-```
-
----
-
-## Teil C: Excel-Import in der Portfolio-Liste
-
-### Funktionsanforderung
-
-In der PortfolioTab (Immobilienliste) soll ein Excel-Import möglich sein:
-1. User droppt Excel-Datei auf Zone
-2. System parsed Excel und zeigt Preview
-3. User bestätigt Import
-4. Objekte werden in `properties` erstellt
-
-### Excel-Struktur (gemäß MOD-04_FIELD_MAPPING.md)
-
-| Spalte | DB-Feld | Pflicht |
-|--------|---------|---------|
-| A: ID/Code | `code` | Optional |
-| B: Art | `property_type` | Ja |
-| C: Ort | `city` | Ja |
-| D: Straße/Hausnummer | `address` | Ja |
-| E: Größe (qm) | `total_area_sqm` | Optional |
-| F: Nutzung | `usage_type` | Ja |
-| G: Einnahmen | `annual_income` | Optional |
-| H: Verkehrswert | `market_value` | Optional |
-| I: Restschuld | `current_balance` | Optional |
-| J: Rate | `monthly_rate` | Optional |
-| K: Warmmiete | `current_monthly_rent` | Optional |
-| L: NK-Vorauszahlung | `utility_prepayment` | Optional |
-| M: Hausgeld | `management_fee` | Optional |
-
-### UI-Layout: PortfolioTab mit Import-Zone
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  PORTFOLIO-ÜBERSICHT                    [+ Objekt]  [📥 Import]   │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │         EXCEL IMPORT ZONE                                    │  │
-│  │    Ziehen Sie Ihre Portfolio-Excel hierher                  │  │
-│  │    (Format: .xlsx, .xls, .csv)                               │  │
-│  │    [📄 Muster-Vorlage herunterladen]                         │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  [KPIs: Objekte | Wert | Schuld | Netto | Rendite]                │
-│  [Charts: Typ-Verteilung | Regionen]                              │
-│  [Tabelle: 13 Spalten]                                            │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-### Excel-Parser (Frontend mit xlsx-Bibliothek)
+### 2.3 Datenquelle
 
 ```typescript
-// Dependency: xlsx (SheetJS)
-import * as XLSX from 'xlsx';
-
-interface ImportPreview {
-  valid: PropertyImportRow[];
-  errors: { row: number; field: string; message: string }[];
-}
-
-function parsePortfolioExcel(file: File): Promise<ImportPreview> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      
-      // Skip header, map to PropertyImportRow[]
-      // Validate required fields
-      // Return valid + errors
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-```
-
-### Import-Preview-Dialog
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  IMPORT VORSCHAU                                          [X]   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Gefunden: 8 Objekte                                            │
-│  ✅ 6 gültig    ⚠️ 2 mit Fehlern                                │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ # │ Code   │ Adresse          │ Ort       │ Status        │ │
-│  ├───┼────────┼──────────────────┼───────────┼───────────────┤ │
-│  │ 1 │ ZL002  │ Hauptstr. 15     │ Straubing │ ✅ OK         │ │
-│  │ 2 │ ZL003  │ Am Park 7        │ Leiblfing │ ✅ OK         │ │
-│  │ 3 │ –      │ –                │ –         │ ⚠️ Adresse fehlt│ │
-│  └───┴────────┴──────────────────┴───────────┴───────────────┘ │
-│                                                                  │
-│  [ ] Fehlerhafte Zeilen überspringen                            │
-│                                                                  │
-│  [Abbrechen]                              [6 Objekte importieren]│
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+// Standard-Kontext aus activeOrganization (AuthContext)
+const defaultContext = {
+  name: activeOrganization?.name || 'Meine Firma',
+  type: activeOrganization?.org_type === 'client' ? 'BUSINESS' : 'PRIVATE',
+  regime: 'FIBU',
+};
 ```
 
 ---
 
-## Teil D: Flowchart — Dokument-Upload im Exposé
+## Phase 3: PortfolioTab — Leere Struktur IMMER sichtbar
+
+### 3.1 Konzept
+
+Die Portfolio-Seite zeigt IMMER die vollständige Struktur, auch ohne Daten:
+1. **KPI-Karten** mit "–" oder "0" Werten
+2. **Leere Grafiken** mit Platzhalter-Achsen
+3. **Leere Tabelle** mit allen 13 Spalten + Summenzeile
+4. **Excel-Import-Zone** prominent
+5. **Vorlage-Button** zum Beispiel-Exposé
+
+### 3.2 UI-Layout (ohne Daten)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    DOKUMENT-UPLOAD FLOW (EXPOSÉ)                        │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  PORTFOLIO-ÜBERSICHT                    [+ Objekt]  [📄 Beispiel-Exposé]│
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐      │
+│  │ OBJEKTE │  │ WERT    │  │ SCHULD  │  │ NETTO   │  │ RENDITE │      │
+│  │    0    │  │    –    │  │    –    │  │    –    │  │    –    │      │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘      │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  ┌───────────────────────────────┬─────────────────────────────────┐  │
+│  │  VERTEILUNG NACH TYP          │  VERTEILUNG NACH REGION         │  │
+│  │                               │                                 │  │
+│  │    [Keine Daten vorhanden]    │    [Keine Daten vorhanden]      │  │
+│  │                               │                                 │  │
+│  └───────────────────────────────┴─────────────────────────────────┘  │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  PORTFOLIO-EXCEL IMPORTIEREN                                           │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │         📊 Ziehen Sie Ihre Excel-Datei hierher                   │ │
+│  │         oder klicken Sie zum Auswählen (.xlsx, .csv)             │ │
+│  │                                                                  │ │
+│  │         [📥 Muster-Vorlage herunterladen]                        │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  IMMOBILIENPORTFOLIO                                    [🔍 Suchen...] │
+│  ┌──────┬───────┬──────┬─────────┬────┬───────┬─────────┬─────────┐   │
+│  │ Code │  Art  │  Ort │ Adresse │ qm │Nutzung│Einnahmen│Verkehrsw│   │
+│  ├──────┼───────┼──────┼─────────┼────┼───────┼─────────┼─────────┤   │
+│  │   –  │   –   │   –  │    –    │  – │   –   │    –    │    –    │   │
+│  ├──────┼───────┼──────┼─────────┼────┼───────┼─────────┼─────────┤   │
+│  │      │       │      │         │    │       │         │  [👁]   │   │
+│  │      │   [Keine Immobilien vorhanden – Objekt anlegen oder       │   │
+│  │      │    Excel importieren]                                     │   │
+│  └──────┴───────┴──────┴─────────┴────┴───────┴─────────┴─────────┘   │
+│                                                                        │
+│  SUMMEN: Σ 0 Objekte | Σ 0 qm | Σ – € | Σ – € | Σ – €                 │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  EINNAHMENÜBERSCHUSSRECHNUNG (EÜR)                                     │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Einnahmen (jährlich)           │           –                    │ │
+│  │  ./. Zinsbelastung              │           –                    │ │
+│  │  ./. Nicht-umlagefähige NK      │           –                    │ │
+│  │  = Überschuss vor Tilgung       │           –                    │ │
+│  │  ./. Tilgung                    │           –                    │ │
+│  │  = Überschuss nach Tilgung      │           –                    │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-     ┌─────────────┐
-     │   USER      │
-     │ droppt Datei│
-     └──────┬──────┘
-            │
-            ▼
-     ┌─────────────────┐
-     │ FileUploader    │
-     │ erfasst File[]  │
-     └───────┬─────────┘
-             │
-             ▼
-     ┌─────────────────────┐      ┌──────────────────────────┐
-     │ Ordner ausgewählt?  │──Nein─▶│ Default: property_root  │
-     └───────┬─────────────┘      └──────────┬───────────────┘
-             │ Ja                            │
-             ▼                               ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Edge Function: sot-dms-upload-url                    │
-     │                                                       │
-     │  Input:                                               │
-     │  - filename, mime_type, size_bytes                    │
-     │  - folder: immobilien/{property_id}/{node_path}       │
-     │                                                       │
-     │  Output:                                              │
-     │  - signed_upload_url                                  │
-     │  - document_id                                        │
-     │  - file_path                                          │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Client: PUT to signed_upload_url                      │
-     │  (Datei-Bytes direkt an Supabase Storage)             │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Datenbank-Einträge (automatisch via Edge Function):   │
-     │                                                        │
-     │  documents:                                            │
-     │  ├─ id: {document_id}                                  │
-     │  ├─ tenant_id: {tenant_id}                             │
-     │  ├─ name: {filename}                                   │
-     │  ├─ file_path: tenant/{tenant_id}/immobilien/...       │
-     │  └─ mime_type: {mime_type}                             │
-     │                                                        │
-     │  document_links:                                       │
-     │  ├─ document_id: {document_id}                         │
-     │  ├─ object_id: {property_id}  ← Property-Verknüpfung   │
-     │  ├─ unit_id: {unit_id}        ← Optional               │
-     │  ├─ node_id: {storage_node_id}                         │
-     │  └─ link_status: 'linked'                              │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  UI: Dokument-Liste aktualisieren                      │
-     │  ├─ Query: documents WHERE object_id = property_id     │
-     │  └─ Zeige Ordnerstruktur mit Zähler                    │
-     └───────────────────────────────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Optional: User kann Dokument verschieben              │
-     │  ├─ Drag in anderen Ordner                             │
-     │  └─ Update: document_links.node_id                     │
-     │     (KEINE Byte-Verschiebung im Storage!)              │
-     └───────────────────────────────────────────────────────┘
+### 3.3 Vorlage-Button Funktion
+
+```typescript
+const handleShowExampleExpose = () => {
+  navigate('/portal/immobilien/vorlage'); // Neue Route für leeres Beispiel
+};
 ```
 
 ---
 
-## Teil E: Flowchart — Excel-Import in Portfolio-Liste
+## Phase 4: Beispiel-Exposé (Vorlage ohne Daten)
+
+### 4.1 Neue Komponente: ExposeVorlage.tsx
+
+Das Beispiel-Exposé zeigt die vollständige Exposé-Struktur mit Platzhalterwerten:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    EXCEL IMPORT FLOW (PORTFOLIO)                        │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  ← Zurück           BEISPIEL-EXPOSÉ (Vorlage)                          │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  [Bildbereich — 16:9 Placeholder mit Kamera-Icon]                │ │
+│  │                                                                  │ │
+│  │         📷 Hier erscheinen Ihre Objektfotos                      │ │
+│  │            (analog ImmobilienScout24)                            │ │
+│  │                                                                  │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  [Objekttyp]                                     Objekt-Code: [––––]   │
+│  [Straße / Hausnummer]                                                 │
+│  [PLZ] [Ort], [Land]                                                   │
+│                                                                        │
+├──────────────────────────────┬─────────────────────────────────────────┤
+│  LAGE & ADRESSE              │  BAUJAHR & ZUSTAND                      │
+│  ───────────────             │  ─────────────────                      │
+│  Straße          –           │  Baujahr (BJ)      –                    │
+│  PLZ             –           │  Sanierungsjahr    –                    │
+│  Ort             –           │  BNL               –                    │
+│  Land            –           │  Wohnfläche        – qm                 │
+├──────────────────────────────┼─────────────────────────────────────────┤
+│  GRUNDBUCH                   │  FINANZIERUNG (BESTAND)                 │
+│  ─────────                   │  ─────────────────────                  │
+│  Grundbuch von   –           │  Kaufpreis         –                    │
+│  Grundbuchblatt  –           │  ────────────────────                   │
+│  Band            –           │  Darlehensnr.      –                    │
+│  Flurstück       –           │  Bank              –                    │
+│  TE-Nummer       –           │  Urspr. Darlehen   –                    │
+│  Notartermin     –           │  Restschuld        –                    │
+│                              │  Zins              – %                  │
+│                              │  Zinsbindung bis   –                    │
+│                              │  Zinsbelastung ca. –                    │
+│                              │  Rate              –                    │
+├──────────────────────────────┼─────────────────────────────────────────┤
+│  ENERGIE & HEIZUNG           │  MIETE                                  │
+│  ─────────────────           │  ─────                                  │
+│  Energieträger   –           │  Warmmiete         –                    │
+│  Heizart         –           │  NK-Vorauszahlung  –                    │
+│                              │                                         │
+├──────────────────────────────┴─────────────────────────────────────────┤
+│  BESCHREIBUNG                                                          │
+│  ──────────────────────────────────────────────────────────────────── │
+│  [Hier erscheint Ihre Objektbeschreibung...]                          │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-     ┌─────────────┐
-     │   USER      │
-     │ droppt Excel│
-     └──────┬──────┘
-            │
-            ▼
-     ┌─────────────────────┐
-     │ FileUploader        │
-     │ (accept: .xlsx,.csv)│
-     └───────┬─────────────┘
-             │
-             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Frontend: XLSX Parser (SheetJS)                       │
-     │                                                        │
-     │  1. Lese Workbook                                      │
-     │  2. Extrahiere erstes Sheet                            │
-     │  3. Parse Zeilen ab Row 2 (Header in Row 1)            │
-     │  4. Validiere Pflichtfelder:                           │
-     │     - property_type, city, address, usage_type         │
-     │  5. Erstelle ImportPreview                             │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Import-Preview Dialog                                 │
-     │                                                        │
-     │  ├─ Zeige alle Zeilen mit Status (OK / Fehler)         │
-     │  ├─ Checkbox: "Fehler überspringen"                    │
-     │  └─ Button: "X Objekte importieren"                    │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼ [User bestätigt]
-     ┌───────────────────────────────────────────────────────┐
-     │  Edge Function: sot-property-crud (action: bulk_create)│
-     │                                                        │
-     │  Input: PropertyCreatePayload[]                        │
-     │  Output: { created: Property[], errors: Error[] }      │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  Für jedes erstellte Property:                         │
-     │                                                        │
-     │  1. INSERT properties → Trigger fires                  │
-     │  2. Trigger: create_property_folder_structure()        │
-     │     └─ Erstellt automatisch Ordnerstruktur             │
-     │  3. Optional: Erstelle Units                           │
-     │     └─ Trigger: create_unit_folder()                   │
-     └───────────────────────┬───────────────────────────────┘
-                             │
-                             ▼
-     ┌───────────────────────────────────────────────────────┐
-     │  UI: Erfolgs-Meldung + Liste aktualisieren             │
-     │                                                        │
-     │  "8 Objekte erfolgreich importiert"                    │
-     │  [Zur Portfolio-Liste]                                 │
-     └───────────────────────────────────────────────────────┘
+### 4.2 Route hinzufügen
+
+```tsx
+// App.tsx
+<Route path="immobilien/vorlage" element={<ExposeVorlage />} />
 ```
 
 ---
 
-## Teil F: Implementierungs-Reihenfolge
+## Phase 5: SanierungTab — Vollständige UI-Struktur
 
-| # | Schritt | Dateien | Priorität |
-|---|---------|---------|-----------|
-| 1 | DB-Migration: storage_nodes erweitern | SQL Migration | P0 |
-| 2 | DB-Trigger: Property-Ordner automatisch | SQL Migration | P0 |
-| 3 | DB-Trigger: Unit-Ordner automatisch | SQL Migration | P0 |
-| 4 | DatenraumTab.tsx erstellen | Neue Komponente | P0 |
-| 5 | PropertyDetail.tsx: Datenraum-Tab hinzufügen | Bearbeitung | P0 |
-| 6 | sot-dms-upload-url: object_id Support | Edge Function | P0 |
-| 7 | PortfolioTab.tsx: Excel Import Zone | Neue Komponente | P1 |
-| 8 | xlsx Dependency installieren | package.json | P1 |
-| 9 | Excel Parser + Preview Dialog | Neue Komponenten | P1 |
-| 10 | sot-property-crud: bulk_create Action | Edge Function | P1 |
-| 11 | Excel-Muster-Vorlage erstellen | public/templates/ | P1 |
+### 5.1 UI-Layout (ohne Daten)
+
+Gemäß Dokumentation Abschnitt 7 (Sanierung / Ausschreibung):
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  SANIERUNG                                          [+ Neuer Vorgang]  │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  WORKFLOW: Ausschreibung → Angebot → Vergabe → Dokumentation    │  │
+│  │                                                                 │  │
+│  │   [Entwurf] → [Versendet] → [Angebote] → [Vergeben] → [Fertig]  │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                                                                        │
+│  AKTIVE VORGÄNGE                                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Tender-ID  │ Kategorie │ Objekt        │ Status      │ Aktion   │ │
+│  ├─────────────┼───────────┼───────────────┼─────────────┼──────────┤ │
+│  │     –       │     –     │       –       │      –      │    –     │ │
+│  │                                                                  │ │
+│  │     [Keine aktiven Sanierungsvorgänge vorhanden]                 │ │
+│  │     Starten Sie eine Ausschreibung für Sanitär, Elektro,         │ │
+│  │     Maler, Dach, Fenster oder andere Gewerke.                    │ │
+│  │                                                                  │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  UNZUGEORDNETE ANGEBOTE                                                │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │     [Keine unzugeordneten Angebote vorhanden]                    │ │
+│  │                                                                  │ │
+│  │     Eingehende E-Mails mit Angeboten werden hier angezeigt,      │ │
+│  │     wenn sie keiner Tender-ID zugeordnet werden können.          │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  ───────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  KATEGORIEN                                                            │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐   │
+│  │Sanitär │ │Elektro │ │ Maler  │ │  Dach  │ │Fenster │ │Sonstige│   │
+│  │   0    │ │   0    │ │   0    │ │   0    │ │   0    │ │   0    │   │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘   │
+│                                                                        │
+│  ℹ️ E-Mail-Integration für Ausschreibungen (in Entwicklung)           │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Service Case Lifecycle (Visualisierung)
+
+```
+draft → sent → offers_received → decision_pending → awarded → completed
+                                                  ↘ cancelled
+```
 
 ---
 
-## Teil G: Zusammenfassung der Bestätigungen
+## Phase 6: BewertungTab — Vollständige UI-Struktur
 
-| Anforderung | Status im Plan |
-|-------------|----------------|
-| Drag-and-Drop im Exposé | ✅ DatenraumTab mit FileUploader |
-| Drag-and-Drop in Portfolio-Liste | ✅ Excel-Import Zone |
-| Ordnerstruktur pro Objekt | ✅ Automatische Trigger |
-| Ordner pro Einheit | ✅ Unit-Folder Trigger |
-| Verlinkung zu Supabase Storage | ✅ document_links.object_id |
-| Keine Byte-Verschiebung | ✅ Nur DB-Update bei Move |
-| Excel-Muster-Vorlage | ✅ Downloadbare Vorlage |
+### 6.1 UI-Layout (ohne Daten)
+
+Gemäß Dokumentation Abschnitt 8 (Bewertung - Sprengnetter):
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  BEWERTUNG                                                             │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  WORKFLOW: Input-Mapping → Consent → Job → Ergebnis + Report    │  │
+│  │                                                                 │  │
+│  │   [Daten prüfen] → [Kosten bestätigen] → [Bewertung] → [Report] │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                                                                        │
+│  CREDITS                                       [Credits kaufen →]      │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Verfügbare Credits: 0                                           │ │
+│  │  Verbraucht: 0                                                   │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  BEWERTBARE OBJEKTE                                                    │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Objekt        │ Daten-Status      │ Letzte Bewertung │ Aktion   │ │
+│  ├────────────────┼───────────────────┼──────────────────┼──────────┤ │
+│  │      –         │        –          │        –         │    –     │ │
+│  │                                                                  │ │
+│  │     [Keine Objekte vorhanden]                                    │ │
+│  │     Legen Sie zuerst Immobilien an, um Bewertungen zu starten.   │ │
+│  │                                                                  │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  LAUFENDE JOBS                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │     [Keine laufenden Bewertungsjobs]                             │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  ABGESCHLOSSENE BEWERTUNGEN                                            │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  VAL-ID  │ Objekt   │ Verkehrswert │ Datum    │ Report           │ │
+│  ├──────────┼──────────┼──────────────┼──────────┼──────────────────┤ │
+│  │    –     │    –     │      –       │    –     │       –          │ │
+│  │                                                                  │ │
+│  │     [Keine abgeschlossenen Bewertungen]                          │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  ───────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  ℹ️ SPRENGNETTER-INTEGRATION                                          │
+│                                                                        │
+│  Die API-Anbindung an Sprengnetter für automatisierte                  │
+│  Immobilienbewertungen befindet sich in Entwicklung.                   │
+│                                                                        │
+│  Benötigte API-Credentials: SEC-SPRENGNETTER (Zone 1 Integration)      │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 Verkehrswert-Übernahme
+
+Die Bewertungsergebnisse werden:
+1. In `property_valuations` gespeichert
+2. Optional in `properties.market_value` übernommen (manuell überschreibbar)
+3. In der Portfolio-Liste unter "Verkehrswert" angezeigt
 
 ---
 
-## Technische Details
+## Phase 7: Source of Truth Visualisierung
 
-### Neue Abhängigkeit
+### 7.1 Cross-Module Berührungswege
 
-```json
-{
-  "dependencies": {
-    "xlsx": "^0.18.5"
-  }
-}
-```
-
-### Neue Dateien
+Im Exposé werden Deep-Links zu anderen Modulen angezeigt:
 
 ```
-src/components/portfolio/DatenraumTab.tsx
-src/components/portfolio/ExcelImportDialog.tsx
-src/pages/portal/immobilien/PortfolioTab.tsx
-public/templates/portfolio-import-vorlage.xlsx
+┌────────────────────────────────────────────────────────────────────────┐
+│  MODUL-VERKNÜPFUNGEN                                                   │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        │
+│  │  MOD-05 MSV     │  │  MOD-06 Verkauf │  │  MOD-09 Partner │        │
+│  │  ─────────────  │  │  ─────────────  │  │  ─────────────  │        │
+│  │  ○ Inaktiv      │  │  ○ Inaktiv      │  │  ○ Nicht sichtb.│        │
+│  │  [Aktivieren]   │  │  [Aktivieren]   │  │  [→ Verkauf]    │        │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘        │
+│                                                                        │
+│  ┌─────────────────┐  ┌─────────────────┐                              │
+│  │  Zone 3 Kaufy   │  │  MOD-07 Finanz. │                              │
+│  │  ─────────────  │  │  ─────────────  │                              │
+│  │  ○ Nicht publ.  │  │  [Finanzierung] │                              │
+│  │  [Publizieren]  │  │                 │                              │
+│  └─────────────────┘  └─────────────────┘                              │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Geänderte Dateien
+---
+
+## Implementierungs-Reihenfolge
+
+| # | Schritt | Komponenten/Dateien | Priorität |
+|---|---------|---------------------|-----------|
+| 1 | DB-Migration: Alle neuen Tabellen | SQL | P0 |
+| 2 | PortfolioTab: Leere Struktur IMMER zeigen | `PortfolioTab.tsx` | P0 |
+| 3 | PortfolioTab: EÜR-Section hinzufügen | `PortfolioTab.tsx` | P0 |
+| 4 | ExposeVorlage: Beispiel-Exposé ohne Daten | Neue Komponente | P0 |
+| 5 | KontexteTab: Firma aus Stammdaten + Struktur | Neue Komponente | P0 |
+| 6 | SanierungTab: Vollständige UI-Struktur | Neue Komponente | P1 |
+| 7 | BewertungTab: Vollständige UI-Struktur | Neue Komponente | P1 |
+| 8 | ExposeTab: Bildbereich + Modul-Verknüpfungen | Bearbeitung | P1 |
+| 9 | App.tsx: Route für Vorlage-Exposé | Bearbeitung | P0 |
+
+---
+
+## Neue Dateien
 
 ```
-src/pages/portfolio/PropertyDetail.tsx  ← Neuer Tab "Datenraum"
-supabase/functions/sot-dms-upload-url/index.ts  ← object_id Support
-supabase/functions/sot-property-crud/index.ts  ← bulk_create Action
+src/pages/portal/immobilien/KontexteTab.tsx     ← NEU
+src/pages/portal/immobilien/SanierungTab.tsx    ← NEU
+src/pages/portal/immobilien/BewertungTab.tsx    ← NEU
+src/pages/portfolio/ExposeVorlage.tsx           ← NEU
 ```
 
-### SQL-Migrationen
+## Geänderte Dateien
 
-1. `storage_nodes_property_extension.sql` — Spalten + Trigger
-2. `document_links_object_unit.sql` — Falls nicht vorhanden
+```
+src/pages/portal/immobilien/PortfolioTab.tsx    ← Leere Struktur + EÜR
+src/pages/portal/ImmobilienPage.tsx             ← Neue Tab-Imports
+src/App.tsx                                     ← Route für Vorlage
+src/components/portfolio/ExposeTab.tsx          ← Bildbereich + Links
+```
+
+---
+
+## Ergebnis nach Abschluss
+
+| Bereich | Status nach Umsetzung |
+|---------|----------------------|
+| **Portfolio** | ✅ Zeigt IMMER volle Struktur (KPIs, Charts, Tabelle, EÜR) |
+| **Kontexte** | ✅ Firma aus Stammdaten sichtbar + Button für weitere |
+| **Sanierung** | ✅ Vollständige UI mit Workflow-Visualisierung |
+| **Bewertung** | ✅ Vollständige UI mit Credits + Sprengnetter-Info |
+| **Exposé** | ✅ Mit Bildbereich + Vorlage-Modus verfügbar |
+| **Source of Truth** | ✅ Modul-Verknüpfungen sichtbar im Exposé |
