@@ -134,9 +134,9 @@
     --status-error: 0 84% 60%;
     --status-info: 199 89% 48%;
 
-    /* Surface Layers - Light parchment for page background behind cards */
-    --surface: 40 20% 94%;
-    --surface-2: 40 15% 92%;
+    /* Surface Layers - Dark enterprise (original) */
+    --surface: 222 30% 10%;
+    --surface-2: 222 35% 8%;
     --border-subtle: 222 20% 18%;
     --border-glow: 217 50% 35%;
 

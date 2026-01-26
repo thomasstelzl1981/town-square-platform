@@ -59,7 +59,7 @@ export function PortalLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-background">
       <PortalHeader />
       
       <div className="flex">
@@ -76,10 +76,6 @@ export function PortalLayout() {
           <ChatPanel 
             context={getContext()}
             position="docked"
-            quickActions={[
-              { label: 'Hilfe', action: 'help' },
-              { label: 'Dokument analysieren', action: 'analyze' },
-            ]}
           />
         </div>
       </div>
@@ -106,10 +102,6 @@ export function PortalLayout() {
               context={getContext()}
               position="bottomsheet"
               onClose={() => setChatOpen(false)}
-              quickActions={[
-                { label: 'Hilfe', action: 'help' },
-                { label: 'Dokument analysieren', action: 'analyze' },
-              ]}
             />
           </div>
         </div>
