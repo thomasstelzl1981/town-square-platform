@@ -14,17 +14,17 @@
 
 ### 1.1 Ziel
 
-MOD-08 „Investment-Suche / Ankauf" ist das neutrale SoT-Modul für die Suche, Bewertung und den Ankauf von Investment-Immobilien. Es aggregiert mehrere Quellen (SoT-Verkauf, Kaufi-Marktplatz, externe Imports) in einer einheitlichen Oberfläche.
+MOD-08 „Investment-Suche / Ankauf" ist das neutrale SoT-Modul für die Suche, Bewertung und den Ankauf von Investment-Immobilien. Es aggregiert mehrere Quellen (SoT-Verkauf, Kaufy-Marktplatz, externe Imports) in einer einheitlichen Oberfläche.
 
-**Kernfunktion:** Zentraler Landepunkt für alle Investoren/Käufer — insbesondere für Nutzer, die über die Kaufi-Website (Zone 3) registrieren und ihre Favoriten wiederfinden wollen.
+**Kernfunktion:** Zentraler Landepunkt für alle Investoren/Käufer — insbesondere für Nutzer, die über die Kaufy-Website (Zone 3) registrieren und ihre Favoriten wiederfinden wollen.
 
 ### 1.2 Marken-Abgrenzung (FROZEN)
 
 | Element | Modul-Intern | UI-Label erlaubt |
 |---------|--------------|------------------|
 | **Modulname** | Investment-Suche / Ankauf | ✓ "Investment-Suche", "Ankauf" |
-| **Kaufi** | Source/Channel/Tab | ✓ "Kaufi" als Tab-Label |
-| **Kaufi** | Modulname | ✗ VERBOTEN |
+| **Kaufy** | Source/Channel/Tab | ✓ "Kaufy" als Tab-Label |
+| **Kaufy** | Modulname | ✗ VERBOTEN |
 
 ### 1.3 Nutzerrollen
 
@@ -37,8 +37,8 @@ MOD-08 „Investment-Suche / Ankauf" ist das neutrale SoT-Modul für die Suche, 
 
 ### 1.4 Scope IN (testbar)
 
-- Multi-Source Investment-Suche (SoT-Verkauf, Kaufi, Extern)
-- Favoriten-Management mit Kaufi-Website-Sync
+- Multi-Source Investment-Suche (SoT-Verkauf, Kaufy, Extern)
+- Favoriten-Management mit Kaufy-Website-Sync
 - Buy-Side Mandat (Placeholder)
 - Web-Scraper Integration (Placeholder)
 - Portfolio-Simulation (Impact-Analyse)
@@ -96,7 +96,7 @@ MOD-08 „Investment-Suche / Ankauf" ist das neutrale SoT-Modul für die Suche, 
 | Source-Code | Name | Datenherkunft | Status |
 |-------------|------|---------------|--------|
 | `sot_verkauf` | SoT-Verkauf | listings (MOD-06) | Phase 1 |
-| `kaufi` | Kaufi Marktplatz | kaufi_listings (Zone 3) + LocalStorage | Phase 1 |
+| `kaufy` | Kaufy Marktplatz | kaufy_listings (Zone 3) + LocalStorage | Phase 1 |
 | `external` | Extern/Imports | external_imports | Phase 2 |
 | `scraper` | Web-Scraper | scraper_results | Phase 2 |
 
@@ -105,29 +105,29 @@ MOD-08 „Investment-Suche / Ankauf" ist das neutrale SoT-Modul für die Suche, 
 **Tab-Navigation:**
 - "Alle" (Default)
 - "SoT-Verkauf"
-- "Kaufi" ← Marken-Label erlaubt
+- "Kaufy" ← Marken-Label erlaubt
 - "Extern" (Phase 2)
 
-### 3.3 Kaufi-Source im Detail
+### 3.3 Kaufy-Source im Detail
 
 **Datenfluss:**
-1. Zone 3 (Kaufi Website) → LocalStorage Favorites
+1. Zone 3 (Kaufy Website) → LocalStorage Favorites
 2. User Login/Signup → favorites_import Trigger
 3. favorites_import → user_favorites MERGE
-4. MOD-08 UI zeigt Favoriten mit Source-Tag "Kaufi"
+4. MOD-08 UI zeigt Favoriten mit Source-Tag "Kaufy"
 
-**Wichtig:** Kaufi-Listings können auch ohne Favorisierung durchsucht werden (wenn API verfügbar).
+**Wichtig:** Kaufy-Listings können auch ohne Favorisierung durchsucht werden (wenn API verfügbar).
 
 ---
 
-## 4) KAUFI-FAVORITEN-SYNC (KRITISCHER FLOW)
+## 4) KAUFY-FAVORITEN-SYNC (KRITISCHER FLOW)
 
 ### 4.1 Sequenzdiagramm
 
 ```mermaid
 sequenceDiagram
     participant V as Visitor
-    participant KW as Kaufi Website (Z3)
+    participant KW as Kaufy Website (Z3)
     participant LS as LocalStorage
     participant AUTH as Auth Service
     participant API as SoT API
@@ -170,14 +170,14 @@ sequenceDiagram
 **Request Payload:**
 ```typescript
 interface FavoritesImportRequest {
-  source: 'kaufi_website';
+  source: 'kaufy_website';
   items: FavoriteItem[];
   client_timestamp: string; // ISO 8601
 }
 
 interface FavoriteItem {
-  source_object_id: string;        // ID aus Kaufi
-  source_type: 'kaufi_listing';
+  source_object_id: string;        // ID aus Kaufy
+  source_type: 'kaufy_listing';
   title?: string;
   address?: string;
   city?: string;
@@ -198,11 +198,11 @@ interface FavoritesImportResponse {
 }
 ```
 
-### 4.3 LocalStorage Schema (Zone 3)
+### 4.3 LocalStorage Schema (Zone 3 / Kaufy Website)
 
 ```typescript
-// Key: "kaufi_favorites"
-interface KaufiFavoritesStorage {
+// Key: "kaufy_favorites"
+interface KaufyFavoritesStorage {
   version: 1;
   items: {
     id: string;               // Kaufi Object ID
@@ -240,9 +240,9 @@ interface KaufiFavoritesStorage {
 | id | uuid PK | Ja | — |
 | tenant_id | uuid FK | Ja | Tenant-Isolation |
 | user_id | uuid FK | Ja | Besitzer |
-| source_code | text | Ja | sot_verkauf, kaufi, external |
+| source_code | text | Ja | sot_verkauf, kaufy, external |
 | source_object_id | text | Ja | ID im Quellsystem |
-| source_object_type | text | Ja | listing, kaufi_listing, external |
+| source_object_type | text | Ja | listing, kaufy_listing, external |
 | listing_id | uuid FK | Nein | Wenn source=sot_verkauf |
 | property_id | uuid FK | Nein | Wenn verknüpft |
 | cached_data | jsonb | Nein | Snapshot (Titel, Preis, etc.) |
@@ -262,7 +262,7 @@ interface KaufiFavoritesStorage {
 | id | uuid PK | Ja | — |
 | tenant_id | uuid FK | Ja | — |
 | user_id | uuid FK | Ja | — |
-| source | text | Ja | kaufi_website |
+| source | text | Ja | kaufy_website |
 | raw_payload | jsonb | Ja | Original-Request |
 | imported_count | int | Ja | — |
 | merged_count | int | Ja | — |
@@ -355,7 +355,7 @@ interface KaufiFavoritesStorage {
 **Source-Tabs:**
 - Alle (Default)
 - SoT-Verkauf
-- Kaufi
+- Kaufy
 - Extern (Phase 2)
 
 **Filter:**
@@ -376,7 +376,7 @@ interface KaufiFavoritesStorage {
 - Preis
 - Fläche
 - Rendite-Indikator (wenn vorhanden)
-- Source-Badge (SoT / Kaufi / Extern)
+- Source-Badge (SoT / Kaufy / Extern)
 - Favorit-Toggle
 
 **Aktionen:**
@@ -409,7 +409,7 @@ interface KaufiFavoritesStorage {
 
 **Import-Hinweis:**
 Wenn `favorites_imports` vorhanden:
-> "X Favoriten wurden von Kaufi.io übernommen"
+> "X Favoriten wurden von Kaufy.io übernommen"
 
 ### 6.4 Mandat (`/portal/investments/mandat`) — PLACEHOLDER
 

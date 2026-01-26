@@ -24,9 +24,9 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus **Eige
 
 | Element | Kontext | Bedeutung |
 |---------|---------|-----------|
-| **Kaufi** | Publishing-Channel | Kaufi ist die Zone-3-Marktplatz-MARKE, nicht ein Modul |
-| **Kaufi** | Im Wizard | "Auf Kaufi veröffentlichen" ist Channel-Name |
-| **Kaufi** | Im Code | `channel = 'kaufi'` |
+| **Kaufy** | Publishing-Channel | Kaufy ist die Zone-3-Marktplatz-MARKE, nicht ein Modul |
+| **Kaufy** | Im Wizard | "Auf Kaufy veröffentlichen" ist Channel-Name |
+| **Kaufy** | Im Code | `channel = 'kaufy'` |
 
 ### 1.3 Nutzerrollen
 
@@ -97,12 +97,12 @@ MOD-06 „Verkauf" ist das operative Modul für den Immobilienverkauf aus **Eige
 
 | Kanal | Kosten | Gate/Agreements | Zielgruppe |
 |-------|--------|-----------------|------------|
-| **Kaufy** | Kostenlos | SALES_MANDATE | Öffentlich (Zone 3) |
+| **Kaufy** (mit y) | Kostenlos | SALES_MANDATE | Öffentlich (Zone 3) |
 | **Immobilienscout24** | Bezahlt (Credits) | SCOUT24_CREDITS | Öffentlich |
 | **eBay Kleinanzeigen** | Link-Eintrag | — | Öffentlich (extern) |
 | **Partner-Netzwerk** | Kostenlos | PARTNER_RELEASE + SYSTEM_FEE | Finanzvertrieb |
 
-### 3.2 Kaufy Publishing Wizard (kostenfrei)
+### 3.2 Kaufy Publishing Wizard (kostenfrei) — Channel "kaufy"
 
 **Route:** `/portal/verkauf/objekte/:id/publish?channel=kaufy`
 

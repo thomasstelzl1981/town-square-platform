@@ -1,14 +1,14 @@
 # MOD-10 — LEADGENERIERUNG (Lead Generation & Pipeline)
 
-**Version:** v1.0.0  
-**Status:** MINIMAL SPEC (Phase 1 Placeholder)  
-**Datum:** 2026-01-25  
+**Version:** v1.1.0  
+**Status:** PLACEHOLDER SPEC  
+**Datum:** 2026-01-26  
 **Zone:** 2 (User Portal)  
-**Typ:** ADDON (nur für Partner-Tenants)  
+**Typ:** ADDON (nur für Kaufy-Registrierte)  
 **Route-Prefix:** `/portal/leads`  
 **Abhängig von:** MOD-09 (Vertriebspartner), MOD-06 (Listings), MOD-01 (Contacts), Backbone (Consents, Audit)
 
-> **WICHTIG:** Dieses Modul war zuvor MOD-09. Es wurde auf MOD-10 verschoben.
+> **HINWEIS:** Dieses Modul war zuvor MOD-09. Es wurde auf MOD-10 verschoben.
 
 ---
 
