@@ -1,18 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -23,20 +15,22 @@ import {
 import { 
   MoreVertical, 
   FileText, 
-  Building, 
-  ExternalLink, 
+  Home,
+  Megaphone,
   Download, 
   X as XIcon, 
   Plus, 
-  Search, 
-  Loader2,
-  Home,
-  Megaphone,
   Lightbulb,
   Eye
 } from 'lucide-react';
 import { RentalListingWizard } from '@/components/msv/RentalListingWizard';
 import { RentalPublishDialog } from '@/components/msv/RentalPublishDialog';
+import { 
+  PropertyTable, 
+  PropertyCodeCell,
+  PropertyCurrencyCell,
+  type PropertyTableColumn 
+} from '@/components/shared';
 
 type RentalListing = {
   id: string;
@@ -65,7 +59,7 @@ type RentalListing = {
 };
 
 const VermietungTab = () => {
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<RentalListing | null>(null);
@@ -108,16 +102,6 @@ const VermietungTab = () => {
     }
   });
 
-  const filteredListings = listings?.filter(l => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      l.properties?.address?.toLowerCase().includes(searchLower) ||
-      l.properties?.code?.toLowerCase().includes(searchLower) ||
-      l.public_id?.toLowerCase().includes(searchLower)
-    );
-  });
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'draft':
@@ -146,7 +130,7 @@ const VermietungTab = () => {
           <span title="Kleinanzeigen" className="text-lg">📢</span>
         )}
         {!publications?.some(p => p.status === 'published') && (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">–</span>
         )}
       </div>
     );
@@ -166,9 +150,6 @@ const VermietungTab = () => {
       case 'kleinanzeigen':
         setPublishChannel('kleinanzeigen');
         setPublishDialogOpen(true);
-        break;
-      case 'pdf':
-        // TODO: Implement PDF export
         break;
       case 'deactivate':
         handleDeactivate(listing);
@@ -190,170 +171,133 @@ const VermietungTab = () => {
     setWizardOpen(true);
   };
 
+  // Column definitions - consistent with MOD-04 pattern
+  const columns: PropertyTableColumn<RentalListing>[] = [
+    {
+      key: 'code',
+      header: 'Code',
+      minWidth: '80px',
+      render: (_, row) => <PropertyCodeCell code={row.properties?.code || null} fallback={row.public_id} />
+    },
+    {
+      key: 'address',
+      header: 'Adresse',
+      minWidth: '180px',
+      render: (_, row) => (
+        <span className="font-medium">{row.properties?.address || '–'}</span>
+      )
+    },
+    {
+      key: 'type',
+      header: 'Typ',
+      minWidth: '100px',
+      render: (_, row) => (
+        <span className="text-sm">{row.properties?.property_type || 'Wohnung'}</span>
+      )
+    },
+    {
+      key: 'area',
+      header: 'Fläche',
+      minWidth: '80px',
+      render: (_, row) => row.units?.area_sqm ? `${row.units.area_sqm} m²` : '–'
+    },
+    {
+      key: 'cold_rent',
+      header: 'Kaltmiete',
+      minWidth: '100px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} />
+    },
+    {
+      key: 'warm_rent',
+      header: 'Warmmiete',
+      minWidth: '100px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} variant="bold" />
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      minWidth: '100px',
+      render: (_, row) => getStatusBadge(row.status)
+    },
+    {
+      key: 'channels',
+      header: 'Kanäle',
+      minWidth: '80px',
+      render: (_, row) => getChannelIcons(row.rental_publications)
+    }
+  ];
+
+  const renderRowActions = (row: RentalListing) => (
+    <div className="flex gap-1">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => navigate(`/portal/msv/vermietung/${row.id}`)}
+        title="Exposé öffnen"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => handleAction('edit', row)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Exposé bearbeiten
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleAction('scout24', row)}>
+            <Home className="h-4 w-4 mr-2" />
+            Bei Scout24 veröffentlichen
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAction('kleinanzeigen', row)}>
+            <Megaphone className="h-4 w-4 mr-2" />
+            Zu Kleinanzeigen exportieren
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleAction('deactivate', row)}>
+            <XIcon className="h-4 w-4 mr-2" />
+            {row.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Inserate durchsuchen..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button onClick={handleCreateNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Neues Vermietungsexposé
-        </Button>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Objekt</TableHead>
-              <TableHead>Adresse</TableHead>
-              <TableHead>Typ</TableHead>
-              <TableHead>Fläche</TableHead>
-              <TableHead>Kaltmiete</TableHead>
-              <TableHead>Warmmiete</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Kanäle</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                </TableCell>
-              </TableRow>
-            ) : filteredListings?.length === 0 ? (
-              <>
-                {/* Leerzeile mit Platzhaltern */}
-                <TableRow 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={handleCreateNew}
-                >
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-6">
-                    <p className="text-muted-foreground mb-4">
-                      Keine Vermietungsinserate — erstellen Sie ein Exposé
-                    </p>
-                    <Button onClick={handleCreateNew}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Neues Vermietungsexposé erstellen
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </>
-            ) : (
-              filteredListings?.map((listing) => (
-                <TableRow key={listing.id}>
-                  <TableCell>
-                    <span className="font-mono text-xs">
-                      {listing.properties?.code || listing.public_id}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      {listing.properties?.address || '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {listing.properties?.property_type || 'Wohnung'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {listing.units?.area_sqm 
-                      ? `${listing.units.area_sqm} m²` 
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    {listing.cold_rent 
-                      ? `${listing.cold_rent.toLocaleString('de-DE')} €` 
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      {listing.warm_rent 
-                        ? `${listing.warm_rent.toLocaleString('de-DE')} €` 
-                        : '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(listing.status)}
-                  </TableCell>
-                  <TableCell>
-                    {getChannelIcons(listing.rental_publications)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => handleAction('edit', listing)}
-                        title="Exposé öffnen"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAction('edit', listing)}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Exposé bearbeiten
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleAction('scout24', listing)}>
-                            <Home className="h-4 w-4 mr-2" />
-                            Bei Scout24 veröffentlichen
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAction('kleinanzeigen', listing)}>
-                            <Megaphone className="h-4 w-4 mr-2" />
-                            Zu Kleinanzeigen exportieren
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleAction('pdf', listing)}>
-                            <Download className="h-4 w-4 mr-2" />
-                            Als PDF exportieren
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAction('deactivate', listing)}>
-                            <XIcon className="h-4 w-4 mr-2" />
-                            {listing.status === 'paused' ? 'Aktivieren' : 'Deaktivieren'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <PropertyTable
+        data={listings || []}
+        columns={columns}
+        isLoading={isLoading}
+        showSearch
+        searchPlaceholder="Inserate durchsuchen..."
+        searchFilter={(row, search) => 
+          row.properties?.address?.toLowerCase().includes(search) ||
+          row.properties?.code?.toLowerCase().includes(search) ||
+          row.public_id?.toLowerCase().includes(search) ||
+          false
+        }
+        emptyState={{
+          message: 'Keine Vermietungsinserate — erstellen Sie ein Exposé',
+          actionLabel: 'Neues Vermietungsexposé erstellen',
+          actionRoute: '/portal/msv/vermietung'
+        }}
+        onRowClick={(row) => navigate(`/portal/msv/vermietung/${row.id}`)}
+        rowActions={renderRowActions}
+        headerActions={
+          <Button onClick={handleCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Neues Vermietungsexposé
+          </Button>
+        }
+      />
 
       {/* Info Card */}
       <Card className="bg-muted/30 border-dashed">

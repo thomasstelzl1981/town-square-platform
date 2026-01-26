@@ -233,27 +233,28 @@ export default function PropertyDetail() {
               </span>
             </div>
           </div>
-          <Button variant="outline" asChild className="no-print">
-            <Link to={`/portal/immobilien/${id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Bearbeiten
-            </Link>
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleGenerateDescription}
-            disabled={isGeneratingDescription}
-            className="no-print"
-          >
-            {isGeneratingDescription ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Beschreibung generieren
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild className="no-print">
+              <Link to={`/portal/immobilien/${id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Bearbeiten
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleGenerateDescription}
+              disabled={isGeneratingDescription}
+              className="no-print"
+            >
+              {isGeneratingDescription ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Beschreibung generieren
+            </Button>
+          </div>
         </div>
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="no-print">
