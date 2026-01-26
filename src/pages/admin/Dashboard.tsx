@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, Link2, Shield } from 'lucide-react';
+import { Building2, Users, Link2, Shield, ExternalLink } from 'lucide-react';
 
 interface Stats {
   organizations: number;
@@ -53,6 +54,48 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">Welcome to the System of a Town Admin Portal</p>
       </div>
+
+      {/* Zone 3 Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ExternalLink className="h-5 w-5" />
+            Quick Actions – Zone 3 Websites
+          </CardTitle>
+          <CardDescription>Open the public websites in new tabs</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/kaufy', '_blank')}
+              className="gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Kaufy Website öffnen
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/sot', '_blank')}
+              className="gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              System of a Town öffnen
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/miety', '_blank')}
+              className="gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Miety Website öffnen
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Final: kaufy.app | systemofatown.app | miety.app
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Current User Context */}
       <Card>

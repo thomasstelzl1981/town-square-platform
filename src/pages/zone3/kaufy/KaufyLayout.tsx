@@ -3,10 +3,11 @@ import { MessageCircle } from 'lucide-react';
 import '@/styles/zone3-theme.css';
 
 const navItems = [
-  { href: '/kaufy/vermieter', label: 'Für Vermieter' },
-  { href: '/kaufy/verkaeufer', label: 'Für Verkäufer' },
-  { href: '/kaufy/vertrieb', label: 'Für Vertriebspartner' },
-  { href: '/kaufy/beratung', label: 'Beratung' },
+  { href: '/kaufy/immobilien', label: 'Immobilien' },
+  { href: '/kaufy/module', label: 'Module' },
+  { href: '/kaufy/berater', label: 'Für Berater' },
+  { href: '/kaufy/anbieter', label: 'Für Anbieter' },
+  { href: '/kaufy/faq', label: 'FAQ' },
 ];
 
 export default function KaufyLayout() {
@@ -81,9 +82,10 @@ export default function KaufyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Produkt</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/kaufy/vermieter" className="hover:underline">Für Vermieter</Link></li>
-                <li><Link to="/kaufy/verkaeufer" className="hover:underline">Für Verkäufer</Link></li>
-                <li><Link to="/kaufy/vertrieb" className="hover:underline">Für Partner</Link></li>
+                <li><Link to="/kaufy/immobilien" className="hover:underline">Immobilien</Link></li>
+                <li><Link to="/kaufy/module" className="hover:underline">Module</Link></li>
+                <li><Link to="/kaufy/berater" className="hover:underline">Für Berater</Link></li>
+                <li><Link to="/kaufy/anbieter" className="hover:underline">Für Anbieter</Link></li>
               </ul>
             </div>
 
@@ -91,7 +93,7 @@ export default function KaufyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/kaufy/beratung" className="hover:underline">Beratung</Link></li>
+                <li><Link to="/kaufy/faq" className="hover:underline">FAQ</Link></li>
                 <li><a href="mailto:kontakt@kaufy.app" className="hover:underline">Kontakt</a></li>
               </ul>
             </div>
