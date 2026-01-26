@@ -1,1 +1,16 @@
 project_id = "ktpvilzjtcaxyuufocrs"
+
+[functions.sot-dms-upload-url]
+verify_jwt = false
+
+[functions.sot-dms-download-url]
+verify_jwt = false
+
+[functions.sot-property-crud]
+verify_jwt = false
+
+[functions.sot-listing-publish]
+verify_jwt = false
+
+[functions.sot-lead-inbox]
+verify_jwt = false
