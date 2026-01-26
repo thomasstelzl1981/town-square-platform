@@ -313,6 +313,18 @@ export function RentalListingWizard({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
+            <p className="text-xs text-muted-foreground">
+              Tipp: Die Beschreibung kann aus den MOD-04 Objektdaten automatisch generiert werden.
+            </p>
+          </div>
+
+          {/* Channel hint */}
+          <div className="rounded-lg bg-muted/50 p-3 text-sm space-y-1">
+            <p className="font-medium">Veröffentlichungskanäle:</p>
+            <ul className="text-muted-foreground text-xs list-disc ml-4">
+              <li>ImmobilienScout24 — direkte API-Anbindung</li>
+              <li>Kleinanzeigen — manueller Export (CSV/XML)</li>
+            </ul>
           </div>
         </div>
 

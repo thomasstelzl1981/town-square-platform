@@ -19,11 +19,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle } from 'lucide-react';
+import { MoreVertical, FileText, TrendingUp, Mail, Plus, Star, ExternalLink, Search, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { LeaseFormDialog } from '@/components/msv/LeaseFormDialog';
-
+import { ReadinessChecklist } from '@/components/msv/ReadinessChecklist';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 interface PropertyData {
   id: string;
   address: string;
@@ -64,8 +65,10 @@ const ObjekteTab = () => {
   const navigate = useNavigate();
   const [templateWizardOpen, setTemplateWizardOpen] = useState(false);
   const [leaseFormOpen, setLeaseFormOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<UnitWithDetails | null>(null);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const { data: units, isLoading } = useQuery({
@@ -156,7 +159,7 @@ const ObjekteTab = () => {
     );
   });
 
-  const handleAction = (action: string, unit: UnitWithDetails) => {
+  const handleAction = async (action: string, unit: UnitWithDetails) => {
     setSelectedUnit(unit);
     
     switch (action) {
@@ -179,8 +182,36 @@ const ObjekteTab = () => {
       case 'lease':
         setLeaseFormOpen(true);
         break;
+      case 'premium':
+        // Check for existing enrollment or create new
+        const { data: enrollment } = await supabase
+          .from('msv_enrollments')
+          .select('id')
+          .eq('property_id', unit.property_id)
+          .single();
+        
+        if (enrollment) {
+          setSelectedEnrollmentId(enrollment.id);
+        } else {
+          // Create a draft enrollment
+          const { data: newEnrollment } = await supabase
+            .from('msv_enrollments')
+            .insert({
+              tenant_id: unit.tenant_id,
+              property_id: unit.property_id,
+              status: 'pending',
+              tier: 'premium'
+            })
+            .select('id')
+            .single();
+          if (newEnrollment) {
+            setSelectedEnrollmentId(newEnrollment.id);
+          }
+        }
+        setPremiumDialogOpen(true);
+        break;
       case 'property':
-        navigate(`/portfolio/${unit.property_id}`);
+        navigate(`/portal/immobilien/${unit.property_id}`);
         break;
     }
   };
@@ -333,6 +364,27 @@ const ObjekteTab = () => {
         onOpenChange={setLeaseFormOpen}
         unit={selectedUnit}
       />
+
+      {/* Premium Activation Dialog */}
+      <Dialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Premium für {selectedUnit?.properties?.address}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedEnrollmentId && (
+            <ReadinessChecklist
+              enrollmentId={selectedEnrollmentId}
+              onComplete={() => {
+                setPremiumDialogOpen(false);
+                // Refetch units to update premium status
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
