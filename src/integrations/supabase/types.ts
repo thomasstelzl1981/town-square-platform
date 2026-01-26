@@ -485,6 +485,74 @@ export type Database = {
           },
         ]
       }
+      document_links: {
+        Row: {
+          created_at: string | null
+          document_id: string
+          id: string
+          link_status: string | null
+          node_id: string | null
+          object_id: string | null
+          object_type: string | null
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_id: string
+          id?: string
+          link_status?: string | null
+          node_id?: string | null
+          object_id?: string | null
+          object_type?: string | null
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          link_status?: string | null
+          node_id?: string | null
+          object_id?: string | null
+          object_type?: string | null
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_links_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
@@ -2720,6 +2788,74 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_nodes: {
+        Row: {
+          auto_created: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          node_type: string
+          parent_id: string | null
+          property_id: string | null
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_created?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          node_type?: string
+          parent_id?: string | null
+          property_id?: string | null
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_created?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          node_type?: string
+          parent_id?: string | null
+          property_id?: string | null
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_nodes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_nodes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_nodes_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]

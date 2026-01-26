@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, AlertTriangle, Edit } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
+import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 
 interface Property {
@@ -127,6 +128,7 @@ export default function PropertyDetail() {
       case 'expose': return `Exposé: ${prefix}${property.address}`;
       case 'features': return `Features: ${prefix}${property.address}`;
       case 'tenancy': return `Mietverhältnis: ${prefix}${property.address}`;
+      case 'datenraum': return `Datenraum: ${prefix}${property.address}`;
       default: return `${prefix}${property.address}`;
     }
   };
@@ -143,7 +145,7 @@ export default function PropertyDetail() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" asChild>
-          <Link to="/portfolio">
+          <Link to="/portal/immobilien/portfolio">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Zurück zur Übersicht
           </Link>
@@ -164,7 +166,7 @@ export default function PropertyDetail() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild className="no-print">
-                <Link to="/portfolio">
+                <Link to="/portal/immobilien/portfolio">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
@@ -180,7 +182,7 @@ export default function PropertyDetail() {
             </div>
           </div>
           <Button variant="outline" asChild className="no-print">
-            <Link to={`/portfolio/${id}/edit`}>
+            <Link to={`/portal/immobilien/${id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               Bearbeiten
             </Link>
@@ -193,6 +195,7 @@ export default function PropertyDetail() {
             <TabsTrigger value="expose">Exposé</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
+            <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
           </TabsList>
 
           <TabsContent value="expose">
@@ -216,6 +219,13 @@ export default function PropertyDetail() {
               propertyId={property.id}
               tenantId={property.tenant_id}
               unitId={unit?.id || ''}
+            />
+          </TabsContent>
+
+          <TabsContent value="datenraum">
+            <DatenraumTab 
+              propertyId={property.id}
+              tenantId={property.tenant_id}
             />
           </TabsContent>
         </Tabs>
