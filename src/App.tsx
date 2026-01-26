@@ -131,76 +131,77 @@ const App = () => (
             <Route path="/portal" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
               
-              {/* MOD-01: Stammdaten */}
+              {/* MOD-01: Stammdaten (Profil, Firma, Abrechnung, Sicherheit) */}
               <Route path="stammdaten" element={<StammdatenPage />} />
               <Route path="stammdaten/profil" element={<StammdatenPage />} />
-              <Route path="stammdaten/kontakte" element={<StammdatenPage />} />
-              <Route path="stammdaten/adressen" element={<StammdatenPage />} />
-              <Route path="stammdaten/einstellungen" element={<StammdatenPage />} />
+              <Route path="stammdaten/firma" element={<StammdatenPage />} />
+              <Route path="stammdaten/abrechnung" element={<StammdatenPage />} />
+              <Route path="stammdaten/sicherheit" element={<StammdatenPage />} />
               
-              {/* MOD-02: KI Office */}
+              {/* MOD-02: KI Office (E-Mail, Brief, Kontakte, Kalender) */}
               <Route path="office" element={<OfficePage />} />
               <Route path="office/email" element={<OfficePage />} />
               <Route path="office/brief" element={<OfficePage />} />
               <Route path="office/kontakte" element={<OfficePage />} />
               <Route path="office/kalender" element={<OfficePage />} />
               
-              {/* MOD-03: DMS */}
+              {/* MOD-03: DMS (Storage, Posteingang, Sortieren, Einstellungen) */}
               <Route path="dms" element={<DMSPage />} />
               <Route path="dms/storage" element={<DMSPage />} />
-              <Route path="dms/post" element={<DMSPage />} />
-              <Route path="dms/sort" element={<DMSPage />} />
-              <Route path="dms/settings" element={<DMSPage />} />
+              <Route path="dms/posteingang" element={<DMSPage />} />
+              <Route path="dms/sortieren" element={<DMSPage />} />
+              <Route path="dms/einstellungen" element={<DMSPage />} />
               
-              {/* MOD-04: Immobilien */}
+              {/* MOD-04: Immobilien (Kontexte, Portfolio, Sanierung, Bewertung) */}
               <Route path="immobilien" element={<ImmobilienPage />} />
-              <Route path="immobilien/liste" element={<PropertyList />} />
+              <Route path="immobilien/kontexte" element={<ImmobilienPage />} />
+              <Route path="immobilien/portfolio" element={<PropertyList />} />
+              <Route path="immobilien/sanierung" element={<ImmobilienPage />} />
+              <Route path="immobilien/bewertung" element={<ImmobilienPage />} />
               <Route path="immobilien/neu" element={<PropertyForm />} />
               <Route path="immobilien/:id" element={<PropertyDetail />} />
-              <Route path="immobilien/karte" element={<ImmobilienPage />} />
-              <Route path="immobilien/analyse" element={<ImmobilienPage />} />
               
-              {/* MOD-05: MSV (Mietmanagement) */}
+              {/* MOD-05: MSV (Dashboard, Listen, Mieteingang, Vermietung) */}
               <Route path="msv" element={<MSVPage />} />
-              <Route path="msv/uebersicht" element={<MSVPage />} />
-              <Route path="msv/mieter" element={<MSVPage />} />
-              <Route path="msv/zahlungen" element={<MSVPage />} />
-              <Route path="msv/mahnungen" element={<MSVPage />} />
+              <Route path="msv/dashboard" element={<MSVPage />} />
+              <Route path="msv/listen" element={<MSVPage />} />
+              <Route path="msv/mieteingang" element={<MSVPage />} />
+              <Route path="msv/vermietung" element={<MSVPage />} />
               
-              {/* MOD-06: Verkauf */}
+              {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
               <Route path="verkauf" element={<VerkaufPage />} />
-              <Route path="verkauf/inserate" element={<VerkaufPage />} />
+              <Route path="verkauf/objekte" element={<VerkaufPage />} />
+              <Route path="verkauf/aktivitaeten" element={<VerkaufPage />} />
               <Route path="verkauf/anfragen" element={<VerkaufPage />} />
-              <Route path="verkauf/reservierungen" element={<VerkaufPage />} />
-              <Route path="verkauf/transaktionen" element={<VerkaufPage />} />
+              <Route path="verkauf/vorgaenge" element={<VerkaufPage />} />
               
-              {/* MOD-07: Finanzierung */}
+              {/* MOD-07: Finanzierung (Fälle, Dokumente, Export, Status) */}
               <Route path="finanzierung" element={<FinanzierungPage />} />
               <Route path="finanzierung/faelle" element={<FinanzierungPage />} />
               <Route path="finanzierung/dokumente" element={<FinanzierungPage />} />
               <Route path="finanzierung/export" element={<FinanzierungPage />} />
               <Route path="finanzierung/status" element={<FinanzierungPage />} />
               
-              {/* MOD-08: Investments */}
+              {/* MOD-08: Investments (Suche, Favoriten, Mandat, Simulation) */}
               <Route path="investments" element={<InvestmentsPage />} />
               <Route path="investments/suche" element={<InvestmentsPage />} />
               <Route path="investments/favoriten" element={<InvestmentsPage />} />
-              <Route path="investments/profile" element={<InvestmentsPage />} />
-              <Route path="investments/alerts" element={<InvestmentsPage />} />
+              <Route path="investments/mandat" element={<InvestmentsPage />} />
+              <Route path="investments/simulation" element={<InvestmentsPage />} />
               
-              {/* MOD-09: Vertriebspartner (Kaufy Addon) */}
+              {/* MOD-09: Vertriebspartner (Objektkatalog, Auswahl, Beratung, Netzwerk) */}
               <Route path="vertriebspartner" element={<VertriebspartnerPage />} />
-              <Route path="vertriebspartner/dashboard" element={<VertriebspartnerPage />} />
               <Route path="vertriebspartner/katalog" element={<VertriebspartnerPage />} />
               <Route path="vertriebspartner/auswahl" element={<VertriebspartnerPage />} />
+              <Route path="vertriebspartner/beratung" element={<VertriebspartnerPage />} />
               <Route path="vertriebspartner/netzwerk" element={<VertriebspartnerPage />} />
               
-              {/* MOD-10: Leadgenerierung (Kaufy Addon) */}
+              {/* MOD-10: Leads (Inbox, Meine Leads, Pipeline, Werbung) */}
               <Route path="leads" element={<LeadsPage />} />
               <Route path="leads/inbox" element={<LeadsPage />} />
+              <Route path="leads/meine" element={<LeadsPage />} />
               <Route path="leads/pipeline" element={<LeadsPage />} />
-              <Route path="leads/kampagnen" element={<LeadsPage />} />
-              <Route path="leads/statistik" element={<LeadsPage />} />
+              <Route path="leads/werbung" element={<LeadsPage />} />
             </Route>
 
             {/* Legacy Portfolio Routes (for migration reference) */}
