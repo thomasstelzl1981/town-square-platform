@@ -2910,6 +2910,13 @@ export type Database = {
     }
     Functions: {
       generate_public_id: { Args: { prefix: string }; Returns: string }
+      get_user_memberships: {
+        Args: { p_user_id: string }
+        Returns: {
+          role: Database["public"]["Enums"]["membership_role"]
+          tenant_id: string
+        }[]
+      }
       is_parent_access_blocked: {
         Args: { target_org_id: string }
         Returns: boolean
