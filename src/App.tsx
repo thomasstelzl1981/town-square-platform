@@ -25,11 +25,25 @@ import AuditLog from "./pages/admin/AuditLog";
 import Billing from "./pages/admin/Billing";
 import Agreements from "./pages/admin/Agreements";
 import Inbox from "./pages/admin/Inbox";
+import LeadPool from "./pages/admin/LeadPool";
+import PartnerVerification from "./pages/admin/PartnerVerification";
+import CommissionApproval from "./pages/admin/CommissionApproval";
 
-// Zone 2: User Portal
+// Zone 2: User Portal Layout
 import { PortalLayout } from "./components/portal/PortalLayout";
 import PortalDashboard from "./pages/portal/PortalDashboard";
-import ModulePage from "./pages/portal/ModulePage";
+
+// Zone 2: Module Pages (10 Modules)
+import StammdatenPage from "./pages/portal/StammdatenPage";
+import OfficePage from "./pages/portal/OfficePage";
+import DMSPage from "./pages/portal/DMSPage";
+import ImmobilienPage from "./pages/portal/ImmobilienPage";
+import MSVPage from "./pages/portal/MSVPage";
+import VerkaufPage from "./pages/portal/VerkaufPage";
+import FinanzierungPage from "./pages/portal/FinanzierungPage";
+import InvestmentsPage from "./pages/portal/InvestmentsPage";
+import VertriebspartnerPage from "./pages/portal/VertriebspartnerPage";
+import LeadsPage from "./pages/portal/LeadsPage";
 
 // Legacy Portfolio (kept for reference/migration)
 import PropertyList from "./pages/portfolio/PropertyList";
@@ -68,82 +82,86 @@ const App = () => (
               <Route path="billing" element={<Billing />} />
               <Route path="agreements" element={<Agreements />} />
               <Route path="inbox" element={<Inbox />} />
+              <Route path="leadpool" element={<LeadPool />} />
+              <Route path="partner-verification" element={<PartnerVerification />} />
+              <Route path="commissions" element={<CommissionApproval />} />
               <Route path="support" element={<Support />} />
             </Route>
 
-            {/* Zone 2: User Portal - 9 Module Grid (45 Routes) */}
+            {/* Zone 2: User Portal - 10 Module Structure */}
             <Route path="/portal" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
               
-              {/* Module 1: Stammdaten */}
-              <Route path="stammdaten" element={<ModulePage />} />
-              <Route path="stammdaten/profil" element={<ModulePage />} />
-              <Route path="stammdaten/firma" element={<ModulePage />} />
-              <Route path="stammdaten/abrechnung" element={<ModulePage />} />
-              <Route path="stammdaten/sicherheit" element={<ModulePage />} />
+              {/* MOD-01: Stammdaten */}
+              <Route path="stammdaten" element={<StammdatenPage />} />
+              <Route path="stammdaten/profil" element={<StammdatenPage />} />
+              <Route path="stammdaten/kontakte" element={<StammdatenPage />} />
+              <Route path="stammdaten/adressen" element={<StammdatenPage />} />
+              <Route path="stammdaten/einstellungen" element={<StammdatenPage />} />
               
-              {/* Module 2: KI Office */}
-              <Route path="office" element={<ModulePage />} />
-              <Route path="office/email" element={<ModulePage />} />
-              <Route path="office/brief" element={<ModulePage />} />
-              <Route path="office/kontakte" element={<ModulePage />} />
-              <Route path="office/kalender" element={<ModulePage />} />
+              {/* MOD-02: KI Office */}
+              <Route path="office" element={<OfficePage />} />
+              <Route path="office/chat" element={<OfficePage />} />
+              <Route path="office/aufgaben" element={<OfficePage />} />
+              <Route path="office/kalender" element={<OfficePage />} />
+              <Route path="office/notizen" element={<OfficePage />} />
               
-              {/* Module 3: DMS */}
-              <Route path="dms" element={<ModulePage />} />
-              <Route path="dms/storage" element={<ModulePage />} />
-              <Route path="dms/post" element={<ModulePage />} />
-              <Route path="dms/sort" element={<ModulePage />} />
-              <Route path="dms/settings" element={<ModulePage />} />
+              {/* MOD-03: DMS */}
+              <Route path="dms" element={<DMSPage />} />
+              <Route path="dms/storage" element={<DMSPage />} />
+              <Route path="dms/post" element={<DMSPage />} />
+              <Route path="dms/sort" element={<DMSPage />} />
+              <Route path="dms/settings" element={<DMSPage />} />
               
-              {/* Module 4: Immobilien */}
-              <Route path="immobilien" element={<ModulePage />} />
-              <Route path="immobilien/portfolio" element={<ModulePage />} />
-              <Route path="immobilien/verwaltung" element={<ModulePage />} />
-              <Route path="immobilien/verkauf" element={<ModulePage />} />
-              <Route path="immobilien/sanierung" element={<ModulePage />} />
+              {/* MOD-04: Immobilien */}
+              <Route path="immobilien" element={<ImmobilienPage />} />
+              <Route path="immobilien/liste" element={<PropertyList />} />
+              <Route path="immobilien/neu" element={<PropertyForm />} />
+              <Route path="immobilien/:id" element={<PropertyDetail />} />
+              <Route path="immobilien/karte" element={<ImmobilienPage />} />
+              <Route path="immobilien/analyse" element={<ImmobilienPage />} />
               
-              {/* Module 5: MSV */}
-              <Route path="msv" element={<ModulePage />} />
-              <Route path="msv/listen" element={<ModulePage />} />
-              <Route path="msv/mieteingang" element={<ModulePage />} />
-              <Route path="msv/vermietung" element={<ModulePage />} />
-              <Route path="msv/einstellungen" element={<ModulePage />} />
+              {/* MOD-05: MSV (Mietmanagement) */}
+              <Route path="msv" element={<MSVPage />} />
+              <Route path="msv/uebersicht" element={<MSVPage />} />
+              <Route path="msv/mieter" element={<MSVPage />} />
+              <Route path="msv/zahlungen" element={<MSVPage />} />
+              <Route path="msv/mahnungen" element={<MSVPage />} />
               
-              {/* Module 6: Verkauf */}
-              <Route path="verkauf" element={<ModulePage />} />
-              <Route path="verkauf/objekte" element={<ModulePage />} />
-              <Route path="verkauf/aktivitaeten" element={<ModulePage />} />
-              <Route path="verkauf/anfragen" element={<ModulePage />} />
-              <Route path="verkauf/vorgaenge" element={<ModulePage />} />
+              {/* MOD-06: Verkauf */}
+              <Route path="verkauf" element={<VerkaufPage />} />
+              <Route path="verkauf/inserate" element={<VerkaufPage />} />
+              <Route path="verkauf/anfragen" element={<VerkaufPage />} />
+              <Route path="verkauf/reservierungen" element={<VerkaufPage />} />
+              <Route path="verkauf/transaktionen" element={<VerkaufPage />} />
               
-              {/* Module 7: Finanzierung */}
-              <Route path="finanzierung" element={<ModulePage />} />
-              <Route path="finanzierung/faelle" element={<ModulePage />} />
-              <Route path="finanzierung/dokumente" element={<ModulePage />} />
-              <Route path="finanzierung/export" element={<ModulePage />} />
-              <Route path="finanzierung/einstellungen" element={<ModulePage />} />
+              {/* MOD-07: Finanzierung */}
+              <Route path="finanzierung" element={<FinanzierungPage />} />
+              <Route path="finanzierung/faelle" element={<FinanzierungPage />} />
+              <Route path="finanzierung/dokumente" element={<FinanzierungPage />} />
+              <Route path="finanzierung/export" element={<FinanzierungPage />} />
+              <Route path="finanzierung/status" element={<FinanzierungPage />} />
               
-              {/* Module 8: Investment-Suche */}
-              <Route path="investments" element={<ModulePage />} />
-              <Route path="investments/suche" element={<ModulePage />} />
-              <Route path="investments/favoriten" element={<ModulePage />} />
-              <Route path="investments/mandat" element={<ModulePage />} />
-              <Route path="investments/simulation" element={<ModulePage />} />
+              {/* MOD-08: Investments */}
+              <Route path="investments" element={<InvestmentsPage />} />
+              <Route path="investments/suche" element={<InvestmentsPage />} />
+              <Route path="investments/favoriten" element={<InvestmentsPage />} />
+              <Route path="investments/profile" element={<InvestmentsPage />} />
+              <Route path="investments/alerts" element={<InvestmentsPage />} />
               
-              {/* Module 9: Vertriebspartner (Kaufy Addon) */}
-              <Route path="vertriebspartner" element={<ModulePage />} />
-              <Route path="vertriebspartner/pipeline" element={<ModulePage />} />
-              <Route path="vertriebspartner/auswahl" element={<ModulePage />} />
-              <Route path="vertriebspartner/beratung" element={<ModulePage />} />
-              <Route path="vertriebspartner/team" element={<ModulePage />} />
+              {/* MOD-09: Vertriebspartner (Kaufy Addon) */}
+              <Route path="vertriebspartner" element={<VertriebspartnerPage />} />
+              <Route path="vertriebspartner/dashboard" element={<VertriebspartnerPage />} />
+              <Route path="vertriebspartner/katalog" element={<VertriebspartnerPage />} />
+              <Route path="vertriebspartner/auswahl" element={<VertriebspartnerPage />} />
+              <Route path="vertriebspartner/netzwerk" element={<VertriebspartnerPage />} />
               
-              {/* Module 10: Leadgenerierung (Kaufy Addon) */}
-              <Route path="leads" element={<ModulePage />} />
-              <Route path="leads/inbox" element={<ModulePage />} />
-              <Route path="leads/meine-leads" element={<ModulePage />} />
-              <Route path="leads/pipeline" element={<ModulePage />} />
-              <Route path="leads/werbung" element={<ModulePage />} />
+              {/* MOD-10: Leadgenerierung (Kaufy Addon) */}
+              <Route path="leads" element={<LeadsPage />} />
+              <Route path="leads/inbox" element={<LeadsPage />} />
+              <Route path="leads/pipeline" element={<LeadsPage />} />
+              <Route path="leads/kampagnen" element={<LeadsPage />} />
+              <Route path="leads/statistik" element={<LeadsPage />} />
             </Route>
 
             {/* Legacy Portfolio Routes (for migration reference) */}
