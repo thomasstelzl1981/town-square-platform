@@ -50,6 +50,7 @@ import LeadsPage from "./pages/portal/LeadsPage";
 import PropertyList from "./pages/portfolio/PropertyList";
 import PropertyDetail from "./pages/portfolio/PropertyDetail";
 import PropertyForm from "./pages/portfolio/PropertyForm";
+import ExposeVorlage from "./pages/portfolio/ExposeVorlage";
 
 // Presentation (non-guessable URL)
 import PresentationPage from "./pages/presentation/PresentationPage";
@@ -159,6 +160,7 @@ const App = () => (
               <Route path="immobilien/sanierung" element={<ImmobilienPage />} />
               <Route path="immobilien/bewertung" element={<ImmobilienPage />} />
               <Route path="immobilien/neu" element={<PropertyForm />} />
+              <Route path="immobilien/vorlage" element={<ExposeVorlage />} />
               <Route path="immobilien/:id" element={<PropertyDetail />} />
               <Route path="immobilien/:id/edit" element={<PropertyForm />} />
               

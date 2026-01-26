@@ -5,6 +5,9 @@ import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2, ArrowLeft } from 'lucide-react';
 import { PortfolioTab } from './immobilien/PortfolioTab';
+import { KontexteTab } from './immobilien/KontexteTab';
+import { SanierungTab } from './immobilien/SanierungTab';
+import { BewertungTab } from './immobilien/BewertungTab';
 
 const ImmobilienPage = () => {
   const location = useLocation();
@@ -20,25 +23,13 @@ const ImmobilienPage = () => {
       return <PortfolioTab />;
     }
     if (currentPath.endsWith('/kontexte')) {
-      return (
-        <div className="p-6">
-          <p className="text-muted-foreground">Vermieter-Kontexte (in Entwicklung)</p>
-        </div>
-      );
+      return <KontexteTab />;
     }
     if (currentPath.endsWith('/sanierung')) {
-      return (
-        <div className="p-6">
-          <p className="text-muted-foreground">Sanierungsvorgänge (in Entwicklung)</p>
-        </div>
-      );
+      return <SanierungTab />;
     }
     if (currentPath.endsWith('/bewertung')) {
-      return (
-        <div className="p-6">
-          <p className="text-muted-foreground">Objektbewertung (in Entwicklung)</p>
-        </div>
-      );
+      return <BewertungTab />;
     }
     return null; // Show dashboard
   };
