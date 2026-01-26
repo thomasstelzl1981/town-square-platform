@@ -83,18 +83,18 @@ const App = () => (
               <Route path="stammdaten/sicherheit" element={<ModulePage />} />
               
               {/* Module 2: KI Office */}
-              <Route path="ki-office" element={<ModulePage />} />
-              <Route path="ki-office/email" element={<ModulePage />} />
-              <Route path="ki-office/brief" element={<ModulePage />} />
-              <Route path="ki-office/kontakte" element={<ModulePage />} />
-              <Route path="ki-office/kalender" element={<ModulePage />} />
+              <Route path="office" element={<ModulePage />} />
+              <Route path="office/email" element={<ModulePage />} />
+              <Route path="office/brief" element={<ModulePage />} />
+              <Route path="office/kontakte" element={<ModulePage />} />
+              <Route path="office/kalender" element={<ModulePage />} />
               
-              {/* Module 3: DMS (Posteingang / Dokumentenmanagement) */}
+              {/* Module 3: DMS */}
               <Route path="dms" element={<ModulePage />} />
-              <Route path="dms/eingang" element={<ModulePage />} />
-              <Route path="dms/zuordnung" element={<ModulePage />} />
-              <Route path="dms/archiv" element={<ModulePage />} />
-              <Route path="dms/einstellungen" element={<ModulePage />} />
+              <Route path="dms/storage" element={<ModulePage />} />
+              <Route path="dms/post" element={<ModulePage />} />
+              <Route path="dms/sort" element={<ModulePage />} />
+              <Route path="dms/settings" element={<ModulePage />} />
               
               {/* Module 4: Immobilien */}
               <Route path="immobilien" element={<ModulePage />} />
@@ -103,7 +103,7 @@ const App = () => (
               <Route path="immobilien/verkauf" element={<ModulePage />} />
               <Route path="immobilien/sanierung" element={<ModulePage />} />
               
-              {/* Module 5: MSV (Miet-/Service-Verwaltung) */}
+              {/* Module 5: MSV */}
               <Route path="msv" element={<ModulePage />} />
               <Route path="msv/listen" element={<ModulePage />} />
               <Route path="msv/mieteingang" element={<ModulePage />} />
@@ -117,26 +117,33 @@ const App = () => (
               <Route path="verkauf/anfragen" element={<ModulePage />} />
               <Route path="verkauf/vorgaenge" element={<ModulePage />} />
               
-              {/* Module 7: Vertriebspartner */}
+              {/* Module 7: Finanzierung */}
+              <Route path="finanzierung" element={<ModulePage />} />
+              <Route path="finanzierung/faelle" element={<ModulePage />} />
+              <Route path="finanzierung/dokumente" element={<ModulePage />} />
+              <Route path="finanzierung/export" element={<ModulePage />} />
+              <Route path="finanzierung/einstellungen" element={<ModulePage />} />
+              
+              {/* Module 8: Investment-Suche */}
+              <Route path="investments" element={<ModulePage />} />
+              <Route path="investments/suche" element={<ModulePage />} />
+              <Route path="investments/favoriten" element={<ModulePage />} />
+              <Route path="investments/mandat" element={<ModulePage />} />
+              <Route path="investments/simulation" element={<ModulePage />} />
+              
+              {/* Module 9: Vertriebspartner (Kaufy Addon) */}
               <Route path="vertriebspartner" element={<ModulePage />} />
               <Route path="vertriebspartner/pipeline" element={<ModulePage />} />
               <Route path="vertriebspartner/auswahl" element={<ModulePage />} />
               <Route path="vertriebspartner/beratung" element={<ModulePage />} />
               <Route path="vertriebspartner/team" element={<ModulePage />} />
               
-              {/* Module 8: Finanzierung */}
-              <Route path="finanzierung" element={<ModulePage />} />
-              <Route path="finanzierung/selbstauskunft" element={<ModulePage />} />
-              <Route path="finanzierung/unterlagen" element={<ModulePage />} />
-              <Route path="finanzierung/pakete" element={<ModulePage />} />
-              <Route path="finanzierung/status" element={<ModulePage />} />
-              
-              {/* Module 9: Leadgenerierung */}
-              <Route path="leadgenerierung" element={<ModulePage />} />
-              <Route path="leadgenerierung/kampagnen" element={<ModulePage />} />
-              <Route path="leadgenerierung/studio" element={<ModulePage />} />
-              <Route path="leadgenerierung/landingpages" element={<ModulePage />} />
-              <Route path="leadgenerierung/leads" element={<ModulePage />} />
+              {/* Module 10: Leadgenerierung (Kaufy Addon) */}
+              <Route path="leads" element={<ModulePage />} />
+              <Route path="leads/inbox" element={<ModulePage />} />
+              <Route path="leads/meine-leads" element={<ModulePage />} />
+              <Route path="leads/pipeline" element={<ModulePage />} />
+              <Route path="leads/werbung" element={<ModulePage />} />
             </Route>
 
             {/* Legacy Portfolio Routes (for migration reference) */}
