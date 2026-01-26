@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileUploader } from "@/components/shared/FileUploader";
 import { 
   Bot, 
   Send, 
@@ -11,9 +12,9 @@ import {
   Minimize2, 
   Maximize2,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Upload
 } from "lucide-react";
-
 export interface ChatContext {
   zone?: string;
   module?: string;
@@ -40,6 +41,7 @@ export interface ChatPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   position?: "docked" | "drawer" | "bottomsheet" | "fullscreen";
   onSend?: (message: string) => void;
   onQuickAction?: (action: string) => void;
+  onFileUpload?: (files: File[]) => void;
   onClose?: () => void;
   onToggleSize?: () => void;
   isMinimized?: boolean;
@@ -55,6 +57,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       position = "docked",
       onSend,
       onQuickAction,
+      onFileUpload,
       onClose,
       onToggleSize,
       isMinimized = false,
@@ -63,6 +66,16 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     ref
   ) => {
     const [input, setInput] = React.useState("");
+    const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
+
+    const handleFilesSelected = (files: File[]) => {
+      setUploadedFiles(prev => [...prev, ...files]);
+      onFileUpload?.(files);
+    };
+
+    const removeFile = (index: number) => {
+      setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    };
     const scrollRef = React.useRef<HTMLDivElement>(null);
 
     const handleSend = () => {
@@ -213,6 +226,35 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
             )}
           </div>
         </ScrollArea>
+
+        {/* Upload Zone */}
+        <div className="px-4 pb-2 border-t pt-3">
+          <FileUploader
+            onFilesSelected={handleFilesSelected}
+            accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
+            multiple
+            label="📎 Dokumente ablegen"
+            hint="PDF, Excel, Bilder für Analyse"
+            className="text-xs"
+          />
+          {uploadedFiles.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {uploadedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1">
+                  <span className="truncate max-w-[200px]">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0"
+                    onClick={() => removeFile(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Input */}
         <div className="p-4 border-t">
