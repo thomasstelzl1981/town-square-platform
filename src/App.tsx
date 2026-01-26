@@ -61,6 +61,12 @@ import KaufyVerkaeufer from "./pages/zone3/kaufy/KaufyVerkaeufer";
 import KaufyVertrieb from "./pages/zone3/kaufy/KaufyVertrieb";
 import KaufyBeratung from "./pages/zone3/kaufy/KaufyBeratung";
 import KaufyMeety from "./pages/zone3/kaufy/KaufyMeety";
+import KaufyModule from "./pages/zone3/kaufy/KaufyModule";
+import KaufyModuleDetail from "./pages/zone3/kaufy/KaufyModuleDetail";
+import KaufyImmobilien from "./pages/zone3/kaufy/KaufyImmobilien";
+import KaufyBerater from "./pages/zone3/kaufy/KaufyBerater";
+import KaufyAnbieter from "./pages/zone3/kaufy/KaufyAnbieter";
+import KaufyFAQ from "./pages/zone3/kaufy/KaufyFAQ";
 
 // Zone 3: Miety Website
 import MietyLayout from "./pages/zone3/miety/MietyLayout";
@@ -72,10 +78,17 @@ import MietyPreise from "./pages/zone3/miety/MietyPreise";
 import MietySoFunktioniert from "./pages/zone3/miety/MietySoFunktioniert";
 import MietyKontakt from "./pages/zone3/miety/MietyKontakt";
 import MietyRegistrieren from "./pages/zone3/miety/MietyRegistrieren";
+import MietyInvite from "./pages/zone3/miety/MietyInvite";
 
 // Zone 3: System of a Town Website
 import SotLayout from "./pages/zone3/sot/SotLayout";
 import SotHome from "./pages/zone3/sot/SotHome";
+import SotProdukt from "./pages/zone3/sot/SotProdukt";
+import SotModule from "./pages/zone3/sot/SotModule";
+import SotModuleDetail from "./pages/zone3/sot/SotModuleDetail";
+import SotUseCases from "./pages/zone3/sot/SotUseCases";
+import SotPreise from "./pages/zone3/sot/SotPreise";
+import SotFAQ from "./pages/zone3/sot/SotFAQ";
 
 const queryClient = new QueryClient();
 
@@ -206,6 +219,12 @@ const App = () => (
               <Route path="vertrieb" element={<KaufyVertrieb />} />
               <Route path="beratung" element={<KaufyBeratung />} />
               <Route path="meety" element={<KaufyMeety />} />
+              <Route path="module" element={<KaufyModule />} />
+              <Route path="module/:moduleId" element={<KaufyModuleDetail />} />
+              <Route path="immobilien" element={<KaufyImmobilien />} />
+              <Route path="berater" element={<KaufyBerater />} />
+              <Route path="anbieter" element={<KaufyAnbieter />} />
+              <Route path="faq" element={<KaufyFAQ />} />
             </Route>
 
             {/* Zone 3: Miety Website */}
@@ -218,11 +237,18 @@ const App = () => (
               <Route path="so-funktioniert" element={<MietySoFunktioniert />} />
               <Route path="kontakt" element={<MietyKontakt />} />
               <Route path="registrieren" element={<MietyRegistrieren />} />
+              <Route path="invite" element={<MietyInvite />} />
             </Route>
 
             {/* Zone 3: System of a Town Website */}
             <Route path="/sot" element={<SotLayout />}>
               <Route index element={<SotHome />} />
+              <Route path="produkt" element={<SotProdukt />} />
+              <Route path="module" element={<SotModule />} />
+              <Route path="module/:moduleId" element={<SotModuleDetail />} />
+              <Route path="use-cases" element={<SotUseCases />} />
+              <Route path="preise" element={<SotPreise />} />
+              <Route path="faq" element={<SotFAQ />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
