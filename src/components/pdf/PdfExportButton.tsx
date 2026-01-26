@@ -68,19 +68,36 @@ export function PdfExportButton({
   );
 }
 
+interface PdfExportFooterProps {
+  /** Reference to the content element to export */
+  contentRef: RefObject<HTMLElement>;
+  /** Document title for the PDF */
+  documentTitle: string;
+  /** Module name to display in the PDF header */
+  moduleName: string;
+  /** Optional subtitle */
+  subtitle?: string;
+  /** Additional class names */
+  className?: string;
+}
+
 /**
  * PDF Export footer bar component.
  * A styled bar with export button that sits at the bottom of a page.
  */
 export function PdfExportFooter({
   contentRef,
-  options,
+  documentTitle,
+  moduleName,
+  subtitle,
   className,
-}: {
-  contentRef: RefObject<HTMLElement>;
-  options: PdfExportOptions;
-  className?: string;
-}) {
+}: PdfExportFooterProps) {
+  const options: PdfExportOptions = {
+    title: documentTitle,
+    subtitle,
+    module: moduleName,
+  };
+
   return (
     <div className={cn(
       'flex items-center justify-end gap-4 pt-6 mt-6 border-t pdf-hide',

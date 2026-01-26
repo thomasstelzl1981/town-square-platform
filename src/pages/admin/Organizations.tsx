@@ -343,11 +343,9 @@ export default function Organizations() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Organisationen',
-          subtitle: `${organizations.length} Organisationen im System`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Organisationen"
+        subtitle={`${organizations.length} Organisationen im System`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );

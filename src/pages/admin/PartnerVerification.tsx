@@ -242,11 +242,9 @@ export default function PartnerVerification() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        options={{
-          title: 'Partner-Verifizierung',
-          subtitle: `${verifications.length} Partner im System`,
-          module: 'Zone 1 Admin',
-        }}
+        documentTitle="Partner-Verifizierung"
+        subtitle={`${verifications.length} Partner im System`}
+        moduleName="Zone 1 Admin"
       />
     </div>
   );
