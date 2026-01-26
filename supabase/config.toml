@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.sot-letter-generate]
 verify_jwt = false
+
+[functions.sot-msv-reminder-check]
+verify_jwt = false
+
+[functions.sot-msv-rent-report]
+verify_jwt = false
