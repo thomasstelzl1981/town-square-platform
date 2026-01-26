@@ -26,7 +26,8 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !isLoading) {
-      navigate('/admin');
+      // Redirect to portal after login (not admin, unless platform_admin)
+      navigate('/portal');
     }
   }, [user, isLoading, navigate]);
 
@@ -70,12 +71,13 @@ export default function Auth() {
     
     if (error) {
       if (error.message.includes('already registered')) {
-        setError('This email is already registered. Please sign in instead.');
+        setError('Diese E-Mail ist bereits registriert. Bitte melde dich an.');
       } else {
         setError(error.message);
       }
     } else {
-      setSuccess('Account created successfully. You can now sign in.');
+      // With auto-confirm, user is logged in immediately after signup
+      setSuccess('Account erstellt! Du wirst weitergeleitet...');
     }
   };
 
