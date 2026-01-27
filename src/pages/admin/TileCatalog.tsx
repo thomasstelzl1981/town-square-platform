@@ -3,9 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Table,
@@ -15,12 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,9 +34,14 @@ import {
   Settings,
   Plus,
   Check,
-  X
+  X,
+  Upload,
+  Trash2,
+  FileSpreadsheet,
+  Database
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { TestDataManager } from '@/components/admin/TestDataManager';
 
 type TileCatalog = Tables<'tile_catalog'>;
 type TenantTileActivation = Tables<'tenant_tile_activation'>;
@@ -80,7 +76,6 @@ export default function TileCatalogPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTenant, setSelectedTenant] = useState<string>('');
-  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -113,7 +108,6 @@ export default function TileCatalogPage() {
   async function toggleTileForTenant(tileCode: string, tenantId: string, currentlyActive: boolean) {
     try {
       if (currentlyActive) {
-        // Deactivate
         const { error } = await supabase
           .from('tenant_tile_activation')
           .update({ 
@@ -126,13 +120,11 @@ export default function TileCatalogPage() {
         
         if (error) throw error;
       } else {
-        // Check if exists
         const existing = activations.find(
           a => a.tenant_id === tenantId && a.tile_code === tileCode
         );
 
         if (existing) {
-          // Reactivate
           const { error } = await supabase
             .from('tenant_tile_activation')
             .update({ 
@@ -146,7 +138,6 @@ export default function TileCatalogPage() {
           
           if (error) throw error;
         } else {
-          // Create new
           const { error } = await supabase
             .from('tenant_tile_activation')
             .insert({
@@ -227,17 +218,27 @@ export default function TileCatalogPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tile Catalog & Aktivierung</h1>
+          <h1 className="text-2xl font-bold">Tile Catalog & Testdaten</h1>
           <p className="text-muted-foreground">
-            Zone 2 Module verwalten und pro Tenant aktivieren
+            Zone 2 Module verwalten und Testdaten importieren
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="catalog">
         <TabsList>
-          <TabsTrigger value="catalog">Modul-Katalog</TabsTrigger>
-          <TabsTrigger value="activation">Tenant-Aktivierung</TabsTrigger>
+          <TabsTrigger value="catalog" className="gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            Modul-Katalog
+          </TabsTrigger>
+          <TabsTrigger value="activation" className="gap-2">
+            <Settings className="h-4 w-4" />
+            Tenant-Aktivierung
+          </TabsTrigger>
+          <TabsTrigger value="testdata" className="gap-2">
+            <Database className="h-4 w-4" />
+            Testdaten
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="catalog" className="space-y-4">
@@ -383,6 +384,10 @@ export default function TileCatalogPage() {
               Wähle einen Tenant aus, um Module zu aktivieren
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="testdata">
+          <TestDataManager />
         </TabsContent>
       </Tabs>
     </div>
