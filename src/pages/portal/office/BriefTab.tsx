@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { 
@@ -41,6 +42,7 @@ import {
   Mic,
   History
 } from 'lucide-react';
+import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
 
 interface Contact {
   id: string;
@@ -50,8 +52,28 @@ interface Contact {
   company: string | null;
 }
 
+interface LandlordContext {
+  id: string;
+  name: string;
+  context_type: string;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  city: string | null;
+  legal_form: string | null;
+}
+
+interface Profile {
+  id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  active_tenant_id: string | null;
+}
+
 export function BriefTab() {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [subject, setSubject] = useState('');
@@ -59,6 +81,71 @@ export function BriefTab() {
   const [generatedBody, setGeneratedBody] = useState('');
   const [channel, setChannel] = useState<'email' | 'fax' | 'post'>('email');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
+  const [showCreateContext, setShowCreateContext] = useState(false);
+
+  // Fetch profile for private sender
+  const { data: profile } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, first_name, last_name, active_tenant_id')
+        .single();
+      if (error) throw error;
+      return data as Profile;
+    },
+  });
+
+  // Fetch landlord contexts for sender selection
+  const { data: contexts = [] } = useQuery({
+    queryKey: ['sender-contexts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type, street, house_number, postal_code, city, legal_form')
+        .eq('tenant_id', activeTenantId!)
+        .order('is_default', { ascending: false });
+      
+      if (error) throw error;
+      return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Build sender options
+  const senderOptions: SenderOption[] = [
+    // Private sender from profile
+    {
+      id: 'private',
+      type: 'PRIVATE',
+      label: profile?.display_name || profile?.first_name || 'Privatperson',
+      sublabel: 'Persönlicher Absender',
+      address: '', // Could be extended with profile address
+    },
+    // Business contexts
+    ...contexts.map((ctx): SenderOption => ({
+      id: ctx.id,
+      type: ctx.context_type as 'PRIVATE' | 'BUSINESS',
+      label: ctx.name,
+      sublabel: ctx.legal_form || (ctx.context_type === 'BUSINESS' ? 'Unternehmen' : 'Privat'),
+      company: ctx.name,
+      address: [
+        [ctx.street, ctx.house_number].filter(Boolean).join(' '),
+        [ctx.postal_code, ctx.city].filter(Boolean).join(' '),
+      ].filter(Boolean).join(', ') || undefined,
+    })),
+  ];
+
+  // Auto-select first sender on load
+  useEffect(() => {
+    if (!selectedSenderId && senderOptions.length > 0) {
+      setSelectedSenderId(senderOptions[0].id);
+    }
+  }, [senderOptions, selectedSenderId]);
+
+  // Get selected sender object
+  const selectedSender = senderOptions.find(s => s.id === selectedSenderId);
 
   // Fetch contacts for picker
   const { data: contacts = [] } = useQuery({
@@ -90,18 +177,18 @@ export function BriefTab() {
   // Save draft mutation
   const saveDraftMutation = useMutation({
     mutationFn: async () => {
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('active_tenant_id, id')
         .single();
       
-      if (!profile?.active_tenant_id) {
+      if (!profileData?.active_tenant_id) {
         throw new Error('Kein aktiver Mandant ausgewählt');
       }
 
       const { error } = await supabase.from('letter_drafts').insert({
-        tenant_id: profile.active_tenant_id,
-        created_by: profile.id,
+        tenant_id: profileData.active_tenant_id,
+        created_by: profileData.id,
         recipient_contact_id: selectedContact?.id,
         subject,
         prompt,
@@ -142,6 +229,11 @@ export function BriefTab() {
           },
           subject,
           prompt,
+          senderIdentity: selectedSender ? {
+            name: selectedSender.label,
+            company: selectedSender.type === 'BUSINESS' ? selectedSender.company : undefined,
+            address: selectedSender.address,
+          } : undefined,
         },
       });
 
@@ -151,7 +243,11 @@ export function BriefTab() {
       toast.success('Brief wurde generiert');
     } catch (error: any) {
       toast.error('Fehler bei der Generierung: ' + error.message);
-      // Fallback demo text
+      // Fallback demo text with sender
+      const senderLine = selectedSender?.type === 'BUSINESS' 
+        ? `${selectedSender.company}\ni.A. ${profile?.display_name || 'Ihr Team'}`
+        : profile?.display_name || 'Ihr Team';
+      
       setGeneratedBody(`Sehr geehrte${selectedContact.first_name ? 'r' : ''} ${selectedContact.first_name || ''} ${selectedContact.last_name},
 
 bezugnehmend auf ${subject || 'Ihr Anliegen'} möchten wir Ihnen folgendes mitteilen:
@@ -161,7 +257,7 @@ ${prompt}
 Für Rückfragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen,
-Ihr Team`);
+${senderLine}`);
     } finally {
       setIsGenerating(false);
     }
@@ -182,6 +278,22 @@ Ihr Team`);
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Step 0: Sender Selection (One-Click) */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">0</Badge>
+                Absender (ein Klick)
+              </Label>
+              <SenderSelector
+                options={senderOptions}
+                selected={selectedSenderId}
+                onSelect={setSelectedSenderId}
+                onAddContext={() => setShowCreateContext(true)}
+              />
+            </div>
+
+            <Separator />
+
             {/* Step 1: Recipient */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
@@ -443,6 +555,12 @@ Ihr Team`);
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Context Dialog */}
+      <CreateContextDialog 
+        open={showCreateContext} 
+        onOpenChange={setShowCreateContext} 
+      />
     </div>
   );
 }

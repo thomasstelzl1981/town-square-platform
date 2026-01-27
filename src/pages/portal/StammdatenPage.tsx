@@ -1,7 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useModuleTiles } from '@/hooks/useModuleTiles';
 import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { SubTabNav } from '@/components/shared';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Loader2 } from 'lucide-react';
 
@@ -53,7 +52,6 @@ const StammdatenPage = () => {
               <h1 className="text-3xl font-bold">{data?.title || 'Stammdaten'}</h1>
               <p className="text-muted-foreground">{data?.description || 'Kontakte, Adressen und Einstellungen verwalten'}</p>
             </div>
-            <SubTabNav tabs={subTiles} />
             {subPageContent}
           </div>
         ) : (

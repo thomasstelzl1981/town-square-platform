@@ -6,6 +6,9 @@ export { FileUploader, FilePreview } from './FileUploader';
 export { StatusBadge, StatusDot } from './StatusBadge';
 export { EmptyState, EmptyDocuments, EmptyContacts, EmptyProperties, EmptyFolder } from './EmptyState';
 export { SubTabNav } from './SubTabNav';
+export { SenderSelector, type SenderOption } from './SenderSelector';
+export { CreateContextDialog } from './CreateContextDialog';
+export { AddBankAccountDialog } from './AddBankAccountDialog';
 export { 
   PropertyTable, 
   PropertyCodeCell, 

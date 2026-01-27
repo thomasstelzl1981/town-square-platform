@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
-import { FileUploader } from '@/components/shared/FileUploader';
+import { FileUploader, SubTabNav } from '@/components/shared';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -24,6 +24,13 @@ import {
   ResponsiveContainer, CartesianGrid, Legend, Area, AreaChart 
 } from 'recharts';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
+
+interface LandlordContext {
+  id: string;
+  name: string;
+  context_type: string;
+  is_default: boolean | null;
+}
 
 interface Property {
   id: string;
@@ -55,8 +62,55 @@ interface Unit {
 
 export function PortfolioTab() {
   const navigate = useNavigate();
-  const { activeOrganization } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
+  
+  // Get selected context from URL
+  const selectedContextId = searchParams.get('context');
+
+  // Fetch landlord contexts for multi-context subbar
+  const { data: contexts = [] } = useQuery({
+    queryKey: ['landlord-contexts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type, is_default')
+        .eq('tenant_id', activeTenantId!)
+        .order('is_default', { ascending: false });
+      
+      if (error) throw error;
+      return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Build context tabs for SubTabNav (only if multiple contexts)
+  const contextTabs = useMemo(() => {
+    if (contexts.length <= 1) return [];
+    return [
+      { title: 'Alle Kontexte', route: '/portal/immobilien/portfolio' },
+      ...contexts.map(ctx => ({
+        title: ctx.name,
+        route: `/portal/immobilien/portfolio?context=${ctx.id}`,
+      })),
+    ];
+  }, [contexts]);
+
+  // Fetch context_property_assignment for filtering
+  const { data: contextAssignments = [] } = useQuery({
+    queryKey: ['context-property-assignments', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_property_assignment')
+        .select('context_id, property_id')
+        .eq('tenant_id', activeTenantId!);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeTenantId && contexts.length > 1,
+  });
 
   // Fetch properties
   const { data: properties, isLoading: propsLoading } = useQuery({
@@ -106,24 +160,52 @@ export function PortfolioTab() {
     enabled: !!activeOrganization,
   });
 
-  // Calculate aggregations
-  const totals = useMemo(() => {
-    if (!properties) return null;
+  // Filter properties by selected context
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    if (!selectedContextId || contexts.length <= 1) return properties;
+    
+    // Get property IDs assigned to selected context
+    const assignedPropertyIds = contextAssignments
+      .filter(a => a.context_id === selectedContextId)
+      .map(a => a.property_id);
+    
+    // If no assignments exist for this context, show all (default context behavior)
+    if (assignedPropertyIds.length === 0) {
+      const defaultContext = contexts.find(c => c.is_default);
+      if (selectedContextId === defaultContext?.id) {
+        // Show properties NOT assigned to any other context
+        const allAssignedIds = contextAssignments.map(a => a.property_id);
+        return properties.filter(p => !allAssignedIds.includes(p.id));
+      }
+      return [];
+    }
+    
+    return properties.filter(p => assignedPropertyIds.includes(p.id));
+  }, [properties, selectedContextId, contextAssignments, contexts]);
 
-    const count = properties.length;
-    const totalArea = properties.reduce((sum, p) => sum + (p.total_area_sqm || 0), 0);
-    const totalValue = properties.reduce((sum, p) => sum + (p.market_value || 0), 0);
-    const totalIncome = properties.reduce((sum, p) => sum + (p.annual_income || 0), 0);
-    const totalDebt = financingData?.reduce((sum, f) => sum + (f.current_balance || 0), 0) || 0;
-    const totalRate = financingData?.reduce((sum, f) => sum + (f.monthly_rate || 0), 0) || 0;
-    const avgInterestRate = financingData?.length 
-      ? financingData.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / financingData.length 
+  // Calculate aggregations (use filtered properties)
+  const totals = useMemo(() => {
+    const propsToUse = selectedContextId ? filteredProperties : (properties || []);
+    if (!propsToUse || propsToUse.length === 0) return null;
+
+    const propertyIds = propsToUse.map(p => p.id);
+    const relevantFinancing = financingData?.filter(f => propertyIds.includes(f.property_id)) || [];
+
+    const count = propsToUse.length;
+    const totalArea = propsToUse.reduce((sum, p) => sum + (p.total_area_sqm || 0), 0);
+    const totalValue = propsToUse.reduce((sum, p) => sum + (p.market_value || 0), 0);
+    const totalIncome = propsToUse.reduce((sum, p) => sum + (p.annual_income || 0), 0);
+    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
+    const totalRate = relevantFinancing.reduce((sum, f) => sum + (f.monthly_rate || 0), 0);
+    const avgInterestRate = relevantFinancing.length 
+      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / relevantFinancing.length 
       : 3.5;
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
 
     return { count, totalArea, totalValue, totalIncome, totalDebt, totalRate, netWealth, avgYield, avgInterestRate };
-  }, [properties, financingData]);
+  }, [properties, filteredProperties, selectedContextId, financingData]);
 
   // Tilgungsverlauf Chart Data (30 Jahre Projektion)
   const amortizationData = useMemo(() => {
@@ -205,7 +287,8 @@ export function PortfolioTab() {
     }
   };
 
-  const hasData = properties && properties.length > 0;
+  const displayProperties = selectedContextId ? filteredProperties : (properties || []);
+  const hasData = displayProperties.length > 0;
 
   // Table columns configuration
   const columns: PropertyTableColumn<Property>[] = [
@@ -295,6 +378,11 @@ export function PortfolioTab() {
 
   return (
     <div className="space-y-6">
+      {/* Context Subbar - only shown if multiple contexts exist */}
+      {contextTabs.length > 0 && (
+        <SubTabNav tabs={contextTabs} />
+      )}
+
       {/* Header mit Beispiel-Exposé Button */}
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={() => navigate('/portal/immobilien/vorlage')}>
@@ -450,7 +538,7 @@ export function PortfolioTab() {
         </CardHeader>
         <CardContent>
           <PropertyTable
-            data={properties || []}
+            data={displayProperties}
             columns={columns}
             isLoading={propsLoading}
             showSearch
