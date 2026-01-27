@@ -674,7 +674,86 @@
 
 ---
 
+## ADR-040: Scope-Trennung Verkauf vs. Projekte
+
+**Date**: 2026-01-27  
+**Decision**: MOD-06 = Bestandsverkauf auf Unit-Ebene (1 Wohnung = 1 Zeile). MOD-12 = Großobjekte, Bauträger, Aufteilungen (Phase 2).  
+**Reason**: 
+- Klare Trennung zwischen einfachem Bestandsverkauf und komplexen Projektentwicklungen
+- Verhindert Feature-Bloat in MOD-06
+- Ermöglicht unterschiedliche Workflows für verschiedene Verkaufsszenarien  
+**Implications**:
+- MOD-06 zeigt Units als einzelne Zeilen
+- Kein "Globalobjekte"-Konzept in MOD-06
+- MOD-12 wird später für Bauträger/Aufteilungen entwickelt
+
+---
+
+## ADR-041: Unit-basierte Listings
+
+**Date**: 2026-01-27  
+**Decision**: `listings.unit_id` verknüpft Verkaufsinserat mit Wohneinheit. Gebäude-Zugehörigkeit über gemeinsame Adresse erkennbar.  
+**Reason**: 
+- 1 Unit = 1 potentieller Verkauf
+- MFH mit 10 Wohnungen zeigt 10 Zeilen mit identischer Adresse
+- Intuitive Erkennung der Gebäude-Zugehörigkeit  
+**Implications**:
+- Neues DB-Feld: `listings.unit_id UUID REFERENCES units(id)`
+- ObjekteTab queryt Units statt Properties
+- ExposeDetail arbeitet mit unitId statt propertyId
+
+---
+
+## ADR-042: Source of Truth MOD-04 Exposé
+
+**Date**: 2026-01-27  
+**Decision**: MOD-04 PropertyDetail ist die EINZIGE editierbare Ansicht für Immobiliendaten. Alle anderen Listen sind READ-ONLY Views.  
+**Reason**: 
+- Single Source of Truth verhindert Datenkonsistenz-Probleme
+- Änderungen propagieren automatisch in alle Ansichten
+- Klare Verantwortlichkeit für Datenqualität  
+**Implications**:
+- PropertyDetail.tsx (/portal/immobilien/:id) ist der zentrale Datenpflege-Punkt
+- MOD-04 Portfolio, MOD-05, MOD-06, MOD-09, Zone 3 zeigen nur READ-ONLY Views
+- Verkaufs-/Vermietungsexposés fügen NUR prozess-spezifische Daten hinzu (Titel, Preis, Provision)
+- Objektdaten-Karten in MOD-05/06 mit Link zurück zu MOD-04
+
+---
+
+## ADR-043: Modul-Nummerierung Update
+
+**Date**: 2026-01-27  
+**Decision**: MOD-11 = Finanzierungsmanager, MOD-12 = Projekte.  
+**Reason**: 
+- MOD-11 verwaltet Finanzierungsfälle aus MOD-07 (Antragsstrecke)
+- MOD-12 für komplexe Projektentwicklungen reserviert
+- Klare Trennung zwischen Finanzierungsverwaltung und Projektmanagement  
+**Implications**:
+- Finanzierungsfälle fließen von MOD-07 → MOD-11
+- MOD-12 ist Phase 2 (Bauträger, Aufteilungen, Großprojekte)
+- ID-System wird erst nach Modulwelt-Fertigstellung finalisiert
+
+---
+
 ## Changelog
+
+### 2026-01-27: Source of Truth & Unit-basierter Workflow
+
+**Neue ADRs:**
+- ADR-040: Scope-Trennung Verkauf vs. Projekte
+- ADR-041: Unit-basierte Listings
+- ADR-042: Source of Truth MOD-04 Exposé
+- ADR-043: Modul-Nummerierung Update
+
+**Schema-Erweiterung:**
+- `listings.unit_id UUID REFERENCES units(id)` für Unit-basierte Verkaufsinserate
+
+**Architektur-Prinzipien:**
+- MOD-04 Exposé (PropertyDetail.tsx) als Single Source of Truth
+- Alle anderen Module zeigen READ-ONLY Views der MOD-04 Daten
+- 1 Unit = 1 Zeile in allen Listen
+
+---
 
 ### 2026-01-23: Fundament-Phase — ID-System & Integration Governance
 

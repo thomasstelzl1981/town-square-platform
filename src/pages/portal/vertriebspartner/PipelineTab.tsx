@@ -2,21 +2,26 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Handshake, TrendingUp, Euro, Clock } from 'lucide-react';
-import { EmptyState } from '@/components/shared';
+import { 
+  PropertyTable, 
+  PropertyAddressCell, 
+  PropertyCurrencyCell,
+  type PropertyTableColumn 
+} from '@/components/shared';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface PipelineDeal {
   id: string;
-  stage: string;
-  deal_value: number | null;
-  commission_rate: number | null;
-  expected_close_date: string | null;
   contact_name: string | null;
   notes: string | null;
-  created_at: string;
+  deal_value: number | null;
+  commission_rate: number | null;
+  expected_commission: number;
+  stage: string;
+  expected_close_date: string | null;
+  next_step: string | null;
 }
 
 const stageConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -29,7 +34,7 @@ const stageConfig: Record<string, { label: string; variant: 'default' | 'seconda
 };
 
 const PipelineTab = () => {
-  const { data: deals, isLoading } = useQuery({
+  const { data: deals = [], isLoading } = useQuery({
     queryKey: ['partner-pipeline'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -44,19 +49,25 @@ const PipelineTab = () => {
 
       return data?.map(d => ({
         id: d.id,
-        stage: d.stage || 'lead',
-        deal_value: d.deal_value,
-        commission_rate: d.commission_rate,
-        expected_close_date: d.expected_close_date,
         contact_name: d.contacts ? `${(d.contacts as any).first_name} ${(d.contacts as any).last_name}` : null,
         notes: d.notes,
-        created_at: d.created_at
+        deal_value: d.deal_value,
+        commission_rate: d.commission_rate,
+        expected_commission: (d.deal_value || 0) * ((d.commission_rate || 0) / 100),
+        stage: d.stage || 'lead',
+        expected_close_date: d.expected_close_date,
+        next_step: null // Placeholder
       })) || [];
     }
   });
 
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '—';
+  // Calculate stats
+  const totalValue = deals.reduce((sum, d) => sum + (d.deal_value || 0), 0);
+  const wonDeals = deals.filter(d => d.stage === 'won');
+  const activeDeals = deals.filter(d => !['won', 'lost'].includes(d.stage));
+  const totalCommission = wonDeals.reduce((sum, d) => sum + d.expected_commission, 0);
+
+  const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { 
       style: 'currency', 
       currency: 'EUR',
@@ -64,36 +75,53 @@ const PipelineTab = () => {
     }).format(value);
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-        </div>
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-
-  if (!deals?.length) {
-    return (
-      <EmptyState
-        icon={Handshake}
-        title="Keine aktiven Deals"
-        description="Wenn Sie Reservierungen vornehmen oder Leads bearbeiten, erscheinen sie hier in der Pipeline."
-      />
-    );
-  }
-
-  // Calculate stats
-  const totalValue = deals.reduce((sum, d) => sum + (d.deal_value || 0), 0);
-  const wonDeals = deals.filter(d => d.stage === 'won');
-  const activeDeals = deals.filter(d => !['won', 'lost'].includes(d.stage));
-  const totalCommission = wonDeals.reduce((sum, d) => {
-    const value = d.deal_value || 0;
-    const rate = d.commission_rate || 0;
-    return sum + (value * rate / 100);
-  }, 0);
+  const columns: PropertyTableColumn<PipelineDeal>[] = [
+    {
+      key: 'contact_name',
+      header: 'Objekt',
+      minWidth: '200px',
+      render: (val, row) => <PropertyAddressCell address={val || 'Kein Kontakt'} subtitle={row.notes || ''} />
+    },
+    {
+      key: 'contact_name',
+      header: 'Kunde',
+      minWidth: '150px',
+      render: (val) => val || <span className="text-muted-foreground">—</span>
+    },
+    {
+      key: 'stage',
+      header: 'Status',
+      minWidth: '120px',
+      render: (val) => {
+        const config = stageConfig[val as string] || { label: val, variant: 'secondary' as const };
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      }
+    },
+    {
+      key: 'deal_value',
+      header: 'Preis',
+      align: 'right',
+      minWidth: '120px',
+      render: (val) => <PropertyCurrencyCell value={val} />
+    },
+    {
+      key: 'expected_commission',
+      header: 'Provision',
+      align: 'right',
+      minWidth: '120px',
+      render: (val) => <PropertyCurrencyCell value={val} variant="bold" />
+    },
+    {
+      key: 'expected_close_date',
+      header: 'Nächster Schritt',
+      minWidth: '140px',
+      render: (val) => val ? (
+        <span className="text-sm">
+          Erwartet: {format(new Date(val), 'dd.MM.yyyy', { locale: de })}
+        </span>
+      ) : <span className="text-muted-foreground">—</span>
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -145,41 +173,23 @@ const PipelineTab = () => {
         </Card>
       </div>
 
-      {/* Deal List */}
+      {/* Pipeline Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Deal-Übersicht</CardTitle>
-          <CardDescription>Alle Ihre Verkaufsvorgänge</CardDescription>
+          <CardTitle>Deal-Pipeline</CardTitle>
+          <CardDescription>Alle Ihre Verkaufsvorgänge im Überblick</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {deals.map((deal) => {
-              const config = stageConfig[deal.stage] || { label: deal.stage, variant: 'secondary' as const };
-              return (
-                <div 
-                  key={deal.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{deal.contact_name || 'Kein Kontakt'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{deal.notes || '—'}</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 ml-4">
-                    <div className="text-right">
-                      <p className="font-medium">{formatCurrency(deal.deal_value)}</p>
-                      {deal.expected_close_date && (
-                        <p className="text-xs text-muted-foreground">
-                          Erwartet: {format(new Date(deal.expected_close_date), 'dd.MM.yyyy', { locale: de })}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant={config.variant}>{config.label}</Badge>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <PropertyTable
+            data={deals}
+            columns={columns}
+            isLoading={isLoading}
+            emptyState={{
+              message: 'Keine aktiven Deals. Wenn Sie Reservierungen vornehmen oder Leads bearbeiten, erscheinen sie hier in der Pipeline.',
+              actionLabel: '',
+              actionRoute: ''
+            }}
+          />
         </CardContent>
       </Card>
     </div>
