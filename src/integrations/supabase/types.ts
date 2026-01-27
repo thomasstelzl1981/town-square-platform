@@ -1751,6 +1751,281 @@ export type Database = {
           },
         ]
       }
+      listing_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          listing_id: string
+          metadata: Json | null
+          performed_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id: string
+          metadata?: Json | null
+          performed_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id?: string
+          metadata?: Json | null
+          performed_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_act_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "listing_activities_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_inquiries: {
+        Row: {
+          contact_email: string | null
+          contact_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          listing_id: string
+          message: string | null
+          notes: string | null
+          qualified_at: string | null
+          qualified_by: string | null
+          source: Database["public"]["Enums"]["inquiry_source"]
+          status: Database["public"]["Enums"]["inquiry_status"]
+          tenant_id: string
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          listing_id: string
+          message?: string | null
+          notes?: string | null
+          qualified_at?: string | null
+          qualified_by?: string | null
+          source?: Database["public"]["Enums"]["inquiry_source"]
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          tenant_id: string
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string
+          message?: string | null
+          notes?: string | null
+          qualified_at?: string | null
+          qualified_by?: string | null
+          source?: Database["public"]["Enums"]["inquiry_source"]
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          tenant_id?: string
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_inq_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "listing_inquiries_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_inquiries_qualified_by_fkey"
+            columns: ["qualified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_inquiries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_partner_terms: {
+        Row: {
+          created_at: string
+          finance_distribution_enabled: boolean
+          global_release: boolean
+          id: string
+          listing_id: string
+          partner_commission_rate: number
+          partner_release_consent_id: string | null
+          system_fee_consent_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          finance_distribution_enabled?: boolean
+          global_release?: boolean
+          id?: string
+          listing_id: string
+          partner_commission_rate: number
+          partner_release_consent_id?: string | null
+          system_fee_consent_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          finance_distribution_enabled?: boolean
+          global_release?: boolean
+          id?: string
+          listing_id?: string
+          partner_commission_rate?: number
+          partner_release_consent_id?: string | null
+          system_fee_consent_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_partner_terms_partner_release_consent_id_fkey"
+            columns: ["partner_release_consent_id"]
+            isOneToOne: false
+            referencedRelation: "user_consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_partner_terms_system_fee_consent_id_fkey"
+            columns: ["system_fee_consent_id"]
+            isOneToOne: false
+            referencedRelation: "user_consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_partner_terms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_terms_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      listing_publications: {
+        Row: {
+          channel: Database["public"]["Enums"]["publication_channel"]
+          created_at: string
+          error_message: string | null
+          external_id: string | null
+          external_url: string | null
+          id: string
+          listing_id: string
+          published_at: string | null
+          removed_at: string | null
+          status: Database["public"]["Enums"]["publication_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["publication_channel"]
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          listing_id: string
+          published_at?: string | null
+          removed_at?: string | null
+          status?: Database["public"]["Enums"]["publication_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["publication_channel"]
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          listing_id?: string
+          published_at?: string | null
+          removed_at?: string | null
+          status?: Database["public"]["Enums"]["publication_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_pub_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "listing_publications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           asking_price: number | null
@@ -1760,13 +2035,19 @@ export type Database = {
           description: string | null
           expose_document_id: string | null
           id: string
+          min_price: number | null
           partner_visibility: string | null
           property_id: string
           public_id: string | null
+          published_at: string | null
+          reserved_at: string | null
+          sales_mandate_consent_id: string | null
+          sold_at: string | null
           status: Database["public"]["Enums"]["listing_status"] | null
           tenant_id: string
           title: string
           updated_at: string | null
+          withdrawn_at: string | null
         }
         Insert: {
           asking_price?: number | null
@@ -1776,13 +2057,19 @@ export type Database = {
           description?: string | null
           expose_document_id?: string | null
           id?: string
+          min_price?: number | null
           partner_visibility?: string | null
           property_id: string
           public_id?: string | null
+          published_at?: string | null
+          reserved_at?: string | null
+          sales_mandate_consent_id?: string | null
+          sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
           tenant_id: string
           title: string
           updated_at?: string | null
+          withdrawn_at?: string | null
         }
         Update: {
           asking_price?: number | null
@@ -1792,13 +2079,19 @@ export type Database = {
           description?: string | null
           expose_document_id?: string | null
           id?: string
+          min_price?: number | null
           partner_visibility?: string | null
           property_id?: string
           public_id?: string | null
+          published_at?: string | null
+          reserved_at?: string | null
+          sales_mandate_consent_id?: string | null
+          sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
           tenant_id?: string
           title?: string
           updated_at?: string | null
+          withdrawn_at?: string | null
         }
         Relationships: [
           {
@@ -1806,6 +2099,13 @@ export type Database = {
             columns: ["expose_document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_sales_mandate_consent_id_fkey"
+            columns: ["sales_mandate_consent_id"]
+            isOneToOne: false
+            referencedRelation: "user_consents"
             referencedColumns: ["id"]
           },
           {
@@ -3301,6 +3601,185 @@ export type Database = {
           },
         ]
       }
+      reservations: {
+        Row: {
+          buyer_confirmed_at: string | null
+          buyer_contact_id: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          created_at: string
+          id: string
+          inquiry_id: string | null
+          listing_id: string
+          notary_date: string | null
+          notes: string | null
+          owner_confirmed_at: string | null
+          reserved_price: number | null
+          status: Database["public"]["Enums"]["reservation_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          listing_id: string
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          reserved_price?: number | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          listing_id?: string
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          reserved_price?: number | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserv_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "reservations_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "listing_inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sale_transactions: {
+        Row: {
+          bnl_date: string | null
+          buyer_contact_id: string | null
+          commission_amount: number | null
+          commission_approved_at: string | null
+          commission_approved_by: string | null
+          created_at: string
+          final_price: number
+          handover_date: string | null
+          id: string
+          listing_id: string
+          notary_date: string | null
+          notes: string | null
+          reservation_id: string | null
+          status: Database["public"]["Enums"]["sale_transaction_status"]
+          system_fee_amount: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          bnl_date?: string | null
+          buyer_contact_id?: string | null
+          commission_amount?: number | null
+          commission_approved_at?: string | null
+          commission_approved_by?: string | null
+          created_at?: string
+          final_price: number
+          handover_date?: string | null
+          id?: string
+          listing_id: string
+          notary_date?: string | null
+          notes?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["sale_transaction_status"]
+          system_fee_amount?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          bnl_date?: string | null
+          buyer_contact_id?: string | null
+          commission_amount?: number | null
+          commission_approved_at?: string | null
+          commission_approved_by?: string | null
+          created_at?: string
+          final_price?: number
+          handover_date?: string | null
+          id?: string
+          listing_id?: string
+          notary_date?: string | null
+          notes?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["sale_transaction_status"]
+          system_fee_amount?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_transactions_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_transactions_commission_approved_by_fkey"
+            columns: ["commission_approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_transactions_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trans_tenant_listing_fk"
+            columns: ["tenant_id", "listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       scraper_jobs: {
         Row: {
           completed_at: string | null
@@ -4154,7 +4633,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_public_listings: {
+        Row: {
+          asking_price: number | null
+          channel: Database["public"]["Enums"]["publication_channel"] | null
+          city: string | null
+          description: string | null
+          postal_code: string | null
+          property_type: string | null
+          public_id: string | null
+          published_at: string | null
+          title: string | null
+          total_area_sqm: number | null
+          year_built: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_public_id: { Args: { prefix: string }; Returns: string }
@@ -4207,6 +4701,14 @@ export type Database = {
         | "ready_for_handoff"
       inbound_item_status: "pending" | "assigned" | "archived" | "rejected"
       inbound_source: "caya" | "email" | "upload" | "api"
+      inquiry_source: "website" | "partner" | "direct" | "referral"
+      inquiry_status:
+        | "new"
+        | "contacted"
+        | "qualified"
+        | "scheduled"
+        | "won"
+        | "lost"
       integration_status: "active" | "inactive" | "deprecated" | "pending_setup"
       integration_type: "integration" | "connector" | "edge_function" | "secret"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
@@ -4255,6 +4757,18 @@ export type Database = {
         | "kleinanzeigen"
         | "partner_network"
       publication_status: "pending" | "active" | "paused" | "expired" | "failed"
+      reservation_status:
+        | "pending_owner"
+        | "pending_buyer"
+        | "confirmed"
+        | "cancelled"
+        | "completed"
+      sale_transaction_status:
+        | "pending"
+        | "notarized"
+        | "bnl_received"
+        | "completed"
+        | "cancelled"
       subscription_status: "active" | "cancelled" | "past_due" | "trialing"
     }
     CompositeTypes: {
@@ -4420,6 +4934,15 @@ export const Constants = {
       ],
       inbound_item_status: ["pending", "assigned", "archived", "rejected"],
       inbound_source: ["caya", "email", "upload", "api"],
+      inquiry_source: ["website", "partner", "direct", "referral"],
+      inquiry_status: [
+        "new",
+        "contacted",
+        "qualified",
+        "scheduled",
+        "won",
+        "lost",
+      ],
       integration_status: ["active", "inactive", "deprecated", "pending_setup"],
       integration_type: ["integration", "connector", "edge_function", "secret"],
       invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
@@ -4474,6 +4997,20 @@ export const Constants = {
         "partner_network",
       ],
       publication_status: ["pending", "active", "paused", "expired", "failed"],
+      reservation_status: [
+        "pending_owner",
+        "pending_buyer",
+        "confirmed",
+        "cancelled",
+        "completed",
+      ],
+      sale_transaction_status: [
+        "pending",
+        "notarized",
+        "bnl_received",
+        "completed",
+        "cancelled",
+      ],
       subscription_status: ["active", "cancelled", "past_due", "trialing"],
     },
   },
