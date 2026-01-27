@@ -77,10 +77,10 @@ const PipelineTab = () => {
 
   const columns: PropertyTableColumn<PipelineDeal>[] = [
     {
-      key: 'contact_name',
+      key: 'notes',
       header: 'Objekt',
       minWidth: '200px',
-      render: (val, row) => <PropertyAddressCell address={val || 'Kein Kontakt'} subtitle={row.notes || ''} />
+      render: (val, row) => <PropertyAddressCell address={row.contact_name || 'Kein Kontakt'} subtitle={val || ''} />
     },
     {
       key: 'contact_name',
