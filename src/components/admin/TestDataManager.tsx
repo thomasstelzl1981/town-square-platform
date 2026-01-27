@@ -73,6 +73,8 @@ export function TestDataManager() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [lastParseInfo, setLastParseInfo] = useState<{sheetName: string; rowCount: number; columns: string[]} | null>(null);
 
   // Fetch test batches from test_data_registry
   const { data: batches = [], isLoading } = useQuery({
@@ -226,12 +228,15 @@ export function TestDataManager() {
     toast.success('Vorlage heruntergeladen');
   };
 
-  // Handle file upload - Unit-based import
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeOrganization?.id) return;
+  // Process file (shared between input change and drag-drop)
+  const processFile = async (file: File) => {
+    if (!file || !activeOrganization?.id) {
+      toast.error('Keine Datei oder Organisation ausgewählt');
+      return;
+    }
 
     setIsImporting(true);
+    setLastParseInfo(null);
     const batchId = crypto.randomUUID();
     const batchName = `Import_${new Date().toISOString().slice(0, 16).replace('T', '_')}`;
     const tenantId = activeOrganization.id;
@@ -240,16 +245,26 @@ export function TestDataManager() {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       
-      // Find Portfolio sheet (or first sheet)
-      const sheetName = workbook.SheetNames.find(n => 
-        n.toLowerCase().includes('portfolio') || n.toLowerCase().includes('immobilien')
-      ) || workbook.SheetNames[0];
+      console.log('Excel sheets found:', workbook.SheetNames);
+      
+      // Use first sheet - most common pattern
+      const sheetName = workbook.SheetNames[0];
+      
+      if (!sheetName) {
+        toast.error('Excel-Datei enthält keine Sheets');
+        return;
+      }
       
       const sheet = workbook.Sheets[sheetName];
       const rows: ExcelPropertyRow[] = XLSX.utils.sheet_to_json(sheet);
       
+      // Debug info
+      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+      setLastParseInfo({ sheetName, rowCount: rows.length, columns });
+      console.log('Parsed sheet:', sheetName, 'Rows:', rows.length, 'Columns:', columns);
+      
       if (rows.length === 0) {
-        toast.error('Keine Daten gefunden');
+        toast.error(`Sheet "${sheetName}" enthält keine Daten (0 Zeilen)`);
         return;
       }
 
@@ -451,6 +466,38 @@ export function TestDataManager() {
     }
   };
 
+  // Handle file input change
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+      processFile(file);
+    } else {
+      toast.error('Bitte nur Excel-Dateien (.xlsx, .xls) hochladen');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -486,30 +533,59 @@ export function TestDataManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Drag and Drop Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => !isImporting && fileInputRef.current?.click()}
+            className={`
+              relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-all cursor-pointer
+              ${isDragOver 
+                ? 'border-primary bg-primary/5 scale-[1.01]' 
+                : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'
+              }
+              ${isImporting ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-sm font-medium">Importiere Daten...</p>
+              </>
+            ) : (
+              <>
+                <Upload className={`h-10 w-10 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Excel-Datei hier ablegen</p>
+                  <p className="text-xs text-muted-foreground">oder klicken zum Auswählen (.xlsx, .xls)</p>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
           <div className="flex gap-3">
-            <Button variant="outline" onClick={downloadTemplate}>
+            <Button variant="outline" onClick={downloadTemplate} size="sm">
               <Download className="h-4 w-4 mr-2" />
               Vorlage herunterladen
             </Button>
-            <Button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-            >
-              {isImporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
-              )}
-              Excel hochladen
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
           </div>
+          
+          {/* Debug info after parse attempt */}
+          {lastParseInfo && (
+            <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+              <p><strong>Letzter Parse:</strong> Sheet "{lastParseInfo.sheetName}" mit {lastParseInfo.rowCount} Zeilen</p>
+              <p><strong>Gefundene Spalten:</strong> {lastParseInfo.columns.join(', ') || 'keine'}</p>
+            </div>
+          )}
           
           <div className="text-sm text-muted-foreground space-y-1">
             <p><strong>Erwartete Spalten:</strong> Objekt, Art, Adresse, Ort, PLZ, qm, Kaltmiete, Mieter, Kaufpreis, Restschuld, Zinssatz, Tilgung, Bank</p>
