@@ -2062,6 +2062,57 @@ export type Database = {
           },
         ]
       }
+      listing_views: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          referrer: string | null
+          source: string | null
+          tenant_id: string
+          viewed_at: string
+          viewer_ip_hash: string | null
+          viewer_session: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          referrer?: string | null
+          source?: string | null
+          tenant_id: string
+          viewed_at?: string
+          viewer_ip_hash?: string | null
+          viewer_session?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          referrer?: string | null
+          source?: string | null
+          tenant_id?: string
+          viewed_at?: string
+          viewer_ip_hash?: string | null
+          viewer_session?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_views_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_views_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           asking_price: number | null

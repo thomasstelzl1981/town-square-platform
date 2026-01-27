@@ -191,12 +191,8 @@ const App = () => (
               <Route path="investments/mandat" element={<InvestmentsPage />} />
               <Route path="investments/simulation" element={<InvestmentsPage />} />
               
-              {/* MOD-09: Vertriebspartner (Objektkatalog, Auswahl, Beratung, Netzwerk) */}
-              <Route path="vertriebspartner" element={<VertriebspartnerPage />} />
-              <Route path="vertriebspartner/katalog" element={<VertriebspartnerPage />} />
-              <Route path="vertriebspartner/auswahl" element={<VertriebspartnerPage />} />
-              <Route path="vertriebspartner/beratung" element={<VertriebspartnerPage />} />
-              <Route path="vertriebspartner/netzwerk" element={<VertriebspartnerPage />} />
+              {/* MOD-09: Vertriebspartner (Katalog, Beratung, Pipeline) */}
+              <Route path="vertriebspartner/*" element={<VertriebspartnerPage />} />
               
               {/* MOD-10: Leads (Inbox, Meine Leads, Pipeline, Werbung) */}
               <Route path="leads" element={<LeadsPage />} />
