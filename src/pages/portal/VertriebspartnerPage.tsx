@@ -64,7 +64,7 @@ const VertriebspartnerPage = () => {
         <div className="px-6">
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              <Route path="/" element={<Navigate to="katalog" replace />} />
+              <Route index element={<Navigate to="katalog" replace />} />
               <Route path="katalog" element={<KatalogTab />} />
               <Route path="beratung" element={<BeratungTab />} />
               <Route path="pipeline" element={<PipelineTab />} />
