@@ -1,451 +1,269 @@
 
+# MOD-06 Verkauf - Vollständiges Audit & Soll-Ist-Vergleich
 
-# MOD-06 Verkauf - Finaler Implementierungsplan (v2.0)
+## Executive Summary
 
-## Modulzweck
-
-**MOD-06 Verkauf** ist das Bestandsverkaufs- und Managementmodul für Eigentümer, die **einzelne Immobilien aus ihrem bestehenden Portfolio** verkaufen möchten.
-
-### Geeignet für:
-- Einzelne Bestandsimmobilien (Einfamilienhäuser, Mehrfamilienhäuser, Eigentumswohnungen)
-- Privatverkäufer mit wenigen Objekten
-- Vermieter, die Teile ihres Portfolios veräußern möchten
-
-### NICHT geeignet für:
-- Aufteilerobjekte (große MFH in ETW-Einzelverkauf)
-- Neubauprojekte und Bauträgerobjekte
-- Projektentwicklungen mit Massenvertrieb
+Dieses Audit dokumentiert den Implementierungsstand nach Abschluss der Phasen 1-4 und vergleicht ihn mit dem genehmigten Plan (MOD-06 Verkauf v2.0).
 
 ---
 
-## WICHTIG: Kaufy und Partner-Freigabe Zusammenhang
+## 1. MOD-06 VERKAUF - Soll-Ist-Vergleich
 
-**Kaufy ist KEINE unabhängige Option.** Die Kaufy-Website dient als Lead-Generierungskanal für unsere Vertriebspartner.
+### 1.1 Menüstruktur (Sidebar)
 
-**Logik:**
-- Kaufy-Leads gehen an Vertriebspartner
-- Ohne Partner-Freigabe kann Kaufy NICHT aktiviert werden
-- Das Inserat auf Kaufy ist kostenlos, aber die erfolgreiche Vermittlung kostet den VERKÄUFER die Systemgebühr (2.000 EUR)
+| # | SOLL (Plan) | IST (Implementiert) | Status |
+|---|-------------|---------------------|--------|
+| 1 | So funktioniert's | So funktioniert's | ✅ OK |
+| 2 | Objekte | Objekte | ✅ OK |
+| 3 | Reporting | Reporting | ✅ OK |
+| 4 | Vorgänge | Vorgänge | ✅ OK |
 
-**Reihenfolge:**
-1. Exposé freigeben (SALES_MANDATE)
-2. Partner-Freigabe erteilen (PARTNER_RELEASE + SYSTEM_SUCCESS_FEE_2000)
-3. ERST DANN kann Kaufy-Toggle aktiviert werden
+**Bewertung:** ✅ 4/4 Menüpunkte korrekt implementiert
 
----
+### 1.2 Tab "So funktioniert's"
 
-## Die 4 Menüpunkte
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| Hinweis: Nur für Bestandsimmobilien | ✅ | Korrekt angezeigt |
+| Hinweis: Nicht für Bauträger/Aufteiler | ✅ | Korrekt angezeigt |
+| Workflow-Schritte 1-5 visualisiert | ✅ | Alle Schritte sichtbar |
+| Schritt 1: Objekt wählen | ✅ | Angezeigt |
+| Schritt 2: Exposé erstellen | ✅ | Armstrong-Erwähnung |
+| Schritt 3: Exposé freigeben | ✅ | Pflichtfelder genannt |
+| Schritt 4: Partner-Freigabe | ✅ | Consent-Hinweise |
+| Schritt 5: Veröffentlichen | ✅ | Kaufy, Partner, Scout24 |
+| Post-Flow: Anfrage → Notar | ✅ | Vollständig |
+| Button "Jetzt Objekt auswählen" | ✅ | Vorhanden |
+| Default-Route (/so-funktionierts) | ✅ | Korrekt |
 
-### 1. So funktioniert's
-Einstiegsseite mit visuellen Flowcharts. Der Kunde sieht Schritt für Schritt, was passiert, wenn er was macht.
+**Bewertung:** ✅ Vollständig Plan-konform
 
-### 2. Objekte
-Spiegelung aller Properties aus MOD-04 mit eingeschränkten, verkaufsrelevanten Daten. Klick öffnet Exposé-Editor.
+### 1.3 Tab "Objekte"
 
-### 3. Reporting
-Performance-Daten: Views, Klicks, Anfragen pro Objekt und Kanal.
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| Properties LEFT JOIN Listings | ✅ | Query korrekt |
+| Spalte: Code | ✅ | Vorhanden |
+| Spalte: Objekt (Adresse) | ✅ | Vorhanden |
+| Spalte: Preis | ✅ | Vorhanden |
+| Spalte: Exposé-Status | ✅ | Badges: Entwurf/Aktiv/etc. |
+| Spalte: Kanäle (nur Badges) | ✅ | K/P Icons |
+| KEINE Toggles in Liste | ✅ | Korrekt - keine Toggles |
+| Eye-Icon → Exposé | ✅ | Navigation funktional |
+| Suchfeld | ✅ | Vorhanden |
+| Empty State | ✅ | "Objekt anlegen" Button |
 
-### 4. Vorgänge
-Reservierungen, Notarbeauftragung, Notartermin - begleitet von den nötigen Vereinbarungen.
+**Bewertung:** ✅ Vollständig Plan-konform
 
----
+### 1.4 Tab "Reporting"
 
-## Korrigierter Provisions- und Gebühren-Flow
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| View-Statistiken | ⚠️ | Empty State vorhanden |
+| listing_views Tabelle | ❓ | Tabelle erstellt? |
 
-```
-EINZIGER VERKAUFSWEG: Über Partner-Netzwerk (+ optional Kaufy)
-==============================================================
+**Bewertung:** ⚠️ Basis-UI vorhanden, Daten fehlen
 
-  Verkäufer                         System                    Partner
-      │                                │                         │
-      │ Exposé freigeben               │                         │
-      │ (SALES_MANDATE)                │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │ Partner-Freigabe erteilen      │                         │
-      │ - Provision: 3-15% netto       │                         │
-      │ - PARTNER_RELEASE              │                         │
-      │ - SYSTEM_SUCCESS_FEE_2000      │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │                                │  Objekt sichtbar in     │
-      │                                │  MOD-09 Objektkatalog   │
-      │                                ├────────────────────────>│
-      │                                │                         │
-      │ Optional: Kaufy aktivieren     │                         │
-      │ (NUR nach Partner-Freigabe!)   │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │                                │  Objekt auf Kaufy.app   │
-      │                                │  sichtbar               │
-      │                                │                         │
-      │                                │                         │
-      │                        LEAD ENTSTEHT                     │
-      │                        (Kaufy oder direkt)               │
-      │                                │                         │
-      │                                │  Lead geht an Partner   │
-      │                                ├────────────────────────>│
-      │                                │                         │
-      │                                │                         │
-      │<─────────── Reservierungsanfrage ────────────────────────┤
-      │                                │                         │
-      │ [Annehmen]                     │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │ [Notarauftrag]                 │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │                       ┌────────┴────────┐                │
-      │                       │ VERKÄUFER ZAHLT │                │
-      │                       │    100 EUR      │                │
-      │                       └─────────────────┘                │
-      │                                │                         │
-      │ [Notartermin + BNL]            │                         │
-      ├───────────────────────────────>│                         │
-      │                                │                         │
-      │                       ┌────────┴────────┐                │
-      │                       │ VERKÄUFER ZAHLT │                │
-      │                       │   1.900 EUR     │                │
-      │                       └─────────────────┘                │
-      │                                │                         │
-      │                                │                         │
-      │                       ┌────────┴────────┐       ┌────────┴────────┐
-      │                       │ SYSTEMGEBÜHR    │       │ PROVISION       │
-      │                       │ = 2.000 EUR     │       │ = X% vom KP     │
-      │                       │ (vom Verkäufer) │       │ (vom Käufer)    │
-      │                       └─────────────────┘       └─────────────────┘
+### 1.5 Tab "Vorgänge"
 
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| Reservierungs-Workflow | ✅ | UI vorhanden |
+| Status-Cards (Reservierung, Notar, BNL) | ✅ | Korrekt angezeigt |
+| Empty State | ✅ | "Keine aktiven Vorgänge" |
 
-POOL-LEAD AUS ZONE 1 (Lead wird Partner zugewiesen)
-===================================================
+**Bewertung:** ✅ UI Plan-konform
 
-  Zusätzlich zur Systemgebühr (2.000 EUR vom Verkäufer):
+### 1.6 Exposé-Editor (/portal/verkauf/expose/:propertyId)
 
-  PROVISION = X% vom Kaufpreis
-       │
-       ├──────> 1/3 an Platform (SoaT)
-       │
-       └──────> 2/3 an Partner
-```
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| Route implementiert | ✅ | ExposeDetail.tsx |
+| Auto-Create Listing (draft) | ✅ | Bei erstem Öffnen |
+| Titel, Preis, Provision editierbar | ✅ | Formular vorhanden |
+| Provisions-Slider (3-15%) | ✅ | Slider-Komponente |
+| Beschreibung editierbar | ✅ | Textarea |
+| Armstrong KI-Button | ✅ | "Mit KI generieren" |
+| Objektdaten (read-only aus MOD-04) | ✅ | Property-Infos |
+| Pflichtfeld-Validierung | ✅ | Checkliste |
+| SALES_MANDATE Consent | ✅ | Dialog implementiert |
+| Partner-Freigabe Dialog | ✅ | PartnerReleaseDialog.tsx |
+| Doppel-Consent (PARTNER_RELEASE + SYSTEM_FEE) | ✅ | 2 Checkboxen |
+| Kaufy-Toggle (erst nach Partner-Freigabe) | ✅ | Deaktiviert bis Freigabe |
+| Scout24 Button (Phase 2, deaktiviert) | ✅ | "Demnächst verfügbar" |
+| Systemgebühr-Hinweis (2.000 EUR) | ✅ | In Dialog angezeigt |
+
+**Bewertung:** ✅ Vollständig Plan-konform
+
+### 1.7 Consent-Dialoge
+
+| Dialog | Status | Komponente |
+|--------|--------|------------|
+| SalesMandateDialog | ✅ | src/components/verkauf/SalesMandateDialog.tsx |
+| PartnerReleaseDialog | ✅ | src/components/verkauf/PartnerReleaseDialog.tsx |
+
+**Bewertung:** ✅ Beide Dialoge implementiert
 
 ---
 
-## Korrigierter Exposé-Workflow
+## 2. MOD-09 VERTRIEBSPARTNER - Soll-Ist-Vergleich
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     EXPOSÉ-WORKFLOW (KORRIGIERT)                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+### 2.1 Menüstruktur (Sidebar)
 
-     ┌─────────────┐
-     │  SCHRITT 1  │
-     │   Objekt    │
-     │   wählen    │
-     └──────┬──────┘
-            │
-            ▼
-     ┌─────────────┐     Armstrong generiert
-     │  SCHRITT 2  │     automatisch Beschreibung
-     │   Exposé    │
-     │  erstellen  │
-     └──────┬──────┘
-            │
-            ▼
-     ┌─────────────┐     Pflichtfelder:
-     │  SCHRITT 3  │     • Titel, Preis, Provision
-     │   Exposé    │     • Min. 1 Bild
-     │  freigeben  │     • Energieausweis
-     │             │
-     │ SALES_MANDATE     (Consent erforderlich)
-     └──────┬──────┘
-            │
-            ▼
-     ┌─────────────────────────────────────────────────────┐
-     │  SCHRITT 4: PARTNER-FREIGABE                        │
-     │  (PFLICHT für jede Veröffentlichung!)               │
-     │                                                     │
-     │  • Provision festlegen: 3-15% netto                 │
-     │  • PARTNER_RELEASE Consent                          │
-     │  • SYSTEM_SUCCESS_FEE_2000 Consent                  │
-     │    (2.000 EUR bei erfolgreicher Vermittlung)        │
-     │                                                     │
-     │  Kosten für VERKÄUFER bei Erfolg:                   │
-     │  • 100 EUR bei Notarauftrag                         │
-     │  • 1.900 EUR nach Notartermin (BNL)                 │
-     └──────┬──────────────────────────────────────────────┘
-            │
-            │ (Erst nach Partner-Freigabe verfügbar)
-            │
-            ▼
-     ┌─────────────────────────────────────────────────────┐
-     │  SCHRITT 5: VERÖFFENTLICHUNGSKANÄLE                 │
-     │                                                     │
-     │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
-     │  │   Partner   │  │    Kaufy    │  │   Scout24   │  │
-     │  │  Netzwerk   │  │   Website   │  │  (Phase 2)  │  │
-     │  │             │  │             │  │             │  │
-     │  │  [Aktiv]    │  │  [Toggle]   │  │ [Demnächst] │  │
-     │  │  (autom.)   │  │  (optional) │  │             │  │
-     │  └─────────────┘  └─────────────┘  └─────────────┘  │
-     │                                                     │
-     │  Partner-Netzwerk: Automatisch aktiv nach Freigabe  │
-     │  Kaufy: Optional zuschaltbar (Lead-Generierung)     │
-     │  Scout24: Kostenpflichtig, Phase 2                  │
-     └─────────────────────────────────────────────────────┘
-```
+| # | SOLL (Plan) | IST (tile_catalog) | IST (Code) | Status |
+|---|-------------|---------------------|------------|--------|
+| 1 | Katalog | Objektkatalog | katalog | ⚠️ Name-Abweichung |
+| 2 | Beratung | Beratung | beratung | ✅ OK |
+| 3 | Pipeline | Netzwerk (!) | pipeline | ❌ MISMATCH |
+| 4 | — | Auswahl | — | ❌ EXTRA |
+
+**Kritische Probleme erkannt:**
+
+1. **tile_catalog Datenbank enthält:**
+   - `/portal/vertriebspartner/katalog` → "Objektkatalog"
+   - `/portal/vertriebspartner/auswahl` → "Auswahl"
+   - `/portal/vertriebspartner/beratung` → "Beratung"
+   - `/portal/vertriebspartner/netzwerk` → "Netzwerk"
+
+2. **VertriebspartnerPage.tsx Routes enthält:**
+   - `katalog` → KatalogTab
+   - `beratung` → BeratungTab
+   - `pipeline` → PipelineTab
+
+3. **App.tsx Routes enthält:**
+   - `/portal/vertriebspartner/katalog`
+   - `/portal/vertriebspartner/auswahl`
+   - `/portal/vertriebspartner/beratung`
+   - `/portal/vertriebspartner/netzwerk`
+
+**Ergebnis:** Routen-Mismatch zwischen tile_catalog, Page-Routes und App.tsx → 404 Fehler!
+
+### 2.2 Screenshot-Evidenz
+
+Bei Navigation zu "Objektkatalog" erscheint 404 Error weil:
+- Sidebar-Link zeigt auf `/portal/vertriebspartner/katalog` ✅
+- VertriebspartnerPage rendert nested Routes
+- App.tsx hat `/portal/vertriebspartner/katalog` → VertriebspartnerPage
+- VertriebspartnerPage hat eigene Routes aber erwartet `/katalog` Suffix
+
+**ROOT CAUSE:** Nested Routing-Konflikt zwischen App.tsx und VertriebspartnerPage.tsx
+
+**Bewertung:** ❌ KRITISCHER FEHLER - Route nicht funktional
 
 ---
 
-## Modul-Abhängigkeiten (Übersicht)
+## 3. ZONE 3 KAUFY - Soll-Ist-Vergleich
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              ZONE 1 (ADMIN)                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  Agreements          Master-Templates       Lead Pool        Tile Catalog   │
-│  (Consents)          (Zinsen, AfA)          (Leads)          (Pläne)        │
-│       │                    │                    │                │          │
-│  SALES_MANDATE             │                    │           Plan speichern  │
-│  PARTNER_RELEASE           │                    │                           │
-│  SYSTEM_SUCCESS_FEE_2000   │                    │                           │
-└───────┼────────────────────┼────────────────────┼───────────────────────────┘
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              ZONE 2 (PORTAL)                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  MOD-01 Stammdaten ◄──────► MOD-02 KI-Office                                │
-│  (Kontakte)                 (Kontakte, Armstrong)                           │
-│       │                            │                                         │
-│       │                            │ Beschreibung generieren                 │
-│       │                            ▼                                         │
-│  MOD-04 Immobilien ──────► MOD-03 DMS                                       │
-│  (Properties)               (Unterlagen, Bilder)                            │
-│       │                            │                                         │
-│       │ Spiegelung                 │                                         │
-│       ▼                            ▼                                         │
-│  ╔═══════════════════════════════════════════════════════════════════════╗  │
-│  ║                         MOD-06 VERKAUF                                 ║  │
-│  ║                      (SOURCE OF TRUTH)                                 ║  │
-│  ╠═══════════════════════════════════════════════════════════════════════╣  │
-│  ║  So funktioniert's │ Objekte │ Reporting │ Vorgänge                   ║  │
-│  ║                    │         │           │                            ║  │
-│  ║                    │    ▼    │           │                            ║  │
-│  ║                    │ EXPOSÉ  │           │                            ║  │
-│  ║                    │    │    │           │                            ║  │
-│  ║                    │    ▼    │           │                            ║  │
-│  ║             Partner-Freigabe (PFLICHT)                                ║  │
-│  ║                    │    │                                             ║  │
-│  ║          ┌─────────┴────┴─────────┐                                   ║  │
-│  ║          ▼                        ▼                                   ║  │
-│  ║    Partner-Netzwerk         Kaufy-Toggle                              ║  │
-│  ║    (automatisch)            (optional)                                ║  │
-│  ╚══════════┬═══════════════════════┬════════════════════════════════════╝  │
-│             │                       │                                        │
-│             ▼                       │                                        │
-│       MOD-09 Vertriebspartner       │                                        │
-│       (Objektkatalog)               │                                        │
-│             │                       │                                        │
-│             ▼                       │                                        │
-│       MOD-10 Leads                  │                                        │
-│       (Pipeline)                    │                                        │
-│                                     │                                        │
-└─────────────────────────────────────┼────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              ZONE 3 (WEBSITE)                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│                            KAUFY.APP                                         │
-│                                                                              │
-│  /immobilien ──────► /expose/:id ──────► Lead-Anfrage ──────► Zone 1 Pool   │
-│  (Liste)             (Detail)            (API)                ──► Partner    │
-│                                                                              │
-│  Kaufy dient der LEAD-GENERIERUNG für Vertriebspartner                      │
-│  Inserat kostenlos, Vermittlung kostenpflichtig (Systemgebühr)              │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+### 3.1 KaufyImmobilien.tsx Query
+
+| Anforderung | Status | Anmerkung |
+|-------------|--------|-----------|
+| Query auf listing_publications | ✅ | channel='kaufy' |
+| Filter status='active' | ✅ | Korrekt |
+| JOIN mit listings und properties | ✅ | Daten korrekt |
+| Favorite-Funktion (localStorage) | ✅ | Implementiert |
+| Empty State | ✅ | "Noch keine Objekte" |
+| Status-Badge "Reserviert" | ✅ | Vorhanden |
+
+**Bewertung:** ✅ Query Plan-konform
 
 ---
 
-## Virtueller Test (Korrigiert)
+## 4. ZONE 1 ADMIN - Relevante Punkte
 
-### Test-Szenario: Verkäufer Herr Müller verkauft MFH
-
-**SCHRITT 1-3:** Wie bisher (Objekt wählen, Exposé erstellen, Pflichtfelder ausfüllen)
-
-**SCHRITT 4: Exposé freigeben**
-- Herr Müller klickt "Freigeben"
-- SALES_MANDATE Consent wird angezeigt und bestätigt
-- Status: 'active'
-
-**SCHRITT 5: Veröffentlichungs-Optionen erscheinen**
-
-```
-VERÖFFENTLICHUNG
-────────────────────────────────────────────────────
-
-[ ] Partner-Freigabe erteilen
-    (Pflicht für alle Veröffentlichungen)
-    [Partner-Freigabe starten]
-
-Kaufy-Website:
-[ ] Auf Kaufy veröffentlichen
-    ⚠️ Erst nach Partner-Freigabe verfügbar
-
-ImmobilienScout24:
-[Demnächst verfügbar]
-
-────────────────────────────────────────────────────
-```
-
-**Kaufy-Toggle ist DEAKTIVIERT** bis Partner-Freigabe erteilt wurde.
-
-**SCHRITT 6: Herr Müller klickt "Partner-Freigabe starten"**
-
-```
-PARTNER-NETZWERK FREIGABE
-─────────────────────────────────────────────────────
-
-Ihr Objekt wird für unsere verifizierten Vertriebspartner
-sichtbar. Leads von der Kaufy-Website gehen ebenfalls
-an unsere Partner.
-
-PROVISION FÜR PARTNER
-Partner-Provision: [====*====] 7.0% netto
-(wird bei erfolgreichem Verkauf vom Käufer gezahlt)
-
-IHRE KOSTEN BEI ERFOLGREICHER VERMITTLUNG
-─────────────────────────────────────────────────────
-Bei Verkauf über unser Netzwerk zahlen SIE als Verkäufer:
-
-• 100 EUR bei Beauftragung des Kaufvertragsentwurfs
-• 1.900 EUR nach Notartermin (bei BNL-Eingang)
-──────────────────────────────────────────────────────
-Gesamt: 2.000 EUR erfolgsabhängig
-
-ZUSTIMMUNGEN
-─────────────────────────────────────────────────────
-[x] Ich gebe das Objekt für das Partner-Netzwerk frei
-    und akzeptiere die Provisionsvereinbarung
-    (PARTNER_RELEASE)
-
-[x] Ich akzeptiere die Systemgebühr von 2.000 EUR
-    bei erfolgreichem Verkauf über das Netzwerk
-    (SYSTEM_SUCCESS_FEE_2000)
-
-[Abbrechen]            [Partner-Freigabe aktivieren]
-```
-
-**Nach Bestätigung:**
-- `user_consents` INSERT (PARTNER_RELEASE)
-- `user_consents` INSERT (SYSTEM_SUCCESS_FEE_2000)
-- `listing_partner_terms` INSERT
-- `listing_publications` INSERT (channel='partner_network')
-- Objekt erscheint in MOD-09 Objektkatalog
-- **Kaufy-Toggle wird AKTIVIERBAR**
-
-**SCHRITT 7: Herr Müller aktiviert optional Kaufy**
-
-```
-VERÖFFENTLICHUNG
-────────────────────────────────────────────────────
-
-[x] Partner-Freigabe erteilt ✓
-    Provision: 7.0% | Aktiv seit 15.01.2026
-
-Kaufy-Website:
-[x] Auf Kaufy veröffentlichen
-    (Lead-Generierung für Vertriebspartner)
-    Aktiv seit 15.01.2026
-
-ImmobilienScout24:
-[Demnächst verfügbar]
-```
-
-**Ergebnis:** Objekt ist jetzt auf Kaufy.app UND im Partner-Katalog sichtbar.
+| Bereich | Status | Anmerkung |
+|---------|--------|-----------|
+| tile_catalog für MOD-06 | ✅ | 4 korrekte Sub-Tiles |
+| tile_catalog für MOD-09 | ⚠️ | Abweichend (4 statt 3) |
+| Agreements Templates | ❓ | Nicht überprüft |
+| Master-Templates | ❓ | Nicht überprüft |
 
 ---
 
-## Implementierungsphasen (Komprimiert)
+## 5. DATENBANK-STRUKTUREN
 
-### Phase 1: Struktur & Navigation (1 Tag)
-- SubTabNav aus VerkaufPage.tsx entfernen
-- 4-Tab-Struktur implementieren: So funktioniert's, Objekte, Reporting, Vorgänge
-- Default-Redirect auf "So funktioniert's"
-- Sidebar-Routing anpassen
-
-### Phase 2: Exposé-Editor (3 Tage)
-- Tab "So funktioniert's" mit Flowcharts und Erklärungen
-- Tab "Objekte" mit Properties LEFT JOIN Listings (keine Toggles)
-- Route /portal/verkauf/expose/:propertyId
-- Auto-Create Listing mit Armstrong-Beschreibung
-- Pflichtfeld-Validierung
-- Freigabe mit SALES_MANDATE Consent
-- Partner-Freigabe-Dialog mit Doppel-Consent
-- Kaufy-Toggle (NUR nach Partner-Freigabe aktivierbar)
-- Scout24-Button (UI only, deaktiviert)
-
-### Phase 3: Datenfluss & Integration (1.5 Tage)
-- MOD-09: TabsList entfernen, Objektkatalog auf listing_publications
-- Zone 3 Kaufy: Query auf listing_publications mit channel='kaufy'
-- Status-Spiegelung (Reserviert) in allen Kontexten
-- listing_views Tabelle für Reporting
-
-### Phase 4: Vorgänge & Reporting (1.5 Tage)
-- Tab "Reporting" mit View-Statistiken
-- Tab "Vorgänge" mit Reservierungs-Workflow
-- Notarauftrag-Trigger (100 EUR)
-- BNL-Eintrag-Trigger (1.900 EUR)
-
-### Phase 5: Finaler Check & Plan-Speicherung (0.5 Tage)
-- Abgleich aller Komponenten mit diesem Plan
-- Virtuelle Durchläufe aller Szenarien
-- Plan als Dokument in Zone 1 Tile Catalog speichern
-- Dokumentation der Agreement-Templates
+| Tabelle | Status | Verwendung |
+|---------|--------|------------|
+| listings | ✅ | MOD-06 Source of Truth |
+| listing_publications | ✅ | Kanal-Steuerung |
+| properties | ✅ | MOD-04 Stammdaten |
+| listing_views | ❓ | Für Reporting benötigt |
+| partner_deals | ✅ | MOD-09 Pipeline |
 
 ---
 
-## Akzeptanzkriterien
+## 6. KRITISCHE FEHLER (Behebung erforderlich)
 
-| ID | Kriterium |
-|----|-----------|
-| AC-01 | Tab "So funktioniert's" zeigt korrekten Workflow |
-| AC-02 | Default-Route ist /portal/verkauf/so-funktionierts |
-| AC-03 | Tab "Objekte" zeigt Properties LEFT JOIN Listings, KEINE Toggles |
-| AC-04 | Exposé-Freigabe erfordert SALES_MANDATE Consent |
-| AC-05 | Partner-Freigabe erfordert PARTNER_RELEASE + SYSTEM_FEE Consent |
-| AC-06 | Kaufy-Toggle ist DEAKTIVIERT bis Partner-Freigabe erteilt |
-| AC-07 | Partner-Freigabe-Dialog zeigt klar: VERKÄUFER zahlt 2.000 EUR |
-| AC-08 | Zone 3 Kaufy zeigt nur Kaufy-freigegebene Exposés |
-| AC-09 | MOD-09 zeigt nur Partner-freigegebene Exposés |
-| AC-10 | Status "Reserviert" wird überall gespiegelt |
-| AC-11 | Notarauftrag löst 100 EUR Gebühr aus (beim Verkäufer) |
-| AC-12 | BNL-Eintrag löst 1.900 EUR Gebühr aus (beim Verkäufer) |
+### FEHLER #1: MOD-09 Routing-Konflikt (KRITISCH)
+**Problem:** 404 Error bei Navigation zu Submenüs
+**Ursache:** Doppeltes Routing - App.tsx definiert Routes UND VertriebspartnerPage.tsx definiert nested Routes
+**Lösung:** VertriebspartnerPage.tsx muss analog zu VerkaufPage.tsx mit `path="vertriebspartner/*"` in App.tsx konfiguriert werden
+
+### FEHLER #2: tile_catalog Inkonsistenz (MITTEL)
+**Problem:** tile_catalog hat "Auswahl" und "Netzwerk", Code hat "Pipeline"
+**Ursache:** tile_catalog nicht synchronisiert mit Plan
+**Lösung:** tile_catalog UPDATE auf: Katalog, Beratung, Pipeline
 
 ---
 
-## Zusammenfassung der Korrekturen
+## 7. EMPFOHLENE PRÜFUNGEN VOR MANUELLER ABNAHME
 
-1. **Kaufy ist abhängig von Partner-Freigabe** - kein unabhängiger Kanal
-2. **Systemgebühr zahlt VERKÄUFER** - nicht der Partner (klar im Dialog)
-3. **Reihenfolge:** Freigabe → Partner-Freigabe → dann erst Kaufy möglich
-4. **Kaufy = Lead-Generierung** für Vertriebspartner, nicht "kostenloser" Verkaufskanal
+### Funktionale Tests
+
+| # | Testfall | Priorität |
+|---|----------|-----------|
+| T1 | MOD-06: Objekt ohne Listing anklicken → Exposé erstellt sich | HOCH |
+| T2 | MOD-06: Exposé freigeben mit SALES_MANDATE | HOCH |
+| T3 | MOD-06: Partner-Freigabe mit Doppel-Consent | HOCH |
+| T4 | MOD-06: Kaufy-Toggle erst nach Partner-Freigabe aktiv | HOCH |
+| T5 | MOD-09: Objektkatalog zeigt Partner-freigegebene Listings | HOCH |
+| T6 | Zone 3: Kaufy/immobilien zeigt nur Kaufy-freigegebene | MITTEL |
+| T7 | MOD-06: Vorgänge zeigt Reservierungen | MITTEL |
+| T8 | MOD-06: Reporting zeigt Views | NIEDRIG |
+
+### Datenfluss-Tests
+
+| # | Testfall | Priorität |
+|---|----------|-----------|
+| D1 | Listing status='active' erscheint NICHT in Zone 3 ohne Kaufy-Pub | HOCH |
+| D2 | Listing mit Partner-Freigabe erscheint in MOD-09 | HOCH |
+| D3 | Status "reserved" spiegelt sich in allen Kontexten | MITTEL |
+
+### Consent-Tests
+
+| # | Testfall | Priorität |
+|---|----------|-----------|
+| C1 | SALES_MANDATE wird gespeichert | HOCH |
+| C2 | PARTNER_RELEASE wird gespeichert | HOCH |
+| C3 | SYSTEM_SUCCESS_FEE_2000 wird gespeichert | HOCH |
 
 ---
 
-## Nächste Schritte nach Freigabe
+## 8. ZUSAMMENFASSUNG
 
-1. Plan in Zone 1 Tile Catalog als Dokument speichern
-2. Phase 1 beginnen: Struktur & Navigation
-3. Nach jeder Phase: Abgleich mit diesem Plan
+### Positiv (Plan-konform implementiert)
+- ✅ MOD-06 Verkauf: 4-Tab-Struktur korrekt
+- ✅ "So funktioniert's" vollständig mit Workflow-Erklärung
+- ✅ "Objekte" ohne Toggles, Properties LEFT JOIN Listings
+- ✅ Exposé-Editor mit allen Consent-Gates
+- ✅ Partner-Freigabe-Dialog mit 2.000 EUR Hinweis
+- ✅ Kaufy-Toggle erst nach Partner-Freigabe
+- ✅ Zone 3 Kaufy Query auf listing_publications
 
-**Geschätzter Gesamtaufwand:** 7-8 Tage
+### Negativ (Korrektur erforderlich)
+- ❌ MOD-09: Routing-Konflikt verursacht 404
+- ⚠️ tile_catalog MOD-09: Menünamen nicht synchron
+- ❓ listing_views Tabelle: Existenz prüfen
+- ❓ user_consents: Tatsächliche Speicherung verifizieren
 
 ---
 
-**Bitte um Freigabe zur Implementierung.**
+## 9. EMPFEHLUNG
 
+**Vor manueller Freigabe müssen folgende Korrekturen erfolgen:**
+
+1. **App.tsx:** Route ändern zu `path="vertriebspartner/*"` (analog zu verkauf/*)
+2. **tile_catalog UPDATE:** MOD-09 Sub-Tiles auf Katalog, Beratung, Pipeline
+3. **Listing_views Tabelle:** Existenz verifizieren oder erstellen
+
+Nach diesen Korrekturen empfehle ich die manuelle Funktionsprüfung gemäß Testmatrix (Abschnitt 7).
