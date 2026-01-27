@@ -1,269 +1,254 @@
 
-# MOD-06 Verkauf - Vollständiges Audit & Soll-Ist-Vergleich
+# Implementierungsplan: Source of Truth & Unit-basierter Workflow
 
-## Executive Summary
+## Bestätigtes Architektur-Prinzip
 
-Dieses Audit dokumentiert den Implementierungsstand nach Abschluss der Phasen 1-4 und vergleicht ihn mit dem genehmigten Plan (MOD-06 Verkauf v2.0).
-
----
-
-## 1. MOD-06 VERKAUF - Soll-Ist-Vergleich
-
-### 1.1 Menüstruktur (Sidebar)
-
-| # | SOLL (Plan) | IST (Implementiert) | Status |
-|---|-------------|---------------------|--------|
-| 1 | So funktioniert's | So funktioniert's | ✅ OK |
-| 2 | Objekte | Objekte | ✅ OK |
-| 3 | Reporting | Reporting | ✅ OK |
-| 4 | Vorgänge | Vorgänge | ✅ OK |
-
-**Bewertung:** ✅ 4/4 Menüpunkte korrekt implementiert
-
-### 1.2 Tab "So funktioniert's"
-
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| Hinweis: Nur für Bestandsimmobilien | ✅ | Korrekt angezeigt |
-| Hinweis: Nicht für Bauträger/Aufteiler | ✅ | Korrekt angezeigt |
-| Workflow-Schritte 1-5 visualisiert | ✅ | Alle Schritte sichtbar |
-| Schritt 1: Objekt wählen | ✅ | Angezeigt |
-| Schritt 2: Exposé erstellen | ✅ | Armstrong-Erwähnung |
-| Schritt 3: Exposé freigeben | ✅ | Pflichtfelder genannt |
-| Schritt 4: Partner-Freigabe | ✅ | Consent-Hinweise |
-| Schritt 5: Veröffentlichen | ✅ | Kaufy, Partner, Scout24 |
-| Post-Flow: Anfrage → Notar | ✅ | Vollständig |
-| Button "Jetzt Objekt auswählen" | ✅ | Vorhanden |
-| Default-Route (/so-funktionierts) | ✅ | Korrekt |
-
-**Bewertung:** ✅ Vollständig Plan-konform
-
-### 1.3 Tab "Objekte"
-
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| Properties LEFT JOIN Listings | ✅ | Query korrekt |
-| Spalte: Code | ✅ | Vorhanden |
-| Spalte: Objekt (Adresse) | ✅ | Vorhanden |
-| Spalte: Preis | ✅ | Vorhanden |
-| Spalte: Exposé-Status | ✅ | Badges: Entwurf/Aktiv/etc. |
-| Spalte: Kanäle (nur Badges) | ✅ | K/P Icons |
-| KEINE Toggles in Liste | ✅ | Korrekt - keine Toggles |
-| Eye-Icon → Exposé | ✅ | Navigation funktional |
-| Suchfeld | ✅ | Vorhanden |
-| Empty State | ✅ | "Objekt anlegen" Button |
-
-**Bewertung:** ✅ Vollständig Plan-konform
-
-### 1.4 Tab "Reporting"
-
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| View-Statistiken | ⚠️ | Empty State vorhanden |
-| listing_views Tabelle | ❓ | Tabelle erstellt? |
-
-**Bewertung:** ⚠️ Basis-UI vorhanden, Daten fehlen
-
-### 1.5 Tab "Vorgänge"
-
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| Reservierungs-Workflow | ✅ | UI vorhanden |
-| Status-Cards (Reservierung, Notar, BNL) | ✅ | Korrekt angezeigt |
-| Empty State | ✅ | "Keine aktiven Vorgänge" |
-
-**Bewertung:** ✅ UI Plan-konform
-
-### 1.6 Exposé-Editor (/portal/verkauf/expose/:propertyId)
-
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| Route implementiert | ✅ | ExposeDetail.tsx |
-| Auto-Create Listing (draft) | ✅ | Bei erstem Öffnen |
-| Titel, Preis, Provision editierbar | ✅ | Formular vorhanden |
-| Provisions-Slider (3-15%) | ✅ | Slider-Komponente |
-| Beschreibung editierbar | ✅ | Textarea |
-| Armstrong KI-Button | ✅ | "Mit KI generieren" |
-| Objektdaten (read-only aus MOD-04) | ✅ | Property-Infos |
-| Pflichtfeld-Validierung | ✅ | Checkliste |
-| SALES_MANDATE Consent | ✅ | Dialog implementiert |
-| Partner-Freigabe Dialog | ✅ | PartnerReleaseDialog.tsx |
-| Doppel-Consent (PARTNER_RELEASE + SYSTEM_FEE) | ✅ | 2 Checkboxen |
-| Kaufy-Toggle (erst nach Partner-Freigabe) | ✅ | Deaktiviert bis Freigabe |
-| Scout24 Button (Phase 2, deaktiviert) | ✅ | "Demnächst verfügbar" |
-| Systemgebühr-Hinweis (2.000 EUR) | ✅ | In Dialog angezeigt |
-
-**Bewertung:** ✅ Vollständig Plan-konform
-
-### 1.7 Consent-Dialoge
-
-| Dialog | Status | Komponente |
-|--------|--------|------------|
-| SalesMandateDialog | ✅ | src/components/verkauf/SalesMandateDialog.tsx |
-| PartnerReleaseDialog | ✅ | src/components/verkauf/PartnerReleaseDialog.tsx |
-
-**Bewertung:** ✅ Beide Dialoge implementiert
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   MOD-04 EXPOSÉ = SINGLE SOURCE OF TRUTH                │
+│                                                                         │
+│   PropertyDetail.tsx (/portal/immobilien/:id)                          │
+│   ═══════════════════════════════════════════                          │
+│   • Einzige Stelle für Dateneingabe/-änderung                          │
+│   • Objektdaten, Finanzierung, Mieter, Grafiken                        │
+│   • Alle anderen Module lesen NUR von hier                             │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ READ-ONLY
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+           ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+           │   MOD-04     │ │   MOD-05     │ │   MOD-06     │
+           │  Portfolio   │ │  Vermietung  │ │   Verkauf    │
+           │    Liste     │ │   Exposé     │ │   Exposé     │
+           └──────────────┘ └──────────────┘ └──────────────┘
+                                    │               │
+                                    │               │
+                              Sichtbarkeit    Sichtbarkeit
+                              anpassbar       anpassbar
+                              (nicht Daten)   (nicht Daten)
+```
 
 ---
 
-## 2. MOD-09 VERTRIEBSPARTNER - Soll-Ist-Vergleich
+## Phase 1: Schema-Erweiterung
 
-### 2.1 Menüstruktur (Sidebar)
+### 1.1 Datenbank-Migration
 
-| # | SOLL (Plan) | IST (tile_catalog) | IST (Code) | Status |
-|---|-------------|---------------------|------------|--------|
-| 1 | Katalog | Objektkatalog | katalog | ⚠️ Name-Abweichung |
-| 2 | Beratung | Beratung | beratung | ✅ OK |
-| 3 | Pipeline | Netzwerk (!) | pipeline | ❌ MISMATCH |
-| 4 | — | Auswahl | — | ❌ EXTRA |
+Neue Spalte für Unit-basierte Listings:
 
-**Kritische Probleme erkannt:**
-
-1. **tile_catalog Datenbank enthält:**
-   - `/portal/vertriebspartner/katalog` → "Objektkatalog"
-   - `/portal/vertriebspartner/auswahl` → "Auswahl"
-   - `/portal/vertriebspartner/beratung` → "Beratung"
-   - `/portal/vertriebspartner/netzwerk` → "Netzwerk"
-
-2. **VertriebspartnerPage.tsx Routes enthält:**
-   - `katalog` → KatalogTab
-   - `beratung` → BeratungTab
-   - `pipeline` → PipelineTab
-
-3. **App.tsx Routes enthält:**
-   - `/portal/vertriebspartner/katalog`
-   - `/portal/vertriebspartner/auswahl`
-   - `/portal/vertriebspartner/beratung`
-   - `/portal/vertriebspartner/netzwerk`
-
-**Ergebnis:** Routen-Mismatch zwischen tile_catalog, Page-Routes und App.tsx → 404 Fehler!
-
-### 2.2 Screenshot-Evidenz
-
-Bei Navigation zu "Objektkatalog" erscheint 404 Error weil:
-- Sidebar-Link zeigt auf `/portal/vertriebspartner/katalog` ✅
-- VertriebspartnerPage rendert nested Routes
-- App.tsx hat `/portal/vertriebspartner/katalog` → VertriebspartnerPage
-- VertriebspartnerPage hat eigene Routes aber erwartet `/katalog` Suffix
-
-**ROOT CAUSE:** Nested Routing-Konflikt zwischen App.tsx und VertriebspartnerPage.tsx
-
-**Bewertung:** ❌ KRITISCHER FEHLER - Route nicht funktional
+```sql
+ALTER TABLE listings ADD COLUMN unit_id UUID REFERENCES units(id);
+```
 
 ---
 
-## 3. ZONE 3 KAUFY - Soll-Ist-Vergleich
+## Phase 2: TestDataManager erweitern
 
-### 3.1 KaufyImmobilien.tsx Query
+### 2.1 Datei
+`src/components/admin/TestDataManager.tsx`
 
-| Anforderung | Status | Anmerkung |
-|-------------|--------|-----------|
-| Query auf listing_publications | ✅ | channel='kaufy' |
-| Filter status='active' | ✅ | Korrekt |
-| JOIN mit listings und properties | ✅ | Daten korrekt |
-| Favorite-Funktion (localStorage) | ✅ | Implementiert |
-| Empty State | ✅ | "Noch keine Objekte" |
-| Status-Badge "Reserviert" | ✅ | Vorhanden |
+### 2.2 Änderungen
+- Excel-Parser für `Immobilienaufstellung_Vorlage-3.xlsx`
+- Mapping: 1 Excel-Zeile = 1 Unit = 1 Zeile in Listen
 
-**Bewertung:** ✅ Query Plan-konform
+### 2.3 Feld-Mapping
 
----
-
-## 4. ZONE 1 ADMIN - Relevante Punkte
-
-| Bereich | Status | Anmerkung |
-|---------|--------|-----------|
-| tile_catalog für MOD-06 | ✅ | 4 korrekte Sub-Tiles |
-| tile_catalog für MOD-09 | ⚠️ | Abweichend (4 statt 3) |
-| Agreements Templates | ❓ | Nicht überprüft |
-| Master-Templates | ❓ | Nicht überprüft |
+| Excel-Feld | Transformation | Ziel-Tabelle |
+|------------|----------------|--------------|
+| Objekt (ZL002) | → property_code | properties.code |
+| Art (MFH) | → multi_family | properties.property_type |
+| Adresse, Ort | → direkt | properties.address, city |
+| qm | → Komma→Punkt | units.area_sqm |
+| Kaltmiete | → monatlich | units.current_monthly_rent |
+| Mieter | → Split | contacts + leases |
+| Kaufpreis | → Integer | properties.purchase_price |
+| Restschuld, Zinssatz | → Zahlen | property_financing |
 
 ---
 
-## 5. DATENBANK-STRUKTUREN
+## Phase 3: PortfolioTab Unit-Query
 
-| Tabelle | Status | Verwendung |
-|---------|--------|------------|
-| listings | ✅ | MOD-06 Source of Truth |
-| listing_publications | ✅ | Kanal-Steuerung |
-| properties | ✅ | MOD-04 Stammdaten |
-| listing_views | ❓ | Für Reporting benötigt |
-| partner_deals | ✅ | MOD-09 Pipeline |
+### 3.1 Datei
+`src/pages/portal/immobilien/PortfolioTab.tsx`
 
----
+### 3.2 Änderungen
+Query von `properties` auf `units LEFT JOIN properties` umstellen
 
-## 6. KRITISCHE FEHLER (Behebung erforderlich)
+### 3.3 Neue Spalten
 
-### FEHLER #1: MOD-09 Routing-Konflikt (KRITISCH)
-**Problem:** 404 Error bei Navigation zu Submenüs
-**Ursache:** Doppeltes Routing - App.tsx definiert Routes UND VertriebspartnerPage.tsx definiert nested Routes
-**Lösung:** VertriebspartnerPage.tsx muss analog zu VerkaufPage.tsx mit `path="vertriebspartner/*"` in App.tsx konfiguriert werden
-
-### FEHLER #2: tile_catalog Inkonsistenz (MITTEL)
-**Problem:** tile_catalog hat "Auswahl" und "Netzwerk", Code hat "Pipeline"
-**Ursache:** tile_catalog nicht synchronisiert mit Plan
-**Lösung:** tile_catalog UPDATE auf: Katalog, Beratung, Pipeline
+| Spalte | Quelle |
+|--------|--------|
+| Code | properties.code |
+| Adresse | properties.address, city |
+| Wohnung | units.unit_number |
+| m² | units.area_sqm |
+| Mieter | contacts.name via leases |
+| Miete | units.current_monthly_rent |
 
 ---
 
-## 7. EMPFOHLENE PRÜFUNGEN VOR MANUELLER ABNAHME
+## Phase 4: ObjekteTab (Verkauf) Unit-Query
 
-### Funktionale Tests
+### 4.1 Datei
+`src/pages/portal/verkauf/ObjekteTab.tsx`
 
-| # | Testfall | Priorität |
-|---|----------|-----------|
-| T1 | MOD-06: Objekt ohne Listing anklicken → Exposé erstellt sich | HOCH |
-| T2 | MOD-06: Exposé freigeben mit SALES_MANDATE | HOCH |
-| T3 | MOD-06: Partner-Freigabe mit Doppel-Consent | HOCH |
-| T4 | MOD-06: Kaufy-Toggle erst nach Partner-Freigabe aktiv | HOCH |
-| T5 | MOD-09: Objektkatalog zeigt Partner-freigegebene Listings | HOCH |
-| T6 | Zone 3: Kaufy/immobilien zeigt nur Kaufy-freigegebene | MITTEL |
-| T7 | MOD-06: Vorgänge zeigt Reservierungen | MITTEL |
-| T8 | MOD-06: Reporting zeigt Views | NIEDRIG |
+### 4.2 Änderungen
+Query auf `units` umstellen (identisch zu PortfolioTab)
 
-### Datenfluss-Tests
+### 4.3 Spalten
 
-| # | Testfall | Priorität |
-|---|----------|-----------|
-| D1 | Listing status='active' erscheint NICHT in Zone 3 ohne Kaufy-Pub | HOCH |
-| D2 | Listing mit Partner-Freigabe erscheint in MOD-09 | HOCH |
-| D3 | Status "reserved" spiegelt sich in allen Kontexten | MITTEL |
-
-### Consent-Tests
-
-| # | Testfall | Priorität |
-|---|----------|-----------|
-| C1 | SALES_MANDATE wird gespeichert | HOCH |
-| C2 | PARTNER_RELEASE wird gespeichert | HOCH |
-| C3 | SYSTEM_SUCCESS_FEE_2000 wird gespeichert | HOCH |
+| Spalte | Quelle | Editierbar? |
+|--------|--------|-------------|
+| Code | properties.code | Nein (aus MOD-04) |
+| Adresse | properties.address | Nein (aus MOD-04) |
+| Miete | units.current_monthly_rent | Nein (aus MOD-04) |
+| Preis | listings.asking_price | Nur in Exposé |
+| Status | listings.status | Via Consent |
+| Kanäle | listing_publications | Via Toggles |
 
 ---
 
-## 8. ZUSAMMENFASSUNG
+## Phase 5: ExposeDetail (Verkauf) anpassen
 
-### Positiv (Plan-konform implementiert)
-- ✅ MOD-06 Verkauf: 4-Tab-Struktur korrekt
-- ✅ "So funktioniert's" vollständig mit Workflow-Erklärung
-- ✅ "Objekte" ohne Toggles, Properties LEFT JOIN Listings
-- ✅ Exposé-Editor mit allen Consent-Gates
-- ✅ Partner-Freigabe-Dialog mit 2.000 EUR Hinweis
-- ✅ Kaufy-Toggle erst nach Partner-Freigabe
-- ✅ Zone 3 Kaufy Query auf listing_publications
+### 5.1 Datei
+`src/pages/portal/verkauf/ExposeDetail.tsx`
 
-### Negativ (Korrektur erforderlich)
-- ❌ MOD-09: Routing-Konflikt verursacht 404
-- ⚠️ tile_catalog MOD-09: Menünamen nicht synchron
-- ❓ listing_views Tabelle: Existenz prüfen
-- ❓ user_consents: Tatsächliche Speicherung verifizieren
+### 5.2 Änderungen
+
+1. Route-Parameter: `:propertyId` → `:unitId`
+2. Objektdaten-Karte: READ-ONLY (aus MOD-04)
+3. Editierbare Felder NUR:
+   - Titel (für Inserat)
+   - Beschreibung (für Inserat)
+   - Kaufpreis
+   - Provision
+4. Hinweistext: "Stammdaten bearbeiten Sie im Immobilien-Exposé"
+5. Grafiken (Wertentwicklung, Tilgung) → aus MOD-04 Finanzierungsdaten
 
 ---
 
-## 9. EMPFEHLUNG
+## Phase 6: VorgaengeTab PropertyTable
 
-**Vor manueller Freigabe müssen folgende Korrekturen erfolgen:**
+### 6.1 Datei
+`src/pages/portal/verkauf/VorgaengeTab.tsx`
 
-1. **App.tsx:** Route ändern zu `path="vertriebspartner/*"` (analog zu verkauf/*)
-2. **tile_catalog UPDATE:** MOD-09 Sub-Tiles auf Katalog, Beratung, Pipeline
-3. **Listing_views Tabelle:** Existenz verifizieren oder erstellen
+### 6.2 Änderungen
+Von EmptyState zu PropertyTable-Pattern
 
-Nach diesen Korrekturen empfehle ich die manuelle Funktionsprüfung gemäß Testmatrix (Abschnitt 7).
+### 6.3 Reservierungen-Tabelle (immer sichtbar)
+
+| Spalte | Bei 0 Daten |
+|--------|-------------|
+| Objekt | – |
+| Käufer | – |
+| Preis | – |
+| Status | – |
+| Notartermin | – |
+| Bestätigung | – |
+
+### 6.4 Transaktionen-Tabelle (immer sichtbar)
+
+| Spalte | Bei 0 Daten |
+|--------|-------------|
+| Objekt | – |
+| Käufer | – |
+| Kaufpreis | – |
+| Provision | – |
+| Status | – |
+| Termine | – |
+
+---
+
+## Phase 7: ReportingTab PropertyTable
+
+### 7.1 Datei
+`src/pages/portal/verkauf/ReportingTab.tsx`
+
+### 7.2 Performance-Tabelle (immer sichtbar)
+
+| Spalte | Bei 0 Daten |
+|--------|-------------|
+| Objekt | – |
+| Preis | – |
+| Status | – |
+| Kanäle | – |
+| Views | 0 |
+| Anfragen | 0 |
+
+---
+
+## Phase 8: MOD-09 KatalogTab
+
+### 8.1 Datei
+`src/pages/portal/vertriebspartner/KatalogTab.tsx`
+
+### 8.2 Änderungen
+- Query auf Units mit partner_network = active
+- PropertyTable-Pattern
+- "Deal starten" Button
+
+---
+
+## Phase 9: MOD-09 PipelineTab
+
+### 9.1 Datei
+`src/pages/portal/vertriebspartner/PipelineTab.tsx`
+
+### 9.2 Pipeline-Tabelle (immer sichtbar)
+
+| Spalte | Bei 0 Daten |
+|--------|-------------|
+| Objekt | – |
+| Kunde | – |
+| Status | – |
+| Preis | – |
+| Provision | – |
+| Nächster Schritt | – |
+
+---
+
+## Phase 10: Dokumentation
+
+### 10.1 Datei
+`DECISIONS.md`
+
+### 10.2 Neue ADRs
+
+- ADR-040: Scope-Trennung (MOD-06 Bestand, MOD-12 Projekte)
+- ADR-041: Unit-basierte Listings
+- ADR-042: Source of Truth MOD-04 Exposé
+- ADR-043: Modul-Nummerierung (MOD-11 Finanzierungsmanager, MOD-12 Projekte)
+
+---
+
+## Zusammenfassung
+
+| Phase | Datei/Bereich | Aufwand |
+|-------|---------------|---------|
+| 1 | Schema-Migration | 10 min |
+| 2 | TestDataManager | 45 min |
+| 3 | PortfolioTab | 25 min |
+| 4 | ObjekteTab (Verkauf) | 25 min |
+| 5 | ExposeDetail | 30 min |
+| 6 | VorgaengeTab | 25 min |
+| 7 | ReportingTab | 20 min |
+| 8 | MOD-09 KatalogTab | 25 min |
+| 9 | MOD-09 PipelineTab | 20 min |
+| 10 | DECISIONS.md | 10 min |
+
+**Gesamt: ~4 Stunden**
+
+---
+
+## Erwartetes Ergebnis
+
+Nach Implementierung:
+
+1. Excel-Import lädt 8 Properties mit Units in MOD-04
+2. MOD-04 Portfolio zeigt Unit-basierte Liste
+3. MOD-04 Exposé ist editierbar (Source of Truth)
+4. MOD-06 Objekte zeigt dieselben Units (READ-ONLY)
+5. MOD-06 Exposé zeigt Daten aus MOD-04, nur Verkaufsfelder editierbar
+6. Vorgänge/Reporting zeigen Tabellenstruktur mit Platzhaltern
+7. MOD-09 Katalog/Pipeline bereit für Partner-Flow
