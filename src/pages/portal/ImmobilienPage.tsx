@@ -83,7 +83,7 @@ const ImmobilienPage = () => {
             )}
           </div>
           
-          <div className="p-6 pt-4">
+          <div className="p-6 pt-4 w-full overflow-x-auto">
             {subPage}
           </div>
         </div>
