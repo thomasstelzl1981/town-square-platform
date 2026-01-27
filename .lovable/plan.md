@@ -1,464 +1,451 @@
 
-# KORRIGIERTER PLAN: MOD-06 + Zone 3 Kaufy + Armstrong
 
-**Version:** v3.0.0  
-**Datum:** 2026-01-27  
-**Status:** KORRIGIERT — Architektur validiert
+# MOD-06 Verkauf - Finaler Implementierungsplan (v2.0)
+
+## Modulzweck
+
+**MOD-06 Verkauf** ist das Bestandsverkaufs- und Managementmodul für Eigentümer, die **einzelne Immobilien aus ihrem bestehenden Portfolio** verkaufen möchten.
+
+### Geeignet für:
+- Einzelne Bestandsimmobilien (Einfamilienhäuser, Mehrfamilienhäuser, Eigentumswohnungen)
+- Privatverkäufer mit wenigen Objekten
+- Vermieter, die Teile ihres Portfolios veräußern möchten
+
+### NICHT geeignet für:
+- Aufteilerobjekte (große MFH in ETW-Einzelverkauf)
+- Neubauprojekte und Bauträgerobjekte
+- Projektentwicklungen mit Massenvertrieb
 
 ---
 
-## Teil 1: Architektur-Korrektur
+## WICHTIG: Kaufy und Partner-Freigabe Zusammenhang
 
-### 1.1 Fehlerhafte Annahme (vorheriger Plan)
+**Kaufy ist KEINE unabhängige Option.** Die Kaufy-Website dient als Lead-Generierungskanal für unsere Vertriebspartner.
 
-```text
-❌ FALSCH: Zone 3 (Website) ←→ MOD-09 (Vertriebspartner) — direkte Verbindung
-❌ FALSCH: Armstrong in Zone 3 ruft MOD-09 Beratung auf
+**Logik:**
+- Kaufy-Leads gehen an Vertriebspartner
+- Ohne Partner-Freigabe kann Kaufy NICHT aktiviert werden
+- Das Inserat auf Kaufy ist kostenlos, aber die erfolgreiche Vermittlung kostet den VERKÄUFER die Systemgebühr (2.000 EUR)
+
+**Reihenfolge:**
+1. Exposé freigeben (SALES_MANDATE)
+2. Partner-Freigabe erteilen (PARTNER_RELEASE + SYSTEM_SUCCESS_FEE_2000)
+3. ERST DANN kann Kaufy-Toggle aktiviert werden
+
+---
+
+## Die 4 Menüpunkte
+
+### 1. So funktioniert's
+Einstiegsseite mit visuellen Flowcharts. Der Kunde sieht Schritt für Schritt, was passiert, wenn er was macht.
+
+### 2. Objekte
+Spiegelung aller Properties aus MOD-04 mit eingeschränkten, verkaufsrelevanten Daten. Klick öffnet Exposé-Editor.
+
+### 3. Reporting
+Performance-Daten: Views, Klicks, Anfragen pro Objekt und Kanal.
+
+### 4. Vorgänge
+Reservierungen, Notarbeauftragung, Notartermin - begleitet von den nötigen Vereinbarungen.
+
+---
+
+## Korrigierter Provisions- und Gebühren-Flow
+
+```
+EINZIGER VERKAUFSWEG: Über Partner-Netzwerk (+ optional Kaufy)
+==============================================================
+
+  Verkäufer                         System                    Partner
+      │                                │                         │
+      │ Exposé freigeben               │                         │
+      │ (SALES_MANDATE)                │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │ Partner-Freigabe erteilen      │                         │
+      │ - Provision: 3-15% netto       │                         │
+      │ - PARTNER_RELEASE              │                         │
+      │ - SYSTEM_SUCCESS_FEE_2000      │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │                                │  Objekt sichtbar in     │
+      │                                │  MOD-09 Objektkatalog   │
+      │                                ├────────────────────────>│
+      │                                │                         │
+      │ Optional: Kaufy aktivieren     │                         │
+      │ (NUR nach Partner-Freigabe!)   │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │                                │  Objekt auf Kaufy.app   │
+      │                                │  sichtbar               │
+      │                                │                         │
+      │                                │                         │
+      │                        LEAD ENTSTEHT                     │
+      │                        (Kaufy oder direkt)               │
+      │                                │                         │
+      │                                │  Lead geht an Partner   │
+      │                                ├────────────────────────>│
+      │                                │                         │
+      │                                │                         │
+      │<─────────── Reservierungsanfrage ────────────────────────┤
+      │                                │                         │
+      │ [Annehmen]                     │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │ [Notarauftrag]                 │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │                       ┌────────┴────────┐                │
+      │                       │ VERKÄUFER ZAHLT │                │
+      │                       │    100 EUR      │                │
+      │                       └─────────────────┘                │
+      │                                │                         │
+      │ [Notartermin + BNL]            │                         │
+      ├───────────────────────────────>│                         │
+      │                                │                         │
+      │                       ┌────────┴────────┐                │
+      │                       │ VERKÄUFER ZAHLT │                │
+      │                       │   1.900 EUR     │                │
+      │                       └─────────────────┘                │
+      │                                │                         │
+      │                                │                         │
+      │                       ┌────────┴────────┐       ┌────────┴────────┐
+      │                       │ SYSTEMGEBÜHR    │       │ PROVISION       │
+      │                       │ = 2.000 EUR     │       │ = X% vom KP     │
+      │                       │ (vom Verkäufer) │       │ (vom Käufer)    │
+      │                       └─────────────────┘       └─────────────────┘
+
+
+POOL-LEAD AUS ZONE 1 (Lead wird Partner zugewiesen)
+===================================================
+
+  Zusätzlich zur Systemgebühr (2.000 EUR vom Verkäufer):
+
+  PROVISION = X% vom Kaufpreis
+       │
+       ├──────> 1/3 an Platform (SoaT)
+       │
+       └──────> 2/3 an Partner
 ```
 
-### 1.2 Korrekte Architektur
+---
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         KORREKTE ARCHITEKTUR                                    │
-└─────────────────────────────────────────────────────────────────────────────────┘
+## Korrigierter Exposé-Workflow
 
-                              ZONE 1 (ADMIN / GOVERNANCE)
-                    ┌─────────────────────────────────────────┐
-                    │                                         │
-                    │   ┌─────────────────────────────────┐   │
-                    │   │     INVESTMENT ENGINE           │   │
-                    │   │   (sot-investment-engine)       │   │
-                    │   │                                 │   │
-                    │   │   • Master-Vorlagen (Zinsen)    │   │
-                    │   │   • Steuer-Engine (BMF PAP)     │   │
-                    │   │   • AfA-Modelle                 │   │
-                    │   │   • Berechnungslogik            │   │
-                    │   └─────────────────────────────────┘   │
-                    │                  │                      │
-                    │   ┌─────────────────────────────────┐   │
-                    │   │     ARMSTRONG KI-SERVICE        │   │
-                    │   │   (sot-armstrong-advisor)       │   │
-                    │   │                                 │   │
-                    │   │   • Knowledge Base              │   │
-                    │   │   • Investment-Erklärungen      │   │
-                    │   │   • Tool-Calling (Engine)       │   │
-                    │   └─────────────────────────────────┘   │
-                    │                  │                      │
-                    │   ┌─────────────────────────────────┐   │
-                    │   │     INTEGRATION REGISTRY        │   │
-                    │   │   (integration_registry)        │   │
-                    │   │                                 │   │
-                    │   │   • LOVABLE_AI (active)         │   │
-                    │   │   • INVESTMENT_ENGINE (neu)     │   │
-                    │   │   • ARMSTRONG_ADVISOR (neu)     │   │
-                    │   └─────────────────────────────────┘   │
-                    │                                         │
-                    └─────────────────────────────────────────┘
-                                       │
-           ┌───────────────────────────┼───────────────────────────┐
-           │                           │                           │
-           ▼                           ▼                           ▼
-    ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-    │    ZONE 3       │      │    ZONE 2       │      │    ZONE 2       │
-    │  KAUFY WEBSITE  │      │    MOD-08       │      │    MOD-09       │
-    │                 │      │  INVESTMENTS    │      │ VERTRIEBSPARTNER│
-    │  • Suche        │      │                 │      │                 │
-    │  • Exposé       │      │  • Suche        │      │  • Beratung     │
-    │  • Armstrong    │      │  • Favoriten    │      │  • Objektkatalog│
-    │                 │      │  • Simulation   │      │  • Simulation   │
-    └────────┬────────┘      └────────┬────────┘      └────────┬────────┘
-             │                        │                        │
-             │                        │                        │
-             └────────────────────────┴────────────────────────┘
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     EXPOSÉ-WORKFLOW (KORRIGIERT)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+     ┌─────────────┐
+     │  SCHRITT 1  │
+     │   Objekt    │
+     │   wählen    │
+     └──────┬──────┘
+            │
+            ▼
+     ┌─────────────┐     Armstrong generiert
+     │  SCHRITT 2  │     automatisch Beschreibung
+     │   Exposé    │
+     │  erstellen  │
+     └──────┬──────┘
+            │
+            ▼
+     ┌─────────────┐     Pflichtfelder:
+     │  SCHRITT 3  │     • Titel, Preis, Provision
+     │   Exposé    │     • Min. 1 Bild
+     │  freigeben  │     • Energieausweis
+     │             │
+     │ SALES_MANDATE     (Consent erforderlich)
+     └──────┬──────┘
+            │
+            ▼
+     ┌─────────────────────────────────────────────────────┐
+     │  SCHRITT 4: PARTNER-FREIGABE                        │
+     │  (PFLICHT für jede Veröffentlichung!)               │
+     │                                                     │
+     │  • Provision festlegen: 3-15% netto                 │
+     │  • PARTNER_RELEASE Consent                          │
+     │  • SYSTEM_SUCCESS_FEE_2000 Consent                  │
+     │    (2.000 EUR bei erfolgreicher Vermittlung)        │
+     │                                                     │
+     │  Kosten für VERKÄUFER bei Erfolg:                   │
+     │  • 100 EUR bei Notarauftrag                         │
+     │  • 1.900 EUR nach Notartermin (BNL)                 │
+     └──────┬──────────────────────────────────────────────┘
+            │
+            │ (Erst nach Partner-Freigabe verfügbar)
+            │
+            ▼
+     ┌─────────────────────────────────────────────────────┐
+     │  SCHRITT 5: VERÖFFENTLICHUNGSKANÄLE                 │
+     │                                                     │
+     │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+     │  │   Partner   │  │    Kaufy    │  │   Scout24   │  │
+     │  │  Netzwerk   │  │   Website   │  │  (Phase 2)  │  │
+     │  │             │  │             │  │             │  │
+     │  │  [Aktiv]    │  │  [Toggle]   │  │ [Demnächst] │  │
+     │  │  (autom.)   │  │  (optional) │  │             │  │
+     │  └─────────────┘  └─────────────┘  └─────────────┘  │
+     │                                                     │
+     │  Partner-Netzwerk: Automatisch aktiv nach Freigabe  │
+     │  Kaufy: Optional zuschaltbar (Lead-Generierung)     │
+     │  Scout24: Kostenpflichtig, Phase 2                  │
+     └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Modul-Abhängigkeiten (Übersicht)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              ZONE 1 (ADMIN)                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Agreements          Master-Templates       Lead Pool        Tile Catalog   │
+│  (Consents)          (Zinsen, AfA)          (Leads)          (Pläne)        │
+│       │                    │                    │                │          │
+│  SALES_MANDATE             │                    │           Plan speichern  │
+│  PARTNER_RELEASE           │                    │                           │
+│  SYSTEM_SUCCESS_FEE_2000   │                    │                           │
+└───────┼────────────────────┼────────────────────┼───────────────────────────┘
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              ZONE 2 (PORTAL)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  MOD-01 Stammdaten ◄──────► MOD-02 KI-Office                                │
+│  (Kontakte)                 (Kontakte, Armstrong)                           │
+│       │                            │                                         │
+│       │                            │ Beschreibung generieren                 │
+│       │                            ▼                                         │
+│  MOD-04 Immobilien ──────► MOD-03 DMS                                       │
+│  (Properties)               (Unterlagen, Bilder)                            │
+│       │                            │                                         │
+│       │ Spiegelung                 │                                         │
+│       ▼                            ▼                                         │
+│  ╔═══════════════════════════════════════════════════════════════════════╗  │
+│  ║                         MOD-06 VERKAUF                                 ║  │
+│  ║                      (SOURCE OF TRUTH)                                 ║  │
+│  ╠═══════════════════════════════════════════════════════════════════════╣  │
+│  ║  So funktioniert's │ Objekte │ Reporting │ Vorgänge                   ║  │
+│  ║                    │         │           │                            ║  │
+│  ║                    │    ▼    │           │                            ║  │
+│  ║                    │ EXPOSÉ  │           │                            ║  │
+│  ║                    │    │    │           │                            ║  │
+│  ║                    │    ▼    │           │                            ║  │
+│  ║             Partner-Freigabe (PFLICHT)                                ║  │
+│  ║                    │    │                                             ║  │
+│  ║          ┌─────────┴────┴─────────┐                                   ║  │
+│  ║          ▼                        ▼                                   ║  │
+│  ║    Partner-Netzwerk         Kaufy-Toggle                              ║  │
+│  ║    (automatisch)            (optional)                                ║  │
+│  ╚══════════┬═══════════════════════┬════════════════════════════════════╝  │
+│             │                       │                                        │
+│             ▼                       │                                        │
+│       MOD-09 Vertriebspartner       │                                        │
+│       (Objektkatalog)               │                                        │
+│             │                       │                                        │
+│             ▼                       │                                        │
+│       MOD-10 Leads                  │                                        │
+│       (Pipeline)                    │                                        │
+│                                     │                                        │
+└─────────────────────────────────────┼────────────────────────────────────────┘
                                       │
                                       ▼
-                    ┌─────────────────────────────────────────┐
-                    │              MOD-06 VERKAUF             │
-                    │                                         │
-                    │   listings (sale_enabled=true)          │
-                    │   listing_publications (kaufy, partner) │
-                    │   v_public_listings (Zone 3 View)       │
-                    └─────────────────────────────────────────┘
-                                      │
-                                      ▼
-                    ┌─────────────────────────────────────────┐
-                    │              MOD-04 IMMOBILIEN          │
-                    │                                         │
-                    │   properties (Source of Truth)          │
-                    │   units, exposé, DMS                    │
-                    └─────────────────────────────────────────┘
-```
-
-### 1.3 Datenfluss-Regeln (FROZEN)
-
-| Von | Nach | Verbindung | Beschreibung |
-|-----|------|------------|--------------|
-| **Zone 1** | Zone 2 + Zone 3 | Investment Engine | Berechnungsservice (Shared) |
-| **Zone 1** | Zone 2 + Zone 3 | Armstrong KI | Beratungsservice (Shared) |
-| **Zone 1** | Zone 2 + Zone 3 | Master-Vorlagen | Zinsen, AfA, Steuer-Config |
-| MOD-04 | MOD-06 | property_id FK | Properties als Grundlage für Listings |
-| MOD-06 | Zone 3 | v_public_listings | Published Listings (kaufy channel) |
-| MOD-06 | MOD-09 | partner_visible | Partner-sichtbare Listings |
-| Zone 3 | Zone 1 | Lead Capture | Leads → Zone 1 Pool → MOD-10 |
-
-### 1.4 Was Zone 3 NICHT tut
-
-| ❌ Verboten | ✅ Stattdessen |
-|------------|----------------|
-| Direkte Verbindung zu MOD-09 | Nutzt Zone 1 Investment Engine |
-| Armstrong ruft MOD-09 auf | Armstrong ist Zone 1 Service |
-| Schreibt in DB | Liest v_public_listings, Lead-Capture via Edge Function |
-| Eigene Berechnungslogik | Nutzt sot-investment-engine |
-
----
-
-## Teil 2: Zone 1 Erweiterungen
-
-### 2.1 Integration Registry — Neue Einträge
-
-Die folgenden Services werden in der `integration_registry` registriert:
-
-| Code | Type | Scope | Purpose | Consumers |
-|------|------|-------|---------|-----------|
-| `INVESTMENT_ENGINE` | edge_function | platform | ROI/Steuer-Berechnungen | Zone 2 + Zone 3 |
-| `ARMSTRONG_ADVISOR` | edge_function | platform | KI-Immobilienberatung | Zone 2 + Zone 3 |
-
-### 2.2 Neue Tabelle: `knowledge_base`
-
-Zentrale Wissensbibliothek für Armstrong in Zone 1:
-
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| id | uuid PK | — |
-| category | text | investment, tax, financing, legal, faq |
-| title | text | "Was ist AfA?" |
-| content | text | Volltext-Erklärung |
-| keywords | text[] | Für Semantic Search |
-| source | text | "§7 EStG", "Kaufy-FAQ" |
-| is_public | boolean | Für Zone 3 verfügbar |
-| created_at | timestamptz | — |
-| updated_at | timestamptz | — |
-
-### 2.3 Master-Vorlagen Erweiterung
-
-Die existierende `/admin/master-templates` Seite wird erweitert:
-
-**Neuer Tab: "Armstrong Knowledge"**
-- Wissensbasis-Pflege
-- Kategorie-Management
-- Content-Editor
-
----
-
-## Teil 3: Armstrong als Zone 1 Service
-
-### 3.1 Edge Function: sot-armstrong-advisor
-
-**Datei:** `supabase/functions/sot-armstrong-advisor/index.ts`
-
-**Architektur-Position:** Zone 1 Service (Platform-weit)
-
-| Action | Input | Output | Consumers |
-|--------|-------|--------|-----------|
-| chat | messages[], context | streaming response | Zone 3 + Zone 2 |
-| explain | term, category | explanation | Zone 3 + Zone 2 |
-| simulate | listing_data, user_params | calculation (via Engine) | Zone 3 + Zone 2 |
-
-### 3.2 System-Prompt (Shared für alle Consumers)
-
-```text
-Du bist Armstrong, der KI-Immobilienberater von Kaufy.
-
-DEINE POSITION:
-- Du bist ein zentraler Service der Plattform (Zone 1)
-- Du wirst sowohl von der Website (Zone 3) als auch vom Portal (Zone 2) genutzt
-- Deine Berechnungen kommen aus der Investment Engine (sot-investment-engine)
-- Dein Wissen kommt aus der knowledge_base
-
-DEINE ROLLE:
-- Du berätst zu Kapitalanlage-Immobilien
-- Du erklärst komplexe Finanzkonzepte verständlich
-- Du nutzt die Investment-Engine für präzise Berechnungen
-- Du gibst KEINE Kaufempfehlungen
-
-DEIN KONTEXT:
-- Wenn du von Zone 3 (Website) gerufen wirst: Fokus auf öffentliche Listings
-- Wenn du von Zone 2 (Portal) gerufen wirst: Zugang zu mehr Daten
-- Du hast immer Zugriff auf die gleiche Berechnungslogik
-```
-
-### 3.3 Tool-Calling
-
-Armstrong ruft die Investment Engine via Tool-Call auf:
-
-```typescript
-const tools = [
-  {
-    type: "function",
-    function: {
-      name: "calculate_investment",
-      description: "Berechnet Investment-Kennzahlen via sot-investment-engine",
-      parameters: {
-        type: "object",
-        properties: {
-          purchasePrice: { type: "number" },
-          monthlyRent: { type: "number" },
-          equity: { type: "number" },
-          taxableIncome: { type: "number" },
-          repaymentRate: { type: "number" },
-          fixedInterestPeriod: { type: "number" }
-        },
-        required: ["purchasePrice", "monthlyRent", "equity"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "search_knowledge",
-      description: "Durchsucht die Zone 1 Knowledge Base",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string" },
-          category: { type: "string", enum: ["investment", "tax", "financing", "legal", "faq"] }
-        },
-        required: ["query"]
-      }
-    }
-  }
-];
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              ZONE 3 (WEBSITE)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                            KAUFY.APP                                         │
+│                                                                              │
+│  /immobilien ──────► /expose/:id ──────► Lead-Anfrage ──────► Zone 1 Pool   │
+│  (Liste)             (Detail)            (API)                ──► Partner    │
+│                                                                              │
+│  Kaufy dient der LEAD-GENERIERUNG für Vertriebspartner                      │
+│  Inserat kostenlos, Vermittlung kostenpflichtig (Systemgebühr)              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Teil 4: Zone 3 Kaufy Website
+## Virtueller Test (Korrigiert)
 
-### 4.1 Armstrong Sidebar (Consumer, nicht Owner)
+### Test-Szenario: Verkäufer Herr Müller verkauft MFH
 
-Die Armstrong Sidebar in Zone 3 ist ein **Consumer** des Zone 1 Armstrong-Service:
+**SCHRITT 1-3:** Wie bisher (Objekt wählen, Exposé erstellen, Pflichtfelder ausfüllen)
 
-**Komponente:** `src/components/zone3/kaufy/ArmstrongSidebar.tsx`
+**SCHRITT 4: Exposé freigeben**
+- Herr Müller klickt "Freigeben"
+- SALES_MANDATE Consent wird angezeigt und bestätigt
+- Status: 'active'
 
-| Aspekt | Spezifikation |
-|--------|---------------|
-| Position | Fixed right, 320px |
-| API-Call | POST sot-armstrong-advisor (Zone 1) |
-| Kontext | Aktuelles Listing (wenn auf Exposé) |
-| Read-Only | Keine DB-Writes |
+**SCHRITT 5: Veröffentlichungs-Optionen erscheinen**
 
-### 4.2 Exposé-Seite (Read-Only + Engine-Calls)
+```
+VERÖFFENTLICHUNG
+────────────────────────────────────────────────────
 
-**Route:** `/kaufy/immobilien/:public_id`
+[ ] Partner-Freigabe erteilen
+    (Pflicht für alle Veröffentlichungen)
+    [Partner-Freigabe starten]
 
-**Datenquellen:**
-- Listing-Daten: `v_public_listings` (Zone 3 View)
-- Berechnungen: `sot-investment-engine` (Zone 1)
-- Armstrong: `sot-armstrong-advisor` (Zone 1)
+Kaufy-Website:
+[ ] Auf Kaufy veröffentlichen
+    ⚠️ Erst nach Partner-Freigabe verfügbar
 
-**Layout:**
-```text
-┌────────────────────────────────────────────────────────────────┬──────────────┐
-│                      EXPOSÉ CONTENT                            │  ARMSTRONG   │
-│                                                                │  SIDEBAR     │
-│  ┌──────────────────────────────────────────────────────────┐  │              │
-│  │  Bildergalerie                                           │  │  (ruft      │
-│  └──────────────────────────────────────────────────────────┘  │   Zone 1    │
-│                                                                │   Service)  │
-│  ┌───────────────────────┐ ┌────────────────────────────────┐  │              │
-│  │  OBJEKTDATEN          │ │  INVESTMENT-RECHNER            │  │              │
-│  │  (aus v_public_       │ │  (ruft sot-investment-engine)  │  │              │
-│  │   listings)           │ │                                │  │              │
-│  └───────────────────────┘ │  Eigenkapital: [____€]         │  │              │
-│                            │  Tilgung: [___%]               │  │              │
-│  ┌────────────────────────────────────────────────────────┐  │  │              │
-│  │  WERTENTWICKLUNG (40 Jahre)                            │  │  │              │
-│  │  (berechnet via Zone 1 Engine)                         │  │  │              │
-│  └────────────────────────────────────────────────────────┘  │  │              │
-│                                                                │              │
-│  ┌────────────────────────────────────────────────────────┐  │  │              │
-│  │  EINNAHMEN-AUSGABEN-RECHNUNG                           │  │  │              │
-│  │  (berechnet via Zone 1 Engine)                         │  │  │              │
-│  └────────────────────────────────────────────────────────┘  │  │              │
-└────────────────────────────────────────────────────────────────┴──────────────┘
+ImmobilienScout24:
+[Demnächst verfügbar]
+
+────────────────────────────────────────────────────
 ```
 
-### 4.3 Objektdaten-Herkunft
+**Kaufy-Toggle ist DEAKTIVIERT** bis Partner-Freigabe erteilt wurde.
 
-| Zone 3 (Website) | Quelle | Zone 2 (MOD-06) |
-|------------------|--------|-----------------|
-| v_public_listings | ← | listings (channel=kaufy, published) |
-| Weniger Felder | | Alle Felder |
-| Anonymisiert | | Tenant-gebunden |
+**SCHRITT 6: Herr Müller klickt "Partner-Freigabe starten"**
 
-### 4.4 MOD-06 Exposé vs. Zone 3 Exposé
+```
+PARTNER-NETZWERK FREIGABE
+─────────────────────────────────────────────────────
 
-| Aspekt | MOD-06 (Eigentümer) | Zone 3 (Öffentlich) |
-|--------|---------------------|---------------------|
-| **Datenumfang** | Vollständig (31 Felder) | Reduziert (12 Felder) |
-| **Unterlagen** | Alle DMS-Dokumente | Nur öffentliche Exposé-PDFs |
-| **Bearbeitung** | CRUD | Read-Only |
-| **Armstrong-Kontext** | Tenant-Daten | Nur public_id |
-| **Berechnungsquelle** | Zone 1 Engine | Zone 1 Engine (gleich!) |
+Ihr Objekt wird für unsere verifizierten Vertriebspartner
+sichtbar. Leads von der Kaufy-Website gehen ebenfalls
+an unsere Partner.
 
----
+PROVISION FÜR PARTNER
+Partner-Provision: [====*====] 7.0% netto
+(wird bei erfolgreichem Verkauf vom Käufer gezahlt)
 
-## Teil 5: Zone 2 MOD-09 Beratung (Korrektur)
+IHRE KOSTEN BEI ERFOLGREICHER VERMITTLUNG
+─────────────────────────────────────────────────────
+Bei Verkauf über unser Netzwerk zahlen SIE als Verkäufer:
 
-### 5.1 MOD-09 Beratung nutzt Zone 1 Services
+• 100 EUR bei Beauftragung des Kaufvertragsentwurfs
+• 1.900 EUR nach Notartermin (bei BNL-Eingang)
+──────────────────────────────────────────────────────
+Gesamt: 2.000 EUR erfolgsabhängig
 
-MOD-09 `/portal/vertriebspartner/beratung` ist **NICHT** die Source für Berechnungen, sondern ein **Consumer** der Zone 1 Services:
+ZUSTIMMUNGEN
+─────────────────────────────────────────────────────
+[x] Ich gebe das Objekt für das Partner-Netzwerk frei
+    und akzeptiere die Provisionsvereinbarung
+    (PARTNER_RELEASE)
 
-| Service | Aufrufer | Provider |
-|---------|----------|----------|
-| Investment Engine | MOD-09 Beratung | Zone 1 sot-investment-engine |
-| Armstrong Chat | MOD-09 (optional) | Zone 1 sot-armstrong-advisor |
-| Master-Vorlagen | Alle Berechnungen | Zone 1 master_templates |
+[x] Ich akzeptiere die Systemgebühr von 2.000 EUR
+    bei erfolgreichem Verkauf über das Netzwerk
+    (SYSTEM_SUCCESS_FEE_2000)
 
-### 5.2 MOD-09 Objektkatalog
-
-Der Objektkatalog in MOD-09 zeigt Listings aus MOD-06 mit `partner_visible=true`:
-
-```text
-MOD-06 listings
-  │
-  ├── partner_visible = true ──────► MOD-09 Objektkatalog
-  │
-  └── publications.kaufy = published ──► Zone 3 Kaufy Website
+[Abbrechen]            [Partner-Freigabe aktivieren]
 ```
 
-**Keine direkte Verbindung zwischen MOD-09 und Zone 3!**
+**Nach Bestätigung:**
+- `user_consents` INSERT (PARTNER_RELEASE)
+- `user_consents` INSERT (SYSTEM_SUCCESS_FEE_2000)
+- `listing_partner_terms` INSERT
+- `listing_publications` INSERT (channel='partner_network')
+- Objekt erscheint in MOD-09 Objektkatalog
+- **Kaufy-Toggle wird AKTIVIERBAR**
 
----
+**SCHRITT 7: Herr Müller aktiviert optional Kaufy**
 
-## Teil 6: Implementierungs-Reihenfolge (Korrigiert)
+```
+VERÖFFENTLICHUNG
+────────────────────────────────────────────────────
 
-### Phase 1: Zone 1 Services (Fundament)
+[x] Partner-Freigabe erteilt ✓
+    Provision: 7.0% | Aktiv seit 15.01.2026
 
-**1.1 Knowledge Base Tabelle**
-```sql
-CREATE TABLE knowledge_base (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  category text NOT NULL,
-  title text NOT NULL,
-  content text NOT NULL,
-  keywords text[] DEFAULT '{}',
-  source text,
-  is_public boolean DEFAULT true,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+Kaufy-Website:
+[x] Auf Kaufy veröffentlichen
+    (Lead-Generierung für Vertriebspartner)
+    Aktiv seit 15.01.2026
+
+ImmobilienScout24:
+[Demnächst verfügbar]
 ```
 
-**1.2 Seed Data (30-50 Einträge)**
-- Investment: Rendite, Cashflow, Netto-Belastung
-- Tax: AfA, Werbungskosten, Steuerersparnis
-- Financing: Zinsbindung, Tilgung, LTV
-- FAQ: Häufige Fragen zu Kapitalanlagen
-
-**1.3 sot-armstrong-advisor Edge Function**
-- Chat Action mit Streaming
-- explain Action
-- simulate Action (ruft sot-investment-engine)
-- Knowledge Base Query
-
-**1.4 Integration Registry Update**
-```sql
-INSERT INTO integration_registry (public_id, code, name, type, status, description) VALUES
-  ('INT-ARMSTRONG', 'ARMSTRONG_ADVISOR', 'Armstrong KI-Berater', 'edge_function', 'active', 'Zentraler KI-Immobilienberater für Zone 2 + Zone 3');
-```
-
-### Phase 2: Zone 3 Armstrong Integration
-
-**2.1 ArmstrongSidebar.tsx**
-- Ruft Zone 1 sot-armstrong-advisor auf
-- Kontext: aktuelles Listing (public_id)
-- Streaming-Chat
-
-**2.2 KaufyLayout.tsx Anpassung**
-- Sidebar-Integration (fixed right, 320px)
-- Mobile: Bottom-Sheet
-- Kontext-Provider für aktuelles Listing
-
-### Phase 3: Zone 3 Interaktives Exposé
-
-**3.1 Route: /kaufy/immobilien/:public_id**
-- Daten aus v_public_listings
-- Investment-Rechner (ruft Zone 1 Engine)
-- Wertentwicklungs-Chart
-- Einnahmen-Ausgaben-Tabelle
-
-**3.2 Interaktive Parameter**
-- Eigenkapital Slider
-- Tilgung Slider
-- Wertsteigerung Slider
-- Live-Neuberechnung via Zone 1 Engine
-
-### Phase 4: Zone 3 Website Redesign
-
-**4.1 KaufyHome.tsx**
-- Hero mit Investment-Suchkarte
-- Suchkarte ruft Zone 1 Engine auf
-- Property-Cards aus v_public_listings
-- Armstrong-Button für Sidebar
-
-**4.2 Navigation erweitern**
-- "Module" Tab hinzufügen
-- Marketing-Texte für alle 10 Module
-
-### Phase 5: Zone 2 MOD-06 Finalisierung
-
-**5.1 VerkaufPage Tabs**
-- ObjekteTab (bereits implementiert)
-- AktivitätenTab (bereits implementiert)
-- AnfragenTab (bereits implementiert)
-- VorgängeTab (bereits implementiert)
-
-**5.2 Publishing Wizard**
-- Kaufy Channel
-- Partner Network Channel
-- Consent Gates
+**Ergebnis:** Objekt ist jetzt auf Kaufy.app UND im Partner-Katalog sichtbar.
 
 ---
 
-## Teil 7: Akzeptanzkriterien (Korrigiert)
+## Implementierungsphasen (Komprimiert)
 
-| AC | Beschreibung | Zone |
-|----|--------------|------|
-| AC1 | knowledge_base Tabelle existiert mit 30+ Einträgen | Zone 1 |
-| AC2 | sot-armstrong-advisor deployed | Zone 1 |
-| AC3 | Armstrong ruft sot-investment-engine via Tool-Call auf | Zone 1 |
-| AC4 | Zone 3 Armstrong Sidebar ruft Zone 1 Service auf | Zone 3 |
-| AC5 | Zone 3 Exposé zeigt Daten aus v_public_listings | Zone 3 |
-| AC6 | Zone 3 Rechner ruft Zone 1 Engine auf | Zone 3 |
-| AC7 | MOD-09 Beratung ruft Zone 1 Engine auf (nicht eigene Logik) | Zone 2 |
-| AC8 | Keine direkte Verbindung Zone 3 ↔ MOD-09 | Architektur |
-| AC9 | Master-Vorlagen steuern alle Berechnungen | Zone 1 |
-| AC10 | Alle Berechnungen identisch (Zone 2 = Zone 3) | System |
+### Phase 1: Struktur & Navigation (1 Tag)
+- SubTabNav aus VerkaufPage.tsx entfernen
+- 4-Tab-Struktur implementieren: So funktioniert's, Objekte, Reporting, Vorgänge
+- Default-Redirect auf "So funktioniert's"
+- Sidebar-Routing anpassen
+
+### Phase 2: Exposé-Editor (3 Tage)
+- Tab "So funktioniert's" mit Flowcharts und Erklärungen
+- Tab "Objekte" mit Properties LEFT JOIN Listings (keine Toggles)
+- Route /portal/verkauf/expose/:propertyId
+- Auto-Create Listing mit Armstrong-Beschreibung
+- Pflichtfeld-Validierung
+- Freigabe mit SALES_MANDATE Consent
+- Partner-Freigabe-Dialog mit Doppel-Consent
+- Kaufy-Toggle (NUR nach Partner-Freigabe aktivierbar)
+- Scout24-Button (UI only, deaktiviert)
+
+### Phase 3: Datenfluss & Integration (1.5 Tage)
+- MOD-09: TabsList entfernen, Objektkatalog auf listing_publications
+- Zone 3 Kaufy: Query auf listing_publications mit channel='kaufy'
+- Status-Spiegelung (Reserviert) in allen Kontexten
+- listing_views Tabelle für Reporting
+
+### Phase 4: Vorgänge & Reporting (1.5 Tage)
+- Tab "Reporting" mit View-Statistiken
+- Tab "Vorgänge" mit Reservierungs-Workflow
+- Notarauftrag-Trigger (100 EUR)
+- BNL-Eintrag-Trigger (1.900 EUR)
+
+### Phase 5: Finaler Check & Plan-Speicherung (0.5 Tage)
+- Abgleich aller Komponenten mit diesem Plan
+- Virtuelle Durchläufe aller Szenarien
+- Plan als Dokument in Zone 1 Tile Catalog speichern
+- Dokumentation der Agreement-Templates
 
 ---
 
-## Teil 8: Governance-Bestätigung
+## Akzeptanzkriterien
 
-| Regel | Status |
-|-------|--------|
-| Zone 1 ist Source of Truth für Investment Engine | ✅ Bestätigt |
-| Zone 1 ist Source of Truth für Armstrong | ✅ Bestätigt |
-| Zone 3 ist Read-Only Consumer | ✅ Bestätigt |
-| Zone 2 Module nutzen Zone 1 Services | ✅ Bestätigt |
-| Keine direkte Verbindung Zone 3 ↔ MOD-09 | ✅ Korrigiert |
-| Master-Vorlagen steuern alle Berechnungen | ✅ Bestätigt |
+| ID | Kriterium |
+|----|-----------|
+| AC-01 | Tab "So funktioniert's" zeigt korrekten Workflow |
+| AC-02 | Default-Route ist /portal/verkauf/so-funktionierts |
+| AC-03 | Tab "Objekte" zeigt Properties LEFT JOIN Listings, KEINE Toggles |
+| AC-04 | Exposé-Freigabe erfordert SALES_MANDATE Consent |
+| AC-05 | Partner-Freigabe erfordert PARTNER_RELEASE + SYSTEM_FEE Consent |
+| AC-06 | Kaufy-Toggle ist DEAKTIVIERT bis Partner-Freigabe erteilt |
+| AC-07 | Partner-Freigabe-Dialog zeigt klar: VERKÄUFER zahlt 2.000 EUR |
+| AC-08 | Zone 3 Kaufy zeigt nur Kaufy-freigegebene Exposés |
+| AC-09 | MOD-09 zeigt nur Partner-freigegebene Exposés |
+| AC-10 | Status "Reserviert" wird überall gespiegelt |
+| AC-11 | Notarauftrag löst 100 EUR Gebühr aus (beim Verkäufer) |
+| AC-12 | BNL-Eintrag löst 1.900 EUR Gebühr aus (beim Verkäufer) |
 
 ---
 
-## Zusammenfassung der Korrektur
+## Zusammenfassung der Korrekturen
 
-| Vorher (Falsch) | Nachher (Korrekt) |
-|-----------------|-------------------|
-| Zone 3 → MOD-09 | Zone 3 → Zone 1 Services |
-| Armstrong in Zone 3 | Armstrong in Zone 1, Zone 3 ist Consumer |
-| Berechnungslogik verteilt | Berechnungslogik zentral in Zone 1 |
-| Knowledge Base in Zone 3 | Knowledge Base in Zone 1 |
+1. **Kaufy ist abhängig von Partner-Freigabe** - kein unabhängiger Kanal
+2. **Systemgebühr zahlt VERKÄUFER** - nicht der Partner (klar im Dialog)
+3. **Reihenfolge:** Freigabe → Partner-Freigabe → dann erst Kaufy möglich
+4. **Kaufy = Lead-Generierung** für Vertriebspartner, nicht "kostenloser" Verkaufskanal
 
-**Die Investment Engine und Armstrong sind Zone 1 Services, die von Zone 2 UND Zone 3 gleichermaßen genutzt werden. Es gibt keine direkte Verbindung zwischen Zone 3 (Website) und MOD-09 (Vertriebspartner).**
+---
+
+## Nächste Schritte nach Freigabe
+
+1. Plan in Zone 1 Tile Catalog als Dokument speichern
+2. Phase 1 beginnen: Struktur & Navigation
+3. Nach jeder Phase: Abgleich mit diesem Plan
+
+**Geschätzter Gesamtaufwand:** 7-8 Tage
+
+---
+
+**Bitte um Freigabe zur Implementierung.**
+
