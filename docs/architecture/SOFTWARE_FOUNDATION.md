@@ -32,7 +32,7 @@
 | MOD | Name | Typ | Route-Prefix | API-Range |
 |-----|------|-----|--------------|-----------|
 | 01 | Stammdaten | Core | `/portal/stammdaten` | — |
-| 02 | KI Office | Core | `/portal/office` | — |
+| 02 | KI Office | Core | `/portal/office` | INTERNAL-001 |
 | 03 | DMS | Core | `/portal/dms` | — |
 | 04 | Immobilien | Core | `/portal/immobilien` | API-700..799 |
 | 05 | MSV | Freemium | `/portal/msv` | API-800..899 |

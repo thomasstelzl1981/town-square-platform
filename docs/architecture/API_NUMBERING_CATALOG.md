@@ -1,7 +1,7 @@
 # API NUMBERING CATALOG
 
-**Version:** v1.0  
-**Datum:** 2026-01-26
+**Version:** v1.1  
+**Datum:** 2026-01-27
 
 ---
 
@@ -18,6 +18,24 @@
 | API-600..699 | MOD-07 Finanzierung | SPEC |
 | API-700..799 | MOD-04 Immobilien | SPEC |
 | API-800..899 | MOD-05 MSV | SPEC |
+| INTERNAL-001..099 | Interne Edge Functions | ACTIVE |
+
+---
+
+## Edge Functions (Implementiert)
+
+| API-ID | Edge Function | Modul | Bereich | Status |
+|--------|---------------|-------|---------|--------|
+| API-701 | sot-property-crud | MOD-04 | Immobilien CRUD | ACTIVE |
+| API-801 | sot-msv-reminder-check | MOD-05 | Mahnwesen | ACTIVE |
+| API-802 | sot-msv-rent-report | MOD-05 | Mietreports | ACTIVE |
+| API-803 | sot-listing-publish | MOD-05 | Exposé Publishing | ACTIVE |
+| API-804 | sot-lead-inbox | MOD-10 | Lead-Verarbeitung | ACTIVE |
+| INTERNAL-001 | sot-letter-generate | MOD-02 | KI-Briefgenerator | ACTIVE |
+| INTERNAL-002 | sot-expose-description | MOD-04 | KI-Beschreibungen | ACTIVE |
+| INTERNAL-003 | sot-dms-upload-url | MOD-03 | DMS Upload | ACTIVE |
+| INTERNAL-004 | sot-dms-download-url | MOD-03 | DMS Download | ACTIVE |
+| INTERNAL-005 | sot-investment-engine | MOD-08 | Investment-Berechnung | ACTIVE |
 
 ---
 
