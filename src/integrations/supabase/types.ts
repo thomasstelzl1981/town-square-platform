@@ -2133,6 +2133,7 @@ export type Database = {
           status: Database["public"]["Enums"]["listing_status"] | null
           tenant_id: string
           title: string
+          unit_id: string | null
           updated_at: string | null
           withdrawn_at: string | null
         }
@@ -2155,6 +2156,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["listing_status"] | null
           tenant_id: string
           title: string
+          unit_id?: string | null
           updated_at?: string | null
           withdrawn_at?: string | null
         }
@@ -2177,6 +2179,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["listing_status"] | null
           tenant_id?: string
           title?: string
+          unit_id?: string | null
           updated_at?: string | null
           withdrawn_at?: string | null
         }
@@ -2208,6 +2211,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "listings_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
           },
         ]
       }

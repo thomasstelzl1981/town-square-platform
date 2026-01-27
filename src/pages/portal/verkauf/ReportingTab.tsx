@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { 
   BarChart3, 
   Eye, 
@@ -11,24 +10,35 @@ import {
   TrendingUp,
   MessageSquare
 } from 'lucide-react';
-import { EmptyState } from '@/components/shared';
+import { 
+  PropertyTable, 
+  PropertyAddressCell, 
+  PropertyCurrencyCell,
+  type PropertyTableColumn 
+} from '@/components/shared';
 
 interface ListingStats {
   id: string;
   title: string;
-  status: string;
-  asking_price: number | null;
   property_address: string;
+  asking_price: number | null;
+  status: string;
   kaufy_active: boolean;
   partner_active: boolean;
   inquiry_count: number;
+  views: number;
 }
 
+const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+  active: { label: 'Aktiv', variant: 'default' },
+  reserved: { label: 'Reserviert', variant: 'secondary' },
+  sold: { label: 'Verkauft', variant: 'outline' }
+};
+
 const ReportingTab = () => {
-  const { data: listings, isLoading } = useQuery({
+  const { data: listings = [], isLoading } = useQuery({
     queryKey: ['verkauf-reporting'],
     queryFn: async () => {
-      // Fetch listings with property info
       const { data: listingsData, error } = await supabase
         .from('listings')
         .select(`
@@ -40,14 +50,13 @@ const ReportingTab = () => {
 
       if (error) throw error;
 
-      // Fetch publications
       const listingIds = listingsData?.map(l => l.id) || [];
+      
       const { data: publications } = await supabase
         .from('listing_publications')
         .select('listing_id, channel, status')
         .in('listing_id', listingIds.length > 0 ? listingIds : ['00000000-0000-0000-0000-000000000000']);
 
-      // Fetch inquiries count
       const { data: inquiries } = await supabase
         .from('listing_inquiries')
         .select('listing_id')
@@ -67,51 +76,78 @@ const ReportingTab = () => {
       return listingsData?.map(l => ({
         id: l.id,
         title: l.title,
-        status: l.status,
-        asking_price: l.asking_price,
         property_address: l.properties ? `${(l.properties as any).address}, ${(l.properties as any).city}` : '',
+        asking_price: l.asking_price,
+        status: l.status || 'active',
         kaufy_active: pubMap.get(l.id)?.kaufy || false,
         partner_active: pubMap.get(l.id)?.partner || false,
-        inquiry_count: inqCounts.get(l.id) || 0
+        inquiry_count: inqCounts.get(l.id) || 0,
+        views: 0 // Placeholder - wird später implementiert
       })) || [];
     }
   });
-
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '—';
-    return new Intl.NumberFormat('de-DE', { 
-      style: 'currency', 
-      currency: 'EUR',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
-        </div>
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-
-  if (!listings?.length) {
-    return (
-      <EmptyState
-        icon={BarChart3}
-        title="Keine Statistiken verfügbar"
-        description="Sobald Sie aktive Inserate haben, erscheinen hier die Performance-Daten."
-      />
-    );
-  }
 
   // Calculate summary stats
   const totalListings = listings.length;
   const activeKaufy = listings.filter(l => l.kaufy_active).length;
   const activePartner = listings.filter(l => l.partner_active).length;
   const totalInquiries = listings.reduce((sum, l) => sum + l.inquiry_count, 0);
+
+  const columns: PropertyTableColumn<ListingStats>[] = [
+    {
+      key: 'title',
+      header: 'Objekt',
+      minWidth: '220px',
+      render: (_, row) => <PropertyAddressCell address={row.title} subtitle={row.property_address} />
+    },
+    {
+      key: 'asking_price',
+      header: 'Preis',
+      align: 'right',
+      minWidth: '120px',
+      render: (val) => <PropertyCurrencyCell value={val} />
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      minWidth: '100px',
+      render: (val) => {
+        const config = statusLabels[val as string] || { label: val, variant: 'secondary' as const };
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      }
+    },
+    {
+      key: 'kaufy_active',
+      header: 'Kanäle',
+      minWidth: '100px',
+      render: (_, row) => (
+        <div className="flex gap-1">
+          <Badge variant={row.kaufy_active ? 'default' : 'outline'} className="text-xs gap-1">
+            <Globe className="h-3 w-3" />
+            K
+          </Badge>
+          <Badge variant={row.partner_active ? 'default' : 'outline'} className="text-xs gap-1">
+            <Users className="h-3 w-3" />
+            P
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'views',
+      header: 'Views',
+      align: 'center',
+      minWidth: '80px',
+      render: (val) => <span className="font-medium">{val}</span>
+    },
+    {
+      key: 'inquiry_count',
+      header: 'Anfragen',
+      align: 'center',
+      minWidth: '90px',
+      render: (val) => <span className="font-bold text-primary">{val}</span>
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -174,7 +210,7 @@ const ReportingTab = () => {
         </Card>
       </div>
 
-      {/* Listings Detail */}
+      {/* Performance Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Performance nach Objekt</CardTitle>
@@ -183,54 +219,16 @@ const ReportingTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {listings.map(listing => (
-              <div 
-                key={listing.id} 
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{listing.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{listing.property_address}</p>
-                </div>
-                
-                <div className="flex items-center gap-4 ml-4">
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(listing.asking_price)}</p>
-                    <Badge 
-                      variant={listing.status === 'active' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {listing.status === 'active' ? 'Aktiv' : 
-                       listing.status === 'reserved' ? 'Reserviert' : 'Verkauft'}
-                    </Badge>
-                  </div>
-
-                  <div className="flex gap-1">
-                    <Badge 
-                      variant={listing.kaufy_active ? 'default' : 'outline'}
-                      className="text-xs gap-1"
-                    >
-                      <Globe className="h-3 w-3" />
-                      K
-                    </Badge>
-                    <Badge 
-                      variant={listing.partner_active ? 'default' : 'outline'}
-                      className="text-xs gap-1"
-                    >
-                      <Users className="h-3 w-3" />
-                      P
-                    </Badge>
-                  </div>
-
-                  <div className="text-center min-w-[60px]">
-                    <p className="text-lg font-bold">{listing.inquiry_count}</p>
-                    <p className="text-[10px] text-muted-foreground">Anfragen</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <PropertyTable
+            data={listings}
+            columns={columns}
+            isLoading={isLoading}
+            emptyState={{
+              message: 'Keine Inserate vorhanden. Sobald Sie aktive Inserate haben, erscheinen hier die Performance-Daten.',
+              actionLabel: '',
+              actionRoute: ''
+            }}
+          />
         </CardContent>
       </Card>
 

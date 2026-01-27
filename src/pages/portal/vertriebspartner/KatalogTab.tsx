@@ -3,17 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { 
   BookOpen, 
   MapPin, 
-  Euro, 
   Building2,
   Eye,
   Heart,
-  ExternalLink
+  Handshake,
+  Globe,
+  Users
 } from 'lucide-react';
-import { EmptyState } from '@/components/shared';
+import { 
+  PropertyTable, 
+  PropertyAddressCell, 
+  PropertyCurrencyCell,
+  type PropertyTableColumn 
+} from '@/components/shared';
 import { useNavigate } from 'react-router-dom';
 
 interface PartnerListing {
@@ -33,8 +38,8 @@ interface PartnerListing {
 const KatalogTab = () => {
   const navigate = useNavigate();
 
-  // Fetch partner-released listings from listing_publications
-  const { data: listings, isLoading } = useQuery({
+  // Fetch partner-released listings with unit data
+  const { data: listings = [], isLoading } = useQuery({
     queryKey: ['partner-katalog'],
     queryFn: async () => {
       // Get listings with active partner_network publication
@@ -50,7 +55,7 @@ const KatalogTab = () => {
       
       if (listingIds.length === 0) return [];
 
-      // Fetch listing details
+      // Fetch listing details with property info
       const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
         .select(`
@@ -88,106 +93,148 @@ const KatalogTab = () => {
     }
   });
 
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '—';
-    return new Intl.NumberFormat('de-DE', { 
-      style: 'currency', 
-      currency: 'EUR',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
+  const columns: PropertyTableColumn<PartnerListing>[] = [
+    {
+      key: 'title',
+      header: 'Objekt',
+      minWidth: '220px',
+      render: (_, row) => (
+        <PropertyAddressCell 
+          address={row.title} 
+          subtitle={`${row.property_address}, ${row.property_city}`} 
+        />
+      )
+    },
+    {
+      key: 'property_type',
+      header: 'Typ',
+      minWidth: '100px',
+      render: (val) => val ? (
+        <Badge variant="outline" className="text-xs capitalize">
+          {String(val).replace('_', ' ')}
+        </Badge>
+      ) : <span className="text-muted-foreground">—</span>
+    },
+    {
+      key: 'total_area_sqm',
+      header: 'm²',
+      align: 'right',
+      minWidth: '80px',
+      render: (val) => val ? `${val}` : '—'
+    },
+    {
+      key: 'asking_price',
+      header: 'Preis',
+      align: 'right',
+      minWidth: '120px',
+      render: (val) => <PropertyCurrencyCell value={val} variant="bold" />
+    },
+    {
+      key: 'commission_rate',
+      header: 'Provision',
+      align: 'right',
+      minWidth: '100px',
+      render: (val) => val ? (
+        <span className="font-semibold text-green-600">{val}%</span>
+      ) : <span className="text-muted-foreground">—</span>
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      minWidth: '100px',
+      render: (val) => (
+        <Badge variant={val === 'reserved' ? 'secondary' : 'default'}>
+          {val === 'reserved' ? 'Reserviert' : 'Verfügbar'}
+        </Badge>
+      )
+    },
+    {
+      key: 'kaufy_active',
+      header: 'Kanäle',
+      minWidth: '80px',
+      align: 'center',
+      render: (_, row) => (
+        <div className="flex gap-1 justify-center">
+          {row.kaufy_active && (
+            <Badge variant="outline" className="text-xs">
+              <Globe className="h-3 w-3 mr-1" />K
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-xs">
+            <Users className="h-3 w-3 mr-1" />P
+          </Badge>
+        </div>
+      )
+    }
+  ];
 
-  if (isLoading) {
-    return (
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64" />)}
-      </div>
-    );
-  }
-
-  if (!listings?.length) {
-    return (
-      <EmptyState
-        icon={BookOpen}
-        title="Keine Objekte im Katalog"
-        description="Sobald Eigentümer ihre Objekte für das Partner-Netzwerk freigeben, erscheinen sie hier."
-      />
-    );
-  }
+  const renderRowActions = (row: PartnerListing) => (
+    <div className="flex gap-1">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        title="Details"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        title="Merken"
+      >
+        <Heart className="h-4 w-4" />
+      </Button>
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="h-8 text-xs gap-1"
+        title="Deal starten"
+      >
+        <Handshake className="h-3 w-3" />
+        Deal
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div>
         <p className="text-sm text-muted-foreground">
           {listings.length} Objekt{listings.length !== 1 ? 'e' : ''} verfügbar
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {listings.map((listing) => (
-          <Card key={listing.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            {/* Image Placeholder */}
-            <div className="h-40 bg-muted flex items-center justify-center relative">
-              <Building2 className="h-12 w-12 text-muted-foreground/50" />
-              {listing.status === 'reserved' && (
-                <Badge className="absolute top-2 left-2" variant="secondary">
-                  Reserviert
-                </Badge>
-              )}
-              {listing.kaufy_active && (
-                <Badge className="absolute top-2 right-2 text-xs" variant="outline">
-                  Kaufy
-                </Badge>
-              )}
-            </div>
-
-            <CardContent className="p-4 space-y-3">
-              <div>
-                <h3 className="font-medium line-clamp-1">{listing.title}</h3>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {listing.property_address}, {listing.property_city}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Preis</p>
-                  <p className="font-semibold">{formatCurrency(listing.asking_price)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Provision</p>
-                  <p className="font-semibold text-green-600">
-                    {listing.commission_rate ? `${listing.commission_rate}%` : '—'}
-                  </p>
-                </div>
-                {listing.total_area_sqm && (
-                  <div>
-                    <p className="text-muted-foreground">Fläche</p>
-                    <p className="font-medium">{listing.total_area_sqm} m²</p>
-                  </div>
-                )}
-                {listing.property_type && (
-                  <div>
-                    <p className="text-muted-foreground">Typ</p>
-                    <p className="font-medium capitalize">{listing.property_type.replace('_', ' ')}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2 pt-2 border-t">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Eye className="h-4 w-4 mr-1" />
-                  Details
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Heart className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Objektkatalog</CardTitle>
+          <CardDescription>
+            Für Partner freigegebene Objekte – starten Sie einen Deal, um eine Reservierung vorzunehmen
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PropertyTable
+            data={listings}
+            columns={columns}
+            isLoading={isLoading}
+            showSearch
+            searchPlaceholder="Objekte durchsuchen..."
+            searchFilter={(row, search) => 
+              row.title?.toLowerCase().includes(search) ||
+              row.property_address?.toLowerCase().includes(search) ||
+              row.property_city?.toLowerCase().includes(search) ||
+              false
+            }
+            rowActions={renderRowActions}
+            emptyState={{
+              message: 'Keine Objekte im Katalog. Sobald Eigentümer ihre Objekte für das Partner-Netzwerk freigeben, erscheinen sie hier.',
+              actionLabel: '',
+              actionRoute: ''
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
