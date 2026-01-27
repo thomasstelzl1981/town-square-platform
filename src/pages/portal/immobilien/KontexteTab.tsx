@@ -1,25 +1,70 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, ArrowRight, Plus, ClipboardList } from 'lucide-react';
+import { Building2, ArrowRight, Plus, ClipboardList, User, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { CreateContextDialog } from '@/components/shared';
+
+interface LandlordContext {
+  id: string;
+  name: string;
+  context_type: string;
+  tax_regime: string | null;
+  is_default: boolean | null;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  city: string | null;
+  hrb_number: string | null;
+  ust_id: string | null;
+  legal_form: string | null;
+}
 
 export function KontexteTab() {
   const navigate = useNavigate();
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, activeTenantId } = useAuth();
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Standard-Kontext aus der aktuellen Organisation
+  // Fetch landlord contexts
+  const { data: contexts = [], isLoading } = useQuery({
+    queryKey: ['landlord-contexts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('*')
+        .eq('tenant_id', activeTenantId!)
+        .order('is_default', { ascending: false });
+      
+      if (error) throw error;
+      return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Standard-Kontext aus der aktuellen Organisation (wenn keine landlord_contexts existieren)
   const defaultContext = {
     name: activeOrganization?.name || 'Meine Firma',
     type: activeOrganization?.org_type === 'client' ? 'BUSINESS' : 'PRIVATE',
     regime: 'FIBU',
   };
 
+  const additionalContexts = contexts.filter(c => !c.is_default);
+  const primaryContext = contexts.find(c => c.is_default);
+
+  const formatAddress = (ctx: LandlordContext) => {
+    const parts = [ctx.street, ctx.house_number].filter(Boolean).join(' ');
+    const cityParts = [ctx.postal_code, ctx.city].filter(Boolean).join(' ');
+    return [parts, cityParts].filter(Boolean).join(', ') || null;
+  };
+
   return (
     <div className="space-y-6">
-      {/* Standard-Kontext (aus Stammdaten) */}
+      {/* Standard-Kontext (aus Stammdaten oder primary landlord_context) */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -27,32 +72,46 @@ export function KontexteTab() {
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-lg">Standard-Kontext (aus Stammdaten)</CardTitle>
+              <CardTitle className="text-lg">Standard-Kontext</CardTitle>
               <CardDescription>
-                Automatisch aus Ihren Firmendaten übernommen
+                {primaryContext ? 'Ihr primärer Vermieter-Kontext' : 'Automatisch aus Ihren Firmendaten übernommen'}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <InfoItem label="Name" value={defaultContext.name} />
+            <InfoItem label="Name" value={primaryContext?.name || defaultContext.name} />
             <InfoItem 
               label="Typ" 
               value={
-                <Badge variant={defaultContext.type === 'BUSINESS' ? 'default' : 'secondary'}>
-                  {defaultContext.type === 'BUSINESS' ? 'Geschäftlich' : 'Privat'}
+                <Badge variant={(primaryContext?.context_type || defaultContext.type) === 'BUSINESS' ? 'default' : 'secondary'}>
+                  {(primaryContext?.context_type || defaultContext.type) === 'BUSINESS' ? 'Geschäftlich' : 'Privat'}
                 </Badge>
               } 
             />
             <InfoItem 
               label="Regime" 
               value={
-                <Badge variant="outline">{defaultContext.regime}</Badge>
+                <Badge variant="outline">{primaryContext?.tax_regime || defaultContext.regime}</Badge>
               } 
             />
             <InfoItem label="Objekte" value="– (alle nicht zugeordneten)" />
           </div>
+
+          {primaryContext && formatAddress(primaryContext) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              {formatAddress(primaryContext)}
+            </div>
+          )}
+
+          {primaryContext?.hrb_number && (
+            <div className="flex gap-4 text-xs text-muted-foreground">
+              <span>HRB: {primaryContext.hrb_number}</span>
+              {primaryContext.ust_id && <span>USt-ID: {primaryContext.ust_id}</span>}
+            </div>
+          )}
 
           <Button 
             variant="outline" 
@@ -71,27 +130,75 @@ export function KontexteTab() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Weitere Kontexte</h2>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Kontext anlegen
+          </Button>
         </div>
 
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="p-3 rounded-full bg-muted mb-4">
-              <ClipboardList className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="font-medium mb-2">Keine weiteren Kontexte angelegt</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">
-              Erstellen Sie zusätzliche Vermieter-Kontexte, um Objekte nach steuerlichen 
-              oder organisatorischen Kriterien zu gruppieren.
-            </p>
-            <Button variant="outline" disabled>
-              <Plus className="mr-2 h-4 w-4" />
-              Kontext anlegen
-              <Badge variant="secondary" className="ml-2 text-xs">
-                in Entwicklung
-              </Badge>
-            </Button>
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Lade Kontexte...
+            </CardContent>
+          </Card>
+        ) : additionalContexts.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="p-3 rounded-full bg-muted mb-4">
+                <ClipboardList className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium mb-2">Keine weiteren Kontexte angelegt</h3>
+              <p className="text-sm text-muted-foreground max-w-md mb-6">
+                Erstellen Sie zusätzliche Vermieter-Kontexte, um Objekte nach steuerlichen 
+                oder organisatorischen Kriterien zu gruppieren.
+              </p>
+              <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Kontext anlegen
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {additionalContexts.map((ctx) => (
+              <Card key={ctx.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      {ctx.context_type === 'BUSINESS' ? (
+                        <Building2 className="h-4 w-4" />
+                      ) : (
+                        <User className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-base">{ctx.name}</CardTitle>
+                      {ctx.legal_form && (
+                        <CardDescription>{ctx.legal_form}</CardDescription>
+                      )}
+                    </div>
+                    <Badge variant={ctx.context_type === 'BUSINESS' ? 'default' : 'secondary'}>
+                      {ctx.context_type === 'BUSINESS' ? 'Geschäftlich' : 'Privat'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center gap-4 text-sm">
+                    <Badge variant="outline">{ctx.tax_regime || 'EÜR'}</Badge>
+                    {ctx.hrb_number && <span className="text-muted-foreground text-xs">{ctx.hrb_number}</span>}
+                  </div>
+                  {formatAddress(ctx) && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {formatAddress(ctx)}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Info-Box */}
@@ -104,6 +211,12 @@ export function KontexteTab() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Create Dialog */}
+      <CreateContextDialog 
+        open={showCreateDialog} 
+        onOpenChange={setShowCreateDialog} 
+      />
     </div>
   );
 }

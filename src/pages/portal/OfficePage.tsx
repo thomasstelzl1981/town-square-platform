@@ -1,7 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useModuleTiles } from '@/hooks/useModuleTiles';
 import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { SubTabNav } from '@/components/shared';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { Loader2 } from 'lucide-react';
 
@@ -50,7 +49,6 @@ const OfficePage = () => {
               <h1 className="text-3xl font-bold">{data?.title || 'KI Office'}</h1>
               <p className="text-muted-foreground">{data?.description || 'KI-gestütztes Backoffice für Ihre Immobilienverwaltung'}</p>
             </div>
-            <SubTabNav tabs={subTiles} />
             {subPageContent}
           </div>
         ) : (

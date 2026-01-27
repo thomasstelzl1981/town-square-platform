@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { AddBankAccountDialog } from '@/components/shared';
 import { 
   CreditCard, 
   Building2, 
@@ -49,6 +50,7 @@ const EinstellungenTab = () => {
   const [reportDay, setReportDay] = useState(15);
   const [reminderChannel, setReminderChannel] = useState<'email' | 'letter'>('email');
   const [hasChanges, setHasChanges] = useState(false);
+  const [showAddAccount, setShowAddAccount] = useState(false);
   
   // Sync local state with DB prefs
   useEffect(() => {
@@ -360,10 +362,16 @@ const EinstellungenTab = () => {
             variant="outline" 
             className="w-full" 
             disabled={!isPremium}
+            onClick={() => setShowAddAccount(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Konto hinzufügen
           </Button>
+
+          <AddBankAccountDialog 
+            open={showAddAccount} 
+            onOpenChange={setShowAddAccount} 
+          />
 
           <div className="rounded-lg bg-accent/10 p-3 text-sm">
             <p className="font-medium text-accent-foreground flex items-center gap-2">

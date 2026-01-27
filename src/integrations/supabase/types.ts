@@ -1341,37 +1341,61 @@ export type Database = {
       }
       landlord_contexts: {
         Row: {
+          city: string | null
           context_type: string
+          country: string | null
           created_at: string
+          house_number: string | null
+          hrb_number: string | null
           id: string
           is_default: boolean | null
+          legal_form: string | null
           name: string
+          postal_code: string | null
           public_id: string
+          street: string | null
           tax_regime: string | null
           tenant_id: string
           updated_at: string
+          ust_id: string | null
         }
         Insert: {
+          city?: string | null
           context_type?: string
+          country?: string | null
           created_at?: string
+          house_number?: string | null
+          hrb_number?: string | null
           id?: string
           is_default?: boolean | null
+          legal_form?: string | null
           name: string
+          postal_code?: string | null
           public_id?: string
+          street?: string | null
           tax_regime?: string | null
           tenant_id: string
           updated_at?: string
+          ust_id?: string | null
         }
         Update: {
+          city?: string | null
           context_type?: string
+          country?: string | null
           created_at?: string
+          house_number?: string | null
+          hrb_number?: string | null
           id?: string
           is_default?: boolean | null
+          legal_form?: string | null
           name?: string
+          postal_code?: string | null
           public_id?: string
+          street?: string | null
           tax_regime?: string | null
           tenant_id?: string
           updated_at?: string
+          ust_id?: string | null
         }
         Relationships: [
           {
