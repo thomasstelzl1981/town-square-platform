@@ -1,15 +1,15 @@
-# ADR-038 — STORAGE ARCHITECTURE (Canonical Spec v1.0)
+# ADR-038 — STORAGE ARCHITECTURE (Canonical Spec v1.1)
 
-> **Version**: 1.0  
-> **Status**: FROZEN  
-> **Datum**: 2026-01-25  
+> **Version**: 1.1  
+> **Status**: ACTIVE  
+> **Datum**: 2026-01-27  
 > **Zone**: 2 (User Portal) / MOD-03 DMS
 
 ---
 
 ## Decision
 
-Hybrid Storage Model: **Native Vault** (Supabase Storage) als primärer Speicher + **User-Data-Connectors** (OAuth) für Import aus externen Quellen.
+Hybrid Storage Model: **Native Vault** (Supabase Storage) als primärer Speicher + **User-Data-Connectors** (OAuth) für Import aus externen Quellen + **Zwei-Engine-KI-Parsing** für strukturierte Metadaten-Extraktion.
 
 ---
 
@@ -19,90 +19,104 @@ Hybrid Storage Model: **Native Vault** (Supabase Storage) als primärer Speicher
 
 | Bucket | Visibility | Purpose |
 |--------|------------|---------|
-| `tenant-vault` | private | Alle Tenant-Dokumente |
+| `tenant-documents` | private | Alle Tenant-Dokumente |
 
 **Access Control:**
 - Keine öffentlichen URLs
 - Zugriff nur via Signed URLs (TTL: 15 Minuten)
 - Worker nutzt Service Role
 
-### Path Structure
+### Path Structure (ERWEITERT v1.1)
 
 ```
-tenant/{tenant_id}/raw/{YYYY}/{MM}/{document_id}-{safe_filename}
-tenant/{tenant_id}/derived/{document_id}/unstructured.json
-tenant/{tenant_id}/derived/{document_id}/preview.pdf
-tenant/{tenant_id}/derived/{document_id}/thumb.png
+tenant/{tenant_id}/
+├── raw/                                    ← Original-Dateien
+│   └── {YYYY}/{MM}/{document_id}-{filename}
+│
+├── derived/                                ← KI-generierte Metadaten
+│   └── {document_id}/
+│       ├── metadata.json                   ← Lovable AI (Drag&Drop/UI-Upload)
+│       ├── unstructured.json               ← Unstructured.io (Automatik)
+│       ├── preview.pdf                     ← Preview-Rendering (optional)
+│       └── thumb.png                       ← Thumbnail (optional)
+│
+└── imports/                                ← Batch-Imports
+    └── {batch_id}/
+        ├── source.xlsx                     ← Original Import-Datei
+        └── parsed.json                     ← KI-Interpretation
 ```
 
-| Path | Purpose | Created By |
-|------|---------|------------|
-| `/raw/` | Original-Dateien | Upload, Import |
-| `/derived/unstructured.json` | Extrahierter Content | dms-worker |
-| `/derived/preview.pdf` | Preview-Rendering | dms-worker (optional) |
-| `/derived/thumb.png` | Thumbnail | dms-worker (optional) |
+| Path | Purpose | Created By | Engine |
+|------|---------|------------|--------|
+| `/raw/` | Original-Dateien | Upload, Import | — |
+| `/derived/metadata.json` | KI-Strukturdaten | sot-document-parser | Lovable AI |
+| `/derived/unstructured.json` | Volltext-Extraktion | dms-worker | Unstructured.io |
+| `/derived/preview.pdf` | Preview-Rendering | dms-worker | — |
+| `/derived/thumb.png` | Thumbnail | dms-worker | — |
+| `/imports/` | Batch-Import-Daten | TestDataManager | Lovable AI |
 
 ### RLS auf Storage
 
 ```sql
--- Bucket Policy (tenant-vault)
+-- Bucket Policy (tenant-documents)
 CREATE POLICY "Tenant isolation"
 ON storage.objects
 FOR ALL
 USING (
-  bucket_id = 'tenant-vault'
-  AND (storage.foldername(name))[2] = get_current_tenant_id()::text
+  bucket_id = 'tenant-documents'
+  AND (storage.foldername(name))[1] = get_current_tenant_id()::text
 );
 ```
 
 ---
 
-## B) Billing Tiers
+## B) Zwei-Engine-KI-Parsing (NEU v1.1)
 
-### Storage Quotas
+### Engine-Übersicht
 
-| Tier | Storage | Documents | Extractions/Mo | Price |
-|------|---------|-----------|----------------|-------|
-| **Free** | 1 GB | 1.000 | 50 Seiten | Inkl. |
-| **Pro** | 10 GB | 10.000 | 500 Seiten | 9.90€/Mo |
-| **Enterprise** | 100 GB | Unlimited | Unlimited | Custom |
+| Engine | Trigger | API | Kosten | JSON-Output |
+|--------|---------|-----|--------|-------------|
+| **Lovable AI** | Drag & Drop, UI-Upload | Lovable AI Gateway | Inklusive | `metadata.json` |
+| **Unstructured.io** | Resend, Caya, Cloud-Imports | Unstructured.io API | 0.02-0.05€/Seite | `unstructured.json` |
 
-### Tracking
+### Engine A: Lovable AI (sot-document-parser)
 
-```sql
--- billing_usage Tabelle
-CREATE TABLE billing_usage (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES organizations(id),
-  period_start date NOT NULL,
-  period_end date NOT NULL,
-  storage_bytes_used bigint DEFAULT 0,
-  document_count int DEFAULT 0,
-  extraction_pages int DEFAULT 0,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(tenant_id, period_start)
-);
+**Use Cases:**
+- Manueller Upload via UI
+- Excel/CSV Import
+- Bild-Analyse (OCR via Vision)
+- Armstrong Chat-Upload
+
+**Technologie:** google/gemini-3-flash-preview
+
+**Output-Schema:**
+```json
+{
+  "version": "1.0",
+  "engine": "lovable_ai",
+  "model": "google/gemini-3-flash-preview",
+  "parsed_at": "2026-01-27T10:00:00Z",
+  "confidence": 0.95,
+  "warnings": [],
+  "data": {
+    "properties": [...],
+    "contacts": [...],
+    "financing": [...],
+    "detected_type": "portfolio"
+  }
+}
 ```
 
-### Upselling Flow
+### Engine B: Unstructured.io (dms-worker)
 
-1. User erreicht 80% Storage-Quota
-2. Dashboard zeigt Warnung
-3. Armstrong schlägt Upgrade vor
-4. Click → MOD-01 Billing → Stripe Checkout
-5. Quota-Erhöhung sofort aktiv
+**Use Cases:**
+- E-Mail-Anhänge (Resend Webhook)
+- Caya digitale Post
+- Cloud-Import (Dropbox, OneDrive, GDrive)
 
----
-
-## C) Extraction Pricing
-
-### Engines
-
-| Engine | Price/Page | Speed | Use Case |
-|--------|------------|-------|----------|
-| `unstructured_fast` | 0.02€ | ~2s/page | Digitale PDFs, Office-Docs |
-| `unstructured_hires` | 0.05€ | ~5s/page | Gescannte Dokumente, OCR-intensiv |
+**Pricing:**
+- `unstructured_fast`: 0.02€/Seite (digitale PDFs)
+- `unstructured_hires`: 0.05€/Seite (OCR für Scans)
 
 ### Cost Estimation
 
