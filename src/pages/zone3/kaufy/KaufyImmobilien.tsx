@@ -14,8 +14,7 @@ interface PublicListing {
   city: string;
   postal_code: string;
   total_area_sqm: number;
-  monthly_rent_total: number;
-  unit_count: number;
+  status: string;
   hero_image_path: string | null;
 }
 
@@ -35,12 +34,28 @@ export default function KaufyImmobilien() {
     }
   }, []);
 
-  // Fetch listings from database
+  // Fetch only Kaufy-published listings (gemäß Plan: channel='kaufy')
   const { data: listings = [], isLoading, error } = useQuery({
-    queryKey: ['public-listings'],
+    queryKey: ['kaufy-public-listings'],
     queryFn: async () => {
-      // Try to get from v_public_listings view first
-      const { data: viewData, error: viewError } = await supabase
+      // 1. Get listing IDs with active Kaufy publication
+      const { data: kaufyPubs, error: pubError } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'kaufy')
+        .eq('status', 'active');
+
+      if (pubError) {
+        console.error('Publication query error:', pubError);
+        return [];
+      }
+
+      const listingIds = kaufyPubs?.map(p => p.listing_id) || [];
+      
+      if (listingIds.length === 0) return [];
+
+      // 2. Fetch listing details with property info
+      const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
         .select(`
           id,
@@ -57,18 +72,18 @@ export default function KaufyImmobilien() {
             total_area_sqm
           )
         `)
-        .eq('status', 'active')
-        .limit(20);
+        .in('id', listingIds)
+        .in('status', ['active', 'reserved']);
 
-      if (viewError) {
-        console.error('Listings query error:', viewError);
+      if (listingsError) {
+        console.error('Listings query error:', listingsError);
         return [];
       }
 
       // Transform to expected format
-      return (viewData || []).map((l: any) => ({
+      return (listingsData || []).map((l: any) => ({
         id: l.id,
-        public_id: l.public_id,
+        public_id: l.public_id || l.id,
         title: l.title || `Objekt ${l.properties?.city || ''}`,
         asking_price: l.asking_price || 0,
         property_type: l.properties?.property_type || 'multi_family',
@@ -76,8 +91,7 @@ export default function KaufyImmobilien() {
         city: l.properties?.city || '',
         postal_code: l.properties?.postal_code || '',
         total_area_sqm: l.properties?.total_area_sqm || 0,
-        monthly_rent_total: 0, // Would come from units aggregation
-        unit_count: 0,
+        status: l.status,
         hero_image_path: null,
       }));
     },
@@ -175,6 +189,11 @@ export default function KaufyImmobilien() {
                       ) : (
                         <Building2 className="w-16 h-16 text-black/20" />
                       )}
+                      {listing.status === 'reserved' && (
+                        <div className="absolute top-3 left-3 px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded">
+                          Reserviert
+                        </div>
+                      )}
                       <button
                         onClick={() => toggleFavorite(listing.public_id)}
                         className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform"
@@ -202,8 +221,8 @@ export default function KaufyImmobilien() {
                           <p className="font-semibold">{listing.total_area_sqm || '–'} m²</p>
                         </div>
                         <div>
-                          <span className="text-black/50">Einheiten</span>
-                          <p className="font-semibold">{listing.unit_count || '–'}</p>
+                          <span className="text-black/50">Typ</span>
+                          <p className="font-semibold capitalize">{listing.property_type?.replace('_', ' ') || '–'}</p>
                         </div>
                         <div>
                           <span className="text-black/50">Ort</span>

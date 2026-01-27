@@ -8,6 +8,7 @@ const SoFunktioniertsTab = lazy(() => import('./verkauf/SoFunktioniertsTab'));
 const ObjekteTab = lazy(() => import('./verkauf/ObjekteTab'));
 const ReportingTab = lazy(() => import('./verkauf/ReportingTab'));
 const VorgaengeTab = lazy(() => import('./verkauf/VorgaengeTab'));
+const ExposeDetail = lazy(() => import('./verkauf/ExposeDetail'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -38,6 +39,7 @@ const VerkaufPage = () => {
               <Route path="objekte" element={<ObjekteTab />} />
               <Route path="reporting" element={<ReportingTab />} />
               <Route path="vorgaenge" element={<VorgaengeTab />} />
+              <Route path="expose/:propertyId" element={<ExposeDetail />} />
             </Routes>
           </Suspense>
         </div>
