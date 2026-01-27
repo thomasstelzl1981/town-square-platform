@@ -67,6 +67,7 @@ import KaufyMeety from "./pages/zone3/kaufy/KaufyMeety";
 import KaufyModule from "./pages/zone3/kaufy/KaufyModule";
 import KaufyModuleDetail from "./pages/zone3/kaufy/KaufyModuleDetail";
 import KaufyImmobilien from "./pages/zone3/kaufy/KaufyImmobilien";
+import KaufyExpose from "./pages/zone3/kaufy/KaufyExpose";
 import KaufyBerater from "./pages/zone3/kaufy/KaufyBerater";
 import KaufyAnbieter from "./pages/zone3/kaufy/KaufyAnbieter";
 import KaufyFAQ from "./pages/zone3/kaufy/KaufyFAQ";
@@ -226,6 +227,7 @@ const App = () => (
               <Route path="module" element={<KaufyModule />} />
               <Route path="module/:moduleId" element={<KaufyModuleDetail />} />
               <Route path="immobilien" element={<KaufyImmobilien />} />
+              <Route path="immobilien/:publicId" element={<KaufyExpose />} />
               <Route path="berater" element={<KaufyBerater />} />
               <Route path="anbieter" element={<KaufyAnbieter />} />
               <Route path="faq" element={<KaufyFAQ />} />
