@@ -13,6 +13,7 @@ import {
   PropertyTable, 
   PropertyCodeCell, 
   PropertyCurrencyCell,
+  PropertyAddressCell,
   type PropertyTableColumn 
 } from '@/components/shared/PropertyTable';
 import { 
@@ -32,19 +33,24 @@ interface LandlordContext {
   is_default: boolean | null;
 }
 
-interface Property {
+// Unit-based data structure (1 row = 1 unit)
+interface UnitWithProperty {
   id: string;
-  code: string | null;
+  unit_number: string | null;
+  area_sqm: number | null;
+  current_monthly_rent: number | null;
+  usage_type: string | null;
+  property_id: string;
+  property_code: string | null;
   property_type: string;
-  city: string;
   address: string;
+  city: string;
   postal_code: string | null;
-  total_area_sqm: number | null;
-  usage_type: string;
-  annual_income: number | null;
   market_value: number | null;
-  management_fee: number | null;
-  status: string;
+  annual_income: number | null;
+  tenant_name: string | null;
+  financing_balance: number | null;
+  financing_rate: number | null;
 }
 
 interface PropertyFinancing {
@@ -54,15 +60,9 @@ interface PropertyFinancing {
   interest_rate: number | null;
 }
 
-interface Unit {
-  property_id: string;
-  current_monthly_rent: number | null;
-  ancillary_costs: number | null;
-}
-
 export function PortfolioTab() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
   
@@ -112,24 +112,101 @@ export function PortfolioTab() {
     enabled: !!activeTenantId && contexts.length > 1,
   });
 
-  // Fetch properties
-  const { data: properties, isLoading: propsLoading } = useQuery({
-    queryKey: ['properties', activeOrganization?.id],
+  // Fetch UNITS with JOIN to properties (Source of Truth: Unit-based)
+  const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
+    queryKey: ['portfolio-units', activeOrganization?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
+      // Get units with property data
+      const { data: units, error: unitsError } = await supabase
+        .from('units')
+        .select(`
+          id,
+          unit_number,
+          area_sqm,
+          current_monthly_rent,
+          usage_type,
+          property_id,
+          properties!inner (
+            id,
+            code,
+            property_type,
+            address,
+            city,
+            postal_code,
+            market_value,
+            annual_income,
+            status
+          )
+        `)
         .eq('tenant_id', activeOrganization!.id)
-        .eq('status', 'active')
-        .order('code', { ascending: true });
-      
-      if (error) throw error;
-      return data as Property[];
+        .eq('properties.status', 'active');
+
+      if (unitsError) throw unitsError;
+
+      // Get leases with contacts for tenant names
+      const { data: leases } = await supabase
+        .from('leases')
+        .select(`
+          unit_id,
+          contacts!leases_contact_fk (
+            first_name,
+            last_name,
+            company
+          )
+        `)
+        .eq('tenant_id', activeOrganization!.id)
+        .eq('status', 'active');
+
+      // Get financing data
+      const { data: financing } = await supabase
+        .from('property_financing')
+        .select('property_id, current_balance, monthly_rate')
+        .eq('tenant_id', activeOrganization!.id)
+        .eq('is_active', true);
+
+      // Build lookup maps
+      const leaseMap = new Map<string, string>();
+      leases?.forEach(l => {
+        const contact = l.contacts as any;
+        if (contact) {
+          const name = contact.company || `${contact.first_name} ${contact.last_name}`.trim();
+          leaseMap.set(l.unit_id, name);
+        }
+      });
+
+      const financingMap = new Map<string, { balance: number | null; rate: number | null }>();
+      financing?.forEach(f => {
+        financingMap.set(f.property_id, { balance: f.current_balance, rate: f.monthly_rate });
+      });
+
+      // Transform to flat structure
+      return units?.map(u => {
+        const prop = u.properties as any;
+        const fin = financingMap.get(prop.id);
+        return {
+          id: u.id,
+          unit_number: u.unit_number,
+          area_sqm: u.area_sqm,
+          current_monthly_rent: u.current_monthly_rent,
+          usage_type: u.usage_type,
+          property_id: prop.id,
+          property_code: prop.code,
+          property_type: prop.property_type,
+          address: prop.address,
+          city: prop.city,
+          postal_code: prop.postal_code,
+          market_value: prop.market_value,
+          annual_income: prop.annual_income,
+          tenant_name: leaseMap.get(u.id) || null,
+          financing_balance: fin?.balance || null,
+          financing_rate: fin?.rate || null,
+        } as UnitWithProperty;
+      }) || [];
     },
     enabled: !!activeOrganization,
   });
 
-  // Fetch financing data
+  // Fetch property financing for aggregations
   const { data: financingData } = useQuery({
     queryKey: ['property-financing', activeOrganization?.id],
     queryFn: async () => {
@@ -145,25 +222,10 @@ export function PortfolioTab() {
     enabled: !!activeOrganization,
   });
 
-  // Fetch units data
-  const { data: unitsData } = useQuery({
-    queryKey: ['units-rent', activeOrganization?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('units')
-        .select('property_id, current_monthly_rent, ancillary_costs')
-        .eq('tenant_id', activeOrganization!.id);
-      
-      if (error) throw error;
-      return data as Unit[];
-    },
-    enabled: !!activeOrganization,
-  });
-
-  // Filter properties by selected context
-  const filteredProperties = useMemo(() => {
-    if (!properties) return [];
-    if (!selectedContextId || contexts.length <= 1) return properties;
+  // Filter units by selected context
+  const filteredUnits = useMemo(() => {
+    if (!unitsWithProperties) return [];
+    if (!selectedContextId || contexts.length <= 1) return unitsWithProperties;
     
     // Get property IDs assigned to selected context
     const assignedPropertyIds = contextAssignments
@@ -174,28 +236,39 @@ export function PortfolioTab() {
     if (assignedPropertyIds.length === 0) {
       const defaultContext = contexts.find(c => c.is_default);
       if (selectedContextId === defaultContext?.id) {
-        // Show properties NOT assigned to any other context
         const allAssignedIds = contextAssignments.map(a => a.property_id);
-        return properties.filter(p => !allAssignedIds.includes(p.id));
+        return unitsWithProperties.filter(u => !allAssignedIds.includes(u.property_id));
       }
       return [];
     }
     
-    return properties.filter(p => assignedPropertyIds.includes(p.id));
-  }, [properties, selectedContextId, contextAssignments, contexts]);
+    return unitsWithProperties.filter(u => assignedPropertyIds.includes(u.property_id));
+  }, [unitsWithProperties, selectedContextId, contextAssignments, contexts]);
 
-  // Calculate aggregations (use filtered properties)
+  // Calculate aggregations (use filtered units)
   const totals = useMemo(() => {
-    const propsToUse = selectedContextId ? filteredProperties : (properties || []);
-    if (!propsToUse || propsToUse.length === 0) return null;
+    const unitsToUse = selectedContextId ? filteredUnits : (unitsWithProperties || []);
+    if (!unitsToUse || unitsToUse.length === 0) return null;
 
-    const propertyIds = propsToUse.map(p => p.id);
-    const relevantFinancing = financingData?.filter(f => propertyIds.includes(f.property_id)) || [];
+    // Get unique properties
+    const uniquePropertyIds = [...new Set(unitsToUse.map(u => u.property_id))];
+    const relevantFinancing = financingData?.filter(f => uniquePropertyIds.includes(f.property_id)) || [];
 
-    const count = propsToUse.length;
-    const totalArea = propsToUse.reduce((sum, p) => sum + (p.total_area_sqm || 0), 0);
-    const totalValue = propsToUse.reduce((sum, p) => sum + (p.market_value || 0), 0);
-    const totalIncome = propsToUse.reduce((sum, p) => sum + (p.annual_income || 0), 0);
+    const unitCount = unitsToUse.length;
+    const propertyCount = uniquePropertyIds.length;
+    const totalArea = unitsToUse.reduce((sum, u) => sum + (u.area_sqm || 0), 0);
+    
+    // Get unique property values
+    const propertyValues = new Map<string, number>();
+    unitsToUse.forEach(u => {
+      if (u.market_value && !propertyValues.has(u.property_id)) {
+        propertyValues.set(u.property_id, u.market_value);
+      }
+    });
+    const totalValue = Array.from(propertyValues.values()).reduce((a, b) => a + b, 0);
+    
+    const totalMonthlyRent = unitsToUse.reduce((sum, u) => sum + (u.current_monthly_rent || 0), 0);
+    const totalIncome = totalMonthlyRent * 12;
     const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
     const totalRate = relevantFinancing.reduce((sum, f) => sum + (f.monthly_rate || 0), 0);
     const avgInterestRate = relevantFinancing.length 
@@ -204,8 +277,8 @@ export function PortfolioTab() {
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
 
-    return { count, totalArea, totalValue, totalIncome, totalDebt, totalRate, netWealth, avgYield, avgInterestRate };
-  }, [properties, filteredProperties, selectedContextId, financingData]);
+    return { unitCount, propertyCount, totalArea, totalValue, totalIncome, totalDebt, totalRate, netWealth, avgYield, avgInterestRate };
+  }, [unitsWithProperties, filteredUnits, selectedContextId, financingData]);
 
   // Tilgungsverlauf Chart Data (30 Jahre Projektion)
   const amortizationData = useMemo(() => {
@@ -247,7 +320,7 @@ export function PortfolioTab() {
       const rate = (f.interest_rate || 3.5) / 100;
       return sum + (balance * rate);
     }, 0) || 0;
-    const nonRecoverableNk = totals.totalValue * 0.005; // ~0.5% nicht umlagefähig
+    const nonRecoverableNk = totals.totalValue * 0.005;
     const annualAmort = (totals.totalRate * 12) - annualInterest;
     const surplus = annualIncome - annualInterest - nonRecoverableNk;
     
@@ -259,17 +332,6 @@ export function PortfolioTab() {
       { name: 'Überschuss', value: Math.round(surplus), type: 'result', fill: surplus >= 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))' },
     ];
   }, [totals, financingData]);
-
-  // Get financing for property
-  const getFinancing = useCallback((propertyId: string) => {
-    return financingData?.find(f => f.property_id === propertyId);
-  }, [financingData]);
-
-  // Get unit rent for property
-  const getUnitRent = useCallback((propertyId: string) => {
-    const unit = unitsData?.find(u => u.property_id === propertyId);
-    return unit ? (unit.current_monthly_rent || 0) + (unit.ancillary_costs || 0) : 0;
-  }, [unitsData]);
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -287,13 +349,13 @@ export function PortfolioTab() {
     }
   };
 
-  const displayProperties = selectedContextId ? filteredProperties : (properties || []);
-  const hasData = displayProperties.length > 0;
+  const displayUnits = selectedContextId ? filteredUnits : (unitsWithProperties || []);
+  const hasData = displayUnits.length > 0;
 
-  // Table columns configuration
-  const columns: PropertyTableColumn<Property>[] = [
+  // Table columns configuration (Unit-based)
+  const columns: PropertyTableColumn<UnitWithProperty>[] = [
     { 
-      key: 'code', 
+      key: 'property_code', 
       header: 'Code', 
       width: '80px',
       render: (value) => <PropertyCodeCell code={value} />
@@ -303,72 +365,55 @@ export function PortfolioTab() {
       header: 'Art',
       render: (value) => <Badge variant="outline" className="text-xs">{value}</Badge>
     },
-    { key: 'city', header: 'Ort' },
     { 
       key: 'address', 
-      header: 'Adresse', 
+      header: 'Objekt', 
       minWidth: '200px',
-      render: (value) => <span className="truncate max-w-[200px] block">{value}</span>
+      render: (_, row) => <PropertyAddressCell address={row.address} subtitle={row.city} />
     },
     { 
-      key: 'total_area_sqm', 
-      header: 'qm', 
+      key: 'unit_number', 
+      header: 'Einheit',
+      render: (value) => <span className="text-xs text-muted-foreground">{value || 'MAIN'}</span>
+    },
+    { 
+      key: 'area_sqm', 
+      header: 'm²', 
       align: 'right',
       render: (value) => value?.toLocaleString('de-DE') || '–'
     },
     { 
-      key: 'usage_type', 
-      header: 'Nutzung',
-      render: (value) => <Badge variant="secondary" className="text-xs">{value}</Badge>
+      key: 'tenant_name', 
+      header: 'Mieter',
+      render: (value) => value ? <span className="truncate max-w-[150px] block">{value}</span> : <span className="text-muted-foreground">—</span>
     },
     { 
-      key: 'annual_income', 
-      header: 'Einnahmen', 
+      key: 'current_monthly_rent', 
+      header: 'Miete', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} />
     },
     { 
       key: 'market_value', 
-      header: 'Verkehrswert', 
+      header: 'Wert', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} variant="bold" />
     },
     { 
-      key: 'id', 
+      key: 'financing_balance', 
       header: 'Restschuld', 
       align: 'right',
-      render: (_, row) => {
-        const financing = getFinancing(row.id);
-        return <PropertyCurrencyCell value={financing?.current_balance ?? null} variant="destructive" />;
-      }
+      render: (value) => <PropertyCurrencyCell value={value} variant="destructive" />
     },
     { 
-      key: 'id', 
+      key: 'financing_rate', 
       header: 'Rate', 
-      align: 'right',
-      render: (_, row) => {
-        const financing = getFinancing(row.id);
-        return <PropertyCurrencyCell value={financing?.monthly_rate ?? null} />;
-      }
-    },
-    { 
-      key: 'id', 
-      header: 'Warm', 
-      align: 'right',
-      render: (_, row) => {
-        const warmRent = getUnitRent(row.id);
-        return <PropertyCurrencyCell value={warmRent > 0 ? warmRent : null} />;
-      }
-    },
-    { 
-      key: 'management_fee', 
-      header: 'Hausgeld', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} />
     },
   ];
 
-  if (propsLoading) {
+  if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -394,9 +439,10 @@ export function PortfolioTab() {
       {/* KPI Cards - IMMER sichtbar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard
-          title="Objekte"
-          value={hasData ? (totals?.count.toString() || '0') : '0'}
+          title="Einheiten"
+          value={hasData ? (totals?.unitCount.toString() || '0') : '0'}
           icon={Building2}
+          subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
         />
         <StatCard
           title="Verkehrswert"
@@ -531,31 +577,32 @@ export function PortfolioTab() {
         </CardContent>
       </Card>
 
-      {/* Properties Table using PropertyTable Master Component */}
+      {/* Units Table using PropertyTable Master Component */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle>Immobilienportfolio</CardTitle>
+          <CardTitle>Immobilienportfolio (nach Einheiten)</CardTitle>
         </CardHeader>
         <CardContent>
           <PropertyTable
-            data={displayProperties}
+            data={displayUnits}
             columns={columns}
-            isLoading={propsLoading}
+            isLoading={unitsLoading}
             showSearch
-            searchPlaceholder="Nach Adresse, Ort oder Code suchen..."
+            searchPlaceholder="Nach Adresse, Code oder Mieter suchen..."
             searchFilter={(row, search) => 
               row.address.toLowerCase().includes(search) ||
               row.city.toLowerCase().includes(search) ||
-              (row.code && row.code.toLowerCase().includes(search))
+              (row.property_code && row.property_code.toLowerCase().includes(search)) ||
+              (row.tenant_name && row.tenant_name.toLowerCase().includes(search))
             }
-            onRowClick={(row) => navigate(`/portal/immobilien/${row.id}`)}
+            onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
             rowActions={(row) => (
               <Button variant="ghost" size="sm">
                 <Eye className="h-4 w-4" />
               </Button>
             )}
             emptyState={{
-              message: 'Noch keine Immobilien im Portfolio. Beginnen Sie mit dem ersten Objekt.',
+              message: 'Noch keine Einheiten im Portfolio. Beginnen Sie mit dem ersten Objekt.',
               actionLabel: 'Erste Immobilie anlegen',
               actionRoute: '/portal/immobilien/neu'
             }}

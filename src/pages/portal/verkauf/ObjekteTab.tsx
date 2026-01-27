@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Globe, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Eye, Globe, Users, ExternalLink } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   PropertyTable, 
@@ -12,14 +12,18 @@ import {
   type PropertyTableColumn 
 } from '@/components/shared';
 
-interface PropertyWithListing {
+// Unit-based data structure (1 row = 1 unit) - Source of Truth from MOD-04
+interface UnitWithListing {
   id: string;
-  code: string | null;
+  unit_number: string | null;
+  property_id: string;
+  property_code: string | null;
   address: string | null;
   city: string | null;
   postal_code: string | null;
   property_type: string | null;
-  total_area_sqm: number | null;
+  area_sqm: number | null;
+  current_monthly_rent: number | null;
   listing_id: string | null;
   listing_status: string | null;
   listing_title: string | null;
@@ -39,34 +43,55 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 const ObjekteTab = () => {
   const navigate = useNavigate();
 
-  // Fetch properties LEFT JOIN listings (gemäß Plan)
-  const { data: properties, isLoading } = useQuery({
-    queryKey: ['verkauf-properties-with-listings'],
+  // Fetch UNITS with LEFT JOIN to properties and listings (Unit-based view)
+  const { data: units, isLoading } = useQuery({
+    queryKey: ['verkauf-units-with-listings'],
     queryFn: async () => {
-      // 1. Alle Properties laden
-      const { data: propsData, error: propsError } = await supabase
-        .from('properties')
-        .select('id, code, address, city, postal_code, property_type, total_area_sqm')
-        .order('code', { ascending: true });
+      // 1. Get all units with their properties
+      const { data: unitsData, error: unitsError } = await supabase
+        .from('units')
+        .select(`
+          id,
+          unit_number,
+          area_sqm,
+          current_monthly_rent,
+          property_id,
+          properties!inner (
+            id,
+            code,
+            address,
+            city,
+            postal_code,
+            property_type,
+            status
+          )
+        `)
+        .eq('properties.status', 'active')
+        .order('properties(code)', { ascending: true });
 
-      if (propsError) throw propsError;
+      if (unitsError) throw unitsError;
 
-      // 2. Alle Listings laden
+      // 2. Get listings (may be linked to property_id or unit_id)
       const { data: listingsData } = await supabase
         .from('listings')
-        .select('id, property_id, status, title, asking_price')
+        .select('id, property_id, unit_id, status, title, asking_price')
         .in('status', ['draft', 'active', 'reserved', 'sold']);
 
-      // 3. Publications laden für Kanal-Status
+      // 3. Get publications for channel status
       const listingIds = listingsData?.map(l => l.id) || [];
       const { data: pubData } = await supabase
         .from('listing_publications')
         .select('listing_id, channel, status')
         .in('listing_id', listingIds.length > 0 ? listingIds : ['00000000-0000-0000-0000-000000000000']);
 
-      // Maps für schnellen Zugriff
-      const listingByProperty = new Map(listingsData?.map(l => [l.property_id, l]));
-      
+      // Build maps
+      const listingByUnit = new Map(
+        listingsData?.filter(l => l.unit_id).map(l => [l.unit_id, l])
+      );
+      const listingByProperty = new Map(
+        listingsData?.filter(l => !l.unit_id).map(l => [l.property_id, l])
+      );
+
       const pubMap = new Map<string, { kaufy: boolean; partner: boolean }>();
       pubData?.forEach(p => {
         const current = pubMap.get(p.listing_id) || { kaufy: false, partner: false };
@@ -75,33 +100,38 @@ const ObjekteTab = () => {
         pubMap.set(p.listing_id, current);
       });
 
-      // Properties mit Listing-Daten zusammenführen
-      return propsData?.map(prop => {
-        const listing = listingByProperty.get(prop.id);
+      // Transform to flat structure (1 row = 1 unit)
+      return unitsData?.map(u => {
+        const prop = u.properties as any;
+        // First check for unit-specific listing, then fall back to property-level
+        const listing = listingByUnit.get(u.id) || listingByProperty.get(prop.id);
         const channels = listing ? pubMap.get(listing.id) : undefined;
-        
+
         return {
-          id: prop.id,
-          code: prop.code,
+          id: u.id,
+          unit_number: u.unit_number,
+          property_id: prop.id,
+          property_code: prop.code,
           address: prop.address,
           city: prop.city,
           postal_code: prop.postal_code,
           property_type: prop.property_type,
-          total_area_sqm: prop.total_area_sqm,
+          area_sqm: u.area_sqm,
+          current_monthly_rent: u.current_monthly_rent,
           listing_id: listing?.id || null,
           listing_status: listing?.status || null,
           listing_title: listing?.title || null,
           asking_price: listing?.asking_price || null,
           kaufy_active: channels?.kaufy || false,
           partner_active: channels?.partner || false
-        };
+        } as UnitWithListing;
       }) || [];
     }
   });
 
-  const columns: PropertyTableColumn<PropertyWithListing>[] = [
+  const columns: PropertyTableColumn<UnitWithListing>[] = [
     {
-      key: 'code',
+      key: 'property_code',
       header: 'Code',
       minWidth: '80px',
       render: (val) => <PropertyCodeCell code={val} />
@@ -113,11 +143,31 @@ const ObjekteTab = () => {
       render: (_, row) => <PropertyAddressCell address={row.address || ''} subtitle={row.city || ''} />
     },
     {
+      key: 'unit_number',
+      header: 'Einheit',
+      minWidth: '80px',
+      render: (val) => <span className="text-xs text-muted-foreground">{val || 'MAIN'}</span>
+    },
+    {
+      key: 'area_sqm',
+      header: 'm²',
+      minWidth: '70px',
+      align: 'right',
+      render: (val) => val?.toLocaleString('de-DE') || '–'
+    },
+    {
+      key: 'current_monthly_rent',
+      header: 'Miete',
+      minWidth: '100px',
+      align: 'right',
+      render: (val) => <PropertyCurrencyCell value={val} />
+    },
+    {
       key: 'asking_price',
       header: 'Preis',
       minWidth: '120px',
       align: 'right',
-      render: (val) => <PropertyCurrencyCell value={val} />
+      render: (val) => <PropertyCurrencyCell value={val} variant="bold" />
     },
     {
       key: 'listing_status',
@@ -161,7 +211,7 @@ const ObjekteTab = () => {
     }
   ];
 
-  const renderRowActions = (row: PropertyWithListing) => (
+  const renderRowActions = (row: UnitWithListing) => (
     <Button 
       variant="ghost" 
       size="icon" 
@@ -170,7 +220,7 @@ const ObjekteTab = () => {
         e.stopPropagation();
         navigate(`/portal/verkauf/expose/${row.id}`);
       }}
-      title="Exposé öffnen"
+      title="Verkaufsexposé öffnen"
     >
       <Eye className="h-4 w-4" />
     </Button>
@@ -178,14 +228,21 @@ const ObjekteTab = () => {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {properties?.length || 0} Objekt{properties?.length !== 1 ? 'e' : ''} im Portfolio
+          {units?.length || 0} Einheit{units?.length !== 1 ? 'en' : ''} im Portfolio
+        </p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <ExternalLink className="h-3 w-3" />
+          Stammdaten bearbeiten Sie im{' '}
+          <Link to="/portal/immobilien/portfolio" className="text-primary hover:underline">
+            Immobilien-Portfolio
+          </Link>
         </p>
       </div>
 
       <PropertyTable
-        data={properties || []}
+        data={units || []}
         columns={columns}
         isLoading={isLoading}
         showSearch
@@ -193,13 +250,14 @@ const ObjekteTab = () => {
         searchFilter={(row, search) => 
           row.address?.toLowerCase().includes(search) ||
           row.city?.toLowerCase().includes(search) ||
-          row.code?.toLowerCase().includes(search) ||
+          row.property_code?.toLowerCase().includes(search) ||
           row.listing_title?.toLowerCase().includes(search) ||
+          row.unit_number?.toLowerCase().includes(search) ||
           false
         }
         emptyState={{
-          message: 'Keine Objekte im Portfolio',
-          actionLabel: 'Objekt anlegen',
+          message: 'Keine Einheiten im Portfolio',
+          actionLabel: 'Zum Immobilien-Modul',
           actionRoute: '/portal/immobilien'
         }}
         onRowClick={(row) => navigate(`/portal/verkauf/expose/${row.id}`)}

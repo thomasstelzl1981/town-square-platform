@@ -174,8 +174,11 @@ const App = () => (
               <Route path="msv/vermietung/:id" element={<RentalExposeDetail />} />
               <Route path="msv/einstellungen" element={<MSVPage />} />
               
-              {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
+              {/* MOD-06: Verkauf (Objekte, Exposés, Vorgänge, Reporting) */}
               <Route path="verkauf/*" element={<VerkaufPage />} />
+              
+              {/* ExposeDetail uses unitId as parameter */}
+              {/* Route pattern: /portal/verkauf/expose/:unitId */}
               
               {/* MOD-07: Finanzierung (Fälle, Dokumente, Export, Status) */}
               <Route path="finanzierung" element={<FinanzierungPage />} />
