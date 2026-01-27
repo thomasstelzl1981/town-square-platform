@@ -82,7 +82,7 @@ export function PortalLayout() {
         <PortalNav variant="sidebar" />
         
         {/* Main Content - with right margin for persistent chat on desktop */}
-        <main className="flex-1 pb-20 lg:pb-0 lg:mr-[var(--chat-panel-width)]">
+        <main className="flex-1 min-w-0 overflow-x-hidden pb-20 lg:pb-0 lg:mr-[var(--chat-panel-width)]">
           <Outlet />
         </main>
 
