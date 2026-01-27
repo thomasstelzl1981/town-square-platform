@@ -251,6 +251,77 @@ export type Database = {
           },
         ]
       }
+      billing_usage: {
+        Row: {
+          created_at: string | null
+          document_count: number | null
+          extraction_cost_cents: number | null
+          extraction_pages_fast: number | null
+          extraction_pages_hires: number | null
+          id: string
+          lovable_ai_calls: number | null
+          lovable_ai_tokens: number | null
+          pages_from_caya: number | null
+          pages_from_dropbox: number | null
+          pages_from_gdrive: number | null
+          pages_from_onedrive: number | null
+          pages_from_resend: number | null
+          period_end: string
+          period_start: string
+          storage_bytes_used: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_count?: number | null
+          extraction_cost_cents?: number | null
+          extraction_pages_fast?: number | null
+          extraction_pages_hires?: number | null
+          id?: string
+          lovable_ai_calls?: number | null
+          lovable_ai_tokens?: number | null
+          pages_from_caya?: number | null
+          pages_from_dropbox?: number | null
+          pages_from_gdrive?: number | null
+          pages_from_onedrive?: number | null
+          pages_from_resend?: number | null
+          period_end: string
+          period_start: string
+          storage_bytes_used?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_count?: number | null
+          extraction_cost_cents?: number | null
+          extraction_pages_fast?: number | null
+          extraction_pages_hires?: number | null
+          id?: string
+          lovable_ai_calls?: number | null
+          lovable_ai_tokens?: number | null
+          pages_from_caya?: number | null
+          pages_from_dropbox?: number | null
+          pages_from_gdrive?: number | null
+          pages_from_onedrive?: number | null
+          pages_from_resend?: number | null
+          period_end?: string
+          period_start?: string
+          storage_bytes_used?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -611,37 +682,52 @@ export type Database = {
       }
       documents: {
         Row: {
+          ai_summary: string | null
           created_at: string
+          detected_type: string | null
+          extracted_json_path: string | null
+          extraction_status: string | null
           file_path: string
           id: string
           mime_type: string
           name: string
           public_id: string
           size_bytes: number
+          source: string | null
           tenant_id: string
           updated_at: string
           uploaded_by: string | null
         }
         Insert: {
+          ai_summary?: string | null
           created_at?: string
+          detected_type?: string | null
+          extracted_json_path?: string | null
+          extraction_status?: string | null
           file_path: string
           id?: string
           mime_type: string
           name: string
           public_id: string
           size_bytes: number
+          source?: string | null
           tenant_id: string
           updated_at?: string
           uploaded_by?: string | null
         }
         Update: {
+          ai_summary?: string | null
           created_at?: string
+          detected_type?: string | null
+          extracted_json_path?: string | null
+          extraction_status?: string | null
           file_path?: string
           id?: string
           mime_type?: string
           name?: string
           public_id?: string
           size_bytes?: number
+          source?: string | null
           tenant_id?: string
           updated_at?: string
           uploaded_by?: string | null
@@ -649,6 +735,84 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extractions: {
+        Row: {
+          actual_cost_cents: number | null
+          actual_pages: number | null
+          consent_given_at: string | null
+          consent_given_by: string | null
+          created_at: string
+          document_id: string
+          engine: string
+          error_message: string | null
+          estimated_cost_cents: number | null
+          estimated_pages: number | null
+          finished_at: string | null
+          id: string
+          result_json: Json | null
+          source: string
+          started_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_cost_cents?: number | null
+          actual_pages?: number | null
+          consent_given_at?: string | null
+          consent_given_by?: string | null
+          created_at?: string
+          document_id: string
+          engine: string
+          error_message?: string | null
+          estimated_cost_cents?: number | null
+          estimated_pages?: number | null
+          finished_at?: string | null
+          id?: string
+          result_json?: Json | null
+          source: string
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_cost_cents?: number | null
+          actual_pages?: number | null
+          consent_given_at?: string | null
+          consent_given_by?: string | null
+          created_at?: string
+          document_id?: string
+          engine?: string
+          error_message?: string | null
+          estimated_cost_cents?: number | null
+          estimated_pages?: number | null
+          finished_at?: string | null
+          id?: string
+          result_json?: Json | null
+          source?: string
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extractions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -4452,6 +4616,50 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_extraction_settings: {
+        Row: {
+          auto_extract_caya: boolean | null
+          auto_extract_connectors: boolean | null
+          auto_extract_resend: boolean | null
+          created_at: string | null
+          default_engine: string | null
+          monthly_limit_cents: number | null
+          notify_at_percent: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_extract_caya?: boolean | null
+          auto_extract_connectors?: boolean | null
+          auto_extract_resend?: boolean | null
+          created_at?: string | null
+          default_engine?: string | null
+          monthly_limit_cents?: number | null
+          notify_at_percent?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_extract_caya?: boolean | null
+          auto_extract_connectors?: boolean | null
+          auto_extract_resend?: boolean | null
+          created_at?: string | null
+          default_engine?: string | null
+          monthly_limit_cents?: number | null
+          notify_at_percent?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_extraction_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_tile_activation: {
         Row: {
           activated_at: string
@@ -4837,6 +5045,28 @@ export type Database = {
           role: Database["public"]["Enums"]["membership_role"]
           tenant_id: string
         }[]
+      }
+      increment_billing_usage: {
+        Args: {
+          p_cost_cents: number
+          p_engine: string
+          p_pages: number
+          p_period_end: string
+          p_period_start: string
+          p_source: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      increment_lovable_ai_usage: {
+        Args: {
+          p_calls?: number
+          p_period_end: string
+          p_period_start: string
+          p_tenant_id: string
+          p_tokens?: number
+        }
+        Returns: undefined
       }
       is_parent_access_blocked: {
         Args: { target_org_id: string }

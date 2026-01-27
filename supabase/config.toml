@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.sot-armstrong-advisor]
 verify_jwt = false
+
+[functions.sot-document-parser]
+verify_jwt = false

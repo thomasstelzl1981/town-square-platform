@@ -1,254 +1,170 @@
+# Implementierungsplan: Upload-Pipeline & MOD-09 Beratung
 
-# Implementierungsplan: Source of Truth & Unit-basierter Workflow
+**Status:** Phase 1-2 DONE, Phase 3 PLANUNG  
+**Datum:** 2026-01-27
 
-## Bestätigtes Architektur-Prinzip
+---
+
+## ✅ ABGESCHLOSSEN: Teil 1 - MOD-01 Bugfixes
+
+| Task | Status |
+|------|--------|
+| FirmaTab Export in index.ts | ✅ DONE |
+| FirmaTab Import in StammdatenPage | ✅ DONE |
+| Route `/stammdaten/firma` in App.tsx | ✅ DONE |
+
+---
+
+## ✅ ABGESCHLOSSEN: Teil 2 - KI-Upload-Pipeline
+
+### 2a) Datenbank-Migration ✅
+
+| Tabelle | Status |
+|---------|--------|
+| `documents` erweitert (extracted_json_path, extraction_status, source, ai_summary, detected_type) | ✅ DONE |
+| `billing_usage` (Seiten-Counter pro Tenant/Monat) | ✅ DONE |
+| `extractions` (Einzelne Parsing-Jobs) | ✅ DONE |
+| `tenant_extraction_settings` (Auto-Extraction Einstellungen) | ✅ DONE |
+| RPC `increment_billing_usage` | ✅ DONE |
+| RPC `increment_lovable_ai_usage` | ✅ DONE |
+
+### 2b) Edge Function ✅
+
+| Function | Technologie | Status |
+|----------|-------------|--------|
+| `sot-document-parser` | Lovable AI (Gemini 3 Flash) | ✅ DONE |
+| `config.toml` aktualisiert | — | ✅ DONE |
+
+### 2c) Frontend-Komponenten ✅
+
+| Komponente | Pfad | Status |
+|------------|------|--------|
+| `useSmartUpload` Hook | `src/hooks/useSmartUpload.ts` | ✅ DONE |
+| `ImportPreview` Komponente | `src/components/shared/ImportPreview.tsx` | ✅ DONE |
+| TypeScript Schemas | `src/types/document-schemas.ts` | ✅ DONE |
+| Shared Index Export | `src/components/shared/index.ts` | ✅ DONE |
+
+### 2d) Dokumentation ✅
+
+| Dokument | Status |
+|----------|--------|
+| ADR-038 Storage Architecture v1.1 | ✅ DONE |
+| API Numbering Catalog (INTERNAL-006, INTERNAL-007) | ✅ DONE |
+| plan.md (dieses Dokument) | ✅ DONE |
+
+---
+
+## 🔄 PLANUNG: Teil 3 - MOD-09 Beratung
+
+### Architektur
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                   MOD-04 EXPOSÉ = SINGLE SOURCE OF TRUTH                │
-│                                                                         │
-│   PropertyDetail.tsx (/portal/immobilien/:id)                          │
-│   ═══════════════════════════════════════════                          │
-│   • Einzige Stelle für Dateneingabe/-änderung                          │
-│   • Objektdaten, Finanzierung, Mieter, Grafiken                        │
-│   • Alle anderen Module lesen NUR von hier                             │
+│  BeratungTab - Vollständiger Beratungs-Workflow                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────────────────────────────────┐ │
+│  │  OBJEKT-AUSWAHL  │  │  INVESTMENT CALCULATOR                       │ │
+│  │  ──────────────  │  │  ──────────────────────                       │ │
+│  │  • Aus Katalog   │  │  • Pre-filled mit Objektdaten                │ │
+│  │  • Oder manuell  │  │  • Eigenkapital editierbar                   │ │
+│  │                  │  │  • Finanzierung                               │ │
+│  │  KUNDE-AUSWAHL   │  │  • Steuerdaten                               │ │
+│  │  ──────────────  │  │                                              │ │
+│  │  • Aus Kontakten │  │  [Graph + 40-Jahre-Tabelle]                  │ │
+│  │  • Oder neu      │  │                                              │ │
+│  │                  │  │  [Speichern] [PDF] [Deal starten]            │ │
+│  └──────────────────┘  └──────────────────────────────────────────────┘ │
+│                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ READ-ONLY
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-           ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-           │   MOD-04     │ │   MOD-05     │ │   MOD-06     │
-           │  Portfolio   │ │  Vermietung  │ │   Verkauf    │
-           │    Liste     │ │   Exposé     │ │   Exposé     │
-           └──────────────┘ └──────────────┘ └──────────────┘
-                                    │               │
-                                    │               │
-                              Sichtbarkeit    Sichtbarkeit
-                              anpassbar       anpassbar
-                              (nicht Daten)   (nicht Daten)
+```
+
+### Geplante Komponenten
+
+| Komponente | Beschreibung | Status |
+|------------|--------------|--------|
+| `ObjectSelector.tsx` | Grid mit partner_visible Listings | ⏳ PLANNED |
+| `CustomerSelector.tsx` | Dropdown mit Kontakten | ⏳ PLANNED |
+| `SimulationActions.tsx` | Speichern, PDF, Deal starten | ⏳ PLANNED |
+| `BeratungTab.tsx` Refactoring | Vollständiger Workflow | ⏳ PLANNED |
+
+### Geplante Datenbank
+
+| Tabelle | Beschreibung | Status |
+|---------|--------------|--------|
+| `investment_simulations` | Persistierte Berechnungen | ⏳ PLANNED |
+
+### Datenfluss
+
+```
+1. Partner wählt Objekt aus Katalog (oder gibt manuell ein)
+2. Partner wählt Kunden aus Kontakten (oder legt neu an)
+3. Investment Calculator zeigt Berechnung
+4. Partner kann Simulation speichern
+5. Partner kann PDF exportieren
+6. Partner kann Deal in Pipeline starten
 ```
 
 ---
 
-## Phase 1: Schema-Erweiterung
+## Storage-Architektur (v1.1)
 
-### 1.1 Datenbank-Migration
+### Zwei-Engine-Modell
 
-Neue Spalte für Unit-basierte Listings:
+| Quelle | Engine | JSON-Pfad | Kosten |
+|--------|--------|-----------|--------|
+| Drag & Drop | Lovable AI | `derived/{id}/metadata.json` | Inklusive |
+| UI-Upload | Lovable AI | `derived/{id}/metadata.json` | Inklusive |
+| Resend (E-Mail) | Unstructured.io | `derived/{id}/unstructured.json` | 0.02-0.05€/Seite |
+| Caya (Post) | Unstructured.io | `derived/{id}/unstructured.json` | 0.02-0.05€/Seite |
+| Cloud-Import | Unstructured.io | `derived/{id}/unstructured.json` | 0.02-0.05€/Seite |
 
-```sql
-ALTER TABLE listings ADD COLUMN unit_id UUID REFERENCES units(id);
-```
+### Billing-Tracking
 
----
-
-## Phase 2: TestDataManager erweitern
-
-### 2.1 Datei
-`src/components/admin/TestDataManager.tsx`
-
-### 2.2 Änderungen
-- Excel-Parser für `Immobilienaufstellung_Vorlage-3.xlsx`
-- Mapping: 1 Excel-Zeile = 1 Unit = 1 Zeile in Listen
-
-### 2.3 Feld-Mapping
-
-| Excel-Feld | Transformation | Ziel-Tabelle |
-|------------|----------------|--------------|
-| Objekt (ZL002) | → property_code | properties.code |
-| Art (MFH) | → multi_family | properties.property_type |
-| Adresse, Ort | → direkt | properties.address, city |
-| qm | → Komma→Punkt | units.area_sqm |
-| Kaltmiete | → monatlich | units.current_monthly_rent |
-| Mieter | → Split | contacts + leases |
-| Kaufpreis | → Integer | properties.purchase_price |
-| Restschuld, Zinssatz | → Zahlen | property_financing |
+| Counter | Tabelle | RPC |
+|---------|---------|-----|
+| Lovable AI Calls | `billing_usage.lovable_ai_calls` | `increment_lovable_ai_usage` |
+| Lovable AI Tokens | `billing_usage.lovable_ai_tokens` | `increment_lovable_ai_usage` |
+| Unstructured Fast | `billing_usage.extraction_pages_fast` | `increment_billing_usage` |
+| Unstructured HiRes | `billing_usage.extraction_pages_hires` | `increment_billing_usage` |
+| Kosten (Cents) | `billing_usage.extraction_cost_cents` | `increment_billing_usage` |
 
 ---
 
-## Phase 3: PortfolioTab Unit-Query
+## Edge Functions (Aktuell)
 
-### 3.1 Datei
-`src/pages/portal/immobilien/PortfolioTab.tsx`
-
-### 3.2 Änderungen
-Query von `properties` auf `units LEFT JOIN properties` umstellen
-
-### 3.3 Neue Spalten
-
-| Spalte | Quelle |
-|--------|--------|
-| Code | properties.code |
-| Adresse | properties.address, city |
-| Wohnung | units.unit_number |
-| m² | units.area_sqm |
-| Mieter | contacts.name via leases |
-| Miete | units.current_monthly_rent |
+| ID | Function | Modul | Status |
+|----|----------|-------|--------|
+| INTERNAL-001 | sot-letter-generate | MOD-02 | ACTIVE |
+| INTERNAL-002 | sot-expose-description | MOD-04 | ACTIVE |
+| INTERNAL-003 | sot-dms-upload-url | MOD-03 | ACTIVE |
+| INTERNAL-004 | sot-dms-download-url | MOD-03 | ACTIVE |
+| INTERNAL-005 | sot-investment-engine | MOD-08 | ACTIVE |
+| INTERNAL-006 | sot-armstrong-advisor | MOD-02 | ACTIVE |
+| INTERNAL-007 | sot-document-parser | MOD-03 | ACTIVE |
+| API-801 | sot-msv-reminder-check | MOD-05 | ACTIVE |
+| API-802 | sot-msv-rent-report | MOD-05 | ACTIVE |
+| API-803 | sot-listing-publish | MOD-05 | ACTIVE |
+| API-804 | sot-lead-inbox | MOD-10 | ACTIVE |
+| API-701 | sot-property-crud | MOD-04 | ACTIVE |
 
 ---
 
-## Phase 4: ObjekteTab (Verkauf) Unit-Query
+## Nächste Schritte
 
-### 4.1 Datei
-`src/pages/portal/verkauf/ObjekteTab.tsx`
+1. ⏳ **MOD-09 Beratung Planung abschließen**
+   - ObjectSelector Design
+   - CustomerSelector Design
+   - investment_simulations Schema
+   - BeratungTab Wireframe
 
-### 4.2 Änderungen
-Query auf `units` umstellen (identisch zu PortfolioTab)
+2. ⏳ **Nach Freigabe implementieren**
+   - DB-Migration investment_simulations
+   - Komponenten erstellen
+   - BeratungTab refactoren
 
-### 4.3 Spalten
-
-| Spalte | Quelle | Editierbar? |
-|--------|--------|-------------|
-| Code | properties.code | Nein (aus MOD-04) |
-| Adresse | properties.address | Nein (aus MOD-04) |
-| Miete | units.current_monthly_rent | Nein (aus MOD-04) |
-| Preis | listings.asking_price | Nur in Exposé |
-| Status | listings.status | Via Consent |
-| Kanäle | listing_publications | Via Toggles |
-
----
-
-## Phase 5: ExposeDetail (Verkauf) anpassen
-
-### 5.1 Datei
-`src/pages/portal/verkauf/ExposeDetail.tsx`
-
-### 5.2 Änderungen
-
-1. Route-Parameter: `:propertyId` → `:unitId`
-2. Objektdaten-Karte: READ-ONLY (aus MOD-04)
-3. Editierbare Felder NUR:
-   - Titel (für Inserat)
-   - Beschreibung (für Inserat)
-   - Kaufpreis
-   - Provision
-4. Hinweistext: "Stammdaten bearbeiten Sie im Immobilien-Exposé"
-5. Grafiken (Wertentwicklung, Tilgung) → aus MOD-04 Finanzierungsdaten
-
----
-
-## Phase 6: VorgaengeTab PropertyTable
-
-### 6.1 Datei
-`src/pages/portal/verkauf/VorgaengeTab.tsx`
-
-### 6.2 Änderungen
-Von EmptyState zu PropertyTable-Pattern
-
-### 6.3 Reservierungen-Tabelle (immer sichtbar)
-
-| Spalte | Bei 0 Daten |
-|--------|-------------|
-| Objekt | – |
-| Käufer | – |
-| Preis | – |
-| Status | – |
-| Notartermin | – |
-| Bestätigung | – |
-
-### 6.4 Transaktionen-Tabelle (immer sichtbar)
-
-| Spalte | Bei 0 Daten |
-|--------|-------------|
-| Objekt | – |
-| Käufer | – |
-| Kaufpreis | – |
-| Provision | – |
-| Status | – |
-| Termine | – |
-
----
-
-## Phase 7: ReportingTab PropertyTable
-
-### 7.1 Datei
-`src/pages/portal/verkauf/ReportingTab.tsx`
-
-### 7.2 Performance-Tabelle (immer sichtbar)
-
-| Spalte | Bei 0 Daten |
-|--------|-------------|
-| Objekt | – |
-| Preis | – |
-| Status | – |
-| Kanäle | – |
-| Views | 0 |
-| Anfragen | 0 |
-
----
-
-## Phase 8: MOD-09 KatalogTab
-
-### 8.1 Datei
-`src/pages/portal/vertriebspartner/KatalogTab.tsx`
-
-### 8.2 Änderungen
-- Query auf Units mit partner_network = active
-- PropertyTable-Pattern
-- "Deal starten" Button
-
----
-
-## Phase 9: MOD-09 PipelineTab
-
-### 9.1 Datei
-`src/pages/portal/vertriebspartner/PipelineTab.tsx`
-
-### 9.2 Pipeline-Tabelle (immer sichtbar)
-
-| Spalte | Bei 0 Daten |
-|--------|-------------|
-| Objekt | – |
-| Kunde | – |
-| Status | – |
-| Preis | – |
-| Provision | – |
-| Nächster Schritt | – |
-
----
-
-## Phase 10: Dokumentation
-
-### 10.1 Datei
-`DECISIONS.md`
-
-### 10.2 Neue ADRs
-
-- ADR-040: Scope-Trennung (MOD-06 Bestand, MOD-12 Projekte)
-- ADR-041: Unit-basierte Listings
-- ADR-042: Source of Truth MOD-04 Exposé
-- ADR-043: Modul-Nummerierung (MOD-11 Finanzierungsmanager, MOD-12 Projekte)
-
----
-
-## Zusammenfassung
-
-| Phase | Datei/Bereich | Aufwand |
-|-------|---------------|---------|
-| 1 | Schema-Migration | 10 min |
-| 2 | TestDataManager | 45 min |
-| 3 | PortfolioTab | 25 min |
-| 4 | ObjekteTab (Verkauf) | 25 min |
-| 5 | ExposeDetail | 30 min |
-| 6 | VorgaengeTab | 25 min |
-| 7 | ReportingTab | 20 min |
-| 8 | MOD-09 KatalogTab | 25 min |
-| 9 | MOD-09 PipelineTab | 20 min |
-| 10 | DECISIONS.md | 10 min |
-
-**Gesamt: ~4 Stunden**
-
----
-
-## Erwartetes Ergebnis
-
-Nach Implementierung:
-
-1. Excel-Import lädt 8 Properties mit Units in MOD-04
-2. MOD-04 Portfolio zeigt Unit-basierte Liste
-3. MOD-04 Exposé ist editierbar (Source of Truth)
-4. MOD-06 Objekte zeigt dieselben Units (READ-ONLY)
-5. MOD-06 Exposé zeigt Daten aus MOD-04, nur Verkaufsfelder editierbar
-6. Vorgänge/Reporting zeigen Tabellenstruktur mit Platzhaltern
-7. MOD-09 Katalog/Pipeline bereit für Partner-Flow
+3. ⏳ **Integration testen**
+   - Objekt aus Katalog wählen
+   - Kunde wählen/anlegen
+   - Simulation speichern
+   - Deal starten

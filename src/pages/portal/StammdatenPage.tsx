@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 // Sub-page components
 import { ProfilTab } from './stammdaten/ProfilTab';
 import { PersonenTab } from './stammdaten/PersonenTab';
+import { FirmaTab } from './stammdaten/FirmaTab';
 import { AbrechnungTab } from './stammdaten/AbrechnungTab';
 import { SicherheitTab } from './stammdaten/SicherheitTab';
 
@@ -25,6 +26,7 @@ const StammdatenPage = () => {
 
   const subTiles = data?.sub_tiles || [
     { title: 'Profil', route: '/portal/stammdaten/profil' },
+    { title: 'Firma', route: '/portal/stammdaten/firma' },
     { title: 'Personen', route: '/portal/stammdaten/personen' },
     { title: 'Abrechnung', route: '/portal/stammdaten/abrechnung' },
     { title: 'Sicherheit', route: '/portal/stammdaten/sicherheit' },
@@ -34,6 +36,7 @@ const StammdatenPage = () => {
   const currentPath = location.pathname;
   const renderSubPage = () => {
     if (currentPath.endsWith('/profil')) return <ProfilTab />;
+    if (currentPath.endsWith('/firma')) return <FirmaTab />;
     if (currentPath.endsWith('/personen')) return <PersonenTab />;
     if (currentPath.endsWith('/abrechnung')) return <AbrechnungTab />;
     if (currentPath.endsWith('/sicherheit')) return <SicherheitTab />;

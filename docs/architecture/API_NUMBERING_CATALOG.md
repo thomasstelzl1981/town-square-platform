@@ -36,6 +36,8 @@
 | INTERNAL-003 | sot-dms-upload-url | MOD-03 | DMS Upload | ACTIVE |
 | INTERNAL-004 | sot-dms-download-url | MOD-03 | DMS Download | ACTIVE |
 | INTERNAL-005 | sot-investment-engine | MOD-08 | Investment-Berechnung | ACTIVE |
+| INTERNAL-006 | sot-armstrong-advisor | MOD-02 | KI-Assistant | ACTIVE |
+| INTERNAL-007 | sot-document-parser | MOD-03 | KI-Dokument-Parsing | ACTIVE |
 
 ---
 
