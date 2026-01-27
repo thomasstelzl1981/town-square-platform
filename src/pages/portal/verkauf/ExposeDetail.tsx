@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,9 +24,19 @@ import {
   Euro,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { PartnerReleaseDialog, SalesMandateDialog } from '@/components/verkauf';
+
+// Unit-based data (Source of Truth from MOD-04)
+interface UnitData {
+  id: string;
+  unit_number: string | null;
+  area_sqm: number | null;
+  current_monthly_rent: number | null;
+  property_id: string;
+}
 
 interface PropertyData {
   id: string;
@@ -38,11 +48,13 @@ interface PropertyData {
   total_area_sqm: number | null;
   year_built: number | null;
   energy_source: string | null;
+  tenant_id: string;
 }
 
 interface ListingData {
   id: string;
   property_id: string;
+  unit_id: string | null;
   tenant_id: string;
   title: string;
   description: string | null;
@@ -59,7 +71,8 @@ interface PublicationData {
 }
 
 const ExposeDetail = () => {
-  const { propertyId } = useParams<{ propertyId: string }>();
+  // Now uses unitId as the primary reference
+  const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -73,51 +86,71 @@ const ExposeDetail = () => {
   const [salesMandateOpen, setSalesMandateOpen] = useState(false);
   const [partnerReleaseOpen, setPartnerReleaseOpen] = useState(false);
 
-  // Fetch property data
+  // Fetch unit data first (Source of Truth reference)
+  const { data: unit, isLoading: unitLoading } = useQuery({
+    queryKey: ['unit', unitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('units')
+        .select('id, unit_number, area_sqm, current_monthly_rent, property_id')
+        .eq('id', unitId!)
+        .single();
+      if (error) throw error;
+      return data as UnitData;
+    },
+    enabled: !!unitId
+  });
+
+  // Fetch property data (READ-ONLY from MOD-04)
   const { data: property, isLoading: propertyLoading } = useQuery({
-    queryKey: ['property', propertyId],
+    queryKey: ['property', unit?.property_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, code, address, city, postal_code, property_type, total_area_sqm, year_built, energy_source')
-        .eq('id', propertyId!)
+        .select('id, code, address, city, postal_code, property_type, total_area_sqm, year_built, energy_source, tenant_id')
+        .eq('id', unit!.property_id)
         .single();
       if (error) throw error;
-      return data as unknown as PropertyData;
+      return data as PropertyData;
     },
-    enabled: !!propertyId
+    enabled: !!unit?.property_id
   });
 
-  // Fetch or create listing
+  // Fetch or create listing for this unit
   const { data: listing, isLoading: listingLoading, refetch: refetchListing } = useQuery({
-    queryKey: ['listing-for-property', propertyId],
+    queryKey: ['listing-for-unit', unitId],
     queryFn: async () => {
-      // Check if listing exists
+      if (!unit || !property) return null;
+
+      // Check if listing exists for this unit
       const { data: existing } = await supabase
         .from('listings')
         .select('*')
-        .eq('property_id', propertyId!)
+        .eq('unit_id', unitId!)
         .in('status', ['draft', 'active', 'reserved'])
         .maybeSingle();
 
       if (existing) return existing as unknown as ListingData;
 
-      // Get tenant_id from property
-      const { data: propData } = await supabase
-        .from('properties')
-        .select('tenant_id')
-        .eq('id', propertyId!)
-        .single();
+      // Check for property-level listing (legacy)
+      const { data: propListing } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('property_id', property.id)
+        .is('unit_id', null)
+        .in('status', ['draft', 'active', 'reserved'])
+        .maybeSingle();
 
-      if (!propData) throw new Error('Property not found');
+      if (propListing) return propListing as unknown as ListingData;
 
-      // Auto-create listing (draft)
+      // Auto-create unit-specific listing (draft)
       const { data: newListing, error } = await supabase
         .from('listings')
         .insert({
-          property_id: propertyId!,
-          tenant_id: propData.tenant_id,
-          title: `${property?.address || 'Immobilie'}, ${property?.city || ''}`,
+          property_id: property.id,
+          unit_id: unitId,
+          tenant_id: property.tenant_id,
+          title: `${property.address || 'Immobilie'}, ${property.city || ''} ${unit.unit_number ? `- ${unit.unit_number}` : ''}`.trim(),
           status: 'draft',
           commission_rate: 7
         })
@@ -127,7 +160,7 @@ const ExposeDetail = () => {
       if (error) throw error;
       return newListing as unknown as ListingData;
     },
-    enabled: !!propertyId && !!property
+    enabled: !!unit && !!property
   });
 
   // Fetch publications
@@ -156,7 +189,7 @@ const ExposeDetail = () => {
     }
   }, [listing]);
 
-  // Save mutation
+  // Save mutation (only sale-specific fields)
   const saveMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -171,7 +204,7 @@ const ExposeDetail = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listing-for-property', propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['listing-for-unit', unitId] });
       setHasChanges(false);
       toast.success('Änderungen gespeichert');
     },
@@ -181,17 +214,14 @@ const ExposeDetail = () => {
   // Activate listing (SALES_MANDATE)
   const activateMutation = useMutation({
     mutationFn: async () => {
-      // Save first
       await saveMutation.mutateAsync();
       
-      // Update status to active
       const { error } = await supabase
         .from('listings')
         .update({ status: 'active' })
         .eq('id', listing!.id);
       if (error) throw error;
 
-      // Log consent (simplified - in production use user_consents table)
       console.log('SALES_MANDATE consent recorded');
     },
     onSuccess: () => {
@@ -205,7 +235,6 @@ const ExposeDetail = () => {
   // Partner release mutation
   const partnerReleaseMutation = useMutation({
     mutationFn: async (commissionRate: number) => {
-      // Update listing with partner commission
       const { error: listingError } = await supabase
         .from('listings')
         .update({ 
@@ -215,7 +244,6 @@ const ExposeDetail = () => {
         .eq('id', listing!.id);
       if (listingError) throw listingError;
 
-      // Create partner_network publication
       const { error: pubError } = await supabase
         .from('listing_publications')
         .upsert({
@@ -227,7 +255,6 @@ const ExposeDetail = () => {
         }, { onConflict: 'listing_id,channel' });
       if (pubError) throw pubError;
 
-      // Log consents (simplified)
       console.log('PARTNER_RELEASE consent recorded');
       console.log('SYSTEM_SUCCESS_FEE_2000 consent recorded');
     },
@@ -255,7 +282,6 @@ const ExposeDetail = () => {
           }, { onConflict: 'listing_id,channel' });
         if (error) throw error;
       } else {
-        // Statt "removed" nutzen wir "paused", da removed kein gültiger Status ist
         const { error } = await supabase
           .from('listing_publications')
           .update({ status: 'paused' as const, removed_at: new Date().toISOString() })
@@ -275,7 +301,7 @@ const ExposeDetail = () => {
     setHasChanges(true);
   };
 
-  const isLoading = propertyLoading || listingLoading;
+  const isLoading = unitLoading || propertyLoading || listingLoading;
   const isActive = listing?.status === 'active';
   const hasPartnerRelease = publications.some(p => p.channel === 'partner_network' && p.status === 'active');
   const isKaufyActive = publications.some(p => p.channel === 'kaufy' && p.status === 'active');
@@ -299,10 +325,10 @@ const ExposeDetail = () => {
     );
   }
 
-  if (!property) {
+  if (!unit || !property) {
     return (
       <div className="p-6 text-center">
-        <p className="text-muted-foreground">Objekt nicht gefunden</p>
+        <p className="text-muted-foreground">Einheit nicht gefunden</p>
         <Button variant="outline" onClick={() => navigate('/portal/verkauf/objekte')} className="mt-4">
           Zurück zur Übersicht
         </Button>
@@ -322,6 +348,7 @@ const ExposeDetail = () => {
             <h1 className="text-2xl font-bold">Verkaufsexposé</h1>
             <p className="text-muted-foreground">
               {property.code && `[${property.code}] `}{property.address}, {property.city}
+              {unit.unit_number && ` – ${unit.unit_number}`}
             </p>
           </div>
         </div>
@@ -344,11 +371,11 @@ const ExposeDetail = () => {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Info */}
+          {/* Verkaufs-spezifische Daten (editierbar) */}
           <Card>
             <CardHeader>
-              <CardTitle>Exposé-Daten</CardTitle>
-              <CardDescription>Titel, Beschreibung und Preisangaben</CardDescription>
+              <CardTitle>Verkaufsdaten</CardTitle>
+              <CardDescription>Titel, Beschreibung und Preisangaben für das Verkaufsinserat</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -404,14 +431,25 @@ const ExposeDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Property Info (read-only) */}
-          <Card>
+          {/* Objektdaten (READ-ONLY aus MOD-04) */}
+          <Card className="border-muted">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Objektdaten
-              </CardTitle>
-              <CardDescription>Stammdaten aus MOD-04 (nicht editierbar)</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Objektdaten
+                  </CardTitle>
+                  <CardDescription>Stammdaten aus MOD-04 (nicht editierbar)</CardDescription>
+                </div>
+                <Link 
+                  to={`/portal/immobilien/${property.id}`}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Im Immobilien-Exposé bearbeiten
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-3 gap-4 text-sm">
@@ -420,18 +458,30 @@ const ExposeDetail = () => {
                   <p className="font-medium">{property.property_type || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Gesamtfläche</p>
-                  <p className="font-medium">{property.total_area_sqm ? `${property.total_area_sqm} m²` : '—'}</p>
+                  <p className="text-muted-foreground">Einheit</p>
+                  <p className="font-medium">{unit.unit_number || 'MAIN'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Fläche</p>
+                  <p className="font-medium">{unit.area_sqm ? `${unit.area_sqm} m²` : '—'}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Baujahr</p>
                   <p className="font-medium">{property.year_built || '—'}</p>
                 </div>
                 <div>
+                  <p className="text-muted-foreground">Kaltmiete</p>
+                  <p className="font-medium">
+                    {unit.current_monthly_rent 
+                      ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(unit.current_monthly_rent)
+                      : '—'}
+                  </p>
+                </div>
+                <div>
                   <p className="text-muted-foreground">Heizung</p>
                   <p className="font-medium">{property.energy_source || '—'}</p>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <p className="text-muted-foreground">Adresse</p>
                   <p className="font-medium">{property.address}, {property.postal_code} {property.city}</p>
                 </div>

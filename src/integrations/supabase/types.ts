@@ -4515,6 +4515,7 @@ export type Database = {
           id: string
           imported_at: string | null
           imported_by: string | null
+          tenant_id: string | null
         }
         Insert: {
           batch_id: string
@@ -4524,6 +4525,7 @@ export type Database = {
           id?: string
           imported_at?: string | null
           imported_by?: string | null
+          tenant_id?: string | null
         }
         Update: {
           batch_id?: string
@@ -4533,6 +4535,7 @@ export type Database = {
           id?: string
           imported_at?: string | null
           imported_by?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -4540,6 +4543,13 @@ export type Database = {
             columns: ["imported_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_data_registry_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
