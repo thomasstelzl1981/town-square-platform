@@ -2,19 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Heart, MapPin, Maximize2, Calendar, Building2, 
-  Share2, Download, Phone, Mail, ChevronLeft, ChevronRight 
+  Share2, Loader2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useInvestmentEngine, defaultInput, CalculationInput, YearlyData } from '@/hooks/useInvestmentEngine';
 
 interface ListingData {
+  id: string;
   public_id: string;
   title: string;
   description: string;
@@ -29,126 +33,110 @@ interface ListingData {
   units_count: number;
 }
 
-interface CalculationResult {
-  summary: {
-    monthlyBurden: number;
-    loanAmount: number;
-    ltv: number;
-    interestRate: number;
-    yearlyTaxSavings: number;
-    roiAfterTax: number;
-  };
-  projection: Array<{
-    year: number;
-    rent: number;
-    interest: number;
-    repayment: number;
-    remainingDebt: number;
-    taxSavings: number;
-    cashFlowBeforeTax: number;
-    cashFlowAfterTax: number;
-    propertyValue: number;
-    netWealth: number;
-  }>;
-}
-
 export default function KaufyExpose() {
   const { publicId } = useParams<{ publicId: string }>();
-  const [listing, setListing] = useState<ListingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [calcResult, setCalcResult] = useState<CalculationResult | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
+  const [showDetailTable, setShowDetailTable] = useState(false);
+  const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
-  // Interactive parameters
-  const [equity, setEquity] = useState(50000);
-  const [repaymentRate, setRepaymentRate] = useState(2);
-  const [valueGrowth, setValueGrowth] = useState(2);
-  const [zvE, setZvE] = useState(60000);
+  // Interactive parameters state
+  const [params, setParams] = useState<CalculationInput>({
+    ...defaultInput,
+    purchasePrice: 250000,
+    monthlyRent: 800,
+  });
 
   // Fetch listing data
-  useEffect(() => {
-    async function fetchListing() {
-      if (!publicId) return;
-      setIsLoading(true);
+  const { data: listing, isLoading } = useQuery({
+    queryKey: ['public-listing', publicId],
+    queryFn: async () => {
+      if (!publicId) return null;
 
-      // Mock data for now (would come from v_public_listings)
-      // In production, this would be a real query
-      setListing({
-        public_id: publicId,
-        title: 'Attraktives Mehrfamilienhaus in Top-Lage',
-        description: 'Dieses gepflegte Mehrfamilienhaus bietet eine solide Rendite und wurde kürzlich umfassend saniert. Die Lage ist ideal für langfristige Vermietung mit stabilen Mieteinnahmen.',
-        asking_price: 890000,
-        property_type: 'multi_family',
-        address: 'Musterstraße 123',
-        city: 'München',
-        postal_code: '80331',
-        total_area_sqm: 620,
-        year_built: 1925,
-        monthly_rent: 4200,
-        units_count: 8,
-      });
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          id,
+          public_id,
+          title,
+          description,
+          asking_price,
+          properties!inner (
+            id,
+            property_type,
+            address,
+            city,
+            postal_code,
+            total_area_sqm,
+            construction_year
+          )
+        `)
+        .eq('public_id', publicId)
+        .single();
 
-      // Check favorites
-      const favorites = JSON.parse(localStorage.getItem('kaufy_favorites') || '[]');
-      setIsFavorite(favorites.includes(publicId));
-      
-      setIsLoading(false);
-    }
+      if (error || !data) {
+        // Return mock data for demo
+        return {
+          id: publicId,
+          public_id: publicId,
+          title: 'Attraktives Mehrfamilienhaus in Top-Lage',
+          description: 'Dieses gepflegte Mehrfamilienhaus bietet eine solide Rendite und wurde kürzlich umfassend saniert.',
+          asking_price: 890000,
+          property_type: 'multi_family',
+          address: 'Musterstraße 123',
+          city: 'Leipzig',
+          postal_code: '04103',
+          total_area_sqm: 620,
+          year_built: 1925,
+          monthly_rent: 4200,
+          units_count: 8,
+        };
+      }
 
-    fetchListing();
-  }, [publicId]);
+      return {
+        id: data.id,
+        public_id: data.public_id,
+        title: data.title || 'Immobilie',
+        description: data.description || '',
+        asking_price: data.asking_price || 0,
+        property_type: (data.properties as any)?.property_type || 'multi_family',
+        address: (data.properties as any)?.address || '',
+        city: (data.properties as any)?.city || '',
+        postal_code: (data.properties as any)?.postal_code || '',
+        total_area_sqm: (data.properties as any)?.total_area_sqm || 0,
+        year_built: (data.properties as any)?.construction_year || 0,
+        monthly_rent: 0,
+        units_count: 0,
+      };
+    },
+    enabled: !!publicId,
+  });
 
-  // Calculate investment
-  const calculate = useCallback(async () => {
-    if (!listing) return;
-    setIsCalculating(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-investment-engine', {
-        body: {
-          purchasePrice: listing.asking_price,
-          monthlyRent: listing.monthly_rent,
-          equity,
-          termYears: 15,
-          repaymentRate,
-          taxableIncome: zvE,
-          maritalStatus: 'single',
-          hasChurchTax: false,
-          afaModel: 'linear',
-          buildingShare: 0.8,
-          managementCostMonthly: 25,
-          valueGrowthRate: valueGrowth,
-          rentGrowthRate: 1.5,
-        },
-      });
-
-      if (error) throw error;
-      setCalcResult(data);
-    } catch (err) {
-      console.error('Calculation error:', err);
-    } finally {
-      setIsCalculating(false);
-    }
-  }, [listing, equity, repaymentRate, valueGrowth, zvE]);
-
-  // Initial calculation
+  // Initialize params with listing data
   useEffect(() => {
     if (listing) {
-      calculate();
+      setParams(prev => ({
+        ...prev,
+        purchasePrice: listing.asking_price || 250000,
+        monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
+      }));
+
+      const favorites = JSON.parse(localStorage.getItem('kaufy_favorites') || '[]');
+      setIsFavorite(favorites.includes(publicId));
     }
-  }, [listing, calculate]);
+  }, [listing, publicId]);
+
+  // Calculate when params change
+  useEffect(() => {
+    if (params.purchasePrice > 0) {
+      calculate(params);
+    }
+  }, [params, calculate]);
 
   const toggleFavorite = () => {
     const favorites = JSON.parse(localStorage.getItem('kaufy_favorites') || '[]');
-    let newFavorites;
-    
-    if (isFavorite) {
-      newFavorites = favorites.filter((id: string) => id !== publicId);
-    } else {
-      newFavorites = [...favorites, publicId];
-    }
-    
+    const newFavorites = isFavorite 
+      ? favorites.filter((id: string) => id !== publicId)
+      : [...favorites, publicId];
     localStorage.setItem('kaufy_favorites', JSON.stringify(newFavorites));
     setIsFavorite(!isFavorite);
   };
@@ -182,7 +170,7 @@ export default function KaufyExpose() {
     );
   }
 
-  const chartData = calcResult?.projection.slice(0, 30).map(p => ({
+  const chartData = calcResult?.projection.slice(0, 40).map(p => ({
     year: p.year,
     'Immobilienwert': p.propertyValue,
     'Nettovermögen': p.netWealth,
@@ -218,9 +206,9 @@ export default function KaufyExpose() {
       {/* Main Content */}
       <div className="zone3-container py-8">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Property Info */}
+          {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image Gallery Placeholder */}
+            {/* Image Placeholder */}
             <div className="aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center">
               <Building2 className="w-16 h-16 text-muted-foreground" />
             </div>
@@ -229,59 +217,65 @@ export default function KaufyExpose() {
             <div>
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <Badge className="mb-2">Mehrfamilienhaus</Badge>
-                  <h1 className="text-2xl font-bold" style={{ color: 'hsl(var(--z3-foreground))' }}>
-                    {listing.title}
-                  </h1>
-                  <p className="flex items-center gap-1 mt-2" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                  <Badge className="mb-2">
+                    {listing.property_type === 'multi_family' ? 'Mehrfamilienhaus' :
+                     listing.property_type === 'single_family' ? 'Einfamilienhaus' :
+                     listing.property_type === 'apartment' ? 'Eigentumswohnung' : 'Immobilie'}
+                  </Badge>
+                  <h1 className="text-2xl font-bold">{listing.title}</h1>
+                  <p className="flex items-center gap-1 mt-2 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
                     {listing.postal_code} {listing.city}, {listing.address}
                   </p>
                 </div>
-                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--z3-primary))' }}>
+                <p className="text-3xl font-bold text-primary">
                   {formatCurrency(listing.asking_price)}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-muted/50">
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Wohnfläche</p>
+                  <p className="text-sm text-muted-foreground">Wohnfläche</p>
                   <p className="font-semibold flex items-center gap-1">
                     <Maximize2 className="w-4 h-4" /> {listing.total_area_sqm} m²
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Baujahr</p>
+                  <p className="text-sm text-muted-foreground">Baujahr</p>
                   <p className="font-semibold flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> {listing.year_built}
+                    <Calendar className="w-4 h-4" /> {listing.year_built || '–'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Einheiten</p>
-                  <p className="font-semibold">{listing.units_count} WE</p>
+                  <p className="text-sm text-muted-foreground">Einheiten</p>
+                  <p className="font-semibold">{listing.units_count || '–'} WE</p>
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Mieteinnahmen</p>
-                  <p className="font-semibold">{formatCurrency(listing.monthly_rent)}/Mo</p>
+                  <p className="text-sm text-muted-foreground">Mieteinnahmen</p>
+                  <p className="font-semibold">{formatCurrency(params.monthlyRent)}/Mo</p>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <h3 className="font-semibold mb-2">Beschreibung</h3>
-                <p style={{ color: 'hsl(var(--z3-muted-foreground))' }}>{listing.description}</p>
-              </div>
+              {listing.description && (
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-2">Beschreibung</h3>
+                  <p className="text-muted-foreground">{listing.description}</p>
+                </div>
+              )}
             </div>
 
-            {/* Value Development Chart */}
+            {/* Master Graph */}
             <Card>
               <CardHeader>
-                <CardTitle>Wertentwicklung (30 Jahre)</CardTitle>
+                <CardTitle>Wertentwicklung (40 Jahre)</CardTitle>
               </CardHeader>
               <CardContent>
                 {isCalculating ? (
-                  <Skeleton className="h-64" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
+                  <div className="h-64 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  </div>
+                ) : chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={chartData}>
                       <XAxis dataKey="year" />
                       <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
@@ -289,27 +283,31 @@ export default function KaufyExpose() {
                       <Area 
                         type="monotone" 
                         dataKey="Immobilienwert" 
-                        stackId="1"
-                        stroke="hsl(var(--z3-primary))" 
-                        fill="hsl(var(--z3-primary) / 0.2)" 
+                        stroke="hsl(var(--primary))" 
+                        fill="hsl(var(--primary) / 0.2)" 
                       />
                       <Area 
                         type="monotone" 
                         dataKey="Nettovermögen" 
-                        stackId="2"
                         stroke="hsl(142 71% 45%)" 
                         fill="hsl(142 71% 45% / 0.2)" 
                       />
+                      <Area 
+                        type="monotone" 
+                        dataKey="Restschuld" 
+                        stroke="hsl(var(--destructive))" 
+                        fill="hsl(var(--destructive) / 0.1)" 
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
-                )}
+                ) : null}
               </CardContent>
             </Card>
 
-            {/* Cashflow Table */}
+            {/* Haushaltsrechnung */}
             <Card>
               <CardHeader>
-                <CardTitle>Einnahmen-Ausgaben-Rechnung (Jahr 1)</CardTitle>
+                <CardTitle>Haushaltsrechnung (Jahr 1)</CardTitle>
               </CardHeader>
               <CardContent>
                 {isCalculating ? (
@@ -317,47 +315,95 @@ export default function KaufyExpose() {
                 ) : calcResult ? (
                   <div className="space-y-2 font-mono text-sm">
                     <div className="flex justify-between py-2 border-b">
-                      <span>Mieteinnahmen (12 × {formatCurrency(listing.monthly_rent)})</span>
-                      <span className="text-green-600 font-semibold">+{formatCurrency(calcResult.projection[0].rent)}</span>
+                      <span>Mieteinnahmen (12 × {formatCurrency(params.monthlyRent)})</span>
+                      <span className="text-green-600 font-semibold">+{formatCurrency(calcResult.projection[0]?.rent || 0)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span>Zinsaufwand</span>
-                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0].interest)}</span>
+                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0]?.interest || 0)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span>Tilgung</span>
-                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0].repayment)}</span>
+                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0]?.repayment || 0)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span>Verwaltung</span>
-                      <span className="text-red-600">-{formatCurrency(300)}</span>
+                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0]?.managementCost || 0)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b bg-muted/50 px-2 -mx-2 rounded">
                       <span className="font-semibold">Cashflow vor Steuer</span>
-                      <span className={`font-semibold ${calcResult.projection[0].cashFlowBeforeTax >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(calcResult.projection[0].cashFlowBeforeTax)}
+                      <span className={`font-semibold ${(calcResult.projection[0]?.cashFlowBeforeTax || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(calcResult.projection[0]?.cashFlowBeforeTax || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span>Steuerersparnis (AfA + Werbungskosten)</span>
-                      <span className="text-green-600 font-semibold">+{formatCurrency(calcResult.projection[0].taxSavings)}</span>
+                      <span className="text-green-600 font-semibold">+{formatCurrency(calcResult.projection[0]?.taxSavings || 0)}</span>
                     </div>
                     <div 
                       className="flex justify-between py-3 px-3 -mx-2 rounded-lg mt-2"
-                      style={{ backgroundColor: calcResult.summary.monthlyBurden <= 0 ? 'hsl(142 71% 45% / 0.1)' : 'hsl(var(--z3-secondary))' }}
+                      style={{ backgroundColor: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45% / 0.1)' : 'hsl(var(--muted))' }}
                     >
                       <span className="font-bold">NETTO-BELASTUNG (monatlich)</span>
                       <span 
                         className="font-bold text-lg"
-                        style={{ color: calcResult.summary.monthlyBurden <= 0 ? 'hsl(142 71% 45%)' : 'inherit' }}
+                        style={{ color: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45%)' : 'inherit' }}
                       >
-                        {formatCurrency(calcResult.summary.monthlyBurden)}/Mo
+                        {formatCurrency(calcResult.summary.monthlyBurden || 0)}/Mo
                       </span>
                     </div>
                   </div>
                 ) : null}
               </CardContent>
             </Card>
+
+            {/* Detail Table */}
+            {calcResult && (
+              <Collapsible open={showDetailTable} onOpenChange={setShowDetailTable}>
+                <Card>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <CardTitle>40-Jahres-Detailtabelle</CardTitle>
+                        {showDetailTable ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 px-2">Jahr</th>
+                              <th className="text-right py-2 px-2">Miete</th>
+                              <th className="text-right py-2 px-2">Zins</th>
+                              <th className="text-right py-2 px-2">Tilgung</th>
+                              <th className="text-right py-2 px-2">Restschuld</th>
+                              <th className="text-right py-2 px-2">Wert</th>
+                              <th className="text-right py-2 px-2">Vermögen</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {calcResult.projection.map((row: YearlyData) => (
+                              <tr key={row.year} className="border-b hover:bg-muted/50">
+                                <td className="py-2 px-2 font-medium">{row.year}</td>
+                                <td className="py-2 px-2 text-right text-green-600">{formatCurrency(row.rent)}</td>
+                                <td className="py-2 px-2 text-right text-red-600">{formatCurrency(row.interest)}</td>
+                                <td className="py-2 px-2 text-right">{formatCurrency(row.repayment)}</td>
+                                <td className="py-2 px-2 text-right">{formatCurrency(row.remainingDebt)}</td>
+                                <td className="py-2 px-2 text-right">{formatCurrency(row.propertyValue)}</td>
+                                <td className="py-2 px-2 text-right font-medium text-green-600">{formatCurrency(row.netWealth)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
           </div>
 
           {/* Right Column - Interactive Calculator */}
@@ -374,12 +420,11 @@ export default function KaufyExpose() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Zu versteuerndes Einkommen</Label>
-                    <span className="text-sm font-medium">{formatCurrency(zvE)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(params.taxableIncome)}</span>
                   </div>
                   <Slider
-                    value={[zvE]}
-                    onValueChange={([v]) => setZvE(v)}
-                    onValueCommit={() => calculate()}
+                    value={[params.taxableIncome]}
+                    onValueChange={([v]) => setParams(p => ({ ...p, taxableIncome: v }))}
                     min={30000}
                     max={200000}
                     step={5000}
@@ -390,14 +435,13 @@ export default function KaufyExpose() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Eigenkapital</Label>
-                    <span className="text-sm font-medium">{formatCurrency(equity)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(params.equity)}</span>
                   </div>
                   <Slider
-                    value={[equity]}
-                    onValueChange={([v]) => setEquity(v)}
-                    onValueCommit={() => calculate()}
+                    value={[params.equity]}
+                    onValueChange={([v]) => setParams(p => ({ ...p, equity: v }))}
                     min={20000}
-                    max={300000}
+                    max={Math.min(params.purchasePrice, 500000)}
                     step={10000}
                   />
                 </div>
@@ -406,12 +450,11 @@ export default function KaufyExpose() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Tilgungsrate</Label>
-                    <span className="text-sm font-medium">{repaymentRate}%</span>
+                    <span className="text-sm font-medium">{params.repaymentRate}%</span>
                   </div>
                   <Slider
-                    value={[repaymentRate]}
-                    onValueChange={([v]) => setRepaymentRate(v)}
-                    onValueCommit={() => calculate()}
+                    value={[params.repaymentRate]}
+                    onValueChange={([v]) => setParams(p => ({ ...p, repaymentRate: v }))}
                     min={1}
                     max={5}
                     step={0.5}
@@ -422,21 +465,53 @@ export default function KaufyExpose() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Wertsteigerung p.a.</Label>
-                    <span className="text-sm font-medium">{valueGrowth}%</span>
+                    <span className="text-sm font-medium">{params.valueGrowthRate}%</span>
                   </div>
                   <Slider
-                    value={[valueGrowth]}
-                    onValueChange={([v]) => setValueGrowth(v)}
-                    onValueCommit={() => calculate()}
+                    value={[params.valueGrowthRate]}
+                    onValueChange={([v]) => setParams(p => ({ ...p, valueGrowthRate: v }))}
                     min={0}
                     max={5}
                     step={0.5}
                   />
                 </div>
 
+                {/* Rent Growth */}
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Mietentwicklung p.a.</Label>
+                    <span className="text-sm font-medium">{params.rentGrowthRate}%</span>
+                  </div>
+                  <Slider
+                    value={[params.rentGrowthRate]}
+                    onValueChange={([v]) => setParams(p => ({ ...p, rentGrowthRate: v }))}
+                    min={0}
+                    max={5}
+                    step={0.5}
+                  />
+                </div>
+
+                {/* Church Tax */}
+                <div className="flex items-center justify-between">
+                  <Label>Kirchensteuer</Label>
+                  <Switch
+                    checked={params.hasChurchTax}
+                    onCheckedChange={(v) => setParams(p => ({ ...p, hasChurchTax: v }))}
+                  />
+                </div>
+
+                {/* Splitting */}
+                <div className="flex items-center justify-between">
+                  <Label>Ehegattensplitting</Label>
+                  <Switch
+                    checked={params.maritalStatus === 'married'}
+                    onCheckedChange={(v) => setParams(p => ({ ...p, maritalStatus: v ? 'married' : 'single' }))}
+                  />
+                </div>
+
                 {/* Results Summary */}
                 {calcResult && (
-                  <div className="pt-4 border-t space-y-3">
+                  <div className="pt-4 mt-4 border-t space-y-3">
                     <div className="flex justify-between text-sm">
                       <span>Darlehensbetrag</span>
                       <span className="font-medium">{formatCurrency(calcResult.summary.loanAmount)}</span>
@@ -451,24 +526,46 @@ export default function KaufyExpose() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Steuerersparnis/Jahr</span>
-                      <span className="font-medium text-green-600">+{formatCurrency(calcResult.summary.yearlyTaxSavings)}</span>
+                      <span className="font-medium text-green-600">
+                        +{formatCurrency(calcResult.summary.yearlyTaxSavings)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>EK-Rendite nach Steuer</span>
-                      <span className="font-medium" style={{ color: 'hsl(var(--z3-primary))' }}>{calcResult.summary.roiAfterTax.toFixed(1)}%</span>
+                      <span>Rendite nach Steuern</span>
+                      <span className="font-medium">{calcResult.summary.roiAfterTax.toFixed(1)}%</span>
+                    </div>
+                    
+                    <div 
+                      className="mt-4 p-4 rounded-lg text-center"
+                      style={{ 
+                        backgroundColor: calcResult.summary.monthlyBurden <= 0 
+                          ? 'hsl(142 71% 45% / 0.1)' 
+                          : 'hsl(var(--destructive) / 0.1)'
+                      }}
+                    >
+                      <p className="text-sm text-muted-foreground mb-1">Monatliche Belastung</p>
+                      <p 
+                        className="text-2xl font-bold"
+                        style={{ 
+                          color: calcResult.summary.monthlyBurden <= 0 
+                            ? 'hsl(142 71% 45%)' 
+                            : 'hsl(var(--destructive))'
+                        }}
+                      >
+                        {calcResult.summary.monthlyBurden <= 0 ? '+' : ''}
+                        {formatCurrency(Math.abs(calcResult.summary.monthlyBurden))}/Mo
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {/* CTA */}
-                <div className="pt-4 space-y-3">
-                  <Button className="w-full" style={{ backgroundColor: 'hsl(var(--z3-primary))' }}>
-                    <Phone className="w-4 h-4 mr-2" />
-                    Jetzt anfragen
-                  </Button>
+                <div className="mt-6 space-y-3">
+                  <Link to={`/auth?source=kaufy&listing=${publicId}`} className="block">
+                    <Button className="w-full">Finanzierung anfragen</Button>
+                  </Link>
                   <Button variant="outline" className="w-full">
-                    <Download className="w-4 h-4 mr-2" />
-                    Als PDF speichern
+                    Besichtigung vereinbaren
                   </Button>
                 </div>
               </CardContent>

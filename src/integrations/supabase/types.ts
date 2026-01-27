@@ -4445,6 +4445,44 @@ export type Database = {
           },
         ]
       }
+      test_data_registry: {
+        Row: {
+          batch_id: string
+          batch_name: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          imported_at: string | null
+          imported_by: string | null
+        }
+        Insert: {
+          batch_id: string
+          batch_name?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+        }
+        Update: {
+          batch_id?: string
+          batch_name?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_data_registry_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tile_catalog: {
         Row: {
           created_at: string
@@ -4714,6 +4752,13 @@ export type Database = {
       }
     }
     Functions: {
+      delete_test_batch: {
+        Args: { p_batch_id: string }
+        Returns: {
+          deleted_count: number
+          entity_type: string
+        }[]
+      }
       generate_public_id: { Args: { prefix: string }; Returns: string }
       get_user_memberships: {
         Args: { p_user_id: string }
