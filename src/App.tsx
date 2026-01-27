@@ -174,11 +174,7 @@ const App = () => (
               <Route path="msv/einstellungen" element={<MSVPage />} />
               
               {/* MOD-06: Verkauf (Objekte, Aktivitäten, Anfragen, Vorgänge) */}
-              <Route path="verkauf" element={<VerkaufPage />} />
-              <Route path="verkauf/objekte" element={<VerkaufPage />} />
-              <Route path="verkauf/aktivitaeten" element={<VerkaufPage />} />
-              <Route path="verkauf/anfragen" element={<VerkaufPage />} />
-              <Route path="verkauf/vorgaenge" element={<VerkaufPage />} />
+              <Route path="verkauf/*" element={<VerkaufPage />} />
               
               {/* MOD-07: Finanzierung (Fälle, Dokumente, Export, Status) */}
               <Route path="finanzierung" element={<FinanzierungPage />} />
