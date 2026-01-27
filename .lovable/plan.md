@@ -1,173 +1,357 @@
 
+# ERWEITERTER PLAN: Navigation, Multi-Vermieter & One-Click-Absender
 
-# RESPONSIVITÄTS-KORREKTURPLAN: MOD-04 Immobilien
+## Übersicht
 
-## Problem-Zusammenfassung
-
-Die Immobilienliste (PropertyTable) im Modul 4 verursacht Layout-Überläufe, die:
-1. Die linke Sidebar zusammenquetschen
-2. Den rechten Chatbot überdecken
-3. Die Navigation unbrauchbar machen
-
-Dieses Problem betrifft alle Module, die PropertyTable als Master-Komponente verwenden.
+Dieser Plan umfasst vier Hauptbereiche:
+1. **Subbar-Duplikation entfernen** aus MOD-01, MOD-02, MOD-03
+2. **Multi-Vermieter-Struktur** mit Muster-GmbH etablieren
+3. **Usability-Prüfung** MOD-04 <-> MOD-05
+4. **Briefgenerator: One-Click-Absender** aus landlord_contexts
 
 ---
 
-## Architektur-Diagramm: Aktuelles vs. Korrigiertes Layout
+## Teil 1: Subbar-Duplikation entfernen
+
+### Betroffene Dateien
+
+| Datei | Zeile | Aktion |
+|-------|-------|--------|
+| `StammdatenPage.tsx` | 56 | `<SubTabNav>` entfernen |
+| `OfficePage.tsx` | 53 | `<SubTabNav>` entfernen |
+| `DMSPage.tsx` | 53 | `<SubTabNav>` entfernen |
+
+### Architektur-Änderung
 
 ```text
-AKTUELL (FEHLERHAFT):
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Header                                                                   │
-├───────┬─────────────────────────────────────────────────────────┬───────┤
-│Sidebar│ Main Content (PropertyTable 2200px+)                    │Chat   │
-│ 64px  │ ←────────── ÜBERLÄUFT BEIDE SEITEN ──────────→          │Panel  │
-│GEQUETSCHT│                                                       │VERDECKT│
-└───────┴─────────────────────────────────────────────────────────┴───────┘
+AKTUELL (Doppelte Navigation):
+┌────────────────────────────────────────────────┐
+│ Sidebar           │ Content                    │
+│ ├─ Stammdaten     │ ┌──────────────────────┐   │
+│ │  ├─ Profil      │ │ [Profil][Personen].. │ ← REDUNDANT
+│ │  ├─ Personen    │ └──────────────────────┘   │
+│ │  ├─ Abrechnung  │ <Content>                  │
+│ │  └─ Sicherheit  │                            │
+└────────────────────────────────────────────────┘
 
-KORRIGIERT:
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Header                                                                   │
-├───────┬─────────────────────────────────────────────────────────┬───────┤
-│Sidebar│ Main Content (horizontal scrollbar bei Bedarf)          │Chat   │
-│ 256px │ ←─── overflow-x-auto, respektiert Grenzen ───→          │Panel  │
-│ FEST  │                                                         │ FEST  │
-└───────┴─────────────────────────────────────────────────────────┴───────┘
+NEU (Sidebar-Only):
+┌────────────────────────────────────────────────┐
+│ Sidebar           │ Content                    │
+│ ├─ Stammdaten     │                            │
+│ │  ├─ Profil ←────│──→ <ProfilTab>             │
+│ │  ├─ Personen    │                            │
+│ │  ├─ Abrechnung  │ (Keine Subbar-Duplikation) │
+│ │  └─ Sicherheit  │                            │
+└────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Korrekturen (4 Dateien)
+## Teil 2: Multi-Vermieter-Struktur
 
-### 1. PortalNav.tsx — Sidebar fixieren
+### Datenbank-Erweiterung
 
-**Datei:** `src/components/portal/PortalNav.tsx`
+Die `landlord_contexts` Tabelle existiert, braucht aber Adress-Felder für den Briefgenerator:
 
-**Problem:** Sidebar hat nur `w-64`, kann vom Flex-Container komprimiert werden.
+```sql
+ALTER TABLE landlord_contexts ADD COLUMN IF NOT EXISTS 
+  street TEXT,
+  house_number TEXT,
+  postal_code TEXT,
+  city TEXT,
+  country TEXT DEFAULT 'Deutschland',
+  hrb_number TEXT,
+  ust_id TEXT,
+  legal_form TEXT;
+```
 
-**Änderung:**
+### Muster-Testdaten
+
+| Kontext | Typ | Regime | Details |
+|---------|-----|--------|---------|
+| Privatvermögen Stelzl | PRIVATE | EÜR | Standard, is_default = true |
+| Muster Immobilien GmbH | BUSINESS | FIBU | HRB 12345 B, DE123456789 |
+
+### KontexteTab Erweiterung
+
+Neuer Dialog zum Anlegen von Kontexten mit Formular:
+- Name (Pflicht)
+- Typ: Privat / Geschäftlich
+- Steuerregime: EÜR / FIBU / Vermögensverwaltung
+- Adresse (für Briefkopf)
+- Bei Geschäftlich: HRB-Nummer, USt-ID, Rechtsform
+
+---
+
+## Teil 3: MOD-05 Einstellungen & FinAPI
+
+### Aktueller Status
+
+Die FinAPI-Infrastruktur ist bereits angelegt:
+- `msv_bank_accounts` Tabelle existiert
+- UI zeigt Bankkonten-Liste
+- "Konto hinzufügen" Button vorhanden (ohne Funktion)
+
+### Fehlende Funktionalität
+
+1. **Konto-Anlage-Dialog**: Formular mit IBAN, BIC, Kontoinhaber
+2. **FinAPI-Connection-Flow**: Placeholder für zukünftige Integration
+3. **Kontext-Zuordnung**: Bank-Konto einem landlord_context zuweisen
+
+---
+
+## Teil 4: Briefgenerator One-Click-Absender (NEU)
+
+### Konzept: One-Click statt Dropdown
+
+```text
+AKTUELL:
+┌──────────────────────────────────────────────────────┐
+│ KI-Briefgenerator                                    │
+│ ┌──────────────────────────────────────────────────┐ │
+│ │ ① Empfänger: [Dropdown]                          │ │
+│ │ ② Betreff: [..............................]      │ │
+│ │ ③ Anliegen: [..............................]     │ │
+│ │                                                   │ │
+│ │ [Brief generieren]                                │ │
+│ └──────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+
+NEU (mit Absender-Buttons):
+┌──────────────────────────────────────────────────────┐
+│ KI-Briefgenerator                                    │
+│ ┌──────────────────────────────────────────────────┐ │
+│ │ Absender (One-Click):                            │ │
+│ │ ┌────────────────┐ ┌────────────────────────┐    │ │
+│ │ │ 👤 Privat      │ │ 🏢 Muster GmbH         │    │ │
+│ │ │ Max Mustermann │ │ Muster Immobilien GmbH │    │ │
+│ │ │ ✓ AUSGEWÄHLT  │ │                        │    │ │
+│ │ └────────────────┘ └────────────────────────┘    │ │
+│ │                                                   │ │
+│ │ ① Empfänger: [Dropdown]                          │ │
+│ │ ② Betreff: [..............................]      │ │
+│ │ ...                                               │ │
+│ └──────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+```
+
+### UI-Design der Absender-Buttons
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ Absender (ein Klick)                                                │
+├─────────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────┐  ┌─────────────────────┐  ┌───────────────┐ │
+│ │ 👤                   │  │ 🏢                   │  │     ＋        │ │
+│ │ Max Mustermann       │  │ Muster Immobilien    │  │   Kontext    │ │
+│ │ Privatvermögen       │  │ GmbH                 │  │   anlegen    │ │
+│ │ ────────────────     │  │                      │  │              │ │
+│ │ ✓ AKTIV              │  │                      │  │              │ │
+│ └─────────────────────┘  └─────────────────────┘  └───────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Datenfluss
+
+1. **Laden der Kontexte** aus `landlord_contexts`:
 ```typescript
-// AKTUELL (Zeile ~170):
-className="hidden lg:flex flex-col w-64 border-r bg-card h-[calc(100vh-var(--header-height))]"
-
-// NEU:
-className="hidden lg:flex flex-col w-64 min-w-64 shrink-0 border-r bg-card h-[calc(100vh-var(--header-height))]"
+const { data: senderContexts } = useQuery({
+  queryKey: ['sender-contexts', activeTenantId],
+  queryFn: async () => {
+    // Profil-Daten für Privat-Absender
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, street, house_number, postal_code, city')
+      .single();
+    
+    // Zusätzliche Kontexte
+    const { data: contexts } = await supabase
+      .from('landlord_contexts')
+      .select('*')
+      .eq('tenant_id', activeTenantId);
+    
+    return { profile, contexts };
+  },
+});
 ```
 
-**Erklärung:**
-- `min-w-64`: Verhindert Komprimierung unter 256px
-- `shrink-0`: Verbietet Flexbox, die Sidebar zu schrumpfen
-
----
-
-### 2. PortalLayout.tsx — Main-Container begrenzen
-
-**Datei:** `src/components/portal/PortalLayout.tsx`
-
-**Problem:** `<main>` mit `flex-1` hat keine Mindestbreite, Inhalte können überlaufen.
-
-**Änderung:**
+2. **State für ausgewählten Absender**:
 ```typescript
-// AKTUELL (Zeile ~82):
-<main className="flex-1 pb-20 lg:pb-0 lg:mr-[var(--chat-panel-width)]">
+const [selectedSender, setSelectedSender] = useState<SenderIdentity | null>(null);
 
-// NEU:
-<main className="flex-1 min-w-0 overflow-x-hidden pb-20 lg:pb-0 lg:mr-[var(--chat-panel-width)]">
+interface SenderIdentity {
+  type: 'PRIVATE' | 'BUSINESS';
+  name: string;
+  company?: string;
+  address: string;
+}
 ```
 
-**Erklärung:**
-- `min-w-0`: Ermöglicht Flexbox-Kind, unter seine natürliche Breite zu schrumpfen
-- `overflow-x-hidden`: Verhindert horizontalen Überlauf nach außen
-
----
-
-### 3. index.css — Chat-Panel-Breite korrigieren
-
-**Datei:** `src/index.css`
-
-**Problem:** `--chat-panel-width: 190px` ist zu klein, das Panel ist tatsächlich breiter.
-
-**Änderung:**
-```css
-/* AKTUELL: */
---chat-panel-width: 190px;
-
-/* NEU: */
---chat-panel-width: 280px;
-```
-
-**Erklärung:** Die ChatPanel-Komponente ist 280px breit, der Margin muss übereinstimmen.
-
----
-
-### 4. ImmobilienPage.tsx — Container-Constraints
-
-**Datei:** `src/pages/portal/ImmobilienPage.tsx`
-
-**Problem:** Keine Breitenbegrenzung auf dem Content-Container.
-
-**Änderung:**
+3. **Übergabe an Edge Function** (bereits vorbereitet!):
 ```typescript
-// AKTUELL (Zeile ~58, Sub-Page Container):
-<div className="p-6 pt-4">
-  {subPage}
-</div>
-
-// NEU:
-<div className="p-6 pt-4 w-full overflow-x-auto">
-  {subPage}
-</div>
+// Die Edge Function unterstützt bereits senderIdentity:
+body: {
+  recipient: {...},
+  subject,
+  prompt,
+  senderIdentity: selectedSender  // ← NEU
+}
 ```
 
-**Erklärung:**
-- `w-full`: Explizite Breitenbegrenzung auf Parent
-- `overflow-x-auto`: Horizontaler Scroll innerhalb des Containers (nicht nach außen)
+### Edge Function (bereits kompatibel)
 
----
+Die `sot-letter-generate` Edge Function unterstützt bereits `senderIdentity`:
 
-## Auswirkungen auf andere Module
-
-Diese Korrekturen wirken sich positiv auf folgende Module aus, die PropertyTable verwenden:
-
-| Modul | Route | Komponente |
-|-------|-------|------------|
-| MOD-04 | /portal/immobilien/portfolio | PortfolioTab |
-| MOD-05 | /portal/msv/objekte | ObjekteTab |
-| MOD-05 | /portal/msv/vermietung | VermietungTab |
-| MOD-06 | /portal/verkauf/objekte | (geplant) |
+```typescript
+interface LetterRequest {
+  recipient: { name: string; company?: string };
+  subject: string;
+  prompt: string;
+  senderIdentity?: {  // ← BEREITS VORHANDEN
+    name: string;
+    company: string;
+    address?: string;
+  };
+}
+```
 
 ---
 
 ## Implementierungs-Reihenfolge
 
-1. **PortalNav.tsx** — Sidebar fixieren (verhindert Komprimierung)
-2. **PortalLayout.tsx** — Main-Container begrenzen (verhindert Überlauf)
-3. **index.css** — CSS-Variable korrigieren (Chat-Panel Abstand)
-4. **ImmobilienPage.tsx** — Lokaler Scroll (Tabelle scrollbar)
+### Phase 1: Navigation bereinigen
+1. SubTabNav aus StammdatenPage.tsx entfernen
+2. SubTabNav aus OfficePage.tsx entfernen  
+3. SubTabNav aus DMSPage.tsx entfernen
+
+### Phase 2: Datenbank erweitern
+4. `landlord_contexts` um Adress-Felder erweitern
+5. Muster-GmbH und Privat-Kontext als Testdaten einfügen
+
+### Phase 3: KontexteTab aktivieren
+6. Dialog für Kontext-Anlage implementieren
+7. Formular mit allen Feldern (Name, Typ, Regime, Adresse, HRB, USt-ID)
+
+### Phase 4: Portfolio-Subbar
+8. PortfolioTab: Kontext-Subbar nur bei >1 Kontexten anzeigen
+9. PropertyTable nach aktivem Kontext filtern
+
+### Phase 5: MSV-Verknüpfung
+10. EinstellungenTab: Konto-Anlage-Dialog
+11. ObjekteTab: Kontext-Filter spiegeln
+
+### Phase 6: Briefgenerator One-Click-Absender (NEU)
+12. `BriefTab.tsx`: Absender-Buttons vor Empfänger-Auswahl einfügen
+13. Kontexte laden und als klickbare Cards darstellen
+14. Ausgewählten Absender an Edge Function übergeben
 
 ---
 
 ## Akzeptanzkriterien
 
-| AC | Kriterium |
-|----|-----------|
-| AC1 | Sidebar bleibt bei 256px Breite, wird nicht komprimiert |
-| AC2 | PropertyTable überdeckt weder Sidebar noch Chat-Panel |
-| AC3 | Bei breiten Tabellen erscheint horizontaler Scrollbalken im Content-Bereich |
-| AC4 | Chat-Panel hat korrekten Abstand (280px) |
-| AC5 | Layout funktioniert auf Desktop (1920px) bis Tablet (1024px) |
+| AC | Beschreibung |
+|----|--------------|
+| AC1 | Keine SubTabNav-Duplikation in MOD-01, MOD-02, MOD-03 |
+| AC2 | Sidebar-Navigation als einzige Modul-Navigation |
+| AC3 | Muster-GmbH + Privatvermögen als Testdaten vorhanden |
+| AC4 | PortfolioTab zeigt Subbar nur bei mehreren Kontexten |
+| AC5 | KontexteTab zeigt Standard-Kontext aus Stammdaten |
+| AC6 | MSV EinstellungenTab hat funktionalen Konto-Dialog |
+| AC7 | Konsistente Datenspiegelung MOD-04 → MOD-05 |
+| **AC8** | **Briefgenerator zeigt Absender als One-Click-Buttons** |
+| **AC9** | **Absender-Auswahl wird an AI-Generierung übergeben** |
+| **AC10** | **Button zeigt visuell aktiven Absender (Checkbox/Rahmen)** |
 
 ---
 
 ## Technische Details
 
-**Betroffene CSS-Klassen:**
-- `shrink-0`: Tailwind für `flex-shrink: 0`
-- `min-w-0`: Tailwind für `min-width: 0` (kritisch für Flex-Overflow)
-- `min-w-64`: Tailwind für `min-width: 16rem` (256px)
-- `overflow-x-auto`: Horizontaler Scroll bei Bedarf
-- `overflow-x-hidden`: Kein Überlauf nach außen
+### Neue Komponente: SenderSelector
 
-**Flexbox-Verhalten:**
-Das Problem entsteht durch die Standard-Flexbox-Regel, dass Kinder ihre `min-width: auto` behalten. Bei einer Tabelle mit 2200px Breite führt das dazu, dass der Flex-Container die Sidebar komprimiert, um Platz zu schaffen.
+```typescript
+// Neue Komponente in BriefTab.tsx
+interface SenderOption {
+  id: string;
+  type: 'PRIVATE' | 'BUSINESS';
+  label: string;
+  sublabel: string;
+  address: string;
+}
 
+function SenderSelector({ 
+  options, 
+  selected, 
+  onSelect 
+}: {
+  options: SenderOption[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {options.map((option) => (
+        <button
+          key={option.id}
+          onClick={() => onSelect(option.id)}
+          className={cn(
+            "flex flex-col items-start p-4 rounded-lg border-2 transition-all min-w-[180px]",
+            selected === option.id 
+              ? "border-primary bg-primary/5" 
+              : "border-muted hover:border-primary/50"
+          )}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            {option.type === 'PRIVATE' ? (
+              <User className="h-4 w-4" />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
+            <span className="font-medium">{option.label}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{option.sublabel}</span>
+          {selected === option.id && (
+            <Badge className="mt-2" variant="default">
+              <Check className="h-3 w-3 mr-1" />
+              Aktiv
+            </Badge>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+### Briefkopf-Logik in Edge Function
+
+Die KI erhält den Absender-Kontext und kann den Briefschluss entsprechend anpassen:
+
+```text
+Privat-Absender:
+"Mit freundlichen Grüßen,
+Max Mustermann"
+
+Business-Absender:
+"Mit freundlichen Grüßen,
+Muster Immobilien GmbH
+i.A. Max Mustermann"
+```
+
+---
+
+## Datenbank-Migration (SQL)
+
+```sql
+-- Phase 2: landlord_contexts erweitern
+ALTER TABLE landlord_contexts 
+ADD COLUMN IF NOT EXISTS street TEXT,
+ADD COLUMN IF NOT EXISTS house_number TEXT,
+ADD COLUMN IF NOT EXISTS postal_code TEXT,
+ADD COLUMN IF NOT EXISTS city TEXT,
+ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Deutschland',
+ADD COLUMN IF NOT EXISTS hrb_number TEXT,
+ADD COLUMN IF NOT EXISTS ust_id TEXT,
+ADD COLUMN IF NOT EXISTS legal_form TEXT;
+
+-- Muster-Testdaten werden nach Tenant-Erstellung eingefügt
+```
