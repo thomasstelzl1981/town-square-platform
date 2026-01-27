@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PropertyMap } from './PropertyMap';
 
 interface Property {
   id: string;
@@ -200,6 +201,14 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Google Maps Kartenansicht */}
+      <PropertyMap
+        address={property.address}
+        city={property.city}
+        postalCode={property.postal_code}
+        country={property.country}
+      />
     </div>
   );
 }

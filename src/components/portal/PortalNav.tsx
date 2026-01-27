@@ -111,7 +111,7 @@ async function fetchTileCatalog(): Promise<TileCatalogEntry[]> {
 
 export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
   const location = useLocation();
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, isDevelopmentMode } = useAuth();
   const [tiles, setTiles] = useState<TileCatalogEntry[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -123,8 +123,15 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
         // Fetch catalog first
         const catalogTiles = await fetchTileCatalog();
         
-        // Then filter by tenant activations if we have an org
-        if (activeOrganization?.id) {
+        // In development mode, skip tenant activation check (shows all tiles)
+        if (isDevelopmentMode) {
+          setTiles(catalogTiles);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Then filter by tenant activations if we have an org with valid UUID
+        if (activeOrganization?.id && !activeOrganization.id.startsWith('dev-')) {
           const activeTileCodes = await fetchActiveTiles(activeOrganization.id);
           if (activeTileCodes.length > 0) {
             const filteredTiles = catalogTiles.filter(t => activeTileCodes.includes(t.tile_code));
@@ -143,7 +150,7 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
     }
 
     loadTiles();
-  }, [activeOrganization?.id]);
+  }, [activeOrganization?.id, isDevelopmentMode]);
 
   // Initialize open state for active module
   useEffect(() => {
