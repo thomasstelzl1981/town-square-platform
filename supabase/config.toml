@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.sot-expose-description]
 verify_jwt = false
+
+[functions.sot-armstrong-advisor]
+verify_jwt = false

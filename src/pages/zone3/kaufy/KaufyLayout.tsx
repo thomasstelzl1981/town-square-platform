@@ -1,17 +1,18 @@
+import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
+import { ArmstrongSidebar } from '@/components/zone3/kaufy';
 import '@/styles/zone3-theme.css';
 
 const navItems = [
-  { href: '/kaufy/immobilien', label: 'Immobilien' },
+  { href: '/kaufy/vermieter', label: 'Vermieter' },
+  { href: '/kaufy/verkaeufer', label: 'Verkäufer' },
+  { href: '/kaufy/vertrieb', label: 'Vertriebe' },
   { href: '/kaufy/module', label: 'Module' },
-  { href: '/kaufy/berater', label: 'Für Berater' },
-  { href: '/kaufy/anbieter', label: 'Für Anbieter' },
-  { href: '/kaufy/faq', label: 'FAQ' },
 ];
 
 export default function KaufyLayout() {
   const location = useLocation();
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="theme-kaufy zone3-page">
@@ -61,39 +62,48 @@ export default function KaufyLayout() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main>
+      {/* Main Content - adjust for sidebar on desktop */}
+      <main className="lg:mr-[320px]">
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-12" style={{ borderColor: 'hsl(var(--z3-border))', backgroundColor: 'hsl(var(--z3-card))' }}>
+      {/* Footer - adjust for sidebar on desktop */}
+      <footer className="border-t py-12 lg:mr-[320px]" style={{ borderColor: 'hsl(var(--z3-border))', backgroundColor: 'hsl(var(--z3-card))' }}>
         <div className="zone3-container">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
             {/* Brand */}
             <div>
               <h3 className="text-lg font-bold mb-4">KAUFY</h3>
               <p className="zone3-text-small">
-                Der Marktplatz für Rendite-Immobilien.
+                Die KI-Plattform für Kapitalanlage-Immobilien.
               </p>
             </div>
 
-            {/* Produkt */}
+            {/* Plattform */}
             <div>
-              <h4 className="font-semibold mb-4">Produkt</h4>
+              <h4 className="font-semibold mb-4">Plattform</h4>
               <ul className="space-y-2 zone3-text-small">
                 <li><Link to="/kaufy/immobilien" className="hover:underline">Immobilien</Link></li>
                 <li><Link to="/kaufy/module" className="hover:underline">Module</Link></li>
-                <li><Link to="/kaufy/berater" className="hover:underline">Für Berater</Link></li>
-                <li><Link to="/kaufy/anbieter" className="hover:underline">Für Anbieter</Link></li>
+                <li><Link to="/kaufy/faq" className="hover:underline">FAQ</Link></li>
               </ul>
             </div>
 
-            {/* Support */}
+            {/* Für wen */}
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
+              <h4 className="font-semibold mb-4">Für wen</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/kaufy/faq" className="hover:underline">FAQ</Link></li>
+                <li><Link to="/kaufy/vermieter" className="hover:underline">Vermieter</Link></li>
+                <li><Link to="/kaufy/verkaeufer" className="hover:underline">Verkäufer</Link></li>
+                <li><Link to="/kaufy/vertrieb" className="hover:underline">Vertriebe</Link></li>
+              </ul>
+            </div>
+
+            {/* Unternehmen */}
+            <div>
+              <h4 className="font-semibold mb-4">Unternehmen</h4>
+              <ul className="space-y-2 zone3-text-small">
+                <li><Link to="/kaufy/ueber-uns" className="hover:underline">Über uns</Link></li>
                 <li><a href="mailto:kontakt@kaufy.app" className="hover:underline">Kontakt</a></li>
               </ul>
             </div>
@@ -114,14 +124,11 @@ export default function KaufyLayout() {
         </div>
       </footer>
 
-      {/* Chatbot Button */}
-      <button
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
-        style={{ backgroundColor: 'hsl(var(--z3-primary))', color: 'hsl(var(--z3-primary-foreground))' }}
-        aria-label="Chat öffnen"
-      >
-        <MessageCircle className="w-6 h-6" />
-      </button>
+      {/* Armstrong AI Sidebar */}
+      <ArmstrongSidebar 
+        isOpen={chatOpen}
+        onToggle={() => setChatOpen(!chatOpen)}
+      />
     </div>
   );
 }

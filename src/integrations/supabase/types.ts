@@ -1339,6 +1339,42 @@ export type Database = {
           },
         ]
       }
+      knowledge_base: {
+        Row: {
+          category: string
+          content: string
+          created_at: string | null
+          id: string
+          is_public: boolean | null
+          keywords: string[] | null
+          source: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          keywords?: string[] | null
+          source?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          keywords?: string[] | null
+          source?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       landlord_contexts: {
         Row: {
           city: string | null
@@ -4633,6 +4669,33 @@ export type Database = {
       }
     }
     Views: {
+      v_public_knowledge: {
+        Row: {
+          category: string | null
+          content: string | null
+          id: string | null
+          keywords: string[] | null
+          source: string | null
+          title: string | null
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          id?: string | null
+          keywords?: string[] | null
+          source?: string | null
+          title?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          id?: string | null
+          keywords?: string[] | null
+          source?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       v_public_listings: {
         Row: {
           asking_price: number | null
