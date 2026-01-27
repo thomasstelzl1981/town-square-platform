@@ -31,9 +31,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const isDevelopmentEnvironment = () => {
   const hostname = window.location.hostname;
   return hostname.includes('lovable.app') || 
+         hostname.includes('lovableproject.com') ||
          hostname.includes('localhost') || 
          hostname.includes('127.0.0.1') ||
-         hostname.includes('preview');
+         hostname.includes('preview') ||
+         hostname.includes('id-preview');
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -52,12 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch development data for preview without auth
   const fetchDevelopmentData = useCallback(async () => {
     try {
-      // Get first organization for development mode
-      const { data: orgData } = await supabase
+      // Try to get first organization for development mode
+      const { data: orgData, error } = await supabase
         .from('organizations')
         .select('*')
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (orgData) {
         setActiveOrganization(orgData);
@@ -84,9 +86,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updated_at: new Date().toISOString(),
         } as Profile;
         setProfile(mockProfile);
+      } else {
+        // If RLS blocks access, create a mock organization for UI testing
+        console.log('Development mode: Using mock organization (RLS may be blocking access)');
+        
+        const mockOrg: Organization = {
+          id: 'dev-org-mock',
+          name: 'Entwicklungs-Tenant',
+          slug: 'dev-tenant',
+          public_id: 'DEV-001',
+          org_type: 'client',
+          parent_id: null,
+          materialized_path: '/',
+          depth: 0,
+          parent_access_blocked: false,
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setActiveOrganization(mockOrg);
+        
+        const mockMembership: Membership = {
+          id: 'dev-membership',
+          user_id: 'dev-user',
+          tenant_id: mockOrg.id,
+          role: 'platform_admin',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setMemberships([mockMembership]);
+        
+        const mockProfile = {
+          id: 'dev-user',
+          display_name: 'Entwickler (Mock)',
+          email: 'dev@systemofatown.de',
+          avatar_url: null,
+          active_tenant_id: mockOrg.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as Profile;
+        setProfile(mockProfile);
       }
     } catch (error) {
       console.error('Error fetching development data:', error);
+      // Still provide mock data even on error for UI development
+      const mockOrg: Organization = {
+        id: 'dev-org-fallback',
+        name: 'Entwicklungs-Tenant (Fallback)',
+        slug: 'dev-fallback',
+        public_id: 'DEV-FALLBACK',
+        org_type: 'client',
+        parent_id: null,
+        materialized_path: '/',
+        depth: 0,
+        parent_access_blocked: false,
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setActiveOrganization(mockOrg);
     }
   }, []);
 

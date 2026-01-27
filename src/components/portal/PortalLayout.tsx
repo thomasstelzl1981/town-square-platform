@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
  * - Safe area handling for iOS
  */
 export function PortalLayout() {
-  const { user, isLoading, activeOrganization } = useAuth();
+  const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
   const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -41,17 +41,32 @@ export function PortalLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && !isDevelopmentMode) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!activeOrganization) {
+  if (!activeOrganization && !isDevelopmentMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center p-8">
           <p className="text-muted-foreground">Keine Organisation zugewiesen.</p>
           <p className="text-sm text-muted-foreground mt-2">
             Bitte kontaktiere deinen Administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // In development mode without org, show a simpler fallback message
+  if (!activeOrganization && isDevelopmentMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Lade Entwicklungsdaten...</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            RLS-Bypass für Development Mode aktiv
           </p>
         </div>
       </div>
