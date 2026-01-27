@@ -1,249 +1,191 @@
 
-# ERWEITERTER PLAN: Navigation, Multi-Vermieter & One-Click-Absender
+# PLAN: Governance-Dokumentation & MOD-01 bis MOD-05 Audit
 
-## Übersicht
+## Teil A: DEVELOPMENT_GOVERNANCE.md erstellen
 
-Dieser Plan umfasst vier Hauptbereiche:
-1. **Subbar-Duplikation entfernen** aus MOD-01, MOD-02, MOD-03
-2. **Multi-Vermieter-Struktur** mit Muster-GmbH etablieren
-3. **Usability-Prüfung** MOD-04 <-> MOD-05
-4. **Briefgenerator: One-Click-Absender** aus landlord_contexts
+### Datei: `DEVELOPMENT_GOVERNANCE.md` (Projekt-Root)
+
+```markdown
+# DEVELOPMENT GOVERNANCE
+
+**Projekt:** System of a Town (SoT)  
+**Version:** v1.0 FROZEN  
+**Datum:** 2026-01-27
 
 ---
 
-## Teil 1: Subbar-Duplikation entfernen
+## Eiserne Regeln
 
-### Betroffene Dateien
+### Regel 1: Zone 2 ist der Master
+Das Entwicklungsportal (`/portal/*`) ist die **einzige Source of Truth** für:
+- UI-Komponenten und Layouts
+- Feature-Implementierungen
+- Datenflüsse und Business-Logik
+- Edge Functions und API-Patterns
 
-| Datei | Zeile | Aktion |
-|-------|-------|--------|
-| `StammdatenPage.tsx` | 56 | `<SubTabNav>` entfernen |
-| `OfficePage.tsx` | 53 | `<SubTabNav>` entfernen |
-| `DMSPage.tsx` | 53 | `<SubTabNav>` entfernen |
+### Regel 2: Explizite Besprechung
+Änderungen am Master-Portal erfolgen **ausschließlich** nach:
+1. Expliziter Diskussion im Chat
+2. Erstellung eines strukturierten Plans
+3. Freigabe durch den Projektverantwortlichen
 
-### Architektur-Änderung
+**Keine autonomen Änderungen. Keine Annahmen. Keine Abkürzungen.**
 
-```text
-AKTUELL (Doppelte Navigation):
-┌────────────────────────────────────────────────┐
-│ Sidebar           │ Content                    │
-│ ├─ Stammdaten     │ ┌──────────────────────┐   │
-│ │  ├─ Profil      │ │ [Profil][Personen].. │ ← REDUNDANT
-│ │  ├─ Personen    │ └──────────────────────┘   │
-│ │  ├─ Abrechnung  │ <Content>                  │
-│ │  └─ Sicherheit  │                            │
-└────────────────────────────────────────────────┘
+### Regel 3: Zone 1 = Dokumentation
+Zone 1 (Admin-Bereich `/admin/*`) dient als:
+- Oversight und Monitoring des Master-Portals
+- Dokumentation aller implementierten Patterns
+- Registry für Tiles, APIs und Integrationen
 
-NEU (Sidebar-Only):
-┌────────────────────────────────────────────────┐
-│ Sidebar           │ Content                    │
-│ ├─ Stammdaten     │                            │
-│ │  ├─ Profil ←────│──→ <ProfilTab>             │
-│ │  ├─ Personen    │                            │
-│ │  ├─ Abrechnung  │ (Keine Subbar-Duplikation) │
-│ │  └─ Sicherheit  │                            │
-└────────────────────────────────────────────────┘
+**Zone 1 verändert niemals Zone 2. Der Datenfluss ist unidirektional.**
+
+---
+
+## Hierarchie
+
+```
+MASTER (Zone 2: /portal/*)
+    │
+    ▼ [Dokumentation]
+OVERSIGHT (Zone 1: /admin/*)
+    │
+    ▼ [Read-Only]
+EXTERNAL (Zone 3: Websites)
 ```
 
 ---
 
-## Teil 2: Multi-Vermieter-Struktur
+## Prüfpflichten
 
-### Datenbank-Erweiterung
+Bei jeder Feature-Implementierung:
 
-Die `landlord_contexts` Tabelle existiert, braucht aber Adress-Felder für den Briefgenerator:
+| Schritt | Beschreibung | Verantwortlich |
+|---------|--------------|----------------|
+| 1 | Feature in Zone 2 implementieren | Nach Freigabe |
+| 2 | Tile Catalog in Zone 1 aktualisieren | Automatisch |
+| 3 | Integration Registry prüfen | Bei API-Nutzung |
+| 4 | Dokumentation synchronisieren | Nach Abschluss |
+
+---
+
+## Verbotene Aktionen
+
+- ❌ Autonome Änderungen ohne Chat-Diskussion
+- ❌ Zone 1 als Entwicklungsumgebung nutzen
+- ❌ Hardcoded Daten in Zone 1 statt DB-Anbindung
+- ❌ Dokumentation ohne Master-Implementierung
+- ❌ API-Registrierung ohne Edge Function
+
+---
+
+*Dieses Dokument ist verbindlich für alle Entwicklungsaktivitäten.*
+```
+
+---
+
+## Teil B: Audit MOD-01 bis MOD-05
+
+### Phase 1: Tile Catalog Synchronisation
+
+**Aktion:** Datenbank-Query zur Prüfung des aktuellen Tile-Status
 
 ```sql
-ALTER TABLE landlord_contexts ADD COLUMN IF NOT EXISTS 
-  street TEXT,
-  house_number TEXT,
-  postal_code TEXT,
-  city TEXT,
-  country TEXT DEFAULT 'Deutschland',
-  hrb_number TEXT,
-  ust_id TEXT,
-  legal_form TEXT;
+SELECT module_id, title, route, parent_id, is_active 
+FROM tile_catalog 
+WHERE module_id IN ('MOD-01', 'MOD-02', 'MOD-03', 'MOD-04', 'MOD-05')
+ORDER BY module_id, sort_order;
 ```
 
-### Muster-Testdaten
+**Erwartete Korrekturen:**
+| module_id | Feld | IST | SOLL |
+|-----------|------|-----|------|
+| MOD-01 | Sub-Tile "Firma" | Fehlt oder falsch benannt | "Firma" hinzufügen |
+| MOD-02 | route | `/portal/ki-office` | `/portal/office` |
 
-| Kontext | Typ | Regime | Details |
-|---------|-----|--------|---------|
-| Privatvermögen Stelzl | PRIVATE | EÜR | Standard, is_default = true |
-| Muster Immobilien GmbH | BUSINESS | FIBU | HRB 12345 B, DE123456789 |
+### Phase 2: Integration Registry bereinigen
 
-### KontexteTab Erweiterung
+**Aktion 1:** Fehlende Integrationen hinzufügen
 
-Neuer Dialog zum Anlegen von Kontexten mit Formular:
-- Name (Pflicht)
-- Typ: Privat / Geschäftlich
-- Steuerregime: EÜR / FIBU / Vermögensverwaltung
-- Adresse (für Briefkopf)
-- Bei Geschäftlich: HRB-Nummer, USt-ID, Rechtsform
-
----
-
-## Teil 3: MOD-05 Einstellungen & FinAPI
-
-### Aktueller Status
-
-Die FinAPI-Infrastruktur ist bereits angelegt:
-- `msv_bank_accounts` Tabelle existiert
-- UI zeigt Bankkonten-Liste
-- "Konto hinzufügen" Button vorhanden (ohne Funktion)
-
-### Fehlende Funktionalität
-
-1. **Konto-Anlage-Dialog**: Formular mit IBAN, BIC, Kontoinhaber
-2. **FinAPI-Connection-Flow**: Placeholder für zukünftige Integration
-3. **Kontext-Zuordnung**: Bank-Konto einem landlord_context zuweisen
-
----
-
-## Teil 4: Briefgenerator One-Click-Absender (NEU)
-
-### Konzept: One-Click statt Dropdown
-
-```text
-AKTUELL:
-┌──────────────────────────────────────────────────────┐
-│ KI-Briefgenerator                                    │
-│ ┌──────────────────────────────────────────────────┐ │
-│ │ ① Empfänger: [Dropdown]                          │ │
-│ │ ② Betreff: [..............................]      │ │
-│ │ ③ Anliegen: [..............................]     │ │
-│ │                                                   │ │
-│ │ [Brief generieren]                                │ │
-│ └──────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-
-NEU (mit Absender-Buttons):
-┌──────────────────────────────────────────────────────┐
-│ KI-Briefgenerator                                    │
-│ ┌──────────────────────────────────────────────────┐ │
-│ │ Absender (One-Click):                            │ │
-│ │ ┌────────────────┐ ┌────────────────────────┐    │ │
-│ │ │ 👤 Privat      │ │ 🏢 Muster GmbH         │    │ │
-│ │ │ Max Mustermann │ │ Muster Immobilien GmbH │    │ │
-│ │ │ ✓ AUSGEWÄHLT  │ │                        │    │ │
-│ │ └────────────────┘ └────────────────────────┘    │ │
-│ │                                                   │ │
-│ │ ① Empfänger: [Dropdown]                          │ │
-│ │ ② Betreff: [..............................]      │ │
-│ │ ...                                               │ │
-│ └──────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
+```sql
+INSERT INTO integration_registry (api_id, name, category, status, auth_type)
+VALUES 
+  ('LOVABLE_AI', 'Lovable AI', 'AI_SERVICE', 'ACTIVE', 'INTERNAL'),
+  ('UNSTRUCTURED', 'Unstructured.io', 'DOCUMENT_PROCESSING', 'PLANNED', 'API_KEY'),
+  ('FINAPI', 'FinAPI', 'BANKING', 'PLANNED', 'OAUTH2')
+ON CONFLICT (api_id) DO NOTHING;
 ```
 
-### UI-Design der Absender-Buttons
+**Aktion 2:** Duplikate entfernen
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│ Absender (ein Klick)                                                │
-├─────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────┐  ┌─────────────────────┐  ┌───────────────┐ │
-│ │ 👤                   │  │ 🏢                   │  │     ＋        │ │
-│ │ Max Mustermann       │  │ Muster Immobilien    │  │   Kontext    │ │
-│ │ Privatvermögen       │  │ GmbH                 │  │   anlegen    │ │
-│ │ ────────────────     │  │                      │  │              │ │
-│ │ ✓ AKTIV              │  │                      │  │              │ │
-│ └─────────────────────┘  └─────────────────────┘  └───────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
+```sql
+DELETE FROM integration_registry 
+WHERE id NOT IN (
+  SELECT MIN(id) FROM integration_registry GROUP BY api_id
+);
 ```
 
-### Datenfluss
+### Phase 3: Admin Integrations.tsx DB-Anbindung
 
-1. **Laden der Kontexte** aus `landlord_contexts`:
+**Datei:** `src/pages/admin/Integrations.tsx`
+
+**Aktuelle Situation:** Hardcoded Array mit Integrations-Daten
+**Änderung:** Umstellung auf `useQuery` mit Supabase-Fetch
+
 ```typescript
-const { data: senderContexts } = useQuery({
-  queryKey: ['sender-contexts', activeTenantId],
+// NEU: DB-gestützte Integration
+const { data: integrations } = useQuery({
+  queryKey: ['integration-registry'],
   queryFn: async () => {
-    // Profil-Daten für Privat-Absender
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, street, house_number, postal_code, city')
-      .single();
-    
-    // Zusätzliche Kontexte
-    const { data: contexts } = await supabase
-      .from('landlord_contexts')
+    const { data } = await supabase
+      .from('integration_registry')
       .select('*')
-      .eq('tenant_id', activeTenantId);
-    
-    return { profile, contexts };
+      .order('category', { ascending: true });
+    return data || [];
   },
 });
 ```
 
-2. **State für ausgewählten Absender**:
-```typescript
-const [selectedSender, setSelectedSender] = useState<SenderIdentity | null>(null);
+### Phase 4: API Catalog Dokumentation
 
-interface SenderIdentity {
-  type: 'PRIVATE' | 'BUSINESS';
-  name: string;
-  company?: string;
-  address: string;
-}
-```
+**Datei:** `docs/architecture/API_NUMBERING_CATALOG.md`
 
-3. **Übergabe an Edge Function** (bereits vorbereitet!):
-```typescript
-// Die Edge Function unterstützt bereits senderIdentity:
-body: {
-  recipient: {...},
-  subject,
-  prompt,
-  senderIdentity: selectedSender  // ← NEU
-}
-```
+**Ergänzungen:**
 
-### Edge Function (bereits kompatibel)
+| API-ID | Edge Function | Modul | Bereich |
+|--------|---------------|-------|---------|
+| API-701 | sot-property-crud | MOD-04 | Immobilien CRUD |
+| API-801 | sot-msv-reminder-check | MOD-05 | Mahnwesen |
+| API-802 | sot-msv-rent-report | MOD-05 | Mietreports |
+| API-803 | sot-listing-publish | MOD-05 | Exposé Publishing |
+| INTERNAL-001 | sot-letter-generate | MOD-02 | KI-Briefgenerator |
+| INTERNAL-002 | sot-expose-description | MOD-04 | KI-Beschreibungen |
+| INTERNAL-003 | sot-dms-upload-url | MOD-03 | DMS Upload |
+| INTERNAL-004 | sot-dms-download-url | MOD-03 | DMS Download |
 
-Die `sot-letter-generate` Edge Function unterstützt bereits `senderIdentity`:
+### Phase 5: Route-Konsistenz prüfen
 
-```typescript
-interface LetterRequest {
-  recipient: { name: string; company?: string };
-  subject: string;
-  prompt: string;
-  senderIdentity?: {  // ← BEREITS VORHANDEN
-    name: string;
-    company: string;
-    address?: string;
-  };
-}
-```
+**Dokumentation vs. Implementation:**
+
+| Modul | Doku-Route | Impl-Route | Status |
+|-------|------------|------------|--------|
+| MOD-01 | `/portal/stammdaten` | `/portal/stammdaten` | ✓ OK |
+| MOD-02 | `/portal/ki-office` | `/portal/office` | ⚠ Anpassen |
+| MOD-03 | `/portal/dms` | `/portal/dms` | ✓ OK |
+| MOD-04 | `/portal/immobilien` | `/portal/immobilien` | ✓ OK |
+| MOD-05 | `/portal/msv` | `/portal/msv` | ✓ OK |
+
+**Korrektur:** Dokumentation auf `/portal/office` aktualisieren (Implementation ist Master)
 
 ---
 
 ## Implementierungs-Reihenfolge
 
-### Phase 1: Navigation bereinigen
-1. SubTabNav aus StammdatenPage.tsx entfernen
-2. SubTabNav aus OfficePage.tsx entfernen  
-3. SubTabNav aus DMSPage.tsx entfernen
-
-### Phase 2: Datenbank erweitern
-4. `landlord_contexts` um Adress-Felder erweitern
-5. Muster-GmbH und Privat-Kontext als Testdaten einfügen
-
-### Phase 3: KontexteTab aktivieren
-6. Dialog für Kontext-Anlage implementieren
-7. Formular mit allen Feldern (Name, Typ, Regime, Adresse, HRB, USt-ID)
-
-### Phase 4: Portfolio-Subbar
-8. PortfolioTab: Kontext-Subbar nur bei >1 Kontexten anzeigen
-9. PropertyTable nach aktivem Kontext filtern
-
-### Phase 5: MSV-Verknüpfung
-10. EinstellungenTab: Konto-Anlage-Dialog
-11. ObjekteTab: Kontext-Filter spiegeln
-
-### Phase 6: Briefgenerator One-Click-Absender (NEU)
-12. `BriefTab.tsx`: Absender-Buttons vor Empfänger-Auswahl einfügen
-13. Kontexte laden und als klickbare Cards darstellen
-14. Ausgewählten Absender an Edge Function übergeben
+1. **DEVELOPMENT_GOVERNANCE.md** erstellen (Projekt-Root)
+2. **Tile Catalog** DB-Einträge korrigieren
+3. **Integration Registry** bereinigen (Duplikate + fehlende)
+4. **Integrations.tsx** auf DB-Anbindung umstellen
+5. **API_NUMBERING_CATALOG.md** mit Edge Functions ergänzen
+6. **SOFTWARE_FOUNDATION.md** Route MOD-02 korrigieren
 
 ---
 
@@ -251,107 +193,10 @@ interface LetterRequest {
 
 | AC | Beschreibung |
 |----|--------------|
-| AC1 | Keine SubTabNav-Duplikation in MOD-01, MOD-02, MOD-03 |
-| AC2 | Sidebar-Navigation als einzige Modul-Navigation |
-| AC3 | Muster-GmbH + Privatvermögen als Testdaten vorhanden |
-| AC4 | PortfolioTab zeigt Subbar nur bei mehreren Kontexten |
-| AC5 | KontexteTab zeigt Standard-Kontext aus Stammdaten |
-| AC6 | MSV EinstellungenTab hat funktionalen Konto-Dialog |
-| AC7 | Konsistente Datenspiegelung MOD-04 → MOD-05 |
-| **AC8** | **Briefgenerator zeigt Absender als One-Click-Buttons** |
-| **AC9** | **Absender-Auswahl wird an AI-Generierung übergeben** |
-| **AC10** | **Button zeigt visuell aktiven Absender (Checkbox/Rahmen)** |
-
----
-
-## Technische Details
-
-### Neue Komponente: SenderSelector
-
-```typescript
-// Neue Komponente in BriefTab.tsx
-interface SenderOption {
-  id: string;
-  type: 'PRIVATE' | 'BUSINESS';
-  label: string;
-  sublabel: string;
-  address: string;
-}
-
-function SenderSelector({ 
-  options, 
-  selected, 
-  onSelect 
-}: {
-  options: SenderOption[];
-  selected: string | null;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-3">
-      {options.map((option) => (
-        <button
-          key={option.id}
-          onClick={() => onSelect(option.id)}
-          className={cn(
-            "flex flex-col items-start p-4 rounded-lg border-2 transition-all min-w-[180px]",
-            selected === option.id 
-              ? "border-primary bg-primary/5" 
-              : "border-muted hover:border-primary/50"
-          )}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            {option.type === 'PRIVATE' ? (
-              <User className="h-4 w-4" />
-            ) : (
-              <Building2 className="h-4 w-4" />
-            )}
-            <span className="font-medium">{option.label}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">{option.sublabel}</span>
-          {selected === option.id && (
-            <Badge className="mt-2" variant="default">
-              <Check className="h-3 w-3 mr-1" />
-              Aktiv
-            </Badge>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
-```
-
-### Briefkopf-Logik in Edge Function
-
-Die KI erhält den Absender-Kontext und kann den Briefschluss entsprechend anpassen:
-
-```text
-Privat-Absender:
-"Mit freundlichen Grüßen,
-Max Mustermann"
-
-Business-Absender:
-"Mit freundlichen Grüßen,
-Muster Immobilien GmbH
-i.A. Max Mustermann"
-```
-
----
-
-## Datenbank-Migration (SQL)
-
-```sql
--- Phase 2: landlord_contexts erweitern
-ALTER TABLE landlord_contexts 
-ADD COLUMN IF NOT EXISTS street TEXT,
-ADD COLUMN IF NOT EXISTS house_number TEXT,
-ADD COLUMN IF NOT EXISTS postal_code TEXT,
-ADD COLUMN IF NOT EXISTS city TEXT,
-ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Deutschland',
-ADD COLUMN IF NOT EXISTS hrb_number TEXT,
-ADD COLUMN IF NOT EXISTS ust_id TEXT,
-ADD COLUMN IF NOT EXISTS legal_form TEXT;
-
--- Muster-Testdaten werden nach Tenant-Erstellung eingefügt
-```
+| AC1 | DEVELOPMENT_GOVERNANCE.md existiert im Projekt-Root |
+| AC2 | Tile Catalog hat korrekte 4-Tile-Struktur für MOD-01 bis MOD-05 |
+| AC3 | Integration Registry ohne Duplikate |
+| AC4 | LOVABLE_AI, UNSTRUCTURED, FINAPI in Registry |
+| AC5 | Integrations.tsx zeigt DB-Daten statt Hardcoded |
+| AC6 | Alle Edge Functions im API_NUMBERING_CATALOG dokumentiert |
+| AC7 | MOD-02 Route einheitlich `/portal/office` |
