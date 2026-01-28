@@ -216,6 +216,273 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_profiles: {
+        Row: {
+          address_city: string | null
+          address_postal_code: string | null
+          address_street: string | null
+          adults_count: number | null
+          ancillary_costs: number | null
+          bank_savings: number | null
+          birth_date: string | null
+          birth_place: string | null
+          bonus_yearly: number | null
+          building_society_value: number | null
+          car_leasing_monthly: number | null
+          child_benefit_monthly: number | null
+          child_support_amount_monthly: number | null
+          child_support_obligation: boolean | null
+          children_ages: string | null
+          children_count: number | null
+          company_address: string | null
+          company_employees: number | null
+          company_founded: string | null
+          company_industry: string | null
+          company_legal_form: string | null
+          company_managing_director: boolean | null
+          company_name: string | null
+          company_ownership_percent: number | null
+          company_register_number: string | null
+          company_vat_id: string | null
+          completion_score: number | null
+          created_at: string
+          current_rent_monthly: number | null
+          data_correct_confirmed: boolean | null
+          email: string | null
+          employed_since: string | null
+          employer_industry: string | null
+          employer_location: string | null
+          employer_name: string | null
+          employment_type: string | null
+          equity_amount: number | null
+          equity_source: string | null
+          finance_request_id: string | null
+          first_name: string | null
+          fixed_rate_period_years: number | null
+          health_insurance_monthly: number | null
+          iban: string | null
+          id: string
+          id_document_number: string | null
+          id_document_type: string | null
+          id_document_valid_until: string | null
+          last_name: string | null
+          last_synced_from_finapi_at: string | null
+          life_insurance_value: number | null
+          living_expenses_monthly: number | null
+          loan_amount_requested: number | null
+          marital_status: string | null
+          max_monthly_rate: number | null
+          modernization_costs: number | null
+          nationality: string | null
+          net_income_monthly: number | null
+          no_insolvency: boolean | null
+          no_tax_arrears: boolean | null
+          object_address: string | null
+          object_type: string | null
+          other_assets_description: string | null
+          other_assets_value: number | null
+          other_fixed_costs_monthly: number | null
+          other_income_description: string | null
+          other_regular_income_monthly: number | null
+          party_role: string
+          phone: string | null
+          planned_rent_monthly: number | null
+          position: string | null
+          probation_until: string | null
+          profile_type: string
+          purchase_price: number | null
+          purpose: string | null
+          rental_status: string | null
+          repayment_rate_percent: number | null
+          schufa_consent: boolean | null
+          securities_value: number | null
+          tax_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_postal_code?: string | null
+          address_street?: string | null
+          adults_count?: number | null
+          ancillary_costs?: number | null
+          bank_savings?: number | null
+          birth_date?: string | null
+          birth_place?: string | null
+          bonus_yearly?: number | null
+          building_society_value?: number | null
+          car_leasing_monthly?: number | null
+          child_benefit_monthly?: number | null
+          child_support_amount_monthly?: number | null
+          child_support_obligation?: boolean | null
+          children_ages?: string | null
+          children_count?: number | null
+          company_address?: string | null
+          company_employees?: number | null
+          company_founded?: string | null
+          company_industry?: string | null
+          company_legal_form?: string | null
+          company_managing_director?: boolean | null
+          company_name?: string | null
+          company_ownership_percent?: number | null
+          company_register_number?: string | null
+          company_vat_id?: string | null
+          completion_score?: number | null
+          created_at?: string
+          current_rent_monthly?: number | null
+          data_correct_confirmed?: boolean | null
+          email?: string | null
+          employed_since?: string | null
+          employer_industry?: string | null
+          employer_location?: string | null
+          employer_name?: string | null
+          employment_type?: string | null
+          equity_amount?: number | null
+          equity_source?: string | null
+          finance_request_id?: string | null
+          first_name?: string | null
+          fixed_rate_period_years?: number | null
+          health_insurance_monthly?: number | null
+          iban?: string | null
+          id?: string
+          id_document_number?: string | null
+          id_document_type?: string | null
+          id_document_valid_until?: string | null
+          last_name?: string | null
+          last_synced_from_finapi_at?: string | null
+          life_insurance_value?: number | null
+          living_expenses_monthly?: number | null
+          loan_amount_requested?: number | null
+          marital_status?: string | null
+          max_monthly_rate?: number | null
+          modernization_costs?: number | null
+          nationality?: string | null
+          net_income_monthly?: number | null
+          no_insolvency?: boolean | null
+          no_tax_arrears?: boolean | null
+          object_address?: string | null
+          object_type?: string | null
+          other_assets_description?: string | null
+          other_assets_value?: number | null
+          other_fixed_costs_monthly?: number | null
+          other_income_description?: string | null
+          other_regular_income_monthly?: number | null
+          party_role?: string
+          phone?: string | null
+          planned_rent_monthly?: number | null
+          position?: string | null
+          probation_until?: string | null
+          profile_type?: string
+          purchase_price?: number | null
+          purpose?: string | null
+          rental_status?: string | null
+          repayment_rate_percent?: number | null
+          schufa_consent?: boolean | null
+          securities_value?: number | null
+          tax_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          address_city?: string | null
+          address_postal_code?: string | null
+          address_street?: string | null
+          adults_count?: number | null
+          ancillary_costs?: number | null
+          bank_savings?: number | null
+          birth_date?: string | null
+          birth_place?: string | null
+          bonus_yearly?: number | null
+          building_society_value?: number | null
+          car_leasing_monthly?: number | null
+          child_benefit_monthly?: number | null
+          child_support_amount_monthly?: number | null
+          child_support_obligation?: boolean | null
+          children_ages?: string | null
+          children_count?: number | null
+          company_address?: string | null
+          company_employees?: number | null
+          company_founded?: string | null
+          company_industry?: string | null
+          company_legal_form?: string | null
+          company_managing_director?: boolean | null
+          company_name?: string | null
+          company_ownership_percent?: number | null
+          company_register_number?: string | null
+          company_vat_id?: string | null
+          completion_score?: number | null
+          created_at?: string
+          current_rent_monthly?: number | null
+          data_correct_confirmed?: boolean | null
+          email?: string | null
+          employed_since?: string | null
+          employer_industry?: string | null
+          employer_location?: string | null
+          employer_name?: string | null
+          employment_type?: string | null
+          equity_amount?: number | null
+          equity_source?: string | null
+          finance_request_id?: string | null
+          first_name?: string | null
+          fixed_rate_period_years?: number | null
+          health_insurance_monthly?: number | null
+          iban?: string | null
+          id?: string
+          id_document_number?: string | null
+          id_document_type?: string | null
+          id_document_valid_until?: string | null
+          last_name?: string | null
+          last_synced_from_finapi_at?: string | null
+          life_insurance_value?: number | null
+          living_expenses_monthly?: number | null
+          loan_amount_requested?: number | null
+          marital_status?: string | null
+          max_monthly_rate?: number | null
+          modernization_costs?: number | null
+          nationality?: string | null
+          net_income_monthly?: number | null
+          no_insolvency?: boolean | null
+          no_tax_arrears?: boolean | null
+          object_address?: string | null
+          object_type?: string | null
+          other_assets_description?: string | null
+          other_assets_value?: number | null
+          other_fixed_costs_monthly?: number | null
+          other_income_description?: string | null
+          other_regular_income_monthly?: number | null
+          party_role?: string
+          phone?: string | null
+          planned_rent_monthly?: number | null
+          position?: string | null
+          probation_until?: string | null
+          profile_type?: string
+          purchase_price?: number | null
+          purpose?: string | null
+          rental_status?: string | null
+          repayment_rate_percent?: number | null
+          schufa_consent?: boolean | null
+          securities_value?: number | null
+          tax_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_profiles_finance_request_id_fkey"
+            columns: ["finance_request_id"]
+            isOneToOne: false
+            referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor_user_id: string
@@ -612,6 +879,79 @@ export type Database = {
           },
         ]
       }
+      credibility_flags: {
+        Row: {
+          applicant_profile_id: string
+          created_at: string
+          declared_value: string | null
+          detected_value: string | null
+          field_name: string | null
+          flag_type: string
+          id: string
+          resolution_note: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source_document_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          applicant_profile_id: string
+          created_at?: string
+          declared_value?: string | null
+          detected_value?: string | null
+          field_name?: string | null
+          flag_type: string
+          id?: string
+          resolution_note?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_document_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          applicant_profile_id?: string
+          created_at?: string
+          declared_value?: string | null
+          detected_value?: string | null
+          field_name?: string | null
+          flag_type?: string
+          id?: string
+          resolution_note?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_document_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credibility_flags_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credibility_flags_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credibility_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_projects: {
         Row: {
           contact_id: string
@@ -888,6 +1228,63 @@ export type Database = {
           },
         ]
       }
+      finance_bank_contacts: {
+        Row: {
+          bank_name: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          max_loan_amount: number | null
+          min_loan_amount: number | null
+          notes: string | null
+          portal_url: string | null
+          preferred_loan_types: string[] | null
+          preferred_regions: string[] | null
+          public_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_name: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_loan_amount?: number | null
+          min_loan_amount?: number | null
+          notes?: string | null
+          portal_url?: string | null
+          preferred_loan_types?: string[] | null
+          preferred_regions?: string[] | null
+          public_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_name?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_loan_amount?: number | null
+          min_loan_amount?: number | null
+          notes?: string | null
+          portal_url?: string | null
+          preferred_loan_types?: string[] | null
+          preferred_regions?: string[] | null
+          public_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       finance_cases: {
         Row: {
           case_code: string | null
@@ -999,6 +1396,69 @@ export type Database = {
           },
         ]
       }
+      finance_mandates: {
+        Row: {
+          accepted_at: string | null
+          assigned_manager_id: string | null
+          created_at: string
+          delegated_at: string | null
+          delegated_by: string | null
+          finance_request_id: string
+          id: string
+          notes: string | null
+          priority: number | null
+          public_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          assigned_manager_id?: string | null
+          created_at?: string
+          delegated_at?: string | null
+          delegated_by?: string | null
+          finance_request_id: string
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          public_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          assigned_manager_id?: string | null
+          created_at?: string
+          delegated_at?: string | null
+          delegated_by?: string | null
+          finance_request_id?: string
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          public_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_mandates_finance_request_id_fkey"
+            columns: ["finance_request_id"]
+            isOneToOne: true
+            referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_mandates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_packages: {
         Row: {
           contact_id: string
@@ -1079,6 +1539,127 @@ export type Database = {
           {
             foreignKeyName: "finance_packages_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custom_object_data: Json | null
+          id: string
+          listing_id: string | null
+          object_source: string | null
+          property_id: string | null
+          public_id: string | null
+          status: string
+          storage_folder_id: string | null
+          submitted_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custom_object_data?: Json | null
+          id?: string
+          listing_id?: string | null
+          object_source?: string | null
+          property_id?: string | null
+          public_id?: string | null
+          status?: string
+          storage_folder_id?: string | null
+          submitted_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custom_object_data?: Json | null
+          id?: string
+          listing_id?: string | null
+          object_source?: string | null
+          property_id?: string | null
+          public_id?: string | null
+          status?: string
+          storage_folder_id?: string | null
+          submitted_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_requests_storage_folder_id_fkey"
+            columns: ["storage_folder_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      future_room_cases: {
+        Row: {
+          bank_response: string | null
+          created_at: string
+          finance_mandate_id: string
+          id: string
+          manager_tenant_id: string
+          status: string
+          submitted_to_bank_at: string | null
+          target_bank_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_response?: string | null
+          created_at?: string
+          finance_mandate_id: string
+          id?: string
+          manager_tenant_id: string
+          status?: string
+          submitted_to_bank_at?: string | null
+          target_bank_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_response?: string | null
+          created_at?: string
+          finance_mandate_id?: string
+          id?: string
+          manager_tenant_id?: string
+          status?: string
+          submitted_to_bank_at?: string | null
+          target_bank_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "future_room_cases_finance_mandate_id_fkey"
+            columns: ["finance_mandate_id"]
+            isOneToOne: true
+            referencedRelation: "finance_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "future_room_cases_manager_tenant_id_fkey"
+            columns: ["manager_tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -5265,6 +5846,7 @@ export type Database = {
         | "internal_ops"
         | "sales_partner"
         | "renter_user"
+        | "finance_manager"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
       partner_verification_status:
         | "pending"
@@ -5501,6 +6083,7 @@ export const Constants = {
         "internal_ops",
         "sales_partner",
         "renter_user",
+        "finance_manager",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
       partner_verification_status: [
