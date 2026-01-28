@@ -4,3 +4,4 @@ export { FinanceRequestList } from './FinanceRequestList';
 export { FinanceRequestDetail } from './FinanceRequestDetail';
 export { ObjectSelector } from './ObjectSelector';
 export { DocumentUploadSection } from './DocumentUploadSection';
+export { CredibilityFlagsPanel } from './CredibilityFlagsPanel';

@@ -43,9 +43,17 @@ import ImmobilienPage from "./pages/portal/ImmobilienPage";
 import MSVPage from "./pages/portal/MSVPage";
 import VerkaufPage from "./pages/portal/VerkaufPage";
 import FinanzierungPage from "./pages/portal/FinanzierungPage";
+import FinanzierungsmanagerPage from "./pages/portal/FinanzierungsmanagerPage";
 import InvestmentsPage from "./pages/portal/InvestmentsPage";
 import VertriebspartnerPage from "./pages/portal/VertriebspartnerPage";
 import LeadsPage from "./pages/portal/LeadsPage";
+
+// Zone 3: FutureRoom Website
+import FutureRoomLayout from "./pages/zone3/futureroom/FutureRoomLayout";
+import FutureRoomHome from "./pages/zone3/futureroom/FutureRoomHome";
+import FutureRoomBonitat from "./pages/zone3/futureroom/FutureRoomBonitat";
+import FutureRoomKarriere from "./pages/zone3/futureroom/FutureRoomKarriere";
+import FutureRoomFAQ from "./pages/zone3/futureroom/FutureRoomFAQ";
 import RentalExposeDetail from "./pages/portal/msv/RentalExposeDetail";
 
 // Legacy Portfolio (kept for reference/migration)
@@ -186,6 +194,9 @@ const App = () => (
               {/* MOD-07: Finanzierung */}
               <Route path="finanzierung/*" element={<FinanzierungPage />} />
               
+              {/* MOD-11: Finanzierungsmanager */}
+              <Route path="finanzierungsmanager/*" element={<FinanzierungsmanagerPage />} />
+              
               {/* MOD-08: Investments (Suche, Favoriten, Mandat, Simulation) */}
               <Route path="investments" element={<InvestmentsPage />} />
               <Route path="investments/suche" element={<InvestmentsPage />} />
@@ -242,6 +253,14 @@ const App = () => (
               <Route path="kontakt" element={<MietyKontakt />} />
               <Route path="registrieren" element={<MietyRegistrieren />} />
               <Route path="invite" element={<MietyInvite />} />
+            </Route>
+
+            {/* Zone 3: FutureRoom Website */}
+            <Route path="/futureroom" element={<FutureRoomLayout />}>
+              <Route index element={<FutureRoomHome />} />
+              <Route path="bonitat" element={<FutureRoomBonitat />} />
+              <Route path="karriere" element={<FutureRoomKarriere />} />
+              <Route path="faq" element={<FutureRoomFAQ />} />
             </Route>
 
             {/* Zone 3: System of a Town Website */}
