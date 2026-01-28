@@ -18,6 +18,7 @@ import Delegations from "./pages/admin/Delegations";
 import Support from "./pages/admin/Support";
 import MasterContacts from "./pages/admin/MasterContacts";
 import TileCatalog from "./pages/admin/TileCatalog";
+import TileDetail from "./pages/admin/TileDetail";
 import Integrations from "./pages/admin/Integrations";
 import CommunicationHub from "./pages/admin/CommunicationHub";
 import Oversight from "./pages/admin/Oversight";
@@ -126,6 +127,7 @@ const App = () => (
               <Route path="contacts" element={<MasterContacts />} />
               <Route path="master-templates" element={<MasterTemplates />} />
               <Route path="tiles" element={<TileCatalog />} />
+              <Route path="tiles/:tileCode" element={<TileDetail />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="oversight" element={<Oversight />} />
