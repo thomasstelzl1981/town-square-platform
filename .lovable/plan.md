@@ -1,64 +1,87 @@
-# Workflow-Audit MOD-04 → MOD-06 → Zone 3 Kaufy
 
-## Status: KORRIGIERT ✅
 
-### Durchgeführte Änderungen
+# Fix-Plan: AdminLayout Development-Bypass
 
-#### 1. KaufyExpose.tsx - MOCK-DATEN ENTFERNT
-- **Zeilen 77-93**: Hardcoded Mock-Daten ("Musterstraße 123", "Leipzig", "890.000€") komplett gelöscht
-- Jetzt: Echte DB-Abfrage mit Kaufy-Channel-Validierung
-- Wenn Objekt nicht auf Kaufy publiziert → zeigt "Objekt nicht gefunden"
+## Zusammenfassung
+Der Login wird derzeit erzwungen, weil im `AdminLayout.tsx` der Development-Mode-Bypass fehlt, der im `PortalLayout.tsx` bereits korrekt implementiert ist. Fix 2 (Mock-Tenant) ist **nicht nötig**, da der AuthContext bereits korrekt die echte Organisation (`thomas.stelzl`) lädt.
 
-#### 2. Datenfluss verifiziert
-```
-MOD-04 (properties/units) 
-    ↓
-MOD-06 (listings + Verkaufsexposé)
-    ↓ [Publikation mit channel='kaufy']
-Zone 3 KaufyImmobilien (v_public_listings / listing_publications)
-    ↓ [Klick auf Objekt]
-Zone 3 KaufyExpose (Detailseite mit Investment-Rechner)
+## Änderung 1: AdminLayout.tsx
+
+### Vorher (Zeile 10-16):
+```typescript
+const { user, isLoading, memberships } = useAuth();
+
+useEffect(() => {
+  if (!isLoading && !user) {
+    navigate('/auth');
+  }
+}, [user, isLoading, navigate]);
 ```
 
-#### 3. Komponenten-Status
+### Nachher:
+```typescript
+const { user, isLoading, memberships, isDevelopmentMode } = useAuth();
 
-| Komponente | Status | Quelle |
-|------------|--------|--------|
-| KaufyHome.tsx | ✅ KORREKT | listing_publications + channel='kaufy' |
-| KaufyImmobilien.tsx | ✅ KORREKT | listing_publications + channel='kaufy' |
-| KaufyExpose.tsx | ✅ KORRIGIERT | listings + Kaufy-Validierung |
-| ExposeDetail.tsx (MOD-06) | ✅ KORREKT | units als Basis, auto-creates listings |
-| VermietungTab.tsx (MOD-05) | ✅ KORREKT | rental_listings (separater Kanal) |
+useEffect(() => {
+  if (!isLoading && !user && !isDevelopmentMode) {
+    navigate('/auth');
+  }
+}, [user, isLoading, navigate, isDevelopmentMode]);
+```
 
-### Aktuelle Datenlage
+### Zusätzliche Änderung (Zeile 26-28):
+```typescript
+// Vorher:
+if (!user) {
+  return null;
+}
 
-| Tabelle | Anzahl | Kommentar |
-|---------|--------|-----------|
-| properties | 0 | Testdaten via Zone 1 → /admin/tiles importieren |
-| units | 0 | Werden mit Properties angelegt |
-| listings | 0 | Werden in MOD-06 erstellt |
-| listing_publications | 0 | Kaufy-Freigabe in MOD-06 ExposeDetail |
+// Nachher:
+if (!user && !isDevelopmentMode) {
+  return null;
+}
+```
 
-### Workflow zum Testen
+### Zusätzliche Änderung (Zeile 35):
+```typescript
+// Vorher:
+if (!hasAdminAccess && memberships.length > 0) {
 
-1. **Zone 1**: `/admin/tiles` → Tab "Testdaten" → Excel-Import
-2. **MOD-04**: `/portal/immobilien/portfolio` → Properties erscheinen
-3. **MOD-06**: `/portal/verkauf/objekte` → Units erscheinen
-4. **MOD-06**: Klick auf Eye-Button → Verkaufsexposé öffnet
-5. **MOD-06**: "Partner-Freigabe" aktivieren → dann Kaufy-Toggle aktivieren
-6. **Zone 3**: `/kaufy/immobilien` → Objekt erscheint
-7. **Zone 3**: Klick auf Objekt → KaufyExpose mit Investment-Rechner
+// Nachher:
+if (!hasAdminAccess && memberships.length > 0 && !isDevelopmentMode) {
+```
 
-### MOD-05 vs MOD-06 Unterschied
+## Erwartetes Ergebnis
+Nach dieser Änderung:
+1. Zone 1 (Admin) ist ohne Login im Development-Modus erreichbar
+2. Der TestDataManager unter `/admin/tiles` ist zugänglich
+3. Du kannst prüfen, ob Testdaten noch vorhanden sind
+4. Falls nicht, kannst du die Portfolio-Excel erneut hochladen
 
-| Feature | MOD-05 (MSV) | MOD-06 (Verkauf) |
-|---------|--------------|------------------|
-| Tabelle | rental_listings | listings |
-| Kanäle | Scout24, Kleinanzeigen | Kaufy, Partner Network, Scout24 |
-| Zone 3 | ❌ Nicht auf Kaufy | ✅ Kaufy Marketplace |
+## Technische Details
 
-### Offene Punkte
+### AuthContext funktioniert korrekt
+Der AuthContext versucht bei Development-Mode:
+1. Zuerst echte Organisation laden (`organizations` Tabelle)
+2. Wenn gefunden → `thomas.stelzl` (UUID: `e808a01b-728e-4ac3-88fe-6edeeae69d6e`)
+3. Nur bei Fehler → Fallback auf Mock
 
-- [ ] Testdaten importieren (Phase 0 Sample Portfolio ZL002-ZL009)
-- [ ] Armstrong Sidebar Position prüfen (Desktop = rechts, Mobile = Bottom)
-- [ ] Footer-Links vervollständigen (KAUFY_COPYKIT.md)
+### Datenbank-Status (aktuell)
+| Tabelle | Anzahl |
+|---------|--------|
+| organizations | 2 (thomas.stelzl, test) |
+| test_data_registry | 0 |
+| properties | 0 |
+| units | 0 |
+| contacts | 0 |
+
+Die Testdaten sind nicht mehr in der Datenbank. Die "fremden Daten" in Zone 3 (Kaufy) waren hardcoded Mock-Daten in `KaufyHome.tsx`, nicht aus der Datenbank.
+
+## Betroffene Dateien
+- `src/components/admin/AdminLayout.tsx` (4 kleine Änderungen)
+
+## Nicht betroffen
+- `src/contexts/AuthContext.tsx` - funktioniert bereits korrekt
+- Zone 2 Portal - hat bereits den Bypass
+- Zone 3 Websites - keine Auth-Prüfung
+
