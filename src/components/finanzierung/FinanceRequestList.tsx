@@ -27,7 +27,7 @@ export function FinanceRequestList() {
   const handleCreate = async () => {
     const result = await createRequest.mutateAsync({});
     if (result?.id) {
-      navigate(`/portal/finanzierung/${result.id}`);
+      navigate(`/portal/finanzierung/faelle/${result.id}`);
     }
   };
 
@@ -82,7 +82,7 @@ export function FinanceRequestList() {
             <Card
               key={request.id}
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/portal/finanzierung/${request.id}`)}
+              onClick={() => navigate(`/portal/finanzierung/faelle/${request.id}`)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-4">
