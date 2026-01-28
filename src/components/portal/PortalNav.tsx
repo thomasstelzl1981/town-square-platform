@@ -186,7 +186,6 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
       'MOD-08': 'investments',
       'MOD-09': 'vertriebspartner',
       'MOD-10': 'leads',
-      'MOD-11': 'finanzierung',
     };
     const key = moduleMap[tileCode] || tileCode.toLowerCase();
     return iconMap[key] || Briefcase;

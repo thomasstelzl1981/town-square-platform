@@ -5987,110 +5987,12 @@ export type Database = {
           },
         ]
       }
-      tile_api_external: {
-        Row: {
-          auth_method: string | null
-          created_at: string
-          endpoint: string | null
-          id: string
-          lifecycle_status: string
-          mapping_notes: string | null
-          provider: string
-          purpose: string | null
-          tile_code: string
-          updated_at: string
-        }
-        Insert: {
-          auth_method?: string | null
-          created_at?: string
-          endpoint?: string | null
-          id?: string
-          lifecycle_status?: string
-          mapping_notes?: string | null
-          provider: string
-          purpose?: string | null
-          tile_code: string
-          updated_at?: string
-        }
-        Update: {
-          auth_method?: string | null
-          created_at?: string
-          endpoint?: string | null
-          id?: string
-          lifecycle_status?: string
-          mapping_notes?: string | null
-          provider?: string
-          purpose?: string | null
-          tile_code?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tile_api_external_tile_code_fkey"
-            columns: ["tile_code"]
-            isOneToOne: false
-            referencedRelation: "tile_catalog"
-            referencedColumns: ["tile_code"]
-          },
-        ]
-      }
-      tile_api_internal: {
-        Row: {
-          auth_roles: string[] | null
-          created_at: string
-          endpoint: string
-          id: string
-          lifecycle_status: string
-          method: string
-          purpose: string | null
-          req_schema_ref: string | null
-          resp_schema_ref: string | null
-          tile_code: string
-          updated_at: string
-        }
-        Insert: {
-          auth_roles?: string[] | null
-          created_at?: string
-          endpoint: string
-          id?: string
-          lifecycle_status?: string
-          method?: string
-          purpose?: string | null
-          req_schema_ref?: string | null
-          resp_schema_ref?: string | null
-          tile_code: string
-          updated_at?: string
-        }
-        Update: {
-          auth_roles?: string[] | null
-          created_at?: string
-          endpoint?: string
-          id?: string
-          lifecycle_status?: string
-          method?: string
-          purpose?: string | null
-          req_schema_ref?: string | null
-          resp_schema_ref?: string | null
-          tile_code?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tile_api_internal_tile_code_fkey"
-            columns: ["tile_code"]
-            isOneToOne: false
-            referencedRelation: "tile_catalog"
-            referencedColumns: ["tile_code"]
-          },
-        ]
-      }
       tile_catalog: {
         Row: {
           created_at: string
           description: string | null
           display_order: number
           external_api_refs: string[] | null
-          flowchart_mermaid: string | null
           icon_key: string
           id: string
           internal_apis: string[] | null
@@ -6108,7 +6010,6 @@ export type Database = {
           description?: string | null
           display_order?: number
           external_api_refs?: string[] | null
-          flowchart_mermaid?: string | null
           icon_key?: string
           id?: string
           internal_apis?: string[] | null
@@ -6126,7 +6027,6 @@ export type Database = {
           description?: string | null
           display_order?: number
           external_api_refs?: string[] | null
-          flowchart_mermaid?: string | null
           icon_key?: string
           id?: string
           internal_apis?: string[] | null
@@ -6140,38 +6040,6 @@ export type Database = {
           zone?: number
         }
         Relationships: []
-      }
-      tile_changelog: {
-        Row: {
-          change_note: string
-          changed_at: string
-          changed_by: string | null
-          id: string
-          tile_code: string
-        }
-        Insert: {
-          change_note: string
-          changed_at?: string
-          changed_by?: string | null
-          id?: string
-          tile_code: string
-        }
-        Update: {
-          change_note?: string
-          changed_at?: string
-          changed_by?: string | null
-          id?: string
-          tile_code?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tile_changelog_tile_code_fkey"
-            columns: ["tile_code"]
-            isOneToOne: false
-            referencedRelation: "tile_catalog"
-            referencedColumns: ["tile_code"]
-          },
-        ]
       }
       units: {
         Row: {

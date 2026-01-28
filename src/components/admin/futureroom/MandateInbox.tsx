@@ -9,7 +9,6 @@ import {
   ArrowRight, Filter
 } from 'lucide-react';
 import { useFinanceMandates, useUpdateMandateStatus } from '@/hooks/useFinanceMandate';
-import { DelegateManagerDialog } from './DelegateManagerDialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -21,18 +20,16 @@ import {
 } from "@/components/ui/select";
 import type { MandateStatus } from '@/types/finance';
 
-// Status configuration with 'closed' added per FROZEN spec
-const statusConfig: Record<MandateStatus | 'closed', { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+const statusConfig: Record<MandateStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   new: { label: 'Neu', variant: 'default' },
   triage: { label: 'In Prüfung', variant: 'secondary' },
   delegated: { label: 'Zugewiesen', variant: 'outline' },
   accepted: { label: 'Angenommen', variant: 'default' },
   rejected: { label: 'Abgelehnt', variant: 'destructive' },
-  closed: { label: 'Abgeschlossen', variant: 'secondary' },
 };
 
 export function MandateInbox() {
-  const { data: mandates, isLoading, refetch } = useFinanceMandates();
+  const { data: mandates, isLoading } = useFinanceMandates();
   const updateStatus = useUpdateMandateStatus();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
@@ -203,10 +200,14 @@ export function MandateInbox() {
                         </>
                       )}
                       {mandate.status === 'triage' && (
-                        <DelegateManagerDialog 
-                          mandateId={mandate.id}
-                          onDelegated={() => refetch()}
-                        />
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusChange(mandate.id, 'delegated')}
+                          disabled={updateStatus.isPending}
+                        >
+                          Zuweisen
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
                       )}
                       {mandate.status === 'delegated' && (
                         <Badge variant="secondary">

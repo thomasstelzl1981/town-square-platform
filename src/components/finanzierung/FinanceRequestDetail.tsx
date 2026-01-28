@@ -42,7 +42,7 @@ export function FinanceRequestDetail() {
   if (!request) {
     return (
       <div className="p-6">
-        <Button variant="ghost" onClick={() => navigate('/portal/finanzierung/faelle')}>
+        <Button variant="ghost" onClick={() => navigate('/portal/finanzierung')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Zurück
         </Button>
@@ -71,8 +71,8 @@ export function FinanceRequestDetail() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/finanzierung/faelle')}>
-          <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={() => navigate('/portal/finanzierung')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <div className="flex items-center gap-3">

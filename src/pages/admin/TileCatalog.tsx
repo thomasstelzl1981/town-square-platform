@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
@@ -39,8 +38,7 @@ import {
   Upload,
   Trash2,
   FileSpreadsheet,
-  Database,
-  Eye
+  Database
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { TestDataManager } from '@/components/admin/TestDataManager';
@@ -72,7 +70,6 @@ function getIcon(iconKey: string) {
 }
 
 export default function TileCatalogPage() {
-  const navigate = useNavigate();
   const { isPlatformAdmin, user } = useAuth();
   const [tiles, setTiles] = useState<TileCatalog[]>([]);
   const [activations, setActivations] = useState<TenantTileActivation[]>([]);
@@ -249,11 +246,7 @@ export default function TileCatalogPage() {
             {tiles.map(tile => {
               const subTiles = (tile.sub_tiles as unknown as SubTile[]) || [];
               return (
-                <Card 
-                  key={tile.id} 
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => navigate(`/admin/tiles/${tile.tile_code}`)}
-                >
+                <Card key={tile.id}>
                   <CardHeader>
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -291,17 +284,9 @@ export default function TileCatalogPage() {
                       <Badge variant={tile.is_active ? 'default' : 'secondary'}>
                         {tile.is_active ? 'Aktiv' : 'Inaktiv'}
                       </Badge>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          {getActivationCount(tile.tile_code)} Tenants
-                        </span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/admin/tiles/${tile.tile_code}`);
-                        }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {getActivationCount(tile.tile_code)} Tenants
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
