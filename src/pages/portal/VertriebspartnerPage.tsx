@@ -8,7 +8,8 @@ import { Loader2 } from 'lucide-react';
 // Lazy load sub-pages
 const KatalogTab = lazy(() => import('./vertriebspartner/KatalogTab'));
 const BeratungTab = lazy(() => import('./vertriebspartner/BeratungTab'));
-const PipelineTab = lazy(() => import('./vertriebspartner/PipelineTab'));
+const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
+const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -67,7 +68,8 @@ const VertriebspartnerPage = () => {
               <Route index element={<Navigate to="katalog" replace />} />
               <Route path="katalog" element={<KatalogTab />} />
               <Route path="beratung" element={<BeratungTab />} />
-              <Route path="pipeline" element={<PipelineTab />} />
+              <Route path="kunden" element={<KundenTab />} />
+              <Route path="network" element={<NetworkTab />} />
             </Routes>
           </Suspense>
         </div>
