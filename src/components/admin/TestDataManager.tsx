@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FilePreview } from '@/components/shared/FileUploader';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
@@ -16,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   Upload, Download, Trash2, Loader2, FileSpreadsheet, 
-  Building2, Users, FileText, Home, CheckCircle2 
+  Building2, Users, FileText, Home, CheckCircle2, AlertCircle, Sparkles, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -29,211 +31,34 @@ interface TestBatch {
   entity_counts: Record<string, number>;
 }
 
-interface ExcelPropertyRow {
-  Objekt?: string;
-  Art?: string;
-  Adresse?: string;
-  Ort?: string;
-  PLZ?: string | number;
-  qm?: string | number;
-  Kaltmiete?: string | number;
-  Mieter?: string;
-  'Mieter seit'?: string;
-  Mieterhöhung?: string;
-  Kaufpreis?: string | number;
-  Restschuld?: string | number;
-  Zinssatz?: string | number;
-  Tilgung?: string | number;
-  Bank?: string;
+interface AIExtractedRow {
+  code: string;
+  art: string;
+  adresse: string;
+  ort: string;
+  plz: string;
+  qm: number | null;
+  kaltmiete: number | null;
+  mieter: string | null;
+  mieterSeit: string | null;
+  mieterhoehung: string | null;
+  kaufpreis: number | null;
+  restschuld: number | null;
+  zinssatz: number | null;
+  tilgung: number | null;
+  bank: string | null;
+  confidence: number;
+  notes: string | null;
 }
 
-function normalizeHeaderCell(val: unknown): string {
-  if (val === undefined || val === null) return '';
-  const raw = String(val).trim().toLowerCase();
-  // normalize german chars
-  const de = raw
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss');
-  // keep only alphanumerics
-  return de.replace(/[^a-z0-9]/g, '');
+interface AISummary {
+  totalRows: number;
+  uniqueProperties: number;
+  avgConfidence: number;
+  issues: string[];
 }
 
-const HEADER_ALIASES: Record<string, keyof ExcelPropertyRow> = {
-  // object code
-  objekt: 'Objekt',
-  code: 'Objekt',
-  objektid: 'Objekt',
-  objektnr: 'Objekt',
-  objektnummer: 'Objekt',
-
-  // basics
-  art: 'Art',
-  ort: 'Ort',
-  adresse: 'Adresse',
-  strassehausnummer: 'Adresse',
-  strasse: 'Adresse',
-  hausnummer: 'Adresse',
-  plz: 'PLZ',
-  postleitzahl: 'PLZ',
-
-  // size
-  qm: 'qm',
-  groesse: 'qm',
-  flaeche: 'qm',
-  gesamtflaeche: 'qm',
-  groessesqm: 'qm',
-
-  // rent
-  kaltmiete: 'Kaltmiete',
-  warmmiete: 'Kaltmiete', // best-effort fallback when only warm rent exists
-
-  // tenant
-  mieter: 'Mieter',
-  mieterseit: 'Mieter seit',
-  mieterhoehung: 'Mieterhöhung',
-
-  // purchase/financing
-  kaufpreis: 'Kaufpreis',
-  restschuld: 'Restschuld',
-  zinssatz: 'Zinssatz',
-  zins: 'Zinssatz',
-  tilgung: 'Tilgung',
-  bank: 'Bank',
-};
-
-function scoreHeaderRow(row: unknown[]): { score: number; mapped: Set<keyof ExcelPropertyRow> } {
-  const mapped = new Set<keyof ExcelPropertyRow>();
-  for (const cell of row) {
-    const key = HEADER_ALIASES[normalizeHeaderCell(cell)];
-    if (key) mapped.add(key);
-  }
-  return { score: mapped.size, mapped };
-}
-
-function pickBestSheetAndHeader(workbook: XLSX.WorkBook) {
-  let best: {
-    sheetName: string;
-    headerRowIndex: number;
-    headerRow: unknown[];
-    mapped: Set<keyof ExcelPropertyRow>;
-    score: number;
-  } | null = null;
-
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) continue;
-
-    const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown[][];
-    const maxScan = Math.min(matrix.length, 60);
-
-    for (let i = 0; i < maxScan; i++) {
-      const row = matrix[i] || [];
-      const { score, mapped } = scoreHeaderRow(row);
-
-      // Require at least a plausible core set: object-code + art + one of address/city/postal
-      const isPlausible = mapped.has('Objekt') && mapped.has('Art') && (mapped.has('Adresse') || mapped.has('Ort') || mapped.has('PLZ'));
-      if (!isPlausible) continue;
-
-      if (!best || score > best.score) {
-        best = { sheetName, headerRowIndex: i, headerRow: row, mapped, score };
-      }
-    }
-  }
-
-  return best;
-}
-
-function buildColumnIndexMap(headerRow: unknown[]): Map<number, keyof ExcelPropertyRow> {
-  const map = new Map<number, keyof ExcelPropertyRow>();
-  headerRow.forEach((cell, idx) => {
-    const alias = HEADER_ALIASES[normalizeHeaderCell(cell)];
-    if (alias) map.set(idx, alias);
-  });
-  return map;
-}
-
-function parseWorkbookToRows(workbook: XLSX.WorkBook): {
-  sheetName: string;
-  rows: ExcelPropertyRow[];
-  headerColumns: string[];
-} {
-  const picked = pickBestSheetAndHeader(workbook);
-  const fallbackSheetName = workbook.SheetNames[0];
-
-  if (!fallbackSheetName) {
-    return { sheetName: '—', rows: [], headerColumns: [] };
-  }
-
-  if (!picked) {
-    // Backwards-compatible behavior
-    const sheet = workbook.Sheets[fallbackSheetName];
-    const rows: ExcelPropertyRow[] = XLSX.utils.sheet_to_json(sheet);
-    const headerColumns = rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : [];
-    return { sheetName: fallbackSheetName, rows, headerColumns };
-  }
-
-  const sheet = workbook.Sheets[picked.sheetName];
-  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown[][];
-  const headerColumns = (picked.headerRow || []).map((c) => String(c || '')).filter(Boolean);
-  const indexMap = buildColumnIndexMap(picked.headerRow);
-
-  const rows: ExcelPropertyRow[] = [];
-  for (let r = picked.headerRowIndex + 1; r < matrix.length; r++) {
-    const rowArr = matrix[r] || [];
-    // skip fully empty rows
-    if (!rowArr.some((c) => String(c ?? '').trim() !== '')) continue;
-
-    const out: ExcelPropertyRow = {};
-    for (const [colIdx, key] of indexMap.entries()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (out as any)[key] = rowArr[colIdx] as any;
-    }
-    rows.push(out);
-  }
-
-  return { sheetName: picked.sheetName, rows, headerColumns };
-}
-
-// Utility to parse German/EN number formats (1.234,56 OR 1,234.56 → 1234.56)
-function parseGermanNumber(val: string | number | undefined): number | null {
-  if (val === undefined || val === null || val === '' || val === '-') return null;
-  if (typeof val === 'number') return val;
-
-  const raw = val.toString().trim();
-  if (!raw) return null;
-
-  // Keep digits, separators, minus
-  const stripped = raw.replace(/[^0-9,.-]/g, '');
-  if (!stripped) return null;
-
-  const lastComma = stripped.lastIndexOf(',');
-  const lastDot = stripped.lastIndexOf('.');
-
-  let normalized = stripped;
-  if (lastComma !== -1 && lastDot !== -1) {
-    // both present → decide decimal by last separator
-    if (lastComma > lastDot) {
-      // 1.234,56 (DE)
-      normalized = stripped.replace(/\./g, '').replace(',', '.');
-    } else {
-      // 1,234.56 (EN)
-      normalized = stripped.replace(/,/g, '');
-    }
-  } else if (lastComma !== -1) {
-    // comma only: could be decimal or thousand
-    const decimals = stripped.length - lastComma - 1;
-    normalized = decimals === 2 ? stripped.replace(',', '.') : stripped.replace(/,/g, '');
-  } else if (lastDot !== -1) {
-    // dot only: could be decimal or thousand
-    const decimals = stripped.length - lastDot - 1;
-    normalized = decimals === 2 ? stripped : stripped.replace(/\./g, '');
-  }
-
-  const num = parseFloat(normalized);
-  return isNaN(num) ? null : num;
-}
+type ImportPhase = 'idle' | 'uploading' | 'analyzing' | 'preview' | 'importing' | 'done';
 
 // Map property type abbreviations
 function mapPropertyType(art: string | undefined): string {
@@ -251,10 +76,15 @@ export function TestDataManager() {
   const { user, activeOrganization } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  
+  // State
+  const [phase, setPhase] = useState<ImportPhase>('idle');
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [lastParseInfo, setLastParseInfo] = useState<{sheetName: string; rowCount: number; columns: string[]} | null>(null);
+  const [extractedRows, setExtractedRows] = useState<AIExtractedRow[]>([]);
+  const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch test batches from test_data_registry
   const { data: batches = [], isLoading } = useQuery({
@@ -262,7 +92,6 @@ export function TestDataManager() {
     queryFn: async (): Promise<TestBatch[]> => {
       if (!activeOrganization?.id) return [];
       
-      // Type-safe query with explicit typing
       const result = await supabase
         .from('test_data_registry')
         .select('batch_id, batch_name, imported_at, imported_by, entity_type')
@@ -309,7 +138,6 @@ export function TestDataManager() {
     mutationFn: async (batchId: string) => {
       if (!activeOrganization?.id) throw new Error('No organization');
 
-      // Get all entities in this batch
       const { data: entities } = await supabase
         .from('test_data_registry')
         .select('entity_type, entity_id')
@@ -324,55 +152,24 @@ export function TestDataManager() {
       for (const entityType of deleteOrder) {
         const ids = entities.filter(e => e.entity_type === entityType).map(e => e.entity_id);
         if (ids.length > 0) {
-          // Use type-safe table names
-          let tableName: string;
-          switch (entityType) {
-            case 'listing_publication': tableName = 'listing_publications'; break;
-            case 'listing_partner_term': tableName = 'listing_partner_terms'; break;
-            case 'property_financing': tableName = 'property_financing'; break;
-            case 'property': tableName = 'properties'; break;
-            case 'unit': tableName = 'units'; break;
-            case 'contact': tableName = 'contacts'; break;
-            case 'lease': tableName = 'leases'; break;
-            case 'listing': tableName = 'listings'; break;
-            case 'document': tableName = 'documents'; break;
-            case 'document_link': tableName = 'document_links'; break;
-            case 'storage_node': tableName = 'storage_nodes'; break;
-            default: tableName = `${entityType}s`;
-          }
-          
-          // Delete using raw SQL via rpc or direct delete with correct types
           try {
-            if (tableName === 'properties') {
-              await supabase.from('properties').delete().in('id', ids);
-            } else if (tableName === 'units') {
-              await supabase.from('units').delete().in('id', ids);
-            } else if (tableName === 'contacts') {
-              await supabase.from('contacts').delete().in('id', ids);
-            } else if (tableName === 'leases') {
-              await supabase.from('leases').delete().in('id', ids);
-            } else if (tableName === 'listings') {
-              await supabase.from('listings').delete().in('id', ids);
-            } else if (tableName === 'listing_publications') {
-              await supabase.from('listing_publications').delete().in('id', ids);
-            } else if (tableName === 'listing_partner_terms') {
-              await supabase.from('listing_partner_terms').delete().in('id', ids);
-            } else if (tableName === 'property_financing') {
-              await supabase.from('property_financing').delete().in('id', ids);
-            } else if (tableName === 'documents') {
-              await supabase.from('documents').delete().in('id', ids);
-            } else if (tableName === 'document_links') {
-              await supabase.from('document_links').delete().in('id', ids);
-            } else if (tableName === 'storage_nodes') {
-              await supabase.from('storage_nodes').delete().in('id', ids);
-            }
+            if (entityType === 'property') await supabase.from('properties').delete().in('id', ids);
+            else if (entityType === 'unit') await supabase.from('units').delete().in('id', ids);
+            else if (entityType === 'contact') await supabase.from('contacts').delete().in('id', ids);
+            else if (entityType === 'lease') await supabase.from('leases').delete().in('id', ids);
+            else if (entityType === 'listing') await supabase.from('listings').delete().in('id', ids);
+            else if (entityType === 'listing_publication') await supabase.from('listing_publications').delete().in('id', ids);
+            else if (entityType === 'listing_partner_term') await supabase.from('listing_partner_terms').delete().in('id', ids);
+            else if (entityType === 'property_financing') await supabase.from('property_financing').delete().in('id', ids);
+            else if (entityType === 'document') await supabase.from('documents').delete().in('id', ids);
+            else if (entityType === 'document_link') await supabase.from('document_links').delete().in('id', ids);
+            else if (entityType === 'storage_node') await supabase.from('storage_nodes').delete().in('id', ids);
           } catch (err) {
             console.warn(`Error deleting ${entityType}:`, err);
           }
         }
       }
 
-      // Finally delete registry entries
       await supabase
         .from('test_data_registry')
         .delete()
@@ -391,11 +188,9 @@ export function TestDataManager() {
     }
   });
 
-  // Download template - updated for new format
+  // Download template
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-
-    // Portfolio sheet (main data entry)
     const portfolioData = [
       ['Objekt', 'Art', 'Adresse', 'Ort', 'PLZ', 'qm', 'Kaltmiete', 'Mieter', 'Mieter seit', 'Mieterhöhung', 'Kaufpreis', 'Restschuld', 'Zinssatz', 'Tilgung', 'Bank'],
       ['ZL001', 'MFH', 'Hauptstraße 15', 'Leipzig', '04103', '120,5', '850,00 €', 'Max Mustermann', '01.01.2020', 'IVD 2025', '250.000 €', '180.000 €', '3,5%', '2%', 'Sparkasse'],
@@ -403,12 +198,22 @@ export function TestDataManager() {
       ['ZL002', 'DHH', 'Nebenweg 8', 'Dresden', '01097', '180', '1.200,00 €', 'Firma GmbH', '01.03.2022', 'Staffel', '320.000 €', '220.000 €', '2,8%', '2,5%', 'VR Bank'],
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(portfolioData), 'Portfolio');
-
     XLSX.writeFile(wb, 'Immobilienaufstellung_Vorlage.xlsx');
     toast.success('Vorlage heruntergeladen');
   };
 
-  // Process file (shared between input change and drag-drop)
+  // Reset state
+  const resetImport = () => {
+    setPhase('idle');
+    setSelectedFile(null);
+    setExtractedRows([]);
+    setAiSummary(null);
+    setImportProgress(0);
+    setErrorMessage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // PHASE 1+2: Upload file → send to AI
   const processFile = async (file: File) => {
     if (!file || !activeOrganization?.id) {
       toast.error('Keine Datei oder Organisation ausgewählt');
@@ -416,64 +221,94 @@ export function TestDataManager() {
     }
 
     setSelectedFile(file);
-    setIsImporting(true);
-    setLastParseInfo(null);
-    const batchId = crypto.randomUUID();
-    const batchName = `Import_${new Date().toISOString().slice(0, 16).replace('T', '_')}`;
-    const tenantId = activeOrganization.id;
+    setPhase('uploading');
+    setErrorMessage(null);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      
-      console.log('Excel sheets found:', workbook.SheetNames);
-      
-      const parsed = parseWorkbookToRows(workbook);
-      const rows = parsed.rows;
+      // Convert to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+      }
+      const base64 = btoa(binary);
 
-      // Debug info
-      setLastParseInfo({ sheetName: parsed.sheetName, rowCount: rows.length, columns: parsed.headerColumns });
-      console.log('Parsed sheet:', parsed.sheetName, 'Rows:', rows.length, 'Columns:', parsed.headerColumns);
-      
-      if (rows.length === 0) {
-        toast.error(
-          `Keine Datenzeilen erkannt. Tipp: Die Datei muss eine Spalte "Objekt" oder "Code" enthalten (und eine Header-Zeile).`
-        );
+      setPhase('analyzing');
+
+      // Call AI extraction edge function
+      const { data, error } = await supabase.functions.invoke('sot-excel-ai-import', {
+        body: { excelBase64: base64, fileName: file.name }
+      });
+
+      if (error) {
+        console.error('AI extraction error:', error);
+        setErrorMessage(error.message || 'KI-Extraktion fehlgeschlagen');
+        setPhase('idle');
         return;
       }
 
-      // Track created entities
-      const propertyMap = new Map<string, string>(); // code -> id
-      const contactMap = new Map<string, string>(); // name -> id
-      const createdEntities: { entity_type: string; entity_id: string }[] = [];
-      
-      let unitCount = 0;
-      let propertyCount = 0;
-      let contactCount = 0;
-      let leaseCount = 0;
+      if (!data?.success) {
+        setErrorMessage(data?.error || 'Keine Daten erkannt');
+        setPhase('idle');
+        return;
+      }
 
-      // Process each row (1 row = 1 unit)
-      for (const row of rows) {
-        const code = row.Objekt?.toString().trim();
+      setExtractedRows(data.data || []);
+      setAiSummary(data.summary || null);
+      setPhase('preview');
+
+    } catch (err) {
+      console.error('File processing error:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      setPhase('idle');
+    }
+  };
+
+  // PHASE 3: Import extracted data to DB
+  const importExtractedData = async () => {
+    if (!activeOrganization?.id || extractedRows.length === 0) return;
+
+    setPhase('importing');
+    setImportProgress(0);
+
+    const batchId = crypto.randomUUID();
+    const batchName = `KI-Import_${new Date().toISOString().slice(0, 16).replace('T', '_')}`;
+    const tenantId = activeOrganization.id;
+
+    const propertyMap = new Map<string, string>();
+    const contactMap = new Map<string, string>();
+    const createdEntities: { entity_type: string; entity_id: string }[] = [];
+
+    let propertyCount = 0;
+    let unitCount = 0;
+    let contactCount = 0;
+    let leaseCount = 0;
+
+    try {
+      for (let i = 0; i < extractedRows.length; i++) {
+        const row = extractedRows[i];
+        setImportProgress(Math.round((i / extractedRows.length) * 100));
+
+        const code = row.code?.trim();
         if (!code) continue;
 
-        // Check if property exists or create it
+        // Create or get property
         let propertyId = propertyMap.get(code);
-        
+
         if (!propertyId) {
-          // Create property using explicit array format for insert
           const { data: newProp, error: propError } = await supabase
             .from('properties')
             .insert([{
               tenant_id: tenantId,
               code: code,
-              property_type: mapPropertyType(row.Art),
-               address: row.Adresse || '',
-              city: row.Ort || '',
-              postal_code: row.PLZ?.toString() || null,
+              property_type: mapPropertyType(row.art),
+              address: row.adresse || '',
+              city: row.ort || '',
+              postal_code: row.plz || null,
               usage_type: 'residential',
               status: 'active',
-              purchase_price: parseGermanNumber(row.Kaufpreis),
+              purchase_price: row.kaufpreis,
               public_id: `P-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
             }])
             .select('id')
@@ -487,23 +322,19 @@ export function TestDataManager() {
           propertyId = newProp.id;
           propertyMap.set(code, propertyId);
           propertyCount++;
-
           createdEntities.push({ entity_type: 'property', entity_id: propertyId });
 
           // Create financing if present
-          const restschuld = parseGermanNumber(row.Restschuld);
-          const zinssatz = parseGermanNumber(row.Zinssatz);
-          
-          if (restschuld && restschuld > 0) {
+          if (row.restschuld && row.restschuld > 0) {
             const { data: financing } = await supabase
               .from('property_financing')
               .insert([{
                 tenant_id: tenantId,
                 property_id: propertyId,
-                lender_name: row.Bank || null,
-                current_balance: restschuld,
-                interest_rate: zinssatz,
-                amortization_rate: parseGermanNumber(row.Tilgung),
+                lender_name: row.bank || null,
+                current_balance: row.restschuld,
+                interest_rate: row.zinssatz,
+                amortization_rate: row.tilgung,
                 is_active: true
               }])
               .select('id')
@@ -516,26 +347,19 @@ export function TestDataManager() {
         }
 
         // Create unit
-        const areaSqm = parseGermanNumber(row.qm);
-        const monthlyRent = parseGermanNumber(row.Kaltmiete);
-        
-        // Generate unit number
-        const existingUnitsForProp = createdEntities.filter(e => e.entity_type === 'unit').length;
-        const unitNumber = `WE${existingUnitsForProp + 1}`;
-
-        const unitInsert = {
-          tenant_id: tenantId,
-          property_id: propertyId,
-          unit_number: unitNumber,
-          area_sqm: areaSqm,
-          current_monthly_rent: monthlyRent,
-          usage_type: 'residential',
-          public_id: `U-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-        };
+        const unitNumber = `WE${createdEntities.filter(e => e.entity_type === 'unit').length + 1}`;
 
         const { data: newUnit, error: unitError } = await supabase
           .from('units')
-          .insert(unitInsert)
+          .insert({
+            tenant_id: tenantId,
+            property_id: propertyId,
+            unit_number: unitNumber,
+            area_sqm: row.qm,
+            current_monthly_rent: row.kaltmiete,
+            usage_type: 'residential',
+            public_id: `U-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+          })
           .select('id')
           .single();
 
@@ -548,18 +372,15 @@ export function TestDataManager() {
         createdEntities.push({ entity_type: 'unit', entity_id: newUnit.id });
 
         // Create contact if tenant name present
-        const mieterName = row.Mieter?.trim();
+        const mieterName = row.mieter?.trim();
         if (mieterName && mieterName !== '-') {
           let contactId = contactMap.get(mieterName);
 
           if (!contactId) {
-            // Parse name
             const nameParts = mieterName.split(' ');
             const firstName = nameParts[0] || 'Unbekannt';
             const lastName = nameParts.slice(1).join(' ') || mieterName;
-            const isCompany = mieterName.toLowerCase().includes('gmbh') || 
-                             mieterName.toLowerCase().includes('kg') ||
-                             mieterName.toLowerCase().includes('ag');
+            const isCompany = /gmbh|kg|ag|ug/i.test(mieterName);
 
             const { data: newContact, error: contactError } = await supabase
               .from('contacts')
@@ -573,9 +394,7 @@ export function TestDataManager() {
               .select('id')
               .single();
 
-            if (contactError) {
-              console.error('Contact insert error:', contactError);
-            } else {
+            if (!contactError && newContact) {
               contactId = newContact.id;
               contactMap.set(mieterName, contactId);
               contactCount++;
@@ -591,17 +410,15 @@ export function TestDataManager() {
                 tenant_id: tenantId,
                 unit_id: newUnit.id,
                 tenant_contact_id: contactId,
-                monthly_rent: monthlyRent || 0,
-                start_date: '2020-01-01',
+                monthly_rent: row.kaltmiete || 0,
+                start_date: row.mieterSeit || '2020-01-01',
                 status: 'active',
-                rent_increase: row.Mieterhöhung || null
+                rent_increase: row.mieterhoehung || null
               })
               .select('id')
               .single();
 
-            if (leaseError) {
-              console.error('Lease insert error:', leaseError);
-            } else {
+            if (!leaseError && newLease) {
               leaseCount++;
               createdEntities.push({ entity_type: 'lease', entity_id: newLease.id });
             }
@@ -609,7 +426,7 @@ export function TestDataManager() {
         }
       }
 
-      // Register all entities in test_data_registry
+      // Register in test_data_registry
       if (createdEntities.length > 0) {
         const registryRows = createdEntities.map(e => ({
           tenant_id: tenantId,
@@ -624,29 +441,31 @@ export function TestDataManager() {
         await supabase.from('test_data_registry').insert(registryRows);
       }
 
+      setImportProgress(100);
+      setPhase('done');
       toast.success(`Import erfolgreich: ${propertyCount} Objekte, ${unitCount} Einheiten, ${contactCount} Kontakte, ${leaseCount} Mietverträge`);
+
       queryClient.invalidateQueries({ queryKey: ['test-batches'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-    } catch (error) {
-      console.error('Import error:', error);
-      toast.error('Import fehlgeschlagen');
-    } finally {
-      setIsImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+
+      // Reset after delay
+      setTimeout(resetImport, 2000);
+
+    } catch (err) {
+      console.error('Import error:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Import fehlgeschlagen');
+      setPhase('preview');
     }
   };
 
-  // Handle file input change
+  // File handlers
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processFile(file);
   };
 
-  // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -692,86 +511,193 @@ export function TestDataManager() {
     }
   };
 
+  const getConfidenceBadge = (confidence: number) => {
+    if (confidence >= 0.9) return <Badge className="bg-green-600 text-xs">✓ {Math.round(confidence * 100)}%</Badge>;
+    if (confidence >= 0.7) return <Badge className="bg-yellow-600 text-xs">⚠ {Math.round(confidence * 100)}%</Badge>;
+    return <Badge variant="destructive" className="text-xs">! {Math.round(confidence * 100)}%</Badge>;
+  };
+
+  const isProcessing = phase === 'uploading' || phase === 'analyzing' || phase === 'importing';
+
   return (
     <div className="space-y-6">
       {/* Import Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Excel-Import (Unit-basiert)
+            <Sparkles className="h-5 w-5 text-primary" />
+            KI-gestützter Excel-Import
           </CardTitle>
           <CardDescription>
-            Importieren Sie Ihre Immobilienaufstellung. Jede Zeile = 1 Einheit (Wohnung/Gewerbe). 
-            Gebäude mit gleicher Objekt-ID werden automatisch zusammengefasst.
+            Laden Sie beliebige Excel-Dateien hoch – die KI erkennt automatisch Spalten und extrahiert Immobiliendaten.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Drag and Drop Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => !isImporting && fileInputRef.current?.click()}
-            className={`
-              relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-all cursor-pointer
-              ${isDragOver 
-                ? 'border-primary bg-primary/5 scale-[1.01]' 
-                : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'
-              }
-              ${isImporting ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-          >
-            {isImporting ? (
-              <>
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-sm font-medium">Datei angenommen – wird gelesen & importiert...</p>
-              </>
-            ) : (
-              <>
+          
+          {/* Phase: Idle - Show upload zone */}
+          {phase === 'idle' && (
+            <>
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-all cursor-pointer
+                  ${isDragOver 
+                    ? 'border-primary bg-primary/5 scale-[1.01]' 
+                    : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'
+                  }
+                `}
+              >
                 <Upload className={`h-10 w-10 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
                 <div className="text-center">
                   <p className="text-sm font-medium">Excel-Datei hier ablegen</p>
                   <p className="text-xs text-muted-foreground">oder klicken zum Auswählen (.xlsx, .xls)</p>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
 
-          {selectedFile && (
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">Letzte Datei:</div>
-              <FilePreview file={selectedFile} />
+              {errorMessage && (
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={downloadTemplate} size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Vorlage herunterladen
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Phase: Uploading/Analyzing */}
+          {(phase === 'uploading' || phase === 'analyzing') && (
+            <div className="space-y-4">
+              {selectedFile && <FilePreview file={selectedFile} />}
+              
+              <div className="flex items-center justify-center gap-3 p-6 bg-muted/50 rounded-lg">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <div>
+                  <p className="font-medium">
+                    {phase === 'uploading' ? 'Datei wird hochgeladen...' : 'KI analysiert Ihre Daten...'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {phase === 'analyzing' && 'Spalten werden erkannt und Daten extrahiert'}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
-          
+
+          {/* Phase: Preview */}
+          {phase === 'preview' && (
+            <div className="space-y-4">
+              {selectedFile && <FilePreview file={selectedFile} onRemove={resetImport} />}
+
+              {/* Summary */}
+              {aiSummary && (
+                <div className="flex flex-wrap gap-3">
+                  <Badge variant="secondary" className="text-sm">
+                    {aiSummary.totalRows} Zeilen erkannt
+                  </Badge>
+                  <Badge variant="secondary" className="text-sm">
+                    {aiSummary.uniqueProperties} Objekte
+                  </Badge>
+                  <Badge className="bg-green-600 text-sm">
+                    Ø Konfidenz: {Math.round(aiSummary.avgConfidence * 100)}%
+                  </Badge>
+                  {aiSummary.issues?.length > 0 && (
+                    <Badge variant="destructive" className="text-sm">
+                      {aiSummary.issues.length} Hinweise
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Preview Table */}
+              <ScrollArea className="h-[300px] border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Konfidenz</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Art</TableHead>
+                      <TableHead>Adresse</TableHead>
+                      <TableHead>Ort</TableHead>
+                      <TableHead className="text-right">qm</TableHead>
+                      <TableHead className="text-right">Miete</TableHead>
+                      <TableHead>Mieter</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {extractedRows.map((row, idx) => (
+                      <TableRow key={idx} className={row.confidence < 0.7 ? 'bg-yellow-500/5' : ''}>
+                        <TableCell>{getConfidenceBadge(row.confidence)}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.code || '–'}</TableCell>
+                        <TableCell>{row.art || '–'}</TableCell>
+                        <TableCell className="max-w-[150px] truncate">{row.adresse || '–'}</TableCell>
+                        <TableCell>{row.ort || '–'}</TableCell>
+                        <TableCell className="text-right">{row.qm?.toFixed(0) || '–'}</TableCell>
+                        <TableCell className="text-right">{row.kaltmiete ? `${row.kaltmiete.toFixed(0)} €` : '–'}</TableCell>
+                        <TableCell className="max-w-[120px] truncate">{row.mieter || '–'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+
+              {errorMessage && (
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={resetImport}>
+                  <X className="h-4 w-4 mr-2" />
+                  Abbrechen
+                </Button>
+                <Button onClick={importExtractedData} disabled={extractedRows.length === 0}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {extractedRows.length} Zeilen importieren
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Phase: Importing */}
+          {phase === 'importing' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="font-medium">Importiere Daten...</span>
+              </div>
+              <Progress value={importProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground">{importProgress}% abgeschlossen</p>
+            </div>
+          )}
+
+          {/* Phase: Done */}
+          {phase === 'done' && (
+            <div className="flex items-center justify-center gap-3 p-6 bg-green-500/10 rounded-lg">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
+              <span className="font-medium text-green-700">Import erfolgreich abgeschlossen!</span>
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileUpload}
             className="hidden"
+            disabled={isProcessing}
           />
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={downloadTemplate} size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Vorlage herunterladen
-            </Button>
-          </div>
-          
-          {/* Debug info after parse attempt */}
-          {lastParseInfo && (
-            <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
-              <p><strong>Letzter Parse:</strong> Sheet "{lastParseInfo.sheetName}" mit {lastParseInfo.rowCount} Zeilen</p>
-              <p><strong>Gefundene Spalten:</strong> {lastParseInfo.columns.join(', ') || 'keine'}</p>
-            </div>
-          )}
-          
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p><strong>Erwartete Spalten (Alias ok):</strong> Objekt/Code, Art, Adresse/Straße+Hausnummer, Ort, PLZ/Postleitzahl, qm/Größe, Kaltmiete/Warmmiete, Mieter, Kaufpreis, Restschuld, Zinssatz/Zins, Tilgung, Bank</p>
-            <p><strong>Hinweis:</strong> 1 Zeile = 1 Wohneinheit. Gebäude werden über Objekt-Code gruppiert.</p>
-          </div>
         </CardContent>
       </Card>
 
