@@ -16,7 +16,8 @@ import {
   CreditCard,
   FileCheck,
   Inbox,
-  Settings2
+  Settings2,
+  Landmark
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +63,7 @@ const backboneItems = [
   { title: 'Billing & Plans', url: '/admin/billing', icon: CreditCard },
   { title: 'Agreements', url: '/admin/agreements', icon: FileCheck },
   { title: 'Post & Documents', url: '/admin/inbox', icon: Inbox },
+  { title: 'Future Room', url: '/admin/futureroom', icon: Landmark },
 ];
 
 // System

@@ -29,6 +29,7 @@ import LeadPool from "./pages/admin/LeadPool";
 import PartnerVerification from "./pages/admin/PartnerVerification";
 import CommissionApproval from "./pages/admin/CommissionApproval";
 import MasterTemplates from "./pages/admin/MasterTemplates";
+import FutureRoom from "./pages/admin/FutureRoom";
 
 // Zone 2: User Portal Layout
 import { PortalLayout } from "./components/portal/PortalLayout";
@@ -127,6 +128,7 @@ const App = () => (
               <Route path="leadpool" element={<LeadPool />} />
               <Route path="partner-verification" element={<PartnerVerification />} />
               <Route path="commissions" element={<CommissionApproval />} />
+              <Route path="futureroom" element={<FutureRoom />} />
               <Route path="support" element={<Support />} />
             </Route>
 
@@ -181,12 +183,8 @@ const App = () => (
               {/* ExposeDetail uses unitId as parameter */}
               {/* Route pattern: /portal/verkauf/expose/:unitId */}
               
-              {/* MOD-07: Finanzierung (Fälle, Dokumente, Export, Status) */}
-              <Route path="finanzierung" element={<FinanzierungPage />} />
-              <Route path="finanzierung/faelle" element={<FinanzierungPage />} />
-              <Route path="finanzierung/dokumente" element={<FinanzierungPage />} />
-              <Route path="finanzierung/export" element={<FinanzierungPage />} />
-              <Route path="finanzierung/status" element={<FinanzierungPage />} />
+              {/* MOD-07: Finanzierung */}
+              <Route path="finanzierung/*" element={<FinanzierungPage />} />
               
               {/* MOD-08: Investments (Suche, Favoriten, Mandat, Simulation) */}
               <Route path="investments" element={<InvestmentsPage />} />
