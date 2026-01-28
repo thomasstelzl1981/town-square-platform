@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.sot-document-parser]
 verify_jwt = false
+
+[functions.sot-excel-ai-import]
+verify_jwt = false
