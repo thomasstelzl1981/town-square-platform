@@ -7,13 +7,13 @@ import { Loader2 } from 'lucide-react';
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const { user, isLoading, memberships } = useAuth();
+  const { user, isLoading, memberships, isDevelopmentMode } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !isDevelopmentMode) {
       navigate('/auth');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, isDevelopmentMode]);
 
   if (isLoading) {
     return (
@@ -23,7 +23,7 @@ export function AdminLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && !isDevelopmentMode) {
     return null;
   }
 
@@ -32,7 +32,7 @@ export function AdminLayout() {
     ['platform_admin', 'org_admin', 'internal_ops'].includes(m.role)
   );
 
-  if (!hasAdminAccess && memberships.length > 0) {
+  if (!hasAdminAccess && memberships.length > 0 && !isDevelopmentMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
