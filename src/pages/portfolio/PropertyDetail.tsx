@@ -3,15 +3,17 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePropertyDossier } from '@/hooks/useUnitDossier';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles, FileText } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
 import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
+import { UnitDossierView } from '@/components/immobilienakte';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 
 interface Property {
@@ -76,9 +78,12 @@ export default function PropertyDetail() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('expose');
+  const [activeTab, setActiveTab] = useState('akte');
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const contentRef = usePdfContentRef();
+
+  // Load the new Immobilienakte data
+  const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
 
   async function fetchProperty() {
     if (!id || !activeOrganization) return;
@@ -128,6 +133,7 @@ export default function PropertyDetail() {
     if (!property) return 'Immobilie';
     const prefix = property.code ? `${property.code} – ` : '';
     switch (activeTab) {
+      case 'akte': return `Immobilienakte: ${prefix}${property.address}`;
       case 'expose': return `Exposé: ${prefix}${property.address}`;
       case 'features': return `Features: ${prefix}${property.address}`;
       case 'tenancy': return `Mietverhältnis: ${prefix}${property.address}`;
@@ -161,7 +167,6 @@ export default function PropertyDetail() {
       if (fnError) throw fnError;
       
       if (data?.description) {
-        // Update the property description in the database
         const { error: updateError } = await supabase
           .from('properties')
           .update({ description: data.description })
@@ -169,7 +174,6 @@ export default function PropertyDetail() {
         
         if (updateError) throw updateError;
         
-        // Update local state
         setProperty({ ...property, description: data.description });
         toast({ title: 'Beschreibung generiert und gespeichert' });
       }
@@ -185,7 +189,7 @@ export default function PropertyDetail() {
     }
   };
 
-  if (loading) {
+  if (loading || dossierLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -255,14 +259,30 @@ export default function PropertyDetail() {
             </Button>
           </div>
         </div>
-        {/* Tabs */}
+
+        {/* Tabs - Akte is now the default/first tab */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="no-print">
+            <TabsTrigger value="akte" className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              Akte
+            </TabsTrigger>
             <TabsTrigger value="expose">Exposé</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
             <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
           </TabsList>
+
+          {/* NEW: Immobilienakte Tab */}
+          <TabsContent value="akte">
+            {dossierData ? (
+              <UnitDossierView data={dossierData} />
+            ) : (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <p>Keine Akten-Daten verfügbar. Bitte ergänzen Sie die Stammdaten.</p>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="expose">
             <ExposeTab 
@@ -300,7 +320,7 @@ export default function PropertyDetail() {
       <PdfExportFooter 
         contentRef={contentRef} 
         documentTitle={getDocumentTitle()} 
-        moduleName="MOD-04 Immobilien – Exposé" 
+        moduleName="MOD-04 Immobilien – Immobilienakte" 
       />
     </div>
   );
