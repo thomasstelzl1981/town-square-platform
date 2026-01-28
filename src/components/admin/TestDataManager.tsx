@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { FilePreview } from '@/components/shared/FileUploader';
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
@@ -46,13 +47,191 @@ interface ExcelPropertyRow {
   Bank?: string;
 }
 
-// Utility to parse German number format (1.234,56 → 1234.56)
+function normalizeHeaderCell(val: unknown): string {
+  if (val === undefined || val === null) return '';
+  const raw = String(val).trim().toLowerCase();
+  // normalize german chars
+  const de = raw
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss');
+  // keep only alphanumerics
+  return de.replace(/[^a-z0-9]/g, '');
+}
+
+const HEADER_ALIASES: Record<string, keyof ExcelPropertyRow> = {
+  // object code
+  objekt: 'Objekt',
+  code: 'Objekt',
+  objektid: 'Objekt',
+  objektnr: 'Objekt',
+  objektnummer: 'Objekt',
+
+  // basics
+  art: 'Art',
+  ort: 'Ort',
+  adresse: 'Adresse',
+  strassehausnummer: 'Adresse',
+  strasse: 'Adresse',
+  hausnummer: 'Adresse',
+  plz: 'PLZ',
+  postleitzahl: 'PLZ',
+
+  // size
+  qm: 'qm',
+  groesse: 'qm',
+  flaeche: 'qm',
+  gesamtflaeche: 'qm',
+  groessesqm: 'qm',
+
+  // rent
+  kaltmiete: 'Kaltmiete',
+  warmmiete: 'Kaltmiete', // best-effort fallback when only warm rent exists
+
+  // tenant
+  mieter: 'Mieter',
+  mieterseit: 'Mieter seit',
+  mieterhoehung: 'Mieterhöhung',
+
+  // purchase/financing
+  kaufpreis: 'Kaufpreis',
+  restschuld: 'Restschuld',
+  zinssatz: 'Zinssatz',
+  zins: 'Zinssatz',
+  tilgung: 'Tilgung',
+  bank: 'Bank',
+};
+
+function scoreHeaderRow(row: unknown[]): { score: number; mapped: Set<keyof ExcelPropertyRow> } {
+  const mapped = new Set<keyof ExcelPropertyRow>();
+  for (const cell of row) {
+    const key = HEADER_ALIASES[normalizeHeaderCell(cell)];
+    if (key) mapped.add(key);
+  }
+  return { score: mapped.size, mapped };
+}
+
+function pickBestSheetAndHeader(workbook: XLSX.WorkBook) {
+  let best: {
+    sheetName: string;
+    headerRowIndex: number;
+    headerRow: unknown[];
+    mapped: Set<keyof ExcelPropertyRow>;
+    score: number;
+  } | null = null;
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+
+    const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown[][];
+    const maxScan = Math.min(matrix.length, 60);
+
+    for (let i = 0; i < maxScan; i++) {
+      const row = matrix[i] || [];
+      const { score, mapped } = scoreHeaderRow(row);
+
+      // Require at least a plausible core set: object-code + art + one of address/city/postal
+      const isPlausible = mapped.has('Objekt') && mapped.has('Art') && (mapped.has('Adresse') || mapped.has('Ort') || mapped.has('PLZ'));
+      if (!isPlausible) continue;
+
+      if (!best || score > best.score) {
+        best = { sheetName, headerRowIndex: i, headerRow: row, mapped, score };
+      }
+    }
+  }
+
+  return best;
+}
+
+function buildColumnIndexMap(headerRow: unknown[]): Map<number, keyof ExcelPropertyRow> {
+  const map = new Map<number, keyof ExcelPropertyRow>();
+  headerRow.forEach((cell, idx) => {
+    const alias = HEADER_ALIASES[normalizeHeaderCell(cell)];
+    if (alias) map.set(idx, alias);
+  });
+  return map;
+}
+
+function parseWorkbookToRows(workbook: XLSX.WorkBook): {
+  sheetName: string;
+  rows: ExcelPropertyRow[];
+  headerColumns: string[];
+} {
+  const picked = pickBestSheetAndHeader(workbook);
+  const fallbackSheetName = workbook.SheetNames[0];
+
+  if (!fallbackSheetName) {
+    return { sheetName: '—', rows: [], headerColumns: [] };
+  }
+
+  if (!picked) {
+    // Backwards-compatible behavior
+    const sheet = workbook.Sheets[fallbackSheetName];
+    const rows: ExcelPropertyRow[] = XLSX.utils.sheet_to_json(sheet);
+    const headerColumns = rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : [];
+    return { sheetName: fallbackSheetName, rows, headerColumns };
+  }
+
+  const sheet = workbook.Sheets[picked.sheetName];
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown[][];
+  const headerColumns = (picked.headerRow || []).map((c) => String(c || '')).filter(Boolean);
+  const indexMap = buildColumnIndexMap(picked.headerRow);
+
+  const rows: ExcelPropertyRow[] = [];
+  for (let r = picked.headerRowIndex + 1; r < matrix.length; r++) {
+    const rowArr = matrix[r] || [];
+    // skip fully empty rows
+    if (!rowArr.some((c) => String(c ?? '').trim() !== '')) continue;
+
+    const out: ExcelPropertyRow = {};
+    for (const [colIdx, key] of indexMap.entries()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (out as any)[key] = rowArr[colIdx] as any;
+    }
+    rows.push(out);
+  }
+
+  return { sheetName: picked.sheetName, rows, headerColumns };
+}
+
+// Utility to parse German/EN number formats (1.234,56 OR 1,234.56 → 1234.56)
 function parseGermanNumber(val: string | number | undefined): number | null {
   if (val === undefined || val === null || val === '' || val === '-') return null;
   if (typeof val === 'number') return val;
-  // Remove dots (thousand separator), replace comma with dot
-  const cleaned = val.toString().replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-  const num = parseFloat(cleaned);
+
+  const raw = val.toString().trim();
+  if (!raw) return null;
+
+  // Keep digits, separators, minus
+  const stripped = raw.replace(/[^0-9,.-]/g, '');
+  if (!stripped) return null;
+
+  const lastComma = stripped.lastIndexOf(',');
+  const lastDot = stripped.lastIndexOf('.');
+
+  let normalized = stripped;
+  if (lastComma !== -1 && lastDot !== -1) {
+    // both present → decide decimal by last separator
+    if (lastComma > lastDot) {
+      // 1.234,56 (DE)
+      normalized = stripped.replace(/\./g, '').replace(',', '.');
+    } else {
+      // 1,234.56 (EN)
+      normalized = stripped.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    // comma only: could be decimal or thousand
+    const decimals = stripped.length - lastComma - 1;
+    normalized = decimals === 2 ? stripped.replace(',', '.') : stripped.replace(/,/g, '');
+  } else if (lastDot !== -1) {
+    // dot only: could be decimal or thousand
+    const decimals = stripped.length - lastDot - 1;
+    normalized = decimals === 2 ? stripped : stripped.replace(/\./g, '');
+  }
+
+  const num = parseFloat(normalized);
   return isNaN(num) ? null : num;
 }
 
@@ -74,6 +253,7 @@ export function TestDataManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastParseInfo, setLastParseInfo] = useState<{sheetName: string; rowCount: number; columns: string[]} | null>(null);
 
   // Fetch test batches from test_data_registry
@@ -235,6 +415,7 @@ export function TestDataManager() {
       return;
     }
 
+    setSelectedFile(file);
     setIsImporting(true);
     setLastParseInfo(null);
     const batchId = crypto.randomUUID();
@@ -247,24 +428,17 @@ export function TestDataManager() {
       
       console.log('Excel sheets found:', workbook.SheetNames);
       
-      // Use first sheet - most common pattern
-      const sheetName = workbook.SheetNames[0];
-      
-      if (!sheetName) {
-        toast.error('Excel-Datei enthält keine Sheets');
-        return;
-      }
-      
-      const sheet = workbook.Sheets[sheetName];
-      const rows: ExcelPropertyRow[] = XLSX.utils.sheet_to_json(sheet);
-      
+      const parsed = parseWorkbookToRows(workbook);
+      const rows = parsed.rows;
+
       // Debug info
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-      setLastParseInfo({ sheetName, rowCount: rows.length, columns });
-      console.log('Parsed sheet:', sheetName, 'Rows:', rows.length, 'Columns:', columns);
+      setLastParseInfo({ sheetName: parsed.sheetName, rowCount: rows.length, columns: parsed.headerColumns });
+      console.log('Parsed sheet:', parsed.sheetName, 'Rows:', rows.length, 'Columns:', parsed.headerColumns);
       
       if (rows.length === 0) {
-        toast.error(`Sheet "${sheetName}" enthält keine Daten (0 Zeilen)`);
+        toast.error(
+          `Keine Datenzeilen erkannt. Tipp: Die Datei muss eine Spalte "Objekt" oder "Code" enthalten (und eine Header-Zeile).`
+        );
         return;
       }
 
@@ -294,7 +468,7 @@ export function TestDataManager() {
               tenant_id: tenantId,
               code: code,
               property_type: mapPropertyType(row.Art),
-              address: row.Adresse || '',
+               address: row.Adresse || '',
               city: row.Ort || '',
               postal_code: row.PLZ?.toString() || null,
               usage_type: 'residential',
@@ -551,7 +725,7 @@ export function TestDataManager() {
             {isImporting ? (
               <>
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-sm font-medium">Importiere Daten...</p>
+                <p className="text-sm font-medium">Datei angenommen – wird gelesen & importiert...</p>
               </>
             ) : (
               <>
@@ -563,6 +737,13 @@ export function TestDataManager() {
               </>
             )}
           </div>
+
+          {selectedFile && (
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">Letzte Datei:</div>
+              <FilePreview file={selectedFile} />
+            </div>
+          )}
           
           <input
             ref={fileInputRef}
@@ -588,7 +769,7 @@ export function TestDataManager() {
           )}
           
           <div className="text-sm text-muted-foreground space-y-1">
-            <p><strong>Erwartete Spalten:</strong> Objekt, Art, Adresse, Ort, PLZ, qm, Kaltmiete, Mieter, Kaufpreis, Restschuld, Zinssatz, Tilgung, Bank</p>
+            <p><strong>Erwartete Spalten (Alias ok):</strong> Objekt/Code, Art, Adresse/Straße+Hausnummer, Ort, PLZ/Postleitzahl, qm/Größe, Kaltmiete/Warmmiete, Mieter, Kaufpreis, Restschuld, Zinssatz/Zins, Tilgung, Bank</p>
             <p><strong>Hinweis:</strong> 1 Zeile = 1 Wohneinheit. Gebäude werden über Objekt-Code gruppiert.</p>
           </div>
         </CardContent>
