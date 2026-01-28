@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Building2, Users, Briefcase } from 'lucide-react';
+import { ArrowRight, Building2, Users, Briefcase, Home } from 'lucide-react';
 import HeroBackground from '@/assets/kaufy/Hero_Background.png';
 import { InvestmentSearchCard } from '@/components/zone3/kaufy/InvestmentSearchCard';
 import { KaufyPropertyCard } from '@/components/zone3/kaufy/KaufyPropertyCard';
 import { PerspektivenAccordion } from '@/components/zone3/kaufy/PerspektivenAccordion';
 import { ZahlenSektion } from '@/components/zone3/kaufy/ZahlenSektion';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface PropertyData {
   public_id: string;
@@ -24,70 +25,105 @@ interface PropertyData {
   netBurden?: number;
 }
 
-// Mock data for demo (würde von v_public_listings kommen)
-const MOCK_PROPERTIES: PropertyData[] = [
-  {
-    public_id: 'LST-001',
-    title: 'Gepflegtes MFH in Toplage',
-    asking_price: 890000,
-    monthly_rent: 4200,
-    property_type: 'multi_family',
-    city: 'München',
-    postal_code: '80331',
-    total_area_sqm: 620,
-    year_built: 1925,
-    gross_yield: 5.7,
-  },
-  {
-    public_id: 'LST-002',
-    title: 'Sanierte Altbauwohnung',
-    asking_price: 385000,
-    monthly_rent: 1450,
-    property_type: 'apartment',
-    city: 'Berlin',
-    postal_code: '10115',
-    total_area_sqm: 95,
-    year_built: 1910,
-    gross_yield: 4.5,
-  },
-  {
-    public_id: 'LST-003',
-    title: 'Neubau-ETW mit Balkon',
-    asking_price: 295000,
-    monthly_rent: 980,
-    property_type: 'apartment',
-    city: 'Leipzig',
-    postal_code: '04109',
-    total_area_sqm: 68,
-    year_built: 2022,
-    gross_yield: 4.0,
-  },
-  {
-    public_id: 'LST-004',
-    title: 'Doppelhaushälfte vermietet',
-    asking_price: 520000,
-    monthly_rent: 2100,
-    property_type: 'house',
-    city: 'Hamburg',
-    postal_code: '22087',
-    total_area_sqm: 145,
-    year_built: 1985,
-    gross_yield: 4.8,
-  },
-];
-
 export default function KaufyHome() {
-  const [properties, setProperties] = useState<PropertyData[]>(MOCK_PROPERTIES);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchParams, setSearchParams] = useState<{ zvE: number; equity: number } | null>(null);
+  const [calculatedProperties, setCalculatedProperties] = useState<PropertyData[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // Fetch real listings from v_public_listings (nur Kaufy-publizierte Objekte)
+  const { data: properties = [], isLoading } = useQuery({
+    queryKey: ['kaufy-home-listings'],
+    queryFn: async () => {
+      // Versuche zuerst v_public_listings View
+      const { data: publicListings, error: viewError } = await supabase
+        .from('v_public_listings')
+        .select('*')
+        .limit(8);
+
+      if (!viewError && publicListings && publicListings.length > 0) {
+        return publicListings.map((l: any) => ({
+          public_id: l.public_id || l.id,
+          title: l.title || `Objekt ${l.city || ''}`,
+          asking_price: l.asking_price || 0,
+          monthly_rent: l.monthly_rent || 0,
+          property_type: l.property_type || 'multi_family',
+          city: l.city || '',
+          postal_code: l.postal_code || '',
+          total_area_sqm: l.total_area_sqm || 0,
+          year_built: l.year_built || 0,
+          gross_yield: l.asking_price && l.monthly_rent 
+            ? Math.round((l.monthly_rent * 12 / l.asking_price) * 1000) / 10 
+            : 0,
+        }));
+      }
+
+      // Fallback: Hole Listings mit aktiver Kaufy-Publikation
+      const { data: kaufyPubs } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'kaufy')
+        .eq('status', 'active');
+
+      if (!kaufyPubs || kaufyPubs.length === 0) {
+        return [];
+      }
+
+      const listingIds = kaufyPubs.map(p => p.listing_id);
+
+      const { data: listingsData } = await supabase
+        .from('listings')
+        .select(`
+          id,
+          public_id,
+          title,
+          asking_price,
+          status,
+          properties!inner (
+            property_type,
+            city,
+            postal_code,
+            total_area_sqm,
+            year_built,
+            annual_income
+          )
+        `)
+        .in('id', listingIds)
+        .in('status', ['active', 'reserved'])
+        .limit(8);
+
+      if (!listingsData) return [];
+
+      return listingsData.map((l: any) => {
+        const monthlyRent = l.properties?.annual_income ? l.properties.annual_income / 12 : 0;
+        return {
+          public_id: l.public_id || l.id,
+          title: l.title || `Objekt ${l.properties?.city || ''}`,
+          asking_price: l.asking_price || 0,
+          monthly_rent: monthlyRent,
+          property_type: l.properties?.property_type || 'multi_family',
+          city: l.properties?.city || '',
+          postal_code: l.properties?.postal_code || '',
+          total_area_sqm: l.properties?.total_area_sqm || 0,
+          year_built: l.properties?.year_built || 0,
+          gross_yield: l.asking_price && monthlyRent 
+            ? Math.round((monthlyRent * 12 / l.asking_price) * 1000) / 10 
+            : 0,
+        };
+      });
+    },
+  });
+
+  const displayProperties = calculatedProperties.length > 0 ? calculatedProperties : properties;
 
   const handleSearch = async (params: { zvE: number; equity: number }) => {
-    setIsLoading(true);
+    if (properties.length === 0) return;
+    
+    setIsCalculating(true);
     setSearchParams(params);
 
     // Calculate investment metrics for each property
     const updatedProperties = await Promise.all(
-      MOCK_PROPERTIES.map(async (prop) => {
+      properties.map(async (prop) => {
         try {
           const { data } = await supabase.functions.invoke('sot-investment-engine', {
             body: {
@@ -122,8 +158,8 @@ export default function KaufyHome() {
       })
     );
 
-    setProperties(updatedProperties);
-    setIsLoading(false);
+    setCalculatedProperties(updatedProperties);
+    setIsCalculating(false);
   };
 
   return (
@@ -146,28 +182,39 @@ export default function KaufyHome() {
         {/* Content */}
         <div className="relative z-10 zone3-container w-full py-16">
           <div className="max-w-3xl">
-            <Link 
-              to="/auth?mode=register&source=kaufy" 
-              className="zone3-btn-primary inline-flex items-center gap-2 mb-8"
-            >
-              Kostenlos registrieren
-            </Link>
-            
             <h1 
               className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6"
               style={{ color: 'white' }}
             >
-              Die KI-Plattform für Kapitalanlage-Immobilien.
+              Finden Sie Ihre Rendite-Immobilie
             </h1>
             <p 
-              className="text-xl md:text-2xl mb-12 max-w-2xl"
+              className="text-xl md:text-2xl mb-8 max-w-2xl"
               style={{ color: 'hsl(var(--z3-background) / 0.9)' }}
             >
-              Marktplatz & digitale Mietsonderverwaltung
+              Der Marktplatz für Kapitalanleger, Verkäufer und Vertriebspartner.
             </p>
+            
+            <div className="flex flex-wrap gap-4 mb-12">
+              <Link 
+                to="/kaufy/immobilien" 
+                className="zone3-btn-primary inline-flex items-center gap-2"
+              >
+                Immobilien entdecken
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link 
+                to="/auth?mode=register&source=kaufy" 
+                className="zone3-btn-secondary inline-flex items-center gap-2"
+              >
+                Kostenlos registrieren
+              </Link>
+            </div>
 
-            {/* Search Card */}
-            <InvestmentSearchCard onSearch={handleSearch} isLoading={isLoading} />
+            {/* Search Card - nur zeigen wenn Objekte vorhanden */}
+            {properties.length > 0 && (
+              <InvestmentSearchCard onSearch={handleSearch} isLoading={isCalculating} />
+            )}
           </div>
         </div>
       </section>
@@ -180,31 +227,55 @@ export default function KaufyHome() {
               <h2 className="zone3-heading-2 mb-2">
                 {searchParams ? 'Passende Kapitalanlage-Objekte' : 'Aktuelle Angebote'}
               </h2>
-              {searchParams && (
+              {searchParams && displayProperties.length > 0 && (
                 <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                  {properties.length} Objekte · berechnet für {searchParams.zvE.toLocaleString('de-DE')} € zvE · {searchParams.equity.toLocaleString('de-DE')} € EK
+                  {displayProperties.length} Objekte · berechnet für {searchParams.zvE.toLocaleString('de-DE')} € zvE · {searchParams.equity.toLocaleString('de-DE')} € EK
                 </p>
               )}
             </div>
-            <Link 
-              to="/kaufy/immobilien" 
-              className="zone3-btn-secondary text-sm"
-            >
-              Alle anzeigen →
-            </Link>
+            {displayProperties.length > 0 && (
+              <Link 
+                to="/kaufy/immobilien" 
+                className="zone3-btn-secondary text-sm"
+              >
+                Alle anzeigen →
+              </Link>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {properties.map((prop) => (
-              <KaufyPropertyCard 
-                key={prop.public_id} 
-                property={prop}
-                showInvestmentMetrics={!!searchParams}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : displayProperties.length === 0 ? (
+            /* Empty State - keine Mock-Daten! */
+            <div className="text-center py-16">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-black/5 flex items-center justify-center">
+                <Home className="w-12 h-12 text-black/30" />
+              </div>
+              <h3 className="zone3-heading-3 mb-3">Noch keine Objekte verfügbar</h3>
+              <p className="zone3-text-small max-w-md mx-auto mb-8">
+                Aktuell sind keine Immobilien zur Kapitalanlage veröffentlicht. 
+                Registrieren Sie sich, um benachrichtigt zu werden, sobald neue Objekte verfügbar sind.
+              </p>
+              <Link to="/auth?source=kaufy" className="zone3-btn-primary inline-flex items-center gap-2">
+                Für Updates registrieren
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayProperties.map((prop) => (
+                <KaufyPropertyCard 
+                  key={prop.public_id} 
+                  property={prop}
+                  showInvestmentMetrics={!!searchParams}
+                />
+              ))}
+            </div>
+          )}
 
-          {searchParams && (
+          {searchParams && displayProperties.length > 0 && (
             <div 
               className="mt-6 p-4 rounded-lg text-sm"
               style={{ 
@@ -222,6 +293,11 @@ export default function KaufyHome() {
       {/* Role Cards */}
       <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
         <div className="zone3-container">
+          <h2 className="zone3-heading-2 text-center mb-4">Für wen ist KAUFY?</h2>
+          <p className="zone3-text-large text-center max-w-2xl mx-auto mb-12">
+            Die Plattform für alle Beteiligten am Immobilienmarkt.
+          </p>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Vermieter */}
             <Link 
@@ -234,12 +310,12 @@ export default function KaufyHome() {
               >
                 <Building2 className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
-              <h3 className="zone3-heading-3 mb-2">Vermieter</h3>
+              <h3 className="zone3-heading-3 mb-2">Für Vermieter</h3>
               <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
-                Digitale Mietsonderverwaltung
+                Ihr Bestandsobjekt. Unsere Expertise.
               </p>
               <p className="zone3-text-small">
-                Mieteingang, Dokumente, Korrespondenz – alles in einer Plattform. Mit KI-Unterstützung.
+                Portfolio-Überblick, Mieterservice und nahtloser Übergang zum Verkauf.
               </p>
             </Link>
 
@@ -254,12 +330,12 @@ export default function KaufyHome() {
               >
                 <Users className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
-              <h3 className="zone3-heading-3 mb-2">Verkäufer</h3>
+              <h3 className="zone3-heading-3 mb-2">Für Verkäufer</h3>
               <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
-                Reichweite & Qualität
+                Projektplatzierung mit System
               </p>
               <p className="zone3-text-small">
-                Erreichen Sie qualifizierte Käufer über unseren Marktplatz und unser Partner-Netzwerk.
+                Erreichen Sie qualifizierte Käufer über unser Partnernetzwerk.
               </p>
             </Link>
 
@@ -274,14 +350,39 @@ export default function KaufyHome() {
               >
                 <Briefcase className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
-              <h3 className="zone3-heading-3 mb-2">Vertriebe</h3>
+              <h3 className="zone3-heading-3 mb-2">Für Vertriebspartner</h3>
               <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
-                Exklusive Partner-Suite
+                Ihr Partnernetzwerk für Rendite-Immobilien
               </p>
               <p className="zone3-text-small">
-                Objektkatalog, Beratungstools und transparente Provisionsmodelle für Profis.
+                Objektkatalog, Lead-Management und transparente Provisionen.
               </p>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Section */}
+      <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-background))' }}>
+        <div className="zone3-container text-center">
+          <h2 className="zone3-heading-2 mb-8">Warum KAUFY?</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            <div className="p-4">
+              <div className="text-2xl mb-2">✓</div>
+              <p className="font-medium">Geprüfte Immobilien</p>
+            </div>
+            <div className="p-4">
+              <div className="text-2xl mb-2">✓</div>
+              <p className="font-medium">Transparente Prozesse</p>
+            </div>
+            <div className="p-4">
+              <div className="text-2xl mb-2">✓</div>
+              <p className="font-medium">Persönliche Beratung</p>
+            </div>
+            <div className="p-4">
+              <div className="text-2xl mb-2">✓</div>
+              <p className="font-medium">Digitale Abwicklung</p>
+            </div>
           </div>
         </div>
       </section>
@@ -299,13 +400,13 @@ export default function KaufyHome() {
             className="text-3xl md:text-4xl font-bold mb-6"
             style={{ color: 'hsl(var(--z3-background))' }}
           >
-            Bereit für deine erste Kapitalanlage?
+            Bereit für Ihre erste Investition?
           </h2>
           <p 
             className="text-lg mb-8 max-w-xl mx-auto"
             style={{ color: 'hsl(var(--z3-background) / 0.8)' }}
           >
-            Registriere dich kostenlos und entdecke Objekte mit transparenter Renditeberechnung.
+            Registrieren Sie sich kostenlos und entdecken Sie Objekte mit transparenter Renditeberechnung.
           </p>
           <Link 
             to="/auth?mode=register&source=kaufy" 
