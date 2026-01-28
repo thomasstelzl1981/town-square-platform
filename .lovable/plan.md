@@ -1,145 +1,54 @@
+# Zone 3 Kaufy - Reparaturbericht
 
-# Reparaturplan: MOD-11 Finanzierungsmanager
+## Status: KORRIGIERT ✅
 
-## Zusammenfassung
-MOD-11 ist als Code vollständig implementiert, fehlt aber im `tile_catalog` der Datenbank. Dadurch erscheint das Modul nicht in der Portal-Sidebar.
+### Durchgeführte Änderungen
 
-## Aufgabe 1: MOD-11 in Tile Catalog eintragen
+1. **Mock-Daten entfernt** aus KaufyHome.tsx
+   - Hardcoded `MOCK_PROPERTIES` Array komplett gelöscht
+   - Ersetzt durch echte Datenabfrage aus `v_public_listings` View
 
-**Ziel:** Finanzierungsmanager erscheint im Entwicklungsportal (Zone 2 Sidebar)
+2. **Datenfluss korrigiert**
+   - Primär: `v_public_listings` View (Zone 1 publizierte Objekte)
+   - Fallback: `listing_publications` mit `channel='kaufy'` + `status='active'`
+   - Properties-Join für Detaildaten
 
-**Aktion:** SQL INSERT in `tile_catalog`
+3. **Empty State implementiert**
+   - Zeigt "Noch keine Objekte verfügbar" wenn DB leer
+   - Keine Fake-Daten mehr sichtbar
+   - CTA für Registrierung
 
-```sql
-INSERT INTO tile_catalog (
-  tile_code, 
-  title, 
-  description, 
-  icon_key, 
-  main_tile_route, 
-  sub_tiles, 
-  display_order, 
-  is_active
-)
-VALUES (
-  'MOD-11',
-  'Finanzierungsmanager',
-  'Finanzierungsanfragen bearbeiten und bei Banken einreichen',
-  'landmark',
-  '/portal/finanzierungsmanager',
-  '[
-    {"title": "So funktioniert''s", "route": "/portal/finanzierungsmanager"},
-    {"title": "Selbstauskunft", "route": "/portal/finanzierungsmanager/selbstauskunft"},
-    {"title": "Einreichen", "route": "/portal/finanzierungsmanager/einreichen"},
-    {"title": "Status", "route": "/portal/finanzierungsmanager/status"}
-  ]'::jsonb,
-  11,
-  true
-);
-```
+4. **Texte aus KAUFY_COPYKIT.md übernommen**
+   - Hero: "Finden Sie Ihre Rendite-Immobilie"
+   - Subline: "Der Marktplatz für Kapitalanleger..."
+   - CTAs: "Immobilien entdecken" + "Kostenlos registrieren"
+   - Trust-Section: 4 Checkmarks
 
-**DoD:** MOD-11 erscheint in PortalNav Sidebar nach MOD-10
+### Aktuelle Datenlage
 
----
+| Tabelle | Anzahl | Kommentar |
+|---------|--------|-----------|
+| properties | 0 | Keine Testdaten importiert |
+| listings | 0 | Keine Listings erstellt |
+| listing_publications | 0 | Keine Publikationen |
+| v_public_listings | 0 | View leer |
 
-## Aufgabe 2: Icon-Mapping für MOD-11 in PortalNav
+### Nächster Schritt: Testdaten importieren
 
-**Ziel:** MOD-11 zeigt korrektes Icon (Landmark) in der Navigation
+1. Zone 1 `/admin/tiles` → Tab "Testdaten"
+2. Excel-Import mit Sample-Portfolio (ZL002-ZL009)
+3. MOD-06 Verkauf → Objekte publizieren → Channel "Kaufy"
+4. Dann erscheinen Objekte auf Kaufy-Website
 
-**Datei:** `src/components/portal/PortalNav.tsx`
+### Armstrong Sidebar
 
-**Änderung Zeile 177-191:**
-```typescript
-const moduleMap: Record<string, string> = {
-  'MOD-01': 'stammdaten',
-  'MOD-02': 'office',
-  'MOD-03': 'dms',
-  'MOD-04': 'immobilien',
-  'MOD-05': 'msv',
-  'MOD-06': 'verkauf',
-  'MOD-07': 'finanzierung',
-  'MOD-08': 'investments',
-  'MOD-09': 'vertriebspartner',
-  'MOD-10': 'leads',
-  'MOD-11': 'finanzierung',  // <-- NEU: Verwendet selbes Icon wie MOD-07
-};
-```
+- Position: **RECHTS** (korrekt)
+- Desktop: `fixed right-0` mit 320px Breite
+- Mobile: Bottom-Sheet (70vh)
+- Layout: `lg:mr-[320px]` schiebt Content nach links (korrekt)
 
-**DoD:** MOD-11 zeigt Landmark-Icon in Sidebar
+### Offene Punkte
 
----
-
-## Aufgabe 3: MOD-07 Sub-Tiles korrigieren (optional)
-
-**Ziel:** UI-Routen entsprechen Tile Catalog
-
-**Problem:** Tile Catalog zeigt "Fälle, Dokumente, Export, Status" aber UI hat nur Index + Detail
-
-**Option:** Tile Catalog UPDATE auf tatsächliche UI-Struktur:
-
-```sql
-UPDATE tile_catalog 
-SET sub_tiles = '[
-  {"title": "Übersicht", "route": "/portal/finanzierung"}
-]'::jsonb 
-WHERE tile_code = 'MOD-07';
-```
-
-**Alternativ:** Behalten wie ist, da Detail-Navigation über Zeilen-Klick funktioniert
-
----
-
-## Bereits implementiert (keine Aktion nötig)
-
-Die folgenden Punkte sind bereits korrekt:
-
-1. **Storage-Ordner für Finance-Requests**: Trigger `create_finance_request_folders` erzeugt automatisch:
-   - Privat/Identität
-   - Privat/Einkommen
-   - Privat/Vermögen
-   - Privat/Verpflichtungen
-   - Privat/Sonstiges
-   - Firma/BWA-SuSa
-   - Firma/Jahresabschlüsse
-   - Firma/Steuern
-   - Objektunterlagen
-
-2. **Zone 1 FutureRoom**: Dashboard mit MandateInbox funktioniert
-
-3. **MOD-11 Code**: Alle 4 Tabs sind implementiert
-
-4. **Datenfluss**: finance_request → finance_mandate → future_room_case
-
----
-
-## Technische Details
-
-### Betroffene Dateien
-- `tile_catalog` (Datenbank)
-- `src/components/portal/PortalNav.tsx` (Icon-Mapping)
-
-### Keine Änderungen nötig an
-- `src/pages/portal/FinanzierungsmanagerPage.tsx` (bereits vollständig)
-- `src/App.tsx` (Routen bereits vorhanden)
-- Storage-Trigger (bereits implementiert)
-- FutureRoom-Komponenten (bereits implementiert)
-
----
-
-## Ergebnis nach Reparatur
-
-```
-Zone 2 Portal Sidebar:
-├── Home
-├── MOD-01 Stammdaten
-├── MOD-02 KI Office
-├── MOD-03 DMS
-├── MOD-04 Immobilien
-├── MOD-05 MSV
-├── MOD-06 Verkauf
-├── MOD-07 Finanzierung      ← Kundenanträge
-├── MOD-08 Investments
-├── MOD-09 Vertriebspartner
-├── MOD-10 Leadgenerierung
-└── MOD-11 Finanzierungsmanager  ← NEU SICHTBAR
-```
+- [ ] Exposé-Seite `/kaufy/immobilien/:id` prüfen (MOD-06 Integration)
+- [ ] Navigation gemäß COPYKIT anpassen (Beratung statt Module)
+- [ ] Footer-Links vervollständigen
