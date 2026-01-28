@@ -1,0 +1,219 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import type { 
+  FinanceRequest, 
+  ApplicantProfile, 
+  ApplicantFormData,
+  FinanceRequestStatus,
+  calculateCompletionScore 
+} from '@/types/finance';
+
+export function useFinanceRequests() {
+  const { activeOrganization, isDevelopmentMode } = useAuth();
+
+  return useQuery({
+    queryKey: ['finance-requests', activeOrganization?.id],
+    queryFn: async () => {
+      if (!activeOrganization?.id && !isDevelopmentMode) return [];
+      
+      const tenantId = activeOrganization?.id || 'dev-tenant';
+      
+      const { data, error } = await supabase
+        .from('finance_requests')
+        .select(`
+          *,
+          applicant_profiles (
+            id,
+            first_name,
+            last_name,
+            profile_type,
+            party_role,
+            completion_score
+          )
+        `)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as (FinanceRequest & { applicant_profiles: Partial<ApplicantProfile>[] })[];
+    },
+    enabled: !!activeOrganization?.id || isDevelopmentMode,
+  });
+}
+
+export function useFinanceRequest(requestId: string | undefined) {
+  const { activeOrganization, isDevelopmentMode } = useAuth();
+
+  return useQuery({
+    queryKey: ['finance-request', requestId],
+    queryFn: async () => {
+      if (!requestId) return null;
+      
+      const { data, error } = await supabase
+        .from('finance_requests')
+        .select(`
+          *,
+          applicant_profiles (*),
+          properties (
+            id,
+            code,
+            address,
+            city,
+            postal_code,
+            purchase_price
+          )
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!requestId,
+  });
+}
+
+export function useCreateFinanceRequest() {
+  const queryClient = useQueryClient();
+  const { activeOrganization, user, isDevelopmentMode } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: {
+      object_source?: string;
+      property_id?: string;
+      custom_object_data?: Record<string, unknown>;
+    }) => {
+      const tenantId = activeOrganization?.id || 'dev-tenant';
+      const userId = user?.id || 'dev-user';
+
+      // Generate public_id
+      const publicId = `FIN-${Date.now().toString(36).toUpperCase()}`;
+
+      const { data: request, error } = await supabase
+        .from('finance_requests')
+        .insert([{
+          tenant_id: tenantId,
+          public_id: publicId,
+          status: 'draft',
+          object_source: data.object_source || null,
+          property_id: data.property_id || null,
+          custom_object_data: (data.custom_object_data as any) || null,
+          created_by: userId,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create primary applicant profile
+      const { error: profileError } = await supabase
+        .from('applicant_profiles')
+        .insert([{
+          tenant_id: tenantId,
+          finance_request_id: request.id,
+          profile_type: 'private',
+          party_role: 'primary',
+        }]);
+
+      if (profileError) throw profileError;
+
+      return request;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-requests'] });
+      toast.success('Finanzierungsantrag erstellt');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+}
+
+export function useUpdateApplicantProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      profileId, 
+      data 
+    }: { 
+      profileId: string; 
+      data: Partial<ApplicantFormData>;
+    }) => {
+      // Calculate completion score
+      const completionScore = typeof data.completion_score === 'number' 
+        ? data.completion_score 
+        : 0;
+
+      const { error } = await supabase
+        .from('applicant_profiles')
+        .update({
+          ...data,
+          completion_score: completionScore,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', profileId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-request'] });
+      toast.success('Selbstauskunft gespeichert');
+    },
+    onError: (error) => {
+      toast.error('Fehler beim Speichern: ' + (error as Error).message);
+    },
+  });
+}
+
+export function useSubmitFinanceRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      // Update request status
+      const { error: requestError } = await supabase
+        .from('finance_requests')
+        .update({
+          status: 'submitted' as FinanceRequestStatus,
+          submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+
+      if (requestError) throw requestError;
+
+      // Get request data for mandate creation
+      const { data: requestData, error: fetchError } = await supabase
+        .from('finance_requests')
+        .select('tenant_id, public_id')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Create mandate in Zone 1
+      const { error: mandateError } = await supabase
+        .from('finance_mandates')
+        .insert([{
+          tenant_id: requestData.tenant_id,
+          finance_request_id: requestId,
+          public_id: requestData.public_id,
+          status: 'new',
+          priority: 0,
+        }]);
+
+      if (mandateError) throw mandateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-request'] });
+      toast.success('Antrag erfolgreich eingereicht');
+    },
+    onError: (error) => {
+      toast.error('Einreichung fehlgeschlagen: ' + (error as Error).message);
+    },
+  });
+}
