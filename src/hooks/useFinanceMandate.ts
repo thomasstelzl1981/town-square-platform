@@ -161,14 +161,14 @@ export function useAcceptMandate() {
 
       if (mandateError) throw mandateError;
 
-      // Create FutureRoom case
+      // Create FutureRoom case with FROZEN status 'processing'
       const tenantId = activeOrganization?.id || 'dev-tenant';
       const { error: caseError } = await supabase
         .from('future_room_cases')
         .insert([{
           manager_tenant_id: tenantId,
           finance_mandate_id: mandateId,
-          status: 'active',
+          status: 'processing', // FROZEN: processing → submitted_to_bank → pending_docs → approved → rejected
         }]);
 
       if (caseError) throw caseError;

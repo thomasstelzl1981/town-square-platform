@@ -1,17 +1,26 @@
+/**
+ * MOD-11 Finanzierungsmanager - Main Page
+ * 
+ * FROZEN Sub-Tiles:
+ * 1. Mandate (/) - Inbox + Acceptance + Consent
+ * 2. Bearbeitung (/bearbeitung) - Case editing
+ * 3. Einreichen (/einreichen) - Bank submission
+ * 4. Status (/status) - Timeline + responses
+ */
+
 import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Lightbulb, User, Send, Clock, Loader2, 
-  CheckCircle2, Building2, AlertCircle 
+  Inbox, FileText, Send, Clock, Loader2, 
+  CheckCircle2, Building2
 } from 'lucide-react';
 import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 
 // Lazy load tab components
-const HowItWorksTab = React.lazy(() => import('./finanzierungsmanager/HowItWorksTab'));
-const CaseDetailTab = React.lazy(() => import('./finanzierungsmanager/CaseDetailTab'));
+const MandateTab = React.lazy(() => import('./finanzierungsmanager/MandateTab'));
+const BearbeitungTab = React.lazy(() => import('./finanzierungsmanager/BearbeitungTab'));
 const SubmitToBankTab = React.lazy(() => import('./finanzierungsmanager/SubmitToBankTab'));
 const StatusTab = React.lazy(() => import('./finanzierungsmanager/StatusTab'));
 
@@ -21,6 +30,14 @@ const LoadingFallback = () => (
   </div>
 );
 
+// FROZEN: 4 Sub-Tiles
+const tabs = [
+  { value: '', label: 'Mandate', icon: Inbox, path: '/portal/finanzierungsmanager' },
+  { value: 'bearbeitung', label: 'Bearbeitung', icon: FileText, path: '/portal/finanzierungsmanager/bearbeitung' },
+  { value: 'einreichen', label: 'Einreichen', icon: Send, path: '/portal/finanzierungsmanager/einreichen' },
+  { value: 'status', label: 'Status', icon: Clock, path: '/portal/finanzierungsmanager/status' },
+];
+
 const FinanzierungsmanagerPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,27 +45,15 @@ const FinanzierungsmanagerPage = () => {
 
   // Determine active tab from route
   const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.includes('/selbstauskunft')) return 'selbstauskunft';
-    if (path.includes('/einreichen')) return 'einreichen';
-    if (path.includes('/status')) return 'status';
-    return 'how-it-works';
+    const path = location.pathname.replace('/portal/finanzierungsmanager', '').replace(/^\//, '');
+    const firstSegment = path.split('/')[0];
+    return firstSegment || '';
   };
 
   const handleTabChange = (value: string) => {
-    switch (value) {
-      case 'how-it-works':
-        navigate('/portal/finanzierungsmanager');
-        break;
-      case 'selbstauskunft':
-        navigate('/portal/finanzierungsmanager/selbstauskunft');
-        break;
-      case 'einreichen':
-        navigate('/portal/finanzierungsmanager/einreichen');
-        break;
-      case 'status':
-        navigate('/portal/finanzierungsmanager/status');
-        break;
+    const tab = tabs.find(t => t.value === value);
+    if (tab) {
+      navigate(tab.path);
     }
   };
 
@@ -82,38 +87,40 @@ const FinanzierungsmanagerPage = () => {
       {/* Navigation Tabs */}
       <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="how-it-works" className="gap-2">
-            <Lightbulb className="h-4 w-4" />
-            So funktioniert's
-          </TabsTrigger>
-          <TabsTrigger value="selbstauskunft" className="gap-2">
-            <User className="h-4 w-4" />
-            Selbstauskunft
-          </TabsTrigger>
-          <TabsTrigger value="einreichen" className="gap-2">
-            <Send className="h-4 w-4" />
-            Einreichen
-          </TabsTrigger>
-          <TabsTrigger value="status" className="gap-2">
-            <Clock className="h-4 w-4" />
-            Status
-          </TabsTrigger>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
 
       {/* Route Content */}
       <React.Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route index element={<HowItWorksTab />} />
-          <Route path="selbstauskunft" element={<CaseDetailTab cases={cases || []} isLoading={isLoading} />} />
-          <Route path="selbstauskunft/:caseId" element={<CaseDetailTab cases={cases || []} isLoading={isLoading} />} />
+          <Route index element={<MandateTab />} />
+          <Route path="bearbeitung" element={<BearbeitungTab />} />
+          <Route path="bearbeitung/:caseId" element={<BearbeitungTab />} />
           <Route path="einreichen" element={<SubmitToBankTab cases={cases || []} isLoading={isLoading} />} />
           <Route path="einreichen/:caseId" element={<SubmitToBankTab cases={cases || []} isLoading={isLoading} />} />
           <Route path="status" element={<StatusTab cases={cases || []} isLoading={isLoading} />} />
+          
+          {/* Legacy redirects for old routes */}
+          <Route path="how-it-works" element={<Navigate to="/portal/finanzierungsmanager" replace />} />
+          <Route path="selbstauskunft" element={<Navigate to="/portal/finanzierungsmanager/bearbeitung" replace />} />
+          <Route path="selbstauskunft/:caseId" element={<LegacySelbstauskunftRedirect />} />
         </Routes>
       </React.Suspense>
     </div>
   );
 };
+
+// Legacy redirect for old selbstauskunft routes
+function LegacySelbstauskunftRedirect() {
+  const location = useLocation();
+  const caseId = location.pathname.split('/').pop();
+  return <Navigate to={`/portal/finanzierungsmanager/bearbeitung/${caseId}`} replace />;
+}
 
 export default FinanzierungsmanagerPage;

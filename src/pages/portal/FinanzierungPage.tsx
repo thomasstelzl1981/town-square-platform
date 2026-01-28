@@ -1,25 +1,42 @@
+/**
+ * MOD-07 Finanzierung - Main Page
+ * 
+ * FROZEN Sub-Tiles:
+ * 1. Selbstauskunft (/)
+ * 2. Neue Finanzierung (/neu)
+ * 3. Kalkulation & Objekt (/kalkulation)
+ * 4. Status (/status)
+ * 
+ * Legacy Redirects:
+ * - /faelle → /status
+ * - /faelle/:id → /status/:id
+ * - /dokumente → /
+ * - /einstellungen → /
+ */
+
 import * as React from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FolderOpen, FileText, Settings } from 'lucide-react';
+import { User, Plus, Calculator, Clock, Loader2 } from 'lucide-react';
 
 // Lazy load sub-tabs
-const DashboardTab = React.lazy(() => import('./finanzierung/DashboardTab'));
-const FaelleTab = React.lazy(() => import('./finanzierung/FaelleTab'));
-const DokumenteTab = React.lazy(() => import('./finanzierung/DokumenteTab'));
-const EinstellungenTab = React.lazy(() => import('./finanzierung/EinstellungenTab'));
+const SelbstauskunftTab = React.lazy(() => import('./finanzierung/SelbstauskunftTab'));
+const NeuTab = React.lazy(() => import('./finanzierung/NeuTab'));
+const KalkulationTab = React.lazy(() => import('./finanzierung/KalkulationTab'));
+const StatusTab = React.lazy(() => import('./finanzierung/StatusTab'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
 
+// FROZEN: 4 Sub-Tiles
 const tabs = [
-  { value: '', label: 'Dashboard', icon: LayoutDashboard, path: '/portal/finanzierung' },
-  { value: 'faelle', label: 'Fälle', icon: FileText, path: '/portal/finanzierung/faelle' },
-  { value: 'dokumente', label: 'Dokumente', icon: FolderOpen, path: '/portal/finanzierung/dokumente' },
-  { value: 'einstellungen', label: 'Einstellungen', icon: Settings, path: '/portal/finanzierung/einstellungen' },
+  { value: '', label: 'Selbstauskunft', icon: User, path: '/portal/finanzierung' },
+  { value: 'neu', label: 'Neue Finanzierung', icon: Plus, path: '/portal/finanzierung/neu' },
+  { value: 'kalkulation', label: 'Kalkulation & Objekt', icon: Calculator, path: '/portal/finanzierung/kalkulation' },
+  { value: 'status', label: 'Status', icon: Clock, path: '/portal/finanzierung/status' },
 ];
 
 const FinanzierungPage = () => {
@@ -29,7 +46,7 @@ const FinanzierungPage = () => {
   // Determine active tab from URL
   const getActiveTab = () => {
     const path = location.pathname.replace('/portal/finanzierung', '').replace(/^\//, '');
-    // Handle nested routes like /faelle/:id
+    // Handle nested routes like /status/:id
     const firstSegment = path.split('/')[0];
     return firstSegment || '';
   };
@@ -66,31 +83,45 @@ const FinanzierungPage = () => {
       {/* Content */}
       <React.Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route index element={<DashboardTab />} />
-          <Route path="faelle/*" element={<FaelleTab />} />
-          <Route path="dokumente" element={<DokumenteTab />} />
-          <Route path="einstellungen" element={<EinstellungenTab />} />
-          {/* Backward compatibility: redirect old :id routes to new /faelle/:id */}
-          <Route path=":id" element={<LegacyRedirect />} />
+          {/* Main Routes */}
+          <Route index element={<SelbstauskunftTab />} />
+          <Route path="neu" element={<NeuTab />} />
+          <Route path="kalkulation" element={<KalkulationTab />} />
+          <Route path="status" element={<StatusTab />} />
+          <Route path="status/:id" element={<StatusTab />} />
+          
+          {/* LEGACY REDIRECTS (FROZEN - must not break) */}
+          <Route path="faelle" element={<Navigate to="/portal/finanzierung/status" replace />} />
+          <Route path="faelle/:id" element={<LegacyFaelleRedirect />} />
+          <Route path="dokumente" element={<Navigate to="/portal/finanzierung" replace />} />
+          <Route path="einstellungen" element={<Navigate to="/portal/finanzierung" replace />} />
+          
+          {/* Backward compatibility: redirect old :id routes */}
+          <Route path=":id" element={<LegacyIdRedirect />} />
         </Routes>
       </React.Suspense>
     </div>
   );
 };
 
-// Redirect component for backward compatibility
-function LegacyRedirect() {
-  const location = useLocation();
-  const id = location.pathname.split('/').pop();
+// Legacy redirect: /faelle/:id → /status/:id
+function LegacyFaelleRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/portal/finanzierung/status/${id}`} replace />;
+}
+
+// Legacy redirect for old direct :id routes
+function LegacyIdRedirect() {
+  const { id } = useParams();
   
   // Check if this looks like a UUID (finance request ID)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
   
   if (isUUID) {
-    return <Navigate to={`/portal/finanzierung/faelle/${id}`} replace />;
+    return <Navigate to={`/portal/finanzierung/status/${id}`} replace />;
   }
   
-  // Not a UUID, redirect to dashboard
+  // Not a UUID, redirect to main page
   return <Navigate to="/portal/finanzierung" replace />;
 }
 

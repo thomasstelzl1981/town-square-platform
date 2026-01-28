@@ -155,7 +155,8 @@ export interface FinanceRequest {
 // Finance Mandate Types (Zone 1)
 // ============================================
 
-export type MandateStatus = 'new' | 'triage' | 'delegated' | 'accepted' | 'rejected';
+// FROZEN: Mandate status per v3.0 spec
+export type MandateStatus = 'new' | 'triage' | 'delegated' | 'accepted' | 'rejected' | 'closed';
 
 export interface FinanceMandate {
   id: string;
@@ -181,7 +182,8 @@ export interface FinanceMandate {
 // Future Room Case Types (MOD-11)
 // ============================================
 
-export type FutureRoomCaseStatus = 'active' | 'missing_docs' | 'ready_to_submit' | 'submitted' | 'closed';
+// FROZEN: FutureRoom case status per v3.0 spec
+export type FutureRoomCaseStatus = 'processing' | 'submitted_to_bank' | 'pending_docs' | 'approved' | 'rejected';
 
 export interface FutureRoomCase {
   id: string;
