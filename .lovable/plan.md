@@ -1,463 +1,522 @@
 
+# FINANCE TRIAD — IMPLEMENTIERUNGSPLAN v3.0 FINAL
 
-# VOLLSTÄNDIGER REPARATUR- UND BEREINIGUNGSPLAN
-
-## SYSTEM OF A TOWN — MODUL FÜR MODUL AUDIT & REPARATUR
-
----
-
-## 1) EXECUTIVE SUMMARY — STATUS REPORT
-
-### Datenbank-Status (Kritische Befunde)
-
-| Tabelle | Anzahl | Status |
-|---------|--------|--------|
-| `organizations` | 2 | OK (thomas.stelzl, test) |
-| `properties` | 0 | LEER - Keine Immobilien |
-| `units` | 0 | LEER - Keine Einheiten |
-| `documents` | 0 | LEER - Keine Dokumente |
-| `document_links` | 0 | LEER - Keine Verknüpfungen |
-| `contacts` | 0 | LEER - Keine Kontakte |
-| `leases` | 0 | LEER - Keine Mietverträge |
-| `test_data_registry` | 0 | LEER - Keine Batches registriert |
-| **storage_nodes** | **130** | **ORPHAN-DATEN** - Ordner ohne Immobilien! |
-
-### Root-Cause-Analyse
-
-**Problem:** Die 8 Immobilien wurden irgendwann gelöscht (vermutlich durch ein fehlgeschlagenes Cleanup oder einen Bug), aber die automatisch erstellten Storage-Ordner blieben zurück.
-
-**Beweis:**
-- 130 storage_nodes für Tenant `e808a01b...` (thomas.stelzl)
-- Root-Ordner mit Namen: `ZL002 - Parkweg 17`, `ZL003 - Ludwig-Thoma-Str. 5`, etc.
-- ABER: `properties` Tabelle = 0 Einträge
-- ABER: `property_id` in storage_nodes = NULL (nicht verknüpft)
-
-### Trigger-Status
-
-| Trigger | Tabelle | Status |
-|---------|---------|--------|
-| `create_property_folder_trigger` | properties | ✅ EXISTIERT |
-| `property_folder_structure` | properties | ✅ EXISTIERT (Duplikat!) |
-| `create_unit_folder_trigger` | units | ✅ EXISTIERT |
-| `trg_create_finance_request_folders` | finance_requests | ✅ EXISTIERT |
-
-**Hinweis:** Es gibt ZWEI Trigger auf properties für Ordner-Erstellung - das ist ein Duplikat-Problem das bereinigt werden muss.
+**Datum:** 2026-01-28  
+**Modus:** NUR Analyse + Plan (keine Implementierung ohne Freigabe)  
+**Scope:** MOD-07 + Zone-1 FutureRoom + MOD-11 (NO-TOUCH für alle anderen Module)
 
 ---
 
-## 2) ZONE 1 DOKUMENTATION — VOLLSTÄNDIGKEITSPRÜFUNG
+## EXECUTIVE SUMMARY
 
-### Tile Catalog Status
+### IST-Zustand (Analyse-Ergebnis)
 
-| MOD | Titel | Sub-Tiles | Flowchart | Internal APIs | External APIs | Changelog | Status |
-|-----|-------|-----------|-----------|---------------|---------------|-----------|--------|
-| MOD-01 | Stammdaten | 4 | ✅ | 3 | 0 | 2 | ✅ KOMPLETT |
-| MOD-02 | KI Office | 4 | ✅ | 2 | 5 | 2 | ✅ KOMPLETT |
-| MOD-03 | DMS | 4 | ✅ | 4 | 1 | 2 | ✅ KOMPLETT |
-| MOD-04 | Immobilien | 4 | ✅ | 3 | 4 | 3 | ✅ KOMPLETT |
-| MOD-05 | MSV | 4 | ✅ | 4 | 2 | 3 | ✅ KOMPLETT |
-| MOD-06 | Verkauf | 4 | ✅ | 3 | 2 | 3 | ✅ KOMPLETT |
-| MOD-07 | Finanzierung | 4 | ✅ | 3 | 1 | 3 | ✅ KOMPLETT |
-| MOD-08 | Investments | 4 | ✅ | 2 | 1 | 2 | ⚠️ NICHT IMPLEMENTIERT |
-| MOD-09 | Vertriebspartner | 4 | ✅ | 3 | 0 | 2 | ✅ KOMPLETT |
-| MOD-10 | Leads | 4 | ✅ | 2 | 1 | 2 | ⚠️ NICHT IMPLEMENTIERT |
-| MOD-11 | Finanzierungsmanager | 4 | ✅ | 2 | 1 | 2 | ✅ KOMPLETT |
-
-### Integration Registry Status
-
-| Code | Name | Status | Owner-Modul |
-|------|------|--------|-------------|
-| STRIPE | Stripe Payments | pending_setup | MOD-01 |
-| CAYA | Caya DMS | pending_setup | MOD-03 |
-| FUTURE_ROOM | Future Room | pending_setup | MOD-07/11 |
-| scout24 | ImmoScout24 | pending_setup | MOD-05/06 |
-| meta_ads | Meta Ads | pending_setup | MOD-10 |
-| apify | Apify Scraper | pending_setup | MOD-08 |
-| SPRENGNETTER | Sprengnetter | pending_setup | MOD-04 |
-| GOOGLE_MAPS | Google Maps | pending_setup | MOD-04 |
-
-**Bewertung:** 8 Integrationen registriert, alle `pending_setup` - korrekt für Phase 1.
+| Bereich | IST | SOLL | Delta |
+|---------|-----|------|-------|
+| **MOD-07 Sub-Tiles** | Dashboard, Fälle, Dokumente, Einstellungen | Selbstauskunft, Neue Finanzierung, Kalkulation & Objekt, Status | **KOMPLETT NEU** |
+| **MOD-07 Datenmodell** | `finance_requests` + `applicant_profiles` | Weiterhin nutzen (keine neuen Tabellen) | OK |
+| **MOD-11 Sub-Tiles** | So funktioniert's, Selbstauskunft, Einreichen, Status | Mandate, Bearbeitung, Einreichen, Status | **UMBAU Screen 1** |
+| **MOD-11 tile_catalog** | Falsches Flowchart (Zone 3 Marktplatz) | Korrektes Finance-Flowchart | **FIX ERFORDERLICH** |
+| **Zone-1 FutureRoom** | Vorhanden, aber kein Manager-Picker | Manager-Picker + Statusmaschine + Audit | **ERGÄNZUNG** |
+| **owner_context_id** | **FEHLT** in DB | Pflicht in applicant_profiles + finance_requests | **MIGRATION** |
+| **MOD-11 Spec-Datei** | **FEHLT** | docs/modules/MOD-11_FINANZIERUNGSMANAGER.md | **ERSTELLEN** |
 
 ---
 
-## 3) PROBLEMATIK: ORPHAN STORAGE NODES
+## TEIL 1: ÜBERSICHT JE MODUL (FINAL)
 
-### Aktuelle Situation
+### 1.1 MOD-07 Finanzierung (FROZEN FINAL)
 
-```text
-storage_nodes (130 Einträge):
-├── ZL002 - Parkweg 17 (Root, property_id=NULL)
-│   ├── 00_Projektdokumentation
-│   ├── 01_Exposé Ankauf
-│   ├── ... (17 Unterordner)
-│   └── Einheiten
-│       └── MAIN/WE1/WE2... (Unit-Ordner)
-├── ZL003 - Ludwig-Thoma-Str. 5
-├── ZL004 - Lessingstr. 8
-├── ZL005 - Hubertusweg 6
-├── ZL006 - Schönthal 10
-├── ZL007 - Schönthal 10a
-├── ZL008 - Schönthal 12
-├── ZL009 - Schönthal 12a
-├── Posteingang (System-Node, neu erstellt)
-└── Bonitätsunterlagen (System-Node, neu erstellt)
+**Base Route:** `/portal/finanzierung`
+
+| # | Route | Label | Beschreibung |
+|---|-------|-------|--------------|
+| 1 | `/portal/finanzierung` | Selbstauskunft | Permanente Datenbasis (applicant_profiles) + Dokumente-Abschnitt. Owner-Kontext aus MOD-04 Pflicht. |
+| 2 | `/portal/finanzierung/neu` | Neue Finanzierung | Wizard: Owner-Kontext bestätigen → finance_request anlegen → Grunddaten |
+| 3 | `/portal/finanzierung/kalkulation` | Kalkulation & Objekt | Objekt wählen (MOD-04/MOD-08/custom) + Investment-Rechner + Konditionen (read-only) |
+| 4 | `/portal/finanzierung/status` | Status | Übersicht finance_requests + Mandat-Spiegel + Case-Spiegel (read-only nach Einreichung) |
+
+**Legacy Redirects (PFLICHT):**
+```
+/portal/finanzierung/faelle        → /portal/finanzierung/status
+/portal/finanzierung/faelle/:id    → /portal/finanzierung/status/:id
+/portal/finanzierung/dokumente     → /portal/finanzierung
+/portal/finanzierung/einstellungen → /portal/finanzierung
 ```
 
-**Problem:** Diese 128 Ordner (8 Properties × 16 Unterordner + Einheiten) sind **verwaist** - sie verweisen auf nichts, da die Properties gelöscht wurden.
-
-### Bereinigungsoptionen
-
-| Option | Beschreibung | Risiko | Empfehlung |
-|--------|--------------|--------|------------|
-| A) Löschen | Alle orphan storage_nodes entfernen | Gering | ✅ EMPFOHLEN |
-| B) Re-Import | Excel erneut hochladen, Ordner "adoptieren" | Mittel | Komplex |
-| C) Beibehalten | Ordner als Altlast ignorieren | Hoch | ❌ Nicht empfohlen |
+**ID-Mapping:** `:id` referenziert immer `finance_requests.id`
 
 ---
 
-## 4) MODUL-FÜR-MODUL REPARATURPLAN
+### 1.2 Zone-1 FutureRoom (FROZEN FINAL)
 
-### PHASE 0: BEREINIGUNG (P0 - SOFORT)
+**Base Route:** `/admin/futureroom`
 
-#### Task B-01: Orphan Storage Nodes löschen
+| Tab | Beschreibung |
+|-----|--------------|
+| **Mandate Inbox** | Liste aller `finance_mandates` + Filter + Statusanzeige |
+| **Bankkontakte** | `finance_bank_contacts` Verzeichnis (nur Banken/Finanzierungspartner) |
 
+**Statusmaschine (FROZEN):**
+```
+new → triage → delegated → accepted → closed
+```
+
+**Ergänzungen erforderlich:**
+1. **Manager-Picker Dialog** bei "Zuweisen" (Quelle: Users mit Rolle `finance_manager`)
+2. **Audit Event** bei Delegation + Acceptance
+3. **System-Mail** bei Acceptance an Kunde + ggf. Partner
+
+---
+
+### 1.3 MOD-11 Finanzierungsmanager (FROZEN FINAL)
+
+**Base Route:** `/portal/finanzierungsmanager`
+
+| # | Route | Label | Beschreibung |
+|---|-------|-------|--------------|
+| 1 | `/portal/finanzierungsmanager` | Mandate | Collapsible "How it works" + **Mandate Inbox** (delegated an mich) + Annehmen → Provisionsvereinbarung (Consent) → Case erzeugen |
+| 2 | `/portal/finanzierungsmanager/bearbeitung` | Bearbeitung | Case-Liste + Detail: Selbstauskunft nachpflegen + Objekt (read-only) + Datenraum-Links + Notizen |
+| 3 | `/portal/finanzierungsmanager/einreichen` | Einreichen | Bank auswählen (Zone-1 Kontakte) + Plattform/E-Mail Optionen + PDF + Datenraum-Link |
+| 4 | `/portal/finanzierungsmanager/status` | Status | Timeline + Bank-Rückmeldungen + Spiegelung an Zone-1 + MOD-07 |
+
+---
+
+## TEIL 2: END-TO-END WORKFLOW (FROZEN)
+
+### Phase 1 — Kunde (MOD-07 ist SoT)
+
+```
+1. Owner-Kontext wählen (aus MOD-04 Kontexte)
+   └── Wenn 0 Kontexte: Blocker
+   └── Wenn 1 Kontext: auto-select
+   └── Wenn >1 Kontexte: Context Picker Modal
+
+2. Selbstauskunft pflegen (applicant_profiles)
+   └── Dokumente hochladen (DMS + JSON paired + Mapping)
+
+3. Neue Finanzierung anlegen (finance_requests.status=draft)
+
+4. Objekt wählen + kalkulieren
+   └── MOD-04 property_id / unit_id
+   └── MOD-08 listing_id
+   └── custom_object_data
+
+5. Einreichen
+   └── finance_requests.status=submitted
+   └── INSERT finance_mandates (status=new)
+   └── MOD-07 wird read-only für diesen Request
+```
+
+### Phase 2 — Admin (Zone-1 FutureRoom ist SoT)
+
+```
+6. Mandat kommt rein: status=new
+
+7. Triage: status=triage
+
+8. Delegation:
+   └── Manager-Picker öffnen
+   └── Manager auswählen
+   └── status=delegated
+   └── assigned_manager_id + delegated_at + delegated_by
+   └── INSERT audit_event
+```
+
+### Phase 3 — Finance Manager (MOD-11 ist SoT)
+
+```
+9. Manager sieht delegated Mandate (WHERE assigned_manager_id = auth.uid())
+
+10. Annehmen:
+    └── Provisionsvereinbarung (Consent Modal)
+    └── status=accepted + accepted_at
+    └── INSERT future_room_cases (status=processing)
+    └── System-Mail an Kunde + Partner
+
+11. Bearbeitung:
+    └── Selbstauskunft nachpflegen
+    └── Datenraum prüfen
+    └── Interne Notizen
+
+12. Einreichen:
+    └── Bank auswählen
+    └── Methode: Plattform ODER E-Mail
+    └── PDF generieren + Datenraum-Link
+    └── future_room_cases.status=submitted_to_bank
+
+13. Status führen:
+    └── Bank-Rückmeldungen dokumentieren
+    └── Spiegelung: MOD-11 → Zone-1 → MOD-07 (read-only)
+```
+
+---
+
+## TEIL 3: DATENMODELL-REUSE MAP
+
+### 3.1 Bestehende Tabellen (WIEDERVERWENDEN)
+
+| Tabelle | Owner | Genutzt von | Status |
+|---------|-------|-------------|--------|
+| `finance_requests` | MOD-07 | MOD-07, Zone-1, MOD-11 | ✅ Aktiv |
+| `applicant_profiles` | MOD-07 | MOD-07, MOD-11 | ✅ Aktiv |
+| `finance_mandates` | Zone-1 | Zone-1, MOD-11, MOD-07 (read) | ✅ Aktiv |
+| `future_room_cases` | MOD-11 | MOD-11, Zone-1 (read), MOD-07 (read) | ✅ Aktiv |
+| `finance_bank_contacts` | Zone-1 | Zone-1, MOD-11 | ✅ Aktiv |
+| `documents` | MOD-03 | Alle | ✅ Aktiv |
+| `document_links` | MOD-03 | Alle | ✅ Aktiv |
+| `storage_nodes` | MOD-03 | Alle | ✅ Aktiv |
+
+### 3.2 Fehlende Spalten (MIGRATION ERFORDERLICH)
+
+| Tabelle | Spalte | Typ | Beschreibung | Task |
+|---------|--------|-----|--------------|------|
+| `applicant_profiles` | `owner_context_id` | uuid FK | Referenz zu MOD-04 Kontext | MIGRATE-FIN-001 |
+| `finance_requests` | `owner_context_id` | uuid FK | Referenz zu MOD-04 Kontext | MIGRATE-FIN-001 |
+
+### 3.3 Status-Schema (FROZEN)
+
+```
+finance_requests.status:
+  draft | submitted
+
+finance_mandates.status:
+  new | triage | delegated | accepted | closed
+
+future_room_cases.status:
+  processing | submitted_to_bank | pending_docs | approved | rejected
+```
+
+---
+
+## TEIL 4: FIX-PLAN IN PHASEN
+
+### P0 — KRITISCH (Blocking)
+
+| # | Task | Bereich | Acceptance Criteria |
+|---|------|---------|---------------------|
+| P0-1 | **MOD-11 Spec-Datei erstellen** | Docs | `docs/modules/MOD-11_FINANZIERUNGSMANAGER.md` existiert mit vollständiger Spec |
+| P0-2 | **tile_catalog MOD-11 korrigieren** | DB | `flowchart_mermaid` zeigt Finance-Flow, nicht Marktplatz |
+| P0-3 | **tile_api_internal MOD-11 korrigieren** | DB | Einträge für `/future_room_cases`, `/finance_mandates`, `/applicant_profiles` (keine Marktplatz-APIs) |
+| P0-4 | **tile_changelog MOD-11 korrigieren** | DB | Keine "Zone 3 Marktplatz" Einträge |
+| P0-5 | **MOD-07 Sub-Tiles umstellen** | Code + DB | 4 neue Tabs: Selbstauskunft, Neue Finanzierung, Kalkulation & Objekt, Status |
+| P0-6 | **MOD-07 Legacy Redirects** | Code | `/faelle` → `/status`, `/dokumente` → `/`, `/einstellungen` → `/` |
+| P0-7 | **owner_context_id Migration planen** | DB | Migration-SQL vorbereiten (nicht ausführen ohne Freigabe) |
+
+### P1 — WICHTIG (Core Functionality)
+
+| # | Task | Bereich | Acceptance Criteria |
+|---|------|---------|---------------------|
+| P1-1 | **MOD-07 Owner-Kontext Picker** | Code | Vor Selbstauskunft wird Kontext aus MOD-04 gewählt |
+| P1-2 | **Zone-1 Manager-Picker Dialog** | Code | Bei "Zuweisen" öffnet sich Dialog mit User-Liste (Rolle `finance_manager`) |
+| P1-3 | **Zone-1 Delegation Audit** | Code | Bei Delegation wird `audit_events` Eintrag erstellt |
+| P1-4 | **MOD-11 Screen 1 Umbau** | Code | Collapsible Intro + Mandate Inbox + Provisionsvereinbarung (Consent) |
+| P1-5 | **MOD-11 Screen 2 "Bearbeitung"** | Code | Route `/bearbeitung` statt `/selbstauskunft` |
+| P1-6 | **Status-Spiegel MOD-07** | Code | Nach Einreichung ist Request in MOD-07 read-only, zeigt Mandat-/Case-Status |
+| P1-7 | **System-Mail bei Acceptance** | Code | Edge Function sendet Mail an Kunde + Partner |
+
+### P2 — NICE-TO-HAVE (Enhancements)
+
+| # | Task | Bereich | Acceptance Criteria |
+|---|------|---------|---------------------|
+| P2-1 | **DMS/JSON Paired Pipeline** | Code | Upload → Worker → JSON → Feld-Mapping (kein neue Tabellen) |
+| P2-2 | **Readiness Gate** | Code | Checkliste prüft Pflichtdokumente vor Einreichung |
+| P2-3 | **PDF Export für Bank-Einreichung** | Code | PDF mit Selbstauskunft + Kalkulation + Objektübersicht |
+| P2-4 | **E-Mail Editor in MOD-11** | Code | KI-Draft + Empfänger-Auswahl + Anhänge |
+
+---
+
+## TEIL 5: DETAILLIERTE ÄNDERUNGEN
+
+### 5.1 Code-Änderungen MOD-07
+
+**Datei: `src/pages/portal/FinanzierungPage.tsx`**
+```typescript
+// VORHER (IST)
+const tabs = [
+  { value: '', label: 'Dashboard', ... },
+  { value: 'faelle', label: 'Fälle', ... },
+  { value: 'dokumente', label: 'Dokumente', ... },
+  { value: 'einstellungen', label: 'Einstellungen', ... },
+];
+
+// NACHHER (SOLL)
+const tabs = [
+  { value: '', label: 'Selbstauskunft', icon: User, path: '/portal/finanzierung' },
+  { value: 'neu', label: 'Neue Finanzierung', icon: Plus, path: '/portal/finanzierung/neu' },
+  { value: 'kalkulation', label: 'Kalkulation & Objekt', icon: Calculator, path: '/portal/finanzierung/kalkulation' },
+  { value: 'status', label: 'Status', icon: Clock, path: '/portal/finanzierung/status' },
+];
+```
+
+**Neue Dateien:**
+- `src/pages/portal/finanzierung/SelbstauskunftTab.tsx` — Ersetzt DashboardTab
+- `src/pages/portal/finanzierung/NeuTab.tsx` — Wizard für neue Finanzierung
+- `src/pages/portal/finanzierung/KalkulationTab.tsx` — Objektwahl + Rechner
+- `src/pages/portal/finanzierung/StatusTab.tsx` — Liste + Detail-Ansicht
+
+**Legacy Redirects (in Routes):**
+```typescript
+<Route path="faelle" element={<Navigate to="/portal/finanzierung/status" replace />} />
+<Route path="faelle/:id" element={<LegacyFaelleRedirect />} />
+<Route path="dokumente" element={<Navigate to="/portal/finanzierung" replace />} />
+<Route path="einstellungen" element={<Navigate to="/portal/finanzierung" replace />} />
+```
+
+### 5.2 Code-Änderungen Zone-1 FutureRoom
+
+**Datei: `src/components/admin/futureroom/MandateInbox.tsx`**
+```typescript
+// ERGÄNZEN: Manager-Picker bei "Zuweisen"
+{mandate.status === 'triage' && (
+  <DelegateManagerDialog 
+    mandateId={mandate.id}
+    onDelegated={() => refetch()}
+  />
+)}
+```
+
+**Neue Komponente: `src/components/admin/futureroom/DelegateManagerDialog.tsx`**
+- Lädt User mit Rolle `finance_manager`
+- Setzt `assigned_manager_id`, `delegated_at`, `delegated_by`
+- Erstellt Audit-Event
+
+### 5.3 Code-Änderungen MOD-11
+
+**Datei: `src/pages/portal/FinanzierungsmanagerPage.tsx`**
+```typescript
+// VORHER (IST)
+const tabs = [
+  { value: 'how-it-works', ... },
+  { value: 'selbstauskunft', ... },
+  { value: 'einreichen', ... },
+  { value: 'status', ... },
+];
+
+// NACHHER (SOLL)
+const tabs = [
+  { value: '', label: 'Mandate', icon: Inbox, path: '/portal/finanzierungsmanager' },
+  { value: 'bearbeitung', label: 'Bearbeitung', icon: FileText, path: '/portal/finanzierungsmanager/bearbeitung' },
+  { value: 'einreichen', label: 'Einreichen', icon: Send, path: '/portal/finanzierungsmanager/einreichen' },
+  { value: 'status', label: 'Status', icon: Clock, path: '/portal/finanzierungsmanager/status' },
+];
+```
+
+**Screen 1 Struktur (Mandate Tab):**
+```typescript
+export default function MandateTab() {
+  return (
+    <div className="space-y-6">
+      {/* Collapsible How It Works */}
+      <Collapsible>
+        <CollapsibleTrigger>
+          <Lightbulb /> So funktioniert's
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {/* Kurze Erklärung */}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Mandate Inbox */}
+      <ManagerMandateInbox />
+
+      {/* Bei Klick auf Annehmen: */}
+      <AcceptMandateDialog 
+        onAccept={() => {
+          // 1. Consent einholen (Provisionsvereinbarung)
+          // 2. status = accepted
+          // 3. future_room_cases INSERT
+          // 4. System-Mail
+        }}
+      />
+    </div>
+  );
+}
+```
+
+### 5.4 Datenbank-Änderungen
+
+**tile_catalog UPDATE (MOD-11):**
 ```sql
--- Lösche alle storage_nodes die NICHT "Posteingang" oder "Bonitätsunterlagen" heißen
--- und keine property_id haben (also die alten ZL002-ZL009 Ordner)
-DELETE FROM storage_nodes 
-WHERE tenant_id = 'e808a01b-728e-4ac3-88fe-6edeeae69d6e'
-  AND name NOT IN ('Posteingang', 'Bonitätsunterlagen')
-  AND property_id IS NULL
-  AND unit_id IS NULL;
+UPDATE tile_catalog SET
+  flowchart_mermaid = 'graph TD
+    A[Mandat delegiert] --> B[Manager-Inbox]
+    B --> C{Annehmen?}
+    C -->|Ja| D[Provisions-Consent]
+    D --> E[Case erzeugen]
+    E --> F[Selbstauskunft prüfen]
+    F --> G[Datenraum prüfen]
+    G --> H{Bereit?}
+    H -->|Ja| I[Bank wählen]
+    I --> J[Einreichen]
+    J --> K[Status tracken]
+    H -->|Nein| L[Nachfordern]
+    L --> F
+    C -->|Nein| M[Ablehnen]',
+  sub_tiles = '[
+    {"route": "/portal/finanzierungsmanager", "title": "Mandate"},
+    {"route": "/portal/finanzierungsmanager/bearbeitung", "title": "Bearbeitung"},
+    {"route": "/portal/finanzierungsmanager/einreichen", "title": "Einreichen"},
+    {"route": "/portal/finanzierungsmanager/status", "title": "Status"}
+  ]'::jsonb
+WHERE tile_code = 'MOD-11';
 ```
 
-**Akzeptanzkriterium:** Nach Bereinigung nur noch 2 System-Nodes pro Tenant.
-
-#### Task B-02: Duplikat-Trigger bereinigen
-
+**tile_catalog UPDATE (MOD-07):**
 ```sql
--- Entferne den alten property_folder_structure Trigger
-DROP TRIGGER IF EXISTS property_folder_structure ON properties;
--- Behalte nur create_property_folder_trigger
+UPDATE tile_catalog SET
+  sub_tiles = '[
+    {"route": "/portal/finanzierung", "title": "Selbstauskunft"},
+    {"route": "/portal/finanzierung/neu", "title": "Neue Finanzierung"},
+    {"route": "/portal/finanzierung/kalkulation", "title": "Kalkulation & Objekt"},
+    {"route": "/portal/finanzierung/status", "title": "Status"}
+  ]'::jsonb
+WHERE tile_code = 'MOD-07';
 ```
 
-**Akzeptanzkriterium:** Nur ein Folder-Trigger auf properties.
+**tile_api_internal PURGE + INSERT (MOD-11):**
+```sql
+DELETE FROM tile_api_internal WHERE tile_code = 'MOD-11';
 
----
-
-### PHASE 1: STORAGE BLUEPRINT IMPLEMENTIERUNG
-
-#### Task S-01: System-Nodes Erweitern
-
-Die MOD-03 Spec definiert 8 System-Nodes. Aktuell haben wir nur 2. Ergänzen:
-
-| Node | Zweck | Auto-Create |
-|------|-------|-------------|
-| Posteingang | Uploads landen hier | ✅ Existiert |
-| Bonitätsunterlagen | MOD-07 Selbstauskunft | ✅ Existiert |
-| Immobilien | Container für Property-Ordner | ❌ Fehlt |
-| Portfolio-Unterlagen | Übergreifende Dokumente | ❌ Fehlt |
-| Finanzierung | Finance-Cases | ❌ Fehlt |
-| Sonstiges | Catch-all | ❌ Fehlt |
-| Needs-Review | Sortier-Queue | ❌ Fehlt |
-| Archiv | Gelöschte Dokumente | ❌ Fehlt |
-
-**Fix:** Migration erstellen die fehlende System-Nodes für alle Tenants erstellt.
-
-#### Task S-02: Property-Folder Blueprint
-
-Wenn eine Property erstellt wird, muss folgende Struktur entstehen:
-
-```text
-{Code} - {Adresse}/
-├── 00_Projektdokumentation
-├── 01_Exposé Ankauf
-├── 02_Exposé Sonstiges
-├── 03_Grundbuchauszug
-├── 04_Teilungserklärung
-├── 05_Grundriss
-├── 06_Kurzgutachten
-├── 07_Kaufvertrag
-├── 08_Mietvertrag
-├── 09_Rechnungen
-├── 10_Wirtschaftsplan Abrechnungen Protokolle
-├── 11_Fotos
-├── 12_Energieausweis
-├── 13_Wohngebäudeversicherung
-├── 14_Sonstiges
-├── 15_Darlehen und Finanzierung
-├── 16_Sanierung
-└── 17_Grundsteuer
+INSERT INTO tile_api_internal (tile_code, api_id, endpoint, method, auth_roles, description) VALUES
+('MOD-11', 'API-1101', '/future_room_cases', 'GET', ARRAY['finance_manager'], 'Liste der angenommenen Cases'),
+('MOD-11', 'API-1102', '/future_room_cases', 'POST', ARRAY['finance_manager'], 'Case erstellen bei Acceptance'),
+('MOD-11', 'API-1103', '/future_room_cases/:id', 'PATCH', ARRAY['finance_manager'], 'Case-Status aktualisieren'),
+('MOD-11', 'API-1104', '/finance_mandates', 'GET', ARRAY['finance_manager'], 'Delegierte Mandate abrufen'),
+('MOD-11', 'API-1105', '/finance_mandates/:id', 'PATCH', ARRAY['finance_manager'], 'Mandat annehmen'),
+('MOD-11', 'API-1106', '/applicant_profiles/:id', 'GET', ARRAY['finance_manager'], 'Selbstauskunft lesen'),
+('MOD-11', 'API-1107', '/applicant_profiles/:id', 'PATCH', ARRAY['finance_manager'], 'Selbstauskunft nachpflegen'),
+('MOD-11', 'API-1108', '/finance_bank_contacts', 'GET', ARRAY['finance_manager'], 'Bankkontakte abrufen'),
+('MOD-11', 'API-1109', '/finance_requests/:id', 'GET', ARRAY['finance_manager'], 'Request-Daten lesen');
 ```
 
-**Status:** ✅ Trigger existiert bereits und ist korrekt konfiguriert.
+**tile_changelog PURGE + INSERT (MOD-11):**
+```sql
+DELETE FROM tile_changelog WHERE tile_code = 'MOD-11';
 
-#### Task S-03: Finance-Request Folder Blueprint
-
-Wenn ein Finance-Request erstellt wird:
-
-```text
-Bonitätsunterlagen/
-└── {Case-Name}/
-    ├── Privat/
-    │   ├── Ausweisdokumente
-    │   ├── Einkommensnachweise
-    │   ├── Steuerbescheide
-    │   └── Kontoauszüge
-    └── Firma/ (wenn relevant)
-        ├── Handelsregister
-        ├── BWA
-        └── Jahresabschlüsse
+INSERT INTO tile_changelog (tile_code, version, release_date, summary, changes) VALUES
+('MOD-11', '1.0.0', '2026-01-28', 'Initial Release: Finanzierungsmanager', 
+  '["Mandate Inbox für delegierte Anfragen", "Provisions-Consent bei Annahme", "Selbstauskunft-Bearbeitung", "Bank-Einreichung per E-Mail/Plattform", "Status-Spiegelung"]'::jsonb);
 ```
 
-**Status:** ✅ Trigger existiert bereits (`trg_create_finance_request_folders`).
+**Migration MIGRATE-FIN-001 (VORBEREITEN, NICHT AUSFÜHREN):**
+```sql
+-- owner_context_id zu applicant_profiles hinzufügen
+ALTER TABLE applicant_profiles 
+ADD COLUMN owner_context_id uuid REFERENCES owner_contexts(id);
 
----
+-- owner_context_id zu finance_requests hinzufügen
+ALTER TABLE finance_requests 
+ADD COLUMN owner_context_id uuid REFERENCES owner_contexts(id);
 
-### PHASE 2: MODUL-REPARATUREN
+-- Index für Performance
+CREATE INDEX idx_applicant_profiles_owner_context 
+ON applicant_profiles(owner_context_id);
 
-#### MOD-04 Immobilien — Status: ⚠️ BENÖTIGT TESTDATEN
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 4 Sub-Tiles konfiguriert |
-| PortfolioTab | ⚠️ Leer | Benötigt Properties |
-| PropertyDetail | ✅ OK | Code vorhanden |
-| PropertyForm | ✅ OK | Code vorhanden |
-| DatenraumTab | ✅ OK | Nutzt storage_nodes korrekt |
-
-**Blocker:** Keine Testdaten. Nach Excel-Import funktional.
-
-#### MOD-05 MSV — Status: ⚠️ BENÖTIGT TESTDATEN
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 4 Sub-Tiles |
-| ObjekteTab | ⚠️ Leer | Benötigt Units mit Leases |
-| MieteingangTab | ⚠️ Leer | Benötigt Payment-Daten |
-| VermietungTab | ✅ OK | Wizard vorhanden |
-
-**Blocker:** Keine Units, keine Leases.
-
-#### MOD-06 Verkauf — Status: ⚠️ BENÖTIGT TESTDATEN
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 4 Sub-Tiles via wildcard |
-| ListingsTab | ⚠️ Leer | Benötigt sale_enabled Properties |
-| VorgaengeTab | ⚠️ Leer | Benötigt Transaktionen |
-
-**Blocker:** Keine Properties mit sale_enabled=true.
-
-#### MOD-07 Finanzierung — Status: ✅ REPARIERT
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 4 Sub-Tiles (Dashboard, Fälle, Dokumente, Einstellungen) |
-| DashboardTab | ✅ Neu | KPIs und Quick Actions |
-| FaelleTab | ✅ Refactored | List + Detail |
-| SelbstauskunftForm | ✅ OK | 1100+ Zeilen, vollständig |
-| DocumentUploadSection | ✅ OK | DOCUMENT_CATEGORIES definiert |
-
-**Testbar nach:** Property erstellt, Finance-Request angelegt.
-
-#### MOD-08 Investments — Status: ❌ NICHT IMPLEMENTIERT
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ⚠️ Placeholder | Nur leere Tabs |
-| InvestmentEngine | ❌ Fehlt | Edge Function existiert, UI fehlt |
-| FavoritenSync | ❌ Fehlt | Zone 3 → Zone 2 Flow |
-
-**Scope:** Phase 2 - Nach Basis-Modulen.
-
-#### MOD-09 Vertriebspartner — Status: ⚠️ BENÖTIGT PARTNER-ORGANISATION
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 5 Sub-Tiles via wildcard |
-| KatalogTab | ⚠️ Leer | Benötigt veröffentlichte Listings |
-| PipelineTab | ⚠️ Leer | Benötigt Partner-Deals |
-
-**Blocker:** Keine Partner-Organisation, keine Listings.
-
-#### MOD-10 Leads — Status: ❌ NICHT IMPLEMENTIERT
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ⚠️ Placeholder | Nur leere Tabs |
-| LeadInbox | ❌ Fehlt | Zone 3 Forms fehlen |
-
-**Scope:** Phase 2.
-
-#### MOD-11 Finanzierungsmanager — Status: ✅ KORREKT
-
-| Komponente | Status | Aktion |
-|------------|--------|--------|
-| Routes | ✅ OK | 4 Sub-Tiles mit Tabs |
-| CaseDetailTab | ✅ OK | Mandate-Verarbeitung |
-| SubmitToBankTab | ✅ OK | Bank-Kontakt Auswahl |
-
-**Keine Reparatur nötig.**
-
----
-
-## 5) INTEGRATION REGISTRY — API-ZUORDNUNG
-
-### Interne APIs (tile_api_internal)
-
-| Tile | Endpoint | Status |
-|------|----------|--------|
-| MOD-01 | /profiles, /contacts, /organizations | ✅ Dokumentiert |
-| MOD-02 | sot-letter-generate, /calendar_events | ✅ Dokumentiert |
-| MOD-03 | sot-dms-upload-url, sot-dms-download-url, sot-document-parser | ✅ Dokumentiert |
-| MOD-04 | sot-property-crud, sot-expose-description, sot-excel-ai-import | ✅ Dokumentiert |
-| MOD-05 | sot-msv-reminder-check, sot-msv-rent-report, sot-listing-publish | ✅ Dokumentiert |
-| MOD-06 | /listings, /inquiries, /reservations | ✅ Dokumentiert |
-| MOD-07 | /finance_requests, /applicant_profiles, sot-finance-export | ✅ Dokumentiert |
-| MOD-08 | sot-investment-engine | ✅ Dokumentiert |
-| MOD-09 | /partner_pipeline, /commission_approvals | ✅ Dokumentiert |
-| MOD-10 | sot-lead-inbox | ✅ Dokumentiert |
-| MOD-11 | /finance_mandates, /future_room_cases | ✅ Dokumentiert |
-
-### Externe APIs (tile_api_external)
-
-| Provider | Tile | Zweck | Status |
-|----------|------|-------|--------|
-| RESEND | MOD-02 | E-Mail-Versand | ✅ Registriert |
-| GMAIL_OAUTH | MOD-02 | Gmail-Integration | ✅ Registriert |
-| MICROSOFT_OAUTH | MOD-02 | Outlook-Integration | ✅ Registriert |
-| CAYA | MOD-03 | Digitaler Posteingang | ✅ Registriert |
-| SPRENGNETTER | MOD-04 | Immobilienbewertung | ✅ Registriert |
-| GOOGLE_MAPS | MOD-04 | Kartenansicht | ✅ Registriert |
-| GOOGLE_PLACES | MOD-04 | Adress-Autocomplete | ✅ Registriert |
-| SCOUT24 | MOD-05/06 | Portal-Publishing | ✅ Registriert |
-| FUTURE_ROOM | MOD-07/11 | Bankenvermittlung | ✅ Registriert |
-| APIFY | MOD-08 | Portal-Scraping | ✅ Registriert |
-
-**Bewertung:** ✅ Alle APIs korrekt zugeordnet und in Zone 1 Integrations sichtbar.
-
----
-
-## 6) TESTDATEN-STRATEGIE
-
-### Option A: Excel Re-Import (Empfohlen)
-
-1. Navigiere zu `/admin/tiles`
-2. Öffne "Testdaten" Tab
-3. Lade die Portfolio-Excel erneut hoch (8 Properties)
-4. AI-Parser erkennt Spalten-Mapping
-5. Preview prüfen
-6. Import starten
-7. Trigger erstellt automatisch Storage-Ordner
-
-**Voraussetzung:** Orphan-Nodes zuerst bereinigen (Task B-01).
-
-### Option B: Manuell Property erstellen
-
-1. Navigiere zu `/portal/immobilien/portfolio`
-2. Klick "Neue Immobilie"
-3. Formular ausfüllen
-4. Speichern → Trigger erstellt Ordner
-
-**Vorteil:** Sofort testbar ohne Excel.
-**Nachteil:** Nur 1 Property, kein vollständiges Portfolio.
-
----
-
-## 7) WORKFLOW-TESTS (Nach Testdaten-Import)
-
-### Test-Flow A: Immobilienakte (MOD-04)
-
-```text
-1. /portal/immobilien/portfolio → Property wählen
-2. Property Detail öffnen → Tabs prüfen
-3. Datenraum-Tab → Ordner-Struktur sichtbar?
-4. Dokument hochladen → erscheint im richtigen Ordner?
-```
-
-### Test-Flow B: Vermietung (MOD-04 → MOD-05)
-
-```text
-1. Property hat Units
-2. /portal/msv/objekte → Units sichtbar?
-3. Mietvertrag erstellen → Lease in DB?
-4. Mieteingang tracken → Payment-Buchung?
-```
-
-### Test-Flow C: Finanzierung (MOD-04 → MOD-07 → MOD-11)
-
-```text
-1. /portal/finanzierung → Neuer Fall
-2. Property auswählen
-3. Selbstauskunft ausfüllen
-4. Dokumente verlinken
-5. Einreichen → Mandat in Zone 1?
-6. /portal/finanzierungsmanager → Case sichtbar?
-```
-
-### Test-Flow D: Verkauf (MOD-04 → MOD-06 → Zone 3)
-
-```text
-1. Property sale_enabled = true
-2. /portal/verkauf → Listing erstellen
-3. Exposé generieren
-4. Partner freigeben
-5. /kaufy/immobilien → Listing sichtbar?
+CREATE INDEX idx_finance_requests_owner_context 
+ON finance_requests(owner_context_id);
 ```
 
 ---
 
-## 8) ZUSAMMENFASSUNG — ACTION ITEMS
+## TEIL 6: DOKUMENTATION
 
-### Sofort (P0)
+### 6.1 Neue Spec-Datei: `docs/modules/MOD-11_FINANZIERUNGSMANAGER.md`
 
-| # | Task | Owner | Zeit |
-|---|------|-------|------|
-| 1 | Orphan storage_nodes löschen | Migration | 5 min |
-| 2 | Duplikat-Trigger entfernen | Migration | 2 min |
-| 3 | System-Nodes erweitern | Migration | 10 min |
+```markdown
+# MOD-11 — FINANZIERUNGSMANAGER
 
-### Kurzfristig (P1)
+**Version:** v1.0.0  
+**Status:** COMPLETE SPEC  
+**Datum:** 2026-01-28  
+**Zone:** 2 (User Portal)  
+**Typ:** SPEZIALISTENMODUL (für Rolle finance_manager)  
+**Route-Prefix:** `/portal/finanzierungsmanager`  
+**API-Range:** API-1100 bis API-1199  
 
-| # | Task | Owner | Zeit |
-|---|------|-------|------|
-| 4 | Testdaten via Excel importieren | UI | 15 min |
-| 5 | Workflow MOD-04 → MOD-05 testen | Manual | 20 min |
-| 6 | Workflow MOD-07 → MOD-11 testen | Manual | 20 min |
+## 1) MODULDEFINITION
 
-### Mittelfristig (P2)
+### 1.1 Zweck
+MOD-11 ist das Arbeitsmodul für Finanzierungsmanager. Nach Delegation eines 
+Mandats durch Zone-1 Admin übernimmt der Manager die Bearbeitung, prüft 
+Unterlagen, und reicht bei Banken ein.
 
-| # | Task | Owner | Zeit |
-|---|------|-------|------|
-| 7 | MOD-08 Investment Engine UI | Dev | 4h |
-| 8 | MOD-10 Lead Inbox implementieren | Dev | 4h |
-| 9 | Zone 3 → Zone 2 Favoriten-Sync | Dev | 2h |
+### 1.2 Zielnutzer / Rollen
+| Rolle | Zugang | Beschreibung |
+|-------|--------|--------------|
+| `finance_manager` | Full | Bearbeitet delegierte Mandate |
+
+### 1.3 Inputs
+- `finance_mandates` mit status=delegated + assigned_manager_id=auth.uid()
+- `finance_requests` (read)
+- `applicant_profiles` (read/write)
+- `finance_bank_contacts` (read)
+
+### 1.4 Outputs
+- `future_room_cases` (create/update)
+- Bank-Einreichung (E-Mail/Plattform)
+- Status-Updates → Spiegelung an Zone-1 + MOD-07
+
+## 2) SOURCE OF TRUTH
+- **Phase 1-2 (draft → delegated):** Zone-1 ist SoT
+- **Phase 3 (accepted → closed):** MOD-11 ist SoT
+
+## 3) SUB-TILES (4 Menüpunkte)
+1. Mandate — Inbox + Annahme + Consent
+2. Bearbeitung — Case-Detail + Selbstauskunft + Datenraum
+3. Einreichen — Bank-Auswahl + E-Mail/Plattform
+4. Status — Timeline + Rückmeldungen
+```
+
+### 6.2 A3_Zone2_ModuleStructure.md Update
+
+Ergänzen:
+```markdown
+## Module 11: Finanzierungsmanager (Spezialistenmodul)
+
+**Typ:** Addon für Rolle `finance_manager`
+**Base Route:** `/portal/finanzierungsmanager`
+**Sub-Tiles:** Mandate, Bearbeitung, Einreichen, Status
+**Abhängig von:** Zone-1 FutureRoom (Mandate-Delegation), MOD-07 (Quelldaten)
+```
 
 ---
 
-## 9) GO/NO-GO BEWERTUNG
+## TEIL 7: NO-TOUCH BESTÄTIGUNG
 
-**GO** ✅ — Das System ist nach diesem Plan wieder testfähig.
+Die folgenden Bereiche werden **NICHT** angefasst:
 
-**Begründung:**
-
-1. **Architektur ist solide** — Alle Trigger, Tabellen, RLS existieren
-2. **Dokumentation ist vollständig** — Tile Catalog, APIs, Changelogs vorhanden
-3. **Problem ist isoliert** — Nur Daten-Orphans und fehlende Testdaten
-4. **Fix ist minimal** — 3 SQL-Statements + 1 Excel-Upload
-
-**Risiken:**
-
-| Risiko | Wahrscheinlichkeit | Mitigation |
-|--------|---------------------|------------|
-| Excel-Parser-Bug | Gering | Preview vor Import prüfen |
-| Trigger-Fehler | Gering | Nach Import Ordner-Struktur prüfen |
-| RLS-Blocker | Mittel | Dev-Mode Bypass bereits aktiv |
+- ❌ MOD-01 Stammdaten
+- ❌ MOD-02 KI Office
+- ❌ MOD-03 DMS (nur Nutzung bestehender APIs)
+- ❌ MOD-04 Immobilien (nur Lesen von Kontexten)
+- ❌ MOD-05 MSV
+- ❌ MOD-06 Verkauf
+- ❌ MOD-08 Investments (nur Lesen von Favoriten)
+- ❌ MOD-09 Vertriebspartner
+- ❌ MOD-10 Leads
+- ❌ Zone-3 Websites (Kaufy, Miety, SoT, FutureRoom.io)
+- ❌ Zone-1 Admin (außer /admin/futureroom)
 
 ---
 
-## 10) NÄCHSTER SCHRITT
+## ZUSAMMENFASSUNG
 
-**Empfehlung:** Starte mit der Bereinigung (Task B-01, B-02) und teste dann den manuellen Property-Create-Flow, bevor du das Excel hochlädst. So stellst du sicher, dass die Trigger korrekt funktionieren.
+### Sofort umsetzbar (P0):
+1. MOD-11 Spec-Datei erstellen
+2. tile_catalog/api_internal/changelog für MOD-11 korrigieren
+3. MOD-07 Sub-Tiles umstellen + Legacy Redirects
+4. owner_context_id Migration vorbereiten
 
+### Nach Freigabe (P1):
+1. Owner-Kontext Picker in MOD-07
+2. Manager-Picker in Zone-1
+3. MOD-11 Screen 1 Umbau (Mandate Inbox + Consent)
+4. Status-Spiegel in MOD-07
+
+### E2E Testflow nach Implementierung:
+1. MOD-04: Eigentümer-Kontext anlegen
+2. MOD-07: Selbstauskunft ausfüllen → Neue Finanzierung → Objekt wählen → Einreichen
+3. Zone-1: Mandat prüfen → Manager zuweisen
+4. MOD-11: Mandat annehmen → Bearbeiten → Bei Bank einreichen
+5. Prüfen: Status-Spiegel in MOD-07 + Zone-1
