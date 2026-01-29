@@ -131,7 +131,7 @@ export default function PropertyForm() {
       if (insertError) throw insertError;
 
       toast.success('Immobilie erfolgreich angelegt');
-      navigate(`/portfolio/${data.id}`);
+      navigate(`/portal/immobilien/${data.id}`);
     } catch (err: any) {
       setError(err.message || 'Fehler beim Speichern');
     }
@@ -150,7 +150,7 @@ export default function PropertyForm() {
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/portfolio">
+          <Link to="/portal/immobilien/portfolio">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -462,7 +462,7 @@ export default function PropertyForm() {
         {/* Submit */}
         <div className="flex justify-end gap-2">
           <Button variant="outline" asChild>
-            <Link to="/portfolio">Abbrechen</Link>
+            <Link to="/portal/immobilien/portfolio">Abbrechen</Link>
           </Button>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

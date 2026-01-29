@@ -192,7 +192,7 @@ export default function PropertyList() {
             <p className="text-muted-foreground">Übersicht aller Immobilien</p>
           </div>
           <Button asChild className="no-print">
-            <Link to="/portfolio/new">
+            <Link to="/portal/immobilien/neu">
               <Plus className="mr-2 h-4 w-4" />
               Neue Immobilie
             </Link>
@@ -266,7 +266,7 @@ export default function PropertyList() {
                 <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
                 <p className="mt-2 text-muted-foreground">Keine Immobilien gefunden</p>
                 <Button asChild className="mt-4 no-print" variant="outline">
-                  <Link to="/portfolio/new">Erste Immobilie anlegen</Link>
+                  <Link to="/portal/immobilien/neu">Erste Immobilie anlegen</Link>
                 </Button>
               </div>
             ) : (
@@ -321,7 +321,7 @@ export default function PropertyList() {
                           </TableCell>
                           <TableCell className="text-right no-print">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link to={`/portfolio/${prop.id}`}>
+                              <Link to={`/portal/immobilien/${prop.id}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
