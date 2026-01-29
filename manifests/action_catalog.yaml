@@ -1,0 +1,539 @@
+# ================================================================================
+# ACTION CATALOG — UI Actions & Workflow Triggers
+# ================================================================================
+#
+# Version: 1.0.0
+# Generiert: 2026-01-29
+# Status: DRAFT
+#
+# ZWECK:
+# Definiert alle erlaubten UI-Aktionen und ihre Verknüpfung zu:
+# - Navigation (route)
+# - Dialoge (dialog)
+# - API-Calls (api)
+# - Camunda Workflows (workflow + camunda_task)
+#
+# REGELN:
+# 1. Keine Action ohne Eintrag hier
+# 2. Workflow-Actions MÜSSEN camunda_task referenzieren
+# 3. Berechtigungen werden zur Laufzeit geprüft
+#
+# ================================================================================
+
+version: "1.0.0"
+generated: "2026-01-29"
+
+# ==============================================================================
+# MOD-01: STAMMDATEN ACTIONS
+# ==============================================================================
+stammdaten:
+  - id: "PROFILE_UPDATE"
+    label: "Profil aktualisieren"
+    type: "api"
+    endpoint: "/stammdaten/profile"
+    method: "PATCH"
+    requires_role: ["*"]
+    
+  - id: "AVATAR_UPLOAD"
+    label: "Avatar hochladen"
+    type: "api"
+    endpoint: "/stammdaten/profile/avatar"
+    method: "POST"
+    requires_role: ["*"]
+    
+  - id: "MEMBER_INVITE"
+    label: "Teammitglied einladen"
+    type: "dialog"
+    dialog: "InviteMemberDialog"
+    requires_role: ["org_admin"]
+    
+  - id: "MEMBER_REMOVE"
+    label: "Mitglied entfernen"
+    type: "api"
+    endpoint: "/stammdaten/members/:id"
+    method: "DELETE"
+    requires_role: ["org_admin"]
+    requires_confirmation: true
+    
+  - id: "PASSWORD_CHANGE"
+    label: "Passwort ändern"
+    type: "dialog"
+    dialog: "ChangePasswordDialog"
+    requires_role: ["*"]
+    
+  - id: "PLAN_UPGRADE"
+    label: "Plan upgraden"
+    type: "external"
+    url: "stripe_customer_portal"
+    requires_role: ["org_admin"]
+
+# ==============================================================================
+# MOD-02: KI OFFICE ACTIONS
+# ==============================================================================
+office:
+  - id: "EMAIL_COMPOSE"
+    label: "E-Mail verfassen"
+    type: "dialog"
+    dialog: "ComposeEmailDialog"
+    requires_role: ["*"]
+    
+  - id: "LETTER_GENERATE"
+    label: "Brief generieren"
+    type: "workflow"
+    workflow: "WF-LETTER"
+    camunda_task: "generate_letter"
+    requires_role: ["*"]
+    
+  - id: "CONTACT_CREATE"
+    label: "Kontakt anlegen"
+    type: "dialog"
+    dialog: "CreateContactDialog"
+    requires_role: ["*"]
+    
+  - id: "EVENT_CREATE"
+    label: "Termin erstellen"
+    type: "dialog"
+    dialog: "CreateEventDialog"
+    requires_role: ["*"]
+
+# ==============================================================================
+# MOD-03: DMS ACTIONS
+# ==============================================================================
+dms:
+  - id: "DOCUMENT_UPLOAD"
+    label: "Dokument hochladen"
+    type: "api"
+    endpoint: "/dms/upload"
+    method: "POST"
+    requires_role: ["*"]
+    
+  - id: "DOCUMENT_CLASSIFY"
+    label: "Dokument klassifizieren"
+    type: "api"
+    endpoint: "/dms/classify/:id"
+    method: "POST"
+    requires_role: ["*"]
+    
+  - id: "DOCUMENT_ASSIGN"
+    label: "Dokument zuordnen"
+    type: "dialog"
+    dialog: "AssignDocumentDialog"
+    requires_role: ["*"]
+    
+  - id: "EXTRACTION_START"
+    label: "Extraktion starten"
+    type: "api"
+    endpoint: "/dms/extract/:id"
+    method: "POST"
+    requires_consent: "EXTRACTION_COST"
+    cost_estimate: true
+
+# ==============================================================================
+# MOD-04: IMMOBILIEN ACTIONS
+# ==============================================================================
+immobilien:
+  - id: "PROPERTY_CREATE"
+    label: "Neue Immobilie anlegen"
+    type: "route"
+    route: "/portal/immobilien/neu"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "PROPERTY_EDIT"
+    label: "Immobilie bearbeiten"
+    type: "route"
+    route: "/portal/immobilien/:id/edit"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "PROPERTY_VIEW_DOSSIER"
+    label: "Immobilienakte öffnen"
+    type: "route"
+    route: "/portal/immobilien/:id"
+    requires_role: ["*"]
+    
+  - id: "CONTEXT_CREATE"
+    label: "Vermieter-Kontext erstellen"
+    type: "dialog"
+    dialog: "CreateContextDialog"
+    requires_role: ["org_admin"]
+    
+  - id: "SANIERUNG_START"
+    label: "Sanierungsprojekt starten"
+    type: "workflow"
+    workflow: "WF-SANIERUNG"
+    camunda_task: "start_project"
+    requires_role: ["org_admin"]
+    
+  - id: "SANIERUNG_AUSSCHREIBUNG"
+    label: "Ausschreibung starten"
+    type: "workflow"
+    workflow: "WF-SANIERUNG"
+    camunda_task: "start_tender"
+    requires_role: ["org_admin", "internal_ops"]
+    inputs:
+      - property_id
+      - project_name
+      - selected_trades
+    
+  - id: "SANIERUNG_ANGEBOT_VERGLEICH"
+    label: "Angebote vergleichen"
+    type: "workflow"
+    workflow: "WF-SANIERUNG"
+    camunda_task: "compare_offers"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "SANIERUNG_ZUSCHLAG"
+    label: "Zuschlag erteilen"
+    type: "workflow"
+    workflow: "WF-SANIERUNG"
+    camunda_task: "award_contract"
+    requires_role: ["org_admin"]
+    requires_confirmation: true
+
+# ==============================================================================
+# MOD-05: MSV ACTIONS
+# ==============================================================================
+msv:
+  - id: "LEASE_CREATE"
+    label: "Mietvertrag anlegen"
+    type: "dialog"
+    dialog: "LeaseFormDialog"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "LEASE_TERMINATE"
+    label: "Mietvertrag kündigen"
+    type: "workflow"
+    workflow: "WF-KUENDIGUNG"
+    camunda_task: "initiate_termination"
+    requires_role: ["org_admin"]
+    
+  - id: "PAYMENT_BOOK"
+    label: "Zahlung buchen"
+    type: "dialog"
+    dialog: "PaymentBookingDialog"
+    requires_role: ["org_admin", "internal_ops"]
+    tier: "premium"
+    
+  - id: "RENTAL_LISTING_CREATE"
+    label: "Mietinserat erstellen"
+    type: "dialog"
+    dialog: "RentalListingWizard"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "RENTAL_PUBLISH"
+    label: "Inserat veröffentlichen"
+    type: "dialog"
+    dialog: "RentalPublishDialog"
+    requires_role: ["org_admin"]
+    external_apis:
+      - "scout24"
+      - "kleinanzeigen"
+    
+  - id: "MAHNUNG_SEND"
+    label: "Mahnung versenden"
+    type: "workflow"
+    workflow: "WF-MAHNUNG"
+    camunda_task: "send_reminder"
+    requires_role: ["org_admin"]
+    automation: true
+    default_trigger_day: 10
+
+# ==============================================================================
+# MOD-06: VERKAUF ACTIONS
+# ==============================================================================
+verkauf:
+  - id: "SALE_ENABLE"
+    label: "Verkauf aktivieren"
+    type: "api"
+    endpoint: "/properties/:id/features"
+    method: "PATCH"
+    payload:
+      sale_enabled: true
+    requires_role: ["org_admin"]
+    requires_consent: "SALES_MANDATE"
+    
+  - id: "LISTING_CREATE"
+    label: "Verkaufsinserat erstellen"
+    type: "workflow"
+    workflow: "WF-VERKAUF"
+    camunda_task: "create_listing"
+    requires_role: ["org_admin"]
+    requires_consent: "SALES_MANDATE"
+    
+  - id: "LISTING_PUBLISH"
+    label: "Inserat veröffentlichen"
+    type: "workflow"
+    workflow: "WF-VERKAUF"
+    camunda_task: "publish_listing"
+    requires_role: ["org_admin"]
+    external_apis:
+      - "scout24"
+      - "kleinanzeigen"
+      - "kaufy"
+    
+  - id: "PARTNER_RELEASE"
+    label: "An Partner freigeben"
+    type: "dialog"
+    dialog: "PartnerReleaseDialog"
+    requires_role: ["org_admin"]
+    
+  - id: "INQUIRY_RESPOND"
+    label: "Anfrage beantworten"
+    type: "workflow"
+    workflow: "WF-VERKAUF"
+    camunda_task: "respond_inquiry"
+    requires_role: ["org_admin", "internal_ops"]
+    
+  - id: "RESERVATION_CREATE"
+    label: "Reservierung erstellen"
+    type: "workflow"
+    workflow: "WF-VERKAUF"
+    camunda_task: "create_reservation"
+    requires_role: ["org_admin"]
+    requires_confirmation: true
+    
+  - id: "TRANSACTION_COMPLETE"
+    label: "Verkauf abschließen"
+    type: "workflow"
+    workflow: "WF-VERKAUF"
+    camunda_task: "complete_transaction"
+    requires_role: ["org_admin"]
+    requires_confirmation: true
+    triggers:
+      - "commission_calculation"
+
+# ==============================================================================
+# MOD-07: FINANZIERUNG ACTIONS
+# ==============================================================================
+finanzierung:
+  - id: "FINANCE_REQUEST_CREATE"
+    label: "Finanzierungsanfrage erstellen"
+    type: "route"
+    route: "/portal/finanzierung/neu"
+    requires_role: ["*"]
+    
+  - id: "SELBSTAUSKUNFT_FILL"
+    label: "Selbstauskunft ausfüllen"
+    type: "dialog"
+    dialog: "SelbstauskunftForm"
+    requires_role: ["*"]
+    
+  - id: "DOCUMENT_UPLOAD_FINANCE"
+    label: "Dokument hochladen"
+    type: "dialog"
+    dialog: "DocumentUploadSection"
+    requires_role: ["*"]
+    
+  - id: "FINANCE_SUBMIT"
+    label: "Zur Finanzierung einreichen"
+    type: "workflow"
+    workflow: "WF-FINANZIERUNG"
+    camunda_task: "submit_request"
+    requires_role: ["*"]
+    requires_consent: "DATA_SHARING"
+    transfers_sot_to: "zone1"
+    
+  - id: "FINANCE_WITHDRAW"
+    label: "Anfrage zurückziehen"
+    type: "api"
+    endpoint: "/finanzierung/:id/withdraw"
+    method: "POST"
+    requires_role: ["*"]
+    requires_confirmation: true
+
+# ==============================================================================
+# MOD-08: INVESTMENTS ACTIONS
+# ==============================================================================
+investments:
+  - id: "SEARCH_EXECUTE"
+    label: "Suche ausführen"
+    type: "api"
+    endpoint: "/investments/search"
+    method: "POST"
+    requires_role: ["*"]
+    
+  - id: "FAVORITE_ADD"
+    label: "Zu Favoriten hinzufügen"
+    type: "api"
+    endpoint: "/investments/favorites"
+    method: "POST"
+    requires_role: ["*"]
+    
+  - id: "FAVORITE_REMOVE"
+    label: "Aus Favoriten entfernen"
+    type: "api"
+    endpoint: "/investments/favorites/:id"
+    method: "DELETE"
+    requires_role: ["*"]
+    
+  - id: "SIMULATION_RUN"
+    label: "Simulation starten"
+    type: "api"
+    endpoint: "/investments/simulate"
+    method: "POST"
+    requires_role: ["*"]
+    uses_edge_function: "sot-investment-engine"
+    
+  - id: "BERATUNG_REQUEST"
+    label: "Beratung anfragen"
+    type: "workflow"
+    workflow: "WF-BERATUNG"
+    camunda_task: "request_consultation"
+    requires_role: ["*"]
+
+# ==============================================================================
+# MOD-09: VERTRIEBSPARTNER ACTIONS
+# ==============================================================================
+vertriebspartner:
+  - id: "KATALOG_BROWSE"
+    label: "Katalog durchsuchen"
+    type: "route"
+    route: "/portal/vertriebspartner/katalog"
+    requires_role: ["sales_partner"]
+    
+  - id: "OBJECT_SELECT"
+    label: "Objekt auswählen"
+    type: "api"
+    endpoint: "/partner/selection"
+    method: "POST"
+    requires_role: ["sales_partner"]
+    
+  - id: "BERATUNG_START"
+    label: "Beratung starten"
+    type: "workflow"
+    workflow: "WF-BERATUNG"
+    camunda_task: "start_session"
+    requires_role: ["sales_partner"]
+    uses_edge_function: "sot-investment-engine"
+    
+  - id: "CUSTOMER_CREATE"
+    label: "Kundenprojekt anlegen"
+    type: "dialog"
+    dialog: "CreateCustomerProjectDialog"
+    requires_role: ["sales_partner"]
+    
+  - id: "DEAL_CREATE"
+    label: "Deal erstellen"
+    type: "workflow"
+    workflow: "WF-DEAL"
+    camunda_task: "create_deal"
+    requires_role: ["sales_partner"]
+    requires_consent: "COMMISSION_AGREEMENT"
+
+# ==============================================================================
+# MOD-10: LEADGENERIERUNG ACTIONS
+# ==============================================================================
+leads:
+  - id: "LEAD_CLAIM"
+    label: "Lead übernehmen"
+    type: "api"
+    endpoint: "/leads/:id/claim"
+    method: "POST"
+    requires_role: ["sales_partner"]
+    
+  - id: "LEAD_QUALIFY"
+    label: "Lead qualifizieren"
+    type: "dialog"
+    dialog: "QualifyLeadDialog"
+    requires_role: ["sales_partner"]
+    
+  - id: "LEAD_CONVERT"
+    label: "Lead konvertieren"
+    type: "workflow"
+    workflow: "WF-LEAD"
+    camunda_task: "convert_to_customer"
+    requires_role: ["sales_partner"]
+    
+  - id: "CAMPAIGN_CREATE"
+    label: "Kampagne erstellen"
+    type: "dialog"
+    dialog: "CreateCampaignDialog"
+    requires_role: ["org_admin"]
+    tier: "premium"
+
+# ==============================================================================
+# MOD-11: FINANZIERUNGSMANAGER ACTIONS
+# ==============================================================================
+finanzierungsmanager:
+  - id: "MANDATE_ACCEPT"
+    label: "Mandat annehmen"
+    type: "workflow"
+    workflow: "WF-FINANZIERUNG"
+    camunda_task: "accept_mandate"
+    requires_role: ["finance_manager"]
+    transfers_sot_to: "zone2_mod11"
+    
+  - id: "MANDATE_REJECT"
+    label: "Mandat ablehnen"
+    type: "workflow"
+    workflow: "WF-FINANZIERUNG"
+    camunda_task: "reject_mandate"
+    requires_role: ["finance_manager"]
+    
+  - id: "CASE_EDIT"
+    label: "Fall bearbeiten"
+    type: "route"
+    route: "/portal/finanzierungsmanager/selbstauskunft/:caseId"
+    requires_role: ["finance_manager"]
+    
+  - id: "BANK_SUBMIT"
+    label: "An Bank einreichen"
+    type: "workflow"
+    workflow: "WF-FINANZIERUNG"
+    camunda_task: "submit_to_bank"
+    requires_role: ["finance_manager"]
+    
+  - id: "BANK_RESPONSE_LOG"
+    label: "Bank-Antwort erfassen"
+    type: "workflow"
+    workflow: "WF-FINANZIERUNG"
+    camunda_task: "log_bank_response"
+    requires_role: ["finance_manager"]
+
+# ==============================================================================
+# WORKFLOW DEFINITIONS (Reference)
+# ==============================================================================
+workflows:
+  WF-SANIERUNG:
+    name: "Sanierung Ausschreibung"
+    bpmn_file: "sanierung-ausschreibung.bpmn"
+    correlation_key: "tender_id"
+    
+  WF-VERKAUF:
+    name: "Verkaufsprozess"
+    bpmn_file: "verkauf-pipeline.bpmn"
+    correlation_key: "listing_id"
+    
+  WF-FINANZIERUNG:
+    name: "Finanzierungs-Workflow"
+    bpmn_file: "finanzierung-workflow.bpmn"
+    correlation_key: "finance_request_id"
+    
+  WF-KUENDIGUNG:
+    name: "Kündigungsprozess"
+    bpmn_file: "kuendigung-prozess.bpmn"
+    correlation_key: "lease_id"
+    
+  WF-MAHNUNG:
+    name: "Mahnwesen"
+    bpmn_file: "mahnung-workflow.bpmn"
+    correlation_key: "tenancy_id"
+    
+  WF-BERATUNG:
+    name: "Investment-Beratung"
+    bpmn_file: "beratung-session.bpmn"
+    correlation_key: "session_id"
+    
+  WF-DEAL:
+    name: "Deal-Pipeline"
+    bpmn_file: "deal-pipeline.bpmn"
+    correlation_key: "deal_id"
+    
+  WF-LEAD:
+    name: "Lead-Lifecycle"
+    bpmn_file: "lead-lifecycle.bpmn"
+    correlation_key: "lead_id"
+    
+  WF-LETTER:
+    name: "Brief-Generierung"
+    bpmn_file: "letter-generation.bpmn"
+    correlation_key: "letter_id"

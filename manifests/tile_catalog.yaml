@@ -1,0 +1,418 @@
+# ================================================================================
+# TILE CATALOG — Visibility & Activation Layer
+# ================================================================================
+#
+# Version: 1.0.0
+# Generiert: 2026-01-29
+# Status: DRAFT
+#
+# ZWECK:
+# Dieses Manifest definiert die Tile-Struktur für die Portal-Navigation.
+# Es arbeitet ZUSÄTZLICH zur DB-Tabelle tile_catalog (Hybrid-Modus).
+#
+# REGELN:
+# 1. Jedes Modul hat EXAKT 4 Sub-Tiles (4-Tile-Pattern)
+# 2. Icons müssen aus lucide-react sein
+# 3. Routes müssen in routes_manifest.yaml existieren
+#
+# ================================================================================
+
+version: "1.0.0"
+generated: "2026-01-29"
+
+tiles:
+  # ============================================================================
+  # MOD-01: STAMMDATEN
+  # ============================================================================
+  MOD-01:
+    code: "MOD-01"
+    title: "Stammdaten"
+    icon: "Users"
+    main_route: "/portal/stammdaten"
+    display_order: 1
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+        - subpartner
+    
+    sub_tiles:
+      - title: "Profil"
+        route: "/portal/stammdaten/profil"
+        icon: "User"
+        
+      - title: "Firma"
+        route: "/portal/stammdaten/firma"
+        icon: "Building"
+        
+      - title: "Abrechnung"
+        route: "/portal/stammdaten/abrechnung"
+        icon: "CreditCard"
+        
+      - title: "Sicherheit"
+        route: "/portal/stammdaten/sicherheit"
+        icon: "Shield"
+
+  # ============================================================================
+  # MOD-02: KI OFFICE
+  # ============================================================================
+  MOD-02:
+    code: "MOD-02"
+    title: "KI Office"
+    icon: "Sparkles"
+    main_route: "/portal/office"
+    display_order: 2
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+    
+    sub_tiles:
+      - title: "E-Mail"
+        route: "/portal/office/email"
+        icon: "Mail"
+        
+      - title: "Brief"
+        route: "/portal/office/brief"
+        icon: "FileText"
+        
+      - title: "Kontakte"
+        route: "/portal/office/kontakte"
+        icon: "Users"
+        
+      - title: "Kalender"
+        route: "/portal/office/kalender"
+        icon: "Calendar"
+
+  # ============================================================================
+  # MOD-03: DMS
+  # ============================================================================
+  MOD-03:
+    code: "MOD-03"
+    title: "DMS"
+    icon: "FolderOpen"
+    main_route: "/portal/dms"
+    display_order: 3
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+    
+    sub_tiles:
+      - title: "Storage"
+        route: "/portal/dms/storage"
+        icon: "HardDrive"
+        
+      - title: "Posteingang"
+        route: "/portal/dms/posteingang"
+        icon: "Inbox"
+        
+      - title: "Sortieren"
+        route: "/portal/dms/sortieren"
+        icon: "ArrowUpDown"
+        
+      - title: "Einstellungen"
+        route: "/portal/dms/einstellungen"
+        icon: "Settings"
+
+  # ============================================================================
+  # MOD-04: IMMOBILIEN
+  # ============================================================================
+  MOD-04:
+    code: "MOD-04"
+    title: "Immobilien"
+    icon: "Building2"
+    main_route: "/portal/immobilien"
+    display_order: 4
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Kontexte"
+        route: "/portal/immobilien/kontexte"
+        icon: "FolderTree"
+        description: "Vermieter-Kontexte verwalten"
+        
+      - title: "Portfolio"
+        route: "/portal/immobilien/portfolio"
+        icon: "LayoutGrid"
+        description: "Immobilien-Übersicht"
+        
+      - title: "Sanierung"
+        route: "/portal/immobilien/sanierung"
+        icon: "Hammer"
+        description: "Sanierungsprojekte"
+        
+      - title: "Bewertung"
+        route: "/portal/immobilien/bewertung"
+        icon: "TrendingUp"
+        description: "Wertentwicklung"
+
+  # ============================================================================
+  # MOD-05: MSV (Mietsonderverwaltung)
+  # ============================================================================
+  MOD-05:
+    code: "MOD-05"
+    title: "MSV"
+    icon: "FileText"
+    main_route: "/portal/msv"
+    display_order: 5
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Objekte"
+        route: "/portal/msv/objekte"
+        icon: "Building"
+        tier: "freemium"
+        
+      - title: "Mieteingang"
+        route: "/portal/msv/mieteingang"
+        icon: "Wallet"
+        tier: "premium"
+        cost: "40 Credits/Einheit/Monat"
+        
+      - title: "Vermietung"
+        route: "/portal/msv/vermietung"
+        icon: "Users"
+        tier: "freemium"
+        
+      - title: "Einstellungen"
+        route: "/portal/msv/einstellungen"
+        icon: "Settings"
+        tier: "freemium"
+
+  # ============================================================================
+  # MOD-06: VERKAUF
+  # ============================================================================
+  MOD-06:
+    code: "MOD-06"
+    title: "Verkauf"
+    icon: "Tag"
+    main_route: "/portal/verkauf"
+    display_order: 6
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - client
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Objekte"
+        route: "/portal/verkauf/objekte"
+        icon: "Building2"
+        
+      - title: "Vorgänge"
+        route: "/portal/verkauf/vorgaenge"
+        icon: "GitBranch"
+        
+      - title: "Reporting"
+        route: "/portal/verkauf/reporting"
+        icon: "BarChart"
+        
+      - title: "Einstellungen"
+        route: "/portal/verkauf/einstellungen"
+        icon: "Settings"
+        note: "TODO: Implementieren (ersetzt so-funktionierts)"
+
+  # ============================================================================
+  # MOD-07: FINANZIERUNG
+  # ============================================================================
+  MOD-07:
+    code: "MOD-07"
+    title: "Finanzierung"
+    icon: "Landmark"
+    main_route: "/portal/finanzierung"
+    display_order: 7
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Vorgänge"
+        route: "/portal/finanzierung/vorgaenge"
+        icon: "FileStack"
+        
+      - title: "Readiness"
+        route: "/portal/finanzierung/readiness"
+        icon: "CheckCircle"
+        
+      - title: "Export"
+        route: "/portal/finanzierung/export"
+        icon: "Download"
+        
+      - title: "Partner"
+        route: "/portal/finanzierung/partner"
+        icon: "Handshake"
+
+  # ============================================================================
+  # MOD-08: INVESTMENTS
+  # ============================================================================
+  MOD-08:
+    code: "MOD-08"
+    title: "Investment-Suche"
+    icon: "Search"
+    main_route: "/portal/investments"
+    display_order: 8
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Suche"
+        route: "/portal/investments/suche"
+        icon: "Search"
+        
+      - title: "Favoriten"
+        route: "/portal/investments/favoriten"
+        icon: "Heart"
+        
+      - title: "Mandat"
+        route: "/portal/investments/mandat"
+        icon: "FileSignature"
+        
+      - title: "Simulation"
+        route: "/portal/investments/simulation"
+        icon: "Calculator"
+
+  # ============================================================================
+  # MOD-09: VERTRIEBSPARTNER
+  # ============================================================================
+  MOD-09:
+    code: "MOD-09"
+    title: "Vertriebspartner"
+    icon: "Handshake"
+    main_route: "/portal/vertriebspartner"
+    display_order: 9
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+        - subpartner
+      requires_activation: true
+      requires_verification: true  # §34c/VSH
+    
+    sub_tiles:
+      - title: "Katalog"
+        route: "/portal/vertriebspartner/katalog"
+        icon: "LayoutGrid"
+        description: "Verfügbare Objekte"
+        
+      - title: "Beratung"
+        route: "/portal/vertriebspartner/beratung"
+        icon: "MessageCircle"
+        description: "Beratungssessions"
+        
+      - title: "Kunden"
+        route: "/portal/vertriebspartner/kunden"
+        icon: "Users"
+        description: "Kundenprojekte"
+        
+      - title: "Netzwerk"
+        route: "/portal/vertriebspartner/network"
+        icon: "Network"
+        description: "Partner-Netzwerk"
+
+  # ============================================================================
+  # MOD-10: LEADGENERIERUNG
+  # ============================================================================
+  MOD-10:
+    code: "MOD-10"
+    title: "Leads"
+    icon: "Target"
+    main_route: "/portal/leads"
+    display_order: 10
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Inbox"
+        route: "/portal/leads/inbox"
+        icon: "Inbox"
+        description: "Neue Leads"
+        
+      - title: "Meine Leads"
+        route: "/portal/leads/meine"
+        icon: "User"
+        description: "Zugewiesene Leads"
+        
+      - title: "Pipeline"
+        route: "/portal/leads/pipeline"
+        icon: "GitBranch"
+        description: "Deal-Pipeline"
+        
+      - title: "Werbung"
+        route: "/portal/leads/werbung"
+        icon: "Megaphone"
+        description: "Kampagnen"
+
+  # ============================================================================
+  # MOD-11: FINANZIERUNGSMANAGER (Separate Workstation)
+  # ============================================================================
+  MOD-11:
+    code: "MOD-11"
+    title: "Finanzierungsmanager"
+    icon: "Landmark"
+    main_route: "/portal/finanzierungsmanager"
+    display_order: 11
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+      requires_role: "finance_manager"
+      note: "Nur für akzeptierte Finance Manager"
+    
+    sub_tiles:
+      - title: "So funktioniert's"
+        route: "/portal/finanzierungsmanager"
+        icon: "HelpCircle"
+        default: true
+        
+      - title: "Selbstauskunft"
+        route: "/portal/finanzierungsmanager/selbstauskunft"
+        icon: "FileEdit"
+        description: "Fälle bearbeiten"
+        
+      - title: "Einreichen"
+        route: "/portal/finanzierungsmanager/einreichen"
+        icon: "Send"
+        description: "An Bank senden"
+        
+      - title: "Status"
+        route: "/portal/finanzierungsmanager/status"
+        icon: "Activity"
+        description: "Vorgangsstatus"
