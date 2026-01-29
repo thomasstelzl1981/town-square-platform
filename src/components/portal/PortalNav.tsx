@@ -1,3 +1,15 @@
+/**
+ * PORTAL NAV — Manifest-Driven Navigation
+ * 
+ * This component reads tiles/routes from the SSOT manifest.
+ * Database tile_catalog is ONLY used as activation/visibility overlay.
+ * 
+ * RULES:
+ * 1. Routes come from manifest (routesManifest.ts)
+ * 2. DB only provides is_active flags per tenant
+ * 3. 4-Tile-Pattern is enforced by manifest
+ */
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -21,32 +33,36 @@ import {
   LucideIcon
 } from 'lucide-react';
 
+// Import manifest
+import { zone2Portal, getModulesSorted, getTileFullPath } from '@/manifests/routesManifest';
+
 // Icon mapping for modules
 const iconMap: Record<string, LucideIcon> = {
-  'home': Home,
-  'stammdaten': Users,
-  'office': Sparkles,
-  'dms': FolderOpen,
-  'immobilien': Building2,
-  'msv': FileText,
-  'verkauf': Tag,
-  'finanzierung': Landmark,
-  'investments': Search,
-  'vertriebspartner': Handshake,
-  'leads': Target,
+  'Users': Users,
+  'Sparkles': Sparkles,
+  'FolderOpen': FolderOpen,
+  'Building2': Building2,
+  'FileText': FileText,
+  'Tag': Tag,
+  'Landmark': Landmark,
+  'Search': Search,
+  'Handshake': Handshake,
+  'Target': Target,
+  'Home': Home,
 };
 
-interface SubTile {
+interface SubTileDisplay {
   title: string;
   route: string;
 }
 
-interface TileCatalogEntry {
-  tile_code: string;
+interface TileDisplay {
+  code: string;
   title: string;
   route: string;
-  sub_tiles: SubTile[] | null;
+  icon: LucideIcon;
   display_order: number;
+  sub_tiles: SubTileDisplay[];
 }
 
 interface PortalNavProps {
@@ -56,55 +72,47 @@ interface PortalNavProps {
 // Bottom nav items (first 5 items for mobile)
 const bottomNavCodes = ['home', 'MOD-01', 'MOD-02', 'MOD-03', 'MOD-04'];
 
-// Fetch helper to bypass Supabase type complexity
-async function fetchActiveTiles(tenantId: string): Promise<string[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = supabase as any;
-  const { data } = await client
-    .from('tenant_tile_activation')
-    .select('tile_code')
-    .eq('tenant_id', tenantId)
-    .eq('is_active', true);
-  
-  if (!data) return [];
-  return (data as { tile_code: string }[]).map(a => a.tile_code);
-}
-
-async function fetchTileCatalog(): Promise<TileCatalogEntry[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = supabase as any;
-  const { data, error } = await client
-    .from('tile_catalog')
-    .select('tile_code, title, main_tile_route, sub_tiles, display_order')
-    .eq('is_active', true)
-    .order('display_order', { ascending: true });
-  
-  if (error || !data) {
-    console.error('Error fetching tiles:', error);
+// Fetch activation flags from DB (visibility overlay only)
+async function fetchActiveTileCodes(tenantId: string): Promise<string[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = supabase as any;
+    const { data } = await client
+      .from('tenant_tile_activation')
+      .select('tile_code')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true);
+    
+    if (!data) return [];
+    return (data as { tile_code: string }[]).map(a => a.tile_code);
+  } catch {
     return [];
   }
+}
+
+// Build tiles from manifest
+function buildTilesFromManifest(): TileDisplay[] {
+  const modules = getModulesSorted();
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map(t => {
-    let subTiles: SubTile[] | null = null;
-    if (t.sub_tiles) {
-      if (Array.isArray(t.sub_tiles)) {
-        subTiles = t.sub_tiles as SubTile[];
-      } else if (typeof t.sub_tiles === 'string') {
-        try {
-          subTiles = JSON.parse(t.sub_tiles);
-        } catch {
-          subTiles = null;
-        }
-      }
-    }
+  return modules.map(({ code, module }) => {
+    const Icon = iconMap[module.icon] || Briefcase;
+    const mainRoute = `/portal/${module.base}`;
+    
+    // Build sub-tiles from manifest tiles
+    const subTiles: SubTileDisplay[] = module.tiles
+      .filter(tile => tile.path !== '') // Skip default/index tiles
+      .map(tile => ({
+        title: tile.title,
+        route: getTileFullPath(module.base, tile.path),
+      }));
     
     return {
-      tile_code: t.tile_code,
-      title: t.title,
-      route: t.main_tile_route || `/portal/${t.tile_code.toLowerCase().replace('mod-', '')}`,
+      code,
+      title: module.name,
+      route: mainRoute,
+      icon: Icon,
+      display_order: module.display_order,
       sub_tiles: subTiles,
-      display_order: t.display_order
     };
   });
 }
@@ -112,56 +120,57 @@ async function fetchTileCatalog(): Promise<TileCatalogEntry[]> {
 export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
   const location = useLocation();
   const { activeOrganization, isDevelopmentMode } = useAuth();
-  const [tiles, setTiles] = useState<TileCatalogEntry[]>([]);
+  const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch tiles from tile_catalog
+  // Get tiles from manifest (SSOT)
+  const manifestTiles = buildTilesFromManifest();
+
+  // Fetch activation overlay from DB
   useEffect(() => {
-    async function loadTiles() {
+    async function loadActivations() {
       try {
-        // Fetch catalog first
-        const catalogTiles = await fetchTileCatalog();
-        
-        // In development mode, skip tenant activation check (shows all tiles)
+        // In development mode, show all tiles
         if (isDevelopmentMode) {
-          setTiles(catalogTiles);
+          setActiveTileCodes(null); // null = show all
           setIsLoading(false);
           return;
         }
         
-        // Then filter by tenant activations if we have an org with valid UUID
+        // Fetch tenant activations if we have a valid org
         if (activeOrganization?.id && !activeOrganization.id.startsWith('dev-')) {
-          const activeTileCodes = await fetchActiveTiles(activeOrganization.id);
-          if (activeTileCodes.length > 0) {
-            const filteredTiles = catalogTiles.filter(t => activeTileCodes.includes(t.tile_code));
-            setTiles(filteredTiles);
-          } else {
-            setTiles(catalogTiles);
-          }
+          const codes = await fetchActiveTileCodes(activeOrganization.id);
+          setActiveTileCodes(codes.length > 0 ? codes : null);
         } else {
-          setTiles(catalogTiles);
+          setActiveTileCodes(null);
         }
       } catch (err) {
-        console.error('Failed to fetch tiles:', err);
+        console.error('Failed to fetch tile activations:', err);
+        setActiveTileCodes(null);
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadTiles();
+    loadActivations();
   }, [activeOrganization?.id, isDevelopmentMode]);
+
+  // Filter tiles by activation overlay
+  const visibleTiles = activeTileCodes 
+    ? manifestTiles.filter(t => activeTileCodes.includes(t.code))
+    : manifestTiles;
 
   // Initialize open state for active module
   useEffect(() => {
     const currentPath = location.pathname;
-    const activeModule = tiles.find(t => 
+    const activeModule = visibleTiles.find(t => 
       currentPath === t.route || currentPath.startsWith(t.route + '/')
     );
     if (activeModule) {
-      setOpenModules(prev => ({ ...prev, [activeModule.tile_code]: true }));
+      setOpenModules(prev => ({ ...prev, [activeModule.code]: true }));
     }
-  }, [location.pathname, tiles]);
+  }, [location.pathname, visibleTiles]);
   
   const isActive = (route: string) => {
     if (route === '/portal') {
@@ -174,37 +183,21 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
     return location.pathname === route;
   };
 
-  const getIcon = (tileCode: string): LucideIcon => {
-    const moduleMap: Record<string, string> = {
-      'MOD-01': 'stammdaten',
-      'MOD-02': 'office',
-      'MOD-03': 'dms',
-      'MOD-04': 'immobilien',
-      'MOD-05': 'msv',
-      'MOD-06': 'verkauf',
-      'MOD-07': 'finanzierung',
-      'MOD-08': 'investments',
-      'MOD-09': 'vertriebspartner',
-      'MOD-10': 'leads',
-    };
-    const key = moduleMap[tileCode] || tileCode.toLowerCase();
-    return iconMap[key] || Briefcase;
-  };
-
   const toggleModule = (code: string) => {
     setOpenModules(prev => ({ ...prev, [code]: !prev[code] }));
   };
 
-  // Add Home entry
-  const homeEntry: TileCatalogEntry = {
-    tile_code: 'home',
+  // Home entry (always visible)
+  const homeEntry: TileDisplay = {
+    code: 'home',
     title: 'Home',
     route: '/portal',
-    sub_tiles: null,
-    display_order: 0
+    icon: Home,
+    display_order: 0,
+    sub_tiles: [],
   };
 
-  const allTiles = [homeEntry, ...tiles];
+  const allTiles = [homeEntry, ...visibleTiles];
 
   if (variant === 'sidebar') {
     return (
@@ -217,15 +210,15 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
           <div className="px-3 py-2 text-sm text-muted-foreground">Lade Module...</div>
         ) : (
           allTiles.map(tile => {
-            const Icon = getIcon(tile.tile_code);
+            const Icon = tile.icon;
             const active = isActive(tile.route);
             const hasSubTiles = tile.sub_tiles && tile.sub_tiles.length > 0;
-            const isOpen = openModules[tile.tile_code] ?? active;
+            const isOpen = openModules[tile.code] ?? active;
 
             if (!hasSubTiles) {
               return (
                 <Link
-                  key={tile.tile_code}
+                  key={tile.code}
                   to={tile.route}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -242,9 +235,9 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
 
             return (
               <Collapsible
-                key={tile.tile_code}
+                key={tile.code}
                 open={isOpen}
-                onOpenChange={() => toggleModule(tile.tile_code)}
+                onOpenChange={() => toggleModule(tile.code)}
               >
                 <CollapsibleTrigger asChild>
                   <button
@@ -295,18 +288,18 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
 
   // Bottom navigation for mobile (first 5 modules only)
   const bottomTiles = allTiles.filter(t => 
-    t.tile_code === 'home' || bottomNavCodes.includes(t.tile_code)
+    t.code === 'home' || bottomNavCodes.includes(t.code)
   ).slice(0, 5);
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-inset-bottom">
       <div className="flex justify-around items-center h-16">
         {bottomTiles.map(tile => {
-          const Icon = getIcon(tile.tile_code);
+          const Icon = tile.icon;
           const active = isActive(tile.route);
           return (
             <Link
-              key={tile.tile_code}
+              key={tile.code}
               to={tile.route}
               className={cn(
                 'flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[4rem]',
