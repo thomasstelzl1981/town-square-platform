@@ -1,0 +1,795 @@
+================================================================================
+SYSTEM OF A TOWN — MIGRATION TAKTIK PLAN
+================================================================================
+
+Dokument:       MIGRATION_TAKTIK_PLAN.txt
+Erstelldatum:   2026-01-29
+Status:         PLANNING (kein Code, nur Analyse + Strategie)
+Autor:          Lovable AI + Thomas Stelzl
+
+================================================================================
+TEIL 1: SYSTEM-ANALYSE-ERGEBNIS
+================================================================================
+
+1.1 AKTUELLE ROUTEN-INVENTUR (App.tsx Zeilen 115-277)
+------------------------------------------------------
+
+ZONE 1 — ADMIN PORTAL (/admin/*)
+Gefundene Routen: 20
+├── /admin                      → Dashboard
+├── /admin/organizations        → Organizations
+├── /admin/organizations/:id    → OrganizationDetail
+├── /admin/users                → Users
+├── /admin/delegations          → Delegations
+├── /admin/contacts             → MasterContacts
+├── /admin/master-templates     → MasterTemplates
+├── /admin/tiles                → TileCatalog
+├── /admin/integrations         → Integrations
+├── /admin/communication        → CommunicationHub
+├── /admin/oversight            → Oversight
+├── /admin/audit                → AuditLog
+├── /admin/billing              → Billing
+├── /admin/agreements           → Agreements
+├── /admin/inbox                → Inbox
+├── /admin/leadpool             → LeadPool
+├── /admin/partner-verification → PartnerVerification
+├── /admin/commissions          → CommissionApproval
+├── /admin/futureroom           → FutureRoom
+└── /admin/support              → Support
+
+STATUS: ✅ KONSISTENT (keine Drift-Probleme)
+
+
+ZONE 2 — USER PORTAL (/portal/*)
+Gefundene Routen: 46+ (inkl. Sub-Routes)
+
+MOD-01 STAMMDATEN (5 Routes):
+├── /portal/stammdaten           → StammdatenPage
+├── /portal/stammdaten/profil    → StammdatenPage
+├── /portal/stammdaten/firma     → StammdatenPage
+├── /portal/stammdaten/personen  → StammdatenPage ⚠️ NICHT IN SPEC
+├── /portal/stammdaten/abrechnung→ StammdatenPage
+└── /portal/stammdaten/sicherheit→ StammdatenPage
+
+PROBLEM: Route "personen" existiert in App.tsx aber NICHT in MOD-01_STAMMDATEN.md Spec
+SPEC SAGT: 4 Tiles (Profil, Firma, Abrechnung, Sicherheit)
+
+MOD-02 KI OFFICE (4 Routes):
+├── /portal/office              → OfficePage
+├── /portal/office/email        → OfficePage
+├── /portal/office/brief        → OfficePage
+├── /portal/office/kontakte     → OfficePage
+└── /portal/office/kalender     → OfficePage
+
+STATUS: ✅ KONSISTENT MIT SPEC
+
+MOD-03 DMS (4 Routes):
+├── /portal/dms                 → DMSPage
+├── /portal/dms/storage         → DMSPage
+├── /portal/dms/posteingang     → DMSPage
+├── /portal/dms/sortieren       → DMSPage
+└── /portal/dms/einstellungen   → DMSPage
+
+STATUS: ✅ KONSISTENT MIT SPEC
+
+MOD-04 IMMOBILIEN (6 Routes + 2 Legacy):
+├── /portal/immobilien          → ImmobilienPage
+├── /portal/immobilien/kontexte → ImmobilienPage
+├── /portal/immobilien/portfolio→ ImmobilienPage
+├── /portal/immobilien/sanierung→ ImmobilienPage
+├── /portal/immobilien/bewertung→ ImmobilienPage
+├── /portal/immobilien/neu      → PropertyForm
+├── /portal/immobilien/vorlage  → ExposeVorlage
+├── /portal/immobilien/:id      → PropertyDetail
+└── /portal/immobilien/:id/edit → PropertyForm
+
+STATUS: ⚠️ 5 TILES STATT 4 (Kontexte + Portfolio + Sanierung + Bewertung = 4 ✓)
+        Aber /neu, /vorlage, /:id, /:id/edit sind DYNAMISCHE Routen (OK)
+
+MOD-05 MSV (5 Routes):
+├── /portal/msv                 → MSVPage
+├── /portal/msv/objekte         → MSVPage
+├── /portal/msv/mieteingang     → MSVPage
+├── /portal/msv/vermietung      → MSVPage
+├── /portal/msv/vermietung/:id  → RentalExposeDetail
+└── /portal/msv/einstellungen   → MSVPage
+
+STATUS: ✅ KONSISTENT MIT SPEC
+
+MOD-06 VERKAUF (Wildcard Route):
+└── /portal/verkauf/*           → VerkaufPage (interne Sub-Routes)
+
+INTERNE ROUTES (VerkaufPage.tsx Zeilen 36-43):
+├── /portal/verkauf/so-funktionierts → SoFunktioniertsTab
+├── /portal/verkauf/objekte          → ObjekteTab
+├── /portal/verkauf/reporting        → ReportingTab
+├── /portal/verkauf/vorgaenge        → VorgaengeTab
+└── /portal/verkauf/expose/:propertyId → ExposeDetail
+
+STATUS: ⚠️ 4-TILE-PATTERN GEBROCHEN (5 Tiles statt 4)
+        So-Funktionierts ist kein funktionaler Tile
+
+MOD-07 FINANZIERUNG:
+└── /portal/finanzierung/*      → FinanzierungPage
+
+STATUS: ⚠️ NICHT ANALYSIERT (Wildcard)
+
+MOD-11 FINANZIERUNGSMANAGER (separates Modul):
+├── /portal/finanzierungsmanager              → HowItWorksTab
+├── /portal/finanzierungsmanager/selbstauskunft → CaseDetailTab
+├── /portal/finanzierungsmanager/selbstauskunft/:caseId → CaseDetailTab
+├── /portal/finanzierungsmanager/einreichen   → SubmitToBankTab
+├── /portal/finanzierungsmanager/einreichen/:caseId → SubmitToBankTab
+└── /portal/finanzierungsmanager/status       → StatusTab
+
+STATUS: ⚠️ MOD-11 EXISTIERT NICHT IN 10-MODUL-ARCHITEKTUR
+        Memory sagt: MOD-11 Finanzierungsmanager ist Finance-Manager Workstation
+
+MOD-08 INVESTMENTS (4 Routes):
+├── /portal/investments          → InvestmentsPage
+├── /portal/investments/suche    → InvestmentsPage
+├── /portal/investments/favoriten→ InvestmentsPage
+├── /portal/investments/mandat   → InvestmentsPage
+└── /portal/investments/simulation→ InvestmentsPage
+
+STATUS: ⚠️ 5 TILES STATT 4 (Suche, Favoriten, Mandat, Simulation = 4 ✓)
+
+MOD-09 VERTRIEBSPARTNER (Wildcard):
+└── /portal/vertriebspartner/*  → VertriebspartnerPage
+
+INTERNE ROUTES (VertriebspartnerPage.tsx Zeilen 67-74):
+├── /portal/vertriebspartner/katalog   → KatalogTab
+├── /portal/vertriebspartner/beratung  → BeratungTab
+├── /portal/vertriebspartner/kunden    → KundenTab
+└── /portal/vertriebspartner/network   → NetworkTab
+
+STATUS: ✅ KONSISTENT (4 Tiles)
+
+MOD-10 LEADS (4 Routes):
+├── /portal/leads               → LeadsPage
+├── /portal/leads/inbox         → LeadsPage
+├── /portal/leads/meine         → LeadsPage
+├── /portal/leads/pipeline      → LeadsPage
+└── /portal/leads/werbung       → LeadsPage
+
+STATUS: ⚠️ 5 TILES (inbox, meine, pipeline, werbung = 4 ✓)
+
+
+LEGACY ROUTEN (KRITISCH):
+-------------------------
+/portfolio/*                    → AdminLayout + PropertyList/Detail/Form
+
+STATUS: ❌ MUSS ENTFERNT WERDEN
+        Diese Route nutzt AdminLayout statt PortalLayout!
+        Navigations-Links gehen teilweise noch auf /portfolio statt /portal/immobilien
+
+
+ZONE 3 — WEBSITES (/kaufy/*, /miety/*, /futureroom/*, /sot/*)
+-------------------------------------------------------------
+
+KAUFY (12 Routes):
+├── /kaufy                    → KaufyHome
+├── /kaufy/vermieter          → KaufyVermieter
+├── /kaufy/verkaeufer         → KaufyVerkaeufer
+├── /kaufy/vertrieb           → KaufyVertrieb
+├── /kaufy/beratung           → KaufyBeratung
+├── /kaufy/meety              → KaufyMeety
+├── /kaufy/module             → KaufyModule
+├── /kaufy/module/:moduleId   → KaufyModuleDetail
+├── /kaufy/immobilien         → KaufyImmobilien
+├── /kaufy/immobilien/:publicId → KaufyExpose
+├── /kaufy/berater            → KaufyBerater
+├── /kaufy/anbieter           → KaufyAnbieter
+└── /kaufy/faq                → KaufyFAQ
+
+STATUS: ✅ KONSISTENT
+
+MIETY (9 Routes):
+├── /miety                    → MietyHome
+├── /miety/leistungen         → MietyLeistungen
+├── /miety/vermieter          → MietyVermieter
+├── /miety/app                → MietyApp
+├── /miety/preise             → MietyPreise
+├── /miety/so-funktioniert    → MietySoFunktioniert
+├── /miety/kontakt            → MietyKontakt
+├── /miety/registrieren       → MietyRegistrieren
+└── /miety/invite             → MietyInvite
+
+STATUS: ✅ KONSISTENT
+
+FUTUREROOM (4 Routes):
+├── /futureroom               → FutureRoomHome
+├── /futureroom/bonitat       → FutureRoomBonitat
+├── /futureroom/karriere      → FutureRoomKarriere
+└── /futureroom/faq           → FutureRoomFAQ
+
+STATUS: ✅ KONSISTENT
+
+SOT WEBSITE (7 Routes):
+├── /sot                      → SotHome
+├── /sot/produkt              → SotProdukt
+├── /sot/module               → SotModule
+├── /sot/module/:moduleId     → SotModuleDetail
+├── /sot/use-cases            → SotUseCases
+├── /sot/preise               → SotPreise
+└── /sot/faq                  → SotFAQ
+
+STATUS: ✅ KONSISTENT
+
+
+1.2 IDENTIFIZIERTE PROBLEME
+---------------------------
+
+KRITISCH (Blocker):
+├── P1: Legacy /portfolio Route nutzt AdminLayout statt PortalLayout
+├── P2: MOD-01 hat 5 Tiles statt 4 (personen ist undokumentiert)
+├── P3: MOD-11 Finanzierungsmanager existiert ohne MOD-Nummer im 10-Modul-System
+└── P4: Navigation in PortalNav.tsx liest aus tile_catalog DB, aber Routen sind in App.tsx hardcoded
+
+HOCH (Drift-Risiko):
+├── P5: VerkaufPage hat 5 interne Tiles statt 4
+├── P6: Links in PropertyForm.tsx zeigen auf /portfolio statt /portal/immobilien
+├── P7: Wildcard-Routes (/*) erschweren Manifest-Enforcement
+└── P8: Keine zentrale Route-Validierung - jeder Prompt kann neue Routen erfinden
+
+MITTEL (Inkonsistenz):
+├── P9: Specs in docs/modules/ vs. Implementation in src/pages/portal/ nicht synchron
+├── P10: tile_catalog in DB vs. App.tsx Routen können divergieren
+└── P11: Dokumentation verstreut (docs/, spec/, .lovable/, Memory Entries)
+
+
+1.3 NAVIGATION ANALYSE (PortalNav.tsx)
+--------------------------------------
+
+AKTUELL:
+- PortalNav liest Tiles aus Supabase tile_catalog Tabelle
+- Routen werden dynamisch aus tile.main_tile_route generiert
+- Sub-Tiles kommen aus tile.sub_tiles JSONB
+- Development Mode zeigt alle Tiles ohne Tenant-Filter
+
+PROBLEM:
+- App.tsx definiert STATISCHE Routen
+- tile_catalog definiert DYNAMISCHE Tiles
+- Keine Validierung dass beide synchron sind
+- Neue Tiles in DB ohne Route in App.tsx = 404
+
+LÖSUNG:
+- routes_manifest.yaml als Single Source of Truth
+- App.tsx liest aus Manifest
+- PortalNav liest aus Manifest
+- tile_catalog ist nur noch Visibility/Activation Layer
+
+
+================================================================================
+TEIL 2: ZIEL-ARCHITEKTUR (Spec-First / Contract-First)
+================================================================================
+
+2.1 ORDNERSTRUKTUR IN GITHUB
+-----------------------------
+
+sot-app/
+├── spec/
+│   ├── current/
+│   │   ├── 00_frozen/                    # Unveränderliche Grundlagen
+│   │   │   ├── DEVELOPMENT_GOVERNANCE.md
+│   │   │   ├── SOFTWARE_FOUNDATION.md
+│   │   │   ├── MODULE_BLUEPRINT.md
+│   │   │   ├── GO_NO_GO_REPORT.md
+│   │   │   └── ASSUMPTION_LOG.md
+│   │   │
+│   │   ├── 01_platform/                  # Plattform-Konfiguration
+│   │   │   ├── ZONE_OVERVIEW.md
+│   │   │   ├── ACCESS_MATRIX.md
+│   │   │   └── INTEGRATION_REGISTRY.md
+│   │   │
+│   │   ├── 02_modules/                   # Modul-Spezifikationen
+│   │   │   ├── MOD-01_STAMMDATEN.md
+│   │   │   ├── MOD-02_KI_OFFICE.md
+│   │   │   ├── MOD-03_DMS.md
+│   │   │   ├── MOD-04_IMMOBILIEN.md
+│   │   │   ├── MOD-05_MSV.md
+│   │   │   ├── MOD-06_VERKAUF.md
+│   │   │   ├── MOD-07_FINANZIERUNG.md
+│   │   │   ├── MOD-08_INVESTMENTS.md
+│   │   │   ├── MOD-09_VERTRIEBSPARTNER.md
+│   │   │   ├── MOD-10_LEADGENERIERUNG.md
+│   │   │   └── MOD-11_FINANZIERUNGSMANAGER.md  # Falls 11 Module
+│   │   │
+│   │   ├── 03_actions/                   # Action-Katalog
+│   │   │   ├── action_catalog.yaml       # Alle UI-Actions
+│   │   │   └── ACTION_SPEC.md            # Action-Dokumentation
+│   │   │
+│   │   ├── 04_workflows/                 # BPMN Workflow-Definitionen
+│   │   │   ├── WF-SANIERUNG.bpmn
+│   │   │   ├── WF-FINANZIERUNG.bpmn
+│   │   │   ├── WF-VERKAUF.bpmn
+│   │   │   └── WORKFLOW_CATALOG.md
+│   │   │
+│   │   ├── 05_diagrams/                  # Mermaid + Visualisierungen
+│   │   │   ├── SYSTEM_DIAGRAM.md
+│   │   │   ├── FLOW_PACK.md
+│   │   │   └── DATA_MODEL.md
+│   │   │
+│   │   └── 06_api_contracts/             # OpenAPI Contracts
+│   │       ├── openapi_zone2_portal.yaml
+│   │       ├── openapi_zone1_admin.yaml
+│   │       └── openapi_edge_functions.yaml
+│   │
+│   └── archive/                          # Archivierte/veraltete Specs
+│       └── v1_pre_manifest/
+│
+├── manifests/                            # SINGLE SOURCE OF TRUTH
+│   ├── routes_manifest.yaml              # Alle erlaubten Routen
+│   ├── tile_catalog.yaml                 # Tile-Definitionen (ersetzt DB?)
+│   └── role_permissions.yaml             # Rollen-Berechtigungen
+│
+├── camunda/                              # Camunda BPMN + Worker
+│   ├── processes/
+│   │   ├── sanierung-ausschreibung.bpmn
+│   │   ├── finanzierung-workflow.bpmn
+│   │   └── verkauf-pipeline.bpmn
+│   ├── workers/
+│   │   └── (Node.js Worker-Code)
+│   └── README.md
+│
+├── docs/                                 # Human-readable Dokumentation
+│   ├── architecture/                     # High-Level Architektur
+│   ├── modules/                          # Modul-Beschreibungen
+│   └── zone3/                            # Website-Specs
+│
+└── src/                                  # React/Lovable Code
+    ├── manifests/                        # Manifest-Loader
+    │   ├── routes.ts                     # Parsed routes_manifest
+    │   └── actions.ts                    # Parsed action_catalog
+    ├── router/
+    │   └── ManifestRouter.tsx            # Router mit Manifest-Validation
+    └── (rest of app)
+
+
+2.2 MANIFEST-DATEIEN
+--------------------
+
+A) routes_manifest.yaml
+-----------------------
+# Zentrale Route-Definition - SINGLE SOURCE OF TRUTH
+
+version: "1.0"
+generated: "2026-01-29"
+
+zones:
+  zone1_admin:
+    base: "/admin"
+    layout: "AdminLayout"
+    routes:
+      - path: ""
+        component: "Dashboard"
+        title: "Admin Dashboard"
+      - path: "/organizations"
+        component: "Organizations"
+        title: "Organisationen"
+      # ... alle 20 Admin-Routes
+
+  zone2_portal:
+    base: "/portal"
+    layout: "PortalLayout"
+    modules:
+      MOD-01:
+        name: "Stammdaten"
+        base: "/stammdaten"
+        tiles:
+          - path: "/profil"
+            component: "ProfilTab"
+            title: "Profil"
+          - path: "/firma"
+            component: "FirmaTab"
+            title: "Firma"
+          - path: "/abrechnung"
+            component: "AbrechnungTab"
+            title: "Abrechnung"
+          - path: "/sicherheit"
+            component: "SicherheitTab"
+            title: "Sicherheit"
+        dynamic_routes:
+          # Keine dynamischen Routen für MOD-01
+
+      MOD-04:
+        name: "Immobilien"
+        base: "/immobilien"
+        tiles:
+          - path: "/kontexte"
+            component: "KontexteTab"
+            title: "Kontexte"
+          - path: "/portfolio"
+            component: "PortfolioTab"
+            title: "Portfolio"
+          - path: "/sanierung"
+            component: "SanierungTab"
+            title: "Sanierung"
+          - path: "/bewertung"
+            component: "BewertungTab"
+            title: "Bewertung"
+        dynamic_routes:
+          - path: "/neu"
+            component: "PropertyForm"
+            title: "Neue Immobilie"
+          - path: "/:id"
+            component: "PropertyDetail"
+            title: "Immobilien-Details"
+          - path: "/:id/edit"
+            component: "PropertyForm"
+            title: "Immobilie bearbeiten"
+
+      # ... alle anderen Module
+
+  zone3_websites:
+    sites:
+      kaufy:
+        base: "/kaufy"
+        layout: "KaufyLayout"
+        routes:
+          - path: ""
+            component: "KaufyHome"
+          # ...
+
+      miety:
+        base: "/miety"
+        layout: "MietyLayout"
+        routes:
+          # ...
+
+      futureroom:
+        base: "/futureroom"
+        layout: "FutureRoomLayout"
+        routes:
+          # ...
+
+      sot:
+        base: "/sot"
+        layout: "SotLayout"
+        routes:
+          # ...
+
+  legacy:
+    deprecated: true
+    note: "Diese Routen werden in v2.0 entfernt"
+    routes:
+      - path: "/portfolio"
+        redirect_to: "/portal/immobilien/portfolio"
+      - path: "/portfolio/:id"
+        redirect_to: "/portal/immobilien/:id"
+
+
+B) action_catalog.yaml
+----------------------
+# Alle UI-Actions die Module ausführen dürfen
+
+version: "1.0"
+
+actions:
+  # MOD-04 Immobilien
+  immobilien:
+    - id: "IMM_CREATE"
+      label: "Neue Immobilie anlegen"
+      route: "/portal/immobilien/neu"
+      requires_role: ["org_admin", "internal_ops"]
+      
+    - id: "IMM_EDIT"
+      label: "Immobilie bearbeiten"
+      route: "/portal/immobilien/:id/edit"
+      requires_role: ["org_admin", "internal_ops"]
+      
+    - id: "IMM_VIEW_DOSSIER"
+      label: "Immobilienakte öffnen"
+      route: "/portal/immobilien/:id"
+      requires_role: ["*"]
+
+    - id: "IMM_START_SANIERUNG"
+      label: "Sanierungsprojekt starten"
+      workflow: "WF-SANIERUNG"
+      camunda_task: "start_sanierung"
+      requires_role: ["org_admin"]
+
+  # MOD-06 Verkauf
+  verkauf:
+    - id: "SALE_CREATE_LISTING"
+      label: "Verkaufsinserat erstellen"
+      workflow: "WF-VERKAUF"
+      camunda_task: "create_listing"
+      requires_consent: "SALES_MANDATE"
+
+    - id: "SALE_RELEASE_PARTNER"
+      label: "An Partner freigeben"
+      workflow: "WF-VERKAUF"
+      camunda_task: "release_to_partners"
+      requires_role: ["org_admin"]
+
+  # MOD-05 MSV
+  msv:
+    - id: "MSV_CREATE_LEASE"
+      label: "Mietvertrag anlegen"
+      dialog: "LeaseFormDialog"
+      requires_role: ["org_admin", "internal_ops"]
+
+    - id: "MSV_PUBLISH_LISTING"
+      label: "Mietinserat veröffentlichen"
+      workflow: "WF-VERMIETUNG"
+      camunda_task: "publish_rental"
+
+
+C) tile_catalog.yaml (ersetzt DB-Tabelle)
+-----------------------------------------
+# Tile-Definitionen mit Visibility-Regeln
+
+version: "1.0"
+
+tiles:
+  MOD-01:
+    code: "MOD-01"
+    title: "Stammdaten"
+    icon: "Users"
+    display_order: 1
+    visibility:
+      default: true
+      org_types: ["client", "partner", "subpartner"]
+    sub_tiles:
+      - title: "Profil"
+        route: "/portal/stammdaten/profil"
+      - title: "Firma"
+        route: "/portal/stammdaten/firma"
+      - title: "Abrechnung"
+        route: "/portal/stammdaten/abrechnung"
+      - title: "Sicherheit"
+        route: "/portal/stammdaten/sicherheit"
+
+  MOD-04:
+    code: "MOD-04"
+    title: "Immobilien"
+    icon: "Building2"
+    display_order: 4
+    visibility:
+      default: true
+      org_types: ["client"]
+    sub_tiles:
+      - title: "Kontexte"
+        route: "/portal/immobilien/kontexte"
+      - title: "Portfolio"
+        route: "/portal/immobilien/portfolio"
+      - title: "Sanierung"
+        route: "/portal/immobilien/sanierung"
+      - title: "Bewertung"
+        route: "/portal/immobilien/bewertung"
+
+  # ... alle anderen Module
+
+
+================================================================================
+TEIL 3: MIGRATIONS-SCHRITTE (Reihenfolge)
+================================================================================
+
+PHASE 1: MANIFEST-INFRASTRUKTUR (Tag 1)
+---------------------------------------
+Schritt 1.1: Ordnerstruktur anlegen
+  - spec/current/00_frozen/ bis 06_api_contracts/
+  - manifests/
+  - Bestehende Specs verschieben
+
+Schritt 1.2: routes_manifest.yaml erstellen
+  - Aus App.tsx alle Routen extrahieren
+  - 4-Tile-Pattern validieren
+  - Legacy-Routen als deprecated markieren
+
+Schritt 1.3: tile_catalog.yaml erstellen
+  - Aus DB tile_catalog exportieren
+  - YAML-Format konvertieren
+  - Mit routes_manifest abgleichen
+
+Schritt 1.4: Memory-Regel aktivieren
+  - Memory: "No route exists unless declared in routes_manifest.yaml"
+  - Memory: "No action exists unless declared in action_catalog.yaml"
+
+
+PHASE 2: CODE-BEREINIGUNG (Tag 2)
+---------------------------------
+Schritt 2.1: ManifestProvider erstellen
+  - src/manifests/ManifestProvider.tsx
+  - Lädt YAML-Manifests (oder JSON-Export)
+  - Stellt React Context bereit
+
+Schritt 2.2: ManifestRouter implementieren
+  - src/router/ManifestRouter.tsx
+  - Generiert Routes aus Manifest
+  - Validiert Navigationen gegen Manifest
+  - Blockt nicht-deklarierte Pfade
+
+Schritt 2.3: Legacy-Routen entfernen
+  - /portfolio/* Route entfernen
+  - Links in PropertyForm.tsx korrigieren
+  - Redirects für Bookmarks einrichten
+
+Schritt 2.4: 4-Tile-Pattern erzwingen
+  - MOD-01: /personen Route entfernen oder dokumentieren
+  - MOD-06: "So funktionierts" in Modul-Beschreibung verschieben
+  - MOD-11: Entscheidung: Eigenes Modul oder Sub-Route von MOD-07?
+
+
+PHASE 3: CAMUNDA INTEGRATION (Tag 3-4)
+--------------------------------------
+Schritt 3.1: Camunda Modeler installieren
+  - Desktop-App oder Web-Modeler
+  - Zeebe-Connector einrichten
+
+Schritt 3.2: Ersten Workflow modellieren (Sanierung)
+  - BPMN erstellen: WF-SANIERUNG
+  - User Tasks: Gewerke auswählen, Anschreiben generieren
+  - Service Tasks: E-Mail versenden, Inbox überwachen
+  - Events: Angebot eingegangen (Correlation)
+
+Schritt 3.3: Worker-Skeleton erstellen
+  - Node.js Worker für Service Tasks
+  - Supabase-Anbindung für Datenzugriff
+  - Resend-Integration für E-Mail
+
+
+PHASE 4: ACTION-SYSTEM (Tag 5)
+------------------------------
+Schritt 4.1: action_catalog.yaml befüllen
+  - Alle UI-Actions dokumentieren
+  - Workflow-Referenzen hinzufügen
+  - Berechtigungen definieren
+
+Schritt 4.2: ActionDispatcher implementieren
+  - Zentrale Action-Ausführung
+  - Validierung gegen action_catalog
+  - Workflow-Trigger für Camunda-Actions
+
+
+================================================================================
+TEIL 4: CAMUNDA STARTER-GUIDE
+================================================================================
+
+4.1 WAS IST CAMUNDA?
+--------------------
+Camunda ist ein Workflow-Orchestrator der BPMN (Business Process Model and Notation)
+Diagramme ausführt. Im Gegensatz zu UI-basierter Logik:
+
+- Camunda führt Prozesse DETERMINISTISCH aus
+- Zustände werden PERSISTIERT (Crash-safe)
+- Parallele Pfade, Timer, Events sind eingebaut
+- Fehlerbehandlung und Retry sind Standard
+
+4.2 KOMPONENTEN
+---------------
+A) Zeebe: Workflow Engine (SaaS oder Self-Hosted)
+B) Modeler: BPMN-Diagramme erstellen
+C) Operate: Monitoring + Debugging
+D) Tasklist: User Task Oberfläche
+E) Workers: Service Task Ausführung (unser Code)
+
+4.3 BEISPIEL-WORKFLOW: SANIERUNG
+--------------------------------
+```
+START → [User Task: Gewerke auswählen]
+     → [Service Task: Anschreiben generieren]
+     → [Service Task: E-Mails versenden]
+     → GATEWAY (parallel)
+        ├→ [Timer: 7 Tage warten]
+        └→ [Message Event: Angebot eingegangen]
+     → [User Task: Angebote vergleichen]
+     → [User Task: Zuschlag erteilen]
+     → [Service Task: Auftragsbestätigung senden]
+     → END
+```
+
+4.4 COPILOT-PROMPTS FÜR CAMUNDA
+-------------------------------
+
+GRUNDSTRUKTUR-PROMPT:
+```
+Erstelle ein Camunda 8 Projekt mit folgender Struktur:
+- Zeebe-Client für Node.js
+- Worker-Framework mit Supabase-Anbindung
+- BPMN-Prozess für [WORKFLOW-NAME]
+- User Task Handler die mit unserem React Frontend kommunizieren
+- Service Task Worker für [AKTION]
+```
+
+MODUL-SPEZIFISCHER PROMPT (MOD-04 Sanierung):
+```
+Erstelle einen Camunda BPMN Workflow für Sanierungsprojekte:
+
+Prozess-ID: "sanierung-ausschreibung"
+Start-Event: Manuell von UI getriggert mit {property_id, project_name}
+
+Tasks:
+1. User Task "select_trades" - Gewerke auswählen (UI zeigt Checkliste)
+2. User Task "configure_letter" - Anschreiben anpassen (Texteditor)
+3. Service Task "generate_letters" - PDFs generieren (Edge Function)
+4. Service Task "send_emails" - E-Mails versenden (Resend API)
+5. Message Event "offer_received" - Correlation auf tender_id
+6. User Task "compare_offers" - Angebote vergleichen (UI Tabelle)
+7. User Task "award_contract" - Zuschlag erteilen
+8. Service Task "send_confirmation" - Bestätigung versenden
+
+Error Handling:
+- Retry 3x bei E-Mail-Fehler
+- Escalation nach 14 Tagen ohne Angebot
+
+Variablen:
+- tender_id: UUID für Correlation
+- property_id: Referenz zur Immobilie
+- selected_trades: Array von Gewerken
+- offers: Array von eingegangenen Angeboten
+```
+
+
+================================================================================
+TEIL 5: KONKRETE NÄCHSTE SCHRITTE
+================================================================================
+
+HEUTE (Planung abgeschlossen):
+☐ Diesen Plan prüfen und freigeben
+☐ Entscheidung: tile_catalog in DB behalten oder komplett in YAML?
+☐ Entscheidung: MOD-11 offiziell als 11. Modul oder Sub-Route?
+
+TAG 1:
+☐ Ordnerstruktur in GitHub anlegen (spec/current/*)
+☐ routes_manifest.yaml erstellen
+☐ tile_catalog.yaml erstellen
+☐ Memory-Regeln in Lovable aktivieren
+
+TAG 2:
+☐ ManifestProvider.tsx implementieren
+☐ ManifestRouter.tsx implementieren
+☐ Legacy /portfolio/* Routen entfernen
+☐ Links korrigieren
+
+TAG 3:
+☐ Camunda Cloud Account erstellen (oder Self-Hosted)
+☐ Ersten BPMN Workflow erstellen (Sanierung)
+☐ Worker-Skeleton in Node.js aufsetzen
+
+TAG 4-5:
+☐ Worker mit Supabase verbinden
+☐ User Tasks mit React UI verbinden
+☐ action_catalog.yaml befüllen
+☐ ActionDispatcher implementieren
+
+
+================================================================================
+TEIL 6: BEANTWORTUNG DEINER FRAGEN
+================================================================================
+
+FRAGE: Kann Lovable diese Strukturen in GitHub setzen?
+ANTWORT: Ja. Lovable kann Dateien direkt ins verbundene GitHub-Repo schreiben.
+         Das Repo wird automatisch synchronisiert.
+
+FRAGE: Alte Prompts/Strukturen löschen?
+ANTWORT: Ja, nach Migration. Die alte Struktur bleibt in der Git-History.
+         Wir löschen nur aktive Dateien, nicht die Historie.
+
+FRAGE: Camunda Copilot-Prompts?
+ANTWORT: Siehe oben (Abschnitt 4.4). Für jedes Modul gibt es einen
+         spezifischen Prompt mit Tasks, Events, Variablen.
+
+FRAGE: Step-by-Step Struktur in ein paar Tagen?
+ANTWORT: Realistisch 5 Arbeitstage für Phase 1-3.
+         Phase 4 (Actions) kann parallel oder danach erfolgen.
+         Danach ist das System strukturell stabil.
+
+
+================================================================================
+ANHANG: CHECKLISTE FÜR FREIGABE
+================================================================================
+
+Vor Start bitte bestätigen:
+
+[ ] Ordnerstruktur spec/current/* ist korrekt
+[ ] Manifest-First Ansatz ist akzeptiert
+[ ] tile_catalog.yaml ersetzt NICHT die DB (Hybrid-Modus)
+[ ] MOD-11 Finanzierungsmanager wird offiziell als Modul 11 geführt
+[ ] Camunda 8 Cloud wird genutzt (nicht Self-Hosted)
+[ ] 5-Tage-Zeitplan ist realistisch
+
+================================================================================
+ENDE DES PLANS
+================================================================================
