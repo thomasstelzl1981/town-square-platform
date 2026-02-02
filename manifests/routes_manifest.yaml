@@ -2,21 +2,21 @@
 # ROUTES MANIFEST — SINGLE SOURCE OF TRUTH
 # ================================================================================
 # 
-# Version: 1.0.0
-# Generiert: 2026-01-29
-# Status: DRAFT (zur Freigabe)
+# Version: 1.1.0
+# Aktualisiert: 2026-02-02
+# Status: SYNCHRONIZED with routesManifest.ts
 #
 # REGELN:
 # 1. Keine Route existiert, die nicht hier deklariert ist
 # 2. App.tsx MUSS mit diesem Manifest synchron sein
 # 3. Änderungen erfordern explizite Freigabe
-# 4. 4-Tile-Pattern ist verbindlich für alle Module
+# 4. 4-Tile-Pattern ist verbindlich für alle Module (außer MOD-20: 6 Tiles)
 #
 # ================================================================================
 
-version: "1.0.0"
-generated: "2026-01-29"
-status: "draft"
+version: "1.1.0"
+generated: "2026-02-02"
+status: "synchronized"
 
 # ==============================================================================
 # ZONE 1: ADMIN PORTAL
@@ -110,19 +110,117 @@ zone1_admin:
       component: "CommissionApproval"
       title: "Provisionen"
       
-    # Finance Manager Operations
-    - path: "/futureroom"
-      component: "FutureRoom"
-      title: "Future Room"
-      
     # Support
     - path: "/support"
       component: "Support"
       title: "Support"
 
+    # =========================================================================
+    # FUTUREROOM (Backbone)
+    # =========================================================================
+    - path: "/futureroom"
+      component: "FutureRoom"
+      title: "Future Room"
+      
+    - path: "/futureroom/bankkontakte"
+      component: "FutureRoomBanks"
+      title: "Bankkontakte"
+      
+    - path: "/futureroom/finanzierungsmanager"
+      component: "FutureRoomManagers"
+      title: "Finanzierungsmanager"
+
+    # =========================================================================
+    # AGENTS (Backbone)
+    # =========================================================================
+    - path: "/agents"
+      component: "AgentsDashboard"
+      title: "Agents"
+      
+    - path: "/agents/catalog"
+      component: "AgentsCatalog"
+      title: "Agenten-Katalog"
+      
+    - path: "/agents/instances"
+      component: "AgentsInstances"
+      title: "Agenten-Instanzen"
+      
+    - path: "/agents/runs"
+      component: "AgentsRuns"
+      title: "Agent Runs"
+      
+    - path: "/agents/policies"
+      component: "AgentsPolicies"
+      title: "Policies"
+
+    # =========================================================================
+    # ACQUIARY (Desk)
+    # =========================================================================
+    - path: "/acquiary"
+      component: "AcquiaryDashboard"
+      title: "Acquiary"
+      
+    - path: "/acquiary/zuordnung"
+      component: "AcquiaryZuordnung"
+      title: "Zuordnung"
+      
+    - path: "/acquiary/inbox"
+      component: "AcquiaryInbox"
+      title: "Inbox"
+      
+    - path: "/acquiary/mandate"
+      component: "AcquiaryMandate"
+      title: "Mandate"
+
+    # =========================================================================
+    # SALES DESK (Desk)
+    # =========================================================================
+    - path: "/sales-desk"
+      component: "SalesDeskDashboard"
+      title: "Sales Desk"
+      
+    - path: "/sales-desk/veroeffentlichungen"
+      component: "SalesDeskPublishing"
+      title: "Veröffentlichungen"
+      
+    - path: "/sales-desk/inbox"
+      component: "SalesDeskInbox"
+      title: "Inbox"
+      
+    - path: "/sales-desk/partner"
+      component: "SalesDeskPartner"
+      title: "Partner"
+      
+    - path: "/sales-desk/audit"
+      component: "SalesDeskAudit"
+      title: "Audit"
+
+    # =========================================================================
+    # FINANCE DESK (Desk)
+    # =========================================================================
+    - path: "/finance-desk"
+      component: "FinanceDeskDashboard"
+      title: "Finance Desk"
+      
+    - path: "/finance-desk/inbox"
+      component: "FinanceDeskInbox"
+      title: "Inbox"
+      
+    - path: "/finance-desk/berater"
+      component: "FinanceDeskBerater"
+      title: "Berater"
+      
+    - path: "/finance-desk/zuweisung"
+      component: "FinanceDeskZuweisung"
+      title: "Zuweisung"
+      
+    - path: "/finance-desk/monitoring"
+      component: "FinanceDeskMonitoring"
+      title: "Monitoring"
+
 
 # ==============================================================================
-# ZONE 2: USER PORTAL — 10-MODUL-ARCHITEKTUR + MOD-11
+# ZONE 2: USER PORTAL — 20-MODUL-ARCHITEKTUR
 # ==============================================================================
 zone2_portal:
   base: "/portal"
@@ -147,7 +245,6 @@ zone2_portal:
         default: true
         org_types: ["client", "partner", "subpartner"]
       
-      # 4-Tile-Pattern (BINDING)
       tiles:
         - path: "/profil"
           component: "ProfilTab"
@@ -164,12 +261,6 @@ zone2_portal:
         - path: "/sicherheit"
           component: "SicherheitTab"
           title: "Sicherheit"
-      
-      # DEPRECATED: Diese Route wird entfernt
-      deprecated_routes:
-        - path: "/personen"
-          reason: "Nicht in Spec, 4-Tile-Pattern gebrochen"
-          remove_in: "v2.0"
 
     # ==========================================================================
     # MOD-02: KI OFFICE
@@ -258,7 +349,6 @@ zone2_portal:
           component: "BewertungTab"
           title: "Bewertung"
       
-      # Dynamische Routen (nicht Teil der 4 Tiles)
       dynamic_routes:
         - path: "/neu"
           component: "PropertyForm"
@@ -340,13 +430,6 @@ zone2_portal:
         - path: "/einstellungen"
           component: "EinstellungenTab"
           title: "Einstellungen"
-          note: "NICHT IMPLEMENTIERT - Ersetzen für so-funktionierts"
-      
-      # DEPRECATED: Diese Route wird ersetzt
-      deprecated_routes:
-        - path: "/so-funktionierts"
-          reason: "Kein funktionaler Tile, wird Info-Modal"
-          remove_in: "v2.0"
       
       dynamic_routes:
         - path: "/expose/:propertyId"
@@ -354,7 +437,7 @@ zone2_portal:
           title: "Verkaufs-Exposé"
 
     # ==========================================================================
-    # MOD-07: FINANZIERUNG
+    # MOD-07: FINANZIERUNG (KORRIGIERT)
     # ==========================================================================
     MOD-07:
       name: "Finanzierung"
@@ -366,26 +449,27 @@ zone2_portal:
         org_types: ["client"]
       
       tiles:
-        - path: "/vorgaenge"
-          component: "VorgaengeTab"
-          title: "Vorgänge"
+        - path: "/selbstauskunft"
+          component: "SelbstauskunftTab"
+          title: "Selbstauskunft"
+          default: true
           
-        - path: "/readiness"
-          component: "ReadinessTab"
-          title: "Readiness"
+        - path: "/dokumente"
+          component: "DokumenteTab"
+          title: "Dokumente"
           
-        - path: "/export"
-          component: "ExportTab"
-          title: "Export"
+        - path: "/anfrage"
+          component: "AnfrageTab"
+          title: "Anfrage"
           
-        - path: "/partner"
-          component: "PartnerTab"
-          title: "Partner"
+        - path: "/status"
+          component: "StatusTab"
+          title: "Status"
       
       dynamic_routes:
-        - path: "/:requestId"
-          component: "FinanceRequestDetail"
-          title: "Finanzierungsanfrage"
+        - path: "/anfrage/:requestId"
+          component: "AnfrageDetailPage"
+          title: "Anfrage-Details"
 
     # ==========================================================================
     # MOD-08: INVESTMENTS
@@ -477,7 +561,7 @@ zone2_portal:
           title: "Werbung"
 
     # ==========================================================================
-    # MOD-11: FINANZIERUNGSMANAGER (Separate Workstation)
+    # MOD-11: FINANZIERUNGSMANAGER
     # ==========================================================================
     MOD-11:
       name: "Finanzierungsmanager"
@@ -515,6 +599,280 @@ zone2_portal:
         - path: "/einreichen/:caseId"
           component: "SubmitToBankTab"
           title: "Fall einreichen"
+
+    # ==========================================================================
+    # MOD-12: AKQUISE-MANAGER (NEU)
+    # ==========================================================================
+    MOD-12:
+      name: "Akquise-Manager"
+      base: "/akquise-manager"
+      icon: "Briefcase"
+      display_order: 12
+      visibility:
+        default: false
+        org_types: ["partner"]
+        requires_activation: true
+      
+      tiles:
+        - path: "/dashboard"
+          component: "AkquiseDashboard"
+          title: "Dashboard"
+          
+        - path: "/kunden"
+          component: "AkquiseKunden"
+          title: "Kunden"
+          
+        - path: "/mandate"
+          component: "AkquiseMandate"
+          title: "Mandate"
+          
+        - path: "/tools"
+          component: "AkquiseTools"
+          title: "Tools"
+
+    # ==========================================================================
+    # MOD-13: PROJEKTE (NEU)
+    # ==========================================================================
+    MOD-13:
+      name: "Projekte"
+      base: "/projekte"
+      icon: "FolderKanban"
+      display_order: 13
+      visibility:
+        default: true
+        org_types: ["client", "partner"]
+      
+      tiles:
+        - path: "/uebersicht"
+          component: "ProjekteUebersicht"
+          title: "Übersicht"
+          
+        - path: "/portfolio"
+          component: "ProjektePortfolio"
+          title: "Portfolio"
+          
+        - path: "/timeline"
+          component: "ProjekteTimeline"
+          title: "Timeline"
+          
+        - path: "/einstellungen"
+          component: "ProjekteSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-14: COMMUNICATION PRO (NEU)
+    # ==========================================================================
+    MOD-14:
+      name: "Communication Pro"
+      base: "/communication-pro"
+      icon: "Mail"
+      display_order: 14
+      visibility:
+        default: false
+        org_types: ["partner"]
+        requires_activation: true
+      
+      tiles:
+        - path: "/serien-emails"
+          component: "CommProSerienEmails"
+          title: "Serien-E-Mails"
+          
+        - path: "/recherche"
+          component: "CommProRecherche"
+          title: "Recherche"
+          
+        - path: "/social"
+          component: "CommProSocial"
+          title: "Social"
+          
+        - path: "/agenten"
+          component: "CommProAgenten"
+          title: "Agenten"
+
+    # ==========================================================================
+    # MOD-15: FORTBILDUNG (NEU)
+    # ==========================================================================
+    MOD-15:
+      name: "Fortbildung"
+      base: "/fortbildung"
+      icon: "GraduationCap"
+      display_order: 15
+      visibility:
+        default: true
+        org_types: ["partner", "subpartner"]
+      
+      tiles:
+        - path: "/katalog"
+          component: "FortbildungKatalog"
+          title: "Katalog"
+          
+        - path: "/meine-kurse"
+          component: "FortbildungMeineKurse"
+          title: "Meine Kurse"
+          
+        - path: "/zertifikate"
+          component: "FortbildungZertifikate"
+          title: "Zertifikate"
+          
+        - path: "/einstellungen"
+          component: "FortbildungSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-16: SERVICES (NEU)
+    # ==========================================================================
+    MOD-16:
+      name: "Services"
+      base: "/services"
+      icon: "Wrench"
+      display_order: 16
+      visibility:
+        default: true
+        org_types: ["client", "partner"]
+      
+      tiles:
+        - path: "/katalog"
+          component: "ServicesKatalog"
+          title: "Katalog"
+          
+        - path: "/anfragen"
+          component: "ServicesAnfragen"
+          title: "Anfragen"
+          
+        - path: "/auftraege"
+          component: "ServicesAuftraege"
+          title: "Aufträge"
+          
+        - path: "/einstellungen"
+          component: "ServicesSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-17: CAR-MANAGEMENT (NEU)
+    # ==========================================================================
+    MOD-17:
+      name: "Car-Management"
+      base: "/cars"
+      icon: "Car"
+      display_order: 17
+      visibility:
+        default: false
+        org_types: ["partner"]
+        requires_activation: true
+      
+      tiles:
+        - path: "/uebersicht"
+          component: "CarsUebersicht"
+          title: "Übersicht"
+          
+        - path: "/fahrzeuge"
+          component: "CarsFahrzeuge"
+          title: "Fahrzeuge"
+          
+        - path: "/service"
+          component: "CarsService"
+          title: "Service"
+          
+        - path: "/einstellungen"
+          component: "CarsSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-18: FINANZANALYSE (NEU)
+    # ==========================================================================
+    MOD-18:
+      name: "Finanzanalyse"
+      base: "/finanzanalyse"
+      icon: "LineChart"
+      display_order: 18
+      visibility:
+        default: true
+        org_types: ["client"]
+      
+      tiles:
+        - path: "/dashboard"
+          component: "FinanzanalyseDashboard"
+          title: "Dashboard"
+          
+        - path: "/reports"
+          component: "FinanzanalyseReports"
+          title: "Reports"
+          
+        - path: "/szenarien"
+          component: "FinanzanalyseSzenarien"
+          title: "Szenarien"
+          
+        - path: "/einstellungen"
+          component: "FinanzanalyseSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-19: PHOTOVOLTAIK (NEU)
+    # ==========================================================================
+    MOD-19:
+      name: "Photovoltaik"
+      base: "/photovoltaik"
+      icon: "Sun"
+      display_order: 19
+      visibility:
+        default: true
+        org_types: ["client"]
+      
+      tiles:
+        - path: "/angebot"
+          component: "PVAngebot"
+          title: "Angebot"
+          
+        - path: "/checkliste"
+          component: "PVCheckliste"
+          title: "Checkliste"
+          
+        - path: "/projekt"
+          component: "PVProjekt"
+          title: "Projekt"
+          
+        - path: "/einstellungen"
+          component: "PVSettings"
+          title: "Einstellungen"
+
+    # ==========================================================================
+    # MOD-20: MIETY (NEU — 6 Tiles Exception)
+    # ==========================================================================
+    MOD-20:
+      name: "Miety"
+      base: "/miety"
+      icon: "Home"
+      display_order: 20
+      visibility:
+        default: false
+        org_types: ["client"]
+        requires_activation: true
+      note: "EXCEPTION: 6 Tiles statt 4 (Mieter-Portal)"
+      
+      tiles:
+        - path: "/uebersicht"
+          component: "MietyUebersicht"
+          title: "Übersicht"
+          
+        - path: "/dokumente"
+          component: "MietyDokumente"
+          title: "Dokumente"
+          
+        - path: "/kommunikation"
+          component: "MietyKommunikation"
+          title: "Kommunikation"
+          
+        - path: "/zaehlerstaende"
+          component: "MietyZaehlerstaende"
+          title: "Zählerstände"
+          
+        - path: "/versorgung"
+          component: "MietyVersorgung"
+          title: "Versorgung"
+          
+        - path: "/versicherungen"
+          component: "MietyVersicherungen"
+          title: "Versicherungen"
 
 
 # ==============================================================================
