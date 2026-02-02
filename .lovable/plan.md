@@ -1,66 +1,81 @@
 
+# Plan: Saubere Zonen-Trennung mit 2 Entwicklungs-Kontexten
 
-# Plan: Option A — thomas.stelzl nur als Platform Admin
+## Ziel-Architektur
 
-## Zusammenfassung
+### Zone 1: Admin-Portal (`/admin/*`)
+- **User:** thomas.stelzl
+- **Organisation:** System of a Town (internal)
+- **Rolle:** platform_admin
+- **Zweck:** Governance, Konfiguration, Oversight
 
-Die Client-Membership von `thomas.stelzl` wird entfernt. Dadurch hat dieser User nur noch **eine einzige Rolle** (`platform_admin` in der internen Organisation) und der Org-Switcher zeigt nur noch einen Eintrag.
+### Zone 2: Portal (`/portal/*`)
+- **Entwicklungs-Muster:** thomas.stelzl (client) - leere Module als Vorlage
+- **Test-Sandbox:** test (client) - für Datenarbeit
+
+---
 
 ## Änderungen
 
-### 1. Datenbank: Client-Membership entfernen
+### 1. Datenbank-Korrekturen
 
-**Migration SQL:**
+**a) `active_tenant_id` korrigieren:**
 ```sql
--- Entferne die Client-Membership von thomas.stelzl
-DELETE FROM memberships 
-WHERE id = '72ace7cd-a28e-4fb1-b6b2-89f2ebebd690';
+UPDATE profiles 
+SET active_tenant_id = 'a0000000-0000-4000-a000-000000000001'
+WHERE email = 'thomas.stelzl@systemofadown.com';
+```
+→ thomas.stelzl startet jetzt im **internen** Kontext
+
+**b) Client-Membership für thomas.stelzl wiederherstellen:**
+```sql
+INSERT INTO memberships (user_id, tenant_id, role)
+VALUES (
+  'd028bc99-6e29-4fa4-b038-d03015faf222',
+  'e808a01b-728e-4ac3-88fe-6edeeae69d6e',
+  'org_admin'
+);
+```
+→ thomas.stelzl kann auch in Zone 2 arbeiten
+
+### 2. Resultat nach Implementierung
+
+| User | Memberships | Aktiver Kontext |
+|------|-------------|-----------------|
+| thomas.stelzl | `platform_admin` in System of a Town + `org_admin` in thomas.stelzl | System of a Town (internal) |
+| test@example.com | `org_admin` in test | test (client) |
+
+### 3. UI-Verhalten
+
+**Zone 1 (`/admin/*`):**
+- thomas.stelzl sieht: `Internal / System of a Town`
+- Kein Org-Switcher nötig (nur eine interne Org)
+
+**Zone 2 (`/portal/*`):**
+- thomas.stelzl sieht Org-Switcher mit 2 Optionen:
+  - `thomas.stelzl` (Entwicklungs-Muster)
+  - `test` (wenn auch dort Membership) oder via God-Mode sichtbar
+
+### 4. Optional: Client-Org umbenennen
+
+Für Klarheit könnte `thomas.stelzl` (client) umbenannt werden:
+```sql
+UPDATE organizations 
+SET name = 'Muster-Kunde' 
+WHERE id = 'e808a01b-728e-4ac3-88fe-6edeeae69d6e';
 ```
 
-**Ergebnis:**
-- thomas.stelzl hat nur noch: `platform_admin` in `System of a Town`
-- test@example.com bleibt: `org_admin` in `test` (unser Test-Kunde)
+---
 
-### 2. UI: Org-Switcher vereinfachen (AdminLayout)
+## Zusammenfassung
 
-Da ein Platform Admin in der Regel nur eine interne Membership hat, wird der Switcher-Button vereinfacht:
+| Zone | Pfad | Kontext | Switcher |
+|------|------|---------|----------|
+| Zone 1 | `/admin/*` | System of a Town (internal) | Nein |
+| Zone 2 | `/portal/*` | thomas.stelzl ODER test (client) | Ja (2 Orgs) |
 
-- **Wenn nur 1 Org verfügbar**: Zeige nur den Badge ohne Dropdown-Pfeil
-- **Wenn mehrere Orgs verfügbar**: Zeige Dropdown wie bisher (für Zukunft)
-
-**Datei:** `src/components/admin/AdminLayout.tsx`
-
-```text
-Änderung in Zeile 109:
-- {canSwitch && <ChevronDown className="h-3 w-3" />}
-+ (bleibt, aber canSwitch wird jetzt false sein)
-
-Optional: Button vereinfachen wenn canSwitch=false
-```
-
-### 3. Keine Code-Änderung nötig
-
-Die bestehende Logik funktioniert bereits korrekt:
-- `useOrgContext.canSwitch` gibt `false` zurück wenn nur 1 Org
-- Der Dropdown zeigt dann nur 1 Eintrag
-- Der ChevronDown wird nur bei `canSwitch=true` angezeigt
-
-## Ergebnis nach Implementierung
-
-| User | Org | Type | Role |
-|------|-----|------|------|
-| thomas.stelzl | System of a Town | internal | platform_admin |
-| test@example.com | test | client | org_admin |
-
-**Admin Portal zeigt:**
-- Badge: `Internal / System of a Town`
-- Kein Dropdown-Pfeil (nur 1 Org)
-- Klarer, eindeutiger Kontext
-
-## Technische Details
-
-- **Migration-Typ:** DELETE (Daten-Änderung)
-- **Betroffene Tabelle:** `memberships`
-- **Betroffene User:** thomas.stelzl (d028bc99-...)
-- **Risiko:** Niedrig (Membership kann bei Bedarf neu erstellt werden)
-
+**Vorteil des Setups:**
+- Klare Trennung: Admin ≠ Entwickler-Portal
+- Entwicklungs-Muster bleibt sauber (leere Daten)
+- Test-Sandbox für echte Datenarbeit
+- Org-Switcher in Zone 2 für flexibles Testen
