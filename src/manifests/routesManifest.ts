@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules
+ * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-20 Miety: 6 tiles)
  * 3. Changes require explicit approval
  */
 
@@ -97,15 +97,39 @@ export const zone1Admin: ZoneDefinition = {
     { path: "leadpool", component: "LeadPool", title: "Lead Pool" },
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
     { path: "commissions", component: "CommissionApproval", title: "Provisionen" },
+    { path: "support", component: "Support", title: "Support" },
+    // FutureRoom
     { path: "futureroom", component: "FutureRoom", title: "Future Room" },
     { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
     { path: "futureroom/finanzierungsmanager", component: "FutureRoomManagers", title: "Finanzierungsmanager" },
-    { path: "support", component: "Support", title: "Support" },
+    // Agents (NEW)
+    { path: "agents", component: "AgentsDashboard", title: "Agents" },
+    { path: "agents/catalog", component: "AgentsCatalog", title: "Agenten-Katalog" },
+    { path: "agents/instances", component: "AgentsInstances", title: "Agenten-Instanzen" },
+    { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
+    { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
+    // Acquiary (NEW)
+    { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
+    { path: "acquiary/zuordnung", component: "AcquiaryZuordnung", title: "Zuordnung" },
+    { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
+    { path: "acquiary/mandate", component: "AcquiaryMandate", title: "Mandate" },
+    // Sales Desk (NEW)
+    { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
+    { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
+    { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
+    { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
+    { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
+    // Finance Desk (NEW)
+    { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
+    { path: "finance-desk/inbox", component: "FinanceDeskInbox", title: "Inbox" },
+    { path: "finance-desk/berater", component: "FinanceDeskBerater", title: "Berater" },
+    { path: "finance-desk/zuweisung", component: "FinanceDeskZuweisung", title: "Zuweisung" },
+    { path: "finance-desk/monitoring", component: "FinanceDeskMonitoring", title: "Monitoring" },
   ],
 };
 
 // =============================================================================
-// ZONE 2: USER PORTAL — 11 MODULE ARCHITECTURE
+// ZONE 2: USER PORTAL — 20 MODULE ARCHITECTURE
 // =============================================================================
 export const zone2Portal: ZoneDefinition = {
   base: "/portal",
@@ -272,6 +296,129 @@ export const zone2Portal: ZoneDefinition = {
       dynamic_routes: [
         { path: "selbstauskunft/:caseId", component: "CaseDetailTab", title: "Fall-Details", dynamic: true },
         { path: "einreichen/:caseId", component: "SubmitToBankTab", title: "Fall einreichen", dynamic: true },
+      ],
+    },
+    // =========================================================================
+    // NEW MODULES (MOD-12 to MOD-20)
+    // =========================================================================
+    "MOD-12": {
+      name: "Akquise-Manager",
+      base: "akquise-manager",
+      icon: "Briefcase",
+      display_order: 12,
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      tiles: [
+        { path: "dashboard", component: "AkquiseDashboard", title: "Dashboard" },
+        { path: "kunden", component: "AkquiseKunden", title: "Kunden" },
+        { path: "mandate", component: "AkquiseMandate", title: "Mandate" },
+        { path: "tools", component: "AkquiseTools", title: "Tools" },
+      ],
+    },
+    "MOD-13": {
+      name: "Projekte",
+      base: "projekte",
+      icon: "FolderKanban",
+      display_order: 13,
+      visibility: { default: true, org_types: ["client", "partner"] },
+      tiles: [
+        { path: "uebersicht", component: "ProjekteUebersicht", title: "Übersicht" },
+        { path: "portfolio", component: "ProjektePortfolio", title: "Portfolio" },
+        { path: "timeline", component: "ProjekteTimeline", title: "Timeline" },
+        { path: "settings", component: "ProjekteSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-14": {
+      name: "Communication Pro",
+      base: "communication-pro",
+      icon: "Mail",
+      display_order: 14,
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      tiles: [
+        { path: "serien-emails", component: "CommProSerienEmails", title: "Serien-E-Mails" },
+        { path: "recherche", component: "CommProRecherche", title: "Recherche" },
+        { path: "social", component: "CommProSocial", title: "Social" },
+        { path: "agenten", component: "CommProAgenten", title: "Agenten" },
+      ],
+    },
+    "MOD-15": {
+      name: "Fortbildung",
+      base: "fortbildung",
+      icon: "GraduationCap",
+      display_order: 15,
+      visibility: { default: true, org_types: ["partner", "subpartner"] },
+      tiles: [
+        { path: "katalog", component: "FortbildungKatalog", title: "Katalog" },
+        { path: "meine-kurse", component: "FortbildungMeineKurse", title: "Meine Kurse" },
+        { path: "zertifikate", component: "FortbildungZertifikate", title: "Zertifikate" },
+        { path: "settings", component: "FortbildungSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-16": {
+      name: "Services",
+      base: "services",
+      icon: "Wrench",
+      display_order: 16,
+      visibility: { default: true, org_types: ["client", "partner"] },
+      tiles: [
+        { path: "katalog", component: "ServicesKatalog", title: "Katalog" },
+        { path: "anfragen", component: "ServicesAnfragen", title: "Anfragen" },
+        { path: "auftraege", component: "ServicesAuftraege", title: "Aufträge" },
+        { path: "settings", component: "ServicesSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-17": {
+      name: "Car-Management",
+      base: "cars",
+      icon: "Car",
+      display_order: 17,
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      tiles: [
+        { path: "uebersicht", component: "CarsUebersicht", title: "Übersicht" },
+        { path: "fahrzeuge", component: "CarsFahrzeuge", title: "Fahrzeuge" },
+        { path: "service", component: "CarsService", title: "Service" },
+        { path: "settings", component: "CarsSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-18": {
+      name: "Finanzanalyse",
+      base: "finanzanalyse",
+      icon: "LineChart",
+      display_order: 18,
+      visibility: { default: true, org_types: ["client"] },
+      tiles: [
+        { path: "dashboard", component: "FinanzanalyseDashboard", title: "Dashboard" },
+        { path: "reports", component: "FinanzanalyseReports", title: "Reports" },
+        { path: "szenarien", component: "FinanzanalyseSzenarien", title: "Szenarien" },
+        { path: "settings", component: "FinanzanalyseSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-19": {
+      name: "Photovoltaik",
+      base: "photovoltaik",
+      icon: "Sun",
+      display_order: 19,
+      visibility: { default: true, org_types: ["client"] },
+      tiles: [
+        { path: "angebot", component: "PVAngebot", title: "Angebot" },
+        { path: "checkliste", component: "PVCheckliste", title: "Checkliste" },
+        { path: "projekt", component: "PVProjekt", title: "Projekt" },
+        { path: "settings", component: "PVSettings", title: "Einstellungen" },
+      ],
+    },
+    "MOD-20": {
+      name: "Miety",
+      base: "miety",
+      icon: "Home",
+      display_order: 20,
+      visibility: { default: false, org_types: ["client"], requires_activation: true },
+      tiles: [
+        // EXCEPTION: 6 tiles instead of 4
+        { path: "uebersicht", component: "MietyUebersicht", title: "Übersicht" },
+        { path: "dokumente", component: "MietyDokumente", title: "Dokumente" },
+        { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
+        { path: "zaehlerstaende", component: "MietyZaehlerstaende", title: "Zählerstände" },
+        { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
+        { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
       ],
     },
   },

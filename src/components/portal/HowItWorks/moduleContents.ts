@@ -10,7 +10,16 @@ import {
   Search, Heart, FileSignature, Calculator,
   MessageCircle, Network,
   Target, Megaphone,
-  HelpCircle
+  HelpCircle,
+  Briefcase, ClipboardList, Wrench, MapPin,
+  FolderKanban, Clock, Cog,
+  AtSign, Globe, Bot,
+  GraduationCap, BookOpen, Award,
+  ShoppingCart, ClipboardCheck, Package,
+  Car, Gauge, CarFront,
+  LineChart, FileBarChart, Lightbulb,
+  Sun, CheckSquare, Folder,
+  Home, FileBox, MessageSquare, Thermometer, Plug, ShieldCheck
 } from 'lucide-react';
 
 export const moduleContents: Record<string, HowItWorksContent> = {
@@ -124,7 +133,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-04': {
     moduleCode: 'MOD-04',
     title: 'Immobilien',
-    oneLiner: 'Die Immobilienakte: Ihre zentrale Datenbasis für Objekt, Einheit und Mietdaten-Bestand.',
+    oneLiner: 'Die zentrale Immobilienakte als Datenbasis (Single Source of Truth) für Objekt-, Einheiten- und Mietdaten-Bestand.',
     benefits: [
       'Single Source of Truth: Alle Objekt- und Bestandsdaten sauber an einem Ort.',
       'Klare Grundlage für Verkauf, Vermietung und Finanzierung.',
@@ -145,15 +154,15 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       },
       {
         title: 'Daten für Verkauf vorbereiten',
-        steps: ['Objekt öffnen', 'Exposé prüfen', 'Bilder/Dokumente ergänzen', 'an MOD-06 übergeben'],
+        steps: ['Objekt öffnen', 'Exposé prüfen', 'Bilder/Dokumente ergänzen', 'an Verkauf übergeben'],
       },
       {
         title: 'Daten für Finanzierung nutzen',
-        steps: ['Objekt öffnen', 'Kennzahlen prüfen', 'an MOD-07 übergeben'],
+        steps: ['Objekt öffnen', 'Kennzahlen prüfen', 'an Finanzierung übergeben'],
       },
     ],
     cta: 'Pflegen Sie zuerst die Immobilienakte – alles Weitere baut darauf auf.',
-    hint: 'Operative Mietprozesse (Mieteingang, Mahnwesen, Vermietungsvorgänge) passieren in MOD-05.',
+    hint: 'Operative Mietprozesse (Mieteingang, Mahnwesen, Vermietungsvorgänge) passieren in MSV (MOD-05).',
     subTiles: [
       { title: 'Kontexte', route: '/portal/immobilien/kontexte', icon: FolderTree },
       { title: 'Portfolio', route: '/portal/immobilien/portfolio', icon: LayoutGrid },
@@ -165,7 +174,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-05': {
     moduleCode: 'MOD-05',
     title: 'MSV',
-    oneLiner: 'Die Workbench für den Alltag: Mieteingang, Vermietung, Mahnwesen – operativ geführt.',
+    oneLiner: 'Die Workbench für operative Mietprozesse – basierend auf dem Datenbestand aus MOD-04.',
     benefits: [
       'Kontrolle über Soll/Ist und offene Posten ohne Excel.',
       'Vermietungsvorgänge strukturiert bis zum Vertrag.',
@@ -190,7 +199,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       },
     ],
     cta: 'Starten Sie mit dem Mieteingang – das schafft sofort Übersicht.',
-    hint: 'MSV arbeitet auf dem Daten-Bestand aus MOD-04 (Objekte/Einheiten/Mietdaten-Bestand).',
+    hint: 'MSV arbeitet auf dem Daten-Bestand aus MOD-04 (Immobilienakte: Objekte/Einheiten/Mietdaten-Bestand).',
     subTiles: [
       { title: 'Objekte', route: '/portal/msv/objekte', icon: Building2 },
       { title: 'Mieteingang', route: '/portal/msv/mieteingang', icon: Wallet },
@@ -295,7 +304,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       },
       {
         title: 'Von Simulation zur Finanzierung',
-        steps: ['Simulation', 'Parameter fixieren', 'Finanzierung anfragen (MOD-07)'],
+        steps: ['Simulation', 'Parameter fixieren', 'Finanzierung anfragen'],
       },
     ],
     cta: 'Speichern Sie ein Objekt als Favorit und starten Sie die Simulation.',
@@ -413,6 +422,319 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Selbstauskunft', route: '/portal/finanzierungsmanager/selbstauskunft', icon: FileEdit },
       { title: 'Einreichen', route: '/portal/finanzierungsmanager/einreichen', icon: Send },
       { title: 'Status', route: '/portal/finanzierungsmanager/status', icon: Activity },
+    ],
+  },
+
+  // =========================================================================
+  // NEW MODULES (MOD-12 to MOD-20)
+  // =========================================================================
+  'MOD-12': {
+    moduleCode: 'MOD-12',
+    title: 'Akquise-Manager',
+    oneLiner: 'Vom Exposé zur Entscheidung: strukturiert, nachvollziehbar, schneller.',
+    benefits: [
+      'Alle neuen Exposés und Mandate auf einen Blick.',
+      'Kunden und deren aktive Mandate übersichtlich verwalten.',
+      'Analyse-Tools für bessere Investment-Entscheidungen.',
+    ],
+    whatYouDo: [
+      'Dashboard prüfen: neue Exposés, neue Mandate, aktive Fälle',
+      'Zugewiesene Kunden betreuen und Mandate verwalten',
+      'Mandate durch den Workflow führen (Inbox → Status)',
+      'Analyse-Tools nutzen: Geomap, Investmentrechner, Recherche',
+    ],
+    flows: [
+      {
+        title: 'Neues Exposé bearbeiten',
+        steps: ['Dashboard', 'Exposé öffnen', 'Prüfen', 'Kunde zuordnen', 'Mandat starten'],
+      },
+      {
+        title: 'Kundenmandat abschließen',
+        steps: ['Kunden', 'Mandat wählen', 'Schritte abarbeiten', 'Status aktualisieren'],
+      },
+    ],
+    cta: 'Zum Dashboard – und überblicken Sie Ihre Akquise-Arbeit.',
+    subTiles: [
+      { title: 'Dashboard', route: '/portal/akquise-manager/dashboard', icon: LayoutGrid },
+      { title: 'Kunden', route: '/portal/akquise-manager/kunden', icon: Users },
+      { title: 'Mandate', route: '/portal/akquise-manager/mandate', icon: ClipboardList },
+      { title: 'Tools', route: '/portal/akquise-manager/tools', icon: Wrench },
+    ],
+  },
+
+  'MOD-13': {
+    moduleCode: 'MOD-13',
+    title: 'Projekte',
+    oneLiner: 'Projektübersicht: Status, Meilensteine und zugeordnete Assets an einem Ort.',
+    benefits: [
+      'Alle Projekte mit Status auf einen Blick.',
+      'Zugeordnete Objekte/Assets klar strukturiert.',
+      'Meilensteine und Timeline für Transparenz.',
+    ],
+    whatYouDo: [
+      'Projekte anlegen und verwalten',
+      'Assets/Objekte zuordnen',
+      'Meilensteine und Aufgaben planen',
+      'Timeline verfolgen',
+      'Projektrollen und Freigaben definieren',
+    ],
+    flows: [
+      {
+        title: 'Neues Projekt starten',
+        steps: ['Übersicht', 'Projekt anlegen', 'Assets zuordnen', 'Meilensteine setzen'],
+      },
+      {
+        title: 'Projekt abschließen',
+        steps: ['Timeline prüfen', 'Aufgaben abhaken', 'Status final setzen'],
+      },
+    ],
+    cta: 'Projektübersicht öffnen – und behalten Sie den Überblick.',
+    subTiles: [
+      { title: 'Übersicht', route: '/portal/projekte/uebersicht', icon: FolderKanban },
+      { title: 'Portfolio', route: '/portal/projekte/portfolio', icon: LayoutGrid },
+      { title: 'Timeline', route: '/portal/projekte/timeline', icon: Clock },
+      { title: 'Einstellungen', route: '/portal/projekte/settings', icon: Cog },
+    ],
+  },
+
+  'MOD-14': {
+    moduleCode: 'MOD-14',
+    title: 'Communication Pro',
+    oneLiner: 'Professionelle Outreach-Suite: Serien-E-Mails, Recherche, Social, Agenten.',
+    benefits: [
+      'Kampagnen und Sequenzen effizient erstellen.',
+      'Kontakt- und Firmenrecherche direkt integriert.',
+      'Agenten-gestützte Assistenz für mehr Reichweite.',
+    ],
+    whatYouDo: [
+      'Serien-E-Mails planen und versenden',
+      'Kontakte/Firmen recherchieren und anreichern',
+      'Social-Content planen',
+      'Agenten-Flows für Automatisierung nutzen',
+    ],
+    flows: [
+      {
+        title: 'Kampagne erstellen',
+        steps: ['Serien-E-Mails', 'Template wählen', 'Empfänger', 'Zeitplan', 'Versand'],
+      },
+      {
+        title: 'Kontakte anreichern',
+        steps: ['Recherche', 'Suche', 'Treffer prüfen', 'in Kontakte übernehmen'],
+      },
+    ],
+    cta: 'Erste Serien-E-Mail erstellen – und erreichen Sie mehr.',
+    subTiles: [
+      { title: 'Serien-E-Mails', route: '/portal/communication-pro/serien-emails', icon: AtSign },
+      { title: 'Recherche', route: '/portal/communication-pro/recherche', icon: Search },
+      { title: 'Social', route: '/portal/communication-pro/social', icon: Globe },
+      { title: 'Agenten', route: '/portal/communication-pro/agenten', icon: Bot },
+    ],
+  },
+
+  'MOD-15': {
+    moduleCode: 'MOD-15',
+    title: 'Fortbildung',
+    oneLiner: 'Kurse, Lernpfade und Zertifikate für Partner und Teams.',
+    benefits: [
+      'Zugriff auf strukturierten Kurskatalog.',
+      'Lernfortschritt jederzeit nachvollziehbar.',
+      'Zertifikate als Nachweis für Qualifikationen.',
+    ],
+    whatYouDo: [
+      'Kurse durchsuchen und starten',
+      'Lernfortschritt verfolgen',
+      'Zertifikate einsehen und teilen',
+      'Präferenzen für Empfehlungen setzen',
+    ],
+    flows: [
+      {
+        title: 'Kurs absolvieren',
+        steps: ['Katalog', 'Kurs starten', 'Module durcharbeiten', 'Zertifikat erhalten'],
+      },
+      {
+        title: 'Zertifikat teilen',
+        steps: ['Zertifikate', 'Auswählen', 'Teilen/Herunterladen'],
+      },
+    ],
+    cta: 'Kurskatalog öffnen – und starten Sie Ihre Weiterbildung.',
+    subTiles: [
+      { title: 'Katalog', route: '/portal/fortbildung/katalog', icon: BookOpen },
+      { title: 'Meine Kurse', route: '/portal/fortbildung/meine-kurse', icon: GraduationCap },
+      { title: 'Zertifikate', route: '/portal/fortbildung/zertifikate', icon: Award },
+      { title: 'Einstellungen', route: '/portal/fortbildung/settings', icon: Settings },
+    ],
+  },
+
+  'MOD-16': {
+    moduleCode: 'MOD-16',
+    title: 'Services',
+    oneLiner: 'Service-Katalog: Beratung, Unterlagen-Check, Bewertung und mehr – alles anfragen.',
+    benefits: [
+      'Alle verfügbaren Services übersichtlich im Katalog.',
+      'Anfragen stellen und Status verfolgen.',
+      'Laufende Aufträge transparent managen.',
+    ],
+    whatYouDo: [
+      'Services durchsuchen und auswählen',
+      'Anfragen erstellen',
+      'Aufträge verfolgen',
+      'Ansprechpartner und Defaults pflegen',
+    ],
+    flows: [
+      {
+        title: 'Service anfragen',
+        steps: ['Katalog', 'Service wählen', 'Anfrage stellen', 'Status prüfen'],
+      },
+      {
+        title: 'Auftrag abschließen',
+        steps: ['Aufträge', 'Details prüfen', 'Abnahme bestätigen'],
+      },
+    ],
+    cta: 'Service auswählen – und profitieren Sie von professioneller Unterstützung.',
+    subTiles: [
+      { title: 'Katalog', route: '/portal/services/katalog', icon: ShoppingCart },
+      { title: 'Anfragen', route: '/portal/services/anfragen', icon: ClipboardCheck },
+      { title: 'Aufträge', route: '/portal/services/auftraege', icon: Package },
+      { title: 'Einstellungen', route: '/portal/services/settings', icon: Settings },
+    ],
+  },
+
+  'MOD-17': {
+    moduleCode: 'MOD-17',
+    title: 'Car-Management',
+    oneLiner: 'Fuhrparkverwaltung einfach und übersichtlich.',
+    benefits: [
+      'Alle Fahrzeuge und KPIs auf einen Blick.',
+      'Wartung, Schäden und Termine strukturiert.',
+      'Dokumente und Erinnerungen zentral verwalten.',
+    ],
+    whatYouDo: [
+      'Fahrzeuge anlegen und Stammdaten pflegen',
+      'Service-Termine und Wartungen verwalten',
+      'Schäden dokumentieren',
+      'Erinnerungen einrichten',
+    ],
+    flows: [
+      {
+        title: 'Fahrzeug hinzufügen',
+        steps: ['Fahrzeuge', 'Neues Fahrzeug', 'Stammdaten', 'Service-Plan'],
+      },
+      {
+        title: 'Service-Termin erfassen',
+        steps: ['Service', 'Termin anlegen', 'Erinnerung setzen', 'Dokumentation'],
+      },
+    ],
+    cta: 'Fahrzeug hinzufügen – und behalten Sie Ihren Fuhrpark im Griff.',
+    subTiles: [
+      { title: 'Übersicht', route: '/portal/cars/uebersicht', icon: Gauge },
+      { title: 'Fahrzeuge', route: '/portal/cars/fahrzeuge', icon: Car },
+      { title: 'Service', route: '/portal/cars/service', icon: Wrench },
+      { title: 'Einstellungen', route: '/portal/cars/settings', icon: Settings },
+    ],
+  },
+
+  'MOD-18': {
+    moduleCode: 'MOD-18',
+    title: 'Finanzanalyse',
+    oneLiner: 'Kennzahlen, Reports und Szenarien für bessere Entscheidungen.',
+    benefits: [
+      'Alle wichtigen Kennzahlen auf einem Dashboard.',
+      'Reports und Exports für Dokumentation.',
+      'Was-wäre-wenn-Szenarien für Planung.',
+    ],
+    whatYouDo: [
+      'Dashboard mit KPIs prüfen',
+      'Reports erstellen und exportieren',
+      'Szenarien durchspielen',
+      'Parameter anpassen',
+    ],
+    flows: [
+      {
+        title: 'Report erstellen',
+        steps: ['Dashboard', 'Reports', 'Zeitraum wählen', 'Exportieren'],
+      },
+      {
+        title: 'Szenario analysieren',
+        steps: ['Szenarien', 'Parameter setzen', 'Ergebnis prüfen', 'Vergleichen'],
+      },
+    ],
+    cta: 'Dashboard öffnen – und gewinnen Sie Klarheit über Ihre Zahlen.',
+    subTiles: [
+      { title: 'Dashboard', route: '/portal/finanzanalyse/dashboard', icon: LineChart },
+      { title: 'Reports', route: '/portal/finanzanalyse/reports', icon: FileBarChart },
+      { title: 'Szenarien', route: '/portal/finanzanalyse/szenarien', icon: Lightbulb },
+      { title: 'Einstellungen', route: '/portal/finanzanalyse/settings', icon: Settings },
+    ],
+  },
+
+  'MOD-19': {
+    moduleCode: 'MOD-19',
+    title: 'Photovoltaik',
+    oneLiner: 'Self-Service PV-Journey: Angebot, Checkliste, Projekt, fertig.',
+    benefits: [
+      'Schnelles Angebot ohne Wartezeit.',
+      'Strukturierte Checkliste für alle Voraussetzungen.',
+      'Projektstatus jederzeit einsehbar.',
+    ],
+    whatYouDo: [
+      'Angebot konfigurieren und anfordern',
+      'Checkliste durcharbeiten',
+      'Projektstatus verfolgen',
+      'Einstellungen anpassen',
+    ],
+    flows: [
+      {
+        title: 'PV-Angebot starten',
+        steps: ['Angebot', 'Daten eingeben', 'Berechnung', 'Anfrage absenden'],
+      },
+      {
+        title: 'Projekt verfolgen',
+        steps: ['Projekt', 'Status prüfen', 'Nächste Schritte'],
+      },
+    ],
+    cta: 'Angebot starten – und nutzen Sie die Kraft der Sonne.',
+    subTiles: [
+      { title: 'Angebot', route: '/portal/photovoltaik/angebot', icon: Sun },
+      { title: 'Checkliste', route: '/portal/photovoltaik/checkliste', icon: CheckSquare },
+      { title: 'Projekt', route: '/portal/photovoltaik/projekt', icon: Folder },
+      { title: 'Einstellungen', route: '/portal/photovoltaik/settings', icon: Settings },
+    ],
+  },
+
+  'MOD-20': {
+    moduleCode: 'MOD-20',
+    title: 'Miety',
+    oneLiner: 'Ihr Mieterportal: Dokumente, Kommunikation, Zählerstände und mehr.',
+    benefits: [
+      'Alle wichtigen Dokumente an einem Ort.',
+      'Direkte Kommunikation mit der Verwaltung.',
+      'Zählerstände, Versorgung und Versicherungen übersichtlich.',
+    ],
+    whatYouDo: [
+      'Dokumente einsehen und herunterladen',
+      'Nachrichten an die Verwaltung senden',
+      'Zählerstände melden',
+      'Versorgungsverträge verwalten',
+      'Versicherungen prüfen',
+    ],
+    flows: [
+      {
+        title: 'Zählerstand melden',
+        steps: ['Zählerstände', 'Wert eingeben', 'Bestätigen'],
+      },
+      {
+        title: 'Anfrage an Verwaltung',
+        steps: ['Kommunikation', 'Nachricht schreiben', 'Absenden'],
+      },
+    ],
+    cta: 'Zur Übersicht – und behalten Sie Ihre Mietwohnung im Blick.',
+    subTiles: [
+      { title: 'Übersicht', route: '/portal/miety/uebersicht', icon: Home },
+      { title: 'Dokumente', route: '/portal/miety/dokumente', icon: FileBox },
+      { title: 'Kommunikation', route: '/portal/miety/kommunikation', icon: MessageSquare },
+      { title: 'Zählerstände', route: '/portal/miety/zaehlerstaende', icon: Thermometer },
+      { title: 'Versorgung', route: '/portal/miety/versorgung', icon: Plug },
+      { title: 'Versicherungen', route: '/portal/miety/versicherungen', icon: ShieldCheck },
     ],
   },
 };
