@@ -16,6 +16,7 @@ import {
   FileEdit, Loader2, RefreshCw 
 } from 'lucide-react';
 import { SelbstauskunftForm } from '@/components/finanzierung/SelbstauskunftForm';
+import type { ApplicantProfile } from '@/types/finance';
 
 export default function SelbstauskunftTab() {
   const { activeOrganization } = useAuth();
@@ -23,7 +24,7 @@ export default function SelbstauskunftTab() {
   // Fetch persistent applicant profile (finance_request_id IS NULL)
   const { data: profile, isLoading, refetch } = useQuery({
     queryKey: ['persistent-applicant-profile', activeOrganization?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<ApplicantProfile | null> => {
       if (!activeOrganization?.id) return null;
 
       // First, try to find persistent profile
@@ -51,10 +52,10 @@ export default function SelbstauskunftTab() {
           .single();
 
         if (createError) throw createError;
-        return newProfile;
+        return newProfile as unknown as ApplicantProfile;
       }
 
-      return data;
+      return data as unknown as ApplicantProfile;
     },
     enabled: !!activeOrganization?.id,
   });
@@ -150,8 +151,8 @@ export default function SelbstauskunftTab() {
         <TabsContent value="private" className="mt-6">
           {profile && (
             <SelbstauskunftForm
-              financeRequestId={null}
-              onSaved={() => refetch()}
+              profile={profile}
+              onSave={() => refetch()}
             />
           )}
         </TabsContent>
@@ -159,8 +160,8 @@ export default function SelbstauskunftTab() {
         <TabsContent value="business" className="mt-6">
           {profile && (
             <SelbstauskunftForm
-              financeRequestId={null}
-              onSaved={() => refetch()}
+              profile={profile}
+              onSave={() => refetch()}
             />
           )}
         </TabsContent>

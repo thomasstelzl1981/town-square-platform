@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { 
   Clock, CheckCircle, Send, User, Building2,
-  Loader2, Mail, Phone, AlertCircle
+  Loader2, Mail, AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -199,15 +199,6 @@ export default function StatusTab() {
                         >
                           <Mail className="h-4 w-4" />
                           {manager.email}
-                        </a>
-                      )}
-                      {manager.phone && (
-                        <a 
-                          href={`tel:${manager.phone}`}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                        >
-                          <Phone className="h-4 w-4" />
-                          {manager.phone}
                         </a>
                       )}
                     </div>
