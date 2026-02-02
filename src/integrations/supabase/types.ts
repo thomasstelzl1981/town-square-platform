@@ -719,6 +719,149 @@ export type Database = {
           },
         ]
       }
+      case_events: {
+        Row: {
+          actor_type: string | null
+          actor_user_id: string | null
+          case_id: string
+          created_at: string
+          event_source: string
+          event_type: string
+          id: string
+          new_status: string | null
+          payload: Json | null
+          previous_status: string | null
+          task_id: string | null
+          task_name: string | null
+          tenant_id: string
+        }
+        Insert: {
+          actor_type?: string | null
+          actor_user_id?: string | null
+          case_id: string
+          created_at?: string
+          event_source?: string
+          event_type: string
+          id?: string
+          new_status?: string | null
+          payload?: Json | null
+          previous_status?: string | null
+          task_id?: string | null
+          task_name?: string | null
+          tenant_id: string
+        }
+        Update: {
+          actor_type?: string | null
+          actor_user_id?: string | null
+          case_id?: string
+          created_at?: string
+          event_source?: string
+          event_type?: string
+          id?: string
+          new_status?: string | null
+          payload?: Json | null
+          previous_status?: string | null
+          task_id?: string | null
+          task_name?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cases: {
+        Row: {
+          assigned_to: string | null
+          case_code: string | null
+          case_type: string
+          completed_at: string | null
+          correlation_key: string | null
+          created_at: string
+          created_by: string | null
+          current_step: string | null
+          due_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          priority: number | null
+          process_definition_key: string | null
+          process_instance_id: string | null
+          public_id: string | null
+          started_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          case_code?: string | null
+          case_type: string
+          completed_at?: string | null
+          correlation_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_step?: string | null
+          due_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: number | null
+          process_definition_key?: string | null
+          process_instance_id?: string | null
+          public_id?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          case_code?: string | null
+          case_type?: string
+          completed_at?: string | null
+          correlation_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_step?: string | null
+          due_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: number | null
+          process_definition_key?: string | null
+          process_instance_id?: string | null
+          public_id?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       church_tax_rates: {
         Row: {
           created_at: string
@@ -3787,6 +3930,107 @@ export type Database = {
           },
         ]
       }
+      org_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          from_org_id: string
+          id: string
+          link_type: string
+          metadata: Json | null
+          status: string
+          to_org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          from_org_id: string
+          id?: string
+          link_type: string
+          metadata?: Json | null
+          status?: string
+          to_org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          from_org_id?: string
+          id?: string
+          link_type?: string
+          metadata?: Json | null
+          status?: string
+          to_org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_links_from_org_id_fkey"
+            columns: ["from_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_links_to_org_id_fkey"
+            columns: ["to_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_policies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          org_id: string
+          policy_key: string
+          policy_type: string
+          policy_value: Json
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id: string
+          policy_key: string
+          policy_type: string
+          policy_value?: Json
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          policy_key?: string
+          policy_type?: string
+          policy_value?: Json
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -6440,6 +6684,10 @@ export type Database = {
           entity_type: string
         }[]
       }
+      generate_correlation_key: {
+        Args: { p_entity_id: string; p_entity_type: string }
+        Returns: string
+      }
       generate_public_id: { Args: { prefix: string }; Returns: string }
       get_user_memberships: {
         Args: { p_user_id: string }
@@ -6475,6 +6723,7 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: never; Returns: boolean }
+      my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
