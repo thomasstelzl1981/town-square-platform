@@ -8,7 +8,35 @@
  */
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+
+// =============================================================================
+// LEGACY REDIRECT COMPONENT — Preserves dynamic parameters
+// =============================================================================
+function LegacyRedirect({ to }: { to: string }) {
+  const params = useParams();
+  const location = useLocation();
+  
+  // Replace all param placeholders with actual values
+  let redirectPath = to;
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      redirectPath = redirectPath.replace(`:${key}`, value);
+    }
+  });
+  
+  // Handle wildcard params (e.g., /portfolio/:id/* → keep extra path segments)
+  if (params['*']) {
+    redirectPath = redirectPath.endsWith('/') 
+      ? `${redirectPath}${params['*']}`
+      : `${redirectPath}/${params['*']}`;
+  }
+  
+  // Preserve query string and hash
+  const fullPath = `${redirectPath}${location.search}${location.hash}`;
+  
+  return <Navigate to={fullPath} replace />;
+}
 
 // Manifests
 import {
@@ -295,13 +323,13 @@ export function ManifestRouter() {
   return (
     <Routes>
       {/* ================================================================== */}
-      {/* LEGACY REDIRECTS */}
+      {/* LEGACY REDIRECTS — Parameters preserved via LegacyRedirect component */}
       {/* ================================================================== */}
       {legacyRoutes.map((route) => (
         <Route
           key={route.path}
           path={route.path}
-          element={<Navigate to={route.redirect_to.replace(':id', '')} replace />}
+          element={<LegacyRedirect to={route.redirect_to} />}
         />
       ))}
 
