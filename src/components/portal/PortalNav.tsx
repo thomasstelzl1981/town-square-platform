@@ -48,6 +48,14 @@ const iconMap: Record<string, LucideIcon> = {
   'Handshake': Handshake,
   'Target': Target,
   'Home': Home,
+  'Briefcase': Briefcase,
+  'FolderKanban': Briefcase,
+  'Mail': Briefcase,
+  'GraduationCap': Briefcase,
+  'Wrench': Briefcase,
+  'Car': Briefcase,
+  'LineChart': Briefcase,
+  'Sun': Briefcase,
 };
 
 interface SubTileDisplay {

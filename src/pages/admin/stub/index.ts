@@ -1,0 +1,1 @@
+export { AdminStubPage } from './AdminStubPage';

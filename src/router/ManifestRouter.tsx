@@ -9,7 +9,6 @@
 
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
 
 // Manifests
 import {
@@ -41,12 +40,13 @@ import PartnerVerification from '@/pages/admin/PartnerVerification';
 import CommissionApproval from '@/pages/admin/CommissionApproval';
 import MasterTemplates from '@/pages/admin/MasterTemplates';
 import FutureRoom from '@/pages/admin/FutureRoom';
+import { AdminStubPage } from '@/pages/admin/stub';
 
 // Zone 2: User Portal Layout & Dashboard
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import PortalDashboard from '@/pages/portal/PortalDashboard';
 
-// Zone 2: Module Pages
+// Zone 2: Module Pages (existing)
 import StammdatenPage from '@/pages/portal/StammdatenPage';
 import OfficePage from '@/pages/portal/OfficePage';
 import DMSPage from '@/pages/portal/DMSPage';
@@ -58,6 +58,17 @@ import FinanzierungsmanagerPage from '@/pages/portal/FinanzierungsmanagerPage';
 import InvestmentsPage from '@/pages/portal/InvestmentsPage';
 import VertriebspartnerPage from '@/pages/portal/VertriebspartnerPage';
 import LeadsPage from '@/pages/portal/LeadsPage';
+
+// Zone 2: NEW Module Pages (MOD-12 to MOD-20)
+import AkquiseManagerPage from '@/pages/portal/AkquiseManagerPage';
+import ProjektePage from '@/pages/portal/ProjektePage';
+import CommunicationProPage from '@/pages/portal/CommunicationProPage';
+import FortbildungPage from '@/pages/portal/FortbildungPage';
+import ServicesPage from '@/pages/portal/ServicesPage';
+import CarsPage from '@/pages/portal/CarsPage';
+import FinanzanalysePage from '@/pages/portal/FinanzanalysePage';
+import PhotovoltaikPage from '@/pages/portal/PhotovoltaikPage';
+import MietyPortalPage from '@/pages/portal/MietyPortalPage';
 
 // Zone 2: Dynamic Route Components
 import PropertyDetail from '@/pages/portfolio/PropertyDetail';
@@ -140,12 +151,33 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
   FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
   Support,
+  // New Zone 1 stubs
+  AgentsDashboard: AdminStubPage,
+  AgentsCatalog: AdminStubPage,
+  AgentsInstances: AdminStubPage,
+  AgentsRuns: AdminStubPage,
+  AgentsPolicies: AdminStubPage,
+  AcquiaryDashboard: AdminStubPage,
+  AcquiaryZuordnung: AdminStubPage,
+  AcquiaryInbox: AdminStubPage,
+  AcquiaryMandate: AdminStubPage,
+  SalesDeskDashboard: AdminStubPage,
+  SalesDeskPublishing: AdminStubPage,
+  SalesDeskInbox: AdminStubPage,
+  SalesDeskPartner: AdminStubPage,
+  SalesDeskAudit: AdminStubPage,
+  FinanceDeskDashboard: AdminStubPage,
+  FinanceDeskInbox: AdminStubPage,
+  FinanceDeskBerater: AdminStubPage,
+  FinanceDeskZuweisung: AdminStubPage,
+  FinanceDeskMonitoring: AdminStubPage,
 };
 
 // =============================================================================
 // Component Map for Zone 2 Module Pages
 // =============================================================================
 const portalModulePageMap: Record<string, React.ComponentType> = {
+  // Existing modules (MOD-01 to MOD-11)
   stammdaten: StammdatenPage,
   office: OfficePage,
   dms: DMSPage,
@@ -157,6 +189,16 @@ const portalModulePageMap: Record<string, React.ComponentType> = {
   investments: InvestmentsPage,
   vertriebspartner: VertriebspartnerPage,
   leads: LeadsPage,
+  // NEW modules (MOD-12 to MOD-20)
+  'akquise-manager': AkquiseManagerPage,
+  projekte: ProjektePage,
+  'communication-pro': CommunicationProPage,
+  fortbildung: FortbildungPage,
+  services: ServicesPage,
+  cars: CarsPage,
+  finanzanalyse: FinanzanalysePage,
+  photovoltaik: PhotovoltaikPage,
+  miety: MietyPortalPage,
 };
 
 // =============================================================================
@@ -278,7 +320,11 @@ export function ManifestRouter() {
               key={route.path || 'index'}
               index={route.path === ''}
               path={route.path || undefined}
-              element={<Component />}
+              element={
+                <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Laden...</div>}>
+                  <Component />
+                </React.Suspense>
+              }
             />
           );
         })}

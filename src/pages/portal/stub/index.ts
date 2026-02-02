@@ -1,0 +1,1 @@
+export { ModuleStubPage } from './ModuleStubPage';
