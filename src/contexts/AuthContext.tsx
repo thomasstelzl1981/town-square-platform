@@ -51,20 +51,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
   const activeTenantId = profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null;
 
-  // Fetch development data for preview without auth
+  // ============================================================================
+  // P0-ID-CTX-INTERNAL-DEFAULT: INTERNAL ORG IS DEFAULT CONTEXT FOR PLATFORM ADMIN
+  // Marker ID: P0-ID-CTX-INTERNAL-DEFAULT
+  // Dev-Mode prioritizes org_type='internal' over 'client' orgs.
+  // ============================================================================
   const fetchDevelopmentData = useCallback(async () => {
     try {
-      // Try to get first organization for development mode
-      const { data: orgData, error } = await supabase
+      // Priority 1: Try to get internal organization (platform context)
+      const { data: internalOrg } = await supabase
         .from('organizations')
         .select('*')
+        .eq('org_type', 'internal')
+        .limit(1)
+        .maybeSingle();
+      
+      if (internalOrg) {
+        console.log('[Dev-Mode] Using internal org:', internalOrg.name);
+        setActiveOrganization(internalOrg);
+        
+        // Create mock membership for development with internal org
+        const mockMembership: Membership = {
+          id: 'dev-membership-internal',
+          user_id: 'dev-user',
+          tenant_id: internalOrg.id,
+          role: 'platform_admin',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setMemberships([mockMembership]);
+        
+        // Create mock profile using org name (no hardcoded "Entwickler")
+        const mockProfile = {
+          id: 'dev-user',
+          display_name: internalOrg.name,
+          email: 'admin@systemofatown.de',
+          avatar_url: null,
+          active_tenant_id: internalOrg.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as Profile;
+        setProfile(mockProfile);
+        return;
+      }
+      
+      // Priority 2: Fallback to first organization (with warning)
+      console.warn('[Dev-Mode] No internal org found, falling back to first available org');
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
       
       if (orgData) {
+        console.log('[Dev-Mode] Using fallback org:', orgData.name);
         setActiveOrganization(orgData);
         
-        // Create a mock membership for development
         const mockMembership: Membership = {
           id: 'dev-membership',
           user_id: 'dev-user',
@@ -75,10 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setMemberships([mockMembership]);
         
-        // Create a mock profile for development
+        // Use org name, not hardcoded value
         const mockProfile = {
           id: 'dev-user',
-          display_name: 'Entwickler',
+          display_name: orgData.name,
           email: 'dev@systemofatown.de',
           avatar_url: null,
           active_tenant_id: orgData.id,
@@ -86,56 +129,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updated_at: new Date().toISOString(),
         } as Profile;
         setProfile(mockProfile);
-      } else {
-        // If RLS blocks access, create a mock organization for UI testing
-        console.log('Development mode: Using mock organization (RLS may be blocking access)');
-        
-        const mockOrg: Organization = {
-          id: 'dev-org-mock',
-          name: 'Entwicklungs-Tenant',
-          slug: 'dev-tenant',
-          public_id: 'DEV-001',
-          org_type: 'client',
-          parent_id: null,
-          materialized_path: '/',
-          depth: 0,
-          parent_access_blocked: false,
-          settings: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setActiveOrganization(mockOrg);
-        
-        const mockMembership: Membership = {
-          id: 'dev-membership',
-          user_id: 'dev-user',
-          tenant_id: mockOrg.id,
-          role: 'platform_admin',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setMemberships([mockMembership]);
-        
-        const mockProfile = {
-          id: 'dev-user',
-          display_name: 'Entwickler (Mock)',
-          email: 'dev@systemofatown.de',
-          avatar_url: null,
-          active_tenant_id: mockOrg.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as Profile;
-        setProfile(mockProfile);
+        return;
       }
+      
+      // Priority 3: No orgs in DB - create full mock (RLS blocking or empty DB)
+      console.log('[Dev-Mode] No organizations accessible, using mock data');
+      const mockOrg: Organization = {
+        id: 'dev-org-mock',
+        name: 'Platform Admin (Mock)',
+        slug: 'dev-platform',
+        public_id: 'DEV-PLATFORM',
+        org_type: 'internal',
+        parent_id: null,
+        materialized_path: '/',
+        depth: 0,
+        parent_access_blocked: false,
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setActiveOrganization(mockOrg);
+      
+      const mockMembership: Membership = {
+        id: 'dev-membership-mock',
+        user_id: 'dev-user',
+        tenant_id: mockOrg.id,
+        role: 'platform_admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setMemberships([mockMembership]);
+      
+      const mockProfile = {
+        id: 'dev-user',
+        display_name: 'Platform Admin',
+        email: 'admin@systemofatown.de',
+        avatar_url: null,
+        active_tenant_id: mockOrg.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Profile;
+      setProfile(mockProfile);
+      
     } catch (error) {
-      console.error('Error fetching development data:', error);
-      // Still provide mock data even on error for UI development
+      console.error('[Dev-Mode] Error fetching development data:', error);
+      // Emergency fallback
       const mockOrg: Organization = {
         id: 'dev-org-fallback',
-        name: 'Entwicklungs-Tenant (Fallback)',
+        name: 'Platform Admin (Fallback)',
         slug: 'dev-fallback',
         public_id: 'DEV-FALLBACK',
-        org_type: 'client',
+        org_type: 'internal',
         parent_id: null,
         materialized_path: '/',
         depth: 0,

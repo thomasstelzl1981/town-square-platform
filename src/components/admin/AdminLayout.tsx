@@ -3,17 +3,37 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AdminSidebar } from './AdminSidebar';
-import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Building2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// ============================================================================
+// P0-ID-CTX-INTERNAL-DEFAULT: Context Badge shows active org_type + org_name
+// ============================================================================
+
+function getOrgTypeBadgeVariant(orgType: string | null | undefined): string {
+  switch (orgType) {
+    case 'internal':
+    case 'platform':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    case 'client':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'partner':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+}
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const { user, isLoading, memberships } = useAuth();
+  const { user, isLoading, memberships, activeOrganization, isDevelopmentMode } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !isDevelopmentMode) {
       navigate('/auth');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, isDevelopmentMode]);
 
   if (isLoading) {
     return (
@@ -23,7 +43,7 @@ export function AdminLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && !isDevelopmentMode) {
     return null;
   }
 
@@ -43,14 +63,29 @@ export function AdminLayout() {
     );
   }
 
+  const orgType = activeOrganization?.org_type || 'unknown';
+  const orgName = activeOrganization?.name || 'Kein Kontext';
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
         <main className="flex-1 flex flex-col">
-          <header className="h-14 border-b flex items-center px-4 bg-background">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-lg font-semibold">Admin Portal</h1>
+          <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="mr-2" />
+              <h1 className="text-lg font-semibold">Admin Portal</h1>
+            </div>
+            {/* P0-ID-CTX-INTERNAL-DEFAULT: Context Badge */}
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <Badge 
+                variant="secondary"
+                className={cn('text-xs font-medium', getOrgTypeBadgeVariant(orgType))}
+              >
+                {orgType} / {orgName}
+              </Badge>
+            </div>
           </header>
           <div className="flex-1 overflow-auto p-6 bg-muted/30">
             <Outlet />
