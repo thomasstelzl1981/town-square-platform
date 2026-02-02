@@ -61,11 +61,17 @@ interface MembershipWithOrg extends Membership {
   organizations?: Organization;
 }
 
-const ROLES: { value: MembershipRole; label: string; restricted?: boolean }[] = [
-  { value: 'platform_admin', label: 'Platform Admin', restricted: true },
-  { value: 'org_admin', label: 'Org Admin' },
-  { value: 'internal_ops', label: 'Internal Ops' },
-  { value: 'sales_partner', label: 'Sales Partner' },
+// ============================================================================
+// P0-ROLE-AUDIT: All defined roles per ACCESS_MATRIX + membership_role enum
+// Roles: platform_admin, org_admin, internal_ops, sales_partner, renter_user, finance_manager
+// ============================================================================
+const ROLES: { value: MembershipRole; label: string; restricted?: boolean; description?: string }[] = [
+  { value: 'platform_admin', label: 'Platform Admin', restricted: true, description: 'God Mode, Zugriff auf alle Tenants' },
+  { value: 'org_admin', label: 'Org Admin', description: 'Voller Zugriff auf eigenen Tenant' },
+  { value: 'internal_ops', label: 'Internal Ops', description: 'Operativer Mitarbeiter' },
+  { value: 'sales_partner', label: 'Sales Partner', description: 'Vertriebspartner (MOD-09/10)' },
+  { value: 'renter_user', label: 'Renter User', description: 'Mieter (Miety Andockpunkt)' },
+  { value: 'finance_manager', label: 'Finance Manager', description: 'Finanzierungsberater (MOD-07)' },
 ];
 
 export default function UsersPage() {
