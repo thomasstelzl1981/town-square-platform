@@ -1,0 +1,633 @@
+================================================================================
+MOD-04 STORAGE & DOKUMENTEN-SSOT — VOLLSTÄNDIGE IST/SOLL ANALYSE
+================================================================================
+Erstellt: 2026-02-02
+Status: IST-Analyse abgeschlossen + SOLL-Entscheidungen
+
+================================================================================
+A) IST-STAND STORAGE / DMS / WORKERS
+================================================================================
+
+--------------------------------------------------------------------------------
+A1) SUPABASE STORAGE
+--------------------------------------------------------------------------------
+
+✅ BUCKET EXISTIERT:
+   - Name: "tenant-documents"
+   - Öffentlich: NEIN (privat)
+   - RLS: Ja (storage policies aktiv)
+
+✅ KEY-KONVENTION (aktuell in useSmartUpload.ts):
+   Format: {tenant_id}/raw/{YYYY}/{MM}/{document_id}-{filename}
+   
+   Beispiele:
+   - tenant-documents/abc123/raw/2026/02/docid-expose.pdf
+   - tenant-documents/abc123/derived/{document_id}/metadata.json
+
+✅ UPLOAD-CODE EXISTIERT:
+   Dateien:
+   - src/hooks/useSmartUpload.ts — Hauptupload-Hook
+   - src/components/shared/FileUploader.tsx — Drag&Drop UI-Komponente
+   - supabase/functions/sot-dms-upload-url/index.ts — Signed URL Generator
+   - supabase/functions/sot-dms-download-url/index.ts — Download URL Generator
+
+✅ DOWNLOAD/SIGNED-URL:
+   - sot-dms-download-url Edge Function erstellt signedUrls (max 1h)
+   - Prüft Tenant-Zugehörigkeit via profiles.active_tenant_id
+
+--------------------------------------------------------------------------------
+A2) DATENMODELL DOKUMENTE
+--------------------------------------------------------------------------------
+
+✅ TABELLE: documents
+   Spalten:
+   - id (UUID, PK)
+   - tenant_id (UUID, FK → organizations)
+   - public_id (text, z.B. "SOT-D-ABCD1234")
+   - name (text) — Dateiname
+   - file_path (text) — Storage-Key
+   - mime_type (text)
+   - size_bytes (integer)
+   - doc_type (text) — Dokumenttyp-Code
+   - scope (text) — PROPERTY/UNIT/FINANCE/CONTACT
+   - source (text) — upload/resend/caya/dropbox/...
+   - extraction_status (text) — pending/processing/done/failed
+   - extracted_json_path (text) — Pfad zu Sidecar-JSON
+   - sidecar_json (jsonb) — Inline-Metadaten
+   - ai_summary (text)
+   - detected_type (text)
+   - match_confidence (numeric)
+   - review_state (text)
+   - uploaded_by (UUID, FK → auth.users)
+   - created_at, updated_at
+
+✅ TABELLE: document_links
+   Spalten:
+   - id (UUID, PK)
+   - tenant_id (UUID)
+   - document_id (UUID, FK → documents)
+   - node_id (UUID, FK → storage_nodes) — optional Ordner-Verknüpfung
+   - object_id (UUID) — polymorph: property_id / unit_id / lease_id / loan_id
+   - object_type (text) — "property" | "unit" | "lease" | "loan" | "contact"
+   - unit_id (UUID, FK → units) — redundant für schnellen Zugriff
+   - link_status (text) — pending/accepted/rejected
+   - created_at, updated_at
+
+✅ TABELLE: storage_nodes (virtuelles Ordnersystem)
+   Spalten:
+   - id (UUID, PK)
+   - tenant_id (UUID)
+   - parent_id (UUID, FK → storage_nodes) — Hierarchie
+   - name (text)
+   - node_type (text) — "folder" | "file"
+   - property_id (UUID, FK → properties) — Kontext
+   - unit_id (UUID, FK → units) — Kontext
+   - template_id (text) — z.B. "PROPERTY_DOSSIER_V1"
+   - doc_type_hint (text) — erwarteter doc_type
+   - scope_hint (text) — PROPERTY/UNIT
+   - sort_index (integer)
+   - auto_created (boolean) — System-Ordner
+   - created_at, updated_at
+
+✅ TABELLE: doc_type_catalog (Referenztabelle)
+   Spalten:
+   - doc_type (text, PK) — z.B. "DOC_LEASE_CONTRACT"
+   - scope_default (text) — PROPERTY/UNIT
+   - required_meta (text[]) — Pflicht-Felder
+   - anchors (jsonb) — Matching-Regeln für AI
+   - extractable_dp_keys (text[]) — Extrahierbare Datenpunkte
+   - posting_suggestion_rules (jsonb) — Buchungsvorschläge
+   - created_at
+
+✅ TABELLE: extractions (AI-Analyse-Log)
+   Spalten:
+   - id, tenant_id, document_id
+   - engine (text) — lovable_ai/unstructured_fast/unstructured_hires
+   - source (text)
+   - status (text) — pending/processing/done/failed
+   - result_json (jsonb) — Extrahierte Daten
+   - actual_pages, actual_cost_cents
+   - consent_given_at, consent_given_by
+   - started_at, finished_at
+   - error_message
+
+✅ ZUORDNUNG DOKUMENTE:
+   Über document_links mit object_id + object_type (polymorph)
+   Unterstützt: property, unit, lease, loan, contact
+
+--------------------------------------------------------------------------------
+A3) WORKER / JOB QUEUE
+--------------------------------------------------------------------------------
+
+❌ KEINE DEDIZIERTE JOB-QUEUE TABELLE
+
+   Aktueller Mechanismus:
+   - Edge Functions werden synchron aufgerufen
+   - sot-document-parser → Lovable AI (synchron)
+   - Keine pg-boss, bullmq, Camunda vorhanden
+   
+   Vorgesehenes Pattern (Memory Hints):
+   - Extraction-Jobs über extractions-Tabelle trackbar
+   - Status: pending → processing → done/failed
+   - Kein separater Worker-Prozess, sondern Event-driven via Edge Functions
+
+   Edge Functions für DMS:
+   - sot-document-parser — AI-Parsing via Lovable AI (Gemini 3 Flash)
+   - sot-dms-upload-url — Signed Upload URLs
+   - sot-dms-download-url — Signed Download URLs
+
+--------------------------------------------------------------------------------
+A4) RLS / PERMISSIONS
+--------------------------------------------------------------------------------
+
+✅ TENANT-SCHLÜSSEL: tenant_id (UUID)
+   - Alle Tabellen haben tenant_id als FK → organizations
+   - RLS-Policies filtern nach tenant_id
+
+✅ ORG-HIERARCHIE EXISTIERT:
+   Tabelle: organizations
+   - id, parent_id (selbstreferenzierend)
+   - org_type (enum: platform_operator, client, partner, subpartner)
+   - depth (integer) — Hierarchieebene
+   - materialized_path (text) — z.B. "/abc/def/"
+   - parent_access_blocked (boolean)
+   
+   Hilfsfunktion: my_scope_org_ids(active_org_id) → UUID[]
+   - Gibt alle sichtbaren Org-IDs zurück (Kinder + delegierte)
+
+⚠️ LINTER-WARNUNGEN:
+   - 2x Security Definer View (prüfen)
+   - 2x RLS Policy mit "true" (übermäßig permissiv)
+   - Extension in public schema
+   - Leaked password protection disabled
+
+
+================================================================================
+B) SOLL-TAXONOMIE — ORDNERSTRUKTUR (18 ORDNER)
+================================================================================
+
+--------------------------------------------------------------------------------
+B1) ENTSCHEIDUNG: HYBRID-MODELL (Empfohlen)
+--------------------------------------------------------------------------------
+
+Empfehlung: (c) HYBRID
+
+Begründung:
+- storage_nodes in DB für virtuelle Ordner (Hierarchie, Metadaten, Scopes)
+- Storage-Key im Bucket bleibt flach: {tenant_id}/raw/{YYYY}/{MM}/{doc_id}-{name}
+- Vorteile:
+  • Ordnerstruktur jederzeit änderbar ohne Storage-Migration
+  • Suche/Filter über DB statt Storage-Listing
+  • doc_type_hint auf Ordnerebene für Auto-Zuordnung
+  • Mehrere Dokumente pro Ordner einfach
+
+Bereits implementiert in DB-Trigger:
+- create_property_folder_structure() → Erstellt Template-Ordner bei Property-Insert
+- create_unit_folder() → Erstellt Unit-Unterordner bei Multi-Unit
+
+--------------------------------------------------------------------------------
+B2) DOC_TYPE MAPPING (18 Ordner → doc_type → Extraktions-Template)
+--------------------------------------------------------------------------------
+
+CODE  | ORDNER-NAME                        | DOC_TYPE             | SCOPE   | EXTRAKTION
+------|-------------------------------------|----------------------|---------|------------------
+00    | Projektdokumentation               | DOC_PROJECT          | PROPERTY| Nein
+01    | Exposé Ankauf                      | DOC_EXPOSE_BUY       | PROPERTY| Ja (Kaufpreis, qm)
+02    | Exposé Sonstiges                   | DOC_EXPOSE_MISC      | PROPERTY| Nein
+03    | Grundbuchauszug                    | DOC_LAND_REGISTER    | PROPERTY| Ja (Grundbuch-Daten)
+04    | Teilungserklärung                  | DOC_DIVISION_DECL    | PROPERTY| Ja (MEA, TE-Nr)
+05    | Grundriss                          | DOC_FLOORPLAN        | UNIT    | Ja (qm, Zimmer)
+06    | Kurzgutachten                      | DOC_VALUATION_SHORT  | PROPERTY| Ja (Verkehrswert)
+07    | Kaufvertrag                        | DOC_PURCHASE_CONTRACT| PROPERTY| Ja (Kaufpreis, Datum)
+08    | Mietvertrag                        | DOC_LEASE_CONTRACT   | UNIT    | Ja (Miete, Mieter, Start)
+09    | Rechnungen                         | DOC_INVOICE          | UNIT    | Ja (Betrag, Datum)
+10    | Wirtschaftsplan/Protokolle         | DOC_WEG_BUCKET       | PROPERTY| Ja (Hausgeld)
+11    | Fotos                              | DOC_PHOTOS           | UNIT    | Nein
+12    | Energieausweis                     | DOC_ENERGY_CERT      | PROPERTY| Ja (Wert, Gültig bis)
+13    | Wohngebäudeversicherung            | DOC_INSURANCE_BUILD  | PROPERTY| Ja (Beitrag, Ablauf)
+14    | Sonstiges                          | DOC_MISC             | UNIT    | Nein
+15    | Darlehen und Finanzierung          | DOC_LOAN_BUCKET      | PROPERTY| Ja (Bank, Zins, Rate)
+16    | Sanierung                          | DOC_RENOVATION       | UNIT    | Ja (Kosten, Jahr)
+17    | Grundsteuer                        | DOC_PROPERTY_TAX     | PROPERTY| Ja (Bescheid, Betrag)
+
+Zusätzlich für Übergabe:
+18    | Übergabeprotokoll                  | DOC_HANDOVER         | UNIT    | Ja (Zählerstände)
+
+--------------------------------------------------------------------------------
+B3) VERSIONIERUNG — MEHRERE DOKUMENTE PRO DOC_TYPE
+--------------------------------------------------------------------------------
+
+Entscheidung: MEHRERE DATEIEN ERLAUBT + NEWEST FLAG
+
+Schema-Erweiterung:
+```sql
+ALTER TABLE document_links ADD COLUMN is_current BOOLEAN DEFAULT true;
+ALTER TABLE document_links ADD COLUMN replaced_by UUID REFERENCES document_links(id);
+ALTER TABLE document_links ADD COLUMN version_note TEXT;
+```
+
+Logik:
+- Upload eines neuen Dokuments mit gleichem doc_type + object_id:
+  • Altes document_link bekommt is_current = false
+  • Neues bekommt is_current = true
+  • Optional: replaced_by auf neues Dokument setzen
+- UI zeigt standardmäßig nur is_current = true
+- Historien-Button für Versionen
+
+
+================================================================================
+C) UX: DRAG&DROP IN DER IMMOBILIENAKTE
+================================================================================
+
+--------------------------------------------------------------------------------
+C1) DROPZONE-PLATZIERUNG
+--------------------------------------------------------------------------------
+
+SEKTION                          | DROPZONE | AKZEPTIERTE DOC_TYPES
+---------------------------------|----------|----------------------------------------
+Block D: Grundbuch & Erwerb      | ✅       | DOC_LAND_REGISTER, DOC_DIVISION_DECL,
+                                 |          | DOC_PURCHASE_CONTRACT
+Block E: Investment/KPIs         | ❌       | (nur derived)
+Block F: Mietverhältnis          | ✅       | DOC_LEASE_CONTRACT, DOC_HANDOVER
+Block G: WEG & Hausgeld          | ✅       | DOC_WEG_BUCKET
+Block H: Finanzierung            | ✅       | DOC_LOAN_BUCKET
+Block I: Accounting/AfA          | ✅       | DOC_PROPERTY_TAX
+Block J: Dokumente (Checklist)   | ✅       | ALLE (Fallback)
+
+Rechte Sidebar:
+- Vollständige Dokument-Checkliste mit Status pro doc_type
+- Globale Dropzone als Fallback
+
+--------------------------------------------------------------------------------
+C2) AUTO-ZUORDNUNG DOC_TYPE
+--------------------------------------------------------------------------------
+
+1. Dropzone in Sektion X → doc_type aus Mapping (z.B. Block H → DOC_LOAN_BUCKET)
+2. Mehrere erlaubte doc_types → AI-Erkennung wählt besten Match
+3. User kann doc_type via Dropdown überschreiben
+4. Mehrfach-Uploads: Alle bekommen gleichen doc_type der Sektion
+
+Workflow:
+```
+Upload in Block H (Finanzierung)
+  → Erstelle document mit doc_type = null
+  → Rufe sot-document-parser
+  → AI erkennt: "Darlehensvertrag" → doc_type = DOC_LOAN_BUCKET (confidence 0.9)
+  → Falls confidence < 0.8: Zeige Vorschlag, User bestätigt
+  → Erstelle document_link mit object_id = property_id, object_type = "property"
+```
+
+--------------------------------------------------------------------------------
+C3) STATUS & REVIEW
+--------------------------------------------------------------------------------
+
+Status-Flow:
+```
+uploaded → processing → [needs_review | accepted | failed]
+```
+
+Status in document_links.link_status:
+- pending: Upload abgeschlossen, Extraktion läuft
+- needs_review: AI-Confidence < 0.8 oder Konflikte
+- accepted: Automatisch akzeptiert (Confidence ≥ 0.8)
+- rejected: User hat abgelehnt
+
+Anzeige:
+- Checklist (Block J): Status-Icon pro doc_type
+  • ⚪ Fehlend
+  • 🟡 Pending/Processing
+  • 🟠 Needs Review
+  • 🟢 Akzeptiert
+  • 🔴 Fehlgeschlagen
+
+- Block-Dropzone: Badge mit Anzahl + Status
+
+
+================================================================================
+D) EXTRAKTION / FELDÜBERNAHME
+================================================================================
+
+--------------------------------------------------------------------------------
+D1) TRIGGER
+--------------------------------------------------------------------------------
+
+Trigger: Nach document INSERT mit extraction_status = 'pending'
+
+Flow:
+1. useSmartUpload erstellt document-Record
+2. Ruft sot-document-parser Edge Function
+3. Edge Function:
+   - Nutzt Lovable AI (Gemini 3 Flash)
+   - Gibt ParseResult zurück
+4. Update document mit extraction_status = done + sidecar_json
+5. Erstelle extractions-Record für Audit
+
+Korrelation:
+- document.tenant_id + document_links.object_id → Property/Unit/Lease/Loan
+
+--------------------------------------------------------------------------------
+D2) OUTPUT — SOLL-ENTSCHEIDUNG
+--------------------------------------------------------------------------------
+
+Empfehlung: OPTION 1 — Zwischenspeicher + Approval
+
+Schema:
+```sql
+CREATE TABLE extraction_suggestions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES organizations(id),
+  extraction_id UUID REFERENCES extractions(id),
+  document_id UUID REFERENCES documents(id),
+  target_table TEXT NOT NULL, -- 'properties' | 'units' | 'leases' | 'loans'
+  target_id UUID NOT NULL,
+  field_name TEXT NOT NULL,
+  suggested_value JSONB,
+  confidence NUMERIC(3,2),
+  status TEXT DEFAULT 'pending', -- pending | approved | rejected
+  approved_by UUID,
+  approved_at TIMESTAMPTZ,
+  current_value JSONB, -- Vergleichswert
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+Workflow:
+1. AI extrahiert Felder → Speichern in extraction_suggestions
+2. UI zeigt Vorschläge in der Akte (Inline oder Sidebar)
+3. User klickt "Übernehmen" oder "Ablehnen"
+4. Bei Übernahme: Patch auf Ziel-Tabelle + status = approved
+5. Manuelle Eingabe überschreibt IMMER
+
+--------------------------------------------------------------------------------
+D3) APPROVAL UX
+--------------------------------------------------------------------------------
+
+Anzeige in Akte:
+- Feld mit AI-Vorschlag bekommt gelben Rand + ✨-Icon
+- Tooltip: "AI-Vorschlag: {Wert} (Konfidenz: 85%)"
+- Buttons: [Übernehmen] [Ablehnen] [Bearbeiten]
+
+Vorschlagsliste:
+- Block J (Dokumente) hat "AI-Vorschläge" Sektion
+- Gruppiert nach Dokument
+- Batch-Übernahme möglich
+
+Audit:
+- extraction_suggestions.approved_by/at für Nachvollziehbarkeit
+- Keine separate audit_log-Tabelle nötig (Minimal-Ansatz)
+
+
+================================================================================
+E) VERLINKUNG IN LISTEN & DOWNSTREAM-MODULE
+================================================================================
+
+--------------------------------------------------------------------------------
+E1) PORTFOLIO-LISTE MOD-04
+--------------------------------------------------------------------------------
+
+Spalten (Reihenfolge):
+| # | FELD              | QUELLE           | ANMERKUNG                    |
+|---|-------------------|------------------|------------------------------|
+| 1 | Code              | properties.code  | Oder public_id               |
+| 2 | Art               | properties.property_type | Enum-Label          |
+| 3 | Ort               | properties.city  |                              |
+| 4 | Straße/Nr.        | properties.address + house_number |             |
+| 5 | Größe (qm)        | units.area_sqm   | Summe bei Globalobjekt       |
+| 6 | Nutzung           | properties.usage_type |                         |
+| 7 | Einnahmen p.a.    | SUM(leases.rent_cold_eur * 12) | Derived       |
+| 8 | Verkehrswert      | properties.market_value |                       |
+| 9 | Restschuld        | SUM(loans.outstanding_balance) |                |
+|10 | Rate              | SUM(loans.annuity_monthly) |                     |
+|11 | Warmmiete         | leases.rent_cold_eur + nk_advance_eur |          |
+|12 | NK-Vorauszahlung  | leases.nk_advance_eur |                          |
+|13 | Hausgeld          | units.hausgeld_monthly |                         |
+
+Aggregation Globalobjekt:
+- Zeige Property-Zeile + expandierbare Unit-Zeilen
+- Summen für: Einnahmen, Restschuld, Rate
+
+--------------------------------------------------------------------------------
+E2) MSV (MOD-05)
+--------------------------------------------------------------------------------
+
+Filter:
+- properties.rental_managed = true ODER
+- msv_enrollments.status = 'active'
+
+Exposé-Ansicht:
+- Zeigt: Adresse, qm, Warmmiete, Mieter, Kontakt
+- READ-ONLY Derivat aus MOD-04
+
+Dokumente:
+- Zeigt nur: DOC_LEASE_CONTRACT, DOC_HANDOVER
+- Filter: document_links.object_type = 'unit' AND link_status = 'accepted'
+
+--------------------------------------------------------------------------------
+E3) VERKAUF (MOD-06)
+--------------------------------------------------------------------------------
+
+Filter:
+- properties.sale_enabled = true ODER
+- listings.status IN ('draft', 'active', 'reserved')
+
+Exposé-Daten:
+- Basis: properties + units (qm, Zimmer, Ausstattung)
+- Erweiterung: listings-Tabelle (Preis, Beschreibung, Fotos)
+
+Datenraum:
+- Gespiegelte Dokumente über access_grants-Tabelle
+- doc_types im Verkaufs-Datenraum:
+  • DOC_LAND_REGISTER, DOC_DIVISION_DECL
+  • DOC_FLOORPLAN, DOC_ENERGY_CERT
+  • DOC_EXPOSE_BUY (Ankauf)
+  • DOC_PHOTOS
+
+--------------------------------------------------------------------------------
+E4) FINANZIERUNG (MOD-07)
+--------------------------------------------------------------------------------
+
+Objektauswahl:
+- Aus MOD-04 Portfolio (Filter: alle aktiven Properties)
+- Felder übernommen: Adresse, qm, Kaufpreis, Verkehrswert
+
+Dokument-Checklist (finance_documents-Mapping):
+| DOC_TYPE             | ERFORDERLICH | KATEGORIE      |
+|----------------------|--------------|----------------|
+| DOC_PURCHASE_CONTRACT| ✅           | Objekt         |
+| DOC_LAND_REGISTER    | ✅           | Objekt         |
+| DOC_FLOORPLAN        | ⚪           | Objekt         |
+| DOC_ENERGY_CERT      | ⚪           | Objekt         |
+| DOC_EXPOSE_BUY       | ⚪           | Objekt         |
+
+Keine doppelte Dokumenthaltung:
+- finance_documents verweist auf documents.id
+- Nur Links, keine Kopien
+- access_grants für Freigabe an Finanzierungsmanager
+
+
+================================================================================
+F) ZONE-1 / TILE CATALOG / SPEC-GIT / MANIFEST
+================================================================================
+
+--------------------------------------------------------------------------------
+F1) ROUTES-MANIFEST STATUS
+--------------------------------------------------------------------------------
+
+✅ MOD-04 ROUTES KORREKT:
+   Datei: src/manifests/routesManifest.ts
+
+   ```typescript
+   "MOD-04": {
+     name: "Immobilien",
+     base: "immobilien",
+     tiles: [
+       { path: "kontexte", component: "KontexteTab" },
+       { path: "portfolio", component: "PortfolioTab" },
+       { path: "sanierung", component: "SanierungTab" },
+       { path: "bewertung", component: "BewertungTab" },
+     ],
+     dynamic_routes: [
+       { path: ":id", component: "PropertyDetail" },
+       ...
+     ]
+   }
+   ```
+
+⚠️ PRÜFEN: PropertyDetail.tsx
+   - Default-Tab sollte "Akte" sein (SSOT)
+   - Aktuell implementiert: EditableUnitDossierView als Akte-Tab
+
+--------------------------------------------------------------------------------
+F2) TILE CATALOG OVERLAY
+--------------------------------------------------------------------------------
+
+Datei: manifests/tile_catalog.yaml
+
+MOD-04 Eintrag korrekt:
+```yaml
+MOD-04:
+  code: "MOD-04"
+  title: "Immobilien"
+  main_route: "/portal/immobilien"
+  sub_tiles:
+    - title: "Kontexte"
+    - title: "Portfolio"
+    - title: "Sanierung"
+    - title: "Bewertung"
+```
+
+⚠️ FEHLEND: Kein "Akte"-Tab im Tile Catalog
+   Grund: Akte ist Detail-Ansicht (PropertyDetail), nicht Sub-Tile
+
+--------------------------------------------------------------------------------
+F3) SPEC-DATEIEN AKTUALISIERUNG
+--------------------------------------------------------------------------------
+
+Dateien die aktualisiert werden müssen:
+
+1. docs/modules/MOD-04_IMMOBILIEN.md
+   - Ergänzen: Vollständiger SSOT-Feldkatalog (Block A-J)
+   - Ergänzen: Dokument-Taxonomie (18 doc_types)
+   - Ergänzen: Dropzone-Konzept
+
+2. docs/architecture/ADR-038_Storage_Architecture.md
+   - Ergänzen: Hybrid-Modell Entscheidung
+   - Ergänzen: storage_nodes Template-Struktur
+   - Ergänzen: doc_type_catalog Schema
+
+3. spec/current/06_api_contracts/module_api_overview.md
+   - Ergänzen: sot-dms-upload-url API
+   - Ergänzen: sot-dms-download-url API
+   - Ergänzen: Extraction Suggestions API (neu)
+
+4. NEUES DOKUMENT: docs/modules/MOD-04_FIELD_MAPPING.md
+   - Vollständiges Feld → DB-Spalte Mapping
+   - Validation Rules
+   - Extraction Templates
+
+
+================================================================================
+G) NOTWENDIGE REPO-ÄNDERUNGEN (PRIORISIERT)
+================================================================================
+
+--------------------------------------------------------------------------------
+P0 (SOFORT)
+--------------------------------------------------------------------------------
+
+1. DB MIGRATION: extraction_suggestions Tabelle
+   ```sql
+   CREATE TABLE extraction_suggestions (...);
+   CREATE INDEX idx_es_doc ON extraction_suggestions(document_id);
+   CREATE INDEX idx_es_target ON extraction_suggestions(target_table, target_id);
+   ```
+
+2. DB MIGRATION: document_links Erweiterung
+   ```sql
+   ALTER TABLE document_links ADD COLUMN is_current BOOLEAN DEFAULT true;
+   ALTER TABLE document_links ADD COLUMN version_note TEXT;
+   ```
+
+3. DOC_TYPE_CATALOG SEED:
+   - 18 doc_types aus Mapping B2
+
+4. UI: BlockDropzone-Komponente
+   - Generische Dropzone pro Block
+   - Props: acceptedDocTypes[], objectId, objectType
+
+5. UI: DocumentChecklist mit Status
+   - Zeigt alle 18 Ordner mit Status
+   - Verlinkt zu Dokumenten
+
+--------------------------------------------------------------------------------
+P1 (NÄCHSTE ITERATION)
+--------------------------------------------------------------------------------
+
+6. HOOK: useExtractionSuggestions
+   - Lädt Vorschläge für Entity
+   - Approve/Reject Mutations
+
+7. UI: AI-Vorschläge Inline-Anzeige
+   - Gelber Rand bei Feldern mit Vorschlag
+   - Tooltip mit Konfidenz
+
+8. EDGE FUNCTION: sot-extraction-approve
+   - Batch-Übernahme von Vorschlägen
+   - Audit-Trail
+
+9. SPEC-DOKUMENTE aktualisieren
+
+--------------------------------------------------------------------------------
+P2 (SPÄTER)
+--------------------------------------------------------------------------------
+
+10. Chart of Accounts (SKR04) Seed
+11. Accounting-Block UI vollständig
+12. NK-Perioden-Verwaltung UI
+
+
+================================================================================
+ZUSAMMENFASSUNG
+================================================================================
+
+IST:
+- Storage-Infrastruktur vorhanden (Bucket, Upload-Hooks, Edge Functions)
+- Datenmodell für Dokumente robust (documents, document_links, storage_nodes)
+- doc_type_catalog existiert, aber leer
+- Keine Extraction-Suggestions-Tabelle
+
+SOLL:
+- Hybrid-Modell: virtuelle Ordner in DB, flache Storage-Keys
+- 18 doc_types mit Scope und Extraktions-Templates
+- Dropzones pro Akte-Block
+- AI-Feldübernahme mit Approval-Workflow
+- Downstream-Module (MSV/Verkauf/Finanzierung) lesen nur aus MOD-04
+
+NÄCHSTE SCHRITTE:
+1. extraction_suggestions Tabelle anlegen
+2. doc_type_catalog seeden
+3. BlockDropzone-Komponente implementieren
+4. DocumentChecklist mit Status bauen
+
+================================================================================
+ENDE BERICHT
+================================================================================
