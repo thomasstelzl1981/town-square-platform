@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGoldenPathSeeds } from '@/hooks/useGoldenPathSeeds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,10 +32,15 @@ import {
   Home,
   FileText,
   Banknote,
-  Globe
+  Globe,
+  Database,
+  CheckCircle,
+  XCircle,
+  Sparkles,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface OverviewStats {
   organizations: number;
@@ -90,7 +96,7 @@ interface TileActivation {
 }
 
 export default function Oversight() {
-  const { isPlatformAdmin } = useAuth();
+  const { isPlatformAdmin, activeTenantId } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<OverviewStats>({
@@ -106,9 +112,24 @@ export default function Oversight() {
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
   const [financePackages, setFinancePackages] = useState<FinancePackageOverview[]>([]);
 
+  // Golden Path Seeds
+  const { runSeeds, isSeeding, lastResult } = useGoldenPathSeeds(activeTenantId);
+
   // Detail dialogs
   const [selectedOrg, setSelectedOrg] = useState<OrgOverview | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyOverview | null>(null);
+
+  const handleRunSeeds = async () => {
+    const result = await runSeeds();
+    if (result.success) {
+      toast.success('Golden Path Seeds erfolgreich erstellt/aktualisiert', {
+        description: `Properties: ${result.before.properties} → ${result.after.properties}, Docs: ${result.before.documents} → ${result.after.documents}`,
+      });
+      fetchData(); // Refresh stats
+    } else {
+      toast.error('Seed-Fehler: ' + result.error);
+    }
+  };
 
   useEffect(() => {
     if (isPlatformAdmin) {
@@ -233,12 +254,61 @@ export default function Oversight() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">System Oversight</h1>
-        <p className="text-muted-foreground">
-          Systemweite Übersicht über alle Tenants, Immobilien und Module (Read-only)
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">System Oversight</h1>
+          <p className="text-muted-foreground">
+            Systemweite Übersicht über alle Tenants, Immobilien und Module (Read-only)
+          </p>
+        </div>
       </div>
+
+      {/* Golden Path Seeds Card */}
+      <Card className="border-dashed border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-600" />
+            Golden Path Demo Data
+          </CardTitle>
+          <CardDescription>
+            Erstellt Beispieldaten für MOD-04 (Immobilien), MOD-07 (Finanzierung) und MOD-03 (DMS)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={handleRunSeeds} 
+              disabled={isSeeding || !activeTenantId}
+              className="gap-2"
+            >
+              {isSeeding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Database className="h-4 w-4" />
+              )}
+              Seeds erstellen/aktualisieren
+            </Button>
+            
+            {lastResult && (
+              <div className="flex items-center gap-2 text-sm">
+                {lastResult.success ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-muted-foreground">
+                      Props: {lastResult.after.properties} | Docs: {lastResult.after.documents} | Nodes: {lastResult.after.storage_nodes} | Links: {lastResult.after.document_links}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-red-600">{lastResult.error}</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Global Stats */}
       <div className="grid grid-cols-6 gap-4">
