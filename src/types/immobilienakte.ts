@@ -185,9 +185,10 @@ export interface AccountingData {
 export interface DocumentStatus {
   docType: string;
   label: string;
-  status: 'complete' | 'missing' | 'review';
+  status: 'complete' | 'missing' | 'review' | 'pending';
   documentId?: string;
   path?: string;
+  linkStatus?: string; // From document_links.link_status
 }
 
 export interface ContactInfo {
@@ -338,6 +339,11 @@ export interface UnitDossierData {
 
   // Block J: Documents
   documents: DocumentStatus[];
+
+  // Multi-lease support (NEW)
+  leasesCount?: number;
+  activeLeasesCount?: number;
+  allLeases?: any[]; // Full lease array for advanced views
 
   // Legacy compatibility fields
   landRegisterShort?: string;

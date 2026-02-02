@@ -33,13 +33,11 @@ interface LandlordContext {
   is_default: boolean | null;
 }
 
-// Unit-based data structure (1 row = 1 unit)
+// Unit-based data structure with ANNUAL values (p.a.)
 interface UnitWithProperty {
   id: string;
   unit_number: string | null;
   area_sqm: number | null;
-  current_monthly_rent: number | null;
-  usage_type: string | null;
   property_id: string;
   property_code: string | null;
   property_type: string;
@@ -47,10 +45,15 @@ interface UnitWithProperty {
   city: string;
   postal_code: string | null;
   market_value: number | null;
-  annual_income: number | null;
+  // ANNUAL VALUES (p.a.) - converted from monthly
+  annual_net_cold_rent: number; // Jahresnettokaltmiete (sum of all active leases * 12)
+  annuity_pa: number; // Annuität p.a.
+  interest_pa: number; // Zins p.a.
+  amortization_pa: number; // Tilgung p.a.
+  financing_balance: number | null; // Restschuld
+  // Tenant info
   tenant_name: string | null;
-  financing_balance: number | null;
-  financing_rate: number | null;
+  leases_count: number; // Number of active leases
 }
 
 interface PropertyFinancing {
@@ -58,6 +61,18 @@ interface PropertyFinancing {
   current_balance: number | null;
   monthly_rate: number | null;
   interest_rate: number | null;
+}
+
+interface LeaseData {
+  unit_id: string;
+  monthly_rent: number | null;
+  rent_cold_eur: number | null;
+  status: string;
+  contacts: {
+    first_name: string;
+    last_name: string;
+    company: string | null;
+  } | null;
 }
 
 export function PortfolioTab() {
@@ -112,9 +127,9 @@ export function PortfolioTab() {
     enabled: !!activeTenantId && contexts.length > 1,
   });
 
-  // Fetch UNITS with JOIN to properties (Source of Truth: Unit-based)
+  // Fetch UNITS with properties, leases (multi!), and financing - ANNUAL VALUES
   const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
-    queryKey: ['portfolio-units', activeOrganization?.id],
+    queryKey: ['portfolio-units-annual', activeOrganization?.id],
     queryFn: async () => {
       // Get units with property data
       const { data: units, error: unitsError } = await supabase
@@ -143,11 +158,14 @@ export function PortfolioTab() {
 
       if (unitsError) throw unitsError;
 
-      // Get leases with contacts for tenant names
+      // Get ALL active leases for multi-lease aggregation
       const { data: leases } = await supabase
         .from('leases')
         .select(`
           unit_id,
+          monthly_rent,
+          rent_cold_eur,
+          status,
           contacts!leases_contact_fk (
             first_name,
             last_name,
@@ -160,35 +178,81 @@ export function PortfolioTab() {
       // Get financing data
       const { data: financing } = await supabase
         .from('property_financing')
-        .select('property_id, current_balance, monthly_rate')
+        .select('property_id, current_balance, monthly_rate, interest_rate')
         .eq('tenant_id', activeOrganization!.id)
         .eq('is_active', true);
 
-      // Build lookup maps
-      const leaseMap = new Map<string, string>();
+      // Build multi-lease map: unit_id -> { leases[], totalRent, tenantName }
+      const leaseMap = new Map<string, { 
+        leases: LeaseData[]; 
+        totalMonthlyRent: number; 
+        primaryTenantName: string | null;
+      }>();
+      
       leases?.forEach(l => {
-        const contact = l.contacts as any;
-        if (contact) {
-          const name = contact.company || `${contact.first_name} ${contact.last_name}`.trim();
-          leaseMap.set(l.unit_id, name);
+        const existing = leaseMap.get(l.unit_id) || { 
+          leases: [], 
+          totalMonthlyRent: 0, 
+          primaryTenantName: null 
+        };
+        
+        const monthlyRent = l.rent_cold_eur || l.monthly_rent || 0;
+        existing.leases.push(l as LeaseData);
+        existing.totalMonthlyRent += monthlyRent;
+        
+        // Set primary tenant name from first lease
+        if (!existing.primaryTenantName && l.contacts) {
+          const contact = l.contacts as any;
+          existing.primaryTenantName = contact.company || 
+            `${contact.first_name} ${contact.last_name}`.trim();
         }
+        
+        leaseMap.set(l.unit_id, existing);
       });
 
-      const financingMap = new Map<string, { balance: number | null; rate: number | null }>();
+      // Build financing map
+      const financingMap = new Map<string, { 
+        balance: number | null; 
+        monthlyRate: number | null;
+        interestRate: number | null;
+      }>();
       financing?.forEach(f => {
-        financingMap.set(f.property_id, { balance: f.current_balance, rate: f.monthly_rate });
+        financingMap.set(f.property_id, { 
+          balance: f.current_balance, 
+          monthlyRate: f.monthly_rate,
+          interestRate: f.interest_rate,
+        });
       });
 
-      // Transform to flat structure
+      // Transform to flat structure with ANNUAL values
       return units?.map(u => {
         const prop = u.properties as any;
         const fin = financingMap.get(prop.id);
+        const leaseInfo = leaseMap.get(u.id);
+        
+        // Calculate ANNUAL values
+        const totalMonthlyRent = leaseInfo?.totalMonthlyRent || u.current_monthly_rent || 0;
+        const annualNetColdRent = totalMonthlyRent * 12;
+        
+        const balance = fin?.balance || 0;
+        const monthlyRate = fin?.monthlyRate || 0;
+        const interestRate = (fin?.interestRate || 3.5) / 100;
+        
+        const annuityPa = monthlyRate * 12;
+        const interestPa = balance * interestRate;
+        const amortizationPa = annuityPa - interestPa;
+        
+        // Tenant name with multi-lease indicator
+        let tenantName = leaseInfo?.primaryTenantName || null;
+        const leasesCount = leaseInfo?.leases.length || 0;
+        if (leasesCount > 1 && tenantName) {
+          tenantName = `${tenantName} (+${leasesCount - 1})`;
+        }
+
         return {
           id: u.id,
           unit_number: u.unit_number,
           area_sqm: u.area_sqm,
-          current_monthly_rent: u.current_monthly_rent,
-          usage_type: u.usage_type,
           property_id: prop.id,
           property_code: prop.code,
           property_type: prop.property_type,
@@ -196,10 +260,14 @@ export function PortfolioTab() {
           city: prop.city,
           postal_code: prop.postal_code,
           market_value: prop.market_value,
-          annual_income: prop.annual_income,
-          tenant_name: leaseMap.get(u.id) || null,
+          // ANNUAL VALUES
+          annual_net_cold_rent: annualNetColdRent,
+          annuity_pa: annuityPa,
+          interest_pa: interestPa,
+          amortization_pa: amortizationPa,
           financing_balance: fin?.balance || null,
-          financing_rate: fin?.rate || null,
+          tenant_name: tenantName,
+          leases_count: leasesCount,
         } as UnitWithProperty;
       }) || [];
     },
@@ -245,7 +313,7 @@ export function PortfolioTab() {
     return unitsWithProperties.filter(u => assignedPropertyIds.includes(u.property_id));
   }, [unitsWithProperties, selectedContextId, contextAssignments, contexts]);
 
-  // Calculate aggregations (use filtered units)
+  // Calculate aggregations with ANNUAL values
   const totals = useMemo(() => {
     const unitsToUse = selectedContextId ? filteredUnits : (unitsWithProperties || []);
     if (!unitsToUse || unitsToUse.length === 0) return null;
@@ -267,17 +335,28 @@ export function PortfolioTab() {
     });
     const totalValue = Array.from(propertyValues.values()).reduce((a, b) => a + b, 0);
     
-    const totalMonthlyRent = unitsToUse.reduce((sum, u) => sum + (u.current_monthly_rent || 0), 0);
-    const totalIncome = totalMonthlyRent * 12;
+    // ANNUAL income (already annual in new structure)
+    const totalIncome = unitsToUse.reduce((sum, u) => sum + (u.annual_net_cold_rent || 0), 0);
     const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
-    const totalRate = relevantFinancing.reduce((sum, f) => sum + (f.monthly_rate || 0), 0);
+    const totalAnnuity = unitsToUse.reduce((sum, u) => sum + (u.annuity_pa || 0), 0);
     const avgInterestRate = relevantFinancing.length 
       ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / relevantFinancing.length 
       : 3.5;
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
 
-    return { unitCount, propertyCount, totalArea, totalValue, totalIncome, totalDebt, totalRate, netWealth, avgYield, avgInterestRate };
+    return { 
+      unitCount, 
+      propertyCount, 
+      totalArea, 
+      totalValue, 
+      totalIncome, 
+      totalDebt, 
+      totalAnnuity, 
+      netWealth, 
+      avgYield, 
+      avgInterestRate 
+    };
   }, [unitsWithProperties, filteredUnits, selectedContextId, financingData]);
 
   // Tilgungsverlauf Chart Data (30 Jahre Projektion)
@@ -287,7 +366,7 @@ export function PortfolioTab() {
     const years = [];
     let debt = totals.totalDebt;
     let equity = totals.totalValue - totals.totalDebt;
-    const annualPayment = totals.totalRate * 12;
+    const annualPayment = totals.totalAnnuity;
     const interestRate = totals.avgInterestRate / 100;
     const valueGrowthRate = 0.02; // 2% jährlicher Wertzuwachs
     let currentValue = totals.totalValue;
@@ -310,7 +389,7 @@ export function PortfolioTab() {
     return years;
   }, [totals]);
 
-  // EÜR Chart Data (Einnahmenüberschussrechnung)
+  // EÜR Chart Data (Einnahmenüberschussrechnung) - ANNUAL
   const eurChartData = useMemo(() => {
     if (!totals) return [];
     
@@ -321,15 +400,15 @@ export function PortfolioTab() {
       return sum + (balance * rate);
     }, 0) || 0;
     const nonRecoverableNk = totals.totalValue * 0.005;
-    const annualAmort = (totals.totalRate * 12) - annualInterest;
+    const annualAmort = totals.totalAnnuity - annualInterest;
     const surplus = annualIncome - annualInterest - nonRecoverableNk;
     
     return [
-      { name: 'Mieteinnahmen', value: Math.round(annualIncome), type: 'income', fill: 'hsl(var(--chart-1))' },
-      { name: 'Zinskosten', value: -Math.round(annualInterest), type: 'expense', fill: 'hsl(var(--chart-2))' },
+      { name: 'Mieteinnahmen p.a.', value: Math.round(annualIncome), type: 'income', fill: 'hsl(var(--chart-1))' },
+      { name: 'Zinskosten p.a.', value: -Math.round(annualInterest), type: 'expense', fill: 'hsl(var(--chart-2))' },
       { name: 'Nicht umlf. NK', value: -Math.round(nonRecoverableNk), type: 'expense', fill: 'hsl(var(--chart-3))' },
-      { name: 'Tilgung', value: -Math.round(annualAmort), type: 'expense', fill: 'hsl(var(--chart-4))' },
-      { name: 'Überschuss', value: Math.round(surplus), type: 'result', fill: surplus >= 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))' },
+      { name: 'Tilgung p.a.', value: -Math.round(annualAmort), type: 'expense', fill: 'hsl(var(--chart-4))' },
+      { name: 'Überschuss p.a.', value: Math.round(surplus), type: 'result', fill: surplus >= 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))' },
     ];
   }, [totals, financingData]);
 
@@ -352,7 +431,7 @@ export function PortfolioTab() {
   const displayUnits = selectedContextId ? filteredUnits : (unitsWithProperties || []);
   const hasData = displayUnits.length > 0;
 
-  // Table columns configuration (Unit-based)
+  // Table columns with ANNUAL values (p.a.)
   const columns: PropertyTableColumn<UnitWithProperty>[] = [
     { 
       key: 'property_code', 
@@ -385,17 +464,24 @@ export function PortfolioTab() {
     { 
       key: 'tenant_name', 
       header: 'Mieter',
-      render: (value) => value ? <span className="truncate max-w-[150px] block">{value}</span> : <span className="text-muted-foreground">—</span>
+      render: (value, row) => value ? (
+        <span className="truncate max-w-[150px] block" title={value}>
+          {value}
+          {row.leases_count > 1 && (
+            <Badge variant="outline" className="ml-1 text-xs">{row.leases_count}</Badge>
+          )}
+        </span>
+      ) : <span className="text-muted-foreground">—</span>
     },
     { 
-      key: 'current_monthly_rent', 
-      header: 'Miete', 
+      key: 'annual_net_cold_rent', 
+      header: 'Miete p.a.', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} />
     },
     { 
       key: 'market_value', 
-      header: 'Wert', 
+      header: 'Verkehrswert', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} variant="bold" />
     },
@@ -406,10 +492,22 @@ export function PortfolioTab() {
       render: (value) => <PropertyCurrencyCell value={value} variant="destructive" />
     },
     { 
-      key: 'financing_rate', 
-      header: 'Rate', 
+      key: 'annuity_pa', 
+      header: 'Annuität p.a.', 
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} />
+    },
+    { 
+      key: 'interest_pa', 
+      header: 'Zins p.a.', 
+      align: 'right',
+      render: (value) => <PropertyCurrencyCell value={value} variant="muted" />
+    },
+    { 
+      key: 'amortization_pa', 
+      header: 'Tilgung p.a.', 
+      align: 'right',
+      render: (value) => <PropertyCurrencyCell value={value} variant="muted" />
     },
   ];
 
@@ -440,7 +538,7 @@ export function PortfolioTab() {
         </Button>
       </div>
 
-      {/* KPI Cards - IMMER sichtbar */}
+      {/* KPI Cards - IMMER sichtbar, ANNUAL values */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard
           title="Einheiten"
@@ -529,7 +627,7 @@ export function PortfolioTab() {
         </ChartCard>
 
         {/* EÜR-Darstellung */}
-        <ChartCard title="Einnahmenüberschussrechnung (EÜR)">
+        <ChartCard title="Einnahmenüberschussrechnung (EÜR) p.a.">
           {hasData && eurChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={eurChartData} layout="vertical">
@@ -542,7 +640,7 @@ export function PortfolioTab() {
                 <YAxis 
                   type="category" 
                   dataKey="name" 
-                  width={100} 
+                  width={120} 
                   tick={{ fontSize: 11 }} 
                 />
                 <Tooltip formatter={(value: number) => formatCurrency(Math.abs(value))} />
@@ -584,7 +682,7 @@ export function PortfolioTab() {
       {/* Units Table using PropertyTable Master Component */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle>Immobilienportfolio (nach Einheiten)</CardTitle>
+          <CardTitle>Immobilienportfolio (Jahreswerte)</CardTitle>
         </CardHeader>
         <CardContent>
           <PropertyTable

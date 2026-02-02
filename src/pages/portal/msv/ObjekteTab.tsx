@@ -11,6 +11,11 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { 
   MoreVertical, 
   FileText, 
@@ -20,7 +25,8 @@ import {
   Star, 
   Eye, 
   AlertTriangle, 
-  ShieldCheck 
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
@@ -44,7 +50,10 @@ interface LeaseData {
   id: string;
   unit_id: string;
   status: string;
-  monthly_rent: number;
+  rent_cold_eur: number | null;
+  monthly_rent: number | null;
+  nk_advance_eur: number | null;
+  heating_advance_eur: number | null;
   start_date: string;
   tenant_contact_id: string;
 }
@@ -56,6 +65,7 @@ interface ContactData {
   email: string | null;
 }
 
+// Unit with multi-lease aggregation for MSV
 interface UnitWithDetails {
   id: string;
   unit_number: string;
@@ -63,11 +73,15 @@ interface UnitWithDetails {
   property_id: string;
   tenant_id: string;
   properties: PropertyData | null;
-  lease: (LeaseData & { contact: ContactData | null }) | null;
-  kaltmiete: number;
-  nebenkosten: number;
-  vorauszahlung: number;
-  warmmiete: number;
+  // Multi-lease support
+  leases: (LeaseData & { contact: ContactData | null })[];
+  primaryLease: (LeaseData & { contact: ContactData | null }) | null;
+  leasesCount: number;
+  // Aggregated values (monthly)
+  kaltmiete: number; // SUM of all active leases
+  nebenkosten: number; // SUM of nk_advance_eur
+  heizkosten: number; // SUM of heating_advance_eur
+  warmmiete: number; // kalt + nk + heating
 }
 
 const ObjekteTab = () => {
@@ -79,8 +93,9 @@ const ObjekteTab = () => {
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
 
+  // Fetch ALL units with multi-lease aggregation - NO FILTER on rental_managed
   const { data: units, isLoading } = useQuery({
-    queryKey: ['msv-objekte-list'],
+    queryKey: ['msv-objekte-list-multi-lease'],
     queryFn: async () => {
       const { data: unitsData, error } = await supabase
         .from('units')
@@ -100,14 +115,17 @@ const ObjekteTab = () => {
 
       if (error) throw error;
 
-      // Fetch active leases
+      // Fetch ALL active leases (multi-lease per unit)
       const { data: leasesData } = await supabase
         .from('leases')
         .select(`
           id,
           unit_id,
           status,
+          rent_cold_eur,
           monthly_rent,
+          nk_advance_eur,
+          heating_advance_eur,
           start_date,
           tenant_contact_id
         `)
@@ -123,30 +141,41 @@ const ObjekteTab = () => {
       const contactMap = new Map<string, ContactData>();
       contactsData?.forEach(c => contactMap.set(c.id, c));
 
-      // Map leases to units
-      const leaseMap = new Map<string, LeaseData & { contact: ContactData | null }>();
+      // Build multi-lease map per unit
+      const leasesByUnit = new Map<string, (LeaseData & { contact: ContactData | null })[]>();
       leasesData?.forEach(lease => {
-        leaseMap.set(lease.unit_id, {
+        const leaseWithContact = {
           ...lease,
           contact: contactMap.get(lease.tenant_contact_id) || null
-        });
+        };
+        const existing = leasesByUnit.get(lease.unit_id) || [];
+        existing.push(leaseWithContact);
+        leasesByUnit.set(lease.unit_id, existing);
       });
 
-      // Build unit data with calculated rent components
+      // Build unit data with multi-lease aggregation
       return unitsData?.map(unit => {
-        const lease = leaseMap.get(unit.id) || null;
-        const kaltmiete = lease?.monthly_rent || 0;
-        const nebenkosten = 0;
-        const vorauszahlung = 0;
-        const warmmiete = kaltmiete + nebenkosten + vorauszahlung;
+        const leases = leasesByUnit.get(unit.id) || [];
+        const primaryLease = leases[0] || null;
+        
+        // Aggregate values across all active leases
+        const kaltmiete = leases.reduce((sum, l) => 
+          sum + (l.rent_cold_eur || l.monthly_rent || 0), 0);
+        const nebenkosten = leases.reduce((sum, l) => 
+          sum + (l.nk_advance_eur || 0), 0);
+        const heizkosten = leases.reduce((sum, l) => 
+          sum + (l.heating_advance_eur || 0), 0);
+        const warmmiete = kaltmiete + nebenkosten + heizkosten;
 
         return {
           ...unit,
           properties: unit.properties as unknown as PropertyData | null,
-          lease,
+          leases,
+          primaryLease,
+          leasesCount: leases.length,
           kaltmiete,
           nebenkosten,
-          vorauszahlung,
+          heizkosten,
           warmmiete
         };
       }) || [];
@@ -208,7 +237,66 @@ const ObjekteTab = () => {
     }
   };
 
-  // Column definitions - consistent with MOD-04 pattern
+  // Multi-lease tenant display component
+  const TenantCell = ({ unit }: { unit: UnitWithDetails }) => {
+    if (unit.leasesCount === 0) {
+      return (
+        <Badge variant="outline" className="text-status-warning border-status-warning/30">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Leerstand
+        </Badge>
+      );
+    }
+
+    const primary = unit.primaryLease;
+    const primaryName = primary?.contact 
+      ? `${primary.contact.last_name}, ${primary.contact.first_name}` 
+      : 'Unbekannt';
+
+    if (unit.leasesCount === 1) {
+      return (
+        <div>
+          <p className="font-medium">{primaryName}</p>
+          <p className="text-xs text-muted-foreground">{primary?.contact?.email || '–'}</p>
+        </div>
+      );
+    }
+
+    // Multi-lease: Show popover with all tenants
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" className="h-auto p-0 font-normal text-left">
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3 text-muted-foreground" />
+              <span className="font-medium">{unit.leasesCount} Mietverträge</span>
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-2">
+          <div className="text-xs font-medium text-muted-foreground mb-2">
+            Aktive Mietverträge
+          </div>
+          <div className="space-y-2">
+            {unit.leases.map((lease, idx) => (
+              <div key={lease.id} className="flex items-center justify-between text-sm">
+                <span>
+                  {lease.contact 
+                    ? `${lease.contact.last_name}, ${lease.contact.first_name}` 
+                    : `Vertrag ${idx + 1}`}
+                </span>
+                <span className="text-muted-foreground">
+                  {(lease.rent_cold_eur || lease.monthly_rent || 0).toLocaleString('de-DE')} €
+                </span>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+  // Column definitions with multi-lease support
   const columns: PropertyTableColumn<UnitWithDetails>[] = [
     {
       key: 'code',
@@ -231,42 +319,32 @@ const ObjekteTab = () => {
       key: 'tenant',
       header: 'Mieter',
       minWidth: '150px',
-      render: (_, row) => {
-        if (!row.lease) {
-          return (
-            <Badge variant="outline" className="text-status-warning border-status-warning/30">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Leerstand
-            </Badge>
-          );
-        }
-        return (
-          <div>
-            <p className="font-medium">
-              {row.lease.contact?.last_name}, {row.lease.contact?.first_name}
-            </p>
-            <p className="text-xs text-muted-foreground">{row.lease.contact?.email || '–'}</p>
-          </div>
-        );
-      }
+      render: (_, row) => <TenantCell unit={row} />
     },
     {
       key: 'kaltmiete',
       header: 'Kaltmiete',
       minWidth: '100px',
       align: 'right',
-      render: (val) => <PropertyCurrencyCell value={val} />
+      render: (val, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <PropertyCurrencyCell value={val} />
+          {row.leasesCount > 1 && (
+            <Badge variant="outline" className="text-xs ml-1">Σ</Badge>
+          )}
+        </div>
+      )
     },
     {
       key: 'nebenkosten',
-      header: 'NK',
+      header: 'NK-VZ',
       minWidth: '80px',
       align: 'right',
       render: (val) => <PropertyCurrencyCell value={val} variant="muted" />
     },
     {
-      key: 'vorauszahlung',
-      header: 'Voraus.',
+      key: 'heizkosten',
+      header: 'HK-VZ',
       minWidth: '80px',
       align: 'right',
       render: (val) => <PropertyCurrencyCell value={val} variant="muted" />
@@ -298,7 +376,7 @@ const ObjekteTab = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {row.lease ? (
+          {row.leasesCount > 0 ? (
             <>
               <DropdownMenuItem onClick={() => handleAction('mahnung', row)}>
                 <AlertTriangle className="h-4 w-4 mr-2" />
@@ -345,7 +423,7 @@ const ObjekteTab = () => {
           row.properties?.address?.toLowerCase().includes(search) ||
           row.properties?.code?.toLowerCase().includes(search) ||
           row.unit_number?.toLowerCase().includes(search) ||
-          row.lease?.contact?.last_name?.toLowerCase().includes(search) ||
+          row.leases?.some(l => l.contact?.last_name?.toLowerCase().includes(search)) ||
           false
         }
         emptyState={{

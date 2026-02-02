@@ -5,8 +5,6 @@ import { toast } from 'sonner';
 import type {
   ParseResult,
   UploadStatus,
-  SmartUploadOptions,
-  SmartUploadResult,
   UploadProgress,
 } from '@/types/document-schemas';
 
@@ -17,10 +15,34 @@ import type {
  * 1. Uploads file to Supabase Storage
  * 2. Calls sot-document-parser for AI analysis
  * 3. Stores parsed JSON alongside the document
- * 4. Returns structured data for preview/import
+ * 4. Creates document_links for SSOT referencing
+ * 5. Returns structured data for preview/import
  * 
  * Supports: Excel, CSV, PDF, Images
  */
+
+// Extended options interface with SSOT context
+export interface SmartUploadOptions {
+  parseMode?: 'properties' | 'contacts' | 'financing' | 'general';
+  autoImport?: boolean;
+  source?: string;
+  // SSOT Context Parameters (required for proper linking)
+  objectType?: 'property' | 'unit' | 'lease' | 'loan' | 'contact';
+  objectId?: string;
+  unitId?: string; // redundant for convenience
+  nodeId?: string; // optional storage node reference
+  docTypeHint?: string; // optional doc_type hint
+}
+
+// Local result type (different from document-schemas)
+export interface SmartUploadResult {
+  documentId?: string;
+  documentLinkId?: string; // NEW: returns the created link ID
+  parsed?: ParseResult;
+  storagePath?: string;
+  jsonPath?: string;
+  error?: string;
+}
 
 interface UseSmartUploadReturn {
   upload: (file: File, options?: SmartUploadOptions) => Promise<SmartUploadResult>;
@@ -33,12 +55,12 @@ interface UseSmartUploadReturn {
 export function useSmartUpload(): UseSmartUploadReturn {
   const { activeTenantId } = useAuth();
   const [progress, setProgress] = useState<UploadProgress>({
-    status: 'idle',
+    status: 'idle' as UploadStatus,
     progress: 0,
   });
 
   const reset = useCallback(() => {
-    setProgress({ status: 'idle', progress: 0 });
+    setProgress({ status: 'idle' as UploadStatus, progress: 0 });
   }, []);
 
   const upload = useCallback(async (
@@ -74,7 +96,6 @@ export function useSmartUpload(): UseSmartUploadReturn {
       setProgress({ status: 'uploading', progress: 40, message: 'Datei hochgeladen' });
 
       // Phase 2: Create document record
-      // Using any cast due to type generation lag
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: docData, error: docError } = await (supabase as any)
         .from('documents')
@@ -87,6 +108,7 @@ export function useSmartUpload(): UseSmartUploadReturn {
           public_id: documentId.substring(0, 8).toUpperCase(),
           source: options.source || 'upload',
           extraction_status: 'processing',
+          doc_type: options.docTypeHint || null,
         })
         .select('id')
         .single();
@@ -97,6 +119,63 @@ export function useSmartUpload(): UseSmartUploadReturn {
       }
 
       const dbDocumentId = docData?.id;
+
+      // Phase 2.5: Create document_links entry for SSOT referencing (CRITICAL)
+      let documentLinkId: string | undefined;
+      
+      if (dbDocumentId && options.objectType && options.objectId) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: linkData, error: linkError } = await (supabase as any)
+            .from('document_links')
+            .insert({
+              tenant_id: activeTenantId,
+              document_id: dbDocumentId,
+              object_type: options.objectType,
+              object_id: options.objectId,
+              unit_id: options.unitId || null,
+              node_id: options.nodeId || null,
+              link_status: 'pending',
+            })
+            .select('id')
+            .single();
+
+          if (linkError) {
+            console.error('Document link insert error:', linkError);
+            // Don't fail the upload, but log the error
+            toast.warning('Dokument gespeichert, aber Verknüpfung fehlgeschlagen');
+          } else {
+            documentLinkId = linkData?.id;
+            console.log(`Document linked: ${dbDocumentId} → ${options.objectType}:${options.objectId}`);
+          }
+        } catch (linkErr) {
+          console.error('Document link creation failed:', linkErr);
+        }
+      } else if (dbDocumentId && options.unitId) {
+        // Fallback: If only unitId is provided without explicit objectType
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: linkData, error: linkError } = await (supabase as any)
+            .from('document_links')
+            .insert({
+              tenant_id: activeTenantId,
+              document_id: dbDocumentId,
+              object_type: 'unit',
+              object_id: options.unitId,
+              unit_id: options.unitId,
+              node_id: options.nodeId || null,
+              link_status: 'pending',
+            })
+            .select('id')
+            .single();
+
+          if (!linkError) {
+            documentLinkId = linkData?.id;
+          }
+        } catch (linkErr) {
+          console.error('Fallback document link creation failed:', linkErr);
+        }
+      }
 
       setProgress({ status: 'analyzing', progress: 50, message: 'KI analysiert Dokument...' });
 
@@ -177,10 +256,24 @@ export function useSmartUpload(): UseSmartUploadReturn {
           });
       }
 
+      // Phase 6: Update document_link status if parsing succeeded
+      if (documentLinkId && parsed) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from('document_links')
+            .update({ link_status: 'needs_review' })
+            .eq('id', documentLinkId);
+        } catch (updateErr) {
+          console.error('Failed to update link status:', updateErr);
+        }
+      }
+
       setProgress({ status: 'done', progress: 100, message: 'Fertig!' });
 
       return {
         documentId: dbDocumentId,
+        documentLinkId,
         parsed,
         storagePath,
         jsonPath,
