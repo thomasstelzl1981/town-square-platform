@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,10 +17,19 @@ import {
   LogOut, 
   Settings, 
   User,
-  LayoutGrid
+  LayoutGrid,
+  Menu,
+  PanelLeftClose,
+  PanelLeft,
+  MessageCircle
 } from 'lucide-react';
+import { useState } from 'react';
 
-export function PortalHeader() {
+interface PortalHeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
   const { 
     profile, 
     activeOrganization, 
@@ -28,6 +37,7 @@ export function PortalHeader() {
     switchTenant, 
     signOut 
   } = useAuth();
+  const { sidebarCollapsed, toggleSidebar, armstrongVisible, toggleArmstrong, isMobile } = usePortalLayout();
   const [switching, setSwitching] = useState(false);
 
   const initials = profile?.display_name
@@ -45,14 +55,60 @@ export function PortalHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-4 md:px-6">
-        {/* Logo / Home */}
-        <Link to="/portal" className="flex items-center gap-2 font-semibold">
-          <LayoutGrid className="h-5 w-5 text-primary" />
-          <span className="hidden sm:inline">Portal</span>
-        </Link>
-
+      <div className="flex h-14 items-center justify-between px-4">
+        {/* Left side: Menu toggle + Logo */}
         <div className="flex items-center gap-2">
+          {/* Mobile: Hamburger for drawer */}
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onMenuClick}
+              className="md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          
+          {/* Desktop: Sidebar toggle */}
+          {!isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleSidebar}
+              className="hidden md:flex"
+              title={sidebarCollapsed ? 'Sidebar erweitern' : 'Sidebar einklappen'}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeft className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+
+          {/* Logo / Home */}
+          <Link to="/portal" className="flex items-center gap-2 font-semibold">
+            <LayoutGrid className="h-5 w-5 text-primary" />
+            <span className="hidden sm:inline">Portal</span>
+          </Link>
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          {/* Armstrong toggle - Desktop only */}
+          {!isMobile && (
+            <Button
+              variant={armstrongVisible ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={toggleArmstrong}
+              className="hidden lg:flex"
+              title={armstrongVisible ? 'Armstrong schließen' : 'Armstrong öffnen'}
+            >
+              <MessageCircle className="h-5 w-5" />
+            </Button>
+          )}
+
           {/* Tenant Switcher */}
           {memberships.length > 1 && (
             <DropdownMenu>
@@ -79,7 +135,6 @@ export function PortalHeader() {
                     onClick={() => handleSwitchTenant(m.tenant_id)}
                     className={m.tenant_id === activeOrganization?.id ? 'bg-accent' : ''}
                   >
-                    {/* We'd need to fetch org names - for now show tenant_id */}
                     <Building2 className="h-4 w-4 mr-2" />
                     <span className="truncate">
                       {m.tenant_id === activeOrganization?.id 

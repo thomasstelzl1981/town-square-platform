@@ -1,22 +1,20 @@
 /**
  * PORTAL NAV — Manifest-Driven Navigation
  * 
- * This component reads tiles/routes from the SSOT manifest.
- * Database tile_catalog is ONLY used as activation/visibility overlay.
- * 
- * RULES:
- * 1. Routes come from manifest (routesManifest.ts)
- * 2. DB only provides is_active flags per tenant
- * 3. 4-Tile-Pattern is enforced by manifest
- * 4. requires_role is ENFORCED for visibility
+ * Desktop Sidebar:
+ * - Expanded: 256px (w-64)
+ * - Collapsed: 56px (w-14) with icons only
+ * - Parent click: navigates to How-it-works (/portal/{base})
+ * - Chevron click: toggles submenu (no navigation)
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Home,
   Building2,
@@ -35,7 +33,7 @@ import {
 } from 'lucide-react';
 
 // Import manifest
-import { zone2Portal, getModulesSorted, getTileFullPath } from '@/manifests/routesManifest';
+import { getModulesSorted, getTileFullPath } from '@/manifests/routesManifest';
 
 // Icon mapping for modules
 const iconMap: Record<string, LucideIcon> = {
@@ -69,10 +67,8 @@ interface TileDisplay {
 
 interface PortalNavProps {
   variant?: 'bottom' | 'sidebar';
+  collapsed?: boolean;
 }
-
-// Bottom nav items (first 5 items for mobile)
-const bottomNavCodes = ['home', 'MOD-01', 'MOD-02', 'MOD-03', 'MOD-04'];
 
 // Fetch activation flags from DB (visibility overlay only)
 async function fetchActiveTileCodes(tenantId: string): Promise<string[]> {
@@ -135,8 +131,9 @@ function buildTilesFromManifest(): TileDisplay[] {
   });
 }
 
-export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
+export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeOrganization, isDevelopmentMode, user } = useAuth();
   const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
@@ -225,8 +222,14 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
     return location.pathname === route;
   };
 
-  const toggleModule = (code: string) => {
+  const toggleModule = (code: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setOpenModules(prev => ({ ...prev, [code]: !prev[code] }));
+  };
+
+  const handleParentClick = (route: string) => {
+    navigate(route);
   };
 
   // Home entry (always visible)
@@ -241,119 +244,141 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
 
   const allTiles = [homeEntry, ...visibleTiles];
 
+  // Sidebar variant
   if (variant === 'sidebar') {
     return (
-      <nav className="hidden lg:flex flex-col gap-1 p-4 w-64 min-w-64 shrink-0 border-r bg-sidebar overflow-y-auto max-h-[calc(100vh-4rem)]">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
-          Module
-        </div>
-        
-        {isLoading ? (
-          <div className="px-3 py-2 text-sm text-muted-foreground">Lade Module...</div>
-        ) : (
-          allTiles.map(tile => {
-            const Icon = tile.icon;
-            const active = isActive(tile.route);
-            const hasSubTiles = tile.sub_tiles && tile.sub_tiles.length > 0;
-            const isOpen = openModules[tile.code] ?? active;
+      <TooltipProvider delayDuration={0}>
+        <nav 
+          className={cn(
+            'hidden md:flex flex-col gap-1 p-2 shrink-0 border-r bg-sidebar overflow-y-auto max-h-[calc(100vh-3.5rem)] transition-all duration-200',
+            collapsed ? 'w-14' : 'w-64'
+          )}
+        >
+          {!collapsed && (
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
+              Module
+            </div>
+          )}
+          
+          {isLoading ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              {collapsed ? '...' : 'Lade Module...'}
+            </div>
+          ) : (
+            allTiles.map(tile => {
+              const Icon = tile.icon;
+              const active = isActive(tile.route);
+              const isOpen = openModules[tile.code] ?? active;
+              const hasSubTiles = tile.sub_tiles && tile.sub_tiles.length > 0;
 
-            if (!hasSubTiles) {
-              return (
-                <Link
-                  key={tile.code}
-                  to={tile.route}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    active 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tile.title}
-                </Link>
-              );
-            }
-
-            return (
-              <Collapsible
-                key={tile.code}
-                open={isOpen}
-                onOpenChange={() => toggleModule(tile.code)}
-              >
-                <CollapsibleTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      active 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Icon className="h-4 w-4" />
-                      {tile.title}
-                    </span>
-                    <ChevronDown 
-                      className={cn(
-                        'h-4 w-4 transition-transform duration-200',
-                        isOpen && 'rotate-180'
-                      )} 
-                    />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="ml-4 mt-1 space-y-1 border-l pl-3">
-                    {tile.sub_tiles?.map(sub => (
-                      <Link
-                        key={sub.route}
-                        to={sub.route}
+              // Collapsed state: icons only with tooltip
+              if (collapsed) {
+                return (
+                  <Tooltip key={tile.code}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleParentClick(tile.route)}
                         className={cn(
-                          'block px-3 py-1.5 rounded-lg text-sm transition-colors',
-                          isSubActive(sub.route)
-                            ? 'bg-primary text-primary-foreground font-medium'
+                          'flex items-center justify-center h-10 w-10 mx-auto rounded-lg transition-colors',
+                          active 
+                            ? 'bg-primary text-primary-foreground' 
                             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
                       >
-                        {sub.title}
-                      </Link>
-                    ))}
+                        <Icon className="h-5 w-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      <p>{tile.title}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              // Expanded state: full labels
+              if (!hasSubTiles) {
+                return (
+                  <Link
+                    key={tile.code}
+                    to={tile.route}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      active 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tile.title}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={tile.code}>
+                  <div className="flex items-center">
+                    {/* Parent: navigates to How-it-works */}
+                    <button
+                      onClick={() => handleParentClick(tile.route)}
+                      className={cn(
+                        'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-sm font-medium transition-colors text-left',
+                        active 
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {tile.title}
+                    </button>
+                    
+                    {/* Chevron: toggles submenu, no navigation */}
+                    <button
+                      onClick={(e) => toggleModule(tile.code, e)}
+                      className={cn(
+                        'p-2 rounded-r-lg transition-colors',
+                        active 
+                          ? 'bg-primary/10 text-primary hover:bg-primary/20' 
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <ChevronDown 
+                        className={cn(
+                          'h-4 w-4 transition-transform duration-200',
+                          isOpen && 'rotate-180'
+                        )} 
+                      />
+                    </button>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })
-        )}
-      </nav>
+                  
+                  <Collapsible open={isOpen}>
+                    <CollapsibleContent>
+                      <div className="ml-4 mt-1 space-y-1 border-l pl-3">
+                        {tile.sub_tiles?.map(sub => (
+                          <Link
+                            key={sub.route}
+                            to={sub.route}
+                            className={cn(
+                              'block px-3 py-1.5 rounded-lg text-sm transition-colors',
+                              isSubActive(sub.route)
+                                ? 'bg-primary text-primary-foreground font-medium'
+                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                            )}
+                          >
+                            {sub.title}
+                          </Link>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              );
+            })
+          )}
+        </nav>
+      </TooltipProvider>
     );
   }
 
-  // Bottom navigation for mobile (first 5 modules only)
-  const bottomTiles = allTiles.filter(t => 
-    t.code === 'home' || bottomNavCodes.includes(t.code)
-  ).slice(0, 5);
-
-  return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-inset-bottom">
-      <div className="flex justify-around items-center h-16">
-        {bottomTiles.map(tile => {
-          const Icon = tile.icon;
-          const active = isActive(tile.route);
-          return (
-            <Link
-              key={tile.code}
-              to={tile.route}
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[4rem]',
-                active ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <Icon className={cn('h-5 w-5', active && 'fill-primary/20')} />
-              <span className="text-[10px] font-medium">{tile.title}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
+  // Bottom nav variant - no longer used, return null
+  return null;
 }
