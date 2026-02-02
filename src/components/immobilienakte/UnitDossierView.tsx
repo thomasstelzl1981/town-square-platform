@@ -44,8 +44,8 @@ export function UnitDossierView({ data }: UnitDossierViewProps) {
               bathroomsCount={data.bathroomsCount}
               heatingType={data.heatingType}
               energySource={data.energySource}
-              energyCertificateValue={data.energyCertificateValue}
-              energyCertificateValidUntil={data.energyCertificateValidUntil}
+              energyCertificateValue={data.energyCertValue}
+              energyCertificateValidUntil={data.energyCertValidUntil}
               featuresTags={data.featuresTags}
             />
           </div>

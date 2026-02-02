@@ -1,80 +1,193 @@
-// Types for the Immobilienakte (Unit Dossier) system
+// ============================================================
+// Types for the Immobilienakte (Unit Dossier) SSOT System
+// MOD-04 - All property/unit data lives here as Single Source of Truth
+// ============================================================
 
-export interface UnitDossierData {
-  // Header (Block 1)
+// ============================================================
+// ENUMS
+// ============================================================
+
+export type PropertyCategory = 'einzelobjekt' | 'globalobjekt';
+export type PropertyStatus = 'aktiv' | 'in_pruefung' | 'archiviert' | 'verkauft';
+export type ReportingRegime = 'VuV' | 'SuSa_BWA';
+export type UsageType = 'wohnen' | 'gewerbe' | 'mischnutzung';
+export type HeatingType = 'zentralheizung' | 'etagenheizung' | 'fernwaerme' | 'waermepumpe' | 'sonstige';
+export type EnergySource = 'gas' | 'oel' | 'strom' | 'pellets' | 'solar' | 'fernwaerme' | 'sonstige';
+export type AllocationKey = 'SQM' | 'PERSONS' | 'MEA' | 'CONSUMPTION' | 'UNITS';
+export type LeaseType = 'unbefristet' | 'befristet' | 'staffel' | 'index' | 'gewerbe';
+export type DepositStatus = 'PAID' | 'OPEN' | 'PARTIAL';
+export type RentModel = 'FIX' | 'INDEX' | 'STAFFEL';
+export type TenancyStatus = 'ACTIVE' | 'VACANT' | 'TERMINATING' | 'ENDED';
+export type DossierStatus = 'VERMIETET' | 'LEERSTAND' | 'IN_NEUVERMIETUNG';
+export type DataQuality = 'OK' | 'PRUEFEN';
+export type AfaMethod = 'linear' | 'degressiv';
+export type NKPeriodStatus = 'geplant' | 'laufend' | 'abgeschlossen' | 'korrigiert';
+
+// ============================================================
+// BLOCK A: Identity & Stammdaten
+// ============================================================
+export interface IdentityData {
+  propertyId: string;
+  unitId?: string;
+  tenantId: string;
+  publicId: string;
   unitCode: string;
-  address: string;
-  locationLabel?: string;
-  status: 'VERMIETET' | 'LEERSTAND' | 'IN_NEUVERMIETUNG';
-  asofDate?: string;
-  dataQuality: 'OK' | 'PRUEFEN';
-  
-  // Identity (Block 1)
   propertyType?: string;
+  category: PropertyCategory;
+  status: PropertyStatus;
+  saleEnabled: boolean;
+  rentalManaged: boolean;
+  vermieterKontextId?: string;
+  reportingRegime: ReportingRegime;
+}
+
+// ============================================================
+// BLOCK B: Address & Location
+// ============================================================
+export interface AddressData {
+  street: string;
+  houseNumber?: string;
+  postalCode: string;
+  city: string;
+  locationLabel?: string;
+  locationNotes?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+// ============================================================
+// BLOCK C: Building & Areas
+// ============================================================
+export interface BuildingData {
   buildYear?: number;
-  wegFlag?: boolean;
-  meaOrTeNo?: string;
-  
-  // Core Data (Block 2)
+  usageType: UsageType;
   areaLivingSqm: number;
+  areaUsableSqm?: number;
   roomsCount?: number;
   bathroomsCount?: number;
-  heatingType?: string;
-  energySource?: string;
-  energyCertificateValue?: number;
-  energyCertificateValidUntil?: string;
+  floor?: number;
+  unitNumber?: string;
+  heatingType?: HeatingType;
+  energySource?: EnergySource;
+  energyCertType?: string;
+  energyCertValue?: number;
+  energyCertValidUntil?: string;
   featuresTags?: string[];
-  
-  // Tenancy (Block 3)
-  tenancyStatus: 'ACTIVE' | 'VACANT' | 'TERMINATING' | 'ENDED';
+}
+
+// ============================================================
+// BLOCK D: Legal / Land Register & Acquisition
+// ============================================================
+export interface LegalData {
+  landRegisterCourt?: string;
+  landRegisterOf?: string;
+  landRegisterSheet?: string;
+  landRegisterVolume?: string;
+  parcelNumber?: string;
+  teNumber?: string;
+  purchaseDate?: string;
+  purchasePrice?: number;
+  marketValue?: number;
+  acquisitionCosts?: number;
+}
+
+// ============================================================
+// BLOCK E: Investment KPIs (Derived)
+// ============================================================
+export interface InvestmentKPIs {
+  annualIncome?: number;
+  grossYieldPercent?: number;
+  netYieldPercent?: number;
+  cashflowMonthly?: number;
+  vacancyDays?: number;
+}
+
+// ============================================================
+// BLOCK F: Tenancy / Lease Data
+// ============================================================
+export interface TenancyData {
+  leaseId?: string;
+  tenantContactId?: string;
+  tenantName?: string;
+  tenancyStatus: TenancyStatus;
+  leaseType: LeaseType;
   startDate?: string;
+  endDate?: string;
   rentColdEur?: number;
+  rentWarmEur?: number;
   nkAdvanceEur?: number;
   heatingAdvanceEur?: number;
-  rentWarmEur?: number;
-  paymentDueDay?: number;
   depositAmountEur?: number;
-  depositStatus?: 'PAID' | 'OPEN' | 'PARTIAL';
-  rentModel?: 'FIX' | 'INDEX' | 'STAFFEL';
+  depositStatus: DepositStatus;
+  paymentDueDay?: number;
+  rentModel: RentModel;
   nextRentAdjustmentDate?: string;
-  
-  // NK/WEG (Block 4)
+}
+
+// ============================================================
+// BLOCK G: WEG & Hausgeld / NK
+// ============================================================
+export interface WEGData {
+  wegFlag: boolean;
+  meaShare?: number;
+  meaTotal?: number;
+  hausgeldMonthlyEur?: number;
+  allocationKeyDefault: AllocationKey;
+  managerContactId?: string;
+  managerContactName?: string;
   periodCurrent?: string;
-  allocationKeyDefault?: 'SQM' | 'PERSONS' | 'MEA' | 'CONSUMPTION' | 'UNITS';
   lastSettlementDate?: string;
   lastSettlementBalanceEur?: number;
-  hausgeldMonthlyEur?: number;
   allocatablePaEur?: number;
   nonAllocatablePaEur?: number;
   topCostBlocks?: Record<string, number>;
-  
-  // Investment KPIs (Block 5)
-  purchasePriceEur?: number;
-  purchaseCostsEur?: number;
-  valuationEur?: number;
-  netColdRentPaEur?: number;
-  nonAllocCostsPaEur?: number;
-  cashflowPreTaxMonthlyEur?: number;
-  grossYieldPercent?: number;
-  netYieldPercent?: number;
-  
-  // Financing (Block 6)
+}
+
+// ============================================================
+// BLOCK H: Financing / Loans
+// ============================================================
+export interface FinancingData {
+  loanId?: string;
   bankName?: string;
   loanNumber?: string;
+  originalAmountEur?: number;
   outstandingBalanceEur?: number;
-  outstandingBalanceAsof?: string;
+  balanceAsofDate?: string;
   interestRatePercent?: number;
   fixedInterestEndDate?: string;
   annuityMonthlyEur?: number;
-  specialRepaymentRight?: { enabled: boolean; amountEur?: number };
+  repaymentRatePercent?: number;
+  specialRepaymentRightEur?: number;
   contactPerson?: ContactInfo;
-  
-  // Legal (Block 7)
-  landRegisterShort?: string;
-  managerContact?: ContactInfo;
-  
-  // Documents (Block 8)
-  documents?: DocumentStatus[];
+}
+
+// ============================================================
+// BLOCK I: Accounting / AfA
+// ============================================================
+export interface AccountingData {
+  accountingId?: string;
+  landSharePercent?: number;
+  buildingSharePercent?: number;
+  bookValueEur?: number;
+  afaRatePercent?: number;
+  afaStartDate?: string;
+  afaMethod: AfaMethod;
+  remainingUsefulLifeYears?: number;
+  modernizationCostsEur?: number;
+  modernizationYear?: number;
+  coaVersion: string;
+  accountMappings?: Record<string, string>;
+}
+
+// ============================================================
+// BLOCK J: Documents
+// ============================================================
+export interface DocumentStatus {
+  docType: string;
+  label: string;
+  status: 'complete' | 'missing' | 'review';
+  documentId?: string;
+  path?: string;
 }
 
 export interface ContactInfo {
@@ -83,14 +196,283 @@ export interface ContactInfo {
   email?: string;
 }
 
-export interface DocumentStatus {
-  docType: string;
-  label: string;
-  status: 'complete' | 'missing' | 'review';
-  path?: string;
+// ============================================================
+// FULL DOSSIER DATA (Aggregated View)
+// ============================================================
+export interface UnitDossierData {
+  // Header Display
+  unitCode: string;
+  address: string;
+  locationLabel?: string;
+  status: DossierStatus;
+  asofDate?: string;
+  dataQuality: DataQuality;
+
+  // Block A: Identity
+  propertyId: string;
+  unitId?: string;
+  tenantId: string;
+  publicId: string;
+  propertyType?: string;
+  category: PropertyCategory;
+  propertyStatus: PropertyStatus;
+  saleEnabled: boolean;
+  rentalManaged: boolean;
+  vermieterKontextId?: string;
+  reportingRegime: ReportingRegime;
+
+  // Block B: Address
+  street: string;
+  houseNumber?: string;
+  postalCode: string;
+  city: string;
+  locationNotes?: string;
+  latitude?: number;
+  longitude?: number;
+
+  // Block C: Building
+  buildYear?: number;
+  usageType: UsageType;
+  areaLivingSqm: number;
+  areaUsableSqm?: number;
+  roomsCount?: number;
+  bathroomsCount?: number;
+  floor?: number;
+  unitNumber?: string;
+  heatingType?: string;
+  energySource?: string;
+  energyCertType?: string;
+  energyCertValue?: number;
+  energyCertValidUntil?: string;
+  featuresTags?: string[];
+
+  // Block D: Legal
+  landRegisterCourt?: string;
+  landRegisterOf?: string;
+  landRegisterSheet?: string;
+  landRegisterVolume?: string;
+  parcelNumber?: string;
+  teNumber?: string;
+  purchaseDate?: string;
+  purchasePrice?: number;
+  marketValue?: number;
+  acquisitionCosts?: number;
+  wegFlag: boolean;
+  meaOrTeNo?: string;
+
+  // Block E: Investment KPIs
+  annualIncome?: number;
+  grossYieldPercent?: number;
+  netYieldPercent?: number;
+  cashflowMonthly?: number;
+  vacancyDays?: number;
+  // Legacy compatibility
+  purchasePriceEur?: number;
+  purchaseCostsEur?: number;
+  valuationEur?: number;
+  netColdRentPaEur?: number;
+  nonAllocCostsPaEur?: number;
+  cashflowPreTaxMonthlyEur?: number;
+
+  // Block F: Tenancy
+  leaseId?: string;
+  tenantContactId?: string;
+  tenantName?: string;
+  tenancyStatus: TenancyStatus;
+  leaseType: LeaseType;
+  startDate?: string;
+  endDate?: string;
+  rentColdEur?: number;
+  rentWarmEur?: number;
+  nkAdvanceEur?: number;
+  heatingAdvanceEur?: number;
+  depositAmountEur?: number;
+  depositStatus: DepositStatus;
+  paymentDueDay?: number;
+  rentModel: RentModel;
+  nextRentAdjustmentDate?: string;
+
+  // Block G: WEG/NK
+  meaShare?: number;
+  meaTotal?: number;
+  hausgeldMonthlyEur?: number;
+  allocationKeyDefault: AllocationKey;
+  managerContactId?: string;
+  managerContact?: ContactInfo;
+  periodCurrent?: string;
+  lastSettlementDate?: string;
+  lastSettlementBalanceEur?: number;
+  allocatablePaEur?: number;
+  nonAllocatablePaEur?: number;
+  topCostBlocks?: Record<string, number>;
+
+  // Block H: Financing
+  loanId?: string;
+  bankName?: string;
+  loanNumber?: string;
+  originalAmountEur?: number;
+  outstandingBalanceEur?: number;
+  outstandingBalanceAsof?: string;
+  interestRatePercent?: number;
+  fixedInterestEndDate?: string;
+  annuityMonthlyEur?: number;
+  repaymentRatePercent?: number;
+  specialRepaymentRight?: { enabled: boolean; amountEur?: number };
+  loanContactPerson?: ContactInfo;
+  // Legacy compatibility
+  contactPerson?: ContactInfo;
+
+  // Block I: Accounting
+  accountingId?: string;
+  landSharePercent?: number;
+  buildingSharePercent?: number;
+  bookValueEur?: number;
+  afaRatePercent?: number;
+  afaStartDate?: string;
+  afaMethod: AfaMethod;
+  remainingUsefulLifeYears?: number;
+  modernizationCostsEur?: number;
+  modernizationYear?: number;
+  coaVersion: string;
+  accountMappings?: Record<string, string>;
+
+  // Block J: Documents
+  documents: DocumentStatus[];
+
+  // Legacy compatibility fields
+  landRegisterShort?: string;
 }
 
-// Sidecar JSON structure for document extraction
+// ============================================================
+// EDITABLE FORM DATA (for mutations)
+// ============================================================
+export interface PropertyFormData {
+  // Identity
+  code?: string;
+  propertyType: string;
+  category: PropertyCategory;
+  status: PropertyStatus;
+  saleEnabled: boolean;
+  rentalManaged: boolean;
+  landlordContextId?: string;
+  reportingRegime: ReportingRegime;
+
+  // Address
+  address: string;
+  addressHouseNo?: string;
+  postalCode: string;
+  city: string;
+  locationLabel?: string;
+  locationNotes?: string;
+  latitude?: number;
+  longitude?: number;
+
+  // Building
+  yearBuilt?: number;
+  usageType: string;
+  totalAreaSqm?: number;
+  heatingType?: string;
+  energySource?: string;
+
+  // Legal
+  landRegisterCourt?: string;
+  landRegisterSheet?: string;
+  landRegisterVolume?: string;
+  parcelNumber?: string;
+  teNumber?: string;
+  notaryDate?: string;
+  purchasePrice?: number;
+  marketValue?: number;
+  acquisitionCosts?: number;
+
+  // WEG
+  wegFlag: boolean;
+  meaTotal?: number;
+  allocationKey: AllocationKey;
+  managerContact?: ContactInfo;
+}
+
+export interface UnitFormData {
+  unitNumber: string;
+  code?: string;
+  areaSqm: number;
+  areaUsableSqm?: number;
+  rooms?: number;
+  bathroomsCount?: number;
+  floor?: number;
+  heatingSupply?: string;
+  energyCertificateValue?: number;
+  energyCertificateValidUntil?: string;
+  featuresTags?: string[];
+  meaShare?: number;
+  hausgeldMonthly?: number;
+  vacancyDays?: number;
+}
+
+export interface LeaseFormData {
+  tenantContactId: string;
+  unitId: string;
+  startDate: string;
+  endDate?: string;
+  leaseType: LeaseType;
+  rentColdEur: number;
+  nkAdvanceEur?: number;
+  heatingAdvanceEur?: number;
+  depositAmountEur?: number;
+  depositStatus: DepositStatus;
+  paymentDueDay?: number;
+  rentModel: RentModel;
+  nextRentAdjustmentEarliestDate?: string;
+}
+
+export interface LoanFormData {
+  bankName: string;
+  loanNumber: string;
+  originalAmount?: number;
+  outstandingBalanceEur?: number;
+  outstandingBalanceAsof?: string;
+  interestRatePercent?: number;
+  fixedInterestEndDate?: string;
+  annuityMonthlyEur?: number;
+  repaymentRatePercent?: number;
+  specialRepaymentRightEurPerYear?: number;
+  contactPerson?: ContactInfo;
+  propertyId?: string;
+  unitId?: string;
+}
+
+export interface NKPeriodFormData {
+  propertyId: string;
+  periodStart: string;
+  periodEnd: string;
+  allocationKeyDefault?: AllocationKey;
+  settlementDate?: string;
+  settlementBalanceEur?: number;
+  allocatableEur?: number;
+  nonAllocatableEur?: number;
+  topCostBlocks?: Record<string, number>;
+  status?: NKPeriodStatus;
+}
+
+export interface AccountingFormData {
+  propertyId: string;
+  landSharePercent?: number;
+  buildingSharePercent?: number;
+  bookValueEur?: number;
+  afaRatePercent?: number;
+  afaStartDate?: string;
+  afaMethod: AfaMethod;
+  remainingUsefulLifeYears?: number;
+  modernizationCostsEur?: number;
+  modernizationYear?: number;
+  coaVersion: string;
+  accountMappings?: Record<string, string>;
+}
+
+// ============================================================
+// DOCUMENT EXTRACTION TYPES (unchanged from original)
+// ============================================================
+
 export interface DocumentSidecar {
   doc_meta: {
     doc_id: string;
@@ -131,15 +513,13 @@ export interface DocumentSidecar {
   };
 }
 
-// Matching confidence gates
 export const CONFIDENCE_GATES = {
-  AUTO_ACCEPTED: 0.90,   // Can create draft records
-  NEEDS_REVIEW: 0.70,    // Queue for user confirmation
-  UNASSIGNED: 0.00,      // Store only
+  AUTO_ACCEPTED: 0.90,
+  NEEDS_REVIEW: 0.70,
+  UNASSIGNED: 0.00,
 } as const;
 
-// Document types from the catalog
-export type DocType = 
+export type DocType =
   | 'DOC_PROJECT'
   | 'DOC_EXPOSE_BUY'
   | 'DOC_EXPOSE_MISC'
@@ -167,7 +547,6 @@ export type DocType =
   | 'DOC_NK_STATEMENT'
   | 'DOC_HEATING_STATEMENT';
 
-// Accounting categories for posting engine
 export type AccountingCategory =
   | 'INCOME_RENT_COLD'
   | 'INCOME_NK_ADVANCE'
@@ -181,8 +560,5 @@ export type AccountingCategory =
   | 'EXP_INTEREST'
   | 'EXP_DEPRECIATION_AFA';
 
-// Posting status workflow
 export type PostingStatus = 'DRAFT' | 'CONFIRMED' | 'LOCKED';
-
-// Bank transaction match status
 export type MatchStatus = 'AUTO_MATCHED' | 'NEEDS_REVIEW' | 'UNMATCHED';
