@@ -1,87 +1,175 @@
+/**
+ * AdminSidebar — Zone-1 Navigation
+ * SSOT: Reads from routesManifest.ts
+ */
 import { useLocation } from 'react-router-dom';
 import { 
-  Building2, 
-  Users, 
-  Link2, 
-  LifeBuoy, 
-  LayoutDashboard, 
-  LogOut, 
-  ChevronDown,
-  Contact,
-  Grid3X3,
-  Plug,
-  Mail,
-  Eye,
-  FileText,
-  CreditCard,
-  FileCheck,
-  Inbox,
-  Settings2,
-  Landmark
+  Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
+  Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
+  Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
+  UserCog, ClipboardCheck, Users2
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { zone1Admin } from '@/manifests/routesManifest';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
+  SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-// Core Foundation
-const foundationItems = [
-  { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
-  { title: 'Organizations', url: '/admin/organizations', icon: Building2 },
-  { title: 'Users & Memberships', url: '/admin/users', icon: Users },
-  { title: 'Delegations', url: '/admin/delegations', icon: Link2 },
-];
+// Icon mapping for routes
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  'Dashboard': LayoutDashboard,
+  'Organizations': Building2,
+  'OrganizationDetail': Building2,
+  'Users': Users,
+  'Delegations': Link2,
+  'MasterContacts': Contact,
+  'MasterTemplates': Settings2,
+  'TileCatalog': Grid3X3,
+  'Integrations': Plug,
+  'CommunicationHub': Mail,
+  'Oversight': Eye,
+  'AuditLog': FileText,
+  'Billing': CreditCard,
+  'Agreements': FileCheck,
+  'Inbox': Inbox,
+  'LeadPool': Target,
+  'PartnerVerification': ClipboardCheck,
+  'CommissionApproval': CreditCard,
+  'Support': LifeBuoy,
+  // FutureRoom
+  'FutureRoom': Landmark,
+  'FutureRoomBanks': Landmark,
+  'FutureRoomManagers': UserCog,
+  // Agents
+  'AgentsDashboard': Bot,
+  'AgentsCatalog': Bot,
+  'AgentsInstances': Bot,
+  'AgentsRuns': Bot,
+  'AgentsPolicies': Bot,
+  // Acquiary
+  'AcquiaryDashboard': Briefcase,
+  'AcquiaryZuordnung': Briefcase,
+  'AcquiaryInbox': Inbox,
+  'AcquiaryMandate': FileCheck,
+  // Sales Desk
+  'SalesDeskDashboard': ShoppingBag,
+  'SalesDeskPublishing': ShoppingBag,
+  'SalesDeskInbox': Inbox,
+  'SalesDeskPartner': Users2,
+  'SalesDeskAudit': FileText,
+  // Finance Desk
+  'FinanceDeskDashboard': Landmark,
+  'FinanceDeskInbox': Inbox,
+  'FinanceDeskBerater': UserCog,
+  'FinanceDeskZuweisung': Link2,
+  'FinanceDeskMonitoring': Eye,
+};
 
-// Master Data
-const masterDataItems = [
-  { title: 'Master Contacts', url: '/admin/contacts', icon: Contact },
-  { title: 'Master-Vorlagen', url: '/admin/master-templates', icon: Settings2 },
-];
+// Group configuration for grouping routes
+interface GroupConfig {
+  label: string;
+  priority: number;
+}
 
-// Backbone
-const backboneItems = [
-  { title: 'Billing & Plans', url: '/admin/billing', icon: CreditCard },
-  { title: 'Agreements', url: '/admin/agreements', icon: FileCheck },
-  { title: 'Post & Documents', url: '/admin/inbox', icon: Inbox },
-  { title: 'Future Room', url: '/admin/futureroom', icon: Landmark },
-];
+const GROUP_CONFIG: Record<string, GroupConfig> = {
+  'foundation': { label: 'Tenants & Access', priority: 1 },
+  'master': { label: 'Master Data', priority: 2 },
+  'activation': { label: 'Feature Activation', priority: 3 },
+  'backbone': { label: 'Backbone', priority: 4 },
+  'desks': { label: 'Operative Desks', priority: 5 },
+  'agents': { label: 'AI Agents', priority: 6 },
+  'system': { label: 'System', priority: 7 },
+  'platformAdmin': { label: 'Platform Admin', priority: 8 },
+};
 
-// System
-const systemItems = [
-  { title: 'Integrations', url: '/admin/integrations', icon: Plug },
-  { title: 'Communication Hub', url: '/admin/communication', icon: Mail },
-  { title: 'Oversight', url: '/admin/oversight', icon: Eye },
-  { title: 'Audit Log', url: '/admin/audit', icon: FileText },
-];
+// Route to group mapping via prefix
+function getGroupKey(path: string, component: string): string {
+  if (path === '' || path === 'organizations' || path === 'users' || path === 'delegations') {
+    return 'foundation';
+  }
+  if (path === 'contacts' || path === 'master-templates') {
+    return 'master';
+  }
+  if (path === 'tiles') {
+    return 'activation';
+  }
+  if (path.startsWith('futureroom') || path === 'billing' || path === 'agreements' || path === 'inbox') {
+    return 'backbone';
+  }
+  if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || path.startsWith('acquiary')) {
+    return 'desks';
+  }
+  if (path.startsWith('agents')) {
+    return 'agents';
+  }
+  if (path === 'integrations' || path === 'communication' || path === 'oversight' || 
+      path === 'audit' || path === 'leadpool' || path === 'partner-verification' || path === 'commissions') {
+    return 'system';
+  }
+  if (path === 'support') {
+    return 'platformAdmin';
+  }
+  return 'system';
+}
 
-// Platform Admin Only
-const platformAdminItems = [
-  { title: 'Support Mode', url: '/admin/support', icon: LifeBuoy },
-];
+// Filter routes for nav (exclude dynamic routes and sub-routes unless they're top-level desk entries)
+function shouldShowInNav(path: string): boolean {
+  // Skip dynamic routes
+  if (path.includes(':')) return false;
+  // Show main desk entries
+  if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
+      path === 'agents' || path === 'futureroom') {
+    return true;
+  }
+  // Skip sub-routes of desks (they will be accessible from their parent page)
+  if (path.includes('/') && (
+    path.startsWith('sales-desk/') ||
+    path.startsWith('finance-desk/') ||
+    path.startsWith('acquiary/') ||
+    path.startsWith('agents/')
+  )) {
+    return false;
+  }
+  // Show futureroom sub-items
+  if (path === 'futureroom/bankkontakte' || path === 'futureroom/finanzierungsmanager') {
+    return true;
+  }
+  return true;
+}
 
 export function AdminSidebar() {
   const location = useLocation();
   const { profile, memberships, activeOrganization, isPlatformAdmin, signOut, switchTenant } = useAuth();
+
+  // Build grouped menu items from manifest
+  const groupedItems = new Map<string, Array<{ title: string; url: string; icon: React.ComponentType<{ className?: string }> }>>();
+  
+  for (const route of zone1Admin.routes || []) {
+    if (!shouldShowInNav(route.path)) continue;
+    
+    const groupKey = getGroupKey(route.path, route.component);
+    const Icon = ICON_MAP[route.component] || LayoutDashboard;
+    const url = route.path === '' ? '/admin' : `/admin/${route.path}`;
+    
+    if (!groupedItems.has(groupKey)) {
+      groupedItems.set(groupKey, []);
+    }
+    
+    groupedItems.get(groupKey)!.push({
+      title: route.title,
+      url,
+      icon: Icon,
+    });
+  }
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -94,6 +182,11 @@ export function AdminSidebar() {
   const formatRole = (role: string) => {
     return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
+
+  // Sort groups by priority
+  const sortedGroups = Array.from(groupedItems.entries())
+    .map(([key, items]) => ({ key, items, config: GROUP_CONFIG[key] || { label: key, priority: 99 } }))
+    .sort((a, b) => a.config.priority - b.config.priority);
 
   return (
     <Sidebar className="border-r">
@@ -110,144 +203,35 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Foundation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Tenants & Access</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {foundationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end={item.url === '/admin'}
-                      className="flex items-center gap-2 hover:bg-muted/50" 
-                      activeClassName="bg-muted text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Master Data */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Master Data</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {masterDataItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-2 hover:bg-muted/50" 
-                      activeClassName="bg-muted text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Feature Activation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Feature Activation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink 
-                    to="/admin/tiles"
-                    className="flex items-center gap-2 hover:bg-muted/50" 
-                    activeClassName="bg-muted text-primary font-medium"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                    <span>Tile Catalog</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Backbone */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Backbone</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {backboneItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-2 hover:bg-muted/50" 
-                      activeClassName="bg-muted text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* System */}
-        <SidebarGroup>
-          <SidebarGroupLabel>System</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {systemItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-2 hover:bg-muted/50" 
-                      activeClassName="bg-muted text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Platform Admin */}
-        {isPlatformAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Platform Admin</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {platformAdminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink 
-                        to={item.url} 
-                        className="flex items-center gap-2 hover:bg-muted/50" 
-                        activeClassName="bg-muted text-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        {sortedGroups.map(({ key, items, config }) => {
+          // Platform Admin section only visible to platform admins
+          if (key === 'platformAdmin' && !isPlatformAdmin) return null;
+          
+          return (
+            <SidebarGroup key={key}>
+              <SidebarGroupLabel>{config.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild>
+                        <NavLink 
+                          to={item.url} 
+                          end={item.url === '/admin'}
+                          className="flex items-center gap-2 hover:bg-muted/50" 
+                          activeClassName="bg-muted text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t p-3">

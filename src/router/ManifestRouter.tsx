@@ -69,6 +69,7 @@ import CommissionApproval from '@/pages/admin/CommissionApproval';
 import MasterTemplates from '@/pages/admin/MasterTemplates';
 import FutureRoom from '@/pages/admin/FutureRoom';
 import { AdminStubPage } from '@/pages/admin/stub';
+import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
 
 // Zone 2: User Portal Layout & Dashboard
 import { PortalLayout } from '@/components/portal/PortalLayout';
@@ -179,26 +180,14 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
   FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
   Support,
-  // New Zone 1 stubs
-  AgentsDashboard: AdminStubPage,
-  AgentsCatalog: AdminStubPage,
-  AgentsInstances: AdminStubPage,
-  AgentsRuns: AdminStubPage,
-  AgentsPolicies: AdminStubPage,
-  AcquiaryDashboard: AdminStubPage,
-  AcquiaryZuordnung: AdminStubPage,
-  AcquiaryInbox: AdminStubPage,
-  AcquiaryMandate: AdminStubPage,
-  SalesDeskDashboard: AdminStubPage,
-  SalesDeskPublishing: AdminStubPage,
-  SalesDeskInbox: AdminStubPage,
-  SalesDeskPartner: AdminStubPage,
-  SalesDeskAudit: AdminStubPage,
-  FinanceDeskDashboard: AdminStubPage,
-  FinanceDeskInbox: AdminStubPage,
-  FinanceDeskBerater: AdminStubPage,
-  FinanceDeskZuweisung: AdminStubPage,
-  FinanceDeskMonitoring: AdminStubPage,
+};
+
+// Zone 1 Desk Components with internal routing
+const adminDeskMap: Record<string, React.ComponentType> = {
+  'sales-desk': SalesDesk,
+  'finance-desk': FinanceDesk,
+  acquiary: Acquiary,
+  agents: Agents,
 };
 
 // =============================================================================
@@ -337,7 +326,26 @@ export function ManifestRouter() {
       {/* ZONE 1: ADMIN PORTAL */}
       {/* ================================================================== */}
       <Route path={zone1Admin.base} element={<AdminLayout />}>
+        {/* Admin Desk Routes with internal sub-routing */}
+        {Object.entries(adminDeskMap).map(([deskPath, DeskComponent]) => (
+          <Route
+            key={deskPath}
+            path={`${deskPath}/*`}
+            element={
+              <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Laden...</div>}>
+                <DeskComponent />
+              </React.Suspense>
+            }
+          />
+        ))}
+        
+        {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
+          // Skip desk routes (handled above)
+          if (['sales-desk', 'finance-desk', 'acquiary', 'agents'].some(desk => route.path.startsWith(desk))) {
+            return null;
+          }
+          
           const Component = adminComponentMap[route.component];
           if (!Component) {
             console.warn(`Missing admin component: ${route.component}`);

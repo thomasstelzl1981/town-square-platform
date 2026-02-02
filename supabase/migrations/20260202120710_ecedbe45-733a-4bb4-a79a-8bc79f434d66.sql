@@ -1,0 +1,57 @@
+-- =====================================================================
+-- BATCH 2: Tile Catalog Sync (MOD-01 to MOD-20)
+-- =====================================================================
+
+-- Upsert all 20 modules with correct schema (including main_tile_title)
+INSERT INTO public.tile_catalog (tile_code, title, description, icon_key, zone, display_order, is_active, main_tile_title, main_tile_route, sub_tiles)
+VALUES
+  ('MOD-01', 'Stammdaten', 'Persönliche Daten und Firmeneinstellungen', 'users', 2, 1, true, 'Übersicht', '/portal/stammdaten', 
+   '[{"title":"Profil","route":"/portal/stammdaten/profil"},{"title":"Firma","route":"/portal/stammdaten/firma"},{"title":"Abrechnung","route":"/portal/stammdaten/abrechnung"},{"title":"Sicherheit","route":"/portal/stammdaten/sicherheit"}]'::jsonb),
+  ('MOD-02', 'KI Office', 'E-Mail, Brief und Kalender mit KI-Unterstützung', 'sparkles', 2, 2, true, 'Übersicht', '/portal/office',
+   '[{"title":"E-Mail","route":"/portal/office/email"},{"title":"Brief","route":"/portal/office/brief"},{"title":"Kontakte","route":"/portal/office/kontakte"},{"title":"Kalender","route":"/portal/office/kalender"}]'::jsonb),
+  ('MOD-03', 'DMS', 'Dokumenten-Management-System', 'folder-open', 2, 3, true, 'Übersicht', '/portal/dms',
+   '[{"title":"Storage","route":"/portal/dms/storage"},{"title":"Posteingang","route":"/portal/dms/posteingang"},{"title":"Sortieren","route":"/portal/dms/sortieren"},{"title":"Einstellungen","route":"/portal/dms/einstellungen"}]'::jsonb),
+  ('MOD-04', 'Immobilien', 'Immobilien-Portfolio verwalten', 'building-2', 2, 4, true, 'Übersicht', '/portal/immobilien',
+   '[{"title":"Kontexte","route":"/portal/immobilien/kontexte"},{"title":"Portfolio","route":"/portal/immobilien/portfolio"},{"title":"Sanierung","route":"/portal/immobilien/sanierung"},{"title":"Bewertung","route":"/portal/immobilien/bewertung"}]'::jsonb),
+  ('MOD-05', 'MSV', 'Miet- und Sachverwaltung', 'file-text', 2, 5, true, 'Übersicht', '/portal/msv',
+   '[{"title":"Objekte","route":"/portal/msv/objekte"},{"title":"Mieteingang","route":"/portal/msv/mieteingang"},{"title":"Vermietung","route":"/portal/msv/vermietung"},{"title":"Einstellungen","route":"/portal/msv/einstellungen"}]'::jsonb),
+  ('MOD-06', 'Verkauf', 'Immobilien-Verkauf abwickeln', 'tag', 2, 6, true, 'Übersicht', '/portal/verkauf',
+   '[{"title":"Objekte","route":"/portal/verkauf/objekte"},{"title":"Vorgänge","route":"/portal/verkauf/vorgaenge"},{"title":"Reporting","route":"/portal/verkauf/reporting"},{"title":"Einstellungen","route":"/portal/verkauf/einstellungen"}]'::jsonb),
+  ('MOD-07', 'Finanzierung', 'Finanzierungsanfragen stellen', 'landmark', 2, 7, true, 'Übersicht', '/portal/finanzierung',
+   '[{"title":"Selbstauskunft","route":"/portal/finanzierung/selbstauskunft"},{"title":"Dokumente","route":"/portal/finanzierung/dokumente"},{"title":"Anfrage","route":"/portal/finanzierung/anfrage"},{"title":"Status","route":"/portal/finanzierung/status"}]'::jsonb),
+  ('MOD-08', 'Investment-Suche', 'Immobilien zur Kapitalanlage finden', 'search', 2, 8, true, 'Übersicht', '/portal/investments',
+   '[{"title":"Suche","route":"/portal/investments/suche"},{"title":"Favoriten","route":"/portal/investments/favoriten"},{"title":"Mandat","route":"/portal/investments/mandat"},{"title":"Simulation","route":"/portal/investments/simulation"}]'::jsonb),
+  ('MOD-09', 'Vertriebspartner', 'Partner-Katalog und Beratung', 'handshake', 2, 9, true, 'Übersicht', '/portal/vertriebspartner',
+   '[{"title":"Katalog","route":"/portal/vertriebspartner/katalog"},{"title":"Beratung","route":"/portal/vertriebspartner/beratung"},{"title":"Kunden","route":"/portal/vertriebspartner/kunden"},{"title":"Netzwerk","route":"/portal/vertriebspartner/network"}]'::jsonb),
+  ('MOD-10', 'Leads', 'Lead-Generierung und Pipeline', 'target', 2, 10, true, 'Übersicht', '/portal/leads',
+   '[{"title":"Inbox","route":"/portal/leads/inbox"},{"title":"Meine Leads","route":"/portal/leads/meine"},{"title":"Pipeline","route":"/portal/leads/pipeline"},{"title":"Werbung","route":"/portal/leads/werbung"}]'::jsonb),
+  ('MOD-11', 'Finanzierungsmanager', 'Finanzierungsfälle professionell bearbeiten', 'landmark', 2, 11, true, 'Übersicht', '/portal/finanzierungsmanager',
+   '[{"title":"So funktionierts","route":"/portal/finanzierungsmanager"},{"title":"Selbstauskunft","route":"/portal/finanzierungsmanager/selbstauskunft"},{"title":"Einreichen","route":"/portal/finanzierungsmanager/einreichen"},{"title":"Status","route":"/portal/finanzierungsmanager/status"}]'::jsonb),
+  ('MOD-12', 'Akquise-Manager', 'Akquisitions-Tools für Partner', 'briefcase', 2, 12, true, 'Übersicht', '/portal/akquise-manager',
+   '[{"title":"Dashboard","route":"/portal/akquise-manager/dashboard"},{"title":"Kunden","route":"/portal/akquise-manager/kunden"},{"title":"Mandate","route":"/portal/akquise-manager/mandate"},{"title":"Tools","route":"/portal/akquise-manager/tools"}]'::jsonb),
+  ('MOD-13', 'Projekte', 'Projekt-Portfolio verwalten', 'folder-kanban', 2, 13, true, 'Übersicht', '/portal/projekte',
+   '[{"title":"Übersicht","route":"/portal/projekte/uebersicht"},{"title":"Portfolio","route":"/portal/projekte/portfolio"},{"title":"Timeline","route":"/portal/projekte/timeline"},{"title":"Einstellungen","route":"/portal/projekte/settings"}]'::jsonb),
+  ('MOD-14', 'Communication Pro', 'Erweiterte Kommunikations-Tools', 'mail', 2, 14, true, 'Übersicht', '/portal/communication-pro',
+   '[{"title":"Serien-E-Mails","route":"/portal/communication-pro/serien-emails"},{"title":"Recherche","route":"/portal/communication-pro/recherche"},{"title":"Social","route":"/portal/communication-pro/social"},{"title":"Agenten","route":"/portal/communication-pro/agenten"}]'::jsonb),
+  ('MOD-15', 'Fortbildung', 'Weiterbildung und Zertifikate', 'graduation-cap', 2, 15, true, 'Übersicht', '/portal/fortbildung',
+   '[{"title":"Katalog","route":"/portal/fortbildung/katalog"},{"title":"Meine Kurse","route":"/portal/fortbildung/meine-kurse"},{"title":"Zertifikate","route":"/portal/fortbildung/zertifikate"},{"title":"Einstellungen","route":"/portal/fortbildung/settings"}]'::jsonb),
+  ('MOD-16', 'Services', 'Dienstleistungen buchen', 'wrench', 2, 16, true, 'Übersicht', '/portal/services',
+   '[{"title":"Katalog","route":"/portal/services/katalog"},{"title":"Anfragen","route":"/portal/services/anfragen"},{"title":"Aufträge","route":"/portal/services/auftraege"},{"title":"Einstellungen","route":"/portal/services/settings"}]'::jsonb),
+  ('MOD-17', 'Car-Management', 'Fuhrpark-Verwaltung', 'car', 2, 17, true, 'Übersicht', '/portal/cars',
+   '[{"title":"Übersicht","route":"/portal/cars/uebersicht"},{"title":"Fahrzeuge","route":"/portal/cars/fahrzeuge"},{"title":"Service","route":"/portal/cars/service"},{"title":"Einstellungen","route":"/portal/cars/settings"}]'::jsonb),
+  ('MOD-18', 'Finanzanalyse', 'Portfolio-Analyse und Reports', 'line-chart', 2, 18, true, 'Übersicht', '/portal/finanzanalyse',
+   '[{"title":"Dashboard","route":"/portal/finanzanalyse/dashboard"},{"title":"Reports","route":"/portal/finanzanalyse/reports"},{"title":"Szenarien","route":"/portal/finanzanalyse/szenarien"},{"title":"Einstellungen","route":"/portal/finanzanalyse/settings"}]'::jsonb),
+  ('MOD-19', 'Photovoltaik', 'PV-Anlagen planen und verwalten', 'sun', 2, 19, true, 'Übersicht', '/portal/photovoltaik',
+   '[{"title":"Angebot","route":"/portal/photovoltaik/angebot"},{"title":"Checkliste","route":"/portal/photovoltaik/checkliste"},{"title":"Projekt","route":"/portal/photovoltaik/projekt"},{"title":"Einstellungen","route":"/portal/photovoltaik/settings"}]'::jsonb),
+  ('MOD-20', 'Miety', 'Mieter-Portal', 'home', 2, 20, true, 'Übersicht', '/portal/miety',
+   '[{"title":"Übersicht","route":"/portal/miety/uebersicht"},{"title":"Dokumente","route":"/portal/miety/dokumente"},{"title":"Kommunikation","route":"/portal/miety/kommunikation"},{"title":"Anliegen","route":"/portal/miety/anliegen"},{"title":"Zahlung","route":"/portal/miety/zahlung"},{"title":"Umzug","route":"/portal/miety/umzug"}]'::jsonb)
+ON CONFLICT (tile_code) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  icon_key = EXCLUDED.icon_key,
+  zone = EXCLUDED.zone,
+  display_order = EXCLUDED.display_order,
+  is_active = true,
+  main_tile_title = EXCLUDED.main_tile_title,
+  main_tile_route = EXCLUDED.main_tile_route,
+  sub_tiles = EXCLUDED.sub_tiles;
