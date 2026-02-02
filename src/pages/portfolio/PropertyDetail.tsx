@@ -13,7 +13,7 @@ import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
 import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
-import { UnitDossierView } from '@/components/immobilienakte';
+import { UnitDossierView, EditableUnitDossierView } from '@/components/immobilienakte';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 
 interface Property {
@@ -273,10 +273,10 @@ export default function PropertyDetail() {
             <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
           </TabsList>
 
-          {/* NEW: Immobilienakte Tab */}
+          {/* NEW: Immobilienakte Tab - SSOT Editable View */}
           <TabsContent value="akte">
             {dossierData ? (
-              <UnitDossierView data={dossierData} />
+              <EditableUnitDossierView data={dossierData} />
             ) : (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
                 <p>Keine Akten-Daten verfügbar. Bitte ergänzen Sie die Stammdaten.</p>
