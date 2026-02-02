@@ -102,7 +102,11 @@ function getGroupKey(path: string, component: string): string {
   if (path === 'tiles') {
     return 'activation';
   }
-  if (path.startsWith('futureroom') || path === 'billing' || path === 'agreements' || path === 'inbox') {
+  // FutureRoom gehört zu Operative Desks, nicht Backbone
+  if (path.startsWith('futureroom')) {
+    return 'desks';
+  }
+  if (path === 'billing' || path === 'agreements' || path === 'inbox') {
     return 'backbone';
   }
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || path.startsWith('acquiary')) {
@@ -139,9 +143,9 @@ function shouldShowInNav(path: string): boolean {
   )) {
     return false;
   }
-  // Show futureroom sub-items
-  if (path === 'futureroom/bankkontakte' || path === 'futureroom/finanzierungsmanager') {
-    return true;
+  // FutureRoom sub-items are accessed via internal tabs, NOT sidebar
+  if (path.startsWith('futureroom/')) {
+    return false;
   }
   return true;
 }
