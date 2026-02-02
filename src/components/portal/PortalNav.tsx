@@ -8,6 +8,7 @@
  * 1. Routes come from manifest (routesManifest.ts)
  * 2. DB only provides is_active flags per tenant
  * 3. 4-Tile-Pattern is enforced by manifest
+ * 4. requires_role is ENFORCED for visibility
  */
 
 import { useState, useEffect } from 'react';
@@ -63,6 +64,7 @@ interface TileDisplay {
   icon: LucideIcon;
   display_order: number;
   sub_tiles: SubTileDisplay[];
+  requires_role?: string[];
 }
 
 interface PortalNavProps {
@@ -90,7 +92,22 @@ async function fetchActiveTileCodes(tenantId: string): Promise<string[]> {
   }
 }
 
-// Build tiles from manifest
+// Fetch user roles from memberships
+async function fetchUserRoles(userId: string): Promise<string[]> {
+  try {
+    const { data } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('user_id', userId);
+    
+    if (!data) return [];
+    return data.map(m => m.role);
+  } catch {
+    return [];
+  }
+}
+
+// Build tiles from manifest (including requires_role)
 function buildTilesFromManifest(): TileDisplay[] {
   const modules = getModulesSorted();
   
@@ -113,19 +130,32 @@ function buildTilesFromManifest(): TileDisplay[] {
       icon: Icon,
       display_order: module.display_order,
       sub_tiles: subTiles,
+      requires_role: module.visibility.requires_role,
     };
   });
 }
 
 export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
   const location = useLocation();
-  const { activeOrganization, isDevelopmentMode } = useAuth();
+  const { activeOrganization, isDevelopmentMode, user } = useAuth();
   const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Get tiles from manifest (SSOT)
   const manifestTiles = buildTilesFromManifest();
+
+  // Fetch user roles for role-gating
+  useEffect(() => {
+    async function loadUserRoles() {
+      if (user?.id) {
+        const roles = await fetchUserRoles(user.id);
+        setUserRoles(roles);
+      }
+    }
+    loadUserRoles();
+  }, [user?.id]);
 
   // Fetch activation overlay from DB
   useEffect(() => {
@@ -156,10 +186,22 @@ export function PortalNav({ variant = 'bottom' }: PortalNavProps) {
     loadActivations();
   }, [activeOrganization?.id, isDevelopmentMode]);
 
-  // Filter tiles by activation overlay
-  const visibleTiles = activeTileCodes 
-    ? manifestTiles.filter(t => activeTileCodes.includes(t.code))
-    : manifestTiles;
+  // Filter tiles by activation overlay AND role-gating
+  const visibleTiles = manifestTiles.filter(tile => {
+    // Check activation overlay (tenant-specific)
+    if (activeTileCodes && !activeTileCodes.includes(tile.code)) {
+      return false;
+    }
+    // Check role-gating (user-specific)
+    if (tile.requires_role && tile.requires_role.length > 0) {
+      // In dev mode, show all (for testing)
+      if (isDevelopmentMode) return true;
+      // User must have at least one of the required roles
+      const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role));
+      if (!hasRequiredRole) return false;
+    }
+    return true;
+  });
 
   // Initialize open state for active module
   useEffect(() => {
