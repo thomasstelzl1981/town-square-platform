@@ -1,0 +1,488 @@
+================================================================================
+IST-REPORT: MOD-04/05/06/07 DOWNSTREAM-MAPPING & STORAGE/DMS
+================================================================================
+Erstellt: 2026-02-02
+Autor: Lovable AI
+Scope: Repo town-square-platform (React + Supabase)
+================================================================================
+
+================================================================================
+A) MOD-04 IMMOBILIEN – PORTFOLIO-LISTE (IST)
+================================================================================
+
+A1) KOMPONENTE/SEITE
+--------------------
+Hauptdatei: src/pages/portal/immobilien/PortfolioTab.tsx (633 Zeilen)
+Route:      /portal/immobilien/portfolio
+Export:     Named Export "PortfolioTab"
+
+A2) GERENDERTE SPALTEN (AKTUELL)
+--------------------------------
+| #  | Header       | Datenquelle                    | DB-Spalte                       |
+|----|--------------|--------------------------------|----------------------------------|
+| 1  | Code         | property                       | properties.code                  |
+| 2  | Art          | property                       | properties.property_type         |
+| 3  | Objekt       | property                       | properties.address + city        |
+| 4  | Einheit      | unit                           | units.unit_number                |
+| 5  | m²           | unit                           | units.area_sqm                   |
+| 6  | Mieter       | lease + contact (joined)       | contacts.first_name/last_name    |
+| 7  | Miete        | unit                           | units.current_monthly_rent       |
+| 8  | Wert         | property                       | properties.market_value          |
+| 9  | Restschuld   | property_financing             | property_financing.current_balance|
+| 10 | Rate         | property_financing             | property_financing.monthly_rate  |
+
+A3) QUERY/HOOKS
+---------------
+Inline useQuery in PortfolioTab.tsx (Zeilen 116-207):
+- Query 1: supabase.from('units').select(...) mit JOIN auf properties!inner
+- Query 2: supabase.from('leases').select(...) mit JOIN auf contacts
+- Query 3: supabase.from('property_financing').select(...)
+
+Kein extrahierter Hook (useProperties o.ä.) – alles inline in Komponente.
+
+A4) DATENMODELL ZEILE
+---------------------
+1 Zeile = 1 Unit (UnitWithProperty Interface, Zeilen 37-54)
+Aggregation: Nur in KPI-Cards (totals), keine Expandable-Rows.
+Context-Filter: über landlord_contexts + context_property_assignment
+
+A5) VERWENDETE DB-FELDER
+------------------------
+units:     id, unit_number, area_sqm, current_monthly_rent, usage_type, property_id
+properties: id, code, property_type, address, city, postal_code, market_value, 
+           annual_income, status
+leases:    unit_id, contacts(first_name, last_name, company)
+property_financing: property_id, current_balance, monthly_rate, interest_rate
+
+
+================================================================================
+B) MOD-04 PROPERTY DETAIL / "AKTE" / DOKUMENTE (IST)
+================================================================================
+
+B1) DOKUMENT-CHECKLIST KOMPONENTE
+---------------------------------
+Datei: src/components/immobilienakte/DocumentChecklist.tsx (95 Zeilen)
+Verwendet in: EditableUnitDossierView.tsx (Block J)
+Export: Named Export "DocumentChecklist"
+
+B2) DEFINIERTE DOC_TYPES IN CHECKLIST
+--------------------------------------
+Hardcoded in Komponente (Zeilen 17-29):
+| doc_type                  | Label                |
+|---------------------------|----------------------|
+| DOC_LEASE_CONTRACT        | Mietvertrag          |
+| DOC_ENERGY_CERT           | Energieausweis       |
+| DOC_FLOORPLAN             | Grundriss            |
+| DOC_PURCHASE_CONTRACT     | Kaufvertrag          |
+| DOC_LAND_REGISTER         | Grundbuchauszug      |
+| DOC_DIVISION_DECLARATION  | Teilungserklärung    |
+| DOC_WEG_BUDGET_PLAN       | Wirtschaftsplan      |
+| DOC_WEG_ANNUAL_STATEMENT  | WEG-Abrechnung       |
+| DOC_INSURANCE_BUILDING    | Gebäudeversicherung  |
+| DOC_NK_STATEMENT          | NK-Abrechnung        |
+| DOC_LOAN_BUCKET           | Darlehensunterlagen  |
+
+FEHLEN (vs. SOLL-Taxonomie 18 Ordner):
+- DOC_PROJECT, DOC_EXPOSE_BUY, DOC_VALUATION_SHORT, DOC_INVOICE, 
+- DOC_PHOTOS, DOC_MISC, DOC_RENOVATION, DOC_PROPERTY_TAX
+
+B3) STATUS-DARSTELLUNG
+----------------------
+Interface DocumentStatus (Zeilen 6-10):
+  status: 'complete' | 'missing' | 'review'
+
+Ermittlung in useUnitDossier.ts (Zeilen 127-150):
+- 'complete' wenn review_state = 'AUTO_ACCEPTED'
+- 'review' wenn Dokument gefunden aber nicht AUTO_ACCEPTED
+- 'missing' wenn kein Dokument gefunden
+
+Relevante DB-Felder:
+- documents.review_state
+- documents.extraction_status
+- document_links.link_status (NICHT verwendet)
+
+B4) UPLOAD-KOMPONENTEN
+----------------------
+FileUploader: src/components/shared/FileUploader.tsx (170 Zeilen)
+- Generischer Drag&Drop-Uploader
+- Props: onFilesSelected, accept, multiple, maxSize
+- KEIN object_id/object_type Handling!
+
+useSmartUpload: src/hooks/useSmartUpload.ts (253 Zeilen)
+- Ruft sot-document-parser Edge Function
+- Speichert in tenant-documents Bucket
+- Pfad-Konvention: ${tenantId}/raw/${YYYY}/${MM}/${docId}-${filename}
+- Erstellt documents Record + extractions Record
+- KEIN document_links Eintrag! (GAP)
+
+
+================================================================================
+C) MOD-05 MIETSONDERVERWALTUNG (IST)
+================================================================================
+
+C1) ROUTEN/PAGES
+----------------
+Hauptseite: src/pages/portal/MSVPage.tsx
+Routes:
+  /portal/msv           → ModuleHowItWorks (Index)
+  /portal/msv/objekte   → ObjekteTab
+  /portal/msv/mieteingang → MieteingangTab
+  /portal/msv/vermietung  → VermietungTab
+  /portal/msv/vermietung/:id → RentalExposeDetail
+  /portal/msv/einstellungen → EinstellungenTab
+
+C2) OBJEKTE-LISTE (ObjekteTab.tsx)
+----------------------------------
+Spalten:
+| Header      | Datenquelle            |
+|-------------|------------------------|
+| Code        | properties.code        |
+| Adresse     | properties.address     |
+| Mieter      | contacts (via leases)  |
+| Kaltmiete   | leases.monthly_rent    |
+| NK          | (hardcoded 0)          |
+| Vorauszahl. | (hardcoded 0)          |
+| Warmmiete   | kaltmiete + nk         |
+
+Query: supabase.from('units').select() mit properties JOIN
+Filter: KEINER (zeigt alle Units!)
+GAP: Keine rental_managed/msv_included Filterlogik implementiert!
+
+C3) VERMIETUNG-LISTE (VermietungTab.tsx)
+----------------------------------------
+Tabelle: rental_listings + rental_publications
+Spalten: Code, Adresse, Typ, Fläche, Kaltmiete, Warmmiete, Status, Kanäle
+Daten: rental_listings.property_id → properties (READ-ONLY)
+
+
+================================================================================
+D) MOD-06 VERKAUF (IST)
+================================================================================
+
+D1) ROUTEN/PAGES
+----------------
+Hauptseite: src/pages/portal/VerkaufPage.tsx
+Routes:
+  /portal/verkauf            → ModuleHowItWorks
+  /portal/verkauf/objekte    → ObjekteTab
+  /portal/verkauf/vorgaenge  → VorgaengeTab
+  /portal/verkauf/reporting  → ReportingTab
+  /portal/verkauf/expose/:propertyId → ExposeDetail (ACHTUNG: propertyId != unitId)
+
+D2) OBJEKTE-LISTE (verkauf/ObjekteTab.tsx)
+------------------------------------------
+Interface: UnitWithListing (Zeilen 16-33)
+Spalten:
+| Header     | Datenquelle                    |
+|------------|--------------------------------|
+| Code       | properties.code                |
+| Objekt     | properties.address + city      |
+| Einheit    | units.unit_number              |
+| m²         | units.area_sqm                 |
+| Miete      | units.current_monthly_rent     |
+| Preis      | listings.asking_price          |
+| Exposé     | listings.status                |
+| Kanäle     | listing_publications.channel   |
+
+Query: units mit properties JOIN + listings LEFT JOIN + listing_publications
+Filter: properties.status = 'active' (KEIN sale_enabled Flag!)
+
+D3) EXPOSÉ-DETAIL (verkauf/ExposeDetail.tsx)
+--------------------------------------------
+Route-Param: unitId (Zeile 75)
+Lädt: units → properties → listings (auto-create wenn nicht vorhanden)
+
+READ-ONLY aus MOD-04:
+- property.code, address, city, postal_code, property_type
+- unit.unit_number, area_sqm, current_monthly_rent
+
+EDITIERBAR (MOD-06 spezifisch):
+- listings.title, description, asking_price, commission_rate
+
+D4) DATENRAUM-DOKUMENTE
+-----------------------
+NICHT IMPLEMENTIERT! Keine Dokument-Anzeige in ExposeDetail.
+Keine document_links für Verkaufs-Datenraum vorhanden.
+
+
+================================================================================
+E) MOD-07 FINANZIERUNG (IST)
+================================================================================
+
+E1) ROUTEN/PAGES
+----------------
+Hauptseite: src/pages/portal/FinanzierungPage.tsx
+Sub-Tabs:
+  /portal/finanzierung/anfrage     → AnfrageTab
+  /portal/finanzierung/selbstauskunft → SelbstauskunftTab
+  /portal/finanzierung/dokumente   → DokumenteTab
+  /portal/finanzierung/status      → StatusTab
+
+E2) OBJEKT-AUSWAHL (ObjectSelector.tsx)
+---------------------------------------
+3 Quellen:
+1. mod04_property → properties Tabelle (Zeilen 37-49)
+2. mod08_favorite → investment_favorites Tabelle (Zeilen 52-66)
+3. custom → Manuelle Eingabe
+
+Geladene MOD-04 Felder:
+- properties.id, code, address, city, postal_code, purchase_price
+
+E3) DOKUMENTE FÜR FINANZIERUNG
+------------------------------
+Aktuell in finance_documents Tabelle definiert:
+- finance_package_id FK
+- document_id FK (→ documents)
+- document_type TEXT
+
+KEIN Mapping zu doc_type_catalog!
+Keine automatische Übernahme aus MOD-04 Dossier.
+
+
+================================================================================
+F) STORAGE / DMS IST-PRÜFUNG
+================================================================================
+
+F1) SUPABASE BUCKET
+-------------------
+Name: tenant-documents
+Public: NO (private)
+
+Pfad-Konvention (aus useSmartUpload):
+  ${tenant_id}/raw/${YYYY}/${MM}/${document_id}-${original_filename}
+  ${tenant_id}/derived/${document_id}/metadata.json
+
+F2) TABELLEN-SCHEMA (BESTÄTIGT)
+-------------------------------
+
+### documents
+| Column             | Type      | Nullable |
+|--------------------|-----------|----------|
+| id                 | uuid      | NO       |
+| tenant_id          | uuid      | NO       |
+| name               | text      | NO       |
+| file_path          | text      | NO       |
+| mime_type          | text      | NO       |
+| size_bytes         | bigint    | NO       |
+| public_id          | text      | NO       |
+| uploaded_by        | uuid      | YES      |
+| source             | text      | YES      |
+| doc_type           | text      | YES      |
+| scope              | text      | YES      |
+| extraction_status  | text      | YES      |
+| extracted_json_path| text      | YES      |
+| ai_summary         | text      | YES      |
+| detected_type      | text      | YES      |
+| review_state       | text      | YES      |
+| match_confidence   | numeric   | YES      |
+| sidecar_json       | jsonb     | YES      |
+
+### document_links
+| Column      | Type      | Nullable |
+|-------------|-----------|----------|
+| id          | uuid      | NO       |
+| tenant_id   | uuid      | NO       |
+| document_id | uuid      | NO       |
+| node_id     | uuid      | YES      | → storage_nodes
+| object_id   | uuid      | YES      | polymorph
+| object_type | text      | YES      | 'property'|'unit'|'lease'|...
+| unit_id     | uuid      | YES      | → units
+| link_status | text      | YES      |
+
+### storage_nodes (Ordnerhierarchie)
+| Column         | Type      | Nullable |
+|----------------|-----------|----------|
+| id             | uuid      | NO       |
+| tenant_id      | uuid      | NO       |
+| parent_id      | uuid      | YES      |
+| property_id    | uuid      | YES      |
+| unit_id        | uuid      | YES      |
+| name           | text      | NO       |
+| node_type      | text      | NO       | 'folder'|'file'
+| auto_created   | boolean   | YES      |
+| template_id    | text      | YES      |
+| doc_type_hint  | text      | YES      |
+| sort_index     | int       | YES      |
+| scope_hint     | text      | YES      |
+
+### doc_type_catalog
+| Column                  | Type      | Nullable |
+|-------------------------|-----------|----------|
+| doc_type                | text      | NO (PK)  |
+| scope_default           | text      | NO       |
+| required_meta           | text[]    | YES      |
+| anchors                 | jsonb     | YES      |
+| extractable_dp_keys     | text[]    | YES      |
+| posting_suggestion_rules| jsonb     | YES      |
+
+### extractions
+| Column              | Type      | Nullable |
+|---------------------|-----------|----------|
+| id                  | uuid      | NO       |
+| tenant_id           | uuid      | NO       |
+| document_id         | uuid      | NO       |
+| engine              | text      | NO       |
+| source              | text      | NO       |
+| status              | text      | NO       |
+| result_json         | jsonb     | YES      |
+| estimated_pages     | int       | YES      |
+| actual_pages        | int       | YES      |
+| error_message       | text      | YES      |
+
+F3) EDGE FUNCTIONS (BESTÄTIGT)
+------------------------------
+Pfad: supabase/functions/
+
+Vorhanden:
+- sot-dms-upload-url/index.ts    → Signed Upload URL
+- sot-dms-download-url/index.ts  → Signed Download URL
+- sot-document-parser/index.ts   → AI-Extraktion (Lovable AI)
+- sot-excel-ai-import/index.ts   → Excel/CSV Parsing
+
+F4) JOB QUEUE / WORKER
+----------------------
+NICHT VORHANDEN!
+Aktuell: Synchroner Aufruf in useSmartUpload (blocking).
+Keine jobs Tabelle, kein Background-Worker, kein pg-boss.
+
+Extraction-Status-Flow:
+  upload → documents.extraction_status = 'processing'
+  → sot-document-parser aufrufen
+  → documents.extraction_status = 'done' | 'failed'
+
+F5) RLS POLICIES
+----------------
+Linter zeigt 2 Warnungen "RLS Policy Always True" (WARN 4+5).
+Tabellen mit RLS aktiviert: properties, units, documents, document_links, etc.
+Tenant-Schlüssel: tenant_id (konsistent in allen Tabellen)
+
+Org-Hierarchie vorhanden:
+- organizations Tabelle mit parent_id, depth, materialized_path
+- org_links für Delegationen
+- my_scope_org_ids() Funktion für Hierarchie-Auflösung
+
+
+================================================================================
+G) GAPS: ABWEICHUNGEN ZUM SOLL
+================================================================================
+
+G1) SSOT PRO EINHEIT
+--------------------
+✓ Portfolio-Liste zeigt 1 Zeile = 1 Unit (ERFÜLLT)
+✓ UnitDossierView existiert (ERFÜLLT)
+✗ Dokumente werden NICHT pro Unit verlinkt (document_links.unit_id meist NULL)
+✗ Kein Dropzone-in-Block UI für Dokumenten-Upload
+
+G2) PORTFOLIO IN JAHRESWERTEN
+-----------------------------
+Aktuell angezeigte Spalten:
+- Miete = units.current_monthly_rent (MONATLICH!)
+- Wert = properties.market_value
+- Restschuld = property_financing.current_balance
+- Rate = property_financing.monthly_rate (MONATLICH!)
+
+FEHLENDE JAHRESWERTE:
+✗ Jahresnettokaltmiete (annual_rent = rent * 12)
+✗ Zins p.a. (interest_pa = balance * interest_rate)
+✗ Tilgung p.a. (amortization_pa = (monthly_rate * 12) - interest_pa)
+✗ Annuität p.a. (annuity_pa = monthly_rate * 12)
+
+G3) MEHRERE LEASES PRO EINHEIT
+------------------------------
+✓ DB erlaubt mehrere leases pro unit_id (MÖGLICH)
+✗ useUnitDossier lädt nur active lease: .eq('status', 'active').single()
+✗ Kein UI für Lease-Historisierung
+✗ Dokumente werden nicht lease-level verlinkt (document_links.object_type = 'lease' nicht verwendet)
+
+G4) KEIN "EXPOSÉ VERKAUF" ORDNER
+--------------------------------
+✓ Aktuelle Ordner-Template (PROPERTY_DOSSIER_V1) enthält:
+  "01_Exposé Ankauf", "02_Exposé Sonstiges"
+✗ Es existiert KEIN "Exposé Verkauf" Ordner
+✗ Ordner-Name "02_Exposee Verkauf" sollte in "02_Exposee Sonstiges" bleiben
+  → KORREKT BEREITS: kein separater Verkaufs-Ordner nötig
+
+G5) DOWNLOAD-MODULE SSOT COMPLIANCE
+-----------------------------------
+MOD-05 (MSV):
+✗ Keine Filterung auf rental_managed/msv_included
+✗ Zeigt alle Units (nicht nur vermietungsrelevante)
+
+MOD-06 (Verkauf):
+✗ Keine Filterung auf sale_enabled
+✓ Read-Only Objektdaten aus MOD-04
+✗ Datenraum-Dokumente nicht implementiert
+
+MOD-07 (Finanzierung):
+✓ Objektauswahl aus MOD-04 funktioniert
+✗ Dokumenten-Übernahme nicht automatisiert
+✗ Kein Mapping doc_type_catalog → finance_documents
+
+G6) DOCUMENT_LINKS ERSTELLUNG
+-----------------------------
+✗ useSmartUpload erstellt KEINEN document_links Eintrag!
+✗ Upload-Kontext (property_id, unit_id, node_id) wird nicht propagiert
+✗ Keine automatische Zuordnung nach Upload
+
+
+================================================================================
+H) DATEIPFADE REFERENZ
+================================================================================
+
+MOD-04:
+- src/pages/portal/ImmobilienPage.tsx
+- src/pages/portal/immobilien/PortfolioTab.tsx
+- src/pages/portfolio/PropertyDetail.tsx
+- src/hooks/useUnitDossier.ts
+- src/hooks/useDossierForm.ts
+- src/hooks/useDossierMutations.ts
+- src/components/immobilienakte/DocumentChecklist.tsx
+- src/components/immobilienakte/EditableUnitDossierView.tsx
+
+MOD-05:
+- src/pages/portal/MSVPage.tsx
+- src/pages/portal/msv/ObjekteTab.tsx
+- src/pages/portal/msv/VermietungTab.tsx
+- src/pages/portal/msv/RentalExposeDetail.tsx
+
+MOD-06:
+- src/pages/portal/VerkaufPage.tsx
+- src/pages/portal/verkauf/ObjekteTab.tsx
+- src/pages/portal/verkauf/ExposeDetail.tsx
+
+MOD-07:
+- src/pages/portal/FinanzierungPage.tsx
+- src/pages/portal/finanzierung/AnfrageTab.tsx
+- src/components/finanzierung/ObjectSelector.tsx
+
+Storage/DMS:
+- src/components/shared/FileUploader.tsx
+- src/hooks/useSmartUpload.ts
+- supabase/functions/sot-dms-upload-url/index.ts
+- supabase/functions/sot-dms-download-url/index.ts
+- supabase/functions/sot-document-parser/index.ts
+
+
+================================================================================
+I) ZUSAMMENFASSUNG KRITISCHE GAPS (PRIO)
+================================================================================
+
+P0 - BLOCKING:
+1. useSmartUpload: document_links Eintrag fehlt nach Upload
+2. DocumentChecklist: doc_types unvollständig (nur 11 von 18)
+3. MOD-05/06: Keine Filterlogik (zeigt alle Units)
+
+P1 - WICHTIG:
+4. Portfolio-Spalten: Jahreswerte statt Monatswerte
+5. Lease-Historisierung: UI + Query anpassen
+6. Datenraum MOD-06: Dokument-Anzeige implementieren
+
+P2 - NICE-TO-HAVE:
+7. Dropzone pro Block in Immobilienakte
+8. Approval-UX für Extraction-Vorschläge
+9. Job-Queue für Background-Processing
+
+
+================================================================================
+ENDE REPORT
+================================================================================
