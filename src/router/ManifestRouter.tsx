@@ -300,35 +300,7 @@ export function ManifestRouter() {
           }
 
           return (
-            <Route key={code} path={module.base}>
-              {/* Base module route */}
-              <Route index element={<ModulePage />} />
-
-              {/* Tile routes (4-Tile-Pattern) */}
-              {module.tiles.map((tile) => {
-                // Skip empty path (already handled by index)
-                if (tile.path === '') return null;
-                return (
-                  <Route
-                    key={tile.path}
-                    path={tile.path}
-                    element={<ModulePage />}
-                  />
-                );
-              })}
-
-              {/* Dynamic routes */}
-              {module.dynamic_routes?.map((dynRoute) => {
-                const DynComponent = portalDynamicComponentMap[dynRoute.component] || ModulePage;
-                return (
-                  <Route
-                    key={dynRoute.path}
-                    path={dynRoute.path}
-                    element={<DynComponent />}
-                  />
-                );
-              })}
-            </Route>
+            <Route key={code} path={`${module.base}/*`} element={<ModulePage />} />
           );
         })}
       </Route>
