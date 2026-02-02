@@ -1,74 +1,37 @@
-import { useLocation } from 'react-router-dom';
-import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+/**
+ * KI Office Page (MOD-02) - Routes Pattern with How It Works
+ */
+import { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Loader2 } from 'lucide-react';
 
-// Sub-page components
-import { EmailTab, BriefTab, KontakteTab, KalenderTab } from './office';
+// Lazy load sub-page components
+const EmailTab = lazy(() => import('./office/EmailTab').then(m => ({ default: m.EmailTab })));
+const BriefTab = lazy(() => import('./office/BriefTab').then(m => ({ default: m.BriefTab })));
+const KontakteTab = lazy(() => import('./office/KontakteTab').then(m => ({ default: m.KontakteTab })));
+const KalenderTab = lazy(() => import('./office/KalenderTab').then(m => ({ default: m.KalenderTab })));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const OfficePage = () => {
-  const location = useLocation();
-  const contentRef = usePdfContentRef();
-  const { data, isLoading } = useModuleTiles('MOD-02');
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const subTiles = data?.sub_tiles || [
-    { title: 'E-Mail', route: '/portal/office/email' },
-    { title: 'Briefgenerator', route: '/portal/office/brief' },
-    { title: 'Kontakte', route: '/portal/office/kontakte' },
-    { title: 'Kalender', route: '/portal/office/kalender' },
-  ];
-
-  // Determine which sub-page to render
-  const currentPath = location.pathname;
-  const renderSubPage = () => {
-    if (currentPath.endsWith('/email')) return <EmailTab />;
-    if (currentPath.endsWith('/brief')) return <BriefTab />;
-    if (currentPath.endsWith('/kontakte')) return <KontakteTab />;
-    if (currentPath.endsWith('/kalender')) return <KalenderTab />;
-    return null; // Dashboard view
-  };
-
-  const subPageContent = renderSubPage();
-  const isOnSubPage = subPageContent !== null;
+  const content = moduleContents['MOD-02'];
 
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        {isOnSubPage ? (
-          <div className="p-6 space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">{data?.title || 'KI Office'}</h1>
-              <p className="text-muted-foreground">{data?.description || 'KI-gestütztes Backoffice für Ihre Immobilienverwaltung'}</p>
-            </div>
-            {subPageContent}
-          </div>
-        ) : (
-          <ModuleDashboard
-            title={data?.title || 'KI Office'}
-            description={data?.description || 'KI-gestütztes Backoffice für Ihre Immobilienverwaltung'}
-            subTiles={subTiles}
-            moduleCode="MOD-02"
-          />
-        )}
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="KI Office" 
-          moduleName="MOD-02 KI Office" 
-        />
-      </div>
-    </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route index element={<ModuleHowItWorks content={content} />} />
+        <Route path="email" element={<EmailTab />} />
+        <Route path="brief" element={<BriefTab />} />
+        <Route path="kontakte" element={<KontakteTab />} />
+        <Route path="kalender" element={<KalenderTab />} />
+        <Route path="*" element={<Navigate to="/portal/office" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

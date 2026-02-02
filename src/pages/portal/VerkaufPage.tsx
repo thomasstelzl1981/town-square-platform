@@ -1,10 +1,12 @@
+/**
+ * Verkauf Page (MOD-06) - Routes Pattern with How It Works
+ */
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load tabs
-const SoFunktioniertsTab = lazy(() => import('./verkauf/SoFunktioniertsTab'));
 const ObjekteTab = lazy(() => import('./verkauf/ObjekteTab'));
 const ReportingTab = lazy(() => import('./verkauf/ReportingTab'));
 const VorgaengeTab = lazy(() => import('./verkauf/VorgaengeTab'));
@@ -17,42 +19,29 @@ const LoadingFallback = () => (
 );
 
 const VerkaufPage = () => {
-  const contentRef = usePdfContentRef();
+  const content = moduleContents['MOD-06'];
 
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        {/* Header */}
-        <div className="p-6 pb-4">
-          <h1 className="text-3xl font-bold">Verkauf</h1>
-          <p className="text-muted-foreground">
-            Bestandsimmobilien verkaufen – einfach und transparent
-          </p>
-        </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* How It Works as index */}
+        <Route index element={<ModuleHowItWorks content={content} />} />
         
-        {/* Tab Content - Routing über Sidebar */}
-        <div className="px-6">
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="so-funktionierts" replace />} />
-              <Route path="so-funktionierts" element={<SoFunktioniertsTab />} />
-              <Route path="objekte" element={<ObjekteTab />} />
-              <Route path="reporting" element={<ReportingTab />} />
-              <Route path="vorgaenge" element={<VorgaengeTab />} />
-              <Route path="expose/:propertyId" element={<ExposeDetail />} />
-            </Routes>
-          </Suspense>
-        </div>
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="Verkaufsübersicht" 
-          moduleName="MOD-06 Verkauf" 
-        />
-      </div>
-    </div>
+        {/* Tile routes */}
+        <Route path="objekte" element={<ObjekteTab />} />
+        <Route path="vorgaenge" element={<VorgaengeTab />} />
+        <Route path="reporting" element={<ReportingTab />} />
+        
+        {/* Detail routes */}
+        <Route path="expose/:propertyId" element={<ExposeDetail />} />
+        
+        {/* Legacy redirect */}
+        <Route path="so-funktionierts" element={<Navigate to="/portal/verkauf" replace />} />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/portal/verkauf" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 
