@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type OrgType = 'platform' | 'partner' | 'subpartner' | 'client' | 'renter';
+export type OrgType = 'internal' | 'platform' | 'partner' | 'subpartner' | 'client' | 'renter';
 
 export interface OrgContextData {
   activeOrgId: string | null;
@@ -94,6 +94,7 @@ export function useOrgContext(): OrgContextData {
  */
 export function getOrgTypeBadgeColor(type: OrgType | null): string {
   switch (type) {
+    case 'internal':
     case 'platform':
       return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
     case 'partner':
@@ -114,6 +115,8 @@ export function getOrgTypeBadgeColor(type: OrgType | null): string {
  */
 export function getOrgTypeLabel(type: OrgType | null): string {
   switch (type) {
+    case 'internal':
+      return 'Internal';
     case 'platform':
       return 'Plattform';
     case 'partner':

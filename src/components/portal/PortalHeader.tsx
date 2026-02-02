@@ -87,6 +87,17 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
             <LayoutGrid className="h-5 w-5 text-primary" />
             <span className="hidden sm:inline">Portal</span>
           </Link>
+
+          {/* P0-ID-CTX-INTERNAL-DEFAULT: Context Badge (always visible) */}
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              'ml-2 text-xs font-medium hidden sm:inline-flex',
+              getOrgTypeBadgeColor(activeOrgType)
+            )}
+          >
+            {getOrgTypeLabel(activeOrgType)} / {activeOrgName}
+          </Badge>
         </div>
 
         {/* Right side */}
