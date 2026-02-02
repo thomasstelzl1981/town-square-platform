@@ -7,6 +7,7 @@
  * NO ROUTE EXISTS UNLESS DECLARED IN routesManifest.ts
  */
 
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
@@ -136,6 +137,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   PartnerVerification,
   CommissionApproval,
   FutureRoom,
+  FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
+  FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
   Support,
 };
 
@@ -165,6 +168,8 @@ const portalDynamicComponentMap: Record<string, React.ComponentType> = {
   ExposeVorlage,
   RentalExposeDetail,
   ExposeDetail,
+  // MOD-07 Finanzierung Dynamic
+  AnfrageDetailPage: React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage')),
 };
 
 // =============================================================================

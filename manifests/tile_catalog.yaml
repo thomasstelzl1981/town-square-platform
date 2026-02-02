@@ -251,21 +251,26 @@ tiles:
         - client
     
     sub_tiles:
-      - title: "Vorgänge"
-        route: "/portal/finanzierung/vorgaenge"
+      - title: "Selbstauskunft"
+        route: "/portal/finanzierung/selbstauskunft"
+        icon: "FileEdit"
+        default: true
+        description: "Persönliche Daten für Finanzierung"
+        
+      - title: "Dokumente"
+        route: "/portal/finanzierung/dokumente"
+        icon: "FolderOpen"
+        description: "Bonitätsunterlagen hochladen"
+        
+      - title: "Anfrage"
+        route: "/portal/finanzierung/anfrage"
         icon: "FileStack"
+        description: "Finanzierungsanfragen verwalten"
         
-      - title: "Readiness"
-        route: "/portal/finanzierung/readiness"
-        icon: "CheckCircle"
-        
-      - title: "Export"
-        route: "/portal/finanzierung/export"
-        icon: "Download"
-        
-      - title: "Partner"
-        route: "/portal/finanzierung/partner"
-        icon: "Handshake"
+      - title: "Status"
+        route: "/portal/finanzierung/status"
+        icon: "Activity"
+        description: "Bearbeitungsstatus verfolgen"
 
   # ============================================================================
   # MOD-08: INVESTMENTS

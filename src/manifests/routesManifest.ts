@@ -98,6 +98,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
     { path: "commissions", component: "CommissionApproval", title: "Provisionen" },
     { path: "futureroom", component: "FutureRoom", title: "Future Room" },
+    { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
+    { path: "futureroom/finanzierungsmanager", component: "FutureRoomManagers", title: "Finanzierungsmanager" },
     { path: "support", component: "Support", title: "Support" },
   ],
 };
@@ -207,13 +209,13 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 7,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        { path: "vorgaenge", component: "VorgaengeTab", title: "Vorgänge" },
-        { path: "readiness", component: "ReadinessTab", title: "Readiness" },
-        { path: "export", component: "ExportTab", title: "Export" },
-        { path: "partner", component: "PartnerTab", title: "Partner" },
+        { path: "selbstauskunft", component: "SelbstauskunftTab", title: "Selbstauskunft", default: true },
+        { path: "dokumente", component: "DokumenteTab", title: "Dokumente" },
+        { path: "anfrage", component: "AnfrageTab", title: "Anfrage" },
+        { path: "status", component: "StatusTab", title: "Status" },
       ],
       dynamic_routes: [
-        { path: ":requestId", component: "FinanceRequestDetail", title: "Finanzierungsanfrage", dynamic: true },
+        { path: "anfrage/:requestId", component: "AnfrageDetailPage", title: "Anfrage-Details", dynamic: true },
       ],
     },
     "MOD-08": {
@@ -342,9 +344,15 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
 // LEGACY ROUTES (DEPRECATED)
 // =============================================================================
 export const legacyRoutes: LegacyRoute[] = [
+  // Legacy Portfolio Routes
   { path: "/portfolio", redirect_to: "/portal/immobilien/portfolio", reason: "Legacy route" },
   { path: "/portfolio/new", redirect_to: "/portal/immobilien/neu", reason: "Legacy route" },
   { path: "/portfolio/:id", redirect_to: "/portal/immobilien/:id", reason: "Legacy route" },
+  // Legacy Finanzierung Routes (MOD-07 Restructure)
+  { path: "/portal/finanzierung/vorgaenge", redirect_to: "/portal/finanzierung/anfrage", reason: "MOD-07 tile rename" },
+  { path: "/portal/finanzierung/readiness", redirect_to: "/portal/finanzierung/selbstauskunft", reason: "MOD-07 tile rename" },
+  { path: "/portal/finanzierung/export", redirect_to: "/portal/finanzierung/anfrage", reason: "MOD-07 tile rename" },
+  { path: "/portal/finanzierung/partner", redirect_to: "/portal/finanzierung/status", reason: "MOD-07 tile rename" },
 ];
 
 // =============================================================================
