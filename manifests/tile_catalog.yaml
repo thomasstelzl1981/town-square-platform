@@ -2,23 +2,23 @@
 # TILE CATALOG — Visibility & Activation Layer
 # ================================================================================
 #
-# Version: 1.0.0
-# Generiert: 2026-01-29
-# Status: DRAFT
+# Version: 1.1.0
+# Aktualisiert: 2026-02-02
+# Status: SYNCHRONIZED with routesManifest.ts
 #
 # ZWECK:
 # Dieses Manifest definiert die Tile-Struktur für die Portal-Navigation.
 # Es arbeitet ZUSÄTZLICH zur DB-Tabelle tile_catalog (Hybrid-Modus).
 #
 # REGELN:
-# 1. Jedes Modul hat EXAKT 4 Sub-Tiles (4-Tile-Pattern)
+# 1. Jedes Modul hat EXAKT 4 Sub-Tiles (4-Tile-Pattern) — außer MOD-20 (6 Tiles)
 # 2. Icons müssen aus lucide-react sein
 # 3. Routes müssen in routes_manifest.yaml existieren
 #
 # ================================================================================
 
-version: "1.0.0"
-generated: "2026-01-29"
+version: "1.1.0"
+generated: "2026-02-02"
 
 tiles:
   # ============================================================================
@@ -232,7 +232,6 @@ tiles:
       - title: "Einstellungen"
         route: "/portal/verkauf/einstellungen"
         icon: "Settings"
-        note: "TODO: Implementieren (ersetzt so-funktionierts)"
 
   # ============================================================================
   # MOD-07: FINANZIERUNG
@@ -322,7 +321,7 @@ tiles:
         - partner
         - subpartner
       requires_activation: true
-      requires_verification: true  # §34c/VSH
+      requires_verification: true
     
     sub_tiles:
       - title: "Katalog"
@@ -384,7 +383,7 @@ tiles:
         description: "Kampagnen"
 
   # ============================================================================
-  # MOD-11: FINANZIERUNGSMANAGER (Separate Workstation)
+  # MOD-11: FINANZIERUNGSMANAGER
   # ============================================================================
   MOD-11:
     code: "MOD-11"
@@ -399,7 +398,6 @@ tiles:
       org_types:
         - partner
       requires_role: "finance_manager"
-      note: "Nur für akzeptierte Finance Manager"
     
     sub_tiles:
       - title: "So funktioniert's"
@@ -421,3 +419,354 @@ tiles:
         route: "/portal/finanzierungsmanager/status"
         icon: "Activity"
         description: "Vorgangsstatus"
+
+  # ============================================================================
+  # MOD-12: AKQUISE-MANAGER (NEU)
+  # ============================================================================
+  MOD-12:
+    code: "MOD-12"
+    title: "Akquise-Manager"
+    icon: "Briefcase"
+    main_route: "/portal/akquise-manager"
+    display_order: 12
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Dashboard"
+        route: "/portal/akquise-manager/dashboard"
+        icon: "LayoutDashboard"
+        description: "Übersicht aller Aktivitäten"
+        
+      - title: "Kunden"
+        route: "/portal/akquise-manager/kunden"
+        icon: "Users"
+        description: "Kundenakquise verwalten"
+        
+      - title: "Mandate"
+        route: "/portal/akquise-manager/mandate"
+        icon: "FileSignature"
+        description: "Aktive Mandate"
+        
+      - title: "Tools"
+        route: "/portal/akquise-manager/tools"
+        icon: "Wrench"
+        description: "Akquise-Werkzeuge"
+
+  # ============================================================================
+  # MOD-13: PROJEKTE (NEU)
+  # ============================================================================
+  MOD-13:
+    code: "MOD-13"
+    title: "Projekte"
+    icon: "FolderKanban"
+    main_route: "/portal/projekte"
+    display_order: 13
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+    
+    sub_tiles:
+      - title: "Übersicht"
+        route: "/portal/projekte/uebersicht"
+        icon: "LayoutGrid"
+        description: "Alle Projekte"
+        
+      - title: "Portfolio"
+        route: "/portal/projekte/portfolio"
+        icon: "Briefcase"
+        description: "Projekt-Portfolio"
+        
+      - title: "Timeline"
+        route: "/portal/projekte/timeline"
+        icon: "Clock"
+        description: "Zeitplanung"
+        
+      - title: "Einstellungen"
+        route: "/portal/projekte/einstellungen"
+        icon: "Settings"
+        description: "Projekt-Konfiguration"
+
+  # ============================================================================
+  # MOD-14: COMMUNICATION PRO (NEU)
+  # ============================================================================
+  MOD-14:
+    code: "MOD-14"
+    title: "Communication Pro"
+    icon: "Mail"
+    main_route: "/portal/communication-pro"
+    display_order: 14
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Serien-E-Mails"
+        route: "/portal/communication-pro/serien-emails"
+        icon: "MailPlus"
+        description: "Massen-E-Mail-Kampagnen"
+        
+      - title: "Recherche"
+        route: "/portal/communication-pro/recherche"
+        icon: "Search"
+        description: "Kontakt-Recherche"
+        
+      - title: "Social"
+        route: "/portal/communication-pro/social"
+        icon: "Share2"
+        description: "Social Media Integration"
+        
+      - title: "Agenten"
+        route: "/portal/communication-pro/agenten"
+        icon: "Bot"
+        description: "KI-Agenten für Outreach"
+
+  # ============================================================================
+  # MOD-15: FORTBILDUNG (NEU)
+  # ============================================================================
+  MOD-15:
+    code: "MOD-15"
+    title: "Fortbildung"
+    icon: "GraduationCap"
+    main_route: "/portal/fortbildung"
+    display_order: 15
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - partner
+        - subpartner
+    
+    sub_tiles:
+      - title: "Katalog"
+        route: "/portal/fortbildung/katalog"
+        icon: "BookOpen"
+        description: "Verfügbare Kurse"
+        
+      - title: "Meine Kurse"
+        route: "/portal/fortbildung/meine-kurse"
+        icon: "PlayCircle"
+        description: "Laufende Kurse"
+        
+      - title: "Zertifikate"
+        route: "/portal/fortbildung/zertifikate"
+        icon: "Award"
+        description: "Erworbene Zertifikate"
+        
+      - title: "Einstellungen"
+        route: "/portal/fortbildung/einstellungen"
+        icon: "Settings"
+        description: "Lernpräferenzen"
+
+  # ============================================================================
+  # MOD-16: SERVICES (NEU)
+  # ============================================================================
+  MOD-16:
+    code: "MOD-16"
+    title: "Services"
+    icon: "Wrench"
+    main_route: "/portal/services"
+    display_order: 16
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+    
+    sub_tiles:
+      - title: "Katalog"
+        route: "/portal/services/katalog"
+        icon: "LayoutGrid"
+        description: "Verfügbare Dienstleistungen"
+        
+      - title: "Anfragen"
+        route: "/portal/services/anfragen"
+        icon: "FileQuestion"
+        description: "Offene Anfragen"
+        
+      - title: "Aufträge"
+        route: "/portal/services/auftraege"
+        icon: "ClipboardList"
+        description: "Aktive Aufträge"
+        
+      - title: "Einstellungen"
+        route: "/portal/services/einstellungen"
+        icon: "Settings"
+        description: "Service-Präferenzen"
+
+  # ============================================================================
+  # MOD-17: CAR-MANAGEMENT (NEU)
+  # ============================================================================
+  MOD-17:
+    code: "MOD-17"
+    title: "Car-Management"
+    icon: "Car"
+    main_route: "/portal/cars"
+    display_order: 17
+    is_active: true
+    
+    visibility:
+      default: false
+      org_types:
+        - partner
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Übersicht"
+        route: "/portal/cars/uebersicht"
+        icon: "LayoutDashboard"
+        description: "Fuhrpark-Dashboard"
+        
+      - title: "Fahrzeuge"
+        route: "/portal/cars/fahrzeuge"
+        icon: "Car"
+        description: "Fahrzeugverwaltung"
+        
+      - title: "Service"
+        route: "/portal/cars/service"
+        icon: "Wrench"
+        description: "Wartung & Reparatur"
+        
+      - title: "Einstellungen"
+        route: "/portal/cars/einstellungen"
+        icon: "Settings"
+        description: "Fuhrpark-Konfiguration"
+
+  # ============================================================================
+  # MOD-18: FINANZANALYSE (NEU)
+  # ============================================================================
+  MOD-18:
+    code: "MOD-18"
+    title: "Finanzanalyse"
+    icon: "LineChart"
+    main_route: "/portal/finanzanalyse"
+    display_order: 18
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Dashboard"
+        route: "/portal/finanzanalyse/dashboard"
+        icon: "LayoutDashboard"
+        description: "Finanz-Übersicht"
+        
+      - title: "Reports"
+        route: "/portal/finanzanalyse/reports"
+        icon: "FileBarChart"
+        description: "Finanzberichte"
+        
+      - title: "Szenarien"
+        route: "/portal/finanzanalyse/szenarien"
+        icon: "GitFork"
+        description: "Was-wäre-wenn Analysen"
+        
+      - title: "Einstellungen"
+        route: "/portal/finanzanalyse/einstellungen"
+        icon: "Settings"
+        description: "Analyse-Parameter"
+
+  # ============================================================================
+  # MOD-19: PHOTOVOLTAIK (NEU)
+  # ============================================================================
+  MOD-19:
+    code: "MOD-19"
+    title: "Photovoltaik"
+    icon: "Sun"
+    main_route: "/portal/photovoltaik"
+    display_order: 19
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+    
+    sub_tiles:
+      - title: "Angebot"
+        route: "/portal/photovoltaik/angebot"
+        icon: "FileText"
+        description: "PV-Angebote einholen"
+        
+      - title: "Checkliste"
+        route: "/portal/photovoltaik/checkliste"
+        icon: "CheckSquare"
+        description: "Installationsvorbereitung"
+        
+      - title: "Projekt"
+        route: "/portal/photovoltaik/projekt"
+        icon: "Hammer"
+        description: "Laufende PV-Projekte"
+        
+      - title: "Einstellungen"
+        route: "/portal/photovoltaik/einstellungen"
+        icon: "Settings"
+        description: "PV-Konfiguration"
+
+  # ============================================================================
+  # MOD-20: MIETY (NEU — 6 Tiles Exception)
+  # ============================================================================
+  MOD-20:
+    code: "MOD-20"
+    title: "Miety"
+    icon: "Home"
+    main_route: "/portal/miety"
+    display_order: 20
+    is_active: true
+    note: "EXCEPTION: 6 Tiles statt 4 (Mieter-Portal)"
+    
+    visibility:
+      default: false
+      org_types:
+        - client
+      requires_activation: true
+    
+    sub_tiles:
+      - title: "Übersicht"
+        route: "/portal/miety/uebersicht"
+        icon: "LayoutDashboard"
+        description: "Mieter-Dashboard"
+        
+      - title: "Dokumente"
+        route: "/portal/miety/dokumente"
+        icon: "FileText"
+        description: "Mietvertrag & Unterlagen"
+        
+      - title: "Kommunikation"
+        route: "/portal/miety/kommunikation"
+        icon: "MessageSquare"
+        description: "Chat mit Vermieter"
+        
+      - title: "Zählerstände"
+        route: "/portal/miety/zaehlerstaende"
+        icon: "Gauge"
+        description: "Verbrauchserfassung"
+        
+      - title: "Versorgung"
+        route: "/portal/miety/versorgung"
+        icon: "Zap"
+        description: "Strom, Gas, Wasser"
+        
+      - title: "Versicherungen"
+        route: "/portal/miety/versicherungen"
+        icon: "Shield"
+        description: "Hausrat & Haftpflicht"
