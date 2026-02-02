@@ -1,33 +1,38 @@
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgContext, getOrgTypeBadgeColor, getOrgTypeLabel } from '@/hooks/useOrgContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AdminSidebar } from './AdminSidebar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Loader2, Building2, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
-// P0-ID-CTX-INTERNAL-DEFAULT: Context Badge shows active org_type + org_name
+// P0-ID-CTX-INTERNAL-DEFAULT: Context Badge + Org-Switcher
+// Admin Portal defaults to internal org context for Platform Admins
 // ============================================================================
-
-function getOrgTypeBadgeVariant(orgType: string | null | undefined): string {
-  switch (orgType) {
-    case 'internal':
-    case 'platform':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-    case 'client':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    case 'partner':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
-}
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const { user, isLoading, memberships, activeOrganization, isDevelopmentMode } = useAuth();
+  const { user, isLoading, memberships, isDevelopmentMode } = useAuth();
+  const { 
+    activeOrgName, 
+    activeOrgType, 
+    availableOrgs, 
+    canSwitch, 
+    switchOrg, 
+    isLoading: orgSwitching 
+  } = useOrgContext();
 
   useEffect(() => {
     if (!isLoading && !user && !isDevelopmentMode) {
@@ -63,9 +68,6 @@ export function AdminLayout() {
     );
   }
 
-  const orgType = activeOrganization?.org_type || 'unknown';
-  const orgName = activeOrganization?.name || 'Kein Kontext';
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -75,16 +77,75 @@ export function AdminLayout() {
             <div className="flex items-center gap-4">
               <SidebarTrigger className="mr-2" />
               <h1 className="text-lg font-semibold">Admin Portal</h1>
-            </div>
-            {/* P0-ID-CTX-INTERNAL-DEFAULT: Context Badge */}
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+              {/* P0-ID-CTX-INTERNAL-DEFAULT: Context Badge (always visible) */}
               <Badge 
                 variant="secondary"
-                className={cn('text-xs font-medium', getOrgTypeBadgeVariant(orgType))}
+                className={cn('text-xs font-medium hidden md:inline-flex', getOrgTypeBadgeColor(activeOrgType))}
               >
-                {orgType} / {orgName}
+                {getOrgTypeLabel(activeOrgType)} / {activeOrgName}
               </Badge>
+            </div>
+            
+            {/* Org-Switcher Dropdown */}
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2"
+                    disabled={orgSwitching}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    <span className="hidden sm:inline max-w-40 truncate">
+                      {activeOrgName}
+                    </span>
+                    <Badge 
+                      variant="secondary" 
+                      className={cn('hidden md:inline-flex text-xs px-1.5 py-0', getOrgTypeBadgeColor(activeOrgType))}
+                    >
+                      {getOrgTypeLabel(activeOrgType)}
+                    </Badge>
+                    {canSwitch && <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Organisation wechseln</span>
+                    <Badge 
+                      variant="outline" 
+                      className={cn('text-xs', getOrgTypeBadgeColor(activeOrgType))}
+                    >
+                      {getOrgTypeLabel(activeOrgType)}
+                    </Badge>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {availableOrgs.map(org => (
+                    <DropdownMenuItem
+                      key={org.id}
+                      onClick={() => !org.isActive && switchOrg(org.id)}
+                      className={cn(
+                        'flex items-center justify-between cursor-pointer',
+                        org.isActive && 'bg-accent'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        <span className="truncate max-w-36">{org.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant="outline" 
+                          className={cn('text-xs px-1', getOrgTypeBadgeColor(org.type))}
+                        >
+                          {getOrgTypeLabel(org.type)}
+                        </Badge>
+                        {org.isActive && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           <div className="flex-1 overflow-auto p-6 bg-muted/30">

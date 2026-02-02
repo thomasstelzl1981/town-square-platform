@@ -44,7 +44,34 @@ export function useOrgContext(): OrgContextData {
     }
   }, [activeOrganization?.id]);
 
-  // Build available orgs list from memberships
+  // Build available orgs list from memberships with actual org data
+  const [orgCache, setOrgCache] = useState<Map<string, { name: string; type: OrgType }>>(new Map());
+  
+  // Fetch org details for memberships
+  useEffect(() => {
+    const fetchOrgDetails = async () => {
+      if (memberships.length === 0) return;
+      
+      const { supabase } = await import('@/integrations/supabase/client');
+      const tenantIds = memberships.map(m => m.tenant_id);
+      
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name, org_type')
+        .in('id', tenantIds);
+      
+      if (orgs) {
+        const cache = new Map<string, { name: string; type: OrgType }>();
+        orgs.forEach(org => {
+          cache.set(org.id, { name: org.name, type: org.org_type as OrgType });
+        });
+        setOrgCache(cache);
+      }
+    };
+    
+    fetchOrgDetails();
+  }, [memberships]);
+
   const availableOrgs = useMemo(() => {
     if (isDevelopmentMode && memberships.length <= 1) {
       // In dev mode with mock data, provide sample orgs
@@ -58,15 +85,20 @@ export function useOrgContext(): OrgContextData {
       ];
     }
 
-    return memberships.map((m) => ({
-      id: m.tenant_id,
-      name: m.tenant_id === activeOrganization?.id 
-        ? activeOrganization.name 
-        : `Org ${m.tenant_id.slice(0, 8)}`,
-      type: (activeOrganization?.org_type as OrgType) || 'client',
-      isActive: m.tenant_id === activeOrganization?.id,
-    }));
-  }, [memberships, activeOrganization, isDevelopmentMode]);
+    return memberships.map((m) => {
+      const cached = orgCache.get(m.tenant_id);
+      return {
+        id: m.tenant_id,
+        name: cached?.name || (m.tenant_id === activeOrganization?.id 
+          ? activeOrganization.name 
+          : `Org ${m.tenant_id.slice(0, 8)}`),
+        type: cached?.type || (m.tenant_id === activeOrganization?.id 
+          ? (activeOrganization?.org_type as OrgType) 
+          : 'client'),
+        isActive: m.tenant_id === activeOrganization?.id,
+      };
+    });
+  }, [memberships, activeOrganization, isDevelopmentMode, orgCache]);
 
   const switchOrg = useCallback(async (orgId: string) => {
     setIsLoading(true);
