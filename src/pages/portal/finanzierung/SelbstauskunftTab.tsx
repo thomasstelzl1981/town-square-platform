@@ -18,14 +18,111 @@ import {
 import { SelbstauskunftForm } from '@/components/finanzierung/SelbstauskunftForm';
 import type { ApplicantProfile } from '@/types/finance';
 
+// DEV MODE: Check if we're in development (no org required)
+const isDevMode = () => {
+  const hostname = window.location.hostname;
+  return hostname.includes('lovableproject.com') || 
+         hostname.includes('localhost') || 
+         hostname.includes('preview');
+};
+
+// Empty profile for dev mode
+const createEmptyProfile = (): ApplicantProfile => ({
+  id: 'dev-mode-profile',
+  tenant_id: 'dev-tenant',
+  profile_type: 'private',
+  party_role: 'primary',
+  first_name: null,
+  last_name: null,
+  birth_date: null,
+  birth_place: null,
+  nationality: null,
+  marital_status: null,
+  address_street: null,
+  address_postal_code: null,
+  address_city: null,
+  phone: null,
+  email: null,
+  id_document_type: null,
+  id_document_number: null,
+  id_document_valid_until: null,
+  tax_id: null,
+  iban: null,
+  adults_count: null,
+  children_count: null,
+  children_ages: null,
+  child_support_obligation: null,
+  child_support_amount_monthly: null,
+  child_benefit_monthly: null,
+  other_regular_income_monthly: null,
+  other_income_description: null,
+  employer_name: null,
+  employer_location: null,
+  employer_industry: null,
+  employment_type: null,
+  position: null,
+  employed_since: null,
+  probation_until: null,
+  net_income_monthly: null,
+  bonus_yearly: null,
+  company_name: null,
+  company_legal_form: null,
+  company_address: null,
+  company_founded: null,
+  company_register_number: null,
+  company_vat_id: null,
+  company_industry: null,
+  company_employees: null,
+  company_ownership_percent: null,
+  company_managing_director: null,
+  current_rent_monthly: null,
+  living_expenses_monthly: null,
+  car_leasing_monthly: null,
+  health_insurance_monthly: null,
+  other_fixed_costs_monthly: null,
+  bank_savings: null,
+  securities_value: null,
+  building_society_value: null,
+  life_insurance_value: null,
+  other_assets_value: null,
+  other_assets_description: null,
+  purpose: null,
+  object_address: null,
+  object_type: null,
+  purchase_price: null,
+  ancillary_costs: null,
+  modernization_costs: null,
+  planned_rent_monthly: null,
+  rental_status: null,
+  equity_amount: null,
+  equity_source: null,
+  loan_amount_requested: null,
+  fixed_rate_period_years: null,
+  repayment_rate_percent: null,
+  max_monthly_rate: null,
+  schufa_consent: null,
+  no_insolvency: null,
+  no_tax_arrears: null,
+  data_correct_confirmed: null,
+  completion_score: null,
+  finance_request_id: null,
+  last_synced_from_finapi_at: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+});
+
 export default function SelbstauskunftTab() {
   const { activeOrganization } = useAuth();
+  const devMode = isDevMode() && !activeOrganization?.id;
 
   // Fetch persistent applicant profile (finance_request_id IS NULL)
   const { data: profile, isLoading, refetch } = useQuery({
     queryKey: ['persistent-applicant-profile', activeOrganization?.id],
     queryFn: async (): Promise<ApplicantProfile | null> => {
-      if (!activeOrganization?.id) return null;
+      // DEV MODE: Return empty profile structure
+      if (!activeOrganization?.id) {
+        return createEmptyProfile();
+      }
 
       // First, try to find persistent profile
       const { data, error } = await supabase
@@ -57,7 +154,7 @@ export default function SelbstauskunftTab() {
 
       return data as unknown as ApplicantProfile;
     },
-    enabled: !!activeOrganization?.id,
+    enabled: !!activeOrganization?.id || devMode,
   });
 
   // Calculate completion score
@@ -91,6 +188,20 @@ export default function SelbstauskunftTab() {
 
   return (
     <div className="space-y-6">
+      {/* DEV MODE Banner */}
+      {devMode && (
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                Dev-Modus: Formular-Struktur zur Ansicht (keine Speicherung möglich)
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header with Completion Score */}
       <Card>
         <CardHeader>
@@ -149,19 +260,21 @@ export default function SelbstauskunftTab() {
         </TabsList>
 
         <TabsContent value="private" className="mt-6">
-          {profile && (
+          {(profile || devMode) && (
             <SelbstauskunftForm
-              profile={profile}
+              profile={profile || createEmptyProfile()}
               onSave={() => refetch()}
+              readOnly={devMode}
             />
           )}
         </TabsContent>
 
         <TabsContent value="business" className="mt-6">
-          {profile && (
+          {(profile || devMode) && (
             <SelbstauskunftForm
-              profile={profile}
+              profile={profile || createEmptyProfile()}
               onSave={() => refetch()}
+              readOnly={devMode}
             />
           )}
         </TabsContent>
