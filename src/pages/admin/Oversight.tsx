@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoldenPathSeeds } from '@/hooks/useGoldenPathSeeds';
+import { useGoldenPathSeeds, SeedResult } from '@/hooks/useGoldenPathSeeds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,8 @@ import {
   CheckCircle,
   XCircle,
   Sparkles,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -96,7 +98,7 @@ interface TileActivation {
 }
 
 export default function Oversight() {
-  const { isPlatformAdmin, activeTenantId } = useAuth();
+  const { isPlatformAdmin, activeTenantId, activeOrganization, isDevelopmentMode } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<OverviewStats>({
@@ -112,8 +114,13 @@ export default function Oversight() {
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
   const [financePackages, setFinancePackages] = useState<FinancePackageOverview[]>([]);
 
-  // Golden Path Seeds
-  const { runSeeds, isSeeding, lastResult } = useGoldenPathSeeds(activeTenantId);
+  // Golden Path Seeds with org context
+  const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(
+    activeTenantId,
+    activeOrganization?.name,
+    activeOrganization?.org_type,
+    isDevelopmentMode
+  );
 
   // Detail dialogs
   const [selectedOrg, setSelectedOrg] = useState<OrgOverview | null>(null);
@@ -121,11 +128,16 @@ export default function Oversight() {
 
   const handleRunSeeds = async () => {
     const result = await runSeeds();
-    if (result.success) {
-      toast.success('Golden Path Seeds erfolgreich erstellt/aktualisiert', {
-        description: `Properties: ${result.before.properties} → ${result.after.properties}, Docs: ${result.before.documents} → ${result.after.documents}`,
+    if (result.success && result.idempotency_pass) {
+      toast.success('Golden Path Seeds erfolgreich — Idempotenz bestätigt', {
+        description: `Run#2: Props ${result.after_run2.properties} | Docs ${result.after_run2.documents} | Links ${result.after_run2.document_links}`,
       });
       fetchData(); // Refresh stats
+    } else if (result.success && !result.idempotency_pass) {
+      toast.warning('Seeds erstellt, aber Idempotenz-Warnung', {
+        description: `Link-Fehler: ${result.link_validation.invalid_count}`,
+      });
+      fetchData();
     } else {
       toast.error('Seed-Fehler: ' + result.error);
     }
@@ -264,22 +276,35 @@ export default function Oversight() {
       </div>
 
       {/* Golden Path Seeds Card */}
-      <Card className="border-dashed border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+      <Card className={`border-dashed ${isSeedAllowed ? 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20' : 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20'}`}>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-600" />
+            {isSeedAllowed ? (
+              <Sparkles className="h-4 w-4 text-amber-600" />
+            ) : (
+              <ShieldAlert className="h-4 w-4 text-red-600" />
+            )}
             Golden Path Demo Data
           </CardTitle>
           <CardDescription>
-            Erstellt Beispieldaten für MOD-04 (Immobilien), MOD-07 (Finanzierung) und MOD-03 (DMS)
+            {isSeedAllowed 
+              ? 'Erstellt Beispieldaten für MOD-04 (Immobilien), MOD-07 (Finanzierung) und MOD-03 (DMS)'
+              : 'Seeds nur im internal Org erlaubt. Bitte Org wechseln.'
+            }
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Context Info */}
+          <div className="text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded">
+            tenant_id: {activeTenantId?.slice(0, 8)}... | org: {activeOrganization?.name} | type: {activeOrganization?.org_type} | devMode: {isDevelopmentMode ? 'true' : 'false'}
+          </div>
+
           <div className="flex items-center gap-4">
             <Button 
               onClick={handleRunSeeds} 
-              disabled={isSeeding || !activeTenantId}
+              disabled={isSeeding || !activeTenantId || !isSeedAllowed}
               className="gap-2"
+              variant={isSeedAllowed ? 'default' : 'secondary'}
             >
               {isSeeding ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -289,24 +314,106 @@ export default function Oversight() {
               Seeds erstellen/aktualisieren
             </Button>
             
-            {lastResult && (
-              <div className="flex items-center gap-2 text-sm">
-                {lastResult.success ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-muted-foreground">
-                      Props: {lastResult.after.properties} | Docs: {lastResult.after.documents} | Nodes: {lastResult.after.storage_nodes} | Links: {lastResult.after.document_links}
-                    </span>
-                  </>
+            {lastResult && lastResult.success && (
+              <Badge variant={lastResult.idempotency_pass ? 'default' : 'destructive'} className="gap-1">
+                {lastResult.idempotency_pass ? (
+                  <><CheckCircle className="h-3 w-3" /> SEED_INTEGRITY: PASS</>
                 ) : (
-                  <>
-                    <XCircle className="h-4 w-4 text-red-600" />
-                    <span className="text-red-600">{lastResult.error}</span>
-                  </>
+                  <><AlertTriangle className="h-3 w-3" /> SEED_INTEGRITY: FAIL</>
                 )}
-              </div>
+              </Badge>
             )}
           </div>
+
+          {/* Seed Result Tables */}
+          {lastResult && lastResult.success && (
+            <div className="space-y-4 mt-4">
+              {/* Counts Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Table</TableHead>
+                      <TableHead className="text-right">Before</TableHead>
+                      <TableHead className="text-right">After#1</TableHead>
+                      <TableHead className="text-right">After#2</TableHead>
+                      <TableHead className="text-center">OK</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(['properties', 'units', 'loans', 'finance_requests', 'applicant_profiles', 'contacts', 'documents', 'storage_nodes', 'document_links'] as const).map((key) => {
+                      const before = lastResult.before[key] || 0;
+                      const after1 = lastResult.after_run1[key] || 0;
+                      const after2 = lastResult.after_run2[key] || 0;
+                      const ok = after2 >= after1;
+                      return (
+                        <TableRow key={key}>
+                          <TableCell className="font-mono text-xs">{key}</TableCell>
+                          <TableCell className="text-right font-mono">{before}</TableCell>
+                          <TableCell className="text-right font-mono">{after1}</TableCell>
+                          <TableCell className="text-right font-mono">{after2}</TableCell>
+                          <TableCell className="text-center">
+                            {ok ? (
+                              <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600 mx-auto" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Link Validation Summary */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="font-semibold text-sm">Link Validation Summary</div>
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Total:</span>{' '}
+                    <span className="font-mono">{lastResult.link_validation.total_links}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-600">Valid:</span>{' '}
+                    <span className="font-mono">{lastResult.link_validation.valid_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-red-600">Invalid:</span>{' '}
+                    <span className="font-mono">{lastResult.link_validation.invalid_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-amber-600">Unknown:</span>{' '}
+                    <span className="font-mono">{lastResult.link_validation.unknown_count}</span>
+                  </div>
+                </div>
+                
+                {Object.keys(lastResult.link_validation.fails_by_type).length > 0 && (
+                  <div className="text-xs text-red-600 font-mono">
+                    Fails by type: {JSON.stringify(lastResult.link_validation.fails_by_type)}
+                  </div>
+                )}
+                
+                {lastResult.link_validation.first_fails.length > 0 && (
+                  <div className="text-xs">
+                    <div className="text-muted-foreground mb-1">First failing links:</div>
+                    {lastResult.link_validation.first_fails.slice(0, 5).map((f, i) => (
+                      <div key={i} className="font-mono text-red-600">
+                        {f.id.slice(0, 8)}... | {f.object_type} | {f.object_id.slice(0, 8)}...
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {lastResult && !lastResult.success && (
+            <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
+              <XCircle className="h-4 w-4" />
+              <span>{lastResult.error}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
