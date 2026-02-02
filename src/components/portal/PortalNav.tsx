@@ -29,13 +29,20 @@ import {
   Landmark,
   FolderOpen,
   ChevronDown,
+  FolderKanban,
+  Mail,
+  GraduationCap,
+  Wrench,
+  Car,
+  LineChart,
+  Sun,
   LucideIcon
 } from 'lucide-react';
 
 // Import manifest
 import { getModulesSorted, getTileFullPath } from '@/manifests/routesManifest';
 
-// Icon mapping for modules
+// Icon mapping for modules — all icons correctly mapped
 const iconMap: Record<string, LucideIcon> = {
   'Users': Users,
   'Sparkles': Sparkles,
@@ -49,13 +56,13 @@ const iconMap: Record<string, LucideIcon> = {
   'Target': Target,
   'Home': Home,
   'Briefcase': Briefcase,
-  'FolderKanban': Briefcase,
-  'Mail': Briefcase,
-  'GraduationCap': Briefcase,
-  'Wrench': Briefcase,
-  'Car': Briefcase,
-  'LineChart': Briefcase,
-  'Sun': Briefcase,
+  'FolderKanban': FolderKanban,
+  'Mail': Mail,
+  'GraduationCap': GraduationCap,
+  'Wrench': Wrench,
+  'Car': Car,
+  'LineChart': LineChart,
+  'Sun': Sun,
 };
 
 interface SubTileDisplay {
