@@ -6,7 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Briefcase, CheckCircle, Clock, Mail, Phone } from 'lucide-react';
+import { Users, Briefcase, CheckCircle, Clock, Mail } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -158,12 +158,6 @@ export default function FutureRoomManagers() {
                       <Mail className="h-3 w-3" />
                       <span className="truncate">{manager.email}</span>
                     </div>
-                    {manager.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <span>{manager.phone}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 

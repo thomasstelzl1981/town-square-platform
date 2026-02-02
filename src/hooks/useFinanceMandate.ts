@@ -142,13 +142,16 @@ export function useDelegateMandate() {
   });
 }
 
-// Accept mandate (creates FutureRoom case)
+// Accept mandate (creates FutureRoom case + triggers notification)
 export function useAcceptMandate() {
   const queryClient = useQueryClient();
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, user } = useAuth();
 
   return useMutation({
     mutationFn: async (mandateId: string) => {
+      const managerId = user?.id;
+      if (!managerId) throw new Error('User not authenticated');
+
       // Update mandate status
       const { error: mandateError } = await supabase
         .from('finance_mandates')
@@ -172,6 +175,16 @@ export function useAcceptMandate() {
         }]);
 
       if (caseError) throw caseError;
+
+      // Trigger customer notification email
+      try {
+        await supabase.functions.invoke('sot-finance-manager-notify', {
+          body: { mandateId, managerId },
+        });
+      } catch (notifyError) {
+        // Log but don't fail the acceptance
+        console.error('Failed to send notification:', notifyError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance-mandates'] });
