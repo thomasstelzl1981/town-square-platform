@@ -1,80 +1,39 @@
-import { useLocation } from 'react-router-dom';
-import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+/**
+ * Stammdaten Page (MOD-01) - Routes Pattern with How It Works
+ */
+import { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Loader2 } from 'lucide-react';
 
-// Sub-page components
-import { ProfilTab } from './stammdaten/ProfilTab';
-import { PersonenTab } from './stammdaten/PersonenTab';
-import { FirmaTab } from './stammdaten/FirmaTab';
-import { AbrechnungTab } from './stammdaten/AbrechnungTab';
-import { SicherheitTab } from './stammdaten/SicherheitTab';
+// Lazy load sub-page components
+const ProfilTab = lazy(() => import('./stammdaten/ProfilTab').then(m => ({ default: m.ProfilTab })));
+const PersonenTab = lazy(() => import('./stammdaten/PersonenTab').then(m => ({ default: m.PersonenTab })));
+const FirmaTab = lazy(() => import('./stammdaten/FirmaTab').then(m => ({ default: m.FirmaTab })));
+const AbrechnungTab = lazy(() => import('./stammdaten/AbrechnungTab').then(m => ({ default: m.AbrechnungTab })));
+const SicherheitTab = lazy(() => import('./stammdaten/SicherheitTab').then(m => ({ default: m.SicherheitTab })));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const StammdatenPage = () => {
-  const location = useLocation();
-  const contentRef = usePdfContentRef();
-  const { data, isLoading } = useModuleTiles('MOD-01');
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const subTiles = data?.sub_tiles || [
-    { title: 'Profil', route: '/portal/stammdaten/profil' },
-    { title: 'Firma', route: '/portal/stammdaten/firma' },
-    { title: 'Personen', route: '/portal/stammdaten/personen' },
-    { title: 'Abrechnung', route: '/portal/stammdaten/abrechnung' },
-    { title: 'Sicherheit', route: '/portal/stammdaten/sicherheit' },
-  ];
-
-  // Determine which sub-page to render
-  const currentPath = location.pathname;
-  const renderSubPage = () => {
-    if (currentPath.endsWith('/profil')) return <ProfilTab />;
-    if (currentPath.endsWith('/firma')) return <FirmaTab />;
-    if (currentPath.endsWith('/personen')) return <PersonenTab />;
-    if (currentPath.endsWith('/abrechnung')) return <AbrechnungTab />;
-    if (currentPath.endsWith('/sicherheit')) return <SicherheitTab />;
-    return null; // Dashboard view
-  };
-
-  const subPageContent = renderSubPage();
-  const isOnSubPage = subPageContent !== null;
+  const content = moduleContents['MOD-01'];
 
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        {isOnSubPage ? (
-          <div className="p-6 space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">{data?.title || 'Stammdaten'}</h1>
-              <p className="text-muted-foreground">{data?.description || 'Kontakte, Adressen und Einstellungen verwalten'}</p>
-            </div>
-            {subPageContent}
-          </div>
-        ) : (
-          <ModuleDashboard
-            title={data?.title || 'Stammdaten'}
-            description={data?.description || 'Kontakte, Adressen und Einstellungen verwalten'}
-            subTiles={subTiles}
-            moduleCode="MOD-01"
-          />
-        )}
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="Stammdaten" 
-          moduleName="MOD-01 Stammdaten" 
-        />
-      </div>
-    </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route index element={<ModuleHowItWorks content={content} />} />
+        <Route path="profil" element={<ProfilTab />} />
+        <Route path="firma" element={<FirmaTab />} />
+        <Route path="personen" element={<PersonenTab />} />
+        <Route path="abrechnung" element={<AbrechnungTab />} />
+        <Route path="sicherheit" element={<SicherheitTab />} />
+        <Route path="*" element={<Navigate to="/portal/stammdaten" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

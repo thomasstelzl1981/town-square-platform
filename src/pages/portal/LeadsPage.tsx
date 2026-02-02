@@ -1,51 +1,119 @@
-import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
-import { Button } from '@/components/ui/button';
-import { Plus, Loader2 } from 'lucide-react';
+/**
+ * Leads Page (MOD-10) - Routes Pattern with How It Works
+ */
+import { Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
+import { Inbox, User, GitBranch, Megaphone, Plus, Loader2 } from 'lucide-react';
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
+
+// Tile: Inbox
+function LeadsInbox() {
+  return (
+    <ModuleTilePage
+      title="Inbox"
+      description="Eingehende Leads übernehmen und priorisieren"
+      icon={Inbox}
+      moduleBase="leads"
+      status="empty"
+      emptyTitle="Keine neuen Leads"
+      emptyDescription="Neue Leads aus Kampagnen und Anfragen erscheinen hier."
+      emptyIcon={Inbox}
+      primaryAction={{
+        label: 'Lead manuell anlegen',
+        icon: Plus,
+        onClick: () => console.log('Lead anlegen'),
+      }}
+      secondaryAction={{
+        label: "So funktioniert's",
+        href: '/portal/leads',
+      }}
+    />
+  );
+}
+
+// Tile: Meine Leads
+function MeineLeads() {
+  return (
+    <ModuleTilePage
+      title="Meine Leads"
+      description="Ihre zugewiesenen und aktiven Leads"
+      icon={User}
+      moduleBase="leads"
+      status="empty"
+      emptyTitle="Keine zugewiesenen Leads"
+      emptyDescription="Übernehmen Sie Leads aus der Inbox, um sie hier zu sehen."
+      emptyIcon={User}
+      secondaryAction={{
+        label: 'Zur Inbox',
+        href: '/portal/leads/inbox',
+      }}
+    />
+  );
+}
+
+// Tile: Pipeline
+function LeadsPipeline() {
+  return (
+    <ModuleTilePage
+      title="Pipeline"
+      description="Leads durch die Verkaufsphasen führen"
+      icon={GitBranch}
+      moduleBase="leads"
+      status="empty"
+      emptyTitle="Pipeline leer"
+      emptyDescription="Qualifizierte Leads werden hier nach Status gruppiert."
+      emptyIcon={GitBranch}
+    />
+  );
+}
+
+// Tile: Werbung
+function LeadsWerbung() {
+  return (
+    <ModuleTilePage
+      title="Werbung"
+      description="Kampagnen und Lead-Quellen verwalten"
+      icon={Megaphone}
+      moduleBase="leads"
+      status="empty"
+      emptyTitle="Keine Kampagnen"
+      emptyDescription="Erstellen Sie Werbekampagnen zur Lead-Generierung."
+      emptyIcon={Megaphone}
+      primaryAction={{
+        label: 'Kampagne erstellen',
+        icon: Plus,
+        onClick: () => console.log('Kampagne erstellen'),
+      }}
+    />
+  );
+}
 
 const LeadsPage = () => {
-  const contentRef = usePdfContentRef();
-  const { data, isLoading } = useModuleTiles('MOD-10');
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const content = moduleContents['MOD-10'];
 
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        <div className="p-6 pb-0 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{data?.title || 'Leadgenerierung'}</h1>
-            <p className="text-muted-foreground">{data?.description || 'Leads verwalten und Kampagnen steuern'}</p>
-          </div>
-          <Button className="no-print">
-            <Plus className="mr-2 h-4 w-4" />
-            Neue Kampagne
-          </Button>
-        </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* How It Works as index */}
+        <Route index element={<ModuleHowItWorks content={content} />} />
         
-        <ModuleDashboard
-          title=""
-          description=""
-          subTiles={data?.sub_tiles || []}
-          moduleCode="MOD-10"
-        />
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="Leadgenerierung" 
-          moduleName="MOD-10 Leads" 
-        />
-      </div>
-    </div>
+        {/* Tile routes */}
+        <Route path="inbox" element={<LeadsInbox />} />
+        <Route path="meine" element={<MeineLeads />} />
+        <Route path="pipeline" element={<LeadsPipeline />} />
+        <Route path="werbung" element={<LeadsWerbung />} />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/portal/leads" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

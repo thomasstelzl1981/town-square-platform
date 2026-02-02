@@ -1,8 +1,9 @@
+/**
+ * Vertriebspartner Page (MOD-09) - Routes Pattern with How It Works
+ */
 import { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load sub-pages
@@ -18,71 +19,27 @@ const LoadingFallback = () => (
 );
 
 const VertriebspartnerPage = () => {
-  const location = useLocation();
-  const contentRef = usePdfContentRef();
-  const { data, isLoading } = useModuleTiles('MOD-09');
+  const content = moduleContents['MOD-09'];
 
-  if (isLoading) {
-    return <LoadingFallback />;
-  }
-
-  // If on module dashboard, show sub-tile cards
-  const isOnDashboard = location.pathname === '/portal/vertriebspartner';
-
-  if (isOnDashboard) {
-    return (
-      <div className="space-y-6">
-        <div ref={contentRef}>
-          <ModuleDashboard
-            title={data?.title || 'Vertriebspartner'}
-            description={data?.description || 'Partner-Dashboard, Objektkatalog und Beratung'}
-            subTiles={data?.sub_tiles || []}
-            moduleCode="MOD-09"
-          />
-        </div>
-        <div className="px-6">
-          <PdfExportFooter 
-            contentRef={contentRef} 
-            documentTitle="Partner-Dashboard" 
-            moduleName="MOD-09 Vertriebspartner" 
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Sub-routes via Sidebar (keine TabsList mehr)
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        <div className="p-6 pb-4">
-          <h1 className="text-3xl font-bold">Vertriebspartner</h1>
-          <p className="text-muted-foreground">
-            Partner-Dashboard, Objektkatalog und Beratung
-          </p>
-        </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* How It Works as index */}
+        <Route index element={<ModuleHowItWorks content={content} />} />
         
-        <div className="px-6">
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route index element={<Navigate to="katalog" replace />} />
-              <Route path="katalog" element={<KatalogTab />} />
-              <Route path="beratung" element={<BeratungTab />} />
-              <Route path="kunden" element={<KundenTab />} />
-              <Route path="network" element={<NetworkTab />} />
-            </Routes>
-          </Suspense>
-        </div>
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="Vertriebspartner" 
-          moduleName="MOD-09 Vertriebspartner" 
-        />
-      </div>
-    </div>
+        {/* Tile routes */}
+        <Route path="katalog" element={<KatalogTab />} />
+        <Route path="beratung" element={<BeratungTab />} />
+        <Route path="kunden" element={<KundenTab />} />
+        <Route path="network" element={<NetworkTab />} />
+        
+        {/* Legacy redirect */}
+        <Route path="pipeline" element={<Navigate to="/portal/vertriebspartner/network" replace />} />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/portal/vertriebspartner" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

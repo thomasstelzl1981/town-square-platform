@@ -1,74 +1,37 @@
-import { useLocation } from 'react-router-dom';
-import { useModuleTiles } from '@/hooks/useModuleTiles';
-import { ModuleDashboard } from '@/components/portal/ModuleDashboard';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+/**
+ * DMS Page (MOD-03) - Routes Pattern with How It Works
+ */
+import { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Loader2 } from 'lucide-react';
 
-// Sub-page components
-import { StorageTab, PosteingangTab, SortierenTab, EinstellungenTab } from './dms';
+// Lazy load sub-page components
+const StorageTab = lazy(() => import('./dms/StorageTab').then(m => ({ default: m.StorageTab })));
+const PosteingangTab = lazy(() => import('./dms/PosteingangTab').then(m => ({ default: m.PosteingangTab })));
+const SortierenTab = lazy(() => import('./dms/SortierenTab').then(m => ({ default: m.SortierenTab })));
+const EinstellungenTab = lazy(() => import('./dms/EinstellungenTab').then(m => ({ default: m.EinstellungenTab })));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const DMSPage = () => {
-  const location = useLocation();
-  const contentRef = usePdfContentRef();
-  const { data, isLoading } = useModuleTiles('MOD-03');
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const subTiles = data?.sub_tiles || [
-    { title: 'Storage', route: '/portal/dms/storage' },
-    { title: 'Posteingang', route: '/portal/dms/posteingang' },
-    { title: 'Sortieren', route: '/portal/dms/sortieren' },
-    { title: 'Einstellungen', route: '/portal/dms/einstellungen' },
-  ];
-
-  // Determine which sub-page to render
-  const currentPath = location.pathname;
-  const renderSubPage = () => {
-    if (currentPath.endsWith('/storage')) return <StorageTab />;
-    if (currentPath.endsWith('/posteingang')) return <PosteingangTab />;
-    if (currentPath.endsWith('/sortieren')) return <SortierenTab />;
-    if (currentPath.endsWith('/einstellungen')) return <EinstellungenTab />;
-    return null; // Dashboard view
-  };
-
-  const subPageContent = renderSubPage();
-  const isOnSubPage = subPageContent !== null;
+  const content = moduleContents['MOD-03'];
 
   return (
-    <div className="space-y-6">
-      <div ref={contentRef}>
-        {isOnSubPage ? (
-          <div className="p-6 space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">{data?.title || 'Dokumentenmanagement'}</h1>
-              <p className="text-muted-foreground">{data?.description || 'Dokumente verwalten, sortieren und archivieren'}</p>
-            </div>
-            {subPageContent}
-          </div>
-        ) : (
-          <ModuleDashboard
-            title={data?.title || 'Dokumentenmanagement'}
-            description={data?.description || 'Dokumente verwalten, sortieren und archivieren'}
-            subTiles={subTiles}
-            moduleCode="MOD-03"
-          />
-        )}
-      </div>
-
-      <div className="px-6">
-        <PdfExportFooter 
-          contentRef={contentRef} 
-          documentTitle="Dokumentenmanagement" 
-          moduleName="MOD-03 DMS" 
-        />
-      </div>
-    </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route index element={<ModuleHowItWorks content={content} />} />
+        <Route path="storage" element={<StorageTab />} />
+        <Route path="posteingang" element={<PosteingangTab />} />
+        <Route path="sortieren" element={<SortierenTab />} />
+        <Route path="einstellungen" element={<EinstellungenTab />} />
+        <Route path="*" element={<Navigate to="/portal/dms" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 
