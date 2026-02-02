@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
+import { useOrgContext, getOrgTypeBadgeColor, getOrgTypeLabel } from '@/hooks/useOrgContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,37 +23,30 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeft,
-  MessageCircle
+  MessageCircle,
+  Check
 } from 'lucide-react';
-import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PortalHeaderProps {
   onMenuClick?: () => void;
 }
 
 export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
-  const { 
-    profile, 
-    activeOrganization, 
-    memberships, 
-    switchTenant, 
-    signOut 
-  } = useAuth();
+  const { profile, signOut } = useAuth();
   const { sidebarCollapsed, toggleSidebar, armstrongVisible, toggleArmstrong, isMobile } = usePortalLayout();
-  const [switching, setSwitching] = useState(false);
+  const { 
+    activeOrgName, 
+    activeOrgType, 
+    availableOrgs, 
+    canSwitch, 
+    switchOrg, 
+    isLoading: orgSwitching 
+  } = useOrgContext();
 
   const initials = profile?.display_name
     ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase()
     : profile?.email?.charAt(0).toUpperCase() || 'U';
-
-  const handleSwitchTenant = async (tenantId: string) => {
-    setSwitching(true);
-    try {
-      await switchTenant(tenantId);
-    } finally {
-      setSwitching(false);
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -109,43 +104,65 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
             </Button>
           )}
 
-          {/* Tenant Switcher */}
-          {memberships.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-2"
-                  disabled={switching}
+          {/* Org Switcher with Type Badge */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                disabled={orgSwitching}
+              >
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline max-w-32 truncate">
+                  {activeOrgName}
+                </span>
+                <Badge 
+                  variant="secondary" 
+                  className={cn('hidden md:inline-flex text-xs px-1.5 py-0', getOrgTypeBadgeColor(activeOrgType))}
                 >
-                  <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline max-w-32 truncate">
-                    {activeOrganization?.name || 'Organisation'}
-                  </span>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Organisation wechseln</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {memberships.map(m => (
-                  <DropdownMenuItem
-                    key={m.id}
-                    onClick={() => handleSwitchTenant(m.tenant_id)}
-                    className={m.tenant_id === activeOrganization?.id ? 'bg-accent' : ''}
-                  >
-                    <Building2 className="h-4 w-4 mr-2" />
-                    <span className="truncate">
-                      {m.tenant_id === activeOrganization?.id 
-                        ? activeOrganization.name 
-                        : `Org ${m.tenant_id.slice(0, 8)}...`}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  {getOrgTypeLabel(activeOrgType)}
+                </Badge>
+                {canSwitch && <ChevronDown className="h-3 w-3" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Organisation</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn('text-xs', getOrgTypeBadgeColor(activeOrgType))}
+                >
+                  {getOrgTypeLabel(activeOrgType)}
+                </Badge>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {availableOrgs.map(org => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => !org.isActive && switchOrg(org.id)}
+                  className={cn(
+                    'flex items-center justify-between',
+                    org.isActive && 'bg-accent'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span className="truncate max-w-36">{org.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant="outline" 
+                      className={cn('text-xs px-1', getOrgTypeBadgeColor(org.type))}
+                    >
+                      {getOrgTypeLabel(org.type)}
+                    </Badge>
+                    {org.isActive && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* User Menu */}
           <DropdownMenu>

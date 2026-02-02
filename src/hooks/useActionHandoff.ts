@@ -18,17 +18,29 @@ export type ActionKey =
 
 export interface ActionPayload {
   actionKey: ActionKey;
+  correlationKey: string; // Format: {entityType}_{entityId}_{timestamp}
   context: {
     userId?: string;
+    tenantId?: string;
     module: string;
     entityIds?: {
       propertyId?: string;
       mandateId?: string;
       requestId?: string;
       serviceId?: string;
+      caseId?: string;
     };
     timestamp: string;
   };
+}
+
+/**
+ * Generate a Camunda-compatible correlation key
+ */
+export function generateCorrelationKey(entityType: string, entityId?: string): string {
+  const id = entityId || 'new';
+  const timestamp = Math.floor(Date.now() / 1000);
+  return `${entityType}_${id}_${timestamp}`;
 }
 
 interface ActionConfig {
@@ -76,13 +88,26 @@ export function useActionHandoff() {
   const triggerAction = async (
     actionKey: ActionKey,
     module: string,
-    entityIds?: ActionPayload['context']['entityIds']
+    entityIds?: ActionPayload['context']['entityIds'],
+    entityType?: string
   ) => {
     const config = ACTION_CONFIGS[actionKey];
+    
+    // Determine entity ID for correlation key
+    const primaryEntityId = entityIds?.requestId || entityIds?.mandateId || 
+                            entityIds?.propertyId || entityIds?.serviceId || 
+                            entityIds?.caseId;
+    
+    // Generate correlation key for Camunda
+    const correlationKey = generateCorrelationKey(
+      entityType || module.toLowerCase().replace('mod-', ''),
+      primaryEntityId
+    );
     
     // Build standardized payload
     const payload: ActionPayload = {
       actionKey,
+      correlationKey,
       context: {
         userId: user?.id,
         module,
