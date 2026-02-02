@@ -81,17 +81,19 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongVisible(!armstrongVisible);
   }, [armstrongVisible, setArmstrongVisible]);
 
+  const value: PortalLayoutState = {
+    sidebarCollapsed,
+    armstrongVisible,
+    isMobile,
+    isTablet,
+    toggleSidebar,
+    toggleArmstrong,
+    setSidebarCollapsed,
+    setArmstrongVisible,
+  };
+
   return (
-    <PortalLayoutContext.Provider value={{
-      sidebarCollapsed,
-      armstrongVisible,
-      isMobile,
-      isTablet,
-      toggleSidebar,
-      toggleArmstrong,
-      setSidebarCollapsed,
-      setArmstrongVisible,
-    }}>
+    <PortalLayoutContext.Provider value={value}>
       {children}
     </PortalLayoutContext.Provider>
   );
