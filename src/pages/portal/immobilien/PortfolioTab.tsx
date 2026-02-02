@@ -25,6 +25,7 @@ import {
   ResponsiveContainer, CartesianGrid, Legend, Area, AreaChart 
 } from 'recharts';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
+import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 
 interface LandlordContext {
   id: string;
@@ -80,6 +81,7 @@ export function PortfolioTab() {
   const [searchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   // Get selected context from URL
   const selectedContextId = searchParams.get('context');
@@ -528,7 +530,7 @@ export function PortfolioTab() {
 
       {/* Header mit Neue Immobilie Button */}
       <div className="flex items-center justify-end">
-        <Button onClick={() => navigate('/portal/immobilien/neu')}>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Neue Immobilie anlegen
         </Button>
@@ -722,6 +724,12 @@ export function PortfolioTab() {
           tenantId={activeOrganization.id}
         />
       )}
+
+      {/* Create Property Dialog */}
+      <CreatePropertyDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+      />
     </div>
   );
 }

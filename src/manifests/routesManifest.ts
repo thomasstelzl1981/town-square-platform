@@ -188,9 +188,8 @@ export const zone2Portal: ZoneDefinition = {
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
       ],
       dynamic_routes: [
-        { path: "neu", component: "PropertyForm", title: "Neue Immobilie" },
-        { path: ":id", component: "PropertyDetail", title: "Immobilien-Details", dynamic: true },
-        { path: ":id/edit", component: "PropertyForm", title: "Immobilie bearbeiten", dynamic: true },
+        // Property creation now via modal dialog - no separate route needed
+        { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true },
       ],
     },
     "MOD-05": {
