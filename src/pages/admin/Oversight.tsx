@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoldenPathSeeds, SeedResult } from '@/hooks/useGoldenPathSeeds';
+import { useGoldenPathSeeds, SeedResult, renderSeedReportTxt } from '@/hooks/useGoldenPathSeeds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,11 @@ export default function Oversight() {
 
   const handleRunSeeds = async () => {
     const result = await runSeeds();
+    
+    // Always log TXT report to console
+    const txtReport = renderSeedReportTxt(result);
+    console.log(txtReport);
+    
     if (result.success && result.idempotency_pass) {
       toast.success('Golden Path Seeds erfolgreich — Idempotenz bestätigt', {
         description: `Run#2: Props ${result.after_run2.properties} | Docs ${result.after_run2.documents} | Links ${result.after_run2.document_links}`,
@@ -135,7 +140,7 @@ export default function Oversight() {
       fetchData(); // Refresh stats
     } else if (result.success && !result.idempotency_pass) {
       toast.warning('Seeds erstellt, aber Idempotenz-Warnung', {
-        description: `Link-Fehler: ${result.link_validation.invalid_count}`,
+        description: `Link-Fehler: ${result.link_validation.invalid_count} | Entities: ${result.entity_presence.all_present ? 'OK' : 'MISSING'}`,
       });
       fetchData();
     } else {
@@ -399,11 +404,63 @@ export default function Oversight() {
                     <div className="text-muted-foreground mb-1">First failing links:</div>
                     {lastResult.link_validation.first_fails.slice(0, 5).map((f, i) => (
                       <div key={i} className="font-mono text-red-600">
-                        {f.id.slice(0, 8)}... | {f.object_type} | {f.object_id.slice(0, 8)}...
+                        {f.link_id.slice(0, 8)}... | doc:{f.doc_id.slice(0, 8)}... | {f.object_type} | {f.object_id.slice(0, 8)}... | {f.reason ?? 'not found'}
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Entity Presence */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="font-semibold text-sm">Seed Entity Presence</div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-1">
+                    {lastResult.entity_presence.property ? (
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <XCircle className="h-3 w-3 text-red-600" />
+                    )}
+                    <span>property</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {lastResult.entity_presence.finance_request ? (
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <XCircle className="h-3 w-3 text-red-600" />
+                    )}
+                    <span>finance_request</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {lastResult.entity_presence.contact ? (
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <XCircle className="h-3 w-3 text-red-600" />
+                    )}
+                    <span>contact</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TXT Report Export */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-sm">TXT Report (Copy/Paste)</div>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      const txt = renderSeedReportTxt(lastResult);
+                      navigator.clipboard.writeText(txt);
+                      toast.success('TXT Report in Zwischenablage kopiert');
+                    }}
+                  >
+                    Kopieren
+                  </Button>
+                </div>
+                <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded max-h-48 overflow-auto whitespace-pre">
+                  {renderSeedReportTxt(lastResult)}
+                </pre>
               </div>
             </div>
           )}
