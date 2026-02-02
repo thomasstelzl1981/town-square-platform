@@ -1,170 +1,127 @@
 
-# Plan: Manifest- & Spec-Synchronisation
+# Plan: Zone-1 Navigation Fix (P0)
 
-## Status: ENTWURF — Warten auf Freigabe
+## Zusammenfassung der Analyse
 
----
-
-## Ziel
-
-YAML-Manifeste und Modul-Specs mit dem aktuellen Stand in `routesManifest.ts` synchronisieren.
+**Datenbank:** Vollständig korrekt. Keine Änderungen erforderlich.  
+**AuthContext:** Bereits korrekt implementiert (internal org prioritisiert).  
+**Problem:** Nur AdminSidebar.tsx zeigt FutureRoom falsch an.
 
 ---
 
-## Phase 1: YAML-Manifeste aktualisieren
+## Konkrete Änderungen
 
-### 1a) `manifests/routes_manifest.yaml`
+### Datei: `src/components/admin/AdminSidebar.tsx`
 
-**Korrekturen:**
-- MOD-07: Tiles aktualisieren → selbstauskunft, dokumente, anfrage, status
+#### 1. Gruppierung korrigieren (Zeile 105)
 
-**Ergänzungen Zone 1:**
-- futureroom/bankkontakte, futureroom/finanzierungsmanager
-- agents/* (5 Routes)
-- acquiary/* (4 Routes)
-- sales-desk/* (5 Routes)
-- finance-desk/* (5 Routes)
+**Vorher:**
+```typescript
+if (path.startsWith('futureroom') || path === 'billing' || ...) {
+  return 'backbone';
+}
+```
 
-**Ergänzungen Zone 2 (MOD-12 bis MOD-20):**
-```yaml
-MOD-12:
-  name: "Akquise-Manager"
-  base: "/akquise-manager"
-  tiles: [dashboard, kunden, mandate, tools]
-  visibility: { org_types: [partner], requires_activation: true }
+**Nachher:**
+```typescript
+// FutureRoom gehört zu Operative Desks, nicht Backbone
+if (path.startsWith('futureroom')) {
+  return 'desks';
+}
+if (path === 'billing' || path === 'agreements' || path === 'inbox') {
+  return 'backbone';
+}
+```
 
-MOD-13:
-  name: "Projekte"
-  base: "/projekte"
-  tiles: [uebersicht, portfolio, timeline, settings]
-  visibility: { org_types: [client, partner] }
+#### 2. Sub-Navigation verstecken (Zeile 143)
 
-MOD-14:
-  name: "Communication Pro"
-  base: "/communication-pro"
-  tiles: [serien-emails, recherche, social, agenten]
-  visibility: { org_types: [partner], requires_activation: true }
+**Vorher:**
+```typescript
+// Show futureroom sub-items
+if (path === 'futureroom/bankkontakte' || path === 'futureroom/finanzierungsmanager') {
+  return true;
+}
+```
 
-MOD-15:
-  name: "Fortbildung"
-  base: "/fortbildung"
-  tiles: [katalog, meine-kurse, zertifikate, settings]
-  visibility: { org_types: [partner, subpartner] }
-
-MOD-16:
-  name: "Services"
-  base: "/services"
-  tiles: [katalog, anfragen, auftraege, settings]
-  visibility: { org_types: [client, partner] }
-
-MOD-17:
-  name: "Car-Management"
-  base: "/cars"
-  tiles: [uebersicht, fahrzeuge, service, settings]
-  visibility: { org_types: [partner], requires_activation: true }
-
-MOD-18:
-  name: "Finanzanalyse"
-  base: "/finanzanalyse"
-  tiles: [dashboard, reports, szenarien, settings]
-  visibility: { org_types: [client] }
-
-MOD-19:
-  name: "Photovoltaik"
-  base: "/photovoltaik"
-  tiles: [angebot, checkliste, projekt, settings]
-  visibility: { org_types: [client] }
-
-MOD-20:
-  name: "Miety"
-  base: "/miety"
-  tiles: [uebersicht, dokumente, kommunikation, zaehlerstaende, versorgung, versicherungen]  # 6 Tiles!
-  visibility: { org_types: [client], requires_activation: true }
+**Nachher:**
+```typescript
+// FutureRoom sub-items are accessed via internal tabs, NOT sidebar
+if (path.startsWith('futureroom/')) {
+  return false;
+}
 ```
 
 ---
 
-### 1b) `manifests/tile_catalog.yaml`
+## Erwartetes Ergebnis
 
-Gleiche Module wie oben, vollständig mit:
-- Icons
-- Sub-Tiles mit Routes
-- Visibility-Regeln
-- Descriptions
+### Sidebar VORHER (falsch):
 
----
+```
+📁 Backbone
+  ├─ Future Room
+  ├─ Bankkontakte        ❌ (separat)
+  ├─ Finanzierungsmanager ❌ (separat)
+  ├─ Billing
+  └─ ...
+```
 
-## Phase 2: Modul-Specs erstellen
+### Sidebar NACHHER (korrekt):
 
-| Datei | Status |
-|-------|--------|
-| `docs/modules/MOD-11_FINANZIERUNGSMANAGER.md` | NEU |
-| `docs/modules/MOD-12_AKQUISE_MANAGER.md` | NEU |
-| `docs/modules/MOD-13_PROJEKTE.md` | NEU |
-| `docs/modules/MOD-14_COMMUNICATION_PRO.md` | NEU |
-| `docs/modules/MOD-15_FORTBILDUNG.md` | NEU |
-| `docs/modules/MOD-16_SERVICES.md` | NEU |
-| `docs/modules/MOD-17_CAR_MANAGEMENT.md` | NEU |
-| `docs/modules/MOD-18_FINANZANALYSE.md` | NEU |
-| `docs/modules/MOD-19_PHOTOVOLTAIK.md` | NEU |
-| `docs/modules/MOD-20_MIETY.md` | NEU (6-Tile-Exception) |
+```
+📁 Backbone
+  ├─ Billing
+  ├─ Agreements
+  └─ Inbox
 
-**Spec-Template:**
-```markdown
-# MOD-XX: [Name]
+📁 Operative Desks
+  ├─ Future Room         ✅ (mit interner Tab-Nav)
+  ├─ Acquiary
+  ├─ Sales Desk
+  └─ Finance Desk
+```
 
-## Übersicht
-- **Zone:** 2 (Portal)
-- **Pfad:** /portal/[base]
-- **Icon:** [lucide-icon]
-- **Org-Types:** [client/partner/subpartner]
+### FutureRoom interne Tabs (unverändert):
 
-## Tiles (4-Tile-Pattern)
-1. **[Tile 1]** — Beschreibung
-2. **[Tile 2]** — Beschreibung
-3. **[Tile 3]** — Beschreibung
-4. **[Tile 4]** — Beschreibung
-
-## Datenmodell
-- Tabellen: ...
-- Beziehungen: ...
-
-## Workflows
-- Cases/Events: ...
-
-## Integration
-- Abhängigkeiten zu anderen Modulen
+```
+[Mandate-Eingang] [Bankkontakte] [Manager]
 ```
 
 ---
 
-## Phase 3: Zone 1 Admin dokumentieren
+## BEFORE/AFTER Tabelle
 
-**Neue Datei:** `docs/architecture/ZONE1_ADMIN_ROUTES.md`
-
-Inhalt:
-- Backbone (Dashboard, Organizations, Users, etc.)
-- Desks (Sales, Finance, Acquiary)
-- Agents
-- FutureRoom
-
----
-
-## Reihenfolge der Umsetzung
-
-| Schritt | Aktion | Dateien |
-|---------|--------|---------|
-| 1 | YAML routes_manifest.yaml aktualisieren | 1 Datei |
-| 2 | YAML tile_catalog.yaml aktualisieren | 1 Datei |
-| 3 | Modul-Specs erstellen | 10 Dateien |
-| 4 | Zone 1 Admin dokumentieren | 1 Datei |
-
-**Geschätzte Änderungen:** 13 Dateien
+| Item | Before | After | Status |
+|------|--------|-------|--------|
+| Internal Org existiert | ✅ Vorhanden | Keine Änderung | OK |
+| thomas.stelzl platform_admin | ✅ Korrekt | Keine Änderung | OK |
+| active_tenant_id = internal | ✅ Korrekt | Keine Änderung | OK |
+| Dev-Mode priorisiert internal | ✅ Korrekt | Keine Änderung | OK |
+| FutureRoom Gruppe | backbone | **desks** | FIX |
+| Bankkontakte separat | ❌ Sichtbar | Versteckt (Tab) | FIX |
+| Finanzierungsmanager separat | ❌ Sichtbar | Versteckt (Tab) | FIX |
+| FutureRoom Tab-Navigation | ✅ Korrekt | Keine Änderung | OK |
 
 ---
 
-## Hinweise
+## Technische Umsetzung
 
-- `routesManifest.ts` bleibt **Runtime-SSOT**
-- YAML-Dateien sind **Dokumentation** und müssen manuell synchron gehalten werden
-- Bei zukünftigen Änderungen: Immer beide aktualisieren (TS + YAML)
+1. AdminSidebar.tsx Zeile 105-107 anpassen (Gruppierung)
+2. AdminSidebar.tsx Zeile 141-146 anpassen (Visibility)
+3. Keine weiteren Dateien betroffen
+
+---
+
+## Acceptance Checks (nach Implementierung)
+
+- [ ] Zone-1 Sidebar: FutureRoom unter "Operative Desks"
+- [ ] Zone-1 Sidebar: Bankkontakte NICHT separat sichtbar
+- [ ] Zone-1 Sidebar: Finanzierungsmanager NICHT separat sichtbar
+- [ ] /admin/futureroom lädt mit Tab-Navigation
+- [ ] /admin/futureroom/bankkontakte via Tab erreichbar
+- [ ] /admin/futureroom/finanzierungsmanager via Tab erreichbar
+- [ ] /portal/finanzierungsmanager (MOD-11) bleibt Zone-2
+
+---
+
+**Marker: P0 READY FOR IMPLEMENTATION**
