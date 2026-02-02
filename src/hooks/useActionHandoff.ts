@@ -46,7 +46,7 @@ const ACTION_CONFIGS: Record<ActionKey, ActionConfig> = {
   MANDATE_DELEGATE: {
     toastMessage: 'Mandat delegiert',
     toastDescription: 'Der Status wurde aktualisiert.',
-    redirectTo: '/portal/finanzierungsmanager/status',
+    redirectTo: '/portal/akquise-manager/mandate',
   },
   SALE_START: {
     toastMessage: 'Verkaufsprozess gestartet',
