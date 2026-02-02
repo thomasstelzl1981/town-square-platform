@@ -1,5 +1,6 @@
 /**
  * Finanzierungsmanager Page (MOD-11) - Routes Pattern with How It Works
+ * P0-FIX: Added explicit "how-it-works" route instead of empty path
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -29,8 +30,9 @@ const FinanzierungsmanagerPage = () => {
       <div className="flex-1 overflow-auto">
         <React.Suspense fallback={<LoadingFallback />}>
           <Routes>
-            {/* How It Works as index */}
+            {/* How It Works as index AND explicit route */}
             <Route index element={<ModuleHowItWorks content={content} />} />
+            <Route path="how-it-works" element={<ModuleHowItWorks content={content} />} />
             
             {/* Tile routes */}
             <Route path="selbstauskunft" element={<CaseDetailTab cases={cases || []} isLoading={isLoading} />} />

@@ -288,7 +288,8 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 11,
       visibility: { default: false, org_types: ["partner"], requires_role: ["finance_manager"] },
       tiles: [
-        { path: "", component: "HowItWorksTab", title: "So funktioniert's", default: true },
+        // P0-FIX: Empty path "" replaced with explicit "how-it-works" for SSOT consistency
+        { path: "how-it-works", component: "HowItWorksTab", title: "So funktioniert's", default: true },
         { path: "selbstauskunft", component: "CaseDetailTab", title: "Selbstauskunft" },
         { path: "einreichen", component: "SubmitToBankTab", title: "Einreichen" },
         { path: "status", component: "StatusTab", title: "Status" },
@@ -321,10 +322,11 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 13,
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
+        // P0-FIX: Aligned to target structure: uebersicht / timeline / dokumente / einstellungen
         { path: "uebersicht", component: "ProjekteUebersicht", title: "Übersicht" },
-        { path: "portfolio", component: "ProjektePortfolio", title: "Portfolio" },
         { path: "timeline", component: "ProjekteTimeline", title: "Timeline" },
-        { path: "settings", component: "ProjekteSettings", title: "Einstellungen" },
+        { path: "dokumente", component: "ProjekteDokumente", title: "Dokumente" },
+        { path: "einstellungen", component: "ProjekteEinstellungen", title: "Einstellungen" },
       ],
     },
     "MOD-14": {

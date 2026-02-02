@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-02-02T00:00:00Z",
+  "total_count": 20,
+  "total_tiles": 82,
+  "modules": [
+    { "code": "MOD-01", "name": "Stammdaten", "base": "stammdaten", "tiles": ["profil", "firma", "abrechnung", "sicherheit"], "tile_count": 4 },
+    { "code": "MOD-02", "name": "KI Office", "base": "office", "tiles": ["email", "brief", "kontakte", "kalender"], "tile_count": 4 },
+    { "code": "MOD-03", "name": "DMS", "base": "dms", "tiles": ["storage", "posteingang", "sortieren", "einstellungen"], "tile_count": 4 },
+    { "code": "MOD-04", "name": "Immobilien", "base": "immobilien", "tiles": ["kontexte", "portfolio", "sanierung", "bewertung"], "tile_count": 4 },
+    { "code": "MOD-05", "name": "MSV", "base": "msv", "tiles": ["objekte", "mieteingang", "vermietung", "einstellungen"], "tile_count": 4 },
+    { "code": "MOD-06", "name": "Verkauf", "base": "verkauf", "tiles": ["objekte", "vorgaenge", "reporting", "einstellungen"], "tile_count": 4 },
+    { "code": "MOD-07", "name": "Finanzierung", "base": "finanzierung", "tiles": ["selbstauskunft", "dokumente", "anfrage", "status"], "tile_count": 4 },
+    { "code": "MOD-08", "name": "Investment-Suche", "base": "investments", "tiles": ["suche", "favoriten", "mandat", "simulation"], "tile_count": 4 },
+    { "code": "MOD-09", "name": "Vertriebspartner", "base": "vertriebspartner", "tiles": ["katalog", "beratung", "kunden", "network"], "tile_count": 4 },
+    { "code": "MOD-10", "name": "Leads", "base": "leads", "tiles": ["inbox", "meine", "pipeline", "werbung"], "tile_count": 4 },
+    { "code": "MOD-11", "name": "Finanzierungsmanager", "base": "finanzierungsmanager", "tiles": ["how-it-works", "selbstauskunft", "einreichen", "status"], "tile_count": 4 },
+    { "code": "MOD-12", "name": "Akquise-Manager", "base": "akquise-manager", "tiles": ["dashboard", "kunden", "mandate", "tools"], "tile_count": 4 },
+    { "code": "MOD-13", "name": "Projekte", "base": "projekte", "tiles": ["uebersicht", "timeline", "dokumente", "einstellungen"], "tile_count": 4 },
+    { "code": "MOD-14", "name": "Communication Pro", "base": "communication-pro", "tiles": ["serien-emails", "recherche", "social", "agenten"], "tile_count": 4 },
+    { "code": "MOD-15", "name": "Fortbildung", "base": "fortbildung", "tiles": ["katalog", "meine-kurse", "zertifikate", "settings"], "tile_count": 4 },
+    { "code": "MOD-16", "name": "Services", "base": "services", "tiles": ["katalog", "anfragen", "auftraege", "settings"], "tile_count": 4 },
+    { "code": "MOD-17", "name": "Car-Management", "base": "cars", "tiles": ["uebersicht", "fahrzeuge", "service", "settings"], "tile_count": 4 },
+    { "code": "MOD-18", "name": "Finanzanalyse", "base": "finanzanalyse", "tiles": ["dashboard", "reports", "szenarien", "settings"], "tile_count": 4 },
+    { "code": "MOD-19", "name": "Photovoltaik", "base": "photovoltaik", "tiles": ["angebot", "checkliste", "projekt", "settings"], "tile_count": 4 },
+    { "code": "MOD-20", "name": "Miety", "base": "miety", "tiles": ["uebersicht", "dokumente", "kommunikation", "zaehlerstaende", "versorgung", "versicherungen"], "tile_count": 6, "exception": "6 tiles allowed" }
+  ]
+}

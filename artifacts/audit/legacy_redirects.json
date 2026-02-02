@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-02-02T00:00:00Z",
+  "total_count": 7,
+  "all_param_safe": true,
+  "redirects": [
+    { "from": "/portfolio", "to": "/portal/immobilien/portfolio", "reason": "Legacy route", "param_safe": true },
+    { "from": "/portfolio/new", "to": "/portal/immobilien/neu", "reason": "Legacy route", "param_safe": true },
+    { "from": "/portfolio/:id", "to": "/portal/immobilien/:id", "reason": "Legacy route", "param_safe": true },
+    { "from": "/portal/finanzierung/vorgaenge", "to": "/portal/finanzierung/anfrage", "reason": "MOD-07 tile rename", "param_safe": true },
+    { "from": "/portal/finanzierung/readiness", "to": "/portal/finanzierung/selbstauskunft", "reason": "MOD-07 tile rename", "param_safe": true },
+    { "from": "/portal/finanzierung/export", "to": "/portal/finanzierung/anfrage", "reason": "MOD-07 tile rename", "param_safe": true },
+    { "from": "/portal/finanzierung/partner", "to": "/portal/finanzierung/status", "reason": "MOD-07 tile rename", "param_safe": true }
+  ]
+}
