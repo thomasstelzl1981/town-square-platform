@@ -1,5 +1,5 @@
 /**
- * Golden Path Seeds Hook
+ * Golden Path Seeds Hook v3
  * Idempotent seeding for MOD-04, MOD-07, MOD-03 demo data
  * 
  * AUDIT RULES:
@@ -7,6 +7,8 @@
  * - No deletes (upsert-only)
  * - Link validation uses batch queries (no N+1)
  * - service_case validation is safe (skipped with warning)
+ * - Entity presence checks for idempotency proof
+ * - TXT report export function
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,7 +42,7 @@ const SEED_IDS = {
   link_ausweis_finanz: '00000000-0000-4000-a000-000000000032',
   link_gehalt_finanz: '00000000-0000-4000-a000-000000000033',
   link_konto_contact: '00000000-0000-4000-a000-000000000034',
-};
+} as const;
 
 export interface SeedCounts {
   properties: number;
@@ -55,10 +57,12 @@ export interface SeedCounts {
 }
 
 export interface LinkValidationResult {
-  id: string;
+  link_id: string;
+  doc_id: string;
   object_type: string;
   object_id: string;
   target_exists: boolean | 'unknown';
+  doc_exists: boolean;
   reason?: string;
 }
 
@@ -67,8 +71,16 @@ export interface LinkValidationSummary {
   valid_count: number;
   invalid_count: number;
   unknown_count: number;
+  doc_missing_count: number;
   fails_by_type: Record<string, number>;
   first_fails: LinkValidationResult[];
+}
+
+export interface SeedEntityPresence {
+  property: boolean;
+  finance_request: boolean;
+  contact: boolean;
+  all_present: boolean;
 }
 
 export interface SeedContext {
@@ -87,8 +99,47 @@ export interface SeedResult {
   after_run1: SeedCounts;
   after_run2: SeedCounts;
   link_validation: LinkValidationSummary;
+  entity_presence: SeedEntityPresence;
   idempotency_pass: boolean;
   error?: string;
+}
+
+// Empty counts helper
+function emptyCounts(): SeedCounts {
+  return {
+    properties: 0,
+    units: 0,
+    loans: 0,
+    finance_requests: 0,
+    applicant_profiles: 0,
+    contacts: 0,
+    documents: 0,
+    storage_nodes: 0,
+    document_links: 0,
+  };
+}
+
+// Empty link validation helper
+function emptyLinkValidation(): LinkValidationSummary {
+  return {
+    total_links: 0,
+    valid_count: 0,
+    invalid_count: 0,
+    unknown_count: 0,
+    doc_missing_count: 0,
+    fails_by_type: {},
+    first_fails: [],
+  };
+}
+
+// Empty entity presence helper
+function emptyEntityPresence(): SeedEntityPresence {
+  return {
+    property: false,
+    finance_request: false,
+    contact: false,
+    all_present: false,
+  };
 }
 
 /**
@@ -108,79 +159,131 @@ async function getCounts(tenantId: string): Promise<SeedCounts> {
   ]);
 
   return {
-    properties: props.count || 0,
-    units: units.count || 0,
-    loans: loans.count || 0,
-    finance_requests: finReqs.count || 0,
-    applicant_profiles: appProfiles.count || 0,
-    contacts: contacts.count || 0,
-    documents: docs.count || 0,
-    storage_nodes: nodes.count || 0,
-    document_links: links.count || 0,
+    properties: props.count ?? 0,
+    units: units.count ?? 0,
+    loans: loans.count ?? 0,
+    finance_requests: finReqs.count ?? 0,
+    applicant_profiles: appProfiles.count ?? 0,
+    contacts: contacts.count ?? 0,
+    documents: docs.count ?? 0,
+    storage_nodes: nodes.count ?? 0,
+    document_links: links.count ?? 0,
+  };
+}
+
+/**
+ * Check if seed entities exist (maybeSingle)
+ */
+async function checkEntityPresence(tenantId: string): Promise<SeedEntityPresence> {
+  const [propRes, finRes, contactRes] = await Promise.all([
+    supabase.from('properties').select('id').eq('id', SEED_IDS.property).eq('tenant_id', tenantId).maybeSingle(),
+    supabase.from('finance_requests').select('id').eq('id', SEED_IDS.finance_request).eq('tenant_id', tenantId).maybeSingle(),
+    supabase.from('contacts').select('id').eq('id', SEED_IDS.contact).eq('tenant_id', tenantId).maybeSingle(),
+  ]);
+
+  const property = propRes.data !== null;
+  const finance_request = finRes.data !== null;
+  const contact = contactRes.data !== null;
+
+  return {
+    property,
+    finance_request,
+    contact,
+    all_present: property && finance_request && contact,
   };
 }
 
 /**
  * Validate document links with batch queries (NO N+1)
- * O(types) DB calls instead of O(links)
+ * - Validates target existence per object_type
+ * - Validates document existence
+ * - Handles null/missing fields safely
  */
 async function validateDocumentLinks(tenantId: string): Promise<LinkValidationSummary> {
-  // Step 1: Load all document_links for this tenant
+  // Step 1: Load all document_links for this tenant with all required fields
   const { data: allLinks, error } = await supabase
     .from('document_links')
-    .select('id, object_type, object_id')
+    .select('id, document_id, node_id, object_type, object_id')
     .eq('tenant_id', tenantId);
 
   if (error || !allLinks) {
-    return {
-      total_links: 0,
-      valid_count: 0,
-      invalid_count: 0,
-      unknown_count: 0,
-      fails_by_type: {},
-      first_fails: [],
-    };
+    return emptyLinkValidation();
   }
 
-  // Step 2: Group by object_type
-  const byType: Record<string, { id: string; object_id: string }[]> = {};
+  // Step 2: Collect all document_ids for batch check
+  const allDocIds = [...new Set(
+    allLinks
+      .map(l => l.document_id)
+      .filter((id): id is string => id !== null && id !== undefined)
+  )];
+
+  // Batch check document existence
+  let docExistsSet = new Set<string>();
+  if (allDocIds.length > 0) {
+    const { data: docs } = await supabase.from('documents').select('id').in('id', allDocIds);
+    docExistsSet = new Set((docs ?? []).map(d => d.id));
+  }
+
+  // Step 3: Group by object_type (null-safe)
+  const byType: Record<string, Array<{ id: string; object_id: string; document_id: string | null }>> = {};
   for (const link of allLinks) {
-    if (!byType[link.object_type]) {
-      byType[link.object_type] = [];
+    const objType = link.object_type ?? '__null__';
+    if (!byType[objType]) {
+      byType[objType] = [];
     }
-    byType[link.object_type].push({ id: link.id, object_id: link.object_id });
+    byType[objType].push({
+      id: link.id,
+      object_id: link.object_id ?? '',
+      document_id: link.document_id,
+    });
   }
 
-  // Step 3: Batch query per type
+  // Step 4: Batch query per type
   const existsMap: Record<string, Set<string>> = {};
   const unknownTypes = new Set<string>();
 
   // property
   if (byType['property']) {
-    const ids = [...new Set(byType['property'].map(l => l.object_id))];
-    const { data } = await supabase.from('properties').select('id').in('id', ids);
-    existsMap['property'] = new Set((data || []).map(r => r.id));
+    const ids = [...new Set(byType['property'].map(l => l.object_id).filter(Boolean))];
+    if (ids.length > 0) {
+      const { data } = await supabase.from('properties').select('id').in('id', ids);
+      existsMap['property'] = new Set((data ?? []).map(r => r.id));
+    } else {
+      existsMap['property'] = new Set();
+    }
   }
 
   // unit
   if (byType['unit']) {
-    const ids = [...new Set(byType['unit'].map(l => l.object_id))];
-    const { data } = await supabase.from('units').select('id').in('id', ids);
-    existsMap['unit'] = new Set((data || []).map(r => r.id));
+    const ids = [...new Set(byType['unit'].map(l => l.object_id).filter(Boolean))];
+    if (ids.length > 0) {
+      const { data } = await supabase.from('units').select('id').in('id', ids);
+      existsMap['unit'] = new Set((data ?? []).map(r => r.id));
+    } else {
+      existsMap['unit'] = new Set();
+    }
   }
 
   // contact
   if (byType['contact']) {
-    const ids = [...new Set(byType['contact'].map(l => l.object_id))];
-    const { data } = await supabase.from('contacts').select('id').in('id', ids);
-    existsMap['contact'] = new Set((data || []).map(r => r.id));
+    const ids = [...new Set(byType['contact'].map(l => l.object_id).filter(Boolean))];
+    if (ids.length > 0) {
+      const { data } = await supabase.from('contacts').select('id').in('id', ids);
+      existsMap['contact'] = new Set((data ?? []).map(r => r.id));
+    } else {
+      existsMap['contact'] = new Set();
+    }
   }
 
   // finance_case -> maps to finance_requests table
   if (byType['finance_case']) {
-    const ids = [...new Set(byType['finance_case'].map(l => l.object_id))];
-    const { data } = await supabase.from('finance_requests').select('id').in('id', ids);
-    existsMap['finance_case'] = new Set((data || []).map(r => r.id));
+    const ids = [...new Set(byType['finance_case'].map(l => l.object_id).filter(Boolean))];
+    if (ids.length > 0) {
+      const { data } = await supabase.from('finance_requests').select('id').in('id', ids);
+      existsMap['finance_case'] = new Set((data ?? []).map(r => r.id));
+    } else {
+      existsMap['finance_case'] = new Set();
+    }
   }
 
   // service_case -> SAFE HANDLING (table may not exist or be accessible)
@@ -188,49 +291,72 @@ async function validateDocumentLinks(tenantId: string): Promise<LinkValidationSu
     unknownTypes.add('service_case');
   }
 
-  // Step 4: Build validation results
-  const results: LinkValidationResult[] = [];
-  const fails_by_type: Record<string, number> = {};
-
-  for (const link of allLinks) {
-    const { id, object_type, object_id } = link;
-    
-    if (unknownTypes.has(object_type)) {
-      results.push({
-        id,
-        object_type,
-        object_id,
-        target_exists: 'unknown',
-        reason: 'cases table not validated',
-      });
-    } else if (existsMap[object_type]) {
-      const exists = existsMap[object_type].has(object_id);
-      results.push({ id, object_type, object_id, target_exists: exists });
-      if (!exists) {
-        fails_by_type[object_type] = (fails_by_type[object_type] || 0) + 1;
-      }
-    } else {
-      // Unknown type not in our mapping
-      results.push({
-        id,
-        object_type,
-        object_id,
-        target_exists: 'unknown',
-        reason: `unmapped object_type: ${object_type}`,
-      });
-    }
+  // __null__ -> unknown
+  if (byType['__null__']) {
+    unknownTypes.add('__null__');
   }
 
-  const valid_count = results.filter(r => r.target_exists === true).length;
-  const invalid_count = results.filter(r => r.target_exists === false).length;
+  // Step 5: Build validation results
+  const results: LinkValidationResult[] = [];
+  const fails_by_type: Record<string, number> = {};
+  let doc_missing_count = 0;
+
+  for (const link of allLinks) {
+    const linkId = link.id;
+    const docId = link.document_id ?? '';
+    const objType = link.object_type ?? '__null__';
+    const objId = link.object_id ?? '';
+    
+    const docExists = docId ? docExistsSet.has(docId) : false;
+    if (!docExists && docId) {
+      doc_missing_count++;
+    }
+
+    let target_exists: boolean | 'unknown' = 'unknown';
+    let reason: string | undefined;
+
+    if (!objType || objType === '__null__') {
+      target_exists = 'unknown';
+      reason = 'object_type is null';
+    } else if (!objId) {
+      target_exists = 'unknown';
+      reason = 'object_id is null';
+    } else if (unknownTypes.has(objType)) {
+      target_exists = 'unknown';
+      reason = objType === 'service_case' ? 'cases table not validated' : 'unmapped type';
+    } else if (existsMap[objType]) {
+      target_exists = existsMap[objType].has(objId);
+      if (!target_exists) {
+        fails_by_type[objType] = (fails_by_type[objType] ?? 0) + 1;
+        reason = `${objType} not found`;
+      }
+    } else {
+      target_exists = 'unknown';
+      reason = `unmapped object_type: ${objType}`;
+    }
+
+    results.push({
+      link_id: linkId,
+      doc_id: docId,
+      object_type: objType,
+      object_id: objId,
+      target_exists,
+      doc_exists: docExists,
+      reason,
+    });
+  }
+
+  const valid_count = results.filter(r => r.target_exists === true && r.doc_exists).length;
+  const invalid_count = results.filter(r => r.target_exists === false || !r.doc_exists).length;
   const unknown_count = results.filter(r => r.target_exists === 'unknown').length;
-  const first_fails = results.filter(r => r.target_exists === false).slice(0, 10);
+  const first_fails = results.filter(r => r.target_exists === false || !r.doc_exists).slice(0, 10);
 
   return {
     total_links: allLinks.length,
     valid_count,
     invalid_count,
     unknown_count,
+    doc_missing_count,
     fails_by_type,
     first_fails,
   };
@@ -307,7 +433,6 @@ async function executeSeeds(tenantId: string): Promise<void> {
 
   // ============ (B) CONTACT + FINANCE REQUEST + APPLICANT PROFILE ============
 
-  // Create contact first (for proper document link validation)
   const contactData = {
     id: SEED_IDS.contact,
     tenant_id: tenantId,
@@ -454,71 +579,15 @@ async function executeSeeds(tenantId: string): Promise<void> {
     await supabase.from('documents').upsert([doc], { onConflict: 'id' });
   }
 
-  // Storage Nodes (upsert-only, no deletions)
   const storageNodesData = [
-    {
-      id: SEED_IDS.node_inbox,
-      tenant_id: tenantId,
-      parent_id: null,
-      name: 'Posteingang',
-      node_type: 'folder',
-      template_id: 'inbox',
-    },
-    {
-      id: SEED_IDS.node_immobilien,
-      tenant_id: tenantId,
-      parent_id: null,
-      name: 'Immobilien',
-      node_type: 'folder',
-      template_id: 'immobilien',
-    },
-    {
-      id: SEED_IDS.node_finanzierung,
-      tenant_id: tenantId,
-      parent_id: null,
-      name: 'Finanzierung',
-      node_type: 'folder',
-      template_id: 'finanzierung',
-    },
-    {
-      id: SEED_IDS.node_bonitaet,
-      tenant_id: tenantId,
-      parent_id: null,
-      name: 'Bonitätsunterlagen',
-      node_type: 'folder',
-      template_id: 'bonitaetsunterlagen',
-    },
-    {
-      id: SEED_IDS.node_immobilien_demo,
-      tenant_id: tenantId,
-      parent_id: SEED_IDS.node_immobilien,
-      name: 'DEMO-001 Musterstraße 42',
-      node_type: 'folder',
-      property_id: SEED_IDS.property,
-    },
-    {
-      id: SEED_IDS.node_immobilien_demo_expose,
-      tenant_id: tenantId,
-      parent_id: SEED_IDS.node_immobilien_demo,
-      name: 'Exposé',
-      node_type: 'folder',
-      property_id: SEED_IDS.property,
-    },
-    {
-      id: SEED_IDS.node_immobilien_demo_finanz,
-      tenant_id: tenantId,
-      parent_id: SEED_IDS.node_immobilien_demo,
-      name: 'Finanzierung',
-      node_type: 'folder',
-      property_id: SEED_IDS.property,
-    },
-    {
-      id: SEED_IDS.node_finanzierung_demo,
-      tenant_id: tenantId,
-      parent_id: SEED_IDS.node_finanzierung,
-      name: 'FIN-DEMO-2026-001 Unterlagen',
-      node_type: 'folder',
-    },
+    { id: SEED_IDS.node_inbox, tenant_id: tenantId, parent_id: null, name: 'Posteingang', node_type: 'folder', template_id: 'inbox' },
+    { id: SEED_IDS.node_immobilien, tenant_id: tenantId, parent_id: null, name: 'Immobilien', node_type: 'folder', template_id: 'immobilien' },
+    { id: SEED_IDS.node_finanzierung, tenant_id: tenantId, parent_id: null, name: 'Finanzierung', node_type: 'folder', template_id: 'finanzierung' },
+    { id: SEED_IDS.node_bonitaet, tenant_id: tenantId, parent_id: null, name: 'Bonitätsunterlagen', node_type: 'folder', template_id: 'bonitaetsunterlagen' },
+    { id: SEED_IDS.node_immobilien_demo, tenant_id: tenantId, parent_id: SEED_IDS.node_immobilien, name: 'DEMO-001 Musterstraße 42', node_type: 'folder', property_id: SEED_IDS.property },
+    { id: SEED_IDS.node_immobilien_demo_expose, tenant_id: tenantId, parent_id: SEED_IDS.node_immobilien_demo, name: 'Exposé', node_type: 'folder', property_id: SEED_IDS.property },
+    { id: SEED_IDS.node_immobilien_demo_finanz, tenant_id: tenantId, parent_id: SEED_IDS.node_immobilien_demo, name: 'Finanzierung', node_type: 'folder', property_id: SEED_IDS.property },
+    { id: SEED_IDS.node_finanzierung_demo, tenant_id: tenantId, parent_id: SEED_IDS.node_finanzierung, name: 'FIN-DEMO-2026-001 Unterlagen', node_type: 'folder' },
   ];
 
   for (const node of storageNodesData) {
@@ -528,52 +597,129 @@ async function executeSeeds(tenantId: string): Promise<void> {
   // ============ (D) DOCUMENT LINKS ============
 
   const documentLinksData = [
-    {
-      id: SEED_IDS.link_expose_property,
-      tenant_id: tenantId,
-      document_id: SEED_IDS.doc_expose,
-      node_id: SEED_IDS.node_immobilien_demo_expose,
-      object_type: 'property',
-      object_id: SEED_IDS.property,
-    },
-    {
-      id: SEED_IDS.link_darlehen_property,
-      tenant_id: tenantId,
-      document_id: SEED_IDS.doc_darlehen,
-      node_id: SEED_IDS.node_immobilien_demo_finanz,
-      object_type: 'property',
-      object_id: SEED_IDS.property,
-    },
-    {
-      id: SEED_IDS.link_ausweis_finanz,
-      tenant_id: tenantId,
-      document_id: SEED_IDS.doc_ausweis,
-      node_id: SEED_IDS.node_finanzierung_demo,
-      object_type: 'finance_case',
-      object_id: SEED_IDS.finance_request,
-    },
-    {
-      id: SEED_IDS.link_gehalt_finanz,
-      tenant_id: tenantId,
-      document_id: SEED_IDS.doc_gehalt,
-      node_id: SEED_IDS.node_finanzierung_demo,
-      object_type: 'finance_case',
-      object_id: SEED_IDS.finance_request,
-    },
-    // Kontoauszug -> contact (proper contact ID, not applicant_profile)
-    {
-      id: SEED_IDS.link_konto_contact,
-      tenant_id: tenantId,
-      document_id: SEED_IDS.doc_konto,
-      node_id: SEED_IDS.node_bonitaet,
-      object_type: 'contact',
-      object_id: SEED_IDS.contact,
-    },
+    { id: SEED_IDS.link_expose_property, tenant_id: tenantId, document_id: SEED_IDS.doc_expose, node_id: SEED_IDS.node_immobilien_demo_expose, object_type: 'property', object_id: SEED_IDS.property },
+    { id: SEED_IDS.link_darlehen_property, tenant_id: tenantId, document_id: SEED_IDS.doc_darlehen, node_id: SEED_IDS.node_immobilien_demo_finanz, object_type: 'property', object_id: SEED_IDS.property },
+    { id: SEED_IDS.link_ausweis_finanz, tenant_id: tenantId, document_id: SEED_IDS.doc_ausweis, node_id: SEED_IDS.node_finanzierung_demo, object_type: 'finance_case', object_id: SEED_IDS.finance_request },
+    { id: SEED_IDS.link_gehalt_finanz, tenant_id: tenantId, document_id: SEED_IDS.doc_gehalt, node_id: SEED_IDS.node_finanzierung_demo, object_type: 'finance_case', object_id: SEED_IDS.finance_request },
+    { id: SEED_IDS.link_konto_contact, tenant_id: tenantId, document_id: SEED_IDS.doc_konto, node_id: SEED_IDS.node_bonitaet, object_type: 'contact', object_id: SEED_IDS.contact },
   ];
 
   for (const link of documentLinksData) {
     await supabase.from('document_links').upsert([link], { onConflict: 'id' });
   }
+}
+
+/**
+ * Render TXT report for copy/paste
+ */
+export function renderSeedReportTxt(result: SeedResult): string {
+  const lines: string[] = [];
+  const now = new Date().toISOString();
+
+  lines.push('================================================================================');
+  lines.push('GOLDEN PATH SEEDS — INTEGRITY REPORT v3');
+  lines.push(`Generated: ${now}`);
+  lines.push('================================================================================');
+  lines.push('');
+
+  // Context
+  lines.push('1) CONTEXT HEADER');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push(`tenant_id:     ${result.context.tenant_id}`);
+  lines.push(`org_name:      ${result.context.org_name}`);
+  lines.push(`org_type:      ${result.context.org_type}`);
+  lines.push(`dev_mode:      ${result.context.dev_mode}`);
+  lines.push(`seed_allowed:  ${result.context.seed_allowed}`);
+  if (result.context.seed_blocked_reason) {
+    lines.push(`blocked_reason: ${result.context.seed_blocked_reason}`);
+  }
+  lines.push('');
+
+  // Counts Table
+  lines.push('2) COUNTS TABLE');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('Table                | Before | After#1 | After#2 | OK');
+  lines.push('---------------------|--------|---------|---------|----');
+
+  const tables: Array<keyof SeedCounts> = [
+    'properties', 'units', 'loans', 'finance_requests', 'applicant_profiles',
+    'contacts', 'documents', 'storage_nodes', 'document_links'
+  ];
+
+  for (const t of tables) {
+    const before = result.before[t] ?? 0;
+    const after1 = result.after_run1[t] ?? 0;
+    const after2 = result.after_run2[t] ?? 0;
+    const ok = after2 >= after1 ? '✓' : '✗';
+    lines.push(`${t.padEnd(20)} | ${String(before).padStart(6)} | ${String(after1).padStart(7)} | ${String(after2).padStart(7)} | ${ok}`);
+  }
+  lines.push('');
+
+  // Link Validation
+  lines.push('3) LINK VALIDATION SUMMARY');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push(`total_links:      ${result.link_validation.total_links}`);
+  lines.push(`valid_count:      ${result.link_validation.valid_count}`);
+  lines.push(`invalid_count:    ${result.link_validation.invalid_count}`);
+  lines.push(`unknown_count:    ${result.link_validation.unknown_count}`);
+  lines.push(`doc_missing_count: ${result.link_validation.doc_missing_count}`);
+
+  if (Object.keys(result.link_validation.fails_by_type).length > 0) {
+    lines.push(`fails_by_type:    ${JSON.stringify(result.link_validation.fails_by_type)}`);
+  }
+
+  if (result.link_validation.first_fails.length > 0) {
+    lines.push('');
+    lines.push('First failing links (max 10):');
+    for (const f of result.link_validation.first_fails) {
+      lines.push(`  - ${f.link_id.slice(0, 8)}... | doc:${f.doc_id.slice(0, 8)}... | ${f.object_type} | ${f.object_id.slice(0, 8)}... | ${f.reason ?? 'target not found'}`);
+    }
+  }
+  lines.push('');
+
+  // Entity Presence
+  lines.push('4) SEED ENTITY PRESENCE');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push(`property (SEED_IDS.property):         ${result.entity_presence.property ? '✓ EXISTS' : '✗ MISSING'}`);
+  lines.push(`finance_request (SEED_IDS.finance_request): ${result.entity_presence.finance_request ? '✓ EXISTS' : '✗ MISSING'}`);
+  lines.push(`contact (SEED_IDS.contact):           ${result.entity_presence.contact ? '✓ EXISTS' : '✗ MISSING'}`);
+  lines.push(`all_present:                          ${result.entity_presence.all_present ? '✓ YES' : '✗ NO'}`);
+  lines.push('');
+
+  // Final
+  lines.push('5) FINAL MARKER');
+  lines.push('================================================================================');
+  if (result.success && result.idempotency_pass) {
+    lines.push('SEED_INTEGRITY: PASS');
+    lines.push('All counts monotonic, no invalid links, all seed entities present.');
+  } else if (result.success && !result.idempotency_pass) {
+    lines.push('SEED_INTEGRITY: FAIL');
+    lines.push('');
+    lines.push('Root Cause:');
+    if (result.link_validation.invalid_count > 0) {
+      lines.push(`  - ${result.link_validation.invalid_count} invalid document links`);
+    }
+    if (!result.entity_presence.all_present) {
+      lines.push('  - Not all seed entities present after Run#2');
+    }
+    // Check counts monotonicity
+    for (const t of tables) {
+      const after1 = result.after_run1[t] ?? 0;
+      const after2 = result.after_run2[t] ?? 0;
+      if (after2 < after1) {
+        lines.push(`  - ${t}: After#2 (${after2}) < After#1 (${after1})`);
+      }
+    }
+  } else {
+    lines.push('SEED_INTEGRITY: FAIL');
+    lines.push('');
+    lines.push(`Error: ${result.error ?? 'Unknown error'}`);
+  }
+  lines.push('================================================================================');
+  lines.push('END');
+  lines.push('================================================================================');
+
+  return lines.join('\n');
 }
 
 export function useGoldenPathSeeds(
@@ -588,13 +734,13 @@ export function useGoldenPathSeeds(
   const runSeeds = useCallback(async (): Promise<SeedResult> => {
     // Build context
     const context: SeedContext = {
-      tenant_id: tenantId || 'unknown',
-      org_name: orgName || 'unknown',
-      org_type: orgType || 'unknown',
+      tenant_id: tenantId ?? 'unknown',
+      org_name: orgName ?? 'unknown',
+      org_type: orgType ?? 'unknown',
       dev_mode: devMode,
       seed_allowed: orgType === 'internal',
       seed_blocked_reason: orgType !== 'internal' 
-        ? `Seeds nur im internal Org erlaubt. Aktuell: ${orgType}` 
+        ? `Seeds nur im internal Org erlaubt. Aktuell: ${orgType ?? 'unknown'}` 
         : undefined,
     };
 
@@ -603,17 +749,11 @@ export function useGoldenPathSeeds(
       const result: SeedResult = {
         success: false,
         context,
-        before: {} as SeedCounts,
-        after_run1: {} as SeedCounts,
-        after_run2: {} as SeedCounts,
-        link_validation: {
-          total_links: 0,
-          valid_count: 0,
-          invalid_count: 0,
-          unknown_count: 0,
-          fails_by_type: {},
-          first_fails: [],
-        },
+        before: emptyCounts(),
+        after_run1: emptyCounts(),
+        after_run2: emptyCounts(),
+        link_validation: emptyLinkValidation(),
+        entity_presence: emptyEntityPresence(),
         idempotency_pass: false,
         error: context.seed_blocked_reason,
       };
@@ -625,17 +765,11 @@ export function useGoldenPathSeeds(
       const result: SeedResult = {
         success: false,
         context,
-        before: {} as SeedCounts,
-        after_run1: {} as SeedCounts,
-        after_run2: {} as SeedCounts,
-        link_validation: {
-          total_links: 0,
-          valid_count: 0,
-          invalid_count: 0,
-          unknown_count: 0,
-          fails_by_type: {},
-          first_fails: [],
-        },
+        before: emptyCounts(),
+        after_run1: emptyCounts(),
+        after_run2: emptyCounts(),
+        link_validation: emptyLinkValidation(),
+        entity_presence: emptyEntityPresence(),
         idempotency_pass: false,
         error: 'No tenant ID',
       };
@@ -660,8 +794,11 @@ export function useGoldenPathSeeds(
       // Validate document links (batch, no N+1)
       const link_validation = await validateDocumentLinks(tenantId);
 
-      // Check idempotency: after_run2 >= after_run1 for all tables
-      const idempotency_pass = (
+      // Check entity presence
+      const entity_presence = await checkEntityPresence(tenantId);
+
+      // Check idempotency: after_run2 >= after_run1 for all tables + no invalid links + entities present
+      const countsMonotonic = (
         after_run2.properties >= after_run1.properties &&
         after_run2.units >= after_run1.units &&
         after_run2.loans >= after_run1.loans &&
@@ -670,9 +807,12 @@ export function useGoldenPathSeeds(
         after_run2.contacts >= after_run1.contacts &&
         after_run2.documents >= after_run1.documents &&
         after_run2.storage_nodes >= after_run1.storage_nodes &&
-        after_run2.document_links >= after_run1.document_links &&
-        link_validation.invalid_count === 0
+        after_run2.document_links >= after_run1.document_links
       );
+
+      const idempotency_pass = countsMonotonic && 
+        link_validation.invalid_count === 0 && 
+        entity_presence.all_present;
 
       const result: SeedResult = {
         success: true,
@@ -681,6 +821,7 @@ export function useGoldenPathSeeds(
         after_run1,
         after_run2,
         link_validation,
+        entity_presence,
         idempotency_pass,
       };
 
@@ -692,17 +833,11 @@ export function useGoldenPathSeeds(
       const result: SeedResult = {
         success: false,
         context,
-        before: {} as SeedCounts,
-        after_run1: {} as SeedCounts,
-        after_run2: {} as SeedCounts,
-        link_validation: {
-          total_links: 0,
-          valid_count: 0,
-          invalid_count: 0,
-          unknown_count: 0,
-          fails_by_type: {},
-          first_fails: [],
-        },
+        before: emptyCounts(),
+        after_run1: emptyCounts(),
+        after_run2: emptyCounts(),
+        link_validation: emptyLinkValidation(),
+        entity_presence: emptyEntityPresence(),
         idempotency_pass: false,
         error: errorMessage,
       };
