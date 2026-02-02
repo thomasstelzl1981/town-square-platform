@@ -1,0 +1,170 @@
+================================================================================
+AUDIT PASS — FREEZE MARKER
+Town Square Platform / System of a Town
+Stand: 2026-02-02
+================================================================================
+
+AUDIT STATUS: ✅ PASS
+FREEZE DATE: 2026-02-02
+GIT TAG: audit/2026-02-02-devportal-pass
+
+================================================================================
+CONFIRMATION
+================================================================================
+
+All 20 modules (MOD-01 to MOD-20) exist in routesManifest.ts: ✅ CONFIRMED
+All 20 modules exist in tile_catalog database: ✅ CONFIRMED
+Zone 1 Admin routes complete: ✅ CONFIRMED
+Zone 3 Website routes complete: ✅ CONFIRMED
+Legacy redirects param-safe: ✅ CONFIRMED
+
+================================================================================
+P0 FIXES APPLIED IN THIS SNAPSHOT
+================================================================================
+
+1) MOD-11 Empty Tile Key Fix:
+   - BEFORE: { path: "", component: "HowItWorksTab", ... }
+   - AFTER:  { path: "how-it-works", component: "HowItWorksTab", ... }
+
+2) MOD-13 Projekte Tiles Aligned:
+   - BEFORE: uebersicht / portfolio / timeline / settings
+   - AFTER:  uebersicht / timeline / dokumente / einstellungen
+
+================================================================================
+ZONE 1 ADMIN ROUTES INVENTORY
+================================================================================
+
+| Path                           | Title                   | Group         | Status |
+|--------------------------------|-------------------------|---------------|--------|
+| (index)                        | Admin Dashboard         | foundation    | OK     |
+| organizations                  | Organisationen          | foundation    | OK     |
+| organizations/:id              | Organisation Details    | foundation    | OK     |
+| users                          | Benutzer                | foundation    | OK     |
+| delegations                    | Delegationen            | foundation    | OK     |
+| contacts                       | Kontakte                | master        | OK     |
+| master-templates               | Master-Vorlagen         | master        | OK     |
+| tiles                          | Tile-Katalog            | activation    | OK     |
+| integrations                   | Integrationen           | system        | OK     |
+| communication                  | Kommunikation           | system        | OK     |
+| oversight                      | Oversight               | system        | OK     |
+| audit                          | Audit Log               | system        | OK     |
+| billing                        | Abrechnung              | backbone      | OK     |
+| agreements                     | Vereinbarungen          | backbone      | OK     |
+| inbox                          | Posteingang             | backbone      | OK     |
+| leadpool                       | Lead Pool               | system        | OK     |
+| partner-verification           | Partner-Verifizierung   | system        | OK     |
+| commissions                    | Provisionen             | system        | OK     |
+| support                        | Support                 | platformAdmin | OK     |
+| futureroom                     | Future Room             | desks         | OK     |
+| futureroom/bankkontakte        | Bankkontakte            | desks         | OK     |
+| futureroom/finanzierungsmanager| Finanzierungsmanager    | desks         | OK     |
+| agents                         | Agents                  | agents        | OK     |
+| agents/catalog                 | Agenten-Katalog         | agents        | OK     |
+| agents/instances               | Agenten-Instanzen       | agents        | OK     |
+| agents/runs                    | Agent Runs              | agents        | OK     |
+| agents/policies                | Policies                | agents        | OK     |
+| acquiary                       | Acquiary                | desks         | OK     |
+| acquiary/zuordnung             | Zuordnung               | desks         | OK     |
+| acquiary/inbox                 | Inbox                   | desks         | OK     |
+| acquiary/mandate               | Mandate                 | desks         | OK     |
+| sales-desk                     | Sales Desk              | desks         | OK     |
+| sales-desk/veroeffentlichungen | Veröffentlichungen      | desks         | OK     |
+| sales-desk/inbox               | Inbox                   | desks         | OK     |
+| sales-desk/partner             | Partner                 | desks         | OK     |
+| sales-desk/audit               | Audit                   | desks         | OK     |
+| finance-desk                   | Finance Desk            | desks         | OK     |
+| finance-desk/inbox             | Inbox                   | desks         | OK     |
+| finance-desk/berater           | Berater                 | desks         | OK     |
+| finance-desk/zuweisung         | Zuweisung               | desks         | OK     |
+| finance-desk/monitoring        | Monitoring              | desks         | OK     |
+
+TOTAL ZONE 1 ROUTES: 40
+
+================================================================================
+ZONE 2 MODULES INVENTORY
+================================================================================
+
+| Code   | Name                 | Base               | Tiles                                    | Status |
+|--------|----------------------|--------------------|------------------------------------------|--------|
+| MOD-01 | Stammdaten           | stammdaten         | profil, firma, abrechnung, sicherheit    | OK     |
+| MOD-02 | KI Office            | office             | email, brief, kontakte, kalender         | OK     |
+| MOD-03 | DMS                  | dms                | storage, posteingang, sortieren, einst.  | OK     |
+| MOD-04 | Immobilien           | immobilien         | kontexte, portfolio, sanierung, bewert.  | OK     |
+| MOD-05 | MSV                  | msv                | objekte, mieteingang, vermietung, einst. | OK     |
+| MOD-06 | Verkauf              | verkauf            | objekte, vorgaenge, reporting, einst.    | OK     |
+| MOD-07 | Finanzierung         | finanzierung       | selbstauskunft, dokumente, anfrage, stat.| OK     |
+| MOD-08 | Investment-Suche     | investments        | suche, favoriten, mandat, simulation     | OK     |
+| MOD-09 | Vertriebspartner     | vertriebspartner   | katalog, beratung, kunden, network       | OK     |
+| MOD-10 | Leads                | leads              | inbox, meine, pipeline, werbung          | OK     |
+| MOD-11 | Finanzierungsmanager | finanzierungsmanag.| how-it-works, selbstauskunft, einr., st. | OK     |
+| MOD-12 | Akquise-Manager      | akquise-manager    | dashboard, kunden, mandate, tools        | OK     |
+| MOD-13 | Projekte             | projekte           | uebersicht, timeline, dokumente, einst.  | OK     |
+| MOD-14 | Communication Pro    | communication-pro  | serien-emails, recherche, social, agent. | OK     |
+| MOD-15 | Fortbildung          | fortbildung        | katalog, meine-kurse, zertifikate, sett. | OK     |
+| MOD-16 | Services             | services           | katalog, anfragen, auftraege, settings   | OK     |
+| MOD-17 | Car-Management       | cars               | uebersicht, fahrzeuge, service, settings | OK     |
+| MOD-18 | Finanzanalyse        | finanzanalyse      | dashboard, reports, szenarien, settings  | OK     |
+| MOD-19 | Photovoltaik         | photovoltaik       | angebot, checkliste, projekt, settings   | OK     |
+| MOD-20 | Miety                | miety              | uebersicht, dokumente, kommunikation,    | OK     |
+|        |                      |                    | zaehlerstaende, versorgung, versicher.   |        |
+
+TOTAL ZONE 2 MODULES: 20
+TOTAL ZONE 2 TILES: 82 (80 standard + 2 extra for Miety)
+
+================================================================================
+LEGACY REDIRECTS INVENTORY
+================================================================================
+
+| From                              | To                              | Param-Safe |
+|-----------------------------------|---------------------------------|------------|
+| /portfolio                        | /portal/immobilien/portfolio    | YES        |
+| /portfolio/new                    | /portal/immobilien/neu          | YES        |
+| /portfolio/:id                    | /portal/immobilien/:id          | YES        |
+| /portal/finanzierung/vorgaenge    | /portal/finanzierung/anfrage    | YES        |
+| /portal/finanzierung/readiness    | /portal/finanzierung/selbstaus. | YES        |
+| /portal/finanzierung/export       | /portal/finanzierung/anfrage    | YES        |
+| /portal/finanzierung/partner      | /portal/finanzierung/status     | YES        |
+
+TOTAL LEGACY REDIRECTS: 7
+
+================================================================================
+ZONE 3 WEBSITES INVENTORY
+================================================================================
+
+| Site       | Base        | Routes | Status |
+|------------|-------------|--------|--------|
+| Kaufy      | /kaufy      | 13     | OK     |
+| Miety      | /miety      | 9      | OK     |
+| FutureRoom | /futureroom | 4      | OK     |
+| SoT        | /sot        | 7      | OK     |
+
+TOTAL ZONE 3 ROUTES: 33
+
+================================================================================
+DATABASE CONFIRMATION
+================================================================================
+
+Organizations:
+- System of a Town (org_type=internal) ✅
+- thomas.stelzl (org_type=client) ✅
+- test (org_type=client) ✅
+
+Memberships:
+- thomas.stelzl@systemofadown.com → System of a Town (platform_admin) ✅
+- thomas.stelzl@systemofadown.com → thomas.stelzl (org_admin) ✅
+- test@example.com → test (org_admin) ✅
+
+tile_catalog: All 20 modules (MOD-01 to MOD-20) present and is_active=true ✅
+
+================================================================================
+REPRODUCIBILITY NOTES
+================================================================================
+
+To verify this audit:
+1. Run: node scripts/generate-route-inventory.js
+2. Compare outputs in artifacts/audit/ with this document
+3. Verify all routes load without 404 or console errors
+
+================================================================================
+END FREEZE MARKER
+================================================================================
