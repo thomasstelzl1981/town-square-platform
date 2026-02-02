@@ -1,5 +1,8 @@
 /**
  * Immobilien Page (MOD-04) - Routes Pattern with How It Works
+ * 
+ * Property creation is now handled via CreatePropertyDialog modal in PortfolioTab.
+ * No separate /neu route needed - triggers auto-create Unit + Storage folders.
  */
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -12,8 +15,7 @@ const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ d
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
 
-// Property management pages
-const PropertyForm = lazy(() => import('@/pages/portfolio/PropertyForm'));
+// Property detail page (Immobilienakte SSOT)
 const PropertyDetail = lazy(() => import('@/pages/portfolio/PropertyDetail'));
 
 const LoadingFallback = () => (
@@ -37,10 +39,11 @@ const ImmobilienPage = () => {
         <Route path="sanierung" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
         
-        {/* Property management routes */}
-        <Route path="neu" element={<PropertyForm />} />
+        {/* Property detail route (Immobilienakte) */}
         <Route path=":id" element={<PropertyDetail />} />
-        <Route path=":id/bearbeiten" element={<PropertyForm />} />
+        
+        {/* Legacy redirects - /neu now handled by modal */}
+        <Route path="neu" element={<Navigate to="/portal/immobilien/portfolio" replace />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/portal/immobilien" replace />} />

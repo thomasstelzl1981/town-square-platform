@@ -101,7 +101,6 @@ import MietyPortalPage from '@/pages/portal/MietyPortalPage';
 
 // Zone 2: Dynamic Route Components
 import PropertyDetail from '@/pages/portfolio/PropertyDetail';
-import PropertyForm from '@/pages/portfolio/PropertyForm';
 import RentalExposeDetail from '@/pages/portal/msv/RentalExposeDetail';
 import { ExposeDetail } from '@/pages/portal/verkauf';
 
@@ -221,7 +220,6 @@ const portalModulePageMap: Record<string, React.ComponentType> = {
 // Component Map for Zone 2 Dynamic Routes
 // =============================================================================
 const portalDynamicComponentMap: Record<string, React.ComponentType> = {
-  PropertyForm,
   PropertyDetail,
   RentalExposeDetail,
   ExposeDetail,
