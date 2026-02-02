@@ -449,10 +449,14 @@ export default function Oversight() {
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => {
-                      const txt = renderSeedReportTxt(lastResult);
-                      navigator.clipboard.writeText(txt);
-                      toast.success('TXT Report in Zwischenablage kopiert');
+                    onClick={async () => {
+                      try {
+                        const txt = renderSeedReportTxt(lastResult);
+                        await navigator.clipboard.writeText(txt);
+                        toast.success('TXT Report in Zwischenablage kopiert');
+                      } catch (err) {
+                        toast.error('Kopieren fehlgeschlagen: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                      }
                     }}
                   >
                     Kopieren
