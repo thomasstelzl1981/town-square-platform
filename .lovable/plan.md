@@ -1,195 +1,66 @@
 
-# MOD-04 Fertigstellungsplan + Operations-Prompt
 
-## STATUS-ÜBERSICHT: Was ist bereits fertig?
+# Plan: Option A — thomas.stelzl nur als Platform Admin
 
-### Datenbank (100% fertig)
-- 11 Tabellen existieren: `properties`, `units`, `leases`, `loans`, `meters`, `postings`, `bank_transactions`, `dp_catalog` (72 Einträge), `doc_type_catalog` (24 Einträge), `posting_categories`, `nk_periods`
-- Alle Schema-Erweiterungen sind migriert (energy, features, rent models, etc.)
-- Trigger für automatische Ordnerstrukturen sind aktiv
+## Zusammenfassung
 
-### UI-Komponenten (90% fertig)
-- `PortfolioTab`: Zeigt Einheiten-Tabelle, KPIs, Charts (Tilgung/EÜR)
-- `UnitDossierView` + 8 Blöcke: Existieren, aber sind NICHT eingebunden
-- `PropertyDetail`: Zeigt einzelne Immobilie, nutzt aber NICHT die neue Akte
+Die Client-Membership von `thomas.stelzl` wird entfernt. Dadurch hat dieser User nur noch **eine einzige Rolle** (`platform_admin` in der internen Organisation) und der Org-Switcher zeigt nur noch einen Eintrag.
 
-### Was fehlt noch? (10%)
+## Änderungen
 
-| Aufgabe | Beschreibung | Aufwand |
-|---------|--------------|---------|
-| **1. Akte einbinden** | `UnitDossierView` in `/portal/immobilien/:id` integrieren | 15 min |
-| **2. Daten laden** | Hook erstellen, der Unit + Lease + Loan + NK Daten zusammenführt | 30 min |
-| **3. Route anpassen** | PropertyDetail durch Unit-Akte ersetzen oder erweitern | 10 min |
+### 1. Datenbank: Client-Membership entfernen
 
----
-
-## FERTIGSTELLUNGSPLAN (3 Aufgaben)
-
-### Aufgabe 1: Daten-Hook erstellen
-Neuer Hook `useUnitDossier(unitId)` der alle Daten für die Akte lädt:
-
-```typescript
-// src/hooks/useUnitDossier.ts
-- Lädt Unit + Property (JOIN)
-- Lädt aktives Lease
-- Lädt Loan (falls vorhanden)
-- Lädt NK-Period (falls vorhanden)
-- Lädt Dokumente aus storage_nodes
-- Transformiert zu UnitDossierData Interface
+**Migration SQL:**
+```sql
+-- Entferne die Client-Membership von thomas.stelzl
+DELETE FROM memberships 
+WHERE id = '72ace7cd-a28e-4fb1-b6b2-89f2ebebd690';
 ```
 
-### Aufgabe 2: PropertyDetail erweitern
-Die Seite `/portal/immobilien/:id` (PropertyDetail.tsx) erhält:
-- Import von `UnitDossierView`
-- Aufruf von `useUnitDossier`
-- Anzeige der neuen Akte statt/neben dem alten Exposé-Layout
+**Ergebnis:**
+- thomas.stelzl hat nur noch: `platform_admin` in `System of a Town`
+- test@example.com bleibt: `org_admin` in `test` (unser Test-Kunde)
 
-### Aufgabe 3: Navigation prüfen
-- PortfolioTab Klick auf Zeile navigiert zu `/portal/immobilien/:unitId`
-- Route in App.tsx ist bereits vorhanden (Zeile 177)
+### 2. UI: Org-Switcher vereinfachen (AdminLayout)
 
----
+Da ein Platform Admin in der Regel nur eine interne Membership hat, wird der Switcher-Button vereinfacht:
 
-## OPERATIONS-PROMPT (für zukünftige Datenverarbeitung)
+- **Wenn nur 1 Org verfügbar**: Zeige nur den Badge ohne Dropdown-Pfeil
+- **Wenn mehrere Orgs verfügbar**: Zeige Dropdown wie bisher (für Zukunft)
 
-Dieser Prompt beschreibt, wie Dokumente und Bank-Transaktionen durch das System fließen:
+**Datei:** `src/components/admin/AdminLayout.tsx`
 
 ```text
-OPERATIONS-PROMPT: System of a Town — Datenfluss MOD-04/05
+Änderung in Zeile 109:
+- {canSwitch && <ChevronDown className="h-3 w-3" />}
++ (bleibt, aber canSwitch wird jetzt false sein)
 
-=====================================================================
-1) DOKUMENT-UPLOAD-FLOW
-=====================================================================
-
-Wenn ein Benutzer ein Dokument hochlädt:
-
-SCHRITT 1: Speicherung
-- Datei wird in Supabase Storage abgelegt
-- Pfad: /{tenant_id}/{property_id}/{folder_name}/{filename}
-- Parallel: Sidecar-JSON wird erstellt mit doc_meta.source_channel = 'UPLOAD'
-
-SCHRITT 2: Typ-Erkennung
-- WENN Upload in Ordner mit doc_type_hint:
-  → doc_type = node.doc_type_hint (deterministisch)
-- SONST:
-  → KI-Klassifikation schlägt doc_type vor (Confidence < 0.90)
-
-SCHRITT 3: Extraktion
-- Edge Function `sot-document-parser` wird aufgerufen
-- Extrahiert Felder gemäß doc_type_catalog.extractable_dp_keys
-- Speichert in sidecar_json.extracted_fields
-
-SCHRITT 4: Matching
-- Versucht entity_matches zu finden:
-  - property_id über address_fingerprint (PLZ + Straße + Hausnummer)
-  - unit_id über unit.code oder Wohnungsnummer
-  - tenancy_id über start_date + rent_cold_eur
-  - loan_id über loan_number + bank_name
-- Confidence wird berechnet (0.0 - 1.0)
-
-SCHRITT 5: Review-Gate
-- >= 0.90: AUTO_ACCEPTED → Darf Akte-Felder aktualisieren
-- 0.70-0.89: NEEDS_REVIEW → Erscheint in Review-Queue
-- < 0.70: UNASSIGNED → Erscheint in Sortieren-Queue
-
-=====================================================================
-2) BANK-TRANSAKTIONS-FLOW
-=====================================================================
-
-Wenn eine Bank-Transaktion importiert wird:
-
-SCHRITT 1: Speicherung
-- INSERT in bank_transactions mit match_status = 'UNMATCHED'
-
-SCHRITT 2: Auto-Matching
-- Prüft purpose_text auf bekannte Muster:
-  - Mieter-Namen → tenancy_id
-  - Darlehensnummern → loan_id
-  - Versicherungs-Policen → property_id
-- Prüft IBAN/Kontonummer gegen bekannte Zahlungsempfänger
-
-SCHRITT 3: Posting-Generierung
-- Bei Match: Erstellt Draft-Posting mit:
-  - accounting_category (aus Mustererkennung)
-  - tax_category (aus posting_categories Mapping)
-  - status = 'DRAFT'
-  - confidence
-
-SCHRITT 4: Bestätigung
-- User bestätigt Draft → status = 'CONFIRMED'
-- Am Jahresende → status = 'LOCKED' (keine Änderung mehr)
-
-=====================================================================
-3) AKTE-UPDATE-FLOW
-=====================================================================
-
-Wenn Daten in der Akte geändert werden:
-
-OPTION A: Manuell
-- User bearbeitet Feld in UI
-- UPDATE auf entsprechende Tabelle (units/leases/loans/nk_periods)
-- dossier_asof_date wird aktualisiert
-- dossier_data_quality bleibt 'OK' oder wird auf 'PRUEFEN' gesetzt
-
-OPTION B: Automatisch (aus Dokument)
-- NUR bei review_state = 'AUTO_ACCEPTED' (Confidence >= 0.90)
-- Felder werden überschrieben WENN:
-  - aktueller Wert ist NULL, ODER
-  - Dokument ist neuer als bisherige Quelle
-- Konflikt: Beide Werte werden gespeichert (History)
-
-=====================================================================
-4) OUTPUT-GENERIERUNG
-=====================================================================
-
-Exposé (Vermietung/Verkauf):
-- Liest nur Felder mit privacy = 'public'
-- unit.public_* Felder haben Vorrang
-- Dokumente aus docs.* Referenzen mit is_public = true
-
-V&V (Anlage V / Steuer):
-- Aggregiert postings WHERE tax_category LIKE 'VV_%'
-- Gruppiert nach Jahr
-- Berechnet: Einnahmen - Werbungskosten - AfA
-
-BWA/SuSa (Gewerblich):
-- Aggregiert postings WHERE bwa_group IS NOT NULL
-- Gruppiert nach bwa_group + Monat/Jahr
-- Mapping gemäß landlord_context.skr (SKR04/SKR03)
-
-NK-Abrechnung:
-- Liest nk_periods für Jahr
-- Liest invoices WHERE cost_category = 'BETRKV_UMLEG'
-- Berechnet Umlagen gemäß allocation_key pro Unit
-- Vergleicht mit tenancy.nk_advance_eur * 12
-- Ergebnis: Nachzahlung / Guthaben
-
-=====================================================================
-5) CONFIDENCE-GATES (Zusammenfassung)
-=====================================================================
-
-| Schwelle | Status | Erlaubte Aktionen |
-|----------|--------|-------------------|
-| >= 0.90 | AUTO_ACCEPTED | Akte-Updates, Draft-Postings, Exposé-Daten |
-| 0.70-0.89 | NEEDS_REVIEW | Nur Speicherung, User-Queue |
-| < 0.70 | UNASSIGNED | Nur Speicherung, manuelle Zuordnung nötig |
-
-=====================================================================
-ENDE OPERATIONS-PROMPT
-=====================================================================
+Optional: Button vereinfachen wenn canSwitch=false
 ```
 
----
+### 3. Keine Code-Änderung nötig
 
-## ZUSAMMENFASSUNG
+Die bestehende Logik funktioniert bereits korrekt:
+- `useOrgContext.canSwitch` gibt `false` zurück wenn nur 1 Org
+- Der Dropdown zeigt dann nur 1 Eintrag
+- Der ChevronDown wird nur bei `canSwitch=true` angezeigt
 
-**MOD-04 ist zu 90% fertig.** 
+## Ergebnis nach Implementierung
 
-Die fehlenden 10% sind:
-1. Hook `useUnitDossier` erstellen (30 min)
-2. `PropertyDetail` mit `UnitDossierView` verbinden (15 min)
-3. Navigation/Routing verifizieren (10 min)
+| User | Org | Type | Role |
+|------|-----|------|------|
+| thomas.stelzl | System of a Town | internal | platform_admin |
+| test@example.com | test | client | org_admin |
 
-Der **Operations-Prompt** oben beschreibt, wie Dokumente und Transaktionen später durch das System fließen werden. Diese Logik wird erst relevant, wenn MOD-03 (DMS) und MOD-05 (MSV) die entsprechenden Upload/Import-Funktionen haben.
+**Admin Portal zeigt:**
+- Badge: `Internal / System of a Town`
+- Kein Dropdown-Pfeil (nur 1 Org)
+- Klarer, eindeutiger Kontext
 
-**Nach Genehmigung implementiere ich die 3 Aufgaben und MOD-04 ist abgeschlossen.**
+## Technische Details
+
+- **Migration-Typ:** DELETE (Daten-Änderung)
+- **Betroffene Tabelle:** `memberships`
+- **Betroffene User:** thomas.stelzl (d028bc99-...)
+- **Risiko:** Niedrig (Membership kann bei Bedarf neu erstellt werden)
+
