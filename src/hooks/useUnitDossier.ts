@@ -3,9 +3,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UnitDossierData, DocumentStatus } from '@/types/immobilienakte';
 
+// Extended lease interface for multi-lease support
+export interface LeaseWithContact {
+  id: string;
+  status: string;
+  rent_cold_eur: number | null;
+  nk_advance_eur: number | null;
+  heating_advance_eur: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  tenant_contact_id: string | null;
+  payment_due_day: number | null;
+  deposit_amount_eur: number | null;
+  deposit_status: string | null;
+  rent_model: string | null;
+  next_rent_adjustment_earliest_date: string | null;
+  lease_type?: string;
+  contacts: {
+    first_name: string;
+    last_name: string;
+    company: string | null;
+  } | null;
+}
+
 /**
  * Hook to load all data required for the Immobilienakte (Unit Dossier View).
- * Aggregates data from: units, properties, leases, loans, nk_periods, storage_nodes/documents
+ * Aggregates data from: units, properties, leases (MULTI!), loans, nk_periods, storage_nodes/documents
  */
 export function useUnitDossier(unitId: string | undefined) {
   const { activeTenantId } = useAuth();
@@ -50,8 +73,8 @@ export function useUnitDossier(unitId: string | undefined) {
 
       const property = unitData.properties as any;
 
-      // 2. Load active Lease for this unit
-      const { data: leaseData } = await supabase
+      // 2. Load ALL Leases for this unit (MULTI-LEASE SUPPORT)
+      const { data: leasesData } = await supabase
         .from('leases')
         .select(`
           *,
@@ -63,8 +86,26 @@ export function useUnitDossier(unitId: string | undefined) {
         `)
         .eq('unit_id', unitId)
         .eq('tenant_id', activeTenantId)
-        .eq('status', 'active')
-        .single();
+        .order('status', { ascending: true }) // 'active' before 'ended'
+        .order('start_date', { ascending: false });
+
+      // Sort: active leases first, then by start_date desc
+      const allLeases: LeaseWithContact[] = (leasesData || []).map(l => ({
+        ...l,
+        contacts: l.contacts as any,
+      }));
+      
+      const activeLeases = allLeases.filter(l => l.status === 'active');
+      const historicalLeases = allLeases.filter(l => l.status !== 'active');
+      const sortedLeases = [...activeLeases, ...historicalLeases];
+      
+      // Primary lease for display (first active or first historical)
+      const primaryLease = sortedLeases[0] || null;
+
+      // Calculate sums for active leases (for multi-lease units like TG, WG, etc.)
+      const totalMonthlyRent = activeLeases.reduce((sum, l) => sum + (l.rent_cold_eur || 0), 0);
+      const totalNkAdvance = activeLeases.reduce((sum, l) => sum + (l.nk_advance_eur || 0), 0);
+      const totalHeatingAdvance = activeLeases.reduce((sum, l) => sum + (l.heating_advance_eur || 0), 0);
 
       // 3. Load Loan for this unit or property
       const { data: loanData } = await supabase
@@ -74,7 +115,7 @@ export function useUnitDossier(unitId: string | undefined) {
         .or(`unit_id.eq.${unitId},property_id.eq.${property.id}`)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // 4. Load NK Period for this property (current year)
       const currentYear = new Date().getFullYear();
@@ -86,7 +127,7 @@ export function useUnitDossier(unitId: string | undefined) {
         .gte('period_end', `${currentYear}-01-01`)
         .order('period_start', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // 5. Load Documents from storage_nodes for this unit/property
       const { data: storageNodes } = await supabase
@@ -96,12 +137,16 @@ export function useUnitDossier(unitId: string | undefined) {
         .or(`unit_id.eq.${unitId},property_id.eq.${property.id}`)
         .eq('node_type', 'folder');
 
+      // 6. Load document_links with documents for status calculation
       const { data: documentLinks } = await supabase
         .from('document_links')
         .select(`
           id,
           document_id,
           node_id,
+          link_status,
+          object_type,
+          object_id,
           documents (
             id,
             name,
@@ -110,9 +155,9 @@ export function useUnitDossier(unitId: string | undefined) {
           )
         `)
         .eq('tenant_id', activeTenantId)
-        .or(`unit_id.eq.${unitId},object_id.eq.${property.id}`);
+        .or(`unit_id.eq.${unitId},object_id.eq.${property.id},object_id.eq.${unitId}`);
 
-      // Build document status list
+      // Build document status list based on document_links (SSOT)
       const docTypes = [
         { docType: 'DOC_PURCHASE_CONTRACT', label: 'Kaufvertrag' },
         { docType: 'DOC_LEASE_CONTRACT', label: 'Mietvertrag' },
@@ -122,21 +167,37 @@ export function useUnitDossier(unitId: string | undefined) {
         { docType: 'DOC_DIVISION_DECLARATION', label: 'Teilungserklärung' },
         { docType: 'DOC_INSURANCE_BUILDING', label: 'Gebäudeversicherung' },
         { docType: 'DOC_WEG_ANNUAL_STATEMENT', label: 'WEG-Abrechnung' },
+        { docType: 'DOC_WEG_BUDGET_PLAN', label: 'Wirtschaftsplan' },
+        { docType: 'DOC_NK_STATEMENT', label: 'NK-Abrechnung' },
+        { docType: 'DOC_LOAN_BUCKET', label: 'Darlehensunterlagen' },
       ];
 
       const documents: DocumentStatus[] = docTypes.map(dt => {
-        const found = documentLinks?.find(dl => {
+        // Check document_links first (SSOT)
+        const linkedDoc = documentLinks?.find(dl => {
           const doc = dl.documents as any;
           return doc?.doc_type === dt.docType;
         });
         
-        if (found) {
-          const doc = found.documents as any;
+        if (linkedDoc) {
+          const doc = linkedDoc.documents as any;
+          const linkStatus = linkedDoc.link_status;
+          
+          // Status priority: link_status > review_state
+          let status: 'complete' | 'review' | 'missing' = 'review';
+          if (linkStatus === 'accepted' || linkStatus === 'current') {
+            status = 'complete';
+          } else if (doc?.review_state === 'AUTO_ACCEPTED') {
+            status = 'complete';
+          } else if (linkStatus === 'pending' || linkStatus === 'needs_review') {
+            status = 'review';
+          }
+          
           return {
             docType: dt.docType,
             label: dt.label,
-            status: doc.review_state === 'AUTO_ACCEPTED' ? 'complete' : 'review',
-            path: doc.id,
+            status,
+            path: doc?.id,
           };
         }
         
@@ -145,21 +206,22 @@ export function useUnitDossier(unitId: string | undefined) {
         return {
           docType: dt.docType,
           label: dt.label,
-          status: folderExists ? 'missing' : 'missing',
+          status: 'missing' as const,
         };
       });
 
       // Determine tenancy status
       let tenancyStatus: 'ACTIVE' | 'VACANT' | 'TERMINATING' | 'ENDED' = 'VACANT';
-      if (leaseData) {
-        if (leaseData.status === 'active') tenancyStatus = 'ACTIVE';
-        else if (leaseData.end_date) tenancyStatus = 'TERMINATING';
-        else tenancyStatus = 'ENDED';
+      if (activeLeases.length > 0) {
+        const hasTerminating = activeLeases.some(l => l.end_date && new Date(l.end_date) > new Date());
+        tenancyStatus = hasTerminating ? 'TERMINATING' : 'ACTIVE';
+      } else if (historicalLeases.length > 0) {
+        tenancyStatus = 'ENDED';
       }
 
-      // Calculate Investment KPIs
+      // Calculate Investment KPIs using multi-lease sums
       const purchasePrice = property.purchase_price || property.market_value || 0;
-      const annualRent = (leaseData?.rent_cold_eur || unitData.current_monthly_rent || 0) * 12;
+      const annualRent = (totalMonthlyRent || unitData.current_monthly_rent || 0) * 12;
       const grossYield = purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
       const nonAllocCosts = (nkPeriodData?.top_cost_blocks as any)?.non_allocatable || 0;
       const netRent = annualRent - nonAllocCosts;
@@ -227,7 +289,7 @@ export function useUnitDossier(unitId: string | undefined) {
         wegFlag: property.weg_flag || false,
         meaOrTeNo: (property.land_register_refs as any)?.te_no || property.unit_ownership_nr,
 
-        // Block E: Investment KPIs
+        // Block E: Investment KPIs (uses multi-lease sums)
         annualIncome: annualRent,
         grossYieldPercent: grossYield,
         netYieldPercent: netYield,
@@ -241,25 +303,31 @@ export function useUnitDossier(unitId: string | undefined) {
         nonAllocCostsPaEur: nonAllocCosts,
         cashflowPreTaxMonthlyEur: (annualRent - nonAllocCosts - (loanData?.annuity_monthly_eur || 0) * 12) / 12,
 
-        // Block F: Tenancy
-        leaseId: leaseData?.id,
-        tenantContactId: leaseData?.tenant_contact_id,
-        tenantName: leaseData?.contacts 
-          ? `${(leaseData.contacts as any).first_name} ${(leaseData.contacts as any).last_name}`.trim()
+        // Block F: Tenancy (Primary lease for display, but sums reflect all active)
+        leaseId: primaryLease?.id,
+        tenantContactId: primaryLease?.tenant_contact_id,
+        tenantName: primaryLease?.contacts 
+          ? `${primaryLease.contacts.first_name} ${primaryLease.contacts.last_name}`.trim()
           : undefined,
         tenancyStatus,
-        leaseType: ((leaseData as any)?.lease_type as 'unbefristet' | 'befristet' | 'staffel' | 'index' | 'gewerbe') || 'unbefristet',
-        startDate: leaseData?.start_date,
-        endDate: leaseData?.end_date,
-        rentColdEur: leaseData?.rent_cold_eur || unitData.current_monthly_rent,
-        nkAdvanceEur: leaseData?.nk_advance_eur || unitData.ancillary_costs,
-        heatingAdvanceEur: leaseData?.heating_advance_eur,
-        rentWarmEur: (leaseData?.rent_cold_eur || 0) + (leaseData?.nk_advance_eur || 0) + (leaseData?.heating_advance_eur || 0),
-        paymentDueDay: leaseData?.payment_due_day,
-        depositAmountEur: leaseData?.deposit_amount_eur,
-        depositStatus: (leaseData?.deposit_status as 'PAID' | 'OPEN' | 'PARTIAL') || 'OPEN',
-        rentModel: (leaseData?.rent_model as 'FIX' | 'INDEX' | 'STAFFEL') || 'FIX',
-        nextRentAdjustmentDate: leaseData?.next_rent_adjustment_earliest_date,
+        leaseType: (primaryLease?.lease_type as 'unbefristet' | 'befristet' | 'staffel' | 'index' | 'gewerbe') || 'unbefristet',
+        startDate: primaryLease?.start_date,
+        endDate: primaryLease?.end_date,
+        // Use sums for rent values when multiple leases exist
+        rentColdEur: totalMonthlyRent || unitData.current_monthly_rent,
+        nkAdvanceEur: totalNkAdvance || unitData.ancillary_costs,
+        heatingAdvanceEur: totalHeatingAdvance,
+        rentWarmEur: (totalMonthlyRent || 0) + (totalNkAdvance || 0) + (totalHeatingAdvance || 0),
+        paymentDueDay: primaryLease?.payment_due_day,
+        depositAmountEur: primaryLease?.deposit_amount_eur,
+        depositStatus: (primaryLease?.deposit_status as 'PAID' | 'OPEN' | 'PARTIAL') || 'OPEN',
+        rentModel: (primaryLease?.rent_model as 'FIX' | 'INDEX' | 'STAFFEL') || 'FIX',
+        nextRentAdjustmentDate: primaryLease?.next_rent_adjustment_earliest_date,
+
+        // Multi-lease metadata (NEW)
+        leasesCount: allLeases.length,
+        activeLeasesCount: activeLeases.length,
+        allLeases: sortedLeases,
 
         // Block G: WEG/NK
         meaShare: (unitData as any).mea_share,
@@ -330,7 +398,7 @@ export function usePropertyDossier(propertyId: string | undefined) {
         .eq('tenant_id', activeTenantId)
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('No unit found for property:', error);
