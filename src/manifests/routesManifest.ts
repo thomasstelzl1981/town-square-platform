@@ -189,7 +189,6 @@ export const zone2Portal: ZoneDefinition = {
       ],
       dynamic_routes: [
         { path: "neu", component: "PropertyForm", title: "Neue Immobilie" },
-        { path: "vorlage", component: "ExposeVorlage", title: "Exposé-Vorlage" },
         { path: ":id", component: "PropertyDetail", title: "Immobilien-Details", dynamic: true },
         { path: ":id/edit", component: "PropertyForm", title: "Immobilie bearbeiten", dynamic: true },
       ],
