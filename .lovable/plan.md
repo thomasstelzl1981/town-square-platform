@@ -1,81 +1,170 @@
 
-# Plan: Saubere Zonen-Trennung mit 2 Entwicklungs-Kontexten
+# Plan: Manifest- & Spec-Synchronisation
 
-## Ziel-Architektur
-
-### Zone 1: Admin-Portal (`/admin/*`)
-- **User:** thomas.stelzl
-- **Organisation:** System of a Town (internal)
-- **Rolle:** platform_admin
-- **Zweck:** Governance, Konfiguration, Oversight
-
-### Zone 2: Portal (`/portal/*`)
-- **Entwicklungs-Muster:** thomas.stelzl (client) - leere Module als Vorlage
-- **Test-Sandbox:** test (client) - für Datenarbeit
+## Status: ENTWURF — Warten auf Freigabe
 
 ---
 
-## Änderungen
+## Ziel
 
-### 1. Datenbank-Korrekturen
+YAML-Manifeste und Modul-Specs mit dem aktuellen Stand in `routesManifest.ts` synchronisieren.
 
-**a) `active_tenant_id` korrigieren:**
-```sql
-UPDATE profiles 
-SET active_tenant_id = 'a0000000-0000-4000-a000-000000000001'
-WHERE email = 'thomas.stelzl@systemofadown.com';
-```
-→ thomas.stelzl startet jetzt im **internen** Kontext
+---
 
-**b) Client-Membership für thomas.stelzl wiederherstellen:**
-```sql
-INSERT INTO memberships (user_id, tenant_id, role)
-VALUES (
-  'd028bc99-6e29-4fa4-b038-d03015faf222',
-  'e808a01b-728e-4ac3-88fe-6edeeae69d6e',
-  'org_admin'
-);
-```
-→ thomas.stelzl kann auch in Zone 2 arbeiten
+## Phase 1: YAML-Manifeste aktualisieren
 
-### 2. Resultat nach Implementierung
+### 1a) `manifests/routes_manifest.yaml`
 
-| User | Memberships | Aktiver Kontext |
-|------|-------------|-----------------|
-| thomas.stelzl | `platform_admin` in System of a Town + `org_admin` in thomas.stelzl | System of a Town (internal) |
-| test@example.com | `org_admin` in test | test (client) |
+**Korrekturen:**
+- MOD-07: Tiles aktualisieren → selbstauskunft, dokumente, anfrage, status
 
-### 3. UI-Verhalten
+**Ergänzungen Zone 1:**
+- futureroom/bankkontakte, futureroom/finanzierungsmanager
+- agents/* (5 Routes)
+- acquiary/* (4 Routes)
+- sales-desk/* (5 Routes)
+- finance-desk/* (5 Routes)
 
-**Zone 1 (`/admin/*`):**
-- thomas.stelzl sieht: `Internal / System of a Town`
-- Kein Org-Switcher nötig (nur eine interne Org)
+**Ergänzungen Zone 2 (MOD-12 bis MOD-20):**
+```yaml
+MOD-12:
+  name: "Akquise-Manager"
+  base: "/akquise-manager"
+  tiles: [dashboard, kunden, mandate, tools]
+  visibility: { org_types: [partner], requires_activation: true }
 
-**Zone 2 (`/portal/*`):**
-- thomas.stelzl sieht Org-Switcher mit 2 Optionen:
-  - `thomas.stelzl` (Entwicklungs-Muster)
-  - `test` (wenn auch dort Membership) oder via God-Mode sichtbar
+MOD-13:
+  name: "Projekte"
+  base: "/projekte"
+  tiles: [uebersicht, portfolio, timeline, settings]
+  visibility: { org_types: [client, partner] }
 
-### 4. Optional: Client-Org umbenennen
+MOD-14:
+  name: "Communication Pro"
+  base: "/communication-pro"
+  tiles: [serien-emails, recherche, social, agenten]
+  visibility: { org_types: [partner], requires_activation: true }
 
-Für Klarheit könnte `thomas.stelzl` (client) umbenannt werden:
-```sql
-UPDATE organizations 
-SET name = 'Muster-Kunde' 
-WHERE id = 'e808a01b-728e-4ac3-88fe-6edeeae69d6e';
+MOD-15:
+  name: "Fortbildung"
+  base: "/fortbildung"
+  tiles: [katalog, meine-kurse, zertifikate, settings]
+  visibility: { org_types: [partner, subpartner] }
+
+MOD-16:
+  name: "Services"
+  base: "/services"
+  tiles: [katalog, anfragen, auftraege, settings]
+  visibility: { org_types: [client, partner] }
+
+MOD-17:
+  name: "Car-Management"
+  base: "/cars"
+  tiles: [uebersicht, fahrzeuge, service, settings]
+  visibility: { org_types: [partner], requires_activation: true }
+
+MOD-18:
+  name: "Finanzanalyse"
+  base: "/finanzanalyse"
+  tiles: [dashboard, reports, szenarien, settings]
+  visibility: { org_types: [client] }
+
+MOD-19:
+  name: "Photovoltaik"
+  base: "/photovoltaik"
+  tiles: [angebot, checkliste, projekt, settings]
+  visibility: { org_types: [client] }
+
+MOD-20:
+  name: "Miety"
+  base: "/miety"
+  tiles: [uebersicht, dokumente, kommunikation, zaehlerstaende, versorgung, versicherungen]  # 6 Tiles!
+  visibility: { org_types: [client], requires_activation: true }
 ```
 
 ---
 
-## Zusammenfassung
+### 1b) `manifests/tile_catalog.yaml`
 
-| Zone | Pfad | Kontext | Switcher |
-|------|------|---------|----------|
-| Zone 1 | `/admin/*` | System of a Town (internal) | Nein |
-| Zone 2 | `/portal/*` | thomas.stelzl ODER test (client) | Ja (2 Orgs) |
+Gleiche Module wie oben, vollständig mit:
+- Icons
+- Sub-Tiles mit Routes
+- Visibility-Regeln
+- Descriptions
 
-**Vorteil des Setups:**
-- Klare Trennung: Admin ≠ Entwickler-Portal
-- Entwicklungs-Muster bleibt sauber (leere Daten)
-- Test-Sandbox für echte Datenarbeit
-- Org-Switcher in Zone 2 für flexibles Testen
+---
+
+## Phase 2: Modul-Specs erstellen
+
+| Datei | Status |
+|-------|--------|
+| `docs/modules/MOD-11_FINANZIERUNGSMANAGER.md` | NEU |
+| `docs/modules/MOD-12_AKQUISE_MANAGER.md` | NEU |
+| `docs/modules/MOD-13_PROJEKTE.md` | NEU |
+| `docs/modules/MOD-14_COMMUNICATION_PRO.md` | NEU |
+| `docs/modules/MOD-15_FORTBILDUNG.md` | NEU |
+| `docs/modules/MOD-16_SERVICES.md` | NEU |
+| `docs/modules/MOD-17_CAR_MANAGEMENT.md` | NEU |
+| `docs/modules/MOD-18_FINANZANALYSE.md` | NEU |
+| `docs/modules/MOD-19_PHOTOVOLTAIK.md` | NEU |
+| `docs/modules/MOD-20_MIETY.md` | NEU (6-Tile-Exception) |
+
+**Spec-Template:**
+```markdown
+# MOD-XX: [Name]
+
+## Übersicht
+- **Zone:** 2 (Portal)
+- **Pfad:** /portal/[base]
+- **Icon:** [lucide-icon]
+- **Org-Types:** [client/partner/subpartner]
+
+## Tiles (4-Tile-Pattern)
+1. **[Tile 1]** — Beschreibung
+2. **[Tile 2]** — Beschreibung
+3. **[Tile 3]** — Beschreibung
+4. **[Tile 4]** — Beschreibung
+
+## Datenmodell
+- Tabellen: ...
+- Beziehungen: ...
+
+## Workflows
+- Cases/Events: ...
+
+## Integration
+- Abhängigkeiten zu anderen Modulen
+```
+
+---
+
+## Phase 3: Zone 1 Admin dokumentieren
+
+**Neue Datei:** `docs/architecture/ZONE1_ADMIN_ROUTES.md`
+
+Inhalt:
+- Backbone (Dashboard, Organizations, Users, etc.)
+- Desks (Sales, Finance, Acquiary)
+- Agents
+- FutureRoom
+
+---
+
+## Reihenfolge der Umsetzung
+
+| Schritt | Aktion | Dateien |
+|---------|--------|---------|
+| 1 | YAML routes_manifest.yaml aktualisieren | 1 Datei |
+| 2 | YAML tile_catalog.yaml aktualisieren | 1 Datei |
+| 3 | Modul-Specs erstellen | 10 Dateien |
+| 4 | Zone 1 Admin dokumentieren | 1 Datei |
+
+**Geschätzte Änderungen:** 13 Dateien
+
+---
+
+## Hinweise
+
+- `routesManifest.ts` bleibt **Runtime-SSOT**
+- YAML-Dateien sind **Dokumentation** und müssen manuell synchron gehalten werden
+- Bei zukünftigen Änderungen: Immer beide aktualisieren (TS + YAML)
