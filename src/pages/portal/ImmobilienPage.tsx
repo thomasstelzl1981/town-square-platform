@@ -12,10 +12,9 @@ const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ d
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
 
-// Property management pages (keep existing)
+// Property management pages
 const PropertyForm = lazy(() => import('@/pages/portfolio/PropertyForm'));
 const PropertyDetail = lazy(() => import('@/pages/portfolio/PropertyDetail'));
-const ExposeVorlage = lazy(() => import('@/pages/portfolio/ExposeVorlage'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -42,7 +41,6 @@ const ImmobilienPage = () => {
         <Route path="neu" element={<PropertyForm />} />
         <Route path=":id" element={<PropertyDetail />} />
         <Route path=":id/bearbeiten" element={<PropertyForm />} />
-        <Route path="vorlage" element={<ExposeVorlage />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/portal/immobilien" replace />} />

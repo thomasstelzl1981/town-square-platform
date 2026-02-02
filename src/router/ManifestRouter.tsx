@@ -102,7 +102,6 @@ import MietyPortalPage from '@/pages/portal/MietyPortalPage';
 // Zone 2: Dynamic Route Components
 import PropertyDetail from '@/pages/portfolio/PropertyDetail';
 import PropertyForm from '@/pages/portfolio/PropertyForm';
-import ExposeVorlage from '@/pages/portfolio/ExposeVorlage';
 import RentalExposeDetail from '@/pages/portal/msv/RentalExposeDetail';
 import { ExposeDetail } from '@/pages/portal/verkauf';
 
@@ -224,7 +223,6 @@ const portalModulePageMap: Record<string, React.ComponentType> = {
 const portalDynamicComponentMap: Record<string, React.ComponentType> = {
   PropertyForm,
   PropertyDetail,
-  ExposeVorlage,
   RentalExposeDetail,
   ExposeDetail,
   // MOD-07 Finanzierung Dynamic
