@@ -428,8 +428,12 @@ export function PortfolioTab() {
         <SubTabNav tabs={contextTabs} />
       )}
 
-      {/* Header mit Beispiel-Exposé Button */}
+      {/* Header mit Neue Immobilie Button */}
       <div className="flex items-center justify-end gap-2">
+        <Button onClick={() => navigate('/portal/immobilien/neu')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Neue Immobilie anlegen
+        </Button>
         <Button variant="outline" onClick={() => navigate('/portal/immobilien/vorlage')}>
           <Eye className="mr-2 h-4 w-4" />
           Beispiel-Exposé
