@@ -17,6 +17,11 @@ const statusConfig: Record<FinanceRequestStatus, { label: string; variant: 'defa
   collecting: { label: 'Dokumente sammeln', variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
   ready: { label: 'Bereit', variant: 'default', icon: <CheckCircle2 className="h-3 w-3" /> },
   submitted: { label: 'Eingereicht', variant: 'default', icon: <Send className="h-3 w-3" /> },
+  assigned: { label: 'Zugewiesen', variant: 'default', icon: <User className="h-3 w-3" /> },
+  in_processing: { label: 'In Bearbeitung', variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
+  needs_customer_action: { label: 'Aktion erforderlich', variant: 'destructive', icon: <AlertCircle className="h-3 w-3" /> },
+  completed: { label: 'Abgeschlossen', variant: 'default', icon: <CheckCircle2 className="h-3 w-3" /> },
+  rejected: { label: 'Abgelehnt', variant: 'destructive', icon: <AlertCircle className="h-3 w-3" /> },
 };
 
 export function FinanceRequestList() {
