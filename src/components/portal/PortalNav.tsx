@@ -118,8 +118,16 @@ async function fetchUserRoles(userId: string): Promise<string[]> {
   }
 }
 
-// Build tiles from manifest (including requires_role)
-function buildTilesFromManifest(): TileDisplay[] {
+// Get modules with visibility.default from manifest (for fallback)
+function getDefaultVisibleModuleCodes(): string[] {
+  const modules = getModulesSorted();
+  return modules
+    .filter(({ module }) => module.visibility.default === true)
+    .map(({ code }) => code);
+}
+
+// Build tiles from manifest (including requires_role and visibility)
+function buildTilesFromManifest(): (TileDisplay & { visibilityDefault: boolean })[] {
   const modules = getModulesSorted();
   
   return modules.map(({ code, module }) => {
@@ -144,6 +152,7 @@ function buildTilesFromManifest(): TileDisplay[] {
       display_order: module.display_order,
       sub_tiles: subTiles,
       requires_role: module.visibility.requires_role,
+      visibilityDefault: module.visibility.default,
     };
   });
 }
@@ -201,11 +210,20 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
   }, [activeOrganization?.id, isDevelopmentMode]);
 
   // Filter tiles by activation overlay AND role-gating
+  // P0-STABILIZATION: Respect visibility.default from manifest
   const visibleTiles = manifestTiles.filter(tile => {
-    // Check activation overlay (tenant-specific)
-    if (activeTileCodes && !activeTileCodes.includes(tile.code)) {
-      return false;
+    // ALWAYS show tiles with visibility.default = true (manifest SSOT)
+    // Only apply activation overlay for tiles that require_activation
+    if (tile.visibilityDefault) {
+      // Default-visible tiles are always shown (manifest says so)
+      // Skip activation check for these
+    } else {
+      // Check activation overlay (tenant-specific) only for non-default tiles
+      if (activeTileCodes && !activeTileCodes.includes(tile.code)) {
+        return false;
+      }
     }
+    
     // Check role-gating (user-specific)
     if (tile.requires_role && tile.requires_role.length > 0) {
       // In dev mode, show all (for testing)
