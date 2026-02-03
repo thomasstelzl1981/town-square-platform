@@ -132,13 +132,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Priority 3: No orgs in DB - create full mock (RLS blocking or empty DB)
-      console.log('[Dev-Mode] No organizations accessible, using mock data');
+      // Priority 3: No orgs in DB - use FIXED DEV UUID (not mock string!)
+      // This UUID matches the 'System of a Town' internal org created by migration
+      console.log('[Dev-Mode] No organizations accessible, using fixed dev UUID');
+      const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
       const mockOrg: Organization = {
-        id: 'dev-org-mock',
-        name: 'Platform Admin (Mock)',
-        slug: 'dev-platform',
-        public_id: 'DEV-PLATFORM',
+        id: DEV_TENANT_UUID,
+        name: 'System of a Town',
+        slug: 'system-of-a-town',
+        public_id: 'SOT-T-INTERNAL01',
         org_type: 'internal',
         parent_id: null,
         materialized_path: '/',
@@ -153,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const mockMembership: Membership = {
         id: 'dev-membership-mock',
         user_id: 'dev-user',
-        tenant_id: mockOrg.id,
+        tenant_id: DEV_TENANT_UUID,
         role: 'platform_admin',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -162,10 +164,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const mockProfile = {
         id: 'dev-user',
-        display_name: 'Platform Admin',
-        email: 'admin@systemofatown.de',
+        display_name: 'Max Mustermann',
+        email: 'max@mustermann.de',
         avatar_url: null,
-        active_tenant_id: mockOrg.id,
+        active_tenant_id: DEV_TENANT_UUID,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       } as Profile;
@@ -173,12 +175,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
     } catch (error) {
       console.error('[Dev-Mode] Error fetching development data:', error);
-      // Emergency fallback
+      // Emergency fallback with VALID UUID
+      const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
       const mockOrg: Organization = {
-        id: 'dev-org-fallback',
-        name: 'Platform Admin (Fallback)',
-        slug: 'dev-fallback',
-        public_id: 'DEV-FALLBACK',
+        id: DEV_TENANT_UUID,
+        name: 'System of a Town (Fallback)',
+        slug: 'system-of-a-town',
+        public_id: 'SOT-T-INTERNAL01',
         org_type: 'internal',
         parent_id: null,
         materialized_path: '/',
