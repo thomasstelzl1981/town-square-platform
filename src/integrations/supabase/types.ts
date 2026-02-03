@@ -1016,6 +1016,66 @@ export type Database = {
           },
         ]
       }
+      context_members: {
+        Row: {
+          church_tax: boolean | null
+          context_id: string
+          created_at: string
+          first_name: string
+          gross_income_yearly: number | null
+          id: string
+          last_name: string
+          ownership_share: number | null
+          profession: string | null
+          tax_class: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          church_tax?: boolean | null
+          context_id: string
+          created_at?: string
+          first_name: string
+          gross_income_yearly?: number | null
+          id?: string
+          last_name: string
+          ownership_share?: number | null
+          profession?: string | null
+          tax_class?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          church_tax?: boolean | null
+          context_id?: string
+          created_at?: string
+          first_name?: string
+          gross_income_yearly?: number | null
+          id?: string
+          last_name?: string
+          ownership_share?: number | null
+          profession?: string | null
+          tax_class?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_members_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "landlord_contexts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "context_members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_property_assignment: {
         Row: {
           assigned_at: string
@@ -4612,6 +4672,7 @@ export type Database = {
           mea_total: number | null
           multi_unit_enabled: boolean | null
           notary_date: string | null
+          owner_context_id: string | null
           parcel_number: string | null
           postal_code: string | null
           property_type: string
@@ -4667,6 +4728,7 @@ export type Database = {
           mea_total?: number | null
           multi_unit_enabled?: boolean | null
           notary_date?: string | null
+          owner_context_id?: string | null
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
@@ -4722,6 +4784,7 @@ export type Database = {
           mea_total?: number | null
           multi_unit_enabled?: boolean | null
           notary_date?: string | null
+          owner_context_id?: string | null
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
@@ -4748,6 +4811,13 @@ export type Database = {
           {
             foreignKeyName: "properties_landlord_context_id_fkey"
             columns: ["landlord_context_id"]
+            isOneToOne: false
+            referencedRelation: "landlord_contexts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_owner_context_id_fkey"
+            columns: ["owner_context_id"]
             isOneToOne: false
             referencedRelation: "landlord_contexts"
             referencedColumns: ["id"]

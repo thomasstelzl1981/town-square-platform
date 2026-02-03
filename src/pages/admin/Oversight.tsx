@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoldenPathSeeds, SeedResult, renderSeedReportTxt } from '@/hooks/useGoldenPathSeeds';
+import { useGoldenPathSeeds, SeedResult } from '@/hooks/useGoldenPathSeeds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -129,20 +129,11 @@ export default function Oversight() {
   const handleRunSeeds = async () => {
     const result = await runSeeds();
     
-    // Always log TXT report to console
-    const txtReport = renderSeedReportTxt(result);
-    console.log(txtReport);
-    
-    if (result.success && result.idempotency_pass) {
-      toast.success('Golden Path Seeds erfolgreich — Idempotenz bestätigt', {
-        description: `Run#2: Props ${result.after_run2.properties} | Docs ${result.after_run2.documents} | Links ${result.after_run2.document_links}`,
+    if (result.success) {
+      toast.success('Golden Path Seeds erfolgreich erstellt', {
+        description: `Contacts: ${result.after.contacts} | Properties: ${result.after.properties} | Docs: ${result.after.documents}`,
       });
       fetchData(); // Refresh stats
-    } else if (result.success && !result.idempotency_pass) {
-      toast.warning('Seeds erstellt, aber Idempotenz-Warnung', {
-        description: `Link-Fehler: ${result.link_validation.invalid_count} | Entities: ${result.entity_presence.all_present ? 'OK' : 'MISSING'}`,
-      });
-      fetchData();
     } else {
       toast.error('Seed-Fehler: ' + result.error);
     }
@@ -320,12 +311,8 @@ export default function Oversight() {
             </Button>
             
             {lastResult && lastResult.success && (
-              <Badge variant={lastResult.idempotency_pass ? 'default' : 'destructive'} className="gap-1">
-                {lastResult.idempotency_pass ? (
-                  <><CheckCircle className="h-3 w-3" /> SEED_INTEGRITY: PASS</>
-                ) : (
-                  <><AlertTriangle className="h-3 w-3" /> SEED_INTEGRITY: FAIL</>
-                )}
+              <Badge variant="default" className="gap-1">
+                <CheckCircle className="h-3 w-3" /> Seeds erstellt
               </Badge>
             )}
           </div>
@@ -333,35 +320,34 @@ export default function Oversight() {
           {/* Seed Result Tables */}
           {lastResult && lastResult.success && (
             <div className="space-y-4 mt-4">
-              {/* Counts Table */}
+              {/* Counts Table - simplified */}
               <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">Table</TableHead>
                       <TableHead className="text-right">Before</TableHead>
-                      <TableHead className="text-right">After#1</TableHead>
-                      <TableHead className="text-right">After#2</TableHead>
-                      <TableHead className="text-center">OK</TableHead>
+                      <TableHead className="text-right">After</TableHead>
+                      <TableHead className="text-center">Δ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(['properties', 'units', 'loans', 'finance_requests', 'applicant_profiles', 'contacts', 'documents', 'storage_nodes', 'document_links'] as const).map((key) => {
+                    {(['properties', 'units', 'loans', 'leases', 'contacts', 'documents', 'landlord_contexts', 'context_members', 'tile_activations'] as const).map((key) => {
                       const before = lastResult.before[key] || 0;
-                      const after1 = lastResult.after_run1[key] || 0;
-                      const after2 = lastResult.after_run2[key] || 0;
-                      const ok = after2 >= after1;
+                      const after = lastResult.after[key] || 0;
+                      const delta = after - before;
                       return (
                         <TableRow key={key}>
                           <TableCell className="font-mono text-xs">{key}</TableCell>
                           <TableCell className="text-right font-mono">{before}</TableCell>
-                          <TableCell className="text-right font-mono">{after1}</TableCell>
-                          <TableCell className="text-right font-mono">{after2}</TableCell>
+                          <TableCell className="text-right font-mono">{after}</TableCell>
                           <TableCell className="text-center">
-                            {ok ? (
-                              <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+                            {delta > 0 ? (
+                              <span className="text-green-600 font-mono">+{delta}</span>
+                            ) : delta === 0 ? (
+                              <span className="text-muted-foreground font-mono">—</span>
                             ) : (
-                              <XCircle className="h-4 w-4 text-red-600 mx-auto" />
+                              <span className="text-red-600 font-mono">{delta}</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -371,100 +357,27 @@ export default function Oversight() {
                 </Table>
               </div>
 
-              {/* Link Validation Summary */}
+              {/* Summary */}
               <div className="border rounded-lg p-3 space-y-2">
-                <div className="font-semibold text-sm">Link Validation Summary</div>
+                <div className="font-semibold text-sm">Zusammenfassung</div>
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Total:</span>{' '}
-                    <span className="font-mono">{lastResult.link_validation.total_links}</span>
+                    <span className="text-muted-foreground">Kontakte:</span>{' '}
+                    <span className="font-mono font-bold">{lastResult.after.contacts}</span>
                   </div>
                   <div>
-                    <span className="text-green-600">Valid:</span>{' '}
-                    <span className="font-mono">{lastResult.link_validation.valid_count}</span>
+                    <span className="text-muted-foreground">Immobilien:</span>{' '}
+                    <span className="font-mono font-bold">{lastResult.after.properties}</span>
                   </div>
                   <div>
-                    <span className="text-red-600">Invalid:</span>{' '}
-                    <span className="font-mono">{lastResult.link_validation.invalid_count}</span>
+                    <span className="text-muted-foreground">Module:</span>{' '}
+                    <span className="font-mono font-bold">{lastResult.after.tile_activations}</span>
                   </div>
                   <div>
-                    <span className="text-amber-600">Unknown:</span>{' '}
-                    <span className="font-mono">{lastResult.link_validation.unknown_count}</span>
+                    <span className="text-muted-foreground">Dokumente:</span>{' '}
+                    <span className="font-mono font-bold">{lastResult.after.documents}</span>
                   </div>
                 </div>
-                
-                {Object.keys(lastResult.link_validation.fails_by_type).length > 0 && (
-                  <div className="text-xs text-red-600 font-mono">
-                    Fails by type: {JSON.stringify(lastResult.link_validation.fails_by_type)}
-                  </div>
-                )}
-                
-                {lastResult.link_validation.first_fails.length > 0 && (
-                  <div className="text-xs">
-                    <div className="text-muted-foreground mb-1">First failing links:</div>
-                    {lastResult.link_validation.first_fails.slice(0, 5).map((f, i) => (
-                      <div key={i} className="font-mono text-red-600">
-                        {f.link_id.slice(0, 8)}... | doc:{f.doc_id.slice(0, 8)}... | {f.object_type} | {f.object_id.slice(0, 8)}... | {f.reason ?? 'not found'}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Entity Presence */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="font-semibold text-sm">Seed Entity Presence</div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    {lastResult.entity_presence.property ? (
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                    ) : (
-                      <XCircle className="h-3 w-3 text-red-600" />
-                    )}
-                    <span>property</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {lastResult.entity_presence.finance_request ? (
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                    ) : (
-                      <XCircle className="h-3 w-3 text-red-600" />
-                    )}
-                    <span>finance_request</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {lastResult.entity_presence.contact ? (
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                    ) : (
-                      <XCircle className="h-3 w-3 text-red-600" />
-                    )}
-                    <span>contact</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* TXT Report Export */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-sm">TXT Report (Copy/Paste)</div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const txt = renderSeedReportTxt(lastResult);
-                        await navigator.clipboard.writeText(txt);
-                        toast.success('TXT Report in Zwischenablage kopiert');
-                      } catch (err) {
-                        toast.error('Kopieren fehlgeschlagen: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                      }
-                    }}
-                  >
-                    Kopieren
-                  </Button>
-                </div>
-                <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded max-h-48 overflow-auto whitespace-pre">
-                  {renderSeedReportTxt(lastResult)}
-                </pre>
               </div>
             </div>
           )}
