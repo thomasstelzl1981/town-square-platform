@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, Link2, Shield, ExternalLink } from 'lucide-react';
+import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive } from 'lucide-react';
 import { PdfExportFooter } from '@/components/pdf';
+import { toast } from 'sonner';
 
 interface Stats {
   organizations: number;
@@ -18,6 +19,8 @@ export default function Dashboard() {
   const { profile, memberships, isPlatformAdmin, activeOrganization } = useAuth();
   const [stats, setStats] = useState<Stats>({ organizations: 0, profiles: 0, memberships: 0, delegations: 0 });
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
@@ -44,6 +47,32 @@ export default function Dashboard() {
     
     fetchStats();
   }, []);
+
+  const handleExportDocs = async () => {
+    setExporting(true);
+    setExportUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-docs-export');
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.url) {
+        setExportUrl(data.url);
+        toast.success('Dokumentation exportiert', {
+          description: `${data.file_count} Dateien im ZIP-Archiv`,
+        });
+      } else {
+        throw new Error(data?.error || 'Export fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Export fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const formatRole = (role: string) => {
     return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -112,6 +141,39 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Go-live: kaufy.app | systemofatown.app | miety.app
+            </p>
+          </div>
+          {/* Documentation Export */}
+          <div className="pt-4 border-t">
+            <p className="text-sm font-medium mb-2">Dokumentation</p>
+            <div className="flex flex-wrap gap-3 items-center">
+              <Button 
+                variant="outline" 
+                onClick={handleExportDocs}
+                disabled={exporting}
+                className="gap-2"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileArchive className="h-4 w-4" />
+                )}
+                {exporting ? 'Exportiere...' : 'Dokumentation exportieren'}
+              </Button>
+              
+              {exportUrl && (
+                <Button 
+                  variant="default" 
+                  onClick={() => window.open(exportUrl, '_blank')}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  ZIP herunterladen
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Generiert ein ZIP-Archiv mit allen Specs, Manifesten und Dokumentationen für externe Entwickler.
             </p>
           </div>
         </CardContent>
