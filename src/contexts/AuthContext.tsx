@@ -259,10 +259,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
     const init = initRef.current;
     
-    // P0-FIX: Only reset if NOT already initialized (prevents StrictMode double-init)
-    // If we already have a session from a previous mount, don't reset
-    if (!init.hasInitialized) {
+    // P0-FIX: On first mount, always allow initialization.
+    // The ref persists across StrictMode remounts, so we need to check
+    // if we actually have user data already set (profile/activeOrganization).
+    // If we do, we can skip re-initialization.
+    const alreadyHasData = activeOrganization !== null || profile !== null;
+    
+    if (!alreadyHasData) {
+      // Fresh start - allow initialization
+      init.hasInitialized = false;
       init.isInitializing = false;
+    } else if (init.hasInitialized) {
+      // Already initialized with data - just ensure loading is false
+      setIsLoading(false);
     }
     
     // Helper to handle auth state with single-flight guard
@@ -336,7 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]); // Removed hasInitialized - now uses ref
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, activeOrganization, profile]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
