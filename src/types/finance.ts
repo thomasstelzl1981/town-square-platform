@@ -127,8 +127,27 @@ export interface ApplicantProfile {
 // Finance Request Types
 // ============================================
 
-export type FinanceRequestStatus = 'draft' | 'collecting' | 'ready' | 'submitted' | 'in_processing' | 'needs_customer_action' | 'completed' | 'rejected' | string;
-export type ObjectSource = 'mod04_property' | 'mod08_favorite' | 'custom';
+/**
+ * Finance Request Status Machine (FROZEN)
+ * 
+ * Flow: draft → collecting → ready → submitted → [Zone 1] → assigned → [MOD-11] → in_processing → completed/rejected
+ * 
+ * MOD-07 can edit: draft, collecting, ready
+ * Zone 1 controls: submitted → assigned
+ * MOD-11 controls: in_processing, needs_customer_action, completed, rejected
+ */
+export type FinanceRequestStatus = 
+  | 'draft'                  // Initial state, no data
+  | 'collecting'             // Self-disclosure in progress
+  | 'ready'                  // All required fields + docs complete
+  | 'submitted'              // Submitted to Zone 1 (SoT transfers)
+  | 'assigned'               // Manager assigned by Zone 1
+  | 'in_processing'          // Manager is working on it
+  | 'needs_customer_action'  // Customer needs to provide more info
+  | 'completed'              // Successfully finished
+  | 'rejected';              // Rejected
+
+export type ObjectSource = 'mod04_property' | 'custom';
 export interface FinanceRequest {
   id: string;
   tenant_id: string;

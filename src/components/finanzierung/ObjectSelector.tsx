@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Building2, Home, Star, PenLine, Check, Loader2 } from 'lucide-react';
+import { Building2, PenLine, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -49,28 +49,11 @@ export function ObjectSelector({ request, onUpdate, readOnly = false }: ObjectSe
     enabled: !!activeOrganization?.id,
   });
 
-  // Fetch favorites from MOD-08
-  const { data: favorites, isLoading: favoritesLoading } = useQuery({
-    queryKey: ['investment-favorites-for-finance', activeOrganization?.id],
-    queryFn: async () => {
-      if (!activeOrganization?.id) return [];
-      const { data, error } = await supabase
-        .from('investment_favorites')
-        .select('id, title, location, price, external_listing_url')
-        .eq('tenant_id', activeOrganization.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!activeOrganization?.id,
-  });
-
   const updateObjectSource = useMutation({
     mutationFn: async () => {
       const updateData = {
         object_source: selectedSource,
         property_id: selectedSource === 'mod04_property' ? selectedPropertyId : null,
-        listing_id: selectedSource === 'mod08_favorite' ? selectedPropertyId : null,
         custom_object_data: selectedSource === 'custom' ? customData as any : null,
       };
 
@@ -101,7 +84,7 @@ export function ObjectSelector({ request, onUpdate, readOnly = false }: ObjectSe
         <CardHeader>
           <CardTitle>Objektauswahl</CardTitle>
           <CardDescription>
-            Wählen Sie ein Objekt aus Ihrem Portfolio, Ihren Favoriten oder geben Sie die Daten manuell ein.
+            Wählen Sie ein Objekt aus Ihrem Portfolio oder geben Sie die Daten manuell ein.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -123,21 +106,7 @@ export function ObjectSelector({ request, onUpdate, readOnly = false }: ObjectSe
                   <span className="font-medium">Aus meinem Portfolio</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Wählen Sie ein Objekt aus Ihrem Immobilienportfolio (MOD-04)
-                </p>
-              </Label>
-            </div>
-
-            {/* Option: From Favorites (MOD-08) */}
-            <div className="flex items-start gap-3">
-              <RadioGroupItem value="mod08_favorite" id="mod08_favorite" />
-              <Label htmlFor="mod08_favorite" className="flex-1 cursor-pointer">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4" />
-                  <span className="font-medium">Aus meinen Favoriten</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Wählen Sie ein Objekt aus Ihren Investment-Favoriten (MOD-08)
+                  Wählen Sie ein Objekt aus Ihrer Immobilienakte (MOD-04)
                 </p>
               </Label>
             </div>
@@ -212,65 +181,6 @@ export function ObjectSelector({ request, onUpdate, readOnly = false }: ObjectSe
             ) : (
               <p className="text-center text-muted-foreground py-4">
                 Keine Objekte im Portfolio vorhanden.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Favorites Selection */}
-      {selectedSource === 'mod08_favorite' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5" />
-              Investment-Favoriten
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {favoritesLoading ? (
-              <div className="flex justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : favorites?.length ? (
-              <div className="grid gap-3">
-                {favorites.map((favorite) => (
-                  <div
-                    key={favorite.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedPropertyId === favorite.id
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:border-primary/50'
-                    } ${readOnly ? 'pointer-events-none opacity-60' : ''}`}
-                    onClick={() => !readOnly && setSelectedPropertyId(favorite.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{favorite.title || 'Ohne Titel'}</span>
-                          {selectedPropertyId === favorite.id && (
-                            <Badge variant="default" className="gap-1">
-                              <Check className="h-3 w-3" />
-                              Ausgewählt
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {favorite.location || 'Standort unbekannt'}
-                        </p>
-                      </div>
-                      {favorite.price && (
-                        <span className="font-medium">
-                          {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(favorite.price)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-4">
-                Keine Favoriten vorhanden.
               </p>
             )}
           </CardContent>

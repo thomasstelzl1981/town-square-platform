@@ -22,6 +22,11 @@ const statusConfig: Record<FinanceRequestStatus, { label: string; color: string 
   collecting: { label: 'Dokumente sammeln', color: 'bg-yellow-500/10 text-yellow-600' },
   ready: { label: 'Bereit zur Einreichung', color: 'bg-green-500/10 text-green-600' },
   submitted: { label: 'Eingereicht', color: 'bg-primary/10 text-primary' },
+  assigned: { label: 'Manager zugewiesen', color: 'bg-blue-500/10 text-blue-600' },
+  in_processing: { label: 'In Bearbeitung', color: 'bg-blue-500/10 text-blue-600' },
+  needs_customer_action: { label: 'Aktion erforderlich', color: 'bg-orange-500/10 text-orange-600' },
+  completed: { label: 'Abgeschlossen', color: 'bg-green-500/10 text-green-600' },
+  rejected: { label: 'Abgelehnt', color: 'bg-destructive/10 text-destructive' },
 };
 
 export function FinanceRequestDetail() {
