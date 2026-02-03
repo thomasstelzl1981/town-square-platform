@@ -1,11 +1,11 @@
 /**
  * Organization Context Hook
  * 
- * P0-PERF: Optimized to use data from AuthContext instead of redundant fetches.
  * Manages active organization context for multi-tenant operations.
+ * Provides org switching, scope calculation, and context persistence.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type OrgType = 'internal' | 'platform' | 'partner' | 'subpartner' | 'client' | 'renter';
@@ -37,30 +37,68 @@ export function useOrgContext(): OrgContextData {
   
   const [isLoading, setIsLoading] = useState(false);
 
-  // P0-PERF: Build available orgs directly from AuthContext data
-  // No more redundant fetch - AuthContext already has activeOrganization with name + org_type
+  // Persist active org to localStorage
+  useEffect(() => {
+    if (activeOrganization?.id) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, activeOrganization.id);
+    }
+  }, [activeOrganization?.id]);
+
+  // Build available orgs list from memberships with actual org data
+  const [orgCache, setOrgCache] = useState<Map<string, { name: string; type: OrgType }>>(new Map());
+  
+  // Fetch org details for memberships
+  useEffect(() => {
+    const fetchOrgDetails = async () => {
+      if (memberships.length === 0) return;
+      
+      const { supabase } = await import('@/integrations/supabase/client');
+      const tenantIds = memberships.map(m => m.tenant_id);
+      
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name, org_type')
+        .in('id', tenantIds);
+      
+      if (orgs) {
+        const cache = new Map<string, { name: string; type: OrgType }>();
+        orgs.forEach(org => {
+          cache.set(org.id, { name: org.name, type: org.org_type as OrgType });
+        });
+        setOrgCache(cache);
+      }
+    };
+    
+    fetchOrgDetails();
+  }, [memberships]);
+
   const availableOrgs = useMemo(() => {
     if (isDevelopmentMode && memberships.length <= 1) {
-      // Dev mode: single org from activeOrganization
-      return activeOrganization ? [{
-        id: activeOrganization.id,
-        name: activeOrganization.name,
-        type: (activeOrganization.org_type as OrgType) || 'client',
-        isActive: true,
-      }] : [];
+      // In dev mode with mock data, provide sample orgs
+      return [
+        {
+          id: activeOrganization?.id || 'dev-org',
+          name: activeOrganization?.name || 'Entwicklungs-Tenant',
+          type: (activeOrganization?.org_type as OrgType) || 'client',
+          isActive: true,
+        },
+      ];
     }
 
-    // Multi-org: map from memberships, use activeOrganization for the active one
     return memberships.map((m) => {
-      const isActive = m.tenant_id === activeOrganization?.id;
+      const cached = orgCache.get(m.tenant_id);
       return {
         id: m.tenant_id,
-        name: isActive ? activeOrganization!.name : `Org ${m.tenant_id.slice(0, 8)}`,
-        type: isActive ? (activeOrganization?.org_type as OrgType) : 'client',
-        isActive,
+        name: cached?.name || (m.tenant_id === activeOrganization?.id 
+          ? activeOrganization.name 
+          : `Org ${m.tenant_id.slice(0, 8)}`),
+        type: cached?.type || (m.tenant_id === activeOrganization?.id 
+          ? (activeOrganization?.org_type as OrgType) 
+          : 'client'),
+        isActive: m.tenant_id === activeOrganization?.id,
       };
     });
-  }, [memberships, activeOrganization, isDevelopmentMode]);
+  }, [memberships, activeOrganization, isDevelopmentMode, orgCache]);
 
   const switchOrg = useCallback(async (orgId: string) => {
     setIsLoading(true);

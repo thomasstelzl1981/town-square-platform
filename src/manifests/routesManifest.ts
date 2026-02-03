@@ -89,6 +89,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "tiles", component: "TileCatalog", title: "Tile-Katalog" },
     { path: "integrations", component: "Integrations", title: "Integrationen" },
     { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
+    { path: "oversight", component: "Oversight", title: "Oversight" },
     { path: "audit", component: "AuditLog", title: "Audit Log" },
     { path: "billing", component: "Billing", title: "Abrechnung" },
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
@@ -490,7 +491,6 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
 // LEGACY ROUTES (DEPRECATED)
 // =============================================================================
 export const legacyRoutes: LegacyRoute[] = [
-  { path: "/admin/oversight", redirect_to: "/admin/tiles", reason: "Consolidated into Tile Catalog > Testdaten" },
   // Legacy Portfolio Routes
   { path: "/portfolio", redirect_to: "/portal/immobilien/portfolio", reason: "Legacy route" },
   { path: "/portfolio/new", redirect_to: "/portal/immobilien/neu", reason: "Legacy route" },

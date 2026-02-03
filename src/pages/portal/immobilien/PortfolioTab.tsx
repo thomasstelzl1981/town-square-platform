@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
-import { FileUploader, SubTabNav, ErrorState } from '@/components/shared';
+import { FileUploader, SubTabNav } from '@/components/shared';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -57,12 +57,11 @@ interface UnitWithProperty {
   leases_count: number; // Number of active leases
 }
 
-// P0-FIX: Use 'loans' table column names
 interface PropertyFinancing {
   property_id: string;
-  outstanding_balance_eur: number | null;
-  annuity_monthly_eur: number | null;
-  interest_rate_percent: number | null;
+  current_balance: number | null;
+  monthly_rate: number | null;
+  interest_rate: number | null;
 }
 
 interface LeaseData {
@@ -131,14 +130,11 @@ export function PortfolioTab() {
   });
 
   // Fetch UNITS with properties, leases (multi!), and financing - ANNUAL VALUES
-  // P0-FIX: Include 'available' status and use activeTenantId for consistency
-  const { data: unitsWithProperties, isLoading: unitsLoading, isError: unitsError, error: unitsErrorDetails, refetch: refetchUnits } = useQuery({
-    queryKey: ['portfolio-units-annual', activeTenantId],
+  const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
+    queryKey: ['portfolio-units-annual', activeOrganization?.id],
     queryFn: async () => {
-      if (!activeTenantId) return [];
-      
-      // Get units with property data - include 'active' AND 'available' status
-      const { data: units, error: queryError } = await supabase
+      // Get units with property data
+      const { data: units, error: unitsError } = await supabase
         .from('units')
         .select(`
           id,
@@ -159,10 +155,10 @@ export function PortfolioTab() {
             status
           )
         `)
-        .eq('tenant_id', activeTenantId)
-        .in('properties.status', ['active', 'available']);
+        .eq('tenant_id', activeOrganization!.id)
+        .eq('properties.status', 'active');
 
-      if (queryError) throw queryError;
+      if (unitsError) throw unitsError;
 
       // Get ALL active leases for multi-lease aggregation
       const { data: leases } = await supabase
@@ -178,23 +174,15 @@ export function PortfolioTab() {
             company
           )
         `)
-        .eq('tenant_id', activeTenantId)
+        .eq('tenant_id', activeOrganization!.id)
         .eq('status', 'active');
 
-      // P0-FIX: Use 'loans' table instead of 'property_financing'
-      // Use explicit type and any-cast to avoid TypeScript recursion in Supabase types
-      type LoanRow = {
-        property_id: string;
-        outstanding_balance_eur: number | null;
-        annuity_monthly_eur: number | null;
-        interest_rate_percent: number | null;
-      };
-      const financingResult = await (supabase as any)
-        .from('loans')
-        .select('property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-        .eq('tenant_id', activeTenantId)
-        .eq('status', 'active');
-      const financing = (financingResult.data || []) as LoanRow[];
+      // Get financing data
+      const { data: financing } = await supabase
+        .from('property_financing')
+        .select('property_id, current_balance, monthly_rate, interest_rate')
+        .eq('tenant_id', activeOrganization!.id)
+        .eq('is_active', true);
 
       // Build multi-lease map: unit_id -> { leases[], totalRent, tenantName }
       const leaseMap = new Map<string, { 
@@ -224,7 +212,7 @@ export function PortfolioTab() {
         leaseMap.set(l.unit_id, existing);
       });
 
-      // Build financing map - P0-FIX: Use loans table column names
+      // Build financing map
       const financingMap = new Map<string, { 
         balance: number | null; 
         monthlyRate: number | null;
@@ -232,9 +220,9 @@ export function PortfolioTab() {
       }>();
       financing?.forEach(f => {
         financingMap.set(f.property_id, { 
-          balance: f.outstanding_balance_eur, 
-          monthlyRate: f.annuity_monthly_eur,
-          interestRate: f.interest_rate_percent,
+          balance: f.current_balance, 
+          monthlyRate: f.monthly_rate,
+          interestRate: f.interest_rate,
         });
       });
 
@@ -285,33 +273,23 @@ export function PortfolioTab() {
         } as UnitWithProperty;
       }) || [];
     },
-    enabled: !!activeTenantId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!activeOrganization,
   });
 
-  // P0-FIX: Fetch financing from 'loans' table for aggregations
+  // Fetch property financing for aggregations
   const { data: financingData } = useQuery({
-    queryKey: ['portfolio-financing', activeTenantId],
-    queryFn: async (): Promise<PropertyFinancing[]> => {
-      if (!activeTenantId) return [];
-      // Use any-cast to avoid TypeScript recursion issues with loans table types
-      const result = await (supabase as any)
-        .from('loans')
-        .select('property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-        .eq('tenant_id', activeTenantId)
-        .eq('status', 'active');
+    queryKey: ['property-financing', activeOrganization?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('property_financing')
+        .select('property_id, current_balance, monthly_rate, interest_rate')
+        .eq('tenant_id', activeOrganization!.id)
+        .eq('is_active', true);
       
-      if (result.error) throw result.error;
-      // Map to interface explicitly
-      return (result.data || []).map((row: any) => ({
-        property_id: row.property_id as string,
-        outstanding_balance_eur: row.outstanding_balance_eur as number | null,
-        annuity_monthly_eur: row.annuity_monthly_eur as number | null,
-        interest_rate_percent: row.interest_rate_percent as number | null,
-      }));
+      if (error) throw error;
+      return data as PropertyFinancing[];
     },
-    enabled: !!activeTenantId,
-    staleTime: 2 * 60 * 1000,
+    enabled: !!activeOrganization,
   });
 
   // Filter units by selected context
@@ -361,11 +339,10 @@ export function PortfolioTab() {
     
     // ANNUAL income (already annual in new structure)
     const totalIncome = unitsToUse.reduce((sum, u) => sum + (u.annual_net_cold_rent || 0), 0);
-    // P0-FIX: Use loans table column names
-    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.outstanding_balance_eur || 0), 0);
+    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
     const totalAnnuity = unitsToUse.reduce((sum, u) => sum + (u.annuity_pa || 0), 0);
     const avgInterestRate = relevantFinancing.length 
-      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate_percent || 0), 0) / relevantFinancing.length 
+      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / relevantFinancing.length 
       : 3.5;
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
@@ -419,10 +396,9 @@ export function PortfolioTab() {
     if (!totals) return [];
     
     const annualIncome = totals.totalIncome;
-    // P0-FIX: Use loans table column names
     const annualInterest = financingData?.reduce((sum, f) => {
-      const balance = f.outstanding_balance_eur || 0;
-      const rate = (f.interest_rate_percent || 3.5) / 100;
+      const balance = f.current_balance || 0;
+      const rate = (f.interest_rate || 3.5) / 100;
       return sum + (balance * rate);
     }, 0) || 0;
     const nonRecoverableNk = totals.totalValue * 0.005;
@@ -537,23 +513,11 @@ export function PortfolioTab() {
     },
   ];
 
-  // P0-FIX: Show proper loading/error states
   if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Portfolio wird geladen...</span>
       </div>
-    );
-  }
-
-  if (unitsError) {
-    return (
-      <ErrorState
-        title="Portfolio konnte nicht geladen werden"
-        description={unitsErrorDetails?.message || 'Bitte versuchen Sie es erneut.'}
-        onRetry={() => refetchUnits()}
-      />
     );
   }
 
@@ -733,14 +697,7 @@ export function PortfolioTab() {
             }
             onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
             rowActions={(row) => (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/portal/immobilien/${row.property_id}`);
-                }}
-              >
+              <Button variant="ghost" size="sm">
                 <Eye className="h-4 w-4" />
               </Button>
             )}

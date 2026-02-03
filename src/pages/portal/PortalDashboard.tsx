@@ -1,14 +1,12 @@
-import React, { forwardRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LayoutGrid } from 'lucide-react';
 
-// P1-FIX: Wrap with forwardRef to prevent console warnings
-const PortalDashboard = forwardRef<HTMLDivElement>((_, ref) => {
+export default function PortalDashboard() {
   const { activeOrganization, profile, isDevelopmentMode } = useAuth();
 
   return (
-    <div ref={ref} className="p-4 md:p-6 lg:p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold">
@@ -34,8 +32,4 @@ const PortalDashboard = forwardRef<HTMLDivElement>((_, ref) => {
       </Card>
     </div>
   );
-});
-
-PortalDashboard.displayName = 'PortalDashboard';
-
-export default PortalDashboard;
+}

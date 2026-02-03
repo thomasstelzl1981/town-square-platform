@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -46,15 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDevelopmentMode] = useState(isDevelopmentEnvironment());
-  
-  // P0-PERF: Single-flight initialization using ref (no re-renders/re-subscribes)
-  const initRef = useRef<{
-    hasInitialized: boolean;
-    isInitializing: boolean;
-  }>({
-    hasInitialized: false,
-    isInitializing: false,
-  });
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
@@ -254,95 +245,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
-  // P0-PERF: Unified auth initialization - prevents race condition via ref-based single-flight
   useEffect(() => {
-    let isMounted = true;
-    const init = initRef.current;
-
-    // CRITICAL FIX: Only allow initialization if NOT already done or in progress.
-    // Do NOT reset flags on every mount - that breaks StrictMode handling.
-    // The ref persists across remounts, so we must respect its current state.
-    if (init.hasInitialized) {
-      // Already finished - just ensure loading is off and exit early
-      setIsLoading(false);
-      return;
-    }
-    if (init.isInitializing) {
-      // Currently running - don't interfere, let first instance finish
-      return;
-    }
-    
-    // Helper to handle auth state with single-flight guard
-    const handleAuthState = async (event: AuthChangeEvent, currentSession: Session | null, source: string) => {
-      if (!isMounted) return;
-      
-      // Guard: Skip INITIAL_SESSION if already initialized
-      if (init.hasInitialized && event === 'INITIAL_SESSION') {
-        console.log('[Auth] Skipping INITIAL_SESSION (already initialized)');
-        return;
-      }
-      
-      // Guard: Skip if currently initializing (prevents parallel calls)
-      if (init.isInitializing) {
-        console.log('[Auth] Skipping (initialization in progress)');
-        return;
-      }
-      
-      // Mark as initializing immediately (synchronous)
-      init.isInitializing = true;
-      console.log(`[Auth] ${source} triggered`);
-      
-      try {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        if (currentSession?.user) {
-          await fetchUserData(currentSession.user.id);
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserData(session.user.id);
+          }, 0);
         } else if (isDevelopmentMode) {
-          await fetchDevelopmentData();
+          // In development mode, load data without auth
+          setTimeout(() => {
+            fetchDevelopmentData();
+          }, 0);
         } else {
           setProfile(null);
           setMemberships([]);
           setActiveOrganization(null);
         }
-      } finally {
-        // Always reset ref flags, even if unmounted during async work.
-        init.hasInitialized = true;
-        init.isInitializing = false;
-
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    // Subscribe to auth changes (fires on login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        // Always handle SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          handleAuthState(event, currentSession, `onAuthStateChange:${event}`);
-        } else if (!init.hasInitialized) {
-          // Initial event - only process if not yet initialized
-          handleAuthState(event, currentSession, 'onAuthStateChange:INITIAL');
-        }
+        setIsLoading(false);
       }
     );
 
-    // Fallback: getSession only if onAuthStateChange hasn't fired after 600ms (increased from 400ms)
-    const fallbackTimeout = setTimeout(async () => {
-      if (!init.hasInitialized && !init.isInitializing && isMounted) {
-        console.log('[Auth] Fallback: getSession()');
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!init.hasInitialized && !init.isInitializing && isMounted) {
-          await handleAuthState('INITIAL_SESSION', currentSession, 'getSession:fallback');
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      } else if (isDevelopmentMode) {
+        // In development mode, load data without auth
+        fetchDevelopmentData();
       }
-    }, 600);
+      setIsLoading(false);
+    });
 
-    return () => {
-      isMounted = false;
-      clearTimeout(fallbackTimeout);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]);
 
   const signIn = async (email: string, password: string) => {
