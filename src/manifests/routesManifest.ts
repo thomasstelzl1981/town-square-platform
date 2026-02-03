@@ -98,33 +98,35 @@ export const zone1Admin: ZoneDefinition = {
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
     { path: "commissions", component: "CommissionApproval", title: "Provisionen" },
     { path: "support", component: "Support", title: "Support" },
-    // FutureRoom
+    // =========================================================================
+    // FUTUREROOM — GOVERNANCE + INTAKE (5 Sub-Items per Spec)
+    // SoT for finance requests after submission until assignment
+    // =========================================================================
     { path: "futureroom", component: "FutureRoom", title: "Future Room" },
-    { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
+    { path: "futureroom/inbox", component: "FutureRoomInbox", title: "Inbox" },
+    { path: "futureroom/zuweisung", component: "FutureRoomZuweisung", title: "Zuweisung" },
     { path: "futureroom/finanzierungsmanager", component: "FutureRoomManagers", title: "Finanzierungsmanager" },
-    // Agents (NEW)
+    { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
+    { path: "futureroom/monitoring", component: "FutureRoomMonitoring", title: "Monitoring" },
+    // Agents
     { path: "agents", component: "AgentsDashboard", title: "Agents" },
     { path: "agents/catalog", component: "AgentsCatalog", title: "Agenten-Katalog" },
     { path: "agents/instances", component: "AgentsInstances", title: "Agenten-Instanzen" },
     { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
     { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
-    // Acquiary (NEW)
+    // Acquiary
     { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
     { path: "acquiary/zuordnung", component: "AcquiaryZuordnung", title: "Zuordnung" },
     { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
     { path: "acquiary/mandate", component: "AcquiaryMandate", title: "Mandate" },
-    // Sales Desk (NEW)
+    // Sales Desk
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
-    // Finance Desk (NEW)
+    // Finance Desk (legacy, redirects to FutureRoom)
     { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
-    { path: "finance-desk/inbox", component: "FinanceDeskInbox", title: "Inbox" },
-    { path: "finance-desk/berater", component: "FinanceDeskBerater", title: "Berater" },
-    { path: "finance-desk/zuweisung", component: "FinanceDeskZuweisung", title: "Zuweisung" },
-    { path: "finance-desk/monitoring", component: "FinanceDeskMonitoring", title: "Monitoring" },
   ],
 };
 
@@ -224,6 +226,10 @@ export const zone2Portal: ZoneDefinition = {
         { path: "expose/:propertyId", component: "ExposeDetail", title: "Verkaufs-Exposé", dynamic: true },
       ],
     },
+    // =========================================================================
+    // MOD-07: FINANZIERUNG — Customer Finance Preparation
+    // SoT UNTIL Submit → then Zone 1 FutureRoom takes over
+    // =========================================================================
     "MOD-07": {
       name: "Finanzierung",
       base: "finanzierung",
@@ -240,6 +246,9 @@ export const zone2Portal: ZoneDefinition = {
         { path: "anfrage/:requestId", component: "AnfrageDetailPage", title: "Anfrage-Details", dynamic: true },
       ],
     },
+    // =========================================================================
+    // MOD-08: Investment-Suche
+    // =========================================================================
     "MOD-08": {
       name: "Investment-Suche",
       base: "investments",
@@ -279,6 +288,11 @@ export const zone2Portal: ZoneDefinition = {
         { path: "werbung", component: "WerbungTab", title: "Werbung" },
       ],
     },
+    // =========================================================================
+    // MOD-11: FINANZIERUNGSMANAGER — Finance Manager Workbench
+    // Operational SoT AFTER acceptance/assignment from Zone 1
+    // Role-gated: requires finance_manager
+    // =========================================================================
     "MOD-11": {
       name: "Finanzierungsmanager",
       base: "finanzierungsmanager",
@@ -286,15 +300,13 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 11,
       visibility: { default: false, org_types: ["partner"], requires_role: ["finance_manager"] },
       tiles: [
-        // P0-FIX: Empty path "" replaced with explicit "how-it-works" for SSOT consistency
-        { path: "how-it-works", component: "HowItWorksTab", title: "So funktioniert's", default: true },
-        { path: "selbstauskunft", component: "CaseDetailTab", title: "Selbstauskunft" },
-        { path: "einreichen", component: "SubmitToBankTab", title: "Einreichen" },
-        { path: "status", component: "StatusTab", title: "Status" },
+        { path: "dashboard", component: "FMDashboard", title: "Dashboard", default: true },
+        { path: "faelle", component: "FMFaelle", title: "Fälle" },
+        { path: "kommunikation", component: "FMKommunikation", title: "Kommunikation" },
+        { path: "status", component: "FMStatus", title: "Status" },
       ],
       dynamic_routes: [
-        { path: "selbstauskunft/:caseId", component: "CaseDetailTab", title: "Fall-Details", dynamic: true },
-        { path: "einreichen/:caseId", component: "SubmitToBankTab", title: "Fall einreichen", dynamic: true },
+        { path: "faelle/:requestId", component: "FMFallDetail", title: "Fall-Details", dynamic: true },
       ],
     },
     // =========================================================================
@@ -500,6 +512,20 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/portal/finanzierung/readiness", redirect_to: "/portal/finanzierung/selbstauskunft", reason: "MOD-07 tile rename" },
   { path: "/portal/finanzierung/export", redirect_to: "/portal/finanzierung/anfrage", reason: "MOD-07 tile rename" },
   { path: "/portal/finanzierung/partner", redirect_to: "/portal/finanzierung/status", reason: "MOD-07 tile rename" },
+  // Legacy Finance Module Routes → NEW MOD-07
+  { path: "/portal/finance", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
+  { path: "/portal/finance/*", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
+  { path: "/portal/financing", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
+  { path: "/portal/financing/*", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
+  // Legacy Admin Finance Desk → FutureRoom
+  { path: "/admin/finance-desk", redirect_to: "/admin/futureroom", reason: "Consolidated into FutureRoom" },
+  { path: "/admin/finance-desk/*", redirect_to: "/admin/futureroom", reason: "Consolidated into FutureRoom" },
+  // Legacy MOD-11 Routes
+  { path: "/portal/finanzierungsmanager/how-it-works", redirect_to: "/portal/finanzierungsmanager/dashboard", reason: "MOD-11 restructure" },
+  { path: "/portal/finanzierungsmanager/selbstauskunft", redirect_to: "/portal/finanzierungsmanager/faelle", reason: "MOD-11 restructure" },
+  { path: "/portal/finanzierungsmanager/selbstauskunft/:id", redirect_to: "/portal/finanzierungsmanager/faelle/:id", reason: "MOD-11 restructure" },
+  { path: "/portal/finanzierungsmanager/einreichen", redirect_to: "/portal/finanzierungsmanager/faelle", reason: "MOD-11 restructure" },
+  { path: "/portal/finanzierungsmanager/einreichen/:id", redirect_to: "/portal/finanzierungsmanager/faelle/:id", reason: "MOD-11 restructure" },
 ];
 
 // =============================================================================

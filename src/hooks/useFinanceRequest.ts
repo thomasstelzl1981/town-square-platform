@@ -217,3 +217,44 @@ export function useSubmitFinanceRequest() {
     },
   });
 }
+
+// Update finance request status (for MOD-11)
+export function useUpdateRequestStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      requestId, 
+      status, 
+      notes 
+    }: { 
+      requestId: string; 
+      status: string;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from('finance_requests')
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Optionally create audit event
+      if (notes) {
+        // TODO: Create audit event in case_events table
+        console.log('Status change note:', notes);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-request'] });
+      queryClient.invalidateQueries({ queryKey: ['future-room-cases'] });
+      toast.success('Status aktualisiert');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+}

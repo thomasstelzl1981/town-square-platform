@@ -127,9 +127,8 @@ export interface ApplicantProfile {
 // Finance Request Types
 // ============================================
 
-export type FinanceRequestStatus = 'draft' | 'collecting' | 'ready' | 'submitted';
+export type FinanceRequestStatus = 'draft' | 'collecting' | 'ready' | 'submitted' | 'in_processing' | 'needs_customer_action' | 'completed' | 'rejected' | string;
 export type ObjectSource = 'mod04_property' | 'mod08_favorite' | 'custom';
-
 export interface FinanceRequest {
   id: string;
   tenant_id: string;
@@ -137,10 +136,10 @@ export interface FinanceRequest {
   status: FinanceRequestStatus;
   
   // Object Source
-  object_source: ObjectSource | null;
+  object_source: ObjectSource | string | null;
   property_id: string | null;
   listing_id: string | null;
-  custom_object_data: Record<string, unknown> | null;
+  custom_object_data: unknown;
   
   // Storage
   storage_folder_id: string | null;
@@ -155,7 +154,7 @@ export interface FinanceRequest {
 // Finance Mandate Types (Zone 1)
 // ============================================
 
-export type MandateStatus = 'new' | 'triage' | 'delegated' | 'accepted' | 'rejected';
+export type MandateStatus = 'new' | 'triage' | 'delegated' | 'accepted' | 'rejected' | 'assigned' | 'submitted_to_zone1' | string;
 
 export interface FinanceMandate {
   id: string;
@@ -181,22 +180,27 @@ export interface FinanceMandate {
 // Future Room Case Types (MOD-11)
 // ============================================
 
-export type FutureRoomCaseStatus = 'active' | 'missing_docs' | 'ready_to_submit' | 'submitted' | 'closed';
+export type FutureRoomCaseStatus = 'active' | 'missing_docs' | 'ready_to_submit' | 'submitted' | 'closed' | 'completed';
 
 export interface FutureRoomCase {
   id: string;
   manager_tenant_id: string;
   finance_mandate_id: string;
   
-  status: FutureRoomCaseStatus;
+  status: FutureRoomCaseStatus | string;
   
   // Bank Submission
   target_bank_id: string | null;
   submitted_to_bank_at: string | null;
   bank_response: string | null;
   
+  // Timestamps
+  first_action_at?: string | null;
   created_at: string;
   updated_at: string;
+  
+  // Joined relations (from useFutureRoomCases query) - using any for flexibility
+  finance_mandates?: any;
 }
 
 // ============================================
