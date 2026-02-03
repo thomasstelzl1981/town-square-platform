@@ -1,215 +1,213 @@
 
-# Phasenplan: Saubere Golden Path Musterdaten
+# Performance-Optimierungsplan
 
-## Übersicht
+## Problemzusammenfassung
 
-Dieser Plan bereinigt die doppelten Daten und stellt sicher, dass die Musterdaten korrekt angelegt und verknüpft sind.
+Die App leidet unter extrem langen Ladezeiten aus folgenden Gründen:
 
----
+| Problem | Ursache | Impact |
+|---------|---------|--------|
+| Race Condition | `AuthContext` ruft `fetchUserData` doppelt auf (onAuthStateChange + getSession) | 2x DB-Requests |
+| Redundante Org-Fetches | `useOrgContext.ts` holt Organizations erneut obwohl AuthContext sie schon hat | +1-3x Requests |
+| PortalNav DB-Calls | Eigener Fetch für `tenant_tile_activation` und `memberships` | +2x Requests |
+| Fehlende Query-Caching | React Query hat keine `staleTime`, re-fetcht bei jedem Mount | N x Requests |
+| forwardRef-Warning | ArmstrongSheet/Sheet erzeugt React-Warnungen und Re-Renders | UI-Flicker |
 
-## Phase 1: Vollständige Löschung
-
-**Ziel:** Tabula rasa für den Dev-Tenant
-
-**Zu löschende Daten:**
-- Alle `document_links` (Verknüpfungen)
-- Alle `documents` (Demo-PDFs)
-- Alle `leases` (Mietverträge)
-- Alle `loans` (Darlehen)
-- Alle `units` (inkl. auto-generierte MAIN)
-- Alle `properties`
-- Alle `context_members`
-- Alle `landlord_contexts`
-- Alle `contacts`
-- Alle `storage_nodes` (Ordnerstruktur wird neu generiert)
-- Alle `tenant_tile_activation`
-
-**Nicht löschen:**
-- `organizations` (System of a Town bleibt)
-- `profiles` (thomas.stelzl bleibt)
-- `memberships` (Platform-Admin-Zuordnung bleibt)
+**Gesamt-Impact:** 12+ redundante API-Requests beim initialen Laden.
 
 ---
 
-## Phase 2: Datenmodell & Mapping
+## Phasenplan
 
-### 2.1 Wer kommt wohin?
+### Phase 1: AuthContext Race Condition beheben
+**Datei:** `src/contexts/AuthContext.tsx`
 
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          STAMMDATEN (MOD-01)                            │
-│                                                                          │
-│  profiles → Der eingeloggte User (thomas.stelzl)                        │
-│             - Nicht die Mustermanns! Das ist der echte Benutzer         │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          KONTAKTE (MOD-02)                               │
-│                                                                          │
-│  contacts → Alle externen Kontakte:                                     │
-│             - Thomas Bergmann (Mieter)                                  │
-│             - Sandra Hoffmann (Hausverwaltung, Immo-HV GmbH)            │
-│             - Michael Weber (Bankberater, Sparkasse Leipzig)            │
-│                                                                          │
-│  ⚠️ Max & Lisa Mustermann sind KEINE Kontakte!                         │
-│     Sie sind Eigentümer und gehören in landlord_contexts/context_members │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     IMMOBILIEN/KONTEXTE (MOD-04)                         │
-│                                                                          │
-│  landlord_contexts → Eigentümer-Kontexte (steuerliche Einheit):         │
-│             - "Familie Mustermann" (PRIVATE, VERMÖGENSVERWALTUNG)       │
-│               zvE: 98.000€, Grenzsteuersatz: 42%                        │
-│                                                                          │
-│  context_members → Die Eigentümer selbst:                               │
-│             - Max Mustermann (50%, 72k brutto, Softwareentwickler)      │
-│             - Lisa Mustermann (50%, 54k brutto, Marketing-Managerin)    │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     IMMOBILIEN/PORTFOLIO (MOD-04)                        │
-│                                                                          │
-│  properties → Die Immobilie:                                            │
-│             - Leipziger Str. 42, 04109 Leipzig                          │
-│             - ETW, 62m², Baujahr 1998                                   │
-│             - Kaufpreis: 200.000€, Verkehrswert: 220.000€               │
-│             - owner_context_id → Familie Mustermann (Verknüpfung!)      │
-│                                                                          │
-│  units → KEINE separate Unit erstellen!                                 │
-│          Der Trigger erzeugt automatisch eine MAIN-Unit                 │
-│          → Wir aktualisieren nur diese MAIN-Unit mit den Daten          │
-│                                                                          │
-│  leases → Mietvertrag:                                                  │
-│          - tenant_contact_id → Thomas Bergmann (Kontakt)                │
-│          - rent_cold_eur: 682€, nk_advance_eur: 155€                    │
-│          - start_date: 2022-06-01                                       │
-│                                                                          │
-│  loans → Darlehen:                                                      │
-│          - bank_name: Sparkasse Leipzig                                 │
-│          - outstanding_balance_eur: 152.000€                            │
-│          - interest_rate: 3.25%                                         │
-│          - property_id (nicht unit_id!) → Leipzig-Property              │
-└─────────────────────────────────────────────────────────────────────────┘
+**Problem (Zeilen 248-285):**
+```typescript
+// Gleichzeitige Aufrufe:
+supabase.auth.onAuthStateChange() → fetchUserData()
+supabase.auth.getSession()        → fetchUserData() // DOPPELT!
 ```
 
-### 2.2 Ablauf mit Trigger-Logik
+**Lösung:**
+- Flag einführen (`hasInitialized`), das verhindert, dass `getSession()` nochmal fetcht, wenn `onAuthStateChange` bereits gefeuert hat.
+- Alternativ: `getSession()` nur als Fallback, wenn `onAuthStateChange` nach 500ms nicht feuert.
 
-```text
-1. Landlord Context erstellen → "Familie Mustermann"
-2. Context Members hinzufügen → Max, Lisa
-3. Kontakte erstellen → Thomas (Mieter), Sandra (HV), Michael (Bank)
-4. Property erstellen (INSERT) → Trigger erzeugt automatisch MAIN-Unit + 18 Ordner
-5. Property UPDATE → owner_context_id auf Familie Mustermann setzen
-6. MAIN-Unit UPDATE → 62m², 3 Zimmer, current_monthly_rent: 682€
-7. Lease erstellen → Verknüpft Unit mit Thomas Bergmann
-8. Loan erstellen → Verknüpft Property mit Sparkasse-Daten
+```typescript
+// Neuer Ablauf:
+const [hasInitialized, setHasInitialized] = useState(false);
+
+useEffect(() => {
+  const { subscription } = supabase.auth.onAuthStateChange((event, session) => {
+    if (!hasInitialized) {
+      setHasInitialized(true);
+      // ... fetch data
+    }
+  });
+
+  // Fallback nur wenn nach 500ms noch nichts passiert
+  const timeout = setTimeout(() => {
+    if (!hasInitialized) {
+      supabase.auth.getSession().then(...);
+    }
+  }, 500);
+
+  return () => { subscription.unsubscribe(); clearTimeout(timeout); };
+}, []);
 ```
 
 ---
 
-## Phase 3: UI-Routen-Prüfung
+### Phase 2: useOrgContext redundante Fetches eliminieren
+**Datei:** `src/hooks/useOrgContext.ts`
 
-### Welche Route zeigt was?
+**Problem (Zeilen 51-73):**
+```typescript
+// Holt Organizations erneut, obwohl AuthContext sie schon hat:
+const { data: orgs } = await supabase
+  .from('organizations')
+  .select('id, name, org_type')
+  .in('id', tenantIds);
+```
 
-| Route | Zeigt Daten aus | Erwartete Anzeige |
-|-------|-----------------|-------------------|
-| `/portal/stammdaten/profil` | `profiles` | thomas.stelzl (der Benutzer) |
-| `/portal/office/kontakte` | `contacts` | Thomas, Sandra, Michael (3 Kontakte) |
-| `/portal/immobilien/kontexte` | `landlord_contexts`, `context_members` | "Familie Mustermann" mit Max & Lisa |
-| `/portal/immobilien/portfolio` | `properties`, `units`, `leases`, `loans` | 1 Property, 1 Unit, 1 Mieter, 1 Darlehen |
-| `/portal/immobilien/:id` | Unit-Dossier (alle Blöcke A-J) | Vollständige Immobilienakte Leipzig |
+**Lösung:**
+- AuthContext liefert bereits `activeOrganization` mit `name` und `org_type`.
+- Für Multi-Org-Szenarien: Cache im AuthContext erweitern, nicht im Hook.
+- Im Single-Org-Modus: Fetch komplett entfernen.
 
-### Keine UI für:
-- Kontexte-Property-Zuordnung: `context_property_assignment` wird erst bei Multi-Kontext gebraucht
-- Dokumente ohne Dateien: Document-Links bleiben vorerst leer (keine Demo-PDFs)
+```typescript
+// Vereinfacht:
+const availableOrgs = useMemo(() => {
+  if (!activeOrganization) return [];
+  return [{
+    id: activeOrganization.id,
+    name: activeOrganization.name,
+    type: activeOrganization.org_type as OrgType,
+    isActive: true,
+  }];
+}, [activeOrganization]);
+```
 
 ---
 
-## Phase 4: Implementierung
+### Phase 3: PortalNav Fetches konsolidieren
+**Datei:** `src/components/portal/PortalNav.tsx`
 
-### SQL-Schritte
-
-**Schritt 1: Bereinigung**
-```sql
-DELETE FROM document_links WHERE tenant_id = 'a0000000-...';
-DELETE FROM documents WHERE tenant_id = 'a0000000-...';
-DELETE FROM leases WHERE tenant_id = 'a0000000-...';
-DELETE FROM loans WHERE tenant_id = 'a0000000-...';
-DELETE FROM units WHERE tenant_id = 'a0000000-...';
-DELETE FROM properties WHERE tenant_id = 'a0000000-...';
-DELETE FROM context_members WHERE tenant_id = 'a0000000-...';
-DELETE FROM landlord_contexts WHERE tenant_id = 'a0000000-...';
-DELETE FROM contacts WHERE tenant_id = 'a0000000-...';
-DELETE FROM storage_nodes WHERE tenant_id = 'a0000000-...';
+**Problem (Zeilen 89-118):**
+```typescript
+// Eigene Fetches für:
+fetchActiveTileCodes(tenantId)  // tenant_tile_activation
+fetchUserRoles(userId)          // memberships
 ```
 
-**Schritt 2: Landlord Context + Members**
-```sql
-INSERT INTO landlord_contexts (id, tenant_id, name, context_type, tax_regime, is_default, ...)
-VALUES ('fix-id', 'a000...', 'Familie Mustermann', 'PRIVATE', 'VERMÖGENSVERWALTUNG', true, ...);
+**Lösung:**
+- `memberships` kommen bereits aus `useAuth()` (Zeile 154).
+- `tenant_tile_activation` in AuthContext integrieren ODER React Query mit `staleTime`.
 
-INSERT INTO context_members (context_id, tenant_id, first_name, last_name, ownership_share, ...)
-VALUES 
-  ('fix-id', 'a000...', 'Max', 'Mustermann', 50, ...),
-  ('fix-id', 'a000...', 'Lisa', 'Mustermann', 50, ...);
+**Option A (schneller):** React Query mit Caching:
+```typescript
+const { data: activeTileCodes } = useQuery({
+  queryKey: ['tile-activations', activeOrganization?.id],
+  queryFn: () => fetchActiveTileCodes(activeOrganization!.id),
+  enabled: !!activeOrganization?.id,
+  staleTime: 5 * 60 * 1000, // 5 Minuten
+  cacheTime: 10 * 60 * 1000,
+});
 ```
 
-**Schritt 3: Kontakte (nur externe!)**
-```sql
-INSERT INTO contacts (id, tenant_id, first_name, last_name, email, company, notes)
-VALUES 
-  ('mieter-id', 'a000...', 'Thomas', 'Bergmann', 't.bergmann@email.de', NULL, 'Mieter'),
-  ('hv-id', 'a000...', 'Sandra', 'Hoffmann', 's.hoffmann@immo-hv.de', 'Immo-HV GmbH', 'Hausverwaltung'),
-  ('bank-id', 'a000...', 'Michael', 'Weber', 'm.weber@sparkasse.de', 'Sparkasse Leipzig', 'Bankberater');
+**Option B (sauberer):** In AuthContext verschieben und im Context mitliefern.
+
+---
+
+### Phase 4: React Query Global Defaults setzen
+**Datei:** `src/App.tsx`
+
+**Problem (Zeile 30):**
+```typescript
+const queryClient = new QueryClient(); // Keine Defaults!
 ```
 
-**Schritt 4: Property (Trigger erzeugt MAIN-Unit + Storage)**
-```sql
-INSERT INTO properties (id, tenant_id, code, city, address, ...)
-VALUES ('prop-id', 'a000...', 'DEMO-001', 'Leipzig', 'Leipziger Str. 42', ...);
-
--- Owner-Context verknüpfen
-UPDATE properties SET owner_context_id = 'fix-id' WHERE id = 'prop-id';
+**Lösung:**
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 Minuten default
+      cacheTime: 5 * 60 * 1000, // 5 Minuten cache
+      refetchOnWindowFocus: false, // Kein Re-Fetch bei Tab-Wechsel
+      retry: 1, // Max 1 Retry
+    },
+  },
+});
 ```
 
-**Schritt 5: MAIN-Unit aktualisieren (nicht neu erstellen!)**
-```sql
-UPDATE units 
-SET area_sqm = 62, rooms = 3, floor = 3, current_monthly_rent = 682
-WHERE property_id = 'prop-id' AND unit_number = 'MAIN';
+---
+
+### Phase 5: forwardRef-Warnung beheben
+**Datei:** `src/components/portal/ArmstrongSheet.tsx`
+
+**Problem:**
+React warnt, dass Function Components keine refs erhalten können. Das Sheet aus Radix gibt einen ref weiter, den `ArmstrongSheet` nicht handled.
+
+**Lösung:**
+```typescript
+import { forwardRef } from 'react';
+
+export const ArmstrongSheet = forwardRef<HTMLDivElement, ArmstrongSheetProps>(
+  ({ open, onOpenChange }, ref) => {
+    // ... rest
+  }
+);
+ArmstrongSheet.displayName = 'ArmstrongSheet';
 ```
 
-**Schritt 6: Lease + Loan**
-```sql
-INSERT INTO leases (unit_id, tenant_id, tenant_contact_id, rent_cold_eur, ...)
-VALUES ((SELECT id FROM units WHERE property_id = 'prop-id'), 'a000...', 'mieter-id', 682, ...);
+---
 
-INSERT INTO loans (property_id, tenant_id, bank_name, outstanding_balance_eur, ...)
-VALUES ('prop-id', 'a000...', 'Sparkasse Leipzig', 152000, ...);
+### Phase 6: Lazy Loading mit Preload (Optional)
+**Problem:** Erste Klicks auf Module laden erst dann die Chunks.
+
+**Lösung:** Preload der häufigsten Module:
+```typescript
+// In PortalLayout.tsx oder App.tsx
+useEffect(() => {
+  // Preload häufig genutzte Module
+  import('./pages/portal/ImmobilienPage');
+  import('./pages/portal/StammdatenPage');
+  import('./pages/portal/OfficePage');
+}, []);
 ```
 
 ---
 
 ## Zusammenfassung der Änderungen
 
+| Datei | Änderung |
+|-------|----------|
+| `AuthContext.tsx` | Race Condition mit Flag beheben |
+| `useOrgContext.ts` | Redundante Org-Fetches entfernen |
+| `PortalNav.tsx` | Fetches durch AuthContext-Daten ersetzen oder cachen |
+| `App.tsx` | QueryClient mit staleTime/cacheTime konfigurieren |
+| `ArmstrongSheet.tsx` | forwardRef hinzufügen |
+
+## Erwartetes Ergebnis
+
 | Vorher | Nachher |
 |--------|---------|
-| 5 Kontakte (inkl. Max & Lisa) | 3 Kontakte (nur externe) |
-| Max & Lisa in contacts | Max & Lisa in context_members |
-| 2 Units (Duplikat) | 1 Unit (MAIN, vom Trigger) |
-| owner_context_id = null | owner_context_id = Familie Mustermann |
-| 9 Dokumente ohne Dateien | 0 Dokumente (später hinzufügen) |
+| 12+ API-Requests beim Load | 3-4 Requests |
+| ~3-5s Ladezeit | <1s Ladezeit |
+| Console-Warnungen | Keine Warnungen |
+| Re-Fetch bei jedem Tab-Wechsel | Cached für 2 Minuten |
 
 ---
 
-## Technische Hinweise
+## Technische Details
 
-1. **Trigger beachten**: `on_property_created` erzeugt automatisch MAIN-Unit + 18 Ordner
-2. **Keine Unit manuell erstellen**: Nur UPDATE der automatisch generierten MAIN-Unit
-3. **Kontakte vs. Eigentümer**: Strikte Trennung - Eigentümer sind keine contacts!
-4. **Foreign Keys**: Lease → Unit → Property → Landlord Context (Kette muss stimmen)
+### Reihenfolge der Implementierung
+1. **Phase 4 zuerst** (QueryClient Defaults) — schnellster Impact
+2. **Phase 1** (AuthContext Race Condition) — verhindert doppelte Initialisierung
+3. **Phase 2 + 3** (Hooks konsolidieren) — eliminiert redundante Fetches
+4. **Phase 5** (forwardRef) — eliminiert Console-Noise
+5. **Phase 6** (Preload) — optional, für "erster Klick"-Optimierung
 
+### Rollback-Strategie
+Jede Phase ist unabhängig und kann einzeln reverted werden, falls Probleme auftreten.
