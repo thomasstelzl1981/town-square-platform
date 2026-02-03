@@ -4,6 +4,11 @@
  * This component generates all Routes from the manifest.
  * App.tsx should only define special routes and delegate everything else here.
  * 
+ * P0 FIX: Now generates EXPLICIT child routes for:
+ * - Module tiles (path: "<tile.path>")
+ * - Dynamic routes (path: "<dynamic.path>")
+ * - Index redirects (to default tile)
+ * 
  * NO ROUTE EXISTS UNLESS DECLARED IN routesManifest.ts
  */
 
@@ -44,6 +49,7 @@ import {
   zone2Portal,
   zone3Websites,
   legacyRoutes,
+  type ModuleDefinition,
 } from '@/manifests/routesManifest';
 
 // Zone 1: Admin Portal Components
@@ -75,34 +81,37 @@ import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import PortalDashboard from '@/pages/portal/PortalDashboard';
 
-// Zone 2: Module Pages (existing)
-import StammdatenPage from '@/pages/portal/StammdatenPage';
-import OfficePage from '@/pages/portal/OfficePage';
-import DMSPage from '@/pages/portal/DMSPage';
-import ImmobilienPage from '@/pages/portal/ImmobilienPage';
-import MSVPage from '@/pages/portal/MSVPage';
-import VerkaufPage from '@/pages/portal/VerkaufPage';
-import FinanzierungPage from '@/pages/portal/FinanzierungPage';
-import FinanzierungsmanagerPage from '@/pages/portal/FinanzierungsmanagerPage';
-import InvestmentsPage from '@/pages/portal/InvestmentsPage';
-import VertriebspartnerPage from '@/pages/portal/VertriebspartnerPage';
-import LeadsPage from '@/pages/portal/LeadsPage';
-
-// Zone 2: NEW Module Pages (MOD-12 to MOD-20)
-import AkquiseManagerPage from '@/pages/portal/AkquiseManagerPage';
-import ProjektePage from '@/pages/portal/ProjektePage';
-import CommunicationProPage from '@/pages/portal/CommunicationProPage';
-import FortbildungPage from '@/pages/portal/FortbildungPage';
-import ServicesPage from '@/pages/portal/ServicesPage';
-import CarsPage from '@/pages/portal/CarsPage';
-import FinanzanalysePage from '@/pages/portal/FinanzanalysePage';
-import PhotovoltaikPage from '@/pages/portal/PhotovoltaikPage';
-import MietyPortalPage from '@/pages/portal/MietyPortalPage';
+// Zone 2: Module Page Components (Lazy loaded)
+// These handle the "How It Works" landing and tile routing internally
 
 // Zone 2: Dynamic Route Components
-import PropertyDetail from '@/pages/portfolio/PropertyDetail';
-import RentalExposeDetail from '@/pages/portal/msv/RentalExposeDetail';
-import { ExposeDetail } from '@/pages/portal/verkauf';
+const PropertyDetailPage = React.lazy(() => import('@/pages/portal/immobilien/PropertyDetailPage'));
+const RentalExposeDetail = React.lazy(() => import('@/pages/portal/msv/RentalExposeDetail'));
+const ExposeDetail = React.lazy(() => import('@/pages/portal/verkauf/ExposeDetail'));
+const AnfrageDetailPage = React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage'));
+const FMFallDetail = React.lazy(() => import('@/pages/portal/finanzierungsmanager/FMFallDetail'));
+
+// Zone 2: Module Pages (with internal routing)
+const StammdatenPage = React.lazy(() => import('@/pages/portal/StammdatenPage'));
+const OfficePage = React.lazy(() => import('@/pages/portal/OfficePage'));
+const DMSPage = React.lazy(() => import('@/pages/portal/DMSPage'));
+const ImmobilienPage = React.lazy(() => import('@/pages/portal/ImmobilienPage'));
+const MSVPage = React.lazy(() => import('@/pages/portal/MSVPage'));
+const VerkaufPage = React.lazy(() => import('@/pages/portal/VerkaufPage'));
+const FinanzierungPage = React.lazy(() => import('@/pages/portal/FinanzierungPage'));
+const FinanzierungsmanagerPage = React.lazy(() => import('@/pages/portal/FinanzierungsmanagerPage'));
+const InvestmentsPage = React.lazy(() => import('@/pages/portal/InvestmentsPage'));
+const VertriebspartnerPage = React.lazy(() => import('@/pages/portal/VertriebspartnerPage'));
+const LeadsPage = React.lazy(() => import('@/pages/portal/LeadsPage'));
+const AkquiseManagerPage = React.lazy(() => import('@/pages/portal/AkquiseManagerPage'));
+const ProjektePage = React.lazy(() => import('@/pages/portal/ProjektePage'));
+const CommunicationProPage = React.lazy(() => import('@/pages/portal/CommunicationProPage'));
+const FortbildungPage = React.lazy(() => import('@/pages/portal/FortbildungPage'));
+const ServicesPage = React.lazy(() => import('@/pages/portal/ServicesPage'));
+const CarsPage = React.lazy(() => import('@/pages/portal/CarsPage'));
+const FinanzanalysePage = React.lazy(() => import('@/pages/portal/FinanzanalysePage'));
+const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPage'));
+const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
 
 // Zone 3: Kaufy Website
 import KaufyLayout from '@/pages/zone3/kaufy/KaufyLayout';
@@ -153,6 +162,15 @@ import SotFAQ from '@/pages/zone3/sot/SotFAQ';
 import NotFound from '@/pages/NotFound';
 
 // =============================================================================
+// Loading Fallback
+// =============================================================================
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-8">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
+
+// =============================================================================
 // Component Map for Zone 1
 // =============================================================================
 const adminComponentMap: Record<string, React.ComponentType> = {
@@ -189,10 +207,9 @@ const adminDeskMap: Record<string, React.ComponentType> = {
 };
 
 // =============================================================================
-// Component Map for Zone 2 Module Pages
+// Component Map for Zone 2 Module Pages (with internal routing)
 // =============================================================================
-const portalModulePageMap: Record<string, React.ComponentType> = {
-  // Existing modules (MOD-01 to MOD-11)
+const portalModulePageMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   stammdaten: StammdatenPage,
   office: OfficePage,
   dms: DMSPage,
@@ -204,7 +221,6 @@ const portalModulePageMap: Record<string, React.ComponentType> = {
   investments: InvestmentsPage,
   vertriebspartner: VertriebspartnerPage,
   leads: LeadsPage,
-  // NEW modules (MOD-12 to MOD-20)
   'akquise-manager': AkquiseManagerPage,
   projekte: ProjektePage,
   'communication-pro': CommunicationProPage,
@@ -219,12 +235,14 @@ const portalModulePageMap: Record<string, React.ComponentType> = {
 // =============================================================================
 // Component Map for Zone 2 Dynamic Routes
 // =============================================================================
-const portalDynamicComponentMap: Record<string, React.ComponentType> = {
-  PropertyDetail,
-  RentalExposeDetail,
-  ExposeDetail,
-  // MOD-07 Finanzierung Dynamic
-  AnfrageDetailPage: React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage')),
+const portalDynamicComponentMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  PropertyDetail: PropertyDetailPage,
+  PropertyDetailPage: PropertyDetailPage,
+  CreatePropertyRedirect: React.lazy(() => import('@/pages/portal/immobilien/CreatePropertyRedirect')),
+  RentalExposeDetail: RentalExposeDetail,
+  ExposeDetail: ExposeDetail,
+  AnfrageDetailPage: AnfrageDetailPage,
+  FMFallDetail: FMFallDetail,
 };
 
 // =============================================================================
@@ -302,6 +320,14 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
 };
 
 // =============================================================================
+// Helper: Get default tile path for a module
+// =============================================================================
+function getDefaultTilePath(module: ModuleDefinition): string {
+  const defaultTile = module.tiles.find(t => t.default === true);
+  return defaultTile?.path || module.tiles[0]?.path || '';
+}
+
+// =============================================================================
 // MANIFEST ROUTER COMPONENT
 // =============================================================================
 export function ManifestRouter() {
@@ -328,7 +354,7 @@ export function ManifestRouter() {
             key={deskPath}
             path={`${deskPath}/*`}
             element={
-              <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Laden...</div>}>
+              <React.Suspense fallback={<LoadingFallback />}>
                 <DeskComponent />
               </React.Suspense>
             }
@@ -353,7 +379,7 @@ export function ManifestRouter() {
               index={route.path === ''}
               path={route.path || undefined}
               element={
-                <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Laden...</div>}>
+                <React.Suspense fallback={<LoadingFallback />}>
                   <Component />
                 </React.Suspense>
               }
@@ -369,7 +395,7 @@ export function ManifestRouter() {
         {/* Dashboard */}
         <Route index element={<PortalDashboard />} />
 
-        {/* Module Routes */}
+        {/* Module Routes - Each module gets a nested route group */}
         {Object.entries(zone2Portal.modules || {}).map(([code, module]) => {
           const ModulePage = portalModulePageMap[module.base];
           if (!ModulePage) {
@@ -377,8 +403,26 @@ export function ManifestRouter() {
             return null;
           }
 
+          const defaultTilePath = getDefaultTilePath(module);
+
           return (
-            <Route key={code} path={`${module.base}/*`} element={<ModulePage />} />
+            <Route key={code} path={module.base}>
+              {/* Index: Redirect to default tile */}
+              <Route 
+                index 
+                element={<Navigate to={defaultTilePath} replace />} 
+              />
+              
+              {/* All other paths handled by ModulePage with internal routing */}
+              <Route 
+                path="*" 
+                element={
+                  <React.Suspense fallback={<LoadingFallback />}>
+                    <ModulePage />
+                  </React.Suspense>
+                } 
+              />
+            </Route>
           );
         })}
       </Route>
