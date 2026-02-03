@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDevelopmentMode] = useState(isDevelopmentEnvironment());
+  // P0-PERF: Flag to prevent race condition between onAuthStateChange and getSession
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
@@ -245,44 +247,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
+  // P0-PERF: Unified auth initialization - prevents race condition between onAuthStateChange and getSession
   useEffect(() => {
+    let isMounted = true;
+    
+    // Helper to handle auth state (only runs once via hasInitialized flag)
+    const handleAuthState = async (session: Session | null, source: string) => {
+      if (!isMounted) return;
+      
+      console.log(`[Auth] ${source} triggered, hasInitialized:`, hasInitialized);
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await fetchUserData(session.user.id);
+      } else if (isDevelopmentMode) {
+        await fetchDevelopmentData();
+      } else {
+        setProfile(null);
+        setMemberships([]);
+        setActiveOrganization(null);
+      }
+      
+      if (isMounted) {
+        setHasInitialized(true);
+        setIsLoading(false);
+      }
+    };
+
+    // Subscribe to auth changes (fires on login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
-        } else if (isDevelopmentMode) {
-          // In development mode, load data without auth
-          setTimeout(() => {
-            fetchDevelopmentData();
-          }, 0);
-        } else {
-          setProfile(null);
-          setMemberships([]);
-          setActiveOrganization(null);
+        // Always handle auth state changes (login, logout, token refresh)
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          handleAuthState(session, `onAuthStateChange:${event}`);
+        } else if (!hasInitialized) {
+          // Initial event - only process if not yet initialized
+          handleAuthState(session, 'onAuthStateChange:INITIAL');
         }
-        setIsLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      } else if (isDevelopmentMode) {
-        // In development mode, load data without auth
-        fetchDevelopmentData();
+    // Fallback: getSession only if onAuthStateChange hasn't fired after 300ms
+    const fallbackTimeout = setTimeout(async () => {
+      if (!hasInitialized && isMounted) {
+        console.log('[Auth] Fallback: getSession()');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!hasInitialized && isMounted) {
+          await handleAuthState(session, 'getSession:fallback');
+        }
       }
-      setIsLoading(false);
-    });
+    }, 300);
 
-    return () => subscription.unsubscribe();
-  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]);
+    return () => {
+      isMounted = false;
+      clearTimeout(fallbackTimeout);
+      subscription.unsubscribe();
+    };
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, hasInitialized]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

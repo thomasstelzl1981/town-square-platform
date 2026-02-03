@@ -1,6 +1,9 @@
 /**
  * PORTAL NAV — Manifest-Driven Navigation
  * 
+ * P0-PERF: Optimized to use React Query caching for tile activations
+ * and memberships from AuthContext (no redundant fetches)
+ * 
  * Desktop Sidebar:
  * - Expanded: 256px (w-64)
  * - Collapsed: 56px (w-14) with icons only
@@ -8,12 +11,13 @@
  * - Chevron click: toggles submenu (no navigation)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Home,
@@ -85,37 +89,18 @@ interface PortalNavProps {
   collapsed?: boolean;
 }
 
-// Fetch activation flags from DB (visibility overlay only)
+// P0-PERF: Fetch function for React Query (cached)
 async function fetchActiveTileCodes(tenantId: string): Promise<string[]> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = supabase as any;
-    const { data } = await client
-      .from('tenant_tile_activation')
-      .select('tile_code')
-      .eq('tenant_id', tenantId)
-      .eq('is_active', true);
-    
-    if (!data) return [];
-    return (data as { tile_code: string }[]).map(a => a.tile_code);
-  } catch {
-    return [];
-  }
-}
-
-// Fetch user roles from memberships
-async function fetchUserRoles(userId: string): Promise<string[]> {
-  try {
-    const { data } = await supabase
-      .from('memberships')
-      .select('role')
-      .eq('user_id', userId);
-    
-    if (!data) return [];
-    return data.map(m => m.role);
-  } catch {
-    return [];
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any;
+  const { data } = await client
+    .from('tenant_tile_activation')
+    .select('tile_code')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true);
+  
+  if (!data) return [];
+  return (data as { tile_code: string }[]).map(a => a.tile_code);
 }
 
 // Build tiles from manifest (including requires_role)
@@ -151,54 +136,29 @@ function buildTilesFromManifest(): TileDisplay[] {
 export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { activeOrganization, isDevelopmentMode, user } = useAuth();
-  const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const { activeOrganization, isDevelopmentMode, memberships } = useAuth();
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
-  const [isLoading, setIsLoading] = useState(true);
 
   // Get tiles from manifest (SSOT)
   const manifestTiles = buildTilesFromManifest();
 
-  // Fetch user roles for role-gating
-  useEffect(() => {
-    async function loadUserRoles() {
-      if (user?.id) {
-        const roles = await fetchUserRoles(user.id);
-        setUserRoles(roles);
-      }
-    }
-    loadUserRoles();
-  }, [user?.id]);
+  // P0-PERF: Use React Query with staleTime for tile activations (cached 5 min)
+  const shouldFetchActivations = !isDevelopmentMode && 
+    activeOrganization?.id && 
+    !activeOrganization.id.startsWith('dev-');
+    
+  const { data: activeTileCodes, isLoading } = useQuery({
+    queryKey: ['tile-activations', activeOrganization?.id],
+    queryFn: () => fetchActiveTileCodes(activeOrganization!.id),
+    enabled: !!shouldFetchActivations,
+    staleTime: 5 * 60 * 1000, // 5 Minuten - kein Re-Fetch
+    gcTime: 10 * 60 * 1000,
+  });
 
-  // Fetch activation overlay from DB
-  useEffect(() => {
-    async function loadActivations() {
-      try {
-        // In development mode, show all tiles
-        if (isDevelopmentMode) {
-          setActiveTileCodes(null); // null = show all
-          setIsLoading(false);
-          return;
-        }
-        
-        // Fetch tenant activations if we have a valid org
-        if (activeOrganization?.id && !activeOrganization.id.startsWith('dev-')) {
-          const codes = await fetchActiveTileCodes(activeOrganization.id);
-          setActiveTileCodes(codes.length > 0 ? codes : null);
-        } else {
-          setActiveTileCodes(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch tile activations:', err);
-        setActiveTileCodes(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadActivations();
-  }, [activeOrganization?.id, isDevelopmentMode]);
+  // P0-PERF: Get user roles from memberships (already in AuthContext, no fetch needed)
+  const userRoles = useMemo(() => {
+    return memberships.map(m => m.role);
+  }, [memberships]);
 
   // Filter tiles by activation overlay AND role-gating
   const visibleTiles = manifestTiles.filter(tile => {
@@ -211,7 +171,7 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
       // In dev mode, show all (for testing)
       if (isDevelopmentMode) return true;
       // User must have at least one of the required roles
-      const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role));
+      const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role as typeof userRoles[number]));
       if (!hasRequiredRole) return false;
     }
     return true;

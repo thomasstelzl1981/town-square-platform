@@ -27,7 +27,16 @@ import PresentationPage from "./pages/presentation/PresentationPage";
 // Manifest-driven router
 import { ManifestRouter } from "./router/ManifestRouter";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 Minuten - verhindert redundante Fetches
+      gcTime: 5 * 60 * 1000, // 5 Minuten cache (ehem. cacheTime)
+      refetchOnWindowFocus: false, // Kein Re-Fetch bei Tab-Wechsel
+      retry: 1, // Max 1 Retry
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
