@@ -36,7 +36,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'TileCatalog': Grid3X3,
   'Integrations': Plug,
   'CommunicationHub': Mail,
-  'Oversight': Eye,
   'AuditLog': FileText,
   'Billing': CreditCard,
   'Agreements': FileCheck,
@@ -115,7 +114,7 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('agents')) {
     return 'agents';
   }
-  if (path === 'integrations' || path === 'communication' || path === 'oversight' || 
+  if (path === 'integrations' || path === 'communication' || 
       path === 'audit' || path === 'leadpool' || path === 'partner-verification' || path === 'commissions') {
     return 'system';
   }
