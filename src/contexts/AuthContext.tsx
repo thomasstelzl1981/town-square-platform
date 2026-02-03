@@ -258,21 +258,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     const init = initRef.current;
-    
-    // P0-FIX: On first mount, always allow initialization.
-    // The ref persists across StrictMode remounts, so we need to check
-    // if we actually have user data already set (profile/activeOrganization).
-    // If we do, we can skip re-initialization.
-    const alreadyHasData = activeOrganization !== null || profile !== null;
-    
-    if (!alreadyHasData) {
-      // Fresh start - allow initialization
-      init.hasInitialized = false;
-      init.isInitializing = false;
-    } else if (init.hasInitialized) {
-      // Already initialized with data - just ensure loading is false
-      setIsLoading(false);
-    }
+
+    // IMPORTANT:
+    // - This effect must run only once per mount; do NOT depend on profile/org state.
+    // - Ensure stale ref flags from an interrupted init don't leave the app stuck.
+    init.hasInitialized = false;
+    init.isInitializing = false;
     
     // Helper to handle auth state with single-flight guard
     const handleAuthState = async (event: AuthChangeEvent, currentSession: Session | null, source: string) => {
@@ -308,11 +299,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setActiveOrganization(null);
         }
       } finally {
-        if (isMounted) {
-          init.hasInitialized = true;
-          init.isInitializing = false;
-          setIsLoading(false);
-        }
+        // Always reset ref flags, even if unmounted during async work.
+        init.hasInitialized = true;
+        init.isInitializing = false;
+
+        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -345,7 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, activeOrganization, profile]);
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
