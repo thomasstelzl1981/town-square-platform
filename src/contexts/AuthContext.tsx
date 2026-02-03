@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -46,8 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDevelopmentMode] = useState(isDevelopmentEnvironment());
-  // P0-PERF: Flag to prevent race condition between onAuthStateChange and getSession
-  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // P0-PERF: Single-flight initialization using ref (no re-renders/re-subscribes)
+  const initRef = useRef<{
+    hasInitialized: boolean;
+    isInitializing: boolean;
+  }>({
+    hasInitialized: false,
+    isInitializing: false,
+  });
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
@@ -247,65 +254,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
-  // P0-PERF: Unified auth initialization - prevents race condition between onAuthStateChange and getSession
+  // P0-PERF: Unified auth initialization - prevents race condition via ref-based single-flight
   useEffect(() => {
     let isMounted = true;
+    const init = initRef.current;
     
-    // Helper to handle auth state (only runs once via hasInitialized flag)
-    const handleAuthState = async (session: Session | null, source: string) => {
+    // Reset on mount (for HMR/StrictMode)
+    init.hasInitialized = false;
+    init.isInitializing = false;
+    
+    // Helper to handle auth state with single-flight guard
+    const handleAuthState = async (event: AuthChangeEvent, currentSession: Session | null, source: string) => {
       if (!isMounted) return;
       
-      console.log(`[Auth] ${source} triggered, hasInitialized:`, hasInitialized);
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserData(session.user.id);
-      } else if (isDevelopmentMode) {
-        await fetchDevelopmentData();
-      } else {
-        setProfile(null);
-        setMemberships([]);
-        setActiveOrganization(null);
+      // Guard: Skip INITIAL_SESSION if already initialized
+      if (init.hasInitialized && event === 'INITIAL_SESSION') {
+        console.log('[Auth] Skipping INITIAL_SESSION (already initialized)');
+        return;
       }
       
-      if (isMounted) {
-        setHasInitialized(true);
-        setIsLoading(false);
+      // Guard: Skip if currently initializing (prevents parallel calls)
+      if (init.isInitializing) {
+        console.log('[Auth] Skipping (initialization in progress)');
+        return;
+      }
+      
+      // Mark as initializing immediately (synchronous)
+      init.isInitializing = true;
+      console.log(`[Auth] ${source} triggered`);
+      
+      try {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          await fetchUserData(currentSession.user.id);
+        } else if (isDevelopmentMode) {
+          await fetchDevelopmentData();
+        } else {
+          setProfile(null);
+          setMemberships([]);
+          setActiveOrganization(null);
+        }
+      } finally {
+        if (isMounted) {
+          init.hasInitialized = true;
+          init.isInitializing = false;
+          setIsLoading(false);
+        }
       }
     };
 
     // Subscribe to auth changes (fires on login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // Always handle auth state changes (login, logout, token refresh)
+      (event, currentSession) => {
+        // Always handle SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          handleAuthState(session, `onAuthStateChange:${event}`);
-        } else if (!hasInitialized) {
+          handleAuthState(event, currentSession, `onAuthStateChange:${event}`);
+        } else if (!init.hasInitialized) {
           // Initial event - only process if not yet initialized
-          handleAuthState(session, 'onAuthStateChange:INITIAL');
+          handleAuthState(event, currentSession, 'onAuthStateChange:INITIAL');
         }
       }
     );
 
-    // Fallback: getSession only if onAuthStateChange hasn't fired after 300ms
+    // Fallback: getSession only if onAuthStateChange hasn't fired after 400ms
     const fallbackTimeout = setTimeout(async () => {
-      if (!hasInitialized && isMounted) {
+      if (!init.hasInitialized && !init.isInitializing && isMounted) {
         console.log('[Auth] Fallback: getSession()');
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!hasInitialized && isMounted) {
-          await handleAuthState(session, 'getSession:fallback');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!init.hasInitialized && !init.isInitializing && isMounted) {
+          await handleAuthState('INITIAL_SESSION', currentSession, 'getSession:fallback');
         }
       }
-    }, 300);
+    }, 400);
 
     return () => {
       isMounted = false;
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, hasInitialized]);
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]); // Removed hasInitialized - now uses ref
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

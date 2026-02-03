@@ -1,3 +1,4 @@
+import { forwardRef, type HTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,14 +24,18 @@ export interface HowItWorksContent {
   }[];
 }
 
-interface ModuleHowItWorksProps {
+interface ModuleHowItWorksProps extends Omit<HTMLAttributes<HTMLDivElement>, 'content'> {
   content: HowItWorksContent;
-  className?: string;
 }
 
-export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) {
-  return (
-    <div className={cn('space-y-8 p-4 md:p-6 max-w-4xl mx-auto', className)}>
+/**
+ * ModuleHowItWorks — forwardRef-wrapped for Radix/Shadcn compatibility
+ * This prevents the "Function components cannot be given refs" warning
+ */
+export const ModuleHowItWorks = forwardRef<HTMLDivElement, ModuleHowItWorksProps>(
+  ({ content, className, ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn('space-y-8 p-4 md:p-6 max-w-4xl mx-auto', className)} {...props}>
       {/* Hero */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-primary">
@@ -148,4 +153,6 @@ export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) 
       )}
     </div>
   );
-}
+});
+
+ModuleHowItWorks.displayName = 'ModuleHowItWorks';
