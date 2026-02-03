@@ -1,8 +1,14 @@
 /**
- * Immobilien Page (MOD-04) - Routes Pattern with How It Works
+ * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases
  * 
- * Property creation is now handled via CreatePropertyDialog modal in PortfolioTab.
- * No separate /neu route needed - triggers auto-create Unit + Storage folders.
+ * Routes:
+ * - /portal/immobilien → How It Works (index)
+ * - /portal/immobilien/portfolio → Portfolio Dashboard + List
+ * - /portal/immobilien/neu → Redirect to portfolio with create modal
+ * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
+ * - /portal/immobilien/kontexte → Context Management
+ * - /portal/immobilien/sanierung → Renovation (global)
+ * - /portal/immobilien/bewertung → Valuation (global)
  */
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -14,6 +20,7 @@ const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({
 const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ default: m.KontexteTab })));
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
+const CreatePropertyRedirect = lazy(() => import('./immobilien/CreatePropertyRedirect'));
 
 // Property detail page (Immobilienakte SSOT)
 const PropertyDetail = lazy(() => import('@/pages/portfolio/PropertyDetail'));
@@ -33,17 +40,19 @@ const ImmobilienPage = () => {
         {/* How It Works as index */}
         <Route index element={<ModuleHowItWorks content={content} />} />
         
-        {/* Tile routes */}
-        <Route path="kontexte" element={<KontexteTab />} />
+        {/* PRIMARY: Portfolio (default tile) */}
         <Route path="portfolio" element={<PortfolioTab />} />
+        
+        {/* CREATE: Redirect to portfolio with modal trigger */}
+        <Route path="neu" element={<CreatePropertyRedirect />} />
+        
+        {/* SECONDARY: Context management */}
+        <Route path="kontexte" element={<KontexteTab />} />
         <Route path="sanierung" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
         
-        {/* Property detail route (Immobilienakte) */}
+        {/* CANONICAL: Property dossier (Immobilienakte) */}
         <Route path=":id" element={<PropertyDetail />} />
-        
-        {/* Legacy redirects - /neu now handled by modal */}
-        <Route path="neu" element={<Navigate to="/portal/immobilien/portfolio" replace />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/portal/immobilien" replace />} />

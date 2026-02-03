@@ -78,10 +78,19 @@ interface LeaseData {
 
 export function PortfolioTab() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  // Auto-open create dialog if ?create=1 is present
+  const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
+  
+  // Clear the create param after opening dialog
+  useState(() => {
+    if (searchParams.get('create') === '1') {
+      searchParams.delete('create');
+      setSearchParams(searchParams, { replace: true });
+    }
+  });
   
   // Get selected context from URL
   const selectedContextId = searchParams.get('context');
