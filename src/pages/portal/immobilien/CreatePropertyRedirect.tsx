@@ -9,18 +9,11 @@
  * 
  * The actual creation happens via the CreatePropertyDialog modal in PortfolioTab.
  */
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 export function CreatePropertyRedirect() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Redirect to portfolio with create trigger
-    navigate('/portal/immobilien/portfolio?create=1', { replace: true });
-  }, [navigate]);
-
-  return null;
+  // Immediate redirect using Navigate component - no effect hook needed
+  return <Navigate to="/portal/immobilien/portfolio?create=1" replace />;
 }
 
 export default CreatePropertyRedirect;

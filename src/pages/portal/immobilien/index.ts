@@ -4,3 +4,6 @@ export { KontexteTab } from './KontexteTab';
 export { SanierungTab } from './SanierungTab';
 export { BewertungTab } from './BewertungTab';
 export { CreatePropertyRedirect } from './CreatePropertyRedirect';
+
+// Canonical Dossier View
+export { default as PropertyDetailPage } from './PropertyDetailPage';
