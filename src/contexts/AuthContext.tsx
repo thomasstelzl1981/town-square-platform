@@ -259,9 +259,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
     const init = initRef.current;
     
-    // Reset on mount (for HMR/StrictMode)
-    init.hasInitialized = false;
-    init.isInitializing = false;
+    // P0-FIX: Only reset if NOT already initialized (prevents StrictMode double-init)
+    // If we already have a session from a previous mount, don't reset
+    if (!init.hasInitialized) {
+      init.isInitializing = false;
+    }
     
     // Helper to handle auth state with single-flight guard
     const handleAuthState = async (event: AuthChangeEvent, currentSession: Session | null, source: string) => {
@@ -318,7 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Fallback: getSession only if onAuthStateChange hasn't fired after 400ms
+    // Fallback: getSession only if onAuthStateChange hasn't fired after 600ms (increased from 400ms)
     const fallbackTimeout = setTimeout(async () => {
       if (!init.hasInitialized && !init.isInitializing && isMounted) {
         console.log('[Auth] Fallback: getSession()');
@@ -327,7 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await handleAuthState('INITIAL_SESSION', currentSession, 'getSession:fallback');
         }
       }
-    }, 400);
+    }, 600);
 
     return () => {
       isMounted = false;

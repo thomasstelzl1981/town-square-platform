@@ -57,11 +57,12 @@ interface UnitWithProperty {
   leases_count: number; // Number of active leases
 }
 
+// P0-FIX: Use 'loans' table column names
 interface PropertyFinancing {
   property_id: string;
-  current_balance: number | null;
-  monthly_rate: number | null;
-  interest_rate: number | null;
+  outstanding_balance_eur: number | null;
+  annuity_monthly_eur: number | null;
+  interest_rate_percent: number | null;
 }
 
 interface LeaseData {
@@ -180,12 +181,20 @@ export function PortfolioTab() {
         .eq('tenant_id', activeTenantId)
         .eq('status', 'active');
 
-      // Get financing data
-      const { data: financing } = await supabase
-        .from('property_financing')
-        .select('property_id, current_balance, monthly_rate, interest_rate')
+      // P0-FIX: Use 'loans' table instead of 'property_financing'
+      // Use explicit type and any-cast to avoid TypeScript recursion in Supabase types
+      type LoanRow = {
+        property_id: string;
+        outstanding_balance_eur: number | null;
+        annuity_monthly_eur: number | null;
+        interest_rate_percent: number | null;
+      };
+      const financingResult = await (supabase as any)
+        .from('loans')
+        .select('property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
         .eq('tenant_id', activeTenantId)
-        .eq('is_active', true);
+        .eq('status', 'active');
+      const financing = (financingResult.data || []) as LoanRow[];
 
       // Build multi-lease map: unit_id -> { leases[], totalRent, tenantName }
       const leaseMap = new Map<string, { 
@@ -215,7 +224,7 @@ export function PortfolioTab() {
         leaseMap.set(l.unit_id, existing);
       });
 
-      // Build financing map
+      // Build financing map - P0-FIX: Use loans table column names
       const financingMap = new Map<string, { 
         balance: number | null; 
         monthlyRate: number | null;
@@ -223,9 +232,9 @@ export function PortfolioTab() {
       }>();
       financing?.forEach(f => {
         financingMap.set(f.property_id, { 
-          balance: f.current_balance, 
-          monthlyRate: f.monthly_rate,
-          interestRate: f.interest_rate,
+          balance: f.outstanding_balance_eur, 
+          monthlyRate: f.annuity_monthly_eur,
+          interestRate: f.interest_rate_percent,
         });
       });
 
@@ -280,19 +289,26 @@ export function PortfolioTab() {
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
-  // Fetch property financing for aggregations
+  // P0-FIX: Fetch financing from 'loans' table for aggregations
   const { data: financingData } = useQuery({
-    queryKey: ['property-financing', activeTenantId],
-    queryFn: async () => {
+    queryKey: ['portfolio-financing', activeTenantId],
+    queryFn: async (): Promise<PropertyFinancing[]> => {
       if (!activeTenantId) return [];
-      const { data, error } = await supabase
-        .from('property_financing')
-        .select('property_id, current_balance, monthly_rate, interest_rate')
+      // Use any-cast to avoid TypeScript recursion issues with loans table types
+      const result = await (supabase as any)
+        .from('loans')
+        .select('property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
         .eq('tenant_id', activeTenantId)
-        .eq('is_active', true);
+        .eq('status', 'active');
       
-      if (error) throw error;
-      return data as PropertyFinancing[];
+      if (result.error) throw result.error;
+      // Map to interface explicitly
+      return (result.data || []).map((row: any) => ({
+        property_id: row.property_id as string,
+        outstanding_balance_eur: row.outstanding_balance_eur as number | null,
+        annuity_monthly_eur: row.annuity_monthly_eur as number | null,
+        interest_rate_percent: row.interest_rate_percent as number | null,
+      }));
     },
     enabled: !!activeTenantId,
     staleTime: 2 * 60 * 1000,
@@ -345,10 +361,11 @@ export function PortfolioTab() {
     
     // ANNUAL income (already annual in new structure)
     const totalIncome = unitsToUse.reduce((sum, u) => sum + (u.annual_net_cold_rent || 0), 0);
-    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
+    // P0-FIX: Use loans table column names
+    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.outstanding_balance_eur || 0), 0);
     const totalAnnuity = unitsToUse.reduce((sum, u) => sum + (u.annuity_pa || 0), 0);
     const avgInterestRate = relevantFinancing.length 
-      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / relevantFinancing.length 
+      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate_percent || 0), 0) / relevantFinancing.length 
       : 3.5;
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
@@ -402,9 +419,10 @@ export function PortfolioTab() {
     if (!totals) return [];
     
     const annualIncome = totals.totalIncome;
+    // P0-FIX: Use loans table column names
     const annualInterest = financingData?.reduce((sum, f) => {
-      const balance = f.current_balance || 0;
-      const rate = (f.interest_rate || 3.5) / 100;
+      const balance = f.outstanding_balance_eur || 0;
+      const rate = (f.interest_rate_percent || 3.5) / 100;
       return sum + (balance * rate);
     }, 0) || 0;
     const nonRecoverableNk = totals.totalValue * 0.005;
@@ -715,7 +733,14 @@ export function PortfolioTab() {
             }
             onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
             rowActions={(row) => (
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/portal/immobilien/${row.property_id}`);
+                }}
+              >
                 <Eye className="h-4 w-4" />
               </Button>
             )}
