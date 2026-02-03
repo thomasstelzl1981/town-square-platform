@@ -24,7 +24,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   MessageCircle,
-  Check
+  Check,
+  KeyRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +34,7 @@ interface PortalHeaderProps {
 }
 
 export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isDevelopmentMode, user } = useAuth();
   const { sidebarCollapsed, toggleSidebar, armstrongVisible, toggleArmstrong, isMobile } = usePortalLayout();
   const { 
     activeOrgName, 
@@ -206,6 +207,15 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {/* Show real login link in dev mode when using bypass */}
+              {isDevelopmentMode && !user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/auth" className="text-primary">
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Mit Account einloggen
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
                 <LogOut className="h-4 w-4 mr-2" />
                 Abmelden
