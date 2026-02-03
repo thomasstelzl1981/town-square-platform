@@ -184,13 +184,17 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 4,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
+        // PRIMARY: Portfolio is the main entry point for MOD-04
+        { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
+        // SECONDARY: Context management
         { path: "kontexte", component: "KontexteTab", title: "Kontexte" },
-        { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
       ],
       dynamic_routes: [
-        // Property creation now via modal dialog - no separate route needed
+        // Create flow: Modal in PortfolioTab, redirect to dossier after creation
+        { path: "neu", component: "CreatePropertyRedirect", title: "Neue Immobilie", dynamic: false },
+        // Canonical dossier route (SSOT)
         { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true },
       ],
     },
