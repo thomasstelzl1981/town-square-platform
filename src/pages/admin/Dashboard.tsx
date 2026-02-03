@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [exportingEngineering, setExportingEngineering] = useState(false);
+  const [engineeringExportUrl, setEngineeringExportUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
@@ -71,6 +73,32 @@ export default function Dashboard() {
       });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportEngineering = async () => {
+    setExportingEngineering(true);
+    setEngineeringExportUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-docs-export-engineering');
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.url) {
+        setEngineeringExportUrl(data.url);
+        toast.success('Engineering-Export erstellt', {
+          description: `${data.file_count} Dateien (${Math.round(data.byte_size / 1024)} KB)`,
+        });
+      } else {
+        throw new Error(data?.error || 'Export fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Engineering export error:', error);
+      toast.error('Export fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    } finally {
+      setExportingEngineering(false);
     }
   };
 
@@ -158,7 +186,21 @@ export default function Dashboard() {
                 ) : (
                   <FileArchive className="h-4 w-4" />
                 )}
-                {exporting ? 'Exportiere...' : 'Dokumentation exportieren'}
+                {exporting ? 'Exportiere...' : 'Baseline-Docs'}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={handleExportEngineering}
+                disabled={exportingEngineering}
+                className="gap-2"
+              >
+                {exportingEngineering ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileArchive className="h-4 w-4" />
+                )}
+                {exportingEngineering ? 'Exportiere...' : 'Engineering + RFP'}
               </Button>
               
               {exportUrl && (
@@ -168,12 +210,23 @@ export default function Dashboard() {
                   className="gap-2"
                 >
                   <Download className="h-4 w-4" />
-                  ZIP herunterladen
+                  Baseline ZIP
+                </Button>
+              )}
+              
+              {engineeringExportUrl && (
+                <Button 
+                  variant="default" 
+                  onClick={() => window.open(engineeringExportUrl, '_blank')}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Engineering ZIP
                 </Button>
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Generiert ein ZIP-Archiv mit allen Specs, Manifesten und Dokumentationen für externe Entwickler.
+              Baseline = Specs & Module | Engineering = SSOT, Inventories, Gaps, Workbench
             </p>
           </div>
         </CardContent>
