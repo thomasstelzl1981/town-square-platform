@@ -259,11 +259,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
     const init = initRef.current;
 
-    // IMPORTANT:
-    // - This effect must run only once per mount; do NOT depend on profile/org state.
-    // - Ensure stale ref flags from an interrupted init don't leave the app stuck.
-    init.hasInitialized = false;
-    init.isInitializing = false;
+    // CRITICAL FIX: Only allow initialization if NOT already done or in progress.
+    // Do NOT reset flags on every mount - that breaks StrictMode handling.
+    // The ref persists across remounts, so we must respect its current state.
+    if (init.hasInitialized) {
+      // Already finished - just ensure loading is off and exit early
+      setIsLoading(false);
+      return;
+    }
+    if (init.isInitializing) {
+      // Currently running - don't interfere, let first instance finish
+      return;
+    }
     
     // Helper to handle auth state with single-flight guard
     const handleAuthState = async (event: AuthChangeEvent, currentSession: Session | null, source: string) => {
