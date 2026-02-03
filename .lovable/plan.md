@@ -166,6 +166,18 @@ test('Portfolio lädt mit Finanzierungsdaten', async ({ page }) => {
 Nach Abschluss:
 - ✅ Portfolio lädt beim ersten Seitenaufruf
 - ✅ Eye-Icon navigiert zur Immobilienakte
-- ✅ Finanzierungsdaten werden korrekt angezeigt
-- ✅ Keine Console-Warnungen
+- ✅ Finanzierungsdaten werden korrekt angezeigt (via `loans`-Tabelle)
+- ✅ Keine Console-Warnungen (PortalDashboard forwardRef)
 - ✅ Max. 3-4 initiale Backend-Requests (statt 12+)
+
+---
+
+## Implementierungsstatus
+
+| Phase | Status | Änderungen |
+|-------|--------|------------|
+| Phase 1 (Auth) | ✅ Fertig | `AuthContext.tsx`: Reset-Guard gegen StrictMode, Fallback 600ms |
+| Phase 2 (Eye-Icon) | ✅ Fertig | `PortfolioTab.tsx`: onClick mit Navigation + stopPropagation |
+| Phase 3 (Financing-Query) | ✅ Fertig | Query umgestellt auf `loans`-Tabelle mit korrekten Spaltennamen |
+| Phase 4 (forwardRef) | ✅ Fertig | `PortalDashboard.tsx` mit forwardRef gewrappt |
+| Phase 5 (Validierung) | ⏳ Pending | Manueller Test erforderlich |
