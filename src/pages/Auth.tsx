@@ -25,7 +25,8 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && !isLoading) {
+    // Only redirect if we have a REAL authenticated user (not dev-bypass)
+    if (user && !isLoading && user.id !== 'dev-user') {
       // Redirect to portal after login (not admin, unless platform_admin)
       navigate('/portal');
     }
