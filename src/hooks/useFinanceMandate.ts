@@ -244,3 +244,66 @@ export function useFinanceBankContacts() {
     },
   });
 }
+
+// Fetch available finance managers (users with finance_manager role)
+export function useFinanceManagers() {
+  return useQuery({
+    queryKey: ['available-finance-managers'],
+    queryFn: async () => {
+      const { data: memberships, error: membershipError } = await supabase
+        .from('memberships')
+        .select('user_id')
+        .eq('role', 'finance_manager');
+
+      if (membershipError) throw membershipError;
+      if (!memberships || memberships.length === 0) return [];
+
+      const userIds = memberships.map(m => m.user_id);
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .in('id', userIds);
+
+      if (profileError) throw profileError;
+      return profiles || [];
+    },
+  });
+}
+
+// Assign finance manager to mandate (Zone 1 → assigns manager)
+export function useAssignFinanceManager() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ 
+      mandateId, 
+      managerId 
+    }: { 
+      mandateId: string; 
+      managerId: string;
+    }) => {
+      const { error } = await supabase
+        .from('finance_mandates')
+        .update({
+          status: 'assigned',
+          assigned_manager_id: managerId,
+          delegated_at: new Date().toISOString(),
+          delegated_by: user?.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', mandateId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-mandates'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-mandate'] });
+      toast.success('Manager erfolgreich zugewiesen');
+    },
+    onError: (error) => {
+      toast.error('Zuweisung fehlgeschlagen: ' + (error as Error).message);
+    },
+  });
+}
