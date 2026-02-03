@@ -4,7 +4,7 @@ import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // ============================================================================
@@ -51,14 +51,13 @@ serve(async (req) => {
 
     // Create master ZIP
     const masterZip = new JSZip();
-    let totalFiles = 0;
 
     // Helper to merge sub-ZIP into master
     // deno-lint-ignore no-explicit-any
-    const mergeSubZip = async (result: any, packageName: string): Promise<number> => {
+    const mergeSubZip = async (result: any, packageName: string): Promise<void> => {
       if (result.error || !result.data?.zipBase64) {
         console.warn(`Skipping ${packageName}: ${result.error?.message || 'no data'}`);
-        return 0;
+        return;
       }
 
       try {
@@ -68,30 +67,32 @@ serve(async (req) => {
         for (const filePath of files) {
           const file = subZip.files[filePath];
           if (!file.dir) {
-            const content = await file.async('string');
+            const content = await file.async('uint8array');
             masterZip.file(filePath, content);
             console.log(`Merged: ${filePath}`);
           }
         }
-        
-        return files.filter((f: string) => !subZip.files[f].dir).length;
       } catch (e) {
         console.error(`Error merging ${packageName}:`, e);
-        return 0;
+        return;
       }
     };
 
     // Merge all sub-ZIPs
-    totalFiles += await mergeSubZip(rfpResult, 'rfp');
-    totalFiles += await mergeSubZip(specsResult, 'specs');
-    totalFiles += await mergeSubZip(modulesResult, 'modules');
-    totalFiles += await mergeSubZip(appendixResult, 'appendix');
+    await mergeSubZip(rfpResult, 'rfp');
+    await mergeSubZip(specsResult, 'specs');
+    await mergeSubZip(modulesResult, 'modules');
+    await mergeSubZip(appendixResult, 'appendix');
 
-    // Add master README
-    const masterReadme = `# System of a Town — Dokumentationspaket
+    // Compute unique files so the UI count matches what is actually inside the ZIP
+    const getUniqueFilePaths = () =>
+      Object.keys(masterZip.files).filter((p) => !masterZip.files[p].dir);
+
+    // Add master README (we'll overwrite once counts are final)
+    const masterReadme = (fileCount: number) => `# System of a Town — Dokumentationspaket
 
 **Generiert:** ${new Date().toISOString()}  
-**Dateien:** ${totalFiles}  
+**Dateien:** ${fileCount}  
 **Status:** RFP-Ready
 
 ---
@@ -123,11 +124,11 @@ serve(async (req) => {
 *Generiert von System of a Town Platform*
 `;
 
-    masterZip.file('README.md', masterReadme);
-    totalFiles++;
+    // placeholder, will be overwritten with final count below
+    masterZip.file('README.md', masterReadme(0));
 
     // Add generation metadata
-    const metadata = {
+    const metadataBase = {
       generated_at: new Date().toISOString(),
       version: "2.0.0",
       architecture: "modular-4-functions",
@@ -137,26 +138,39 @@ serve(async (req) => {
         modules: { success: !modulesResult.error, files: modulesResult.data?.files?.length || 0 },
         appendix: { success: !appendixResult.error, files: appendixResult.data?.files?.length || 0 },
       },
-      total_files: totalFiles,
       warnings: errors.length > 0 ? errors : undefined,
     };
 
-    masterZip.file('_metadata.json', JSON.stringify(metadata, null, 2));
-    totalFiles++;
+    // placeholder, will be overwritten with final counts + file list
+    masterZip.file('_metadata.json', JSON.stringify({ ...metadataBase, total_files: 0, files: [] }, null, 2));
 
-    // Generate final ZIP
-    const zipBlob = await masterZip.generateAsync({ type: 'blob' });
-    const zipArrayBuffer = await zipBlob.arrayBuffer();
-    const zipUint8Array = new Uint8Array(zipArrayBuffer);
+    // Finalize counts + write accurate README + metadata
+    const uniqueFilePaths = getUniqueFilePaths();
+    const uniqueFileCount = uniqueFilePaths.length;
+    masterZip.file('README.md', masterReadme(uniqueFileCount));
+
+    const metadata = {
+      ...metadataBase,
+      total_files: uniqueFileCount,
+      files: uniqueFilePaths,
+    };
+    masterZip.file('_metadata.json', JSON.stringify(metadata, null, 2));
+
+    // Generate final ZIP (as bytes; avoids Blob issues/corruption in edge runtime)
+    const zipBytes: Uint8Array = await masterZip.generateAsync({ type: 'uint8array' });
+    console.log(`ZIP byte size: ${zipBytes.length}`);
 
     // Upload to storage
-    const filename = `sot-docs-export-${new Date().toISOString().split('T')[0]}.zip`;
+    // Use a unique filename per export to avoid caching issues when users download multiple times.
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `sot-docs-export-${stamp}.zip`;
     
     const { error: uploadError } = await supabase.storage
       .from('docs-export')
-      .upload(filename, zipUint8Array, {
+      .upload(filename, zipBytes, {
         contentType: 'application/zip',
-        upsert: true,
+        cacheControl: '0',
+        upsert: false,
       });
 
     if (uploadError) {
@@ -169,15 +183,19 @@ serve(async (req) => {
       .from('docs-export')
       .getPublicUrl(filename);
 
+    const cacheBustedUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
     console.log(`Export complete: ${urlData.publicUrl}`);
-    console.log(`Total files: ${totalFiles}`);
+    console.log(`Total unique files: ${uniqueFileCount}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         filename,
-        url: urlData.publicUrl,
-        file_count: totalFiles,
+        url: cacheBustedUrl,
+        public_url: urlData.publicUrl,
+        file_count: uniqueFileCount,
+        byte_size: zipBytes.length,
         packages: metadata.packages,
         generated_at: metadata.generated_at,
         warnings: metadata.warnings,
