@@ -58,7 +58,6 @@ import MasterContacts from '@/pages/admin/MasterContacts';
 import TileCatalog from '@/pages/admin/TileCatalog';
 import Integrations from '@/pages/admin/Integrations';
 import CommunicationHub from '@/pages/admin/CommunicationHub';
-import Oversight from '@/pages/admin/Oversight';
 import AuditLog from '@/pages/admin/AuditLog';
 import Billing from '@/pages/admin/Billing';
 import Agreements from '@/pages/admin/Agreements';
@@ -166,7 +165,6 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   TileCatalog,
   Integrations,
   CommunicationHub,
-  Oversight,
   AuditLog,
   Billing,
   Agreements,
