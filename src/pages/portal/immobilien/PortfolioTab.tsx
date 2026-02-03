@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
-import { FileUploader, SubTabNav } from '@/components/shared';
+import { FileUploader, SubTabNav, ErrorState } from '@/components/shared';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -130,11 +130,14 @@ export function PortfolioTab() {
   });
 
   // Fetch UNITS with properties, leases (multi!), and financing - ANNUAL VALUES
-  const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
-    queryKey: ['portfolio-units-annual', activeOrganization?.id],
+  // P0-FIX: Include 'available' status and use activeTenantId for consistency
+  const { data: unitsWithProperties, isLoading: unitsLoading, isError: unitsError, error: unitsErrorDetails, refetch: refetchUnits } = useQuery({
+    queryKey: ['portfolio-units-annual', activeTenantId],
     queryFn: async () => {
-      // Get units with property data
-      const { data: units, error: unitsError } = await supabase
+      if (!activeTenantId) return [];
+      
+      // Get units with property data - include 'active' AND 'available' status
+      const { data: units, error: queryError } = await supabase
         .from('units')
         .select(`
           id,
@@ -155,10 +158,10 @@ export function PortfolioTab() {
             status
           )
         `)
-        .eq('tenant_id', activeOrganization!.id)
-        .eq('properties.status', 'active');
+        .eq('tenant_id', activeTenantId)
+        .in('properties.status', ['active', 'available']);
 
-      if (unitsError) throw unitsError;
+      if (queryError) throw queryError;
 
       // Get ALL active leases for multi-lease aggregation
       const { data: leases } = await supabase
@@ -174,14 +177,14 @@ export function PortfolioTab() {
             company
           )
         `)
-        .eq('tenant_id', activeOrganization!.id)
+        .eq('tenant_id', activeTenantId)
         .eq('status', 'active');
 
       // Get financing data
       const { data: financing } = await supabase
         .from('property_financing')
         .select('property_id, current_balance, monthly_rate, interest_rate')
-        .eq('tenant_id', activeOrganization!.id)
+        .eq('tenant_id', activeTenantId)
         .eq('is_active', true);
 
       // Build multi-lease map: unit_id -> { leases[], totalRent, tenantName }
@@ -273,23 +276,26 @@ export function PortfolioTab() {
         } as UnitWithProperty;
       }) || [];
     },
-    enabled: !!activeOrganization,
+    enabled: !!activeTenantId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   // Fetch property financing for aggregations
   const { data: financingData } = useQuery({
-    queryKey: ['property-financing', activeOrganization?.id],
+    queryKey: ['property-financing', activeTenantId],
     queryFn: async () => {
+      if (!activeTenantId) return [];
       const { data, error } = await supabase
         .from('property_financing')
         .select('property_id, current_balance, monthly_rate, interest_rate')
-        .eq('tenant_id', activeOrganization!.id)
+        .eq('tenant_id', activeTenantId)
         .eq('is_active', true);
       
       if (error) throw error;
       return data as PropertyFinancing[];
     },
-    enabled: !!activeOrganization,
+    enabled: !!activeTenantId,
+    staleTime: 2 * 60 * 1000,
   });
 
   // Filter units by selected context
@@ -513,11 +519,23 @@ export function PortfolioTab() {
     },
   ];
 
+  // P0-FIX: Show proper loading/error states
   if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Portfolio wird geladen...</span>
       </div>
+    );
+  }
+
+  if (unitsError) {
+    return (
+      <ErrorState
+        title="Portfolio konnte nicht geladen werden"
+        description={unitsErrorDetails?.message || 'Bitte versuchen Sie es erneut.'}
+        onRetry={() => refetchUnits()}
+      />
     );
   }
 
