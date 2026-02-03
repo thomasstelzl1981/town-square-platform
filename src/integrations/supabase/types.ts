@@ -2533,6 +2533,10 @@ export type Database = {
       }
       landlord_contexts: {
         Row: {
+          child_allowance: boolean | null
+          children_count: number | null
+          church_tax: boolean | null
+          church_tax_rate: number | null
           city: string | null
           context_type: string
           country: string | null
@@ -2542,16 +2546,24 @@ export type Database = {
           id: string
           is_default: boolean | null
           legal_form: string | null
+          marginal_tax_rate: number | null
           name: string
+          notes: string | null
           postal_code: string | null
           public_id: string
+          solidarity_surcharge: boolean | null
           street: string | null
           tax_regime: string | null
+          taxable_income_yearly: number | null
           tenant_id: string
           updated_at: string
           ust_id: string | null
         }
         Insert: {
+          child_allowance?: boolean | null
+          children_count?: number | null
+          church_tax?: boolean | null
+          church_tax_rate?: number | null
           city?: string | null
           context_type?: string
           country?: string | null
@@ -2561,16 +2573,24 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           legal_form?: string | null
+          marginal_tax_rate?: number | null
           name: string
+          notes?: string | null
           postal_code?: string | null
           public_id?: string
+          solidarity_surcharge?: boolean | null
           street?: string | null
           tax_regime?: string | null
+          taxable_income_yearly?: number | null
           tenant_id: string
           updated_at?: string
           ust_id?: string | null
         }
         Update: {
+          child_allowance?: boolean | null
+          children_count?: number | null
+          church_tax?: boolean | null
+          church_tax_rate?: number | null
           city?: string | null
           context_type?: string
           country?: string | null
@@ -2580,11 +2600,15 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           legal_form?: string | null
+          marginal_tax_rate?: number | null
           name?: string
+          notes?: string | null
           postal_code?: string | null
           public_id?: string
+          solidarity_surcharge?: boolean | null
           street?: string | null
           tax_regime?: string | null
+          taxable_income_yearly?: number | null
           tenant_id?: string
           updated_at?: string
           ust_id?: string | null
@@ -6939,6 +6963,7 @@ export type Database = {
       }
       is_platform_admin: { Args: never; Returns: boolean }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
+      seed_golden_path_data: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
