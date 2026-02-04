@@ -399,7 +399,8 @@ export function ManifestRouter() {
         {/* Dashboard */}
         <Route index element={<PortalDashboard />} />
 
-        {/* Module Routes - Each module gets a nested route group */}
+        {/* Module Routes - Each module gets direct routing to ModulePage */}
+        {/* ModulePage handles all internal routing via nested <Routes> */}
         {Object.entries(zone2Portal.modules || {}).map(([code, module]) => {
           const ModulePage = portalModulePageMap[module.base];
           if (!ModulePage) {
@@ -407,26 +408,16 @@ export function ManifestRouter() {
             return null;
           }
 
-          const defaultTilePath = getDefaultTilePath(module);
-
           return (
-            <Route key={code} path={module.base}>
-              {/* Index: Redirect to default tile */}
-              <Route 
-                index 
-                element={<Navigate to={defaultTilePath} replace />} 
-              />
-              
-              {/* All other paths handled by ModulePage with internal routing */}
-              <Route 
-                path="*" 
-                element={
-                  <React.Suspense fallback={<LoadingFallback />}>
-                    <ModulePage />
-                  </React.Suspense>
-                } 
-              />
-            </Route>
+            <Route 
+              key={code} 
+              path={`${module.base}/*`}
+              element={
+                <React.Suspense fallback={<LoadingFallback />}>
+                  <ModulePage />
+                </React.Suspense>
+              } 
+            />
           );
         })}
       </Route>
