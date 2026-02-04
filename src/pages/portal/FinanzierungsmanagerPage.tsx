@@ -1,6 +1,8 @@
 /**
  * MOD-11 Finanzierungsmanager — Finance Manager Workbench (Zone 2)
  * 
+ * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock.
+ * 
  * Operational SoT AFTER acceptance/assignment from Zone 1 FutureRoom.
  * Role-gated: requires finance_manager
  * 
@@ -14,7 +16,7 @@ import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { LayoutDashboard, FolderOpen, MessageSquare, BarChart3, Loader2, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, MessageSquare, BarChart3, ShieldAlert } from 'lucide-react';
 import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,12 +27,6 @@ const FMFaelle = React.lazy(() => import('./finanzierungsmanager/FMFaelle'));
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
 const FMKommunikation = React.lazy(() => import('./finanzierungsmanager/FMKommunikation'));
 const FMStatus = React.lazy(() => import('./finanzierungsmanager/FMStatus'));
-
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-  </div>
-);
 
 export default function FinanzierungsmanagerPage() {
   const location = useLocation();
@@ -124,18 +120,16 @@ export default function FinanzierungsmanagerPage() {
         </TabsList>
       </Tabs>
 
-      {/* Route Content */}
-      <React.Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
-          <Route path="faelle" element={<FMFaelle cases={cases || []} isLoading={isLoading} />} />
-          <Route path="faelle/:requestId" element={<FMFallDetail />} />
-          <Route path="kommunikation" element={<FMKommunikation cases={cases || []} />} />
-          <Route path="status" element={<FMStatus cases={cases || []} />} />
-          <Route path="*" element={<Navigate to="dashboard" replace />} />
-        </Routes>
-      </React.Suspense>
+      {/* Route Content - No inner Suspense, outer Suspense in ManifestRouter handles it */}
+      <Routes>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
+        <Route path="faelle" element={<FMFaelle cases={cases || []} isLoading={isLoading} />} />
+        <Route path="faelle/:requestId" element={<FMFallDetail />} />
+        <Route path="kommunikation" element={<FMKommunikation cases={cases || []} />} />
+        <Route path="status" element={<FMStatus cases={cases || []} />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      </Routes>
     </div>
   );
 }

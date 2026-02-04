@@ -1,18 +1,12 @@
 /**
  * Investments Page (MOD-08) - Routes Pattern with How It Works
+ * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
  */
-import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Heart, UserCircle, Calculator, Loader2 } from 'lucide-react';
+import { Search, Heart, UserCircle } from 'lucide-react';
 import { InvestmentCalculator } from '@/components/investment';
-
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-  </div>
-);
 
 // Sub-tile components
 function SucheTab() {
@@ -100,21 +94,19 @@ const InvestmentsPage = () => {
   const content = moduleContents['MOD-08'];
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
-        {/* How It Works as index */}
-        <Route index element={<ModuleHowItWorks content={content} />} />
-        
-        {/* Tile routes */}
-        <Route path="suche" element={<SucheTab />} />
-        <Route path="favoriten" element={<FavoritenTab />} />
-        <Route path="mandat" element={<MandatTab />} />
-        <Route path="simulation" element={<SimulationTab />} />
-        
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/portal/investments" replace />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      {/* How It Works as index */}
+      <Route index element={<ModuleHowItWorks content={content} />} />
+      
+      {/* Tile routes */}
+      <Route path="suche" element={<SucheTab />} />
+      <Route path="favoriten" element={<FavoritenTab />} />
+      <Route path="mandat" element={<MandatTab />} />
+      <Route path="simulation" element={<SimulationTab />} />
+      
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/portal/investments" replace />} />
+    </Routes>
   );
 };
 

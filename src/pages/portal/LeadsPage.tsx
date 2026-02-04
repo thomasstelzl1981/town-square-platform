@@ -1,17 +1,11 @@
 /**
  * Leads Page (MOD-10) - Routes Pattern with How It Works
+ * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
  */
-import { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { Inbox, User, GitBranch, Megaphone, Plus, Loader2 } from 'lucide-react';
-
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-  </div>
-);
+import { Inbox, User, GitBranch, Megaphone, Plus } from 'lucide-react';
 
 // Tile: Inbox
 function LeadsInbox() {
@@ -99,21 +93,19 @@ const LeadsPage = () => {
   const content = moduleContents['MOD-10'];
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
-        {/* How It Works as index */}
-        <Route index element={<ModuleHowItWorks content={content} />} />
-        
-        {/* Tile routes */}
-        <Route path="inbox" element={<LeadsInbox />} />
-        <Route path="meine" element={<MeineLeads />} />
-        <Route path="pipeline" element={<LeadsPipeline />} />
-        <Route path="werbung" element={<LeadsWerbung />} />
-        
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/portal/leads" replace />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      {/* How It Works as index */}
+      <Route index element={<ModuleHowItWorks content={content} />} />
+      
+      {/* Tile routes */}
+      <Route path="inbox" element={<LeadsInbox />} />
+      <Route path="meine" element={<MeineLeads />} />
+      <Route path="pipeline" element={<LeadsPipeline />} />
+      <Route path="werbung" element={<LeadsWerbung />} />
+      
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/portal/leads" replace />} />
+    </Routes>
   );
 };
 
