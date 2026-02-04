@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, RefreshCw, Percent, Calculator, Building2 } from 'lucide-react';
+import { Save, RefreshCw, Percent, Calculator, Building2, FileText, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PdfExportFooter } from '@/components/pdf';
 
@@ -74,6 +75,46 @@ export default function MasterTemplates() {
             Speichern
           </Button>
         </div>
+      </div>
+
+      {/* Quick Links to Sub-Templates */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link to="/admin/master-templates/immobilienakte">
+          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Immobilienakte</CardTitle>
+                    <CardDescription>MOD-04 • 10 Blöcke (A–J) • 106 Felder</CardDescription>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link to="/admin/master-templates/selbstauskunft">
+          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group border-dashed">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg text-muted-foreground">Selbstauskunft</CardTitle>
+                    <CardDescription>MOD-07 • 8 Sektionen • Coming Soon</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="secondary">Phase 2</Badge>
+              </div>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
 
       <Tabs defaultValue="interest" className="space-y-4">
