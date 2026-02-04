@@ -1,0 +1,477 @@
+================================================================================
+PLANUNGSAUDIT: ZONE 1 MASTERVORLAGEN — IMMOBILIENAKTE (V1)
+================================================================================
+Datum:        2026-02-04
+Scope:        Nur Analyse + Implementierungsplan — KEIN BUILD
+Autor:        Lovable Architect Agent
+Version:      1.0
+================================================================================
+
+================================================================================
+(1) INVENTORY EVIDENCE TABLE
+================================================================================
+
+| # | Komponente/Datei                          | FOUND? | Pfad                                                  | Kurzbeleg                                              | Relevanz |
+|---|-------------------------------------------|--------|-------------------------------------------------------|--------------------------------------------------------|----------|
+| 1 | MOD-04 Manifest                           | ✅ FOUND | src/manifests/routesManifest.ts:180-200              | `"MOD-04": { name: "Immobilien", base: "immobilien"...`| SSOT     |
+| 2 | MOD-04 dynamic_routes :id                 | ✅ FOUND | src/manifests/routesManifest.ts:198                  | `{ path: ":id", component: "PropertyDetail"...`        | Routing  |
+| 3 | ImmobilienPage.tsx                        | ✅ FOUND | src/pages/portal/ImmobilienPage.tsx                   | Nested Routes + ErrorBoundary + Suspense               | Router   |
+| 4 | PropertyDetailPage.tsx                    | ✅ FOUND | src/pages/portal/immobilien/PropertyDetailPage.tsx    | `export default function PropertyDetailPage()`         | Dossier  |
+| 5 | EditableUnitDossierView.tsx               | ✅ FOUND | src/components/immobilienakte/EditableUnitDossierView.tsx | 443 Zeilen, hardcoded Blocks A-H+J                 | UI Core  |
+| 6 | UnitDossierView.tsx (read-only)           | ✅ FOUND | src/components/immobilienakte/UnitDossierView.tsx     | 117 Zeilen, alternative read-only View                 | Backup   |
+| 7 | useUnitDossier.ts (Hook)                  | ✅ FOUND | src/hooks/useUnitDossier.ts                           | `enabled: !!unitId && !!activeTenantId` (L376)         | Guard    |
+| 8 | usePropertyDossier (Hook)                 | ✅ FOUND | src/hooks/useUnitDossier.ts:385-420                   | Wrapper → finds MAIN unit → calls useUnitDossier       | Guard    |
+| 9 | UnitDossierData (Type)                    | ✅ FOUND | src/types/immobilienakte.ts:203-350                   | Blocks A-J vollständig definiert                       | Schema   |
+| 10| IdentityData (Type)                       | ✅ FOUND | src/types/immobilienakte.ts:29-42                     | saleEnabled, rentalManaged, vermieterKontextId         | Block A  |
+| 11| AddressData (Type)                        | ✅ FOUND | src/types/immobilienakte.ts:47-56                     | street, houseNumber, postalCode, city                  | Block B  |
+| 12| BuildingData (Type)                       | ✅ FOUND | src/types/immobilienakte.ts:61-76                     | buildYear, heatingType, energySource                   | Block C  |
+| 13| LegalData (Type)                          | ✅ FOUND | src/types/immobilienakte.ts:81-93                     | landRegister*, purchaseDate, purchasePrice             | Block D  |
+| 14| InvestmentKPIs (Type)                     | ✅ FOUND | src/types/immobilienakte.ts:97-103                    | annualIncome, grossYieldPercent, netYieldPercent       | Block E  |
+| 15| TenancyData (Type)                        | ✅ FOUND | src/types/immobilienakte.ts:108-125                   | rentColdEur, rentWarmEur, nkAdvanceEur                 | Block F  |
+| 16| WEGData (Type)                            | ✅ FOUND | src/types/immobilienakte.ts:130-144                   | hausgeldMonthlyEur, meaShare, allocationKeyDefault     | Block G  |
+| 17| FinancingData (Type)                      | ✅ FOUND | src/types/immobilienakte.ts:149-162                   | bankName, outstandingBalanceEur, interestRatePercent   | Block H  |
+| 18| AccountingData (Type)                     | ✅ FOUND | src/types/immobilienakte.ts:167-180                   | afaRatePercent, bookValueEur, coaVersion               | Block I  |
+| 19| DocumentStatus (Type)                     | ✅ FOUND | src/types/immobilienakte.ts:185-192                   | docType, status, path                                  | Block J  |
+| 20| EditableIdentityBlock                     | ✅ FOUND | src/components/immobilienakte/editable/EditableIdentityBlock.tsx | 188 Zeilen, 11 Props                       | UI A     |
+| 21| EditableAddressBlock                      | ✅ FOUND | src/components/immobilienakte/editable/EditableAddressBlock.tsx  | 121 Zeilen, 8 Props                        | UI B     |
+| 22| EditableBuildingBlock                     | ✅ FOUND | src/components/immobilienakte/editable/EditableBuildingBlock.tsx | 239 Zeilen, 13 Props                       | UI C     |
+| 23| EditableLegalBlock                        | ✅ FOUND | src/components/immobilienakte/editable/EditableLegalBlock.tsx    | 147 Zeilen, 10 Props                       | UI D     |
+| 24| EditableTenancyBlock                      | ✅ FOUND | src/components/immobilienakte/editable/EditableTenancyBlock.tsx  | 234 Zeilen, 13 Props                       | UI F     |
+| 25| EditableWEGBlock                          | ✅ FOUND | src/components/immobilienakte/editable/EditableWEGBlock.tsx      | 179 Zeilen, 10 Props                       | UI G     |
+| 26| EditableFinancingBlock                    | ✅ FOUND | src/components/immobilienakte/editable/EditableFinancingBlock.tsx| 182 Zeilen, 11 Props                       | UI H     |
+| 27| InvestmentKPIBlock (read-only)            | ✅ FOUND | src/components/immobilienakte/InvestmentKPIBlock.tsx             | Derived KPIs, keine inline-edit            | UI E     |
+| 28| DocumentChecklist                         | ✅ FOUND | src/components/immobilienakte/DocumentChecklist.tsx              | 11 DocTypes, status badges                 | UI J     |
+| 29| MasterTemplates.tsx (Zone 1)              | ✅ FOUND | src/pages/admin/MasterTemplates.tsx                              | 396 Zeilen, Tabs: Zins/Berechnung/Kosten   | Zone 1   |
+| 30| AdminSidebar.tsx (Zone 1 Nav)             | ✅ FOUND | src/components/admin/AdminSidebar.tsx                            | "master-templates" → 'master' group        | Nav      |
+| 31| Zone 1 manifest route                     | ✅ FOUND | src/manifests/routesManifest.ts:88                               | `master-templates → MasterTemplates`       | Route    |
+| 32| Spec mod-04_immobilien.md                 | ✅ FOUND | spec/current/02_modules/mod-04_immobilien.md                     | Modul-Spezifikation                        | Spec     |
+
+================================================================================
+(2) FOUND / NOT FOUND / MISMATCH LISTE
+================================================================================
+
+✅ FOUND (alle Muss-Elemente):
+- Block A: saleEnabled, rentalManaged, vermieterKontextId → src/types/immobilienakte.ts:39-41
+- Block B: street, houseNumber, postalCode, city → src/types/immobilienakte.ts:48-51
+- Block C: buildYear, heatingType, energySource → src/types/immobilienakte.ts:62,70-71
+- Block D: purchasePrice, landRegisterSheet → src/types/immobilienakte.ts:88,85
+- Block E: grossYieldPercent, netYieldPercent → src/types/immobilienakte.ts:99-100
+- Block F: rentColdEur, rentWarmEur, nkAdvanceEur → src/types/immobilienakte.ts:116-118
+- Block G: hausgeldMonthlyEur, allocationKeyDefault → src/types/immobilienakte.ts:134-135
+- Block H: outstandingBalanceEur, interestRatePercent, annuityMonthlyEur → src/types/immobilienakte.ts:154-158
+- Block I: afaRatePercent, coaVersion → src/types/immobilienakte.ts:173,179
+- Block J: documents[] mit docType, status → src/types/immobilienakte.ts:185-192
+
+⚠️ PARTIAL (Block I — Accounting):
+- AccountingData ist im Type definiert (src/types/immobilienakte.ts:167-180)
+- ABER: Kein EditableAccountingBlock.tsx existiert!
+- ABER: EditableUnitDossierView rendert Block I NICHT (nur A-H + J)
+- useUnitDossier.ts gibt nur Default-Werte zurück (L364-365: `afaMethod: 'linear', coaVersion: 'SKR04_Starter'`)
+
+❌ NOT FOUND:
+- Kein separates "Immobilienakte-Template" in Zone 1 MasterTemplates.tsx
+  (Aktuell: nur Zinstabelle, AfA-Satz, Nebenkosten — NICHT die Akten-Struktur A-J)
+
+❓ MISMATCH-RISIKEN:
+- Zone-2 dossier kann aktuell nicht angezeigt werden wegen Routing-Bug
+  (Nested Routes in ImmobilienPage.tsx → innere Routes matchen nicht korrekt)
+- usePropertyDossier benötigt activeTenantId, der asynchron geladen wird
+  (AuthContext.tsx → kann bei Hard Refresh zu leerem Content führen)
+
+================================================================================
+(3) IMPLEMENTIERUNGSPLAN
+================================================================================
+
+Ziel: Zone 1 → /admin/master-templates bekommt einen neuen Tab/Subroute "Immobilienakte",
+      der die 10 Blöcke (A-J) mit allen Feldern als READ-ONLY Referenz anzeigt.
+      KEINE Änderung an MOD-04 Zone-2 Code.
+
+------------------------------------------------------------------------------
+SCHRITT 1: Manifest erweitern (Subrouten für MasterTemplates)
+------------------------------------------------------------------------------
+Ziel:      /admin/master-templates/immobilienakte als dedizierte URL
+Datei:     src/manifests/routesManifest.ts
+Änderung:  MODIFY — neue Subroute hinzufügen
+
+VORHER (Zeile 88):
+  { path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" },
+
+NACHHER:
+  { path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" },
+  { path: "master-templates/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte-Vorlage" },
+  { path: "master-templates/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft-Vorlage" },
+
+Begründung: Separate Routen ermöglichen Deep-Linking und klare URL-Struktur.
+            Alternative (Tabs auf einer Seite) würde auch funktionieren, aber
+            separate Komponenten sind wartbarer bei wachsender Komplexität.
+
+------------------------------------------------------------------------------
+SCHRITT 2: Neue Seite erstellen — MasterTemplatesImmobilienakte.tsx
+------------------------------------------------------------------------------
+Ziel:      Read-only Viewer für die 10 Blöcke A-J
+Datei:     src/pages/admin/MasterTemplatesImmobilienakte.tsx
+Änderung:  CREATE (neue Datei)
+
+Struktur:
+  - Page Header: "Immobilienakte — Mastervorlage (v1)"
+  - Accordion oder Tabs für Blöcke A-J
+  - Pro Block: Tabelle mit Spalten:
+    | field_key | label_de | entity | type | notes |
+  - Datenquelle: Statisch aus src/types/immobilienakte.ts extrahiert
+    (Initial: Hardcoded JSON, später: form_templates DB-Tabelle)
+
+UI-Struktur (Beispiel Block A):
+```
+<Accordion type="single" collapsible>
+  <AccordionItem value="block-a">
+    <AccordionTrigger>
+      <Building2 className="h-4 w-4 mr-2" />
+      A — Identität & Stammdaten
+    </AccordionTrigger>
+    <AccordionContent>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Feld-Key</TableHead>
+            <TableHead>Label (DE)</TableHead>
+            <TableHead>Entity</TableHead>
+            <TableHead>Typ</TableHead>
+            <TableHead>Notizen</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell className="font-mono">unitCode</TableCell>
+            <TableCell>Akten-ID</TableCell>
+            <TableCell>units</TableCell>
+            <TableCell>string</TableCell>
+            <TableCell>Auto-generiert</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell className="font-mono">saleEnabled</TableCell>
+            <TableCell>Verkauf aktiv</TableCell>
+            <TableCell>properties</TableCell>
+            <TableCell>boolean</TableCell>
+            <TableCell>—</TableCell>
+          </TableRow>
+          ...
+        </TableBody>
+      </Table>
+    </AccordionContent>
+  </AccordionItem>
+  ...
+</Accordion>
+```
+
+------------------------------------------------------------------------------
+SCHRITT 3: Feldlisten-Mapping aus Types extrahieren
+------------------------------------------------------------------------------
+Ziel:      Definitive Feld-Inventur für Zone-1 Viewer
+Datei:     src/pages/admin/MasterTemplatesImmobilienakte.tsx (inline) oder
+           src/data/immobilienakte-template-v1.ts (optional separate Datei)
+Änderung:  CREATE
+
+Felddaten werden DIREKT aus src/types/immobilienakte.ts + EditableBlocks abgeleitet:
+
+BLOCK A — Identität & Stammdaten (11 Felder)
+| field_key       | label_de              | entity     | type     | source_ui_component          |
+|-----------------|----------------------|------------|----------|------------------------------|
+| unitCode        | Akten-ID             | units      | string   | EditableIdentityBlock:75     |
+| propertyType    | Objektart            | properties | enum     | EditableIdentityBlock:91-101 |
+| category        | Kategorie            | properties | enum     | EditableIdentityBlock:104-115|
+| propertyStatus  | Status               | properties | enum     | EditableIdentityBlock:119-130|
+| saleEnabled     | Verkauf aktiv        | properties | boolean  | EditableIdentityBlock:150-155|
+| rentalManaged   | Vermietung verwaltet | properties | boolean  | EditableIdentityBlock:156-163|
+| wegFlag         | WEG                  | properties | boolean  | EditableIdentityBlock:164-170|
+| buildYear       | Baujahr              | properties | number   | EditableIdentityBlock:78-86  |
+| reportingRegime | Reporting            | properties | enum     | EditableIdentityBlock:132-144|
+| meaOrTeNo       | MEA/TE-Nr.           | properties | string   | EditableIdentityBlock:176-183|
+| vermieterKontextId | Vermieter-Kontext | properties | uuid     | (nicht im UI, nur Type)      |
+
+BLOCK B — Adresse (8 Felder)
+| field_key      | label_de         | entity     | type     | source_ui_component        |
+|----------------|------------------|------------|----------|----------------------------|
+| street         | Straße           | properties | string   | EditableAddressBlock:42-46 |
+| houseNumber    | Hausnr.          | properties | string   | EditableAddressBlock:48-54 |
+| postalCode     | PLZ              | properties | string   | EditableAddressBlock:60-65 |
+| city           | Ort              | properties | string   | EditableAddressBlock:67-73 |
+| locationLabel  | Lagebezeichnung  | properties | string   | EditableAddressBlock:77-83 |
+| locationNotes  | Lage-Notizen     | properties | text     | EditableAddressBlock:86-93 |
+| latitude       | Breitengrad      | properties | decimal  | EditableAddressBlock:99-104|
+| longitude      | Längengrad       | properties | decimal  | EditableAddressBlock:109-115|
+
+BLOCK C — Gebäude & Flächen (13 Felder)
+| field_key           | label_de           | entity | type     |
+|---------------------|-------------------|--------|----------|
+| usageType           | Nutzung           | units  | enum     |
+| areaLivingSqm       | Wohnfläche (m²)   | units  | decimal  |
+| areaUsableSqm       | Nutzfläche (m²)   | units  | decimal  |
+| roomsCount          | Zimmer            | units  | decimal  |
+| bathroomsCount      | Bäder             | units  | integer  |
+| floor               | Etage             | units  | integer  |
+| unitNumber          | Whg.-Nr.          | units  | string   |
+| heatingType         | Heizart           | units  | enum     |
+| energySource        | Energieträger     | units  | enum     |
+| energyCertType      | Energieausweis-Typ| units  | enum     |
+| energyCertValue     | Energiewert       | units  | decimal  |
+| energyCertValidUntil| Gültig bis        | units  | date     |
+| featuresTags        | Ausstattung       | units  | string[] |
+
+BLOCK D — Grundbuch & Erwerb (10 Felder)
+| field_key         | label_de              | entity     | type     |
+|-------------------|----------------------|------------|----------|
+| landRegisterCourt | Amtsgericht          | properties | string   |
+| landRegisterOf    | Grundbuch von        | properties | string   |
+| landRegisterSheet | Blatt                | properties | string   |
+| landRegisterVolume| Band                 | properties | string   |
+| parcelNumber      | Flurstück            | properties | string   |
+| teNumber          | TE-Nummer            | properties | string   |
+| purchaseDate      | Notartermin          | properties | date     |
+| purchasePrice     | Kaufpreis (€)        | properties | decimal  |
+| marketValue       | Verkehrswert (€)     | properties | decimal  |
+| acquisitionCosts  | Erwerbsnebenkosten   | properties | decimal  |
+
+BLOCK E — Investment KPIs (8 Felder, read-only/derived)
+| field_key              | label_de               | entity  | type     |
+|------------------------|------------------------|---------|----------|
+| purchasePriceEur       | Kaufpreis              | derived | decimal  |
+| purchaseCostsEur       | Erwerbskosten          | derived | decimal  |
+| valuationEur           | Verkehrswert           | derived | decimal  |
+| netColdRentPaEur       | Netto-Kaltmiete p.a.   | derived | decimal  |
+| nonAllocCostsPaEur     | Nicht-umlagefähig p.a. | derived | decimal  |
+| cashflowPreTaxMonthlyEur| Cashflow vor Steuer mtl.| derived | decimal  |
+| grossYieldPercent      | Bruttorendite (%)      | derived | percent  |
+| netYieldPercent        | Nettorendite (%)       | derived | percent  |
+
+BLOCK F — Mietverhältnis (14 Felder)
+| field_key              | label_de                  | entity | type     |
+|------------------------|---------------------------|--------|----------|
+| tenancyStatus          | Status                    | leases | enum     |
+| leaseType              | Vertragsart               | leases | enum     |
+| tenantName             | Mieter (Name)             | contacts| string  |
+| startDate              | Mietbeginn                | leases | date     |
+| endDate                | Mietende                  | leases | date     |
+| rentColdEur            | Kaltmiete (€)             | leases | decimal  |
+| nkAdvanceEur           | NK-Vorauszahlung (€)      | leases | decimal  |
+| heatingAdvanceEur      | Heiz-VZ (€)               | leases | decimal  |
+| rentWarmEur            | Warmmiete (€)             | derived| decimal  |
+| depositAmountEur       | Kaution (€)               | leases | decimal  |
+| depositStatus          | Kaution-Status            | leases | enum     |
+| paymentDueDay          | Zahlungstag               | leases | integer  |
+| rentModel              | Mietmodell                | leases | enum     |
+| nextRentAdjustmentDate | Nächste Anpassung         | leases | date     |
+
+BLOCK G — WEG & Hausgeld (10 Felder)
+| field_key               | label_de                 | entity     | type     |
+|-------------------------|--------------------------|------------|----------|
+| wegFlag                 | WEG                      | properties | boolean  |
+| meaShare                | MEA Anteil               | units      | decimal  |
+| meaTotal                | MEA Gesamt               | properties | decimal  |
+| hausgeldMonthlyEur      | Hausgeld mtl. (€)        | units      | decimal  |
+| allocationKeyDefault    | Umlageschlüssel          | properties | enum     |
+| periodCurrent           | Aktuelle Periode         | nk_periods | string   |
+| lastSettlementDate      | Abrechnungsdatum         | nk_periods | date     |
+| lastSettlementBalanceEur| Saldo (€)                | nk_periods | decimal  |
+| allocatablePaEur        | Umlagefähig p.a. (€)     | nk_periods | decimal  |
+| nonAllocatablePaEur     | Nicht umlagefähig p.a.   | nk_periods | decimal  |
+
+BLOCK H — Finanzierung (11 Felder)
+| field_key              | label_de                | entity | type     |
+|------------------------|-------------------------|--------|----------|
+| bankName               | Bank                    | loans  | string   |
+| loanNumber             | Darlehens-Nr.           | loans  | string   |
+| originalAmountEur      | Urspr. Darlehen (€)     | loans  | decimal  |
+| outstandingBalanceEur  | Restschuld (€)          | loans  | decimal  |
+| outstandingBalanceAsof | Restschuld per          | loans  | date     |
+| annuityMonthlyEur      | Rate mtl. (€)           | loans  | decimal  |
+| interestRatePercent    | Zinssatz (%)            | loans  | percent  |
+| repaymentRatePercent   | Tilgung (%)             | loans  | percent  |
+| fixedInterestEndDate   | Zinsbindung bis         | loans  | date     |
+| specialRepaymentRight  | Sondertilgung p.a.      | loans  | object   |
+| contactPerson          | Ansprechpartner Bank    | loans  | object   |
+
+BLOCK I — Accounting (10 Felder) ⚠️ NICHT IM UI IMPLEMENTIERT
+| field_key               | label_de                 | entity      | type     |
+|-------------------------|--------------------------|-------------|----------|
+| landSharePercent        | Grundanteil (%)          | accounting  | percent  |
+| buildingSharePercent    | Gebäudeanteil (%)        | accounting  | percent  |
+| bookValueEur            | Buchwert (€)             | accounting  | decimal  |
+| afaRatePercent          | AfA-Satz (%)             | accounting  | percent  |
+| afaStartDate            | AfA-Start                | accounting  | date     |
+| afaMethod               | AfA-Methode              | accounting  | enum     |
+| remainingUsefulLifeYears| Restnutzungsdauer        | accounting  | integer  |
+| modernizationCostsEur   | Modernisierungskosten    | accounting  | decimal  |
+| modernizationYear       | Modernisierungsjahr      | accounting  | integer  |
+| coaVersion              | Kontenrahmen             | accounting  | string   |
+
+BLOCK J — Dokumente/Datenraum (11 Doc-Types)
+| docType                  | label_de             | entity          |
+|--------------------------|----------------------|-----------------|
+| DOC_PURCHASE_CONTRACT    | Kaufvertrag          | documents       |
+| DOC_LEASE_CONTRACT       | Mietvertrag          | documents       |
+| DOC_LAND_REGISTER        | Grundbuchauszug      | documents       |
+| DOC_ENERGY_CERT          | Energieausweis       | documents       |
+| DOC_FLOORPLAN            | Grundriss            | documents       |
+| DOC_DIVISION_DECLARATION | Teilungserklärung    | documents       |
+| DOC_INSURANCE_BUILDING   | Gebäudeversicherung  | documents       |
+| DOC_WEG_ANNUAL_STATEMENT | WEG-Abrechnung       | documents       |
+| DOC_WEG_BUDGET_PLAN      | Wirtschaftsplan      | documents       |
+| DOC_NK_STATEMENT         | NK-Abrechnung        | documents       |
+| DOC_LOAN_BUCKET          | Darlehensunterlagen  | documents       |
+
+------------------------------------------------------------------------------
+SCHRITT 4: AdminSidebar Submenu (optional)
+------------------------------------------------------------------------------
+Ziel:      "Master-Vorlagen" als collapsible Menu mit Subitems
+Datei:     src/components/admin/AdminSidebar.tsx
+Änderung:  OPTIONAL MODIFY (oder belassen als flache Liste)
+
+Aktuelle Struktur: Flache Liste, "Master-Vorlagen" ist ein einzelner Link.
+Empfehlung:        Belassen, da MasterTemplates.tsx bereits interne Tabs hat.
+                   Neue Subrouten werden als separate Nav-Items sichtbar.
+
+Alternative:       Submenu wie bei FutureRoom (mit ChevronDown).
+                   Erfordert GroupConfig-Erweiterung + Submenu-Rendering.
+
+Entscheidung:      Flache Liste beibehalten (einfacher, konsistent mit Spec).
+
+------------------------------------------------------------------------------
+SCHRITT 5: ManifestRouter erweitern
+------------------------------------------------------------------------------
+Ziel:      Neue Admin-Routen tatsächlich mounten
+Datei:     src/router/ManifestRouter.tsx
+Änderung:  PRÜFEN — sollte automatisch aus routesManifest lesen
+
+Aktuell:   zone1Admin.routes wird iteriert → neue Routen sollten automatisch gemountet werden.
+           Voraussetzung: Komponente "MasterTemplatesImmobilienakte" in adminComponentMap eintragen.
+
+Zu prüfen: adminComponentMap existiert oder muss erweitert werden.
+
+------------------------------------------------------------------------------
+SCHRITT 6: Placeholder für Selbstauskunft (disabled)
+------------------------------------------------------------------------------
+Ziel:      /admin/master-templates/selbstauskunft zeigt "Coming Soon"
+Datei:     src/pages/admin/MasterTemplatesSelbstauskunft.tsx
+Änderung:  CREATE (minimale Placeholder-Seite)
+
+Inhalt:
+```tsx
+export default function MasterTemplatesSelbstauskunft() {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Selbstauskunft — Mastervorlage</h1>
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Coming Soon</p>
+          <p className="text-sm">MOD-07 Selbstauskunft-Schema wird in Phase 2 implementiert.</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+================================================================================
+(4) CONSISTENCY CHECK — 10 MUSS-ELEMENTE
+================================================================================
+
+Die Zone-1 Immobilienakte-Vorlage ist NUR gültig, wenn alle folgenden Elemente
+aus der AKTUELLEN src/types/immobilienakte.ts + EditableBlocks abgeleitet sind:
+
+| # | Muss-Element                              | Quelle                              | Status     |
+|---|-------------------------------------------|-------------------------------------|------------|
+| 1 | saleEnabled (Block A)                     | types:39, EditableIdentityBlock:150 | ✅ FOUND   |
+| 2 | rentalManaged (Block A)                   | types:40, EditableIdentityBlock:156 | ✅ FOUND   |
+| 3 | street + houseNumber + postalCode + city  | types:48-51, EditableAddressBlock   | ✅ FOUND   |
+| 4 | buildYear + heatingType + energySource    | types:62,70-71, EditableBuildingBlock| ✅ FOUND  |
+| 5 | rentColdEur + nkAdvanceEur + rentWarmEur  | types:116-119, EditableTenancyBlock | ✅ FOUND   |
+| 6 | hausgeldMonthlyEur + allocationKeyDefault| types:134-135, EditableWEGBlock     | ✅ FOUND   |
+| 7 | outstandingBalanceEur + interestRatePercent| types:154-156, EditableFinancingBlock| ✅ FOUND |
+| 8 | annuityMonthlyEur (Rate)                  | types:158, EditableFinancingBlock   | ✅ FOUND   |
+| 9 | DocumentStatus[] mit 11 DocTypes          | types:185-192, useUnitDossier:161-173| ✅ FOUND  |
+|10 | afaRatePercent + coaVersion (Block I)     | types:173,179                       | ⚠️ PARTIAL |
+
+⚠️ PARTIAL bei #10: Type existiert, aber kein EditableAccountingBlock im UI.
+   Zone-1 Vorlage sollte Block I trotzdem auflisten (mit Notiz "UI pending").
+
+================================================================================
+(5) MANUAL TESTPLAN (nach Implementierung)
+================================================================================
+
+1. Route erreichbar:
+   - Navigiere zu /admin/master-templates/immobilienakte
+   - Erwartung: Seite lädt, zeigt 10 Blöcke A-J
+
+2. Alle 10 Blöcke sichtbar:
+   - Öffne jeden Accordion-Block
+   - Erwartung: Tabelle mit field_key, label_de, entity, type, notes
+
+3. Feldanzahl pro Block:
+   - Block A: 11 Felder
+   - Block B: 8 Felder
+   - Block C: 13 Felder
+   - Block D: 10 Felder
+   - Block E: 8 Felder
+   - Block F: 14 Felder
+   - Block G: 10 Felder
+   - Block H: 11 Felder
+   - Block I: 10 Felder
+   - Block J: 11 DocTypes
+
+4. Hard Refresh Test:
+   - Lade /admin/master-templates/immobilienakte im Incognito-Modus
+   - Erwartung: Seite lädt korrekt ohne Login (wenn Admin-Auth umgangen)
+   - ODER: Redirect zu /auth mit korrekter Return-URL
+
+5. Navigation Test:
+   - Klicke in AdminSidebar auf "Master-Vorlagen"
+   - Erwartung: Entweder direkt auf Immobilienakte-Tab oder Liste mit Links
+
+================================================================================
+(6) RISIKEN & BLOCKING GAPS
+================================================================================
+
+RISIKO 1: Routing-Bug in Zone 2 (P0)
+- ImmobilienPage.tsx verwendet nested <Routes> innerhalb von <Route element>
+- Führt zu Matching-Problemen bei Hard Refresh
+- Zone-1 Vorlage ist davon NICHT betroffen, aber sollte dokumentiert sein
+
+RISIKO 2: Block I (Accounting) fehlt im UI (P2)
+- Type definiert, aber kein EditableAccountingBlock
+- Zone-1 sollte Block I trotzdem listen mit "UI pending" Notiz
+
+RISIKO 3: Keine DB-Persistenz für Templates (P1)
+- Aktuell alles hardcoded in Types + Components
+- Für v2: form_templates Tabelle mit JSONB blocks
+- Zone-1 Viewer kann statisch starten, später auf DB umstellen
+
+BLOCKING GAP: Keine
+- Alle Quellen sind vorhanden (Types + EditableBlocks)
+- Implementierung kann sofort beginnen
+
+================================================================================
+(7) SUMMARY
+================================================================================
+
+IST-Zustand:
+- MOD-04 Immobilienakte ist vollständig in Types + Editable Components definiert
+- Zone-1 MasterTemplates.tsx existiert, enthält aber NUR Zinstabelle/AfA/Kosten
+- Kein "Immobilienakte-Schema" Viewer in Zone 1 vorhanden
+
+SOLL-Zustand (nach Implementierung):
+- /admin/master-templates/immobilienakte zeigt alle 10 Blöcke A-J
+- Jeder Block listet seine Felder mit field_key, label_de, entity, type, notes
+- Datenquelle: Direkt aus src/types/immobilienakte.ts abgeleitet
+- Read-only Referenz für Platform Admins
+
+Betroffene Dateien (zusammengefasst):
+1. src/manifests/routesManifest.ts — 2 neue Routes hinzufügen
+2. src/pages/admin/MasterTemplatesImmobilienakte.tsx — CREATE (ca. 400 Zeilen)
+3. src/pages/admin/MasterTemplatesSelbstauskunft.tsx — CREATE (ca. 30 Zeilen, Placeholder)
+4. src/router/ManifestRouter.tsx — PRÜFEN (Komponenten-Map erweitern falls nötig)
+5. Optional: src/data/immobilienakte-template-v1.ts — Feldlisten als JSON
+
+================================================================================
+END OF AUDIT
+================================================================================
