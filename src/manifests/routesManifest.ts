@@ -86,6 +86,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "delegations", component: "Delegations", title: "Delegationen" },
     { path: "contacts", component: "MasterContacts", title: "Kontakte" },
     { path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" },
+    { path: "master-templates/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" },
+    { path: "master-templates/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" },
     { path: "tiles", component: "TileCatalog", title: "Tile-Katalog" },
     { path: "integrations", component: "Integrations", title: "Integrationen" },
     { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
