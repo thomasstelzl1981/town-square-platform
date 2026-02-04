@@ -1,0 +1,519 @@
+================================================================================
+ AUDIT REPORT — Zone 1 Mastervorlagen + MOD-04/MOD-07 IST-Analyse
+================================================================================
+ Date:       2026-02-04
+ Repo:       system-of-a-town (Lovable Project)
+ Auditor:    AI Architect
+ Scope:      Zone 1 Mastervorlagen, MOD-04 Immobilienakte, MOD-07 Selbstauskunft
+================================================================================
+
+TABLE OF CONTENTS
+─────────────────
+(0) Metadata
+(1) Zone-1 Mastervorlagen IST
+(2) MOD-04 Immobilienakte IST
+(3) MOD-07 Selbstauskunft IST
+(4) Route & Nav Truth Table
+(5) Root Cause Hypotheses
+(6) Template Opportunity Map
+(7) Minimal Patch Prerequisites
+(8) Next Actions Checklist
+
+================================================================================
+SECTION 0: METADATA
+================================================================================
+
+Report Version:     1.0.0
+Generated:          2026-02-04T10:00:00Z
+Evidence Count:     30+ snippets (E01–E30)
+Files Analyzed:     15+
+DB Tables Scanned:  100+
+
+================================================================================
+SECTION 1: ZONE-1 MASTERVORLAGEN IST
+================================================================================
+
+1.1 ROUTE DEFINITION
+────────────────────
+E01: src/manifests/routesManifest.ts (Line 88)
+  { path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" }
+
+E02: Canonical URL = /admin/master-templates
+
+1.2 NAV PLACEMENT
+─────────────────
+E03: src/components/admin/AdminSidebar.tsx (Lines 99-100)
+  getGroupKey() maps 'master-templates' to 'master' group
+
+E04: GROUP_CONFIG (Line 85)
+  'master': { label: 'Master Data', priority: 2 }
+
+RESULT: "Master-Vorlagen" appears in Admin Sidebar under "Master Data" group.
+
+1.3 CURRENT COMPONENT
+─────────────────────
+E05: src/pages/admin/MasterTemplates.tsx
+  Full implementation: 395 lines
+  Purpose: "Zentrale Konfiguration für die Investment Engine"
+
+E06: Current Tabs (Lines 79-93):
+  - "Zinstabelle" (Interest Rates by LTV & Fixed Period)
+  - "Berechnungsparameter" (AfA, Tax Calculation)
+  - "Nebenkosten" (Maintenance, Acquisition Costs)
+
+E07: Data Source (Lines 23-28):
+  HARDCODED in component as defaultInterestRates[]
+  NO database persistence (Line 44-48: handleSave shows "TODO: Save to database")
+
+1.4 DATABASE TABLES FOR TEMPLATES
+─────────────────────────────────
+E08: Existing template-related tables:
+  - agreement_templates       → Agreement/Consent templates (ACTIVE)
+  - doc_type_catalog          → Document type definitions (ACTIVE)
+  - dp_catalog                → Data point definitions (ACTIVE)
+  - interest_rates            → Investment calculation rates (EXISTS)
+  - church_tax_rates          → Church tax by state (EXISTS)
+  - tax_parameters            → Tax calculation params (EXISTS)
+  - tile_catalog              → Module tile definitions (ACTIVE)
+
+E09: GAP — NO table for:
+  - Immobilienakte field schema (form_templates or field_catalog)
+  - Selbstauskunft sections/fields (selbstauskunft_templates)
+  - Dossier block configurations
+
+1.5 IST SUMMARY (ZONE 1 MASTERVORLAGEN)
+───────────────────────────────────────
+│ Aspect              │ Status      │ Notes                                 │
+├─────────────────────┼─────────────┼───────────────────────────────────────┤
+│ Route               │ ✅ EXISTS   │ /admin/master-templates               │
+│ Navigation          │ ✅ VISIBLE  │ Under "Master Data" group             │
+│ Component           │ ✅ WORKS    │ MasterTemplates.tsx (395 lines)       │
+│ DB Persistence      │ ❌ MISSING  │ Hardcoded defaults, no save           │
+│ Immobilienakte Cfg  │ ❌ GAP P0   │ No template table for dossier fields  │
+│ Selbstauskunft Cfg  │ ❌ GAP P1   │ No template table for form sections   │
+└─────────────────────┴─────────────┴───────────────────────────────────────┘
+
+================================================================================
+SECTION 2: MOD-04 IMMOBILIENAKTE IST
+================================================================================
+
+2.1 ROUTE DEFINITIONS
+─────────────────────
+E10: src/manifests/routesManifest.ts (Lines 180-199)
+  "MOD-04": {
+    name: "Immobilien",
+    base: "immobilien",
+    tiles: [
+      { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
+      { path: "kontexte", component: "KontexteTab", title: "Kontexte" },
+      { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
+      { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
+    ],
+    dynamic_routes: [
+      { path: "neu", component: "CreatePropertyRedirect", title: "Neue Immobilie" },
+      { path: ":id", component: "PropertyDetail", title: "Immobilienakte" },
+    ]
+  }
+
+E11: Canonical Dossier Route = /portal/immobilien/:id
+
+2.2 COMPONENT TREE
+──────────────────
+E12: Entry Point: src/pages/portal/ImmobilienPage.tsx (Lines 88-117)
+  - Uses nested <Routes> with <Suspense>
+  - Lazy-loads: PortfolioTab, KontexteTab, SanierungTab, BewertungTab, PropertyDetailPage
+  - NON-LAZY: CreatePropertyRedirect (Line 23)
+
+E13: Dossier View: src/pages/portal/immobilien/PropertyDetailPage.tsx
+  - Renders tabs: Akte, Exposé, Features, Mietverhältnis, Datenraum
+  - "Akte" tab renders EditableUnitDossierView
+
+E14: Editable Dossier: src/components/immobilienakte/EditableUnitDossierView.tsx
+  - 442 lines, full CRUD implementation
+  - 9 Editable Blocks: Identity, Address, Building, Legal, Tenancy, WEG, Financing
+  - 2 Read-Only: InvestmentKPIs, Documents
+  - Sticky save bar with dirty tracking
+
+2.3 HOOKS & DATA LOADING
+────────────────────────
+E15: src/hooks/useUnitDossier.ts
+  - usePropertyDossier(propertyId): Finds MAIN unit, then loads dossier
+  - useUnitDossier(unitId): Full aggregation query
+
+E16: Data Aggregation (Lines 42-175):
+  - units + properties (JOIN)
+  - leases (with contacts, MULTI-LEASE support)
+  - loans (for financing block)
+  - nk_periods (for WEG/NK block)
+  - storage_nodes + document_links (for documents)
+
+E17: Critical enabled Guard (Line 376):
+  enabled: !!unitId && !!activeTenantId
+  → Query ONLY runs when BOTH are truthy
+
+E18: usePropertyDossier Flow (Lines 385-420):
+  1. Query units by property_id → get first unit id
+  2. Pass unit.id to useUnitDossier
+  3. Return combined loading state
+
+2.4 DATABASE TABLES (MOD-04)
+────────────────────────────
+E19: Primary SSOT tables:
+  - properties           → Core property data
+  - units                → Unit-level data (MAIN unit per property)
+  - leases               → Tenancy contracts
+  - loans                → Financing data
+  - nk_periods           → Nebenkosten periods
+  - storage_nodes        → DMS folder structure
+  - document_links       → Document-to-object associations
+  - property_financing   → Legacy financing (being deprecated)
+
+E20: Supporting tables:
+  - landlord_contexts    → Vermieter-Kontext grouping
+  - context_property_assignment → Context-to-property mapping
+  - property_features    → Feature tags
+  - property_valuations  → Valuation history
+
+2.5 FORM RENDERING STRATEGY
+───────────────────────────
+E21: src/types/immobilienakte.ts (570 lines)
+  - Fully typed: UnitDossierData interface (Lines 203-350)
+  - 10 Blocks (A-J) defined as separate interfaces
+  - Form data types: PropertyFormData, UnitFormData, LeaseFormData, etc.
+
+E22: Rendering is HARDCODED in components:
+  - EditableIdentityBlock, EditableAddressBlock, EditableBuildingBlock...
+  - Field names hardcoded in JSX
+  - NO schema-driven rendering
+
+2.6 ROOT CAUSE ANALYSIS: "Why Dossier Sometimes Doesn't Show"
+─────────────────────────────────────────────────────────────
+E23: Hypothesis 1 — Nested Routes Issue
+  ImmobilienPage.tsx uses nested <Routes> inside <Route element={...}>
+  This can cause path matching issues in React Router v6
+  Result: Main content area empty, no 404, no error
+
+E24: Hypothesis 2 — activeTenantId Guard
+  usePropertyDossier requires activeTenantId (from useAuth)
+  If AuthContext not fully initialized → query disabled → infinite loading
+
+E25: Hypothesis 3 — Unit Query Returns Null
+  If property exists but MAIN unit not created → unitData = null
+  → useUnitDossier never runs → dossierData = null
+  → Empty state rendered
+
+E26: Hypothesis 4 — Lazy Load Chunk Failure
+  ImmobilienPage lazy-loads PropertyDetailPage
+  If chunk fails to load → Suspense fallback stuck
+  No error boundary catches the module load failure
+
+2.7 IST SUMMARY (MOD-04)
+────────────────────────
+│ Aspect              │ Status      │ Notes                                 │
+├─────────────────────┼─────────────┼───────────────────────────────────────┤
+│ Route               │ ✅ DEFINED  │ /portal/immobilien/:id                │
+│ Component           │ ✅ EXISTS   │ PropertyDetailPage (356 lines)        │
+│ Editable View       │ ✅ EXISTS   │ EditableUnitDossierView (442 lines)   │
+│ Data Hook           │ ✅ EXISTS   │ usePropertyDossier/useUnitDossier     │
+│ Type System         │ ✅ COMPLETE │ UnitDossierData (570 lines)           │
+│ Schema-Driven       │ ❌ GAP P1   │ Hardcoded field rendering             │
+│ Route Stability     │ ⚠️ UNSTABLE│ Nested Routes + Lazy Load issues      │
+│ Empty State         │ ✅ EXISTS   │ "Immobilie nicht gefunden" card       │
+│ MAIN Unit Creation  │ ⚠️ TRIGGER │ Should be DB trigger, verify exists   │
+└─────────────────────┴─────────────┴───────────────────────────────────────┘
+
+================================================================================
+SECTION 3: MOD-07 SELBSTAUSKUNFT IST
+================================================================================
+
+3.1 ROUTE DEFINITIONS
+─────────────────────
+E27: src/manifests/routesManifest.ts (Lines 237-252)
+  "MOD-07": {
+    name: "Finanzierung",
+    base: "finanzierung",
+    tiles: [
+      { path: "selbstauskunft", component: "SelbstauskunftTab", title: "Selbstauskunft", default: true },
+      { path: "dokumente", component: "DokumenteTab", title: "Dokumente" },
+      { path: "anfrage", component: "AnfrageTab", title: "Anfrage" },
+      { path: "status", component: "StatusTab", title: "Status" },
+    ]
+  }
+
+Canonical Route = /portal/finanzierung/selbstauskunft
+
+3.2 COMPONENT TREE
+──────────────────
+E28: src/pages/portal/finanzierung/SelbstauskunftTab.tsx (300 lines)
+  - Fetches persistent applicant_profile (finance_request_id IS NULL)
+  - Auto-creates profile if none exists
+  - Renders SelbstauskunftForm with profile data
+  - Dev mode detection for demo viewing
+
+E29: src/components/finanzierung/SelbstauskunftForm.tsx (1115 lines)
+  - Full 8-tab form implementation
+  - Tabs: Identity, Household, Employment, (Company), Expenses, Assets, Financing, Declarations
+  - Profile type switch: Private vs. Entrepreneur
+  - Completion score calculation
+
+3.3 SECTION COUNT ANALYSIS
+──────────────────────────
+SPEC (spec/current/02_modules/mod-07_finanzierung.md):
+  "Die Selbstauskunft besteht aus 8 Sektionen" (Line 76)
+
+UI (SelbstauskunftForm.tsx Lines 177-213):
+  TabsList shows: Identity, Household, Employment, (Company), Expenses, Assets, Financing, Declarations
+  = 8 tabs (Company conditionally shown for entrepreneurs)
+
+RESULT: Spec and UI ALIGNED at 8 sections.
+
+3.4 DATABASE TABLES (MOD-07)
+────────────────────────────
+Primary tables:
+  - applicant_profiles      → Self-disclosure data (main storage)
+  - finance_requests        → Request container
+  - finance_mandates        → Zone 1 delegation
+  - finance_documents       → Document links
+  - finance_cases           → Case management
+  - credibility_flags       → Bonitätsprüfung flags
+  - finance_bank_contacts   → Bank directory
+
+3.5 FORM FIELD DEFINITION
+─────────────────────────
+E30: src/types/finance.ts (Lines 22-124)
+  ApplicantProfile interface defines ALL fields
+  - 60+ fields across identity, household, employment, assets, financing, declarations
+
+Rendering Strategy: HARDCODED
+  - Each tab content is manually coded in SelbstauskunftForm.tsx
+  - FormInput/FormRow/FormSection components used
+  - NO schema-driven rendering from database
+
+3.6 POTENTIAL NON-RENDER CAUSES
+───────────────────────────────
+1. Org Context Guard:
+   SelbstauskunftTab queries with activeOrganization?.id
+   If null → devMode fallback (empty profile returned)
+
+2. RLS Policies:
+   applicant_profiles has tenant_id filter
+   If user session doesn't match tenant → no data
+
+3. Profile Creation Failure:
+   Auto-create on first visit may fail silently
+   Check for RLS INSERT policy
+
+3.7 IST SUMMARY (MOD-07)
+────────────────────────
+│ Aspect              │ Status      │ Notes                                 │
+├─────────────────────┼─────────────┼───────────────────────────────────────┤
+│ Route               │ ✅ DEFINED  │ /portal/finanzierung/selbstauskunft   │
+│ Component           │ ✅ EXISTS   │ SelbstauskunftTab (300 lines)         │
+│ Form Component      │ ✅ EXISTS   │ SelbstauskunftForm (1115 lines)       │
+│ Section Count       │ ✅ ALIGNED  │ 8 sections (spec + UI match)          │
+│ Type System         │ ✅ COMPLETE │ ApplicantProfile (60+ fields)         │
+│ Schema-Driven       │ ❌ GAP P1   │ Hardcoded field rendering             │
+│ Dev Mode            │ ✅ EXISTS   │ Empty profile for preview             │
+│ Persistence         │ ✅ WORKS    │ applicant_profiles table              │
+└─────────────────────┴─────────────┴───────────────────────────────────────┘
+
+================================================================================
+SECTION 4: ROUTE & NAV TRUTH TABLE
+================================================================================
+
+ZONE 1 — ADMIN
+──────────────
+│ Route                        │ Component           │ Nav Group    │ Visible │
+├──────────────────────────────┼─────────────────────┼──────────────┼─────────┤
+│ /admin                       │ Dashboard           │ Foundation   │ ✅      │
+│ /admin/master-templates      │ MasterTemplates     │ Master Data  │ ✅      │
+│ /admin/contacts              │ MasterContacts      │ Master Data  │ ✅      │
+│ /admin/futureroom            │ FutureRoom          │ Desks        │ ✅      │
+│ /admin/futureroom/inbox      │ FutureRoomInbox     │ (sub)        │ ❌      │
+└──────────────────────────────┴─────────────────────┴──────────────┴─────────┘
+
+ZONE 2 — MOD-04 IMMOBILIEN
+──────────────────────────
+│ Route                        │ Component           │ Nav Tile     │ Status  │
+├──────────────────────────────┼─────────────────────┼──────────────┼─────────┤
+│ /portal/immobilien           │ → portfolio redirect│ —            │ ✅      │
+│ /portal/immobilien/portfolio │ PortfolioTab        │ Portfolio    │ ✅      │
+│ /portal/immobilien/kontexte  │ KontexteTab         │ Kontexte     │ ✅      │
+│ /portal/immobilien/sanierung │ SanierungTab        │ Sanierung    │ ✅      │
+│ /portal/immobilien/bewertung │ BewertungTab        │ Bewertung    │ ✅      │
+│ /portal/immobilien/neu       │ CreatePropertyRedir │ —            │ ⚠️ *    │
+│ /portal/immobilien/:id       │ PropertyDetailPage  │ —            │ ⚠️ **   │
+└──────────────────────────────┴─────────────────────┴──────────────┴─────────┘
+* /neu redirects to /portfolio?create=1 but modal may not open if already mounted
+** :id route may not render content due to nested Routes issue
+
+ZONE 2 — MOD-07 FINANZIERUNG
+────────────────────────────
+│ Route                              │ Component           │ Nav Tile     │ Status │
+├────────────────────────────────────┼─────────────────────┼──────────────┼────────┤
+│ /portal/finanzierung               │ → selbstauskunft    │ —            │ ✅     │
+│ /portal/finanzierung/selbstauskunft│ SelbstauskunftTab   │ Selbstauskunft│ ✅    │
+│ /portal/finanzierung/dokumente     │ DokumenteTab        │ Dokumente    │ ✅     │
+│ /portal/finanzierung/anfrage       │ AnfrageTab          │ Anfrage      │ ✅     │
+│ /portal/finanzierung/status        │ StatusTab           │ Status       │ ✅     │
+└────────────────────────────────────┴─────────────────────┴──────────────┴────────┘
+
+================================================================================
+SECTION 5: ROOT CAUSE HYPOTHESES (RANKED)
+================================================================================
+
+RANK 1 — P0: NESTED ROUTES ARCHITECTURE (MOD-04)
+─────────────────────────────────────────────────
+File: src/pages/portal/ImmobilienPage.tsx
+Issue: Nested <Routes> inside <Route element={...}> breaks path matching
+Impact: Dossier route /:id may not render content
+Fix: Flatten route structure or ensure proper path propagation
+
+RANK 2 — P0: LAZY LOAD WITHOUT ERROR BOUNDARY (MOD-04)
+──────────────────────────────────────────────────────
+File: src/pages/portal/ImmobilienPage.tsx
+Issue: Lazy-loaded components inside Suspense can hang if chunk fails
+Impact: Infinite spinner on failed chunk load
+Fix: Add error boundary that catches import() rejections
+
+RANK 3 — P1: activeTenantId INITIALIZATION RACE (BOTH)
+──────────────────────────────────────────────────────
+File: src/contexts/AuthContext.tsx
+Issue: activeTenantId may not be set when components mount
+Impact: Queries disabled, loading state never resolves
+Fix: Ensure stable organization context before rendering module routes
+
+RANK 4 — P1: MAIN UNIT NOT CREATED (MOD-04)
+───────────────────────────────────────────
+Issue: If DB trigger for MAIN unit creation fails, usePropertyDossier returns null
+Impact: Dossier shows empty state even for valid property
+Fix: Verify trigger exists and works; add fallback creation
+
+RANK 5 — P2: HARDCODED FORM SCHEMAS (BOTH)
+──────────────────────────────────────────
+Files: EditableUnitDossierView.tsx, SelbstauskunftForm.tsx
+Issue: All field definitions hardcoded in components
+Impact: Cannot configure fields from Zone 1; requires code changes
+Fix: Implement schema-driven rendering from dp_catalog or new template table
+
+================================================================================
+SECTION 6: TEMPLATE OPPORTUNITY MAP
+================================================================================
+
+WHAT SHOULD BECOME TEMPLATE-DRIVEN:
+
+6.1 IMMOBILIENAKTE (MOD-04)
+───────────────────────────
+│ Component/Feature        │ Current          │ Template Target           │
+├──────────────────────────┼──────────────────┼───────────────────────────┤
+│ Block A: Identity        │ Hardcoded        │ dossier_block_templates   │
+│ Block B: Address         │ Hardcoded        │ dossier_block_templates   │
+│ Block C: Building        │ Hardcoded        │ dossier_block_templates   │
+│ Block D: Legal           │ Hardcoded        │ dossier_block_templates   │
+│ Block E: KPIs            │ Hardcoded        │ dossier_block_templates   │
+│ Block F: Tenancy         │ Hardcoded        │ dossier_block_templates   │
+│ Block G: WEG/NK          │ Hardcoded        │ dossier_block_templates   │
+│ Block H: Financing       │ Hardcoded        │ dossier_block_templates   │
+│ Block I: Accounting      │ Hardcoded        │ dossier_block_templates   │
+│ Block J: Documents       │ doc_type_catalog │ ✅ ALREADY TEMPLATE-DRIVEN│
+│ Field Labels             │ Hardcoded        │ dp_catalog.label_de       │
+│ Required Fields          │ Hardcoded        │ dp_catalog.required_level │
+│ Validation Rules         │ Hardcoded        │ dp_catalog.validation     │
+└──────────────────────────┴──────────────────┴───────────────────────────┘
+
+6.2 SELBSTAUSKUNFT (MOD-07)
+───────────────────────────
+│ Component/Feature        │ Current          │ Template Target           │
+├──────────────────────────┼──────────────────┼───────────────────────────┤
+│ Section: Identity        │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Household       │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Employment      │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Company         │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Expenses        │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Assets          │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Financing       │ Hardcoded        │ selbstauskunft_templates  │
+│ Section: Declarations    │ Hardcoded        │ selbstauskunft_templates  │
+│ Field Labels             │ Hardcoded        │ Field catalog             │
+│ Required Fields          │ Hardcoded (types)│ Template configuration    │
+│ Profile Type Variants    │ Hardcoded        │ Template variants         │
+└──────────────────────────┴──────────────────┴───────────────────────────┘
+
+6.3 PROPOSED NEW TABLES
+───────────────────────
+CREATE TABLE form_templates (
+  id UUID PRIMARY KEY,
+  template_code TEXT UNIQUE,  -- 'immobilienakte_v1', 'selbstauskunft_private_v1'
+  target_module TEXT,         -- 'MOD-04', 'MOD-07'
+  version INT,
+  is_active BOOLEAN,
+  blocks JSONB,               -- Block configuration
+  created_at TIMESTAMPTZ
+);
+
+CREATE TABLE form_block_definitions (
+  id UUID PRIMARY KEY,
+  template_id UUID REFERENCES form_templates,
+  block_code TEXT,            -- 'identity', 'address', 'tenancy'
+  block_label TEXT,
+  display_order INT,
+  fields JSONB,               -- Field configuration referencing dp_catalog
+  is_collapsible BOOLEAN,
+  default_collapsed BOOLEAN
+);
+
+================================================================================
+SECTION 7: MINIMAL PATCH PREREQUISITES
+================================================================================
+
+To enable Zone 1 template configuration for Immobilienakte/Selbstauskunft:
+
+7.1 IMMEDIATE (NO DB CHANGE)
+────────────────────────────
+1. Fix MOD-04 routing stability (nested Routes issue)
+2. Add ErrorBoundary around lazy imports
+3. Verify MAIN unit trigger exists
+4. Ensure activeTenantId is stable before module render
+
+7.2 SHORT-TERM (DB MIGRATION)
+─────────────────────────────
+1. Create form_templates table
+2. Create form_block_definitions table
+3. Seed initial templates from current hardcoded structure
+4. Add Zone 1 UI for template editing
+
+7.3 MEDIUM-TERM (REFACTOR)
+──────────────────────────
+1. Refactor EditableUnitDossierView to schema-driven rendering
+2. Refactor SelbstauskunftForm to schema-driven rendering
+3. Implement dp_catalog field resolution
+4. Add version management for templates
+
+================================================================================
+SECTION 8: NEXT ACTIONS CHECKLIST
+================================================================================
+
+PRIORITY 0 (IMMEDIATE)
+──────────────────────
+[ ] FIX: ImmobilienPage.tsx nested Routes architecture
+    → Flatten to single Routes block or add path="*" wrapper correctly
+[ ] FIX: Add ErrorBoundary that catches lazy import failures
+[ ] VERIFY: DB trigger for MAIN unit creation on property INSERT
+[ ] VERIFY: activeTenantId initialization before module routes
+
+PRIORITY 1 (THIS SPRINT)
+────────────────────────
+[ ] DESIGN: form_templates + form_block_definitions schema
+[ ] MIGRATE: Create template tables
+[ ] SEED: Initial template from current hardcoded structure
+[ ] UI: Add Zone 1 template editor to MasterTemplates.tsx
+
+PRIORITY 2 (NEXT SPRINT)
+────────────────────────
+[ ] REFACTOR: EditableUnitDossierView to schema-driven
+[ ] REFACTOR: SelbstauskunftForm to schema-driven
+[ ] INTEGRATE: dp_catalog for field labels/validation
+[ ] TEST: Template changes reflect in Zone 2 forms
+
+================================================================================
+END OF REPORT
+================================================================================
