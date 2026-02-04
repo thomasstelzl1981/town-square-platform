@@ -1,12 +1,11 @@
 /**
  * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases
  * 
- * P0 Stabilization:
- * - /neu route is NON-LAZY to prevent infinite loader states
- * - ErrorBoundary wraps lazy components to prevent blank pages
+ * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock.
+ * ErrorBoundary retained for error handling.
  * 
  * Routes:
- * - /portal/immobilien → Redirect to /portfolio (via ManifestRouter)
+ * - /portal/immobilien → Redirect to /portfolio (via index)
  * - /portal/immobilien/portfolio → Portfolio Dashboard + List
  * - /portal/immobilien/neu → Create Property (NON-LAZY, shows visible UI)
  * - /portal/immobilien/kontexte → Context Management
@@ -14,9 +13,9 @@
  * - /portal/immobilien/bewertung → Valuation (global)
  * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
  */
-import React, { Suspense, lazy, Component, ReactNode } from 'react';
+import React, { lazy, Component, ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // NON-LAZY: Create redirect must always work without Suspense
@@ -79,36 +78,28 @@ class ImmobilienErrorBoundary extends Component<{ children: ReactNode }, ErrorBo
   }
 }
 
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-  </div>
-);
-
 const ImmobilienPage = () => {
   return (
     <ImmobilienErrorBoundary>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
-          <Route path="neu" element={<CreatePropertyRedirect />} />
-          
-          {/* PRIMARY: Portfolio (default tile) */}
-          <Route index element={<Navigate to="portfolio" replace />} />
-          <Route path="portfolio" element={<PortfolioTab />} />
-          
-          {/* SECONDARY: Context management */}
-          <Route path="kontexte" element={<KontexteTab />} />
-          <Route path="sanierung" element={<SanierungTab />} />
-          <Route path="bewertung" element={<BewertungTab />} />
-          
-          {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST */}
-          <Route path=":id" element={<PropertyDetailPage />} />
-          
-          {/* Fallback for any unmatched paths */}
-          <Route path="*" element={<Navigate to="portfolio" replace />} />
-        </Routes>
-      </Suspense>
+      <Routes>
+        {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
+        <Route path="neu" element={<CreatePropertyRedirect />} />
+        
+        {/* PRIMARY: Portfolio (default tile) */}
+        <Route index element={<Navigate to="portfolio" replace />} />
+        <Route path="portfolio" element={<PortfolioTab />} />
+        
+        {/* SECONDARY: Context management */}
+        <Route path="kontexte" element={<KontexteTab />} />
+        <Route path="sanierung" element={<SanierungTab />} />
+        <Route path="bewertung" element={<BewertungTab />} />
+        
+        {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST */}
+        <Route path=":id" element={<PropertyDetailPage />} />
+        
+        {/* Fallback for any unmatched paths */}
+        <Route path="*" element={<Navigate to="portfolio" replace />} />
+      </Routes>
     </ImmobilienErrorBoundary>
   );
 };

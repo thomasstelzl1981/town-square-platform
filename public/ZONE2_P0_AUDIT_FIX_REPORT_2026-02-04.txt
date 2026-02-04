@@ -1,0 +1,121 @@
+================================================================================
+ZONE 2 P0-DIAGNOSE + FIX + SMOKE RETEST REPORT
+Datum: 2026-02-04
+================================================================================
+
+[1] EXECUTIVE SUMMARY
+================================================================================
+- P0-FIX ERFOLGREICH: Innerer <Suspense> aus allen 11 ModulePages entfernt
+- ERGEBNIS: 100% PASS-Rate für ROOT-Tests (MOD-01..MOD-11)
+- ROOT CAUSE: Nested Suspense Deadlock (ManifestRouter outer + ModulePage inner)
+- KEINE Console Errors, KEINE Network Failures
+
+[2] SSOT_TABLE (MOD-01..MOD-11)
+================================================================================
+| Code   | Name               | Base                | Tiles (4)                          |
+|--------|--------------------|--------------------|-------------------------------------|
+| MOD-01 | Stammdaten         | stammdaten         | profil, firma, abrechnung, sicherheit |
+| MOD-02 | KI Office          | office             | email, brief, kontakte, kalender    |
+| MOD-03 | DMS                | dms                | storage, posteingang, sortieren, einstellungen |
+| MOD-04 | Immobilien         | immobilien         | portfolio*, kontexte, sanierung, bewertung |
+| MOD-05 | MSV                | msv                | objekte, mieteingang, vermietung, einstellungen |
+| MOD-06 | Verkauf            | verkauf            | objekte, vorgaenge, reporting, einstellungen |
+| MOD-07 | Finanzierung       | finanzierung       | selbstauskunft*, dokumente, anfrage, status |
+| MOD-08 | Investment-Suche   | investments        | suche, favoriten, mandat, simulation |
+| MOD-09 | Vertriebspartner   | vertriebspartner   | katalog, beratung, kunden, network  |
+| MOD-10 | Leads              | leads              | inbox, meine, pipeline, werbung     |
+| MOD-11 | Finanzierungsmanager| finanzierungsmanager| dashboard*, faelle, kommunikation, status |
+
+* = default tile
+
+[3] DIAGNOSE_EVIDENCE
+================================================================================
+LOADER ORIGIN: (C) Inner Suspense in ModulePages
+
+BEWEIS:
+- S01: /portal Dashboard rendert korrekt
+- S02: /portal/stammdaten VOR FIX → Infinite Loader
+- S03-S16: NACH FIX → Alle Module rendern korrekt
+
+CODE-HOTSPOTS (VOR FIX):
+- StammdatenPage.tsx:26-36: <Suspense fallback={<LoadingFallback />}>
+- OfficePage.tsx:24-34: <Suspense fallback={<LoadingFallback />}>
+- DMSPage.tsx:24-34: <Suspense fallback={<LoadingFallback />}>
+- ImmobilienPage.tsx:91-112: <Suspense fallback={<LoadingFallback />}>
+- MSVPage.tsx:26-43: <Suspense fallback={<LoadingFallback />}>
+- VerkaufPage.tsx:41-62: <Suspense fallback={<LoadingFallback />}>
+- FinanzierungPage.tsx:25-49: <Suspense fallback={<LoadingFallback />}>
+- InvestmentsPage.tsx:103-117: <Suspense fallback={<LoadingFallback />}>
+- VertriebspartnerPage.tsx:24-44: <Suspense fallback={<LoadingFallback />}>
+- LeadsPage.tsx:101-117: <Suspense fallback={<LoadingFallback />}>
+- FinanzierungsmanagerPage.tsx:128-138: <React.Suspense fallback={<LoadingFallback />}>
+
+[4] PATCH_LOG
+================================================================================
+GEÄNDERTE DATEIEN (11 ModulePages):
+1. src/pages/portal/StammdatenPage.tsx     - Inner Suspense entfernt
+2. src/pages/portal/OfficePage.tsx         - Inner Suspense entfernt
+3. src/pages/portal/DMSPage.tsx            - Inner Suspense entfernt
+4. src/pages/portal/ImmobilienPage.tsx     - Inner Suspense entfernt
+5. src/pages/portal/MSVPage.tsx            - Inner Suspense entfernt
+6. src/pages/portal/VerkaufPage.tsx        - Inner Suspense entfernt
+7. src/pages/portal/FinanzierungPage.tsx   - Inner Suspense entfernt
+8. src/pages/portal/InvestmentsPage.tsx    - Inner Suspense entfernt
+9. src/pages/portal/VertriebspartnerPage.tsx - Inner Suspense entfernt
+10. src/pages/portal/LeadsPage.tsx         - Inner Suspense entfernt
+11. src/pages/portal/FinanzierungsmanagerPage.tsx - Inner Suspense entfernt
+
+[5] SMOKE_MATRIX (POST-FIX)
+================================================================================
+| Module | TestId | Route                       | Result | TTFC  | Symptom |
+|--------|--------|-----------------------------| -------|-------|---------|
+| MOD-01 | T1     | /portal/stammdaten          | PASS   | <2s   | OK      |
+| MOD-01 | T2     | /portal/stammdaten/profil   | PASS   | <2s   | OK      |
+| MOD-01 | T3     | /portal/stammdaten/firma    | PASS   | <2s   | OK      |
+| MOD-02 | T1     | /portal/office              | PASS   | <2s   | OK      |
+| MOD-03 | T1     | /portal/dms                 | PASS   | <2s   | OK      |
+| MOD-04 | T1     | /portal/immobilien          | PASS   | <2s   | OK (→portfolio) |
+| MOD-04 | T2     | /portal/immobilien/portfolio| PASS   | <2s   | OK      |
+| MOD-05 | T1     | /portal/msv                 | PASS   | <2s   | OK      |
+| MOD-06 | T1     | /portal/verkauf             | PASS   | <2s   | OK      |
+| MOD-07 | T1     | /portal/finanzierung        | PASS   | <2s   | OK      |
+| MOD-08 | T1     | /portal/investments         | PASS   | <2s   | OK      |
+| MOD-09 | T1     | /portal/vertriebspartner    | PASS   | <2s   | OK      |
+| MOD-10 | T1     | /portal/leads               | PASS   | <2s   | OK      |
+| MOD-11 | T1     | /portal/finanzierungsmanager| PASS   | <2s   | OK (Role-Gated) |
+
+PASS-RATE: 100% (14/14 getestete Routen)
+
+[6] NEXT_REPAIR_PLAN
+================================================================================
+PHASE 0: ✅ ABGESCHLOSSEN
+- Inner Suspense aus allen 11 ModulePages entfernt
+- Zone 2 ist wieder funktionsfähig
+
+PHASE 1: (Optional, bei Bedarf)
+- moduleContents.ts alignment für fehlende Module
+- HowItWorks Links prüfen
+
+PHASE 2: (Niedrige Priorität)
+- Legacy Redirects aufräumen
+- Tile-Navigation Deep-Test für alle 44 Tiles
+
+[7] REVERT_GUIDANCE
+================================================================================
+NICHT ERFORDERLICH — P0-Fix erfolgreich.
+
+Falls Probleme auftreten:
+- Revert-Kandidaten: Die 11 ModulePage-Dateien
+- Git-Befehl: git checkout HEAD~1 -- src/pages/portal/*Page.tsx
+
+[8] FINAL NEXT ACTIONS CHECKLIST
+================================================================================
+1. ✅ P0-Fix deployed und verifiziert
+2. ☐ Deep-Test aller 44 Tiles durchführen (bei Bedarf)
+3. ☐ Dynamic Routes testen (:id, :requestId)
+4. ☐ MOD-12..MOD-20 Placeholder-Check
+5. ☐ Mobile-Responsiveness testen
+
+================================================================================
+END OF REPORT
+================================================================================
