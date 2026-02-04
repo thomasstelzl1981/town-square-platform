@@ -246,28 +246,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  (event, session) => {
+    setSession(session);
+    setUser(session?.user ?? null);
+
+    // IMPORTANT: do not set isLoading=false before the required data is loaded
+    (async () => {
+      try {
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+          await fetchUserData(session.user.id);
         } else if (isDevelopmentMode) {
-          // In development mode, load data without auth
-          setTimeout(() => {
-            fetchDevelopmentData();
-          }, 0);
+          await fetchDevelopmentData();
         } else {
           setProfile(null);
           setMemberships([]);
           setActiveOrganization(null);
         }
+      } finally {
         setIsLoading(false);
       }
-    );
+    })();
+  }
+);
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
