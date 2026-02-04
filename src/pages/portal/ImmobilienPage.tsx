@@ -88,31 +88,27 @@ const LoadingFallback = () => (
 const ImmobilienPage = () => {
   return (
     <ImmobilienErrorBoundary>
-      <Routes>
-        {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
-        <Route path="neu" element={<CreatePropertyRedirect />} />
-        
-        {/* Other routes wrapped in Suspense */}
-        <Route path="*" element={
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              {/* PRIMARY: Portfolio (default tile) */}
-              <Route path="portfolio" element={<PortfolioTab />} />
-              
-              {/* SECONDARY: Context management */}
-              <Route path="kontexte" element={<KontexteTab />} />
-              <Route path="sanierung" element={<SanierungTab />} />
-              <Route path="bewertung" element={<BewertungTab />} />
-              
-              {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST */}
-              <Route path=":id" element={<PropertyDetailPage />} />
-              
-              {/* Fallback for any unmatched paths */}
-              <Route path="*" element={<Navigate to="/portal/immobilien/portfolio" replace />} />
-            </Routes>
-          </Suspense>
-        } />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
+          <Route path="neu" element={<CreatePropertyRedirect />} />
+          
+          {/* PRIMARY: Portfolio (default tile) */}
+          <Route index element={<Navigate to="portfolio" replace />} />
+          <Route path="portfolio" element={<PortfolioTab />} />
+          
+          {/* SECONDARY: Context management */}
+          <Route path="kontexte" element={<KontexteTab />} />
+          <Route path="sanierung" element={<SanierungTab />} />
+          <Route path="bewertung" element={<BewertungTab />} />
+          
+          {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST */}
+          <Route path=":id" element={<PropertyDetailPage />} />
+          
+          {/* Fallback for any unmatched paths */}
+          <Route path="*" element={<Navigate to="portfolio" replace />} />
+        </Routes>
+      </Suspense>
     </ImmobilienErrorBoundary>
   );
 };

@@ -135,10 +135,9 @@ function buildTilesFromManifest(): (TileDisplay & { visibilityDefault: boolean }
     const mainRoute = `/portal/${module.base}`;
     
     // Build sub-tiles from manifest tiles
-    // P0-FIX: Filter tiles that are default landing pages (marked with default: true)
-    // These are accessed via the parent route, not as sub-tiles
+    // P0-FIX: Show ALL tiles in navigation (including default ones)
+    // The default tile is the main entry point but should still be navigable
     const subTiles: SubTileDisplay[] = module.tiles
-      .filter(tile => !tile.default) // Skip default tiles (landing pages)
       .map(tile => ({
         title: tile.title,
         route: getTileFullPath(module.base, tile.path),

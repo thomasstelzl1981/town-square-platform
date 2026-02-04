@@ -4,7 +4,8 @@
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
-import { Loader2 } from 'lucide-react';
+import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
+import { Loader2, Settings, Tag } from 'lucide-react';
 
 // Lazy load tabs
 const ObjekteTab = lazy(() => import('./verkauf/ObjekteTab'));
@@ -18,6 +19,22 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Tile: Einstellungen
+function EinstellungenTile() {
+  return (
+    <ModuleTilePage
+      title="Einstellungen"
+      description="Verkaufseinstellungen und Präferenzen"
+      icon={Settings}
+      moduleBase="verkauf"
+      status="empty"
+      emptyTitle="Verkaufs-Einstellungen"
+      emptyDescription="Konfigurieren Sie Ihre Verkaufspräferenzen und Standardwerte."
+      emptyIcon={Settings}
+    />
+  );
+}
+
 const VerkaufPage = () => {
   const content = moduleContents['MOD-06'];
 
@@ -27,10 +44,11 @@ const VerkaufPage = () => {
         {/* How It Works as index */}
         <Route index element={<ModuleHowItWorks content={content} />} />
         
-        {/* Tile routes */}
+        {/* Tile routes - 4 tiles per manifest */}
         <Route path="objekte" element={<ObjekteTab />} />
         <Route path="vorgaenge" element={<VorgaengeTab />} />
         <Route path="reporting" element={<ReportingTab />} />
+        <Route path="einstellungen" element={<EinstellungenTile />} />
         
         {/* Detail routes */}
         <Route path="expose/:propertyId" element={<ExposeDetail />} />
