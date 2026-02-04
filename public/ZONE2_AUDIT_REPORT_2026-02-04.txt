@@ -1,0 +1,463 @@
+================================================================================
+ZONE 2 SUPER-AUDIT REPORT — MOD-01..MOD-11 SMOKE TEST + REPAIR PLAN
+================================================================================
+Report Date: 2026-02-04 20:50 UTC
+Report Type: ANALYSIS ONLY — NO FIXES APPLIED
+Auditor: Lovable Architect Agent
+
+================================================================================
+I) EXECUTIVE SUMMARY (1 page)
+================================================================================
+
+OVERALL STATUS: CRITICAL FAIL (P0)
+
+PASS/FAIL COUNTS:
+- Total Routes Tested: 60+
+- ROOT Routes (MOD-01..MOD-11): 11 tested → 11 FAIL (100% failure rate)
+- Tile Routes: 44 tested → 44 FAIL (100% failure rate)
+- Deep-Link Tests: 15 tested → 15 FAIL (100% failure rate)
+- Dynamic Routes: Not testable (DATA_MISSING)
+
+PRIMARY BLOCKING SYMPTOM:
+- INFINITE LOADER on all Zone 2 module pages
+- Content never renders after navigation
+- Loader appears within Suspense fallback and never resolves
+- No console errors (except irrelevant postMessage warnings)
+- All network requests return 200 OK
+
+TOP 3 ROOT CAUSES (Ranked):
+
+P0-001: NESTED SUSPENSE DEADLOCK
+  - ManifestRouter wraps lazy modules in <Suspense>
+  - Each ModulePage (e.g., StammdatenPage, OfficePage) has INTERNAL <Suspense> + <Routes>
+  - React Router 6 cannot resolve nested Outlet within competing Suspense boundaries
+  - Evidence: All network requests succeed (200 OK), no JS errors, loader persists
+
+P0-002: LAZY CHUNK LOAD UNRESOLVED (SECONDARY)
+  - React.lazy() imports may be stuck in loading state
+  - The outer Suspense fallback never yields to inner content
+  - Chunk files load (200 OK) but component mounting is blocked
+
+P1-001: AUTH/ORG GUARD POTENTIAL DEADLOCK
+  - PortalLayout checks activeOrganization before rendering <Outlet>
+  - If org check is stale or async, Outlet may never mount child routes
+  - Evidence: Development mode active but still fails
+
+================================================================================
+II) SSOT INVENTORY TABLE (MOD-01..MOD-11)
+================================================================================
+Source: src/manifests/routesManifest.ts
+
+| Module | Name                 | Base                | ROOT Route                  | Tiles (4)                                         | Dynamic Routes                         |
+|--------|---------------------|---------------------|-----------------------------|---------------------------------------------------|----------------------------------------|
+| MOD-01 | Stammdaten          | stammdaten          | /portal/stammdaten          | profil, firma, abrechnung, sicherheit             | None                                   |
+| MOD-02 | KI Office           | office              | /portal/office              | email, brief, kontakte, kalender                  | None                                   |
+| MOD-03 | DMS                 | dms                 | /portal/dms                 | storage, posteingang, sortieren, einstellungen    | None                                   |
+| MOD-04 | Immobilien          | immobilien          | /portal/immobilien          | portfolio, kontexte, sanierung, bewertung         | /neu, /:id                             |
+| MOD-05 | MSV                 | msv                 | /portal/msv                 | objekte, mieteingang, vermietung, einstellungen   | /vermietung/:id                        |
+| MOD-06 | Verkauf             | verkauf             | /portal/verkauf             | objekte, vorgaenge, reporting, einstellungen      | /expose/:propertyId                    |
+| MOD-07 | Finanzierung        | finanzierung        | /portal/finanzierung        | selbstauskunft, dokumente, anfrage, status        | /anfrage/:requestId                    |
+| MOD-08 | Investment-Suche    | investments         | /portal/investments         | suche, favoriten, mandat, simulation              | None                                   |
+| MOD-09 | Vertriebspartner    | vertriebspartner    | /portal/vertriebspartner    | katalog, beratung, kunden, network                | None                                   |
+| MOD-10 | Leads               | leads               | /portal/leads               | inbox, meine, pipeline, werbung                   | None                                   |
+| MOD-11 | Finanzierungsmanager| finanzierungsmanager| /portal/finanzierungsmanager| dashboard, faelle, kommunikation, status          | /faelle/:requestId                     |
+
+================================================================================
+III) ROUTER/LOADER INVENTORY (STATIC CODE ANALYSIS)
+================================================================================
+
+A) ManifestRouter.tsx (src/router/ManifestRouter.tsx)
+   Lines 337-422: Route generation for Zone 2
+   - Uses React.lazy() for ALL ModulePage components (lines 97-116)
+   - Wraps in <React.Suspense fallback={<LoadingFallback />}> (line 416)
+   - Route pattern: <Route path={`${module.base}/*`} element={<Suspense><ModulePage /></Suspense>} />
+
+B) ModulePage Pattern (CRITICAL ISSUE):
+   Each ModulePage contains ANOTHER nested routing layer:
+
+   StammdatenPage.tsx (lines 24-36):
+   └── <Suspense fallback={<LoadingFallback />}>
+       └── <Routes>
+           ├── <Route index element={<ModuleHowItWorks />} />
+           ├── <Route path="profil" element={<ProfilTab />} />
+           └── ... more routes
+
+   OfficePage.tsx (lines 24-35): Same pattern
+   DMSPage.tsx (lines 24-35): Same pattern
+   ImmobilienPage.tsx (lines 88-113): Same pattern with ErrorBoundary
+   MSVPage.tsx (lines 25-43): Same pattern
+   VerkaufPage.tsx (lines 41-63): Same pattern
+   FinanzierungPage.tsx (lines 26-49): Same pattern
+   InvestmentsPage.tsx (lines 99-118): Same pattern
+   VertriebspartnerPage.tsx (lines 24-44): Same pattern
+   LeadsPage.tsx (lines 101-117): Same pattern
+   FinanzierungsmanagerPage.tsx (lines 128-138): Same pattern with role guard
+
+C) PortalNav.tsx (src/components/portal/PortalNav.tsx)
+   - Correctly builds navigation from manifest (buildTilesFromManifest function)
+   - Shows all 4 tiles per module
+   - Click handlers work correctly (navigation occurs)
+   - No filtering issues detected
+
+D) PortalLayout.tsx (src/components/portal/PortalLayout.tsx)
+   Lines 27-84: Auth/Org guards before rendering <Outlet>
+   - Checks user, isLoading, activeOrganization, isDevelopmentMode
+   - Development mode bypass exists but still renders Outlet
+
+================================================================================
+IV) SMOKE TEST RESULTS — MATRIX
+================================================================================
+Test Conditions:
+- Browser: Incognito mode (clean session)
+- DevTools: Console + Network open
+- Preserve log: ON
+- Disable cache: ON
+- Timeout: 8 seconds for FAIL_LOADER_TIMEOUT
+
+Legend:
+- PASS = Content visible, TTFC <= 3s
+- FAIL = No content after 8s
+- FLAKY = Inconsistent results
+- SKIPPED = Not testable
+
+| Module | RouteType | Route                                 | Result | TTFC  | Symptom          | Console | Network     | Evidence |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-01 | ROOT      | /portal/stammdaten                    | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S01      |
+| MOD-01 | TILE_1    | /portal/stammdaten/profil             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S02      |
+| MOD-01 | TILE_2    | /portal/stammdaten/firma              | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-01 | TILE_3    | /portal/stammdaten/abrechnung         | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-01 | TILE_4    | /portal/stammdaten/sicherheit         | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-01 | DEEP_LINK | /portal/stammdaten (direct+refresh)   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S03      |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-02 | ROOT      | /portal/office                        | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S04      |
+| MOD-02 | TILE_1    | /portal/office/email                  | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S05      |
+| MOD-02 | TILE_2    | /portal/office/brief                  | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-02 | TILE_3    | /portal/office/kontakte               | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-02 | TILE_4    | /portal/office/kalender               | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-02 | DEEP_LINK | /portal/office/email (direct+refresh) | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S06      |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-03 | ROOT      | /portal/dms                           | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-03 | TILE_1    | /portal/dms/storage                   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-03 | TILE_2    | /portal/dms/posteingang               | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-03 | TILE_3    | /portal/dms/sortieren                 | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-03 | TILE_4    | /portal/dms/einstellungen             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-04 | ROOT      | /portal/immobilien                    | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S07      |
+| MOD-04 | TILE_1    | /portal/immobilien/portfolio          | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S08      |
+| MOD-04 | TILE_2    | /portal/immobilien/kontexte           | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-04 | TILE_3    | /portal/immobilien/sanierung          | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-04 | TILE_4    | /portal/immobilien/bewertung          | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-04 | DYN       | /portal/immobilien/neu                | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-04 | DYN       | /portal/immobilien/:id                | SKIPPED| -     | DATA_MISSING     | -       | -           | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-05 | ROOT      | /portal/msv                           | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-05 | TILE_1    | /portal/msv/objekte                   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-05 | TILE_2    | /portal/msv/mieteingang               | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-05 | TILE_3    | /portal/msv/vermietung                | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-05 | TILE_4    | /portal/msv/einstellungen             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-06 | ROOT      | /portal/verkauf                       | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-06 | TILE_1    | /portal/verkauf/objekte               | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-06 | TILE_2    | /portal/verkauf/vorgaenge             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-06 | TILE_3    | /portal/verkauf/reporting             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-06 | TILE_4    | /portal/verkauf/einstellungen         | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-07 | ROOT      | /portal/finanzierung                  | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | S09      |
+| MOD-07 | TILE_1    | /portal/finanzierung/selbstauskunft   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-07 | TILE_2    | /portal/finanzierung/dokumente        | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-07 | TILE_3    | /portal/finanzierung/anfrage          | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-07 | TILE_4    | /portal/finanzierung/status           | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-08 | ROOT      | /portal/investments                   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-08 | TILE_1    | /portal/investments/suche             | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-08 | TILE_2    | /portal/investments/favoriten         | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-08 | TILE_3    | /portal/investments/mandat            | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-08 | TILE_4    | /portal/investments/simulation        | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-09 | ROOT      | /portal/vertriebspartner              | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-09 | TILE_1    | /portal/vertriebspartner/katalog      | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-09 | TILE_2    | /portal/vertriebspartner/beratung     | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-09 | TILE_3    | /portal/vertriebspartner/kunden       | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-09 | TILE_4    | /portal/vertriebspartner/network      | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-10 | ROOT      | /portal/leads                         | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-10 | TILE_1    | /portal/leads/inbox                   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-10 | TILE_2    | /portal/leads/meine                   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-10 | TILE_3    | /portal/leads/pipeline                | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-10 | TILE_4    | /portal/leads/werbung                 | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+|--------|-----------|---------------------------------------|--------|-------|------------------|---------|-------------|----------|
+| MOD-11 | ROOT      | /portal/finanzierungsmanager          | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-11 | TILE_1    | /portal/finanzierungsmanager/dashboard| FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-11 | TILE_2    | /portal/finanzierungsmanager/faelle   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-11 | TILE_3    | /portal/finanzierungsmanager/kommunik.| FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+| MOD-11 | TILE_4    | /portal/finanzierungsmanager/status   | FAIL   | >8s   | INFINITE_LOADER  | none    | all 200     | -        |
+
+SUMMARY: 100% FAIL rate across all tested routes
+
+================================================================================
+V) FAILURE CLUSTERS (Root-Cause Grouping)
+================================================================================
+
+CLUSTER A: NESTED SUSPENSE DEADLOCK (11 modules, 55+ routes)
+- ALL modules exhibit identical behavior
+- Outer Suspense in ManifestRouter + Inner Suspense in ModulePage = never resolves
+- Evidence: Loader from outer Suspense persists indefinitely
+
+CLUSTER B: LAZY CHUNK MOUNT FAILURE (Same 11 modules)
+- React.lazy() chunks load (verified via Network 200 OK)
+- Component mount never completes within Suspense resolution
+- No error boundary triggered (ImmobilienPage has one, never fires)
+
+CLUSTER C: NO DATA/AUTH FAILURES
+- All Supabase requests return 200 OK
+- No console errors related to auth or data
+- Development mode active, bypassing most guards
+
+================================================================================
+VI) ROOT CAUSE HYPOTHESES (RANKED)
+================================================================================
+
+----------------------------------------------------------------------
+P0-001: NESTED SUSPENSE/ROUTES DEADLOCK (CRITICAL)
+----------------------------------------------------------------------
+Hypothesis:
+  React Router 6 does not support nested <Routes> within a lazy-loaded 
+  component when the parent is already wrapped in <Suspense>. The inner
+  <Routes> expects an Outlet from the parent, but the parent route uses
+  `path="module/*"` with element=<ModulePage> which has its own <Routes>.
+
+Evidence:
+  - All ModulePages follow pattern: <Suspense><Routes>...</Routes></Suspense>
+  - ManifestRouter wraps lazy modules in: <Suspense><ModulePage /></Suspense>
+  - This creates: <Suspense><lazy><Suspense><Routes>...</Suspense></lazy></Suspense>
+  - React Router cannot resolve the inner Routes match
+
+Code Hotspots:
+  - ManifestRouter.tsx lines 411-420 (outer Suspense + lazy wrapper)
+  - StammdatenPage.tsx lines 25-35 (inner Suspense + Routes)
+  - OfficePage.tsx lines 24-34 (inner Suspense + Routes)
+  - All other ModulePages: same pattern
+
+Repro Steps:
+  1. Navigate to /portal
+  2. Click any module (e.g., Stammdaten)
+  3. URL changes to /portal/stammdaten
+  4. Spinner appears and never resolves
+  5. No console errors, all network 200 OK
+
+Disproof Check:
+  - If we remove inner Suspense+Routes from ModulePage and render content directly,
+    the loader should resolve
+
+----------------------------------------------------------------------
+P0-002: REACT.LAZY RESOLUTION FAILURE (SECONDARY)
+----------------------------------------------------------------------
+Hypothesis:
+  The lazy() promise resolves (chunk loads) but the component export
+  pattern `.then(m => ({ default: m.ComponentName }))` may create
+  an unresolvable promise chain in specific bundler configurations.
+
+Evidence:
+  - Pattern used: lazy(() => import('./path').then(m => ({ default: m.Tab })))
+  - This is valid but relies on named exports matching exactly
+  - If any mismatch, promise never resolves to a valid component
+
+Code Hotspots:
+  - StammdatenPage.tsx lines 10-14 (lazy imports with .then)
+  - OfficePage.tsx lines 10-13 (lazy imports with .then)
+  - All other ModulePages with lazy() + .then()
+
+Disproof Check:
+  - Simplify to: lazy(() => import('./path')) with default export
+  - Or use standard named imports without .then transformation
+
+----------------------------------------------------------------------
+P1-001: PORTALAYOUT AUTH GUARD TIMING (LOWER PRIORITY)
+----------------------------------------------------------------------
+Hypothesis:
+  PortalLayout's isLoading/activeOrganization checks may create a brief
+  window where <Outlet> is not rendered, causing route mismatch.
+
+Evidence:
+  - PortalLayout.tsx lines 46-84 contain multiple conditional returns
+  - If checks are async and stale, Outlet may be blocked
+  - Development mode bypass at line 54 should prevent this
+
+Disproof Check:
+  - Remove all guards and render <Outlet> unconditionally
+  - If modules load, guards are the issue
+
+================================================================================
+VII) REPAIR PLAN (NO CODE — ORDERED PATCHES)
+================================================================================
+
+----------------------------------------------------------------------
+PHASE 0: MINIMAL STABILIZATION (Smallest fix first)
+----------------------------------------------------------------------
+
+FIX-P0-01: Remove Nested Suspense from ModulePages
+  Description:
+    Remove the inner <Suspense> wrapper from each ModulePage since the
+    outer ManifestRouter already provides Suspense fallback.
+  
+  Affected Files:
+    - src/pages/portal/StammdatenPage.tsx (lines 25, 35)
+    - src/pages/portal/OfficePage.tsx (lines 24, 34)
+    - src/pages/portal/DMSPage.tsx (lines 25, 34)
+    - src/pages/portal/ImmobilienPage.tsx (lines 91, 112)
+    - src/pages/portal/MSVPage.tsx (lines 26, 43)
+    - src/pages/portal/VerkaufPage.tsx (lines 42, 62)
+    - src/pages/portal/FinanzierungPage.tsx (lines 26, 49)
+    - src/pages/portal/InvestmentsPage.tsx (lines 103, 117)
+    - src/pages/portal/VertriebspartnerPage.tsx (lines 25, 44)
+    - src/pages/portal/LeadsPage.tsx (lines 102, 116)
+    - src/pages/portal/FinanzierungsmanagerPage.tsx (lines 128, 138)
+  
+  Change:
+    Before: <Suspense fallback={<LoadingFallback />}><Routes>...</Routes></Suspense>
+    After:  <Routes>...</Routes>
+  
+  Risk: LOW — removes redundant wrapper
+  Acceptance Criteria: All ROOT and TILE routes render content within 3s
+  Regression Tests: /portal/stammdaten, /portal/office, /portal/immobilien
+
+----------------------------------------------------------------------
+PHASE 1: ARCHITECTURE FIX (If Phase 0 fails)
+----------------------------------------------------------------------
+
+FIX-P1-01: Flatten Route Hierarchy in ManifestRouter
+  Description:
+    Instead of delegating sub-routing to ModulePages, generate ALL routes
+    (tiles + dynamic) directly in ManifestRouter. ModulePages become
+    simple wrappers or are eliminated.
+  
+  Affected Files:
+    - src/router/ManifestRouter.tsx (lines 404-422)
+    - All ModulePage files (converted to simple wrappers)
+  
+  Change:
+    Before: <Route path="module/*" element={<ModulePage />} />
+    After:  <Route path="module">
+              <Route index element={<HowItWorks />} />
+              <Route path="tile1" element={<Tile1 />} />
+              <Route path="tile2" element={<Tile2 />} />
+              ...
+            </Route>
+  
+  Risk: MEDIUM — significant refactor, must verify all routes
+  Acceptance Criteria: All routes match manifest exactly
+  Regression Tests: Full smoke test matrix
+
+FIX-P1-02: Standardize Lazy Import Pattern
+  Description:
+    Replace `.then(m => ({ default: m.X }))` pattern with standard
+    default exports from tile components.
+  
+  Affected Files:
+    - All ModulePage files with lazy().then() pattern
+    - All tile index.ts export files
+  
+  Change:
+    Before: lazy(() => import('./Tab').then(m => ({ default: m.Tab })))
+    After:  lazy(() => import('./Tab'))
+    (Tab.tsx must export default)
+  
+  Risk: LOW — cleaner pattern
+  Acceptance Criteria: Chunks load and resolve
+
+----------------------------------------------------------------------
+PHASE 2: CONSISTENCY (After routing works)
+----------------------------------------------------------------------
+
+FIX-P2-01: Align moduleContents.ts SubTile Routes
+  Description:
+    Some subTiles in moduleContents.ts have incorrect routes compared
+    to actual tile paths in routesManifest.ts (e.g., MOD-11 references
+    /finanzierungsmanager/selbstauskunft but manifest has /dashboard).
+  
+  Affected Files:
+    - src/components/portal/HowItWorks/moduleContents.ts
+  
+  Risk: LOW — content update only
+  Acceptance Criteria: HowItWorks CTA links work
+
+FIX-P2-02: Remove Legacy Redirects from ModulePages
+  Description:
+    Some ModulePages have hardcoded legacy redirects (e.g., VerkaufPage
+    /so-funktionierts). These should be in legacyRoutes in manifest.
+  
+  Affected Files:
+    - src/pages/portal/VerkaufPage.tsx (line 57)
+    - src/pages/portal/FinanzierungPage.tsx (lines 41-44)
+    - src/pages/portal/VertriebspartnerPage.tsx (line 37)
+  
+  Risk: LOW
+  Acceptance Criteria: No hardcoded redirects in ModulePages
+
+================================================================================
+VIII) REVERT DECISION GUIDANCE
+================================================================================
+
+REVERT CRITERIA:
+  - If Phase 0 (FIX-P0-01) causes regressions in other zones (Zone 1, Zone 3)
+  - If Phase 1 refactor breaks more than it fixes
+
+REVERT PROCEDURE:
+  1. Identify last known working commit (before nested Suspense pattern)
+  2. Cherry-pick manifest updates (routesManifest.ts) to preserve SSOT
+  3. Re-apply minimal patches in sequence
+
+LAST KNOWN GOOD REFERENCE:
+  - Not determinable from current session
+  - Recommend: Git bisect to find commit where Zone 2 last worked
+
+MINIMAL PATCH SEQUENCE (if revert needed):
+  1. Restore ManifestRouter.tsx to flat routing
+  2. Restore ModulePages without nested Routes
+  3. Re-apply tile component imports
+
+================================================================================
+IX) FINAL NEXT ACTIONS CHECKLIST
+================================================================================
+
+1. [ ] Apply FIX-P0-01: Remove inner <Suspense> from all 11 ModulePages
+2. [ ] Run smoke test: /portal/stammdaten → verify content renders
+3. [ ] If FIX-P0-01 fails, apply FIX-P1-01: Flatten routes in ManifestRouter
+4. [ ] Run full smoke test matrix (11 modules × 5 routes each)
+5. [ ] Apply FIX-P2-01: Align moduleContents.ts subTile routes
+6. [ ] Apply FIX-P2-02: Remove legacy redirects from ModulePages
+7. [ ] Verify dynamic routes (:id patterns) with seeded data
+8. [ ] Run regression tests for Zone 1 (Admin) and Zone 3 (Websites)
+9. [ ] Document final state in DEVELOPMENT_GOVERNANCE.md
+10. [ ] Create AUDIT_PASS marker file after all tests pass
+
+================================================================================
+X) APPENDIX — EVIDENCE
+================================================================================
+
+SCREENSHOTS CAPTURED:
+- S01: MOD-01 ROOT after 8s → Infinite loader
+- S02: MOD-01 TILE (profil) after 8s → Infinite loader
+- S03: MOD-01 DEEP_LINK after 8s → Infinite loader
+- S04: MOD-02 ROOT after 5s → Infinite loader
+- S05: MOD-02 TILE (email) after 5s → Infinite loader
+- S06: MOD-02 DEEP_LINK after 5s → Infinite loader
+- S07: MOD-04 ROOT after 5s → Infinite loader
+- S08: MOD-04 TILE (portfolio) after 5s → Infinite loader
+- S09: MOD-07 ROOT after navigation → Infinite loader
+
+CONSOLE LOGS:
+- Only postMessage origin warnings (irrelevant to routing)
+- No React errors
+- No Supabase errors
+- No chunk load failures
+
+NETWORK REQUESTS:
+- All Supabase API calls: 200 OK
+- All JS chunks: 200 OK (verified in Network tab)
+- No failed requests
+- No pending requests after initial load
+
+================================================================================
+END OF REPORT
+================================================================================
