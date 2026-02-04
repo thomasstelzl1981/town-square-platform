@@ -113,7 +113,6 @@ const createEmptyProfile = (): ApplicantProfile => ({
 
 export default function SelbstauskunftTab() {
   const { activeOrganization } = useAuth();
-  // devMode only affects data persistence warning, not editability
   const devMode = isDevMode() && !activeOrganization?.id;
 
   // Fetch persistent applicant profile (finance_request_id IS NULL)
@@ -189,14 +188,14 @@ export default function SelbstauskunftTab() {
 
   return (
     <div className="space-y-6">
-      {/* DEV MODE Banner - only show persistence warning */}
+      {/* DEV MODE Banner */}
       {devMode && (
-        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/10">
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
               <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">
-                Dev-Modus: Änderungen werden nicht dauerhaft gespeichert. Bitte einloggen für Persistenz.
+              <span className="text-sm font-medium">
+                Dev-Modus: Formular-Struktur zur Ansicht (keine Speicherung möglich)
               </span>
             </div>
           </CardContent>
@@ -265,7 +264,7 @@ export default function SelbstauskunftTab() {
             <SelbstauskunftForm
               profile={profile || createEmptyProfile()}
               onSave={() => refetch()}
-              readOnly={false}
+              readOnly={devMode}
             />
           )}
         </TabsContent>
@@ -275,7 +274,7 @@ export default function SelbstauskunftTab() {
             <SelbstauskunftForm
               profile={profile || createEmptyProfile()}
               onSave={() => refetch()}
-              readOnly={false}
+              readOnly={devMode}
             />
           )}
         </TabsContent>
