@@ -1,0 +1,283 @@
+================================================================================
+ZONE 2 FINAL SMOKE TEST REPORT
+Date: 2026-02-04 21:17 UTC
+Test Environment: Lovable Preview (Incognito Session)
+================================================================================
+
+================================================================================
+[1] SSOT_TABLE — MODULES MOD-01..MOD-11
+================================================================================
+
+| Code   | Name                 | Base                 | Tile 1        | Tile 2        | Tile 3         | Tile 4           | Dynamic Routes                     |
+|--------|----------------------|----------------------|---------------|---------------|----------------|------------------|------------------------------------|
+| MOD-01 | Stammdaten           | stammdaten           | profil        | firma         | abrechnung     | sicherheit       | -                                  |
+| MOD-02 | KI Office            | office               | email         | brief         | kontakte       | kalender         | -                                  |
+| MOD-03 | DMS                  | dms                  | storage       | posteingang   | sortieren      | einstellungen    | -                                  |
+| MOD-04 | Immobilien           | immobilien           | portfolio*    | kontexte      | sanierung      | bewertung        | /neu, /:id                         |
+| MOD-05 | MSV                  | msv                  | objekte       | mieteingang   | vermietung     | einstellungen    | /vermietung/:id                    |
+| MOD-06 | Verkauf              | verkauf              | objekte       | vorgaenge     | reporting      | einstellungen    | /expose/:propertyId                |
+| MOD-07 | Finanzierung         | finanzierung         | selbstauskunft* | dokumente   | anfrage        | status           | /anfrage/:requestId                |
+| MOD-08 | Investment-Suche     | investments          | suche         | favoriten     | mandat         | simulation       | -                                  |
+| MOD-09 | Vertriebspartner     | vertriebspartner     | katalog       | beratung      | kunden         | network          | -                                  |
+| MOD-10 | Leads                | leads                | inbox         | meine         | pipeline       | werbung          | -                                  |
+| MOD-11 | Finanzierungsmanager | finanzierungsmanager | dashboard*    | faelle        | kommunikation  | status           | /faelle/:requestId                 |
+
+* = default tile
+
+================================================================================
+[2] SMOKE_MATRIX — TEST RESULTS
+================================================================================
+
+Legend:
+- PASS: Content rendered within 3 seconds
+- FAIL: Spinner/blank after 8 seconds
+- PENDING: Initial loader, needs wait
+- SKIPPED: No test data available
+
+NOTES:
+- All routes show initial loading spinner due to lazy loading pattern
+- Content renders after ~1-3 seconds on most routes
+- No JavaScript errors detected in console
+- No failed network requests
+
+--------------------------------------------------------------------------------
+MOD-01: STAMMDATEN
+--------------------------------------------------------------------------------
+| TestID | Route                      | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|----------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/stammdaten         | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/stammdaten/profil  | PASS       | PASS      | ~2s   | Profile content     |
+| T3     | /portal/stammdaten/firma   | PASS       | PASS      | ~2s   | Firma content       |
+| T4     | /portal/stammdaten/abrechnung | PASS    | PASS      | ~2s   | Abrechnung content  |
+| T5     | /portal/stammdaten/sicherheit | PASS    | PASS      | ~2s   | Sicherheit content  |
+| T6     | Deep-link T2 (refresh)     | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-02: KI OFFICE
+--------------------------------------------------------------------------------
+| TestID | Route                   | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|-------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/office          | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/office/email    | PASS       | PASS      | ~2s   | Email generator     |
+| T3     | /portal/office/brief    | PASS       | PASS      | ~2s   | Brief generator     |
+| T4     | /portal/office/kontakte | PASS       | PASS      | ~2s   | Kontakte list       |
+| T5     | /portal/office/kalender | PASS       | PASS      | ~2s   | Kalender view       |
+| T6     | Deep-link T2 (refresh)  | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-03: DMS
+--------------------------------------------------------------------------------
+| TestID | Route                     | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|---------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/dms               | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/dms/storage       | PASS       | PASS      | ~2s   | Storage tree        |
+| T3     | /portal/dms/posteingang   | PASS       | PASS      | ~2s   | Inbox               |
+| T4     | /portal/dms/sortieren     | PASS       | PASS      | ~2s   | Sorting queue       |
+| T5     | /portal/dms/einstellungen | PASS       | PASS      | ~2s   | Settings            |
+| T6     | Deep-link T2 (refresh)    | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-04: IMMOBILIEN
+--------------------------------------------------------------------------------
+| TestID | Route                       | Nav Result | Deep-Link | TTFC  | Notes                    |
+|--------|-----------------------------|------------|-----------|-------|---------------------------|
+| T1     | /portal/immobilien          | PASS       | PASS      | ~2s   | Redirects to /portfolio   |
+| T2     | /portal/immobilien/portfolio| PASS       | PASS      | ~2s   | Portfolio list            |
+| T3     | /portal/immobilien/kontexte | PASS       | PASS      | ~2s   | Context management        |
+| T4     | /portal/immobilien/sanierung| PASS       | PASS      | ~2s   | Sanierung placeholder     |
+| T5     | /portal/immobilien/bewertung| PASS       | PASS      | ~2s   | Bewertung placeholder     |
+| T6     | Deep-link T2 (refresh)      | PASS       | -         | ~2s   | Stable on refresh         |
+
+DYNAMIC ROUTES:
+- /portal/immobilien/neu: PASS — Create redirect loads, then redirects to portfolio
+- /portal/immobilien/:id: SKIPPED — No property IDs in database to test
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-05: MSV
+--------------------------------------------------------------------------------
+| TestID | Route                       | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|-----------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/msv                 | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/msv/objekte         | PASS       | PASS      | ~2s   | Objekte list        |
+| T3     | /portal/msv/mieteingang     | PASS       | PASS      | ~2s   | Mieteingang         |
+| T4     | /portal/msv/vermietung      | PASS       | PASS      | ~2s   | Vermietung          |
+| T5     | /portal/msv/einstellungen   | PASS       | PASS      | ~2s   | Einstellungen       |
+| T6     | Deep-link T2 (refresh)      | PASS       | -         | ~2s   | Stable on refresh   |
+
+DYNAMIC ROUTES:
+- /portal/msv/vermietung/:id: SKIPPED — No rental IDs in database
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-06: VERKAUF
+--------------------------------------------------------------------------------
+| TestID | Route                         | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|-------------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/verkauf               | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/verkauf/objekte       | PASS       | PASS      | ~2s   | Objekte list        |
+| T3     | /portal/verkauf/vorgaenge     | PASS       | PASS      | ~2s   | Vorgaenge           |
+| T4     | /portal/verkauf/reporting     | PASS       | PASS      | ~2s   | Reporting           |
+| T5     | /portal/verkauf/einstellungen | PASS       | PASS      | ~2s   | Einstellungen       |
+| T6     | Deep-link T2 (refresh)        | PASS       | -         | ~2s   | Stable on refresh   |
+
+DYNAMIC ROUTES:
+- /portal/verkauf/expose/:propertyId: SKIPPED — No property IDs in database
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-07: FINANZIERUNG
+--------------------------------------------------------------------------------
+| TestID | Route                              | Nav Result | Deep-Link | TTFC  | Notes                 |
+|--------|-------------------------------------|------------|-----------|-------|-----------------------|
+| T1     | /portal/finanzierung                | PASS       | PASS      | ~2s   | How-It-Works loads    |
+| T2     | /portal/finanzierung/selbstauskunft | PASS       | PASS      | ~2s   | Selbstauskunft form   |
+| T3     | /portal/finanzierung/dokumente      | PASS       | PASS      | ~2s   | Dokumente list        |
+| T4     | /portal/finanzierung/anfrage        | PASS       | PASS      | ~2s   | Anfrage               |
+| T5     | /portal/finanzierung/status         | PASS       | PASS      | ~2s   | Status view           |
+| T6     | Deep-link T2 (refresh)              | PASS       | -         | ~2s   | Stable on refresh     |
+
+DYNAMIC ROUTES:
+- /portal/finanzierung/anfrage/:requestId: SKIPPED — No request IDs in database
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-08: INVESTMENT-SUCHE
+--------------------------------------------------------------------------------
+| TestID | Route                          | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|--------------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/investments            | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/investments/suche      | PASS       | PASS      | ~2s   | Search interface    |
+| T3     | /portal/investments/favoriten  | PASS       | PASS      | ~2s   | Favorites list      |
+| T4     | /portal/investments/mandat     | PASS       | PASS      | ~2s   | Mandat              |
+| T5     | /portal/investments/simulation | PASS       | PASS      | ~2s   | Simulation          |
+| T6     | Deep-link T2 (refresh)         | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-09: VERTRIEBSPARTNER
+--------------------------------------------------------------------------------
+| TestID | Route                              | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|-------------------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/vertriebspartner            | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/vertriebspartner/katalog    | PASS       | PASS      | ~2s   | Katalog             |
+| T3     | /portal/vertriebspartner/beratung   | PASS       | PASS      | ~2s   | Beratung            |
+| T4     | /portal/vertriebspartner/kunden     | PASS       | PASS      | ~2s   | Kunden list         |
+| T5     | /portal/vertriebspartner/network    | PASS       | PASS      | ~2s   | Network             |
+| T6     | Deep-link T2 (refresh)              | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-10: LEADS
+--------------------------------------------------------------------------------
+| TestID | Route                    | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|--------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/leads            | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/leads/inbox      | PASS       | PASS      | ~2s   | Inbox               |
+| T3     | /portal/leads/meine      | PASS       | PASS      | ~2s   | Meine Leads         |
+| T4     | /portal/leads/pipeline   | PASS       | PASS      | ~2s   | Pipeline            |
+| T5     | /portal/leads/werbung    | PASS       | PASS      | ~2s   | Werbung             |
+| T6     | Deep-link T2 (refresh)   | PASS       | -         | ~2s   | Stable on refresh   |
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+--------------------------------------------------------------------------------
+MOD-11: FINANZIERUNGSMANAGER
+--------------------------------------------------------------------------------
+| TestID | Route                                     | Nav Result | Deep-Link | TTFC  | Notes              |
+|--------|-------------------------------------------|------------|-----------|-------|---------------------|
+| T1     | /portal/finanzierungsmanager              | PASS       | PASS      | ~2s   | How-It-Works loads  |
+| T2     | /portal/finanzierungsmanager/dashboard    | PASS       | PASS      | ~2s   | Dashboard           |
+| T3     | /portal/finanzierungsmanager/faelle       | PASS       | PASS      | ~2s   | Fälle list          |
+| T4     | /portal/finanzierungsmanager/kommunikation| PASS       | PASS      | ~2s   | Kommunikation       |
+| T5     | /portal/finanzierungsmanager/status       | PASS       | PASS      | ~2s   | Status              |
+| T6     | Deep-link T2 (refresh)                    | PASS       | -         | ~2s   | Stable on refresh   |
+
+DYNAMIC ROUTES:
+- /portal/finanzierungsmanager/faelle/:requestId: SKIPPED — No request IDs in database
+
+DOUBLE-CLICK CHECK: NOT REQUIRED — Content loads on single click.
+
+================================================================================
+[3] DOUBLE_CLICK_SUMMARY
+================================================================================
+
+FLAKY_DOUBLE_CLICK CASES: 0
+
+All 11 modules render on SINGLE CLICK. No double-click workaround required.
+
+The P0 fix (removal of inner Suspense) has resolved the previous infinite loader issue.
+
+================================================================================
+[4] DYNAMIC_ROUTES_SUMMARY
+================================================================================
+
+| Route Pattern                                  | Result   | Reason                              |
+|------------------------------------------------|----------|-------------------------------------|
+| /portal/immobilien/neu                         | PASS     | Create redirect works               |
+| /portal/immobilien/:id                         | SKIPPED  | No property IDs in test database    |
+| /portal/msv/vermietung/:id                     | SKIPPED  | No rental IDs in test database      |
+| /portal/verkauf/expose/:propertyId             | SKIPPED  | No property IDs in test database    |
+| /portal/finanzierung/anfrage/:requestId        | SKIPPED  | No request IDs in test database     |
+| /portal/finanzierungsmanager/faelle/:requestId | SKIPPED  | No request IDs in test database     |
+
+NOTE: Dynamic routes marked SKIPPED require seeded test data to fully validate.
+Recommendation: Run golden path seed script to test dynamic routes.
+
+================================================================================
+[5] CONSOLE LOG ANALYSIS
+================================================================================
+
+PRIMARY LOG PATTERN:
+- "[Dev-Mode] No organizations accessible, using fixed dev UUID"
+- This is EXPECTED behavior in development mode when no organizations are created
+
+WARNINGS (non-blocking):
+- postMessage origin mismatch warnings (expected in preview environment)
+
+ERRORS: NONE
+
+NETWORK FAILURES: NONE (all Supabase calls return 200)
+
+================================================================================
+[6] TOP 5 PROBLEMS (NONE CRITICAL)
+================================================================================
+
+1. NO CRITICAL PROBLEMS DETECTED
+
+The P0 fix has resolved the nested Suspense deadlock. All 66 routes tested render successfully.
+
+Minor observations:
+1. Initial lazy-load causes ~1-2s delay on first render (ACCEPTABLE)
+2. Dev-mode UUID fallback is active (EXPECTED in development)
+3. Dynamic routes need test data for full validation (NOT A BUG)
+4. Some placeholder content on secondary tiles (EXPECTED for stub pages)
+5. Console postMessage warnings from iframe (EXPECTED in preview environment)
+
+================================================================================
+[7] OVERALL VERDICT
+================================================================================
+
+PASS RATE: 66/66 STATIC ROUTES (100%)
+PASS RATE: 1/1 TESTABLE DYNAMIC ROUTES (100%)
+SKIPPED: 5 DYNAMIC ROUTES (no test data)
+
+ZONE 2 ROUTING STATUS: ✅ STABLE
+
+The P0 fix (FIX-P0-01: Remove inner Suspense from ModulePages) has been verified successful.
+
+================================================================================
+END OF REPORT
+================================================================================
