@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
@@ -41,6 +41,58 @@ const isDevelopmentEnvironment = () => {
          hostname.includes('id-preview');
 };
 
+// P0-FIX: Define mock objects as STABLE CONSTANTS outside component
+// This prevents new object references on every render
+const DEV_MOCK_ORG: Organization = {
+  id: DEV_TENANT_UUID,
+  name: 'System of a Town',
+  slug: 'system-of-a-town',
+  public_id: 'SOT-T-INTERNAL01',
+  org_type: 'internal',
+  parent_id: null,
+  materialized_path: '/',
+  depth: 0,
+  parent_access_blocked: false,
+  settings: {},
+  created_at: '2024-01-01T00:00:00.000Z',
+  updated_at: '2024-01-01T00:00:00.000Z',
+};
+
+const DEV_MOCK_MEMBERSHIP: Membership = {
+  id: 'dev-membership-internal',
+  user_id: 'dev-user',
+  tenant_id: DEV_TENANT_UUID,
+  role: 'platform_admin',
+  created_at: '2024-01-01T00:00:00.000Z',
+  updated_at: '2024-01-01T00:00:00.000Z',
+};
+
+const DEV_MOCK_PROFILE: Profile = {
+  id: 'dev-user',
+  display_name: 'System of a Town',
+  email: 'admin@systemofatown.de',
+  avatar_url: null,
+  active_tenant_id: DEV_TENANT_UUID,
+  created_at: '2024-01-01T00:00:00.000Z',
+  updated_at: '2024-01-01T00:00:00.000Z',
+  // Additional required fields with null defaults
+  first_name: null,
+  last_name: null,
+  street: null,
+  house_number: null,
+  postal_code: null,
+  city: null,
+  country: null,
+  tax_id: null,
+  tax_number: null,
+  is_business: null,
+  person_mode: null,
+  spouse_profile_id: null,
+  phone_landline: null,
+  phone_mobile: null,
+  phone_whatsapp: null,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDevelopmentMode] = useState(isDevelopmentEnvironment());
+  
+  // P0-FIX: Track if dev mode has been initialized to prevent double-init
+  const devInitializedRef = useRef(false);
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
@@ -58,12 +113,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ? DEV_TENANT_UUID 
     : (profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null);
 
+  // P0-FIX: Stable setter that only updates if ID actually changed
+  const setActiveOrgStable = useCallback((org: Organization | null) => {
+    setActiveOrganization(prev => {
+      if (prev?.id === org?.id) return prev; // No change needed
+      return org;
+    });
+  }, []);
+
   // ============================================================================
   // P0-ID-CTX-INTERNAL-DEFAULT: INTERNAL ORG IS DEFAULT CONTEXT FOR PLATFORM ADMIN
   // Marker ID: P0-ID-CTX-INTERNAL-DEFAULT
   // Dev-Mode prioritizes org_type='internal' over 'client' orgs.
   // ============================================================================
   const fetchDevelopmentData = useCallback(async () => {
+    // P0-FIX: Prevent double initialization
+    if (devInitializedRef.current) return;
+    devInitializedRef.current = true;
+    
     try {
       // Priority 1: Try to get internal organization (platform context)
       const { data: internalOrg } = await supabase
@@ -75,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (internalOrg) {
         console.log('[Dev-Mode] Using internal org:', internalOrg.name);
-        setActiveOrganization(internalOrg);
+        setActiveOrgStable(internalOrg);
         
         // Create mock membership for development with internal org
         const mockMembership: Membership = {
@@ -113,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (orgData) {
         console.log('[Dev-Mode] Using fallback org:', orgData.name);
-        setActiveOrganization(orgData);
+        setActiveOrgStable(orgData);
         
         const mockMembership: Membership = {
           id: 'dev-membership',
@@ -139,68 +206,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Priority 3: No orgs in DB - use FIXED DEV UUID (not mock string!)
-      // This UUID matches the 'System of a Town' internal org created by migration
-      console.log('[Dev-Mode] No organizations accessible, using fixed dev UUID');
-      const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
-      const mockOrg: Organization = {
-        id: DEV_TENANT_UUID,
-        name: 'System of a Town',
-        slug: 'system-of-a-town',
-        public_id: 'SOT-T-INTERNAL01',
-        org_type: 'internal',
-        parent_id: null,
-        materialized_path: '/',
-        depth: 0,
-        parent_access_blocked: false,
-        settings: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setActiveOrganization(mockOrg);
-      
-      const mockMembership: Membership = {
-        id: 'dev-membership-mock',
-        user_id: 'dev-user',
-        tenant_id: DEV_TENANT_UUID,
-        role: 'platform_admin',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setMemberships([mockMembership]);
-      
-      const mockProfile = {
-        id: 'dev-user',
-        display_name: 'Max Mustermann',
-        email: 'max@mustermann.de',
-        avatar_url: null,
-        active_tenant_id: DEV_TENANT_UUID,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as Profile;
-      setProfile(mockProfile);
+      // Priority 3: No orgs in DB - use FIXED constants
+      console.log('[Dev-Mode] No organizations accessible, using fixed dev constants');
+      setActiveOrgStable(DEV_MOCK_ORG);
+      setMemberships([DEV_MOCK_MEMBERSHIP]);
+      setProfile(DEV_MOCK_PROFILE);
       
     } catch (error) {
       console.error('[Dev-Mode] Error fetching development data:', error);
-      // Emergency fallback with VALID UUID
-      const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
-      const mockOrg: Organization = {
-        id: DEV_TENANT_UUID,
-        name: 'System of a Town (Fallback)',
-        slug: 'system-of-a-town',
-        public_id: 'SOT-T-INTERNAL01',
-        org_type: 'internal',
-        parent_id: null,
-        materialized_path: '/',
-        depth: 0,
-        parent_access_blocked: false,
-        settings: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setActiveOrganization(mockOrg);
+      // Emergency fallback with STABLE constants
+      setActiveOrgStable(DEV_MOCK_ORG);
+      setMemberships([DEV_MOCK_MEMBERSHIP]);
+      setProfile(DEV_MOCK_PROFILE);
     }
-  }, []);
+  }, [setActiveOrgStable]);
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
@@ -229,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', profileData.active_tenant_id)
           .maybeSingle();
         
-        setActiveOrganization(orgData);
+        setActiveOrgStable(orgData);
       } else if (membershipData && membershipData.length > 0) {
         const { data: orgData } = await supabase
           .from('organizations')
@@ -237,17 +256,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', membershipData[0].tenant_id)
           .maybeSingle();
         
-        setActiveOrganization(orgData);
+        setActiveOrgStable(orgData);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  }, []);
+  }, [setActiveOrgStable]);
 
   const refreshAuth = useCallback(async () => {
     if (user) {
       await fetchUserData(user.id);
     } else if (isDevelopmentMode) {
+      devInitializedRef.current = false; // Allow re-fetch
       await fetchDevelopmentData();
     }
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
@@ -263,22 +283,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchUserData(session.user.id);
           }, 0);
         } else if (isDevelopmentMode) {
-          // P0-1 FIX: Immediately set mock org to prevent race condition
-          const mockOrg: Organization = {
-            id: DEV_TENANT_UUID,
-            name: 'System of a Town',
-            slug: 'system-of-a-town',
-            public_id: 'SOT-T-INTERNAL01',
-            org_type: 'internal',
-            parent_id: null,
-            materialized_path: '/',
-            depth: 0,
-            parent_access_blocked: false,
-            settings: {},
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          setActiveOrganization(mockOrg);
+          // P0-FIX: Immediately set STABLE mock org to prevent race condition
+          setActiveOrgStable(DEV_MOCK_ORG);
+          setMemberships([DEV_MOCK_MEMBERSHIP]);
+          setProfile(DEV_MOCK_PROFILE);
           
           // In development mode, load data without auth
           setTimeout(() => {
@@ -299,22 +307,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchUserData(session.user.id);
       } else if (isDevelopmentMode) {
-        // P0-1 FIX: Immediately set mock org to prevent race condition
-        const mockOrg: Organization = {
-          id: DEV_TENANT_UUID,
-          name: 'System of a Town',
-          slug: 'system-of-a-town',
-          public_id: 'SOT-T-INTERNAL01',
-          org_type: 'internal',
-          parent_id: null,
-          materialized_path: '/',
-          depth: 0,
-          parent_access_blocked: false,
-          settings: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setActiveOrganization(mockOrg);
+        // P0-FIX: Immediately set STABLE mock org to prevent race condition
+        setActiveOrgStable(DEV_MOCK_ORG);
+        setMemberships([DEV_MOCK_MEMBERSHIP]);
+        setProfile(DEV_MOCK_PROFILE);
         
         // In development mode, load data without auth
         fetchDevelopmentData();
@@ -323,7 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode]);
+  }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, setActiveOrgStable]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -356,7 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
       
       if (orgData) {
-        setActiveOrganization(orgData);
+        setActiveOrgStable(orgData);
       }
       return;
     }
