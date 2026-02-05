@@ -3338,6 +3338,7 @@ export type Database = {
           description: string | null
           expose_document_id: string | null
           id: string
+          is_blocked: boolean | null
           min_price: number | null
           partner_visibility: string | null
           property_id: string
@@ -3361,6 +3362,7 @@ export type Database = {
           description?: string | null
           expose_document_id?: string | null
           id?: string
+          is_blocked?: boolean | null
           min_price?: number | null
           partner_visibility?: string | null
           property_id: string
@@ -3384,6 +3386,7 @@ export type Database = {
           description?: string | null
           expose_document_id?: string | null
           id?: string
+          is_blocked?: boolean | null
           min_price?: number | null
           partner_visibility?: string | null
           property_id?: string
