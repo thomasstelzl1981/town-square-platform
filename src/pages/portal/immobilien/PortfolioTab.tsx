@@ -18,7 +18,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, Percent, 
-  Plus, Upload, Eye
+  Plus, Upload, Eye, Calculator
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
+import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
 
 interface LandlordContext {
   id: string;
@@ -83,6 +84,7 @@ export function PortfolioTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
   
@@ -753,6 +755,47 @@ export function PortfolioTab() {
               </Button>
             }
           />
+          
+          {/* Summary Row - Summenzeile */}
+          {hasData && totals && (
+            <div 
+              className="mt-4 p-4 rounded-lg bg-muted/50 border-t-2 border-primary/20 cursor-pointer hover:bg-muted transition-colors"
+              onClick={() => setShowSummaryModal(true)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">Σ Portfolio-Summe</p>
+                    <p className="text-xs text-muted-foreground">
+                      {totals.propertyCount} Objekt(e), {totals.unitCount} Einheit(en)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Miete p.a.</p>
+                    <p className="font-semibold">{formatCurrency(totals.totalIncome)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Verkehrswert</p>
+                    <p className="font-semibold">{formatCurrency(totals.totalValue)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Restschuld</p>
+                    <p className="font-semibold text-destructive">{formatCurrency(totals.totalDebt)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Annuität p.a.</p>
+                    <p className="font-semibold">{formatCurrency(totals.totalAnnuity)}</p>
+                  </div>
+                  <Badge variant="outline" className="ml-2">
+                    Details →
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -769,6 +812,14 @@ export function PortfolioTab() {
       <CreatePropertyDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+      />
+
+      {/* Portfolio Summary Modal */}
+      <PortfolioSummaryModal
+        open={showSummaryModal}
+        onOpenChange={setShowSummaryModal}
+        totals={totals}
+        contextName={selectedContextId ? contexts.find(c => c.id === selectedContextId)?.name : undefined}
       />
     </div>
   );

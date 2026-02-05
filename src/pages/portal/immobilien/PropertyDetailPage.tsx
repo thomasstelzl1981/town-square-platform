@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -17,12 +18,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles, FileText, Building2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles, FileText, Building2, Calculator } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
 import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
+import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 
 interface Property {
@@ -93,6 +95,48 @@ export default function PropertyDetailPage() {
 
   // Load the new Immobilienakte data
   const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
+
+  // Load property_accounting for simulation
+  const { data: accountingData } = useQuery({
+    queryKey: ['property-accounting', id, activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('property_accounting')
+        .select('*')
+        .eq('property_id', id!)
+        .eq('tenant_id', activeTenantId!)
+        .maybeSingle();
+      if (error) console.warn('Accounting query error:', error);
+      return data;
+    },
+    enabled: !!id && !!activeTenantId,
+  });
+
+  // Load landlord context for this property
+  const { data: contextData } = useQuery({
+    queryKey: ['property-context', id, activeTenantId],
+    queryFn: async () => {
+      // Get context assignment
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('context_property_assignment')
+        .select('context_id')
+        .eq('property_id', id!)
+        .eq('tenant_id', activeTenantId!)
+        .maybeSingle();
+      
+      if (assignmentError || !assignment) return null;
+      
+      // Get context details
+      const { data: context } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type, taxable_income_yearly, marginal_tax_rate')
+        .eq('id', assignment.context_id)
+        .maybeSingle();
+      
+      return context;
+    },
+    enabled: !!id && !!activeTenantId,
+  });
 
   async function fetchProperty() {
     // FIX: Use activeTenantId for consistent tenant scoping
@@ -320,6 +364,10 @@ export default function PropertyDetailPage() {
               <FileText className="h-4 w-4" />
               Akte
             </TabsTrigger>
+            <TabsTrigger value="simulation" className="flex items-center gap-1">
+              <Calculator className="h-4 w-4" />
+              Simulation
+            </TabsTrigger>
             <TabsTrigger value="expose">Exposé</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
@@ -333,6 +381,35 @@ export default function PropertyDetailPage() {
             ) : (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
                 <p>Keine Akten-Daten verfügbar. Bitte ergänzen Sie die Stammdaten.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* NEW: Investment Simulation Tab */}
+          <TabsContent value="simulation">
+            {property && financing.length > 0 ? (
+              <InventoryInvestmentSimulation
+                data={{
+                  purchasePrice: property.purchase_price || property.market_value || 0,
+                  marketValue: property.market_value || 0,
+                  annualRent: (unit?.current_monthly_rent || 0) * 12,
+                  outstandingBalance: financing[0]?.current_balance || 0,
+                  interestRatePercent: financing[0]?.interest_rate || 0,
+                  annuityMonthly: financing[0]?.monthly_rate || 0,
+                  buildingSharePercent: accountingData?.building_share_percent || 80,
+                  afaRatePercent: accountingData?.afa_rate_percent || 2,
+                  afaMethod: accountingData?.afa_method || 'linear',
+                  contextName: contextData?.name,
+                  marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <div className="text-center">
+                  <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Keine Finanzierungsdaten vorhanden</p>
+                  <p className="text-sm mt-1">Fügen Sie zuerst ein Darlehen hinzu, um die Simulation zu nutzen.</p>
+                </div>
               </div>
             )}
           </TabsContent>
