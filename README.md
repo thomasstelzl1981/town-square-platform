@@ -4,6 +4,23 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
+## 🔄 Rebirth System (Checkpoint & Restore)
+
+Before making major changes in Lovable, create a checkpoint to easily revert if needed:
+
+```bash
+# Create a checkpoint
+./scripts/create-checkpoint.sh
+
+# List all checkpoints
+./scripts/list-checkpoints.sh
+
+# Restore to a checkpoint
+./scripts/restore-checkpoint.sh rebirth-20260205
+```
+
+**[📖 Full Rebirth System Documentation](./REBIRTH_SYSTEM.md)**
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
