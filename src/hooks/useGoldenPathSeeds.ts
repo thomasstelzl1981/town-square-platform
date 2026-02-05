@@ -14,7 +14,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Fixed Dev-Tenant UUID
-const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
+export const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
 
 // Fixed IDs for idempotent upserts
 const SEED_IDS = {
@@ -102,7 +102,7 @@ function emptyCounts(): SeedCounts {
   };
 }
 
-async function getCounts(tenantId: string): Promise<SeedCounts> {
+export async function getCounts(tenantId: string): Promise<SeedCounts> {
   const [props, units, loans, leases, finReqs, appProfiles, contacts, docs, nodes, links, contexts, members, tiles] = await Promise.all([
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('units').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
@@ -227,4 +227,9 @@ export function useGoldenPathSeeds(
   };
 }
 
-export { SEED_IDS, DEV_TENANT_UUID, ALL_MODULES };
+export { SEED_IDS, ALL_MODULES };
+
+// P1-1: Fetch counts for initial display without running seeds
+export async function fetchGoldenPathCounts(): Promise<SeedCounts> {
+  return getCounts(DEV_TENANT_UUID);
+}

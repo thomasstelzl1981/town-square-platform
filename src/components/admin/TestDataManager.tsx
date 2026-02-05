@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID } from '@/hooks/useGoldenPathSeeds';
+import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID, fetchGoldenPathCounts, type SeedCounts } from '@/hooks/useGoldenPathSeeds';
 
 interface TestBatch {
   batch_id: string;
@@ -89,6 +89,10 @@ export function TestDataManager() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // P1-1: Initial counts state for display without click
+  const [initialCounts, setInitialCounts] = useState<SeedCounts | null>(null);
+  const [isLoadingCounts, setIsLoadingCounts] = useState(true);
+
   // Golden Path Seeds
   const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(
     activeOrganization?.id,
@@ -96,6 +100,19 @@ export function TestDataManager() {
     activeOrganization?.org_type,
     true // devMode
   );
+
+  // P1-1: Fetch counts on component mount
+  useEffect(() => {
+    fetchGoldenPathCounts()
+      .then(counts => {
+        setInitialCounts(counts);
+        setIsLoadingCounts(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch initial counts:', err);
+        setIsLoadingCounts(false);
+      });
+  }, []);
 
   // Fetch test batches from test_data_registry
   const { data: batches = [], isLoading } = useQuery({
@@ -596,25 +613,40 @@ export function TestDataManager() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Status Grid */}
-          {lastResult && (
+          {isLoadingCounts ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <div className="p-2 bg-background rounded border flex items-center gap-2">
-                <Users className="h-3 w-3 text-muted-foreground" />
-                <span>Kontakte: <strong>{lastResult.after.contacts}</strong>/5</span>
-              </div>
-              <div className="p-2 bg-background rounded border flex items-center gap-2">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
-                <span>Immobilien: <strong>{lastResult.after.properties}</strong>/1</span>
-              </div>
-              <div className="p-2 bg-background rounded border flex items-center gap-2">
-                <FileText className="h-3 w-3 text-muted-foreground" />
-                <span>Dokumente: <strong>{lastResult.after.documents}</strong>/12</span>
-              </div>
-              <div className="p-2 bg-background rounded border flex items-center gap-2">
-                <Home className="h-3 w-3 text-muted-foreground" />
-                <span>Kontexte: <strong>{lastResult.after.landlord_contexts}</strong>/1</span>
-              </div>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="p-2 bg-background rounded border animate-pulse h-10" />
+              ))}
             </div>
+          ) : (lastResult || initialCounts) ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              {(() => {
+                const displayCounts = lastResult?.after || initialCounts;
+                return (
+                  <>
+                    <div className="p-2 bg-background rounded border flex items-center gap-2">
+                      <Users className="h-3 w-3 text-muted-foreground" />
+                      <span>Kontakte: <strong>{displayCounts?.contacts ?? 0}</strong>/5</span>
+                    </div>
+                    <div className="p-2 bg-background rounded border flex items-center gap-2">
+                      <Building2 className="h-3 w-3 text-muted-foreground" />
+                      <span>Immobilien: <strong>{displayCounts?.properties ?? 0}</strong>/1</span>
+                    </div>
+                    <div className="p-2 bg-background rounded border flex items-center gap-2">
+                      <FileText className="h-3 w-3 text-muted-foreground" />
+                      <span>Dokumente: <strong>{displayCounts?.documents ?? 0}</strong>/12</span>
+                    </div>
+                    <div className="p-2 bg-background rounded border flex items-center gap-2">
+                      <Home className="h-3 w-3 text-muted-foreground" />
+                      <span>Kontexte: <strong>{displayCounts?.landlord_contexts ?? 0}</strong>/1</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Keine Daten geladen</p>
           )}
           
           {/* Buttons */}
