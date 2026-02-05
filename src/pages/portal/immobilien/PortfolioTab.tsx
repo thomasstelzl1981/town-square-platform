@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,11 +57,13 @@ interface UnitWithProperty {
   leases_count: number; // Number of active leases
 }
 
-interface PropertyFinancing {
+// SSOT: Loan data from loans table (replaces property_financing for seed data)
+interface LoanData {
+  id: string;
   property_id: string;
-  current_balance: number | null;
-  monthly_rate: number | null;
-  interest_rate: number | null;
+  outstanding_balance_eur: number | null;
+  annuity_monthly_eur: number | null;
+  interest_rate_percent: number | null;
 }
 
 interface LeaseData {
@@ -84,13 +86,14 @@ export function PortfolioTab() {
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
   
-  // Clear the create param after opening dialog
-  useState(() => {
+  // FIX: Clear the create param via useEffect (not useState side-effect)
+  useEffect(() => {
     if (searchParams.get('create') === '1') {
-      searchParams.delete('create');
-      setSearchParams(searchParams, { replace: true });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      setSearchParams(newParams, { replace: true });
     }
-  });
+  }, [searchParams, setSearchParams]);
   
   // Get selected context from URL
   const selectedContextId = searchParams.get('context');
@@ -138,11 +141,13 @@ export function PortfolioTab() {
     enabled: !!activeTenantId && contexts.length > 1,
   });
 
-  // Fetch UNITS with properties, leases (multi!), and financing - ANNUAL VALUES
+  // Fetch UNITS with properties, leases (multi!), and financing from LOANS (SSOT)
   const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
-    queryKey: ['portfolio-units-annual', activeOrganization?.id],
+    queryKey: ['portfolio-units-annual', activeTenantId],
     queryFn: async () => {
-      // Get units with property data
+      if (!activeTenantId) return [];
+      
+      // Get units with property data - USE activeTenantId for consistent tenant scoping
       const { data: units, error: unitsError } = await supabase
         .from('units')
         .select(`
@@ -164,10 +169,13 @@ export function PortfolioTab() {
             status
           )
         `)
-        .eq('tenant_id', activeOrganization!.id)
+        .eq('tenant_id', activeTenantId)
         .eq('properties.status', 'active');
 
-      if (unitsError) throw unitsError;
+      if (unitsError) {
+        console.error('Portfolio units query error:', unitsError);
+        throw unitsError;
+      }
 
       // Get ALL active leases for multi-lease aggregation
       const { data: leases } = await supabase
@@ -183,15 +191,27 @@ export function PortfolioTab() {
             company
           )
         `)
-        .eq('tenant_id', activeOrganization!.id)
+        .eq('tenant_id', activeTenantId)
         .eq('status', 'active');
 
-      // Get financing data
-      const { data: financing } = await supabase
-        .from('property_financing')
-        .select('property_id, current_balance, monthly_rate, interest_rate')
-        .eq('tenant_id', activeOrganization!.id)
-        .eq('is_active', true);
+      // SSOT FIX: Get financing data from LOANS table (not property_financing!)
+      // Note: Using explicit fetch to avoid TS2589 type recursion issue with Supabase client
+      let loans: LoanData[] = [];
+      try {
+        const { data: loansResult, error: loansError } = await (supabase as any)
+          .from('loans')
+          .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
+          .eq('tenant_id', activeTenantId)
+          .eq('is_active', true);
+        
+        if (loansError) {
+          console.warn('Loans query error (non-fatal):', loansError);
+        } else if (loansResult) {
+          loans = loansResult as LoanData[];
+        }
+      } catch (err) {
+        console.warn('Loans query failed:', err);
+      }
 
       // Build multi-lease map: unit_id -> { leases[], totalRent, tenantName }
       const leaseMap = new Map<string, { 
@@ -221,35 +241,31 @@ export function PortfolioTab() {
         leaseMap.set(l.unit_id, existing);
       });
 
-      // Build financing map
-      const financingMap = new Map<string, { 
-        balance: number | null; 
-        monthlyRate: number | null;
-        interestRate: number | null;
-      }>();
-      financing?.forEach(f => {
-        financingMap.set(f.property_id, { 
-          balance: f.current_balance, 
-          monthlyRate: f.monthly_rate,
-          interestRate: f.interest_rate,
-        });
+      // SSOT: Build loan map from loans table (property_id -> latest loan)
+      const loanMap = new Map<string, LoanData>();
+      loans?.forEach(loan => {
+        // Use latest/first active loan per property
+        if (!loanMap.has(loan.property_id)) {
+          loanMap.set(loan.property_id, loan);
+        }
       });
 
       // Transform to flat structure with ANNUAL values
       return units?.map(u => {
         const prop = u.properties as any;
-        const fin = financingMap.get(prop.id);
+        const loan = loanMap.get(prop.id);
         const leaseInfo = leaseMap.get(u.id);
         
         // Calculate ANNUAL values
         const totalMonthlyRent = leaseInfo?.totalMonthlyRent || u.current_monthly_rent || 0;
         const annualNetColdRent = totalMonthlyRent * 12;
         
-        const balance = fin?.balance || 0;
-        const monthlyRate = fin?.monthlyRate || 0;
-        const interestRate = (fin?.interestRate || 3.5) / 100;
+        // SSOT: Use loans table data
+        const balance = loan?.outstanding_balance_eur || 0;
+        const monthlyAnnuity = loan?.annuity_monthly_eur || 0;
+        const interestRate = (loan?.interest_rate_percent || 0) / 100;
         
-        const annuityPa = monthlyRate * 12;
+        const annuityPa = monthlyAnnuity * 12;
         const interestPa = balance * interestRate;
         const amortizationPa = annuityPa - interestPa;
         
@@ -271,34 +287,39 @@ export function PortfolioTab() {
           city: prop.city,
           postal_code: prop.postal_code,
           market_value: prop.market_value,
-          // ANNUAL VALUES
+          // ANNUAL VALUES from LOANS
           annual_net_cold_rent: annualNetColdRent,
           annuity_pa: annuityPa,
           interest_pa: interestPa,
           amortization_pa: amortizationPa,
-          financing_balance: fin?.balance || null,
+          financing_balance: loan?.outstanding_balance_eur || null,
           tenant_name: tenantName,
           leases_count: leasesCount,
         } as UnitWithProperty;
       }) || [];
     },
-    enabled: !!activeOrganization,
+    enabled: !!activeTenantId,
   });
 
-  // Fetch property financing for aggregations
-  const { data: financingData } = useQuery({
-    queryKey: ['property-financing', activeOrganization?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('property_financing')
-        .select('property_id, current_balance, monthly_rate, interest_rate')
-        .eq('tenant_id', activeOrganization!.id)
+  // SSOT: Fetch loans for aggregations (not property_financing)
+  const { data: loansData } = useQuery({
+    queryKey: ['portfolio-loans', activeTenantId],
+    queryFn: async (): Promise<LoanData[]> => {
+      if (!activeTenantId) return [];
+      // Use explicit cast to avoid TS2589 type recursion
+      const { data, error } = await (supabase as any)
+        .from('loans')
+        .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
+        .eq('tenant_id', activeTenantId)
         .eq('is_active', true);
       
-      if (error) throw error;
-      return data as PropertyFinancing[];
+      if (error) {
+        console.warn('Loans aggregation query error:', error);
+        return [];
+      }
+      return (data || []) as LoanData[];
     },
-    enabled: !!activeOrganization,
+    enabled: !!activeTenantId,
   });
 
   // Filter units by selected context
@@ -324,14 +345,15 @@ export function PortfolioTab() {
     return unitsWithProperties.filter(u => assignedPropertyIds.includes(u.property_id));
   }, [unitsWithProperties, selectedContextId, contextAssignments, contexts]);
 
-  // Calculate aggregations with ANNUAL values
+  // Calculate aggregations with ANNUAL values (using loans SSOT)
   const totals = useMemo(() => {
     const unitsToUse = selectedContextId ? filteredUnits : (unitsWithProperties || []);
     if (!unitsToUse || unitsToUse.length === 0) return null;
 
     // Get unique properties
     const uniquePropertyIds = [...new Set(unitsToUse.map(u => u.property_id))];
-    const relevantFinancing = financingData?.filter(f => uniquePropertyIds.includes(f.property_id)) || [];
+    // SSOT: Use loans data for financing aggregations
+    const relevantLoans = loansData?.filter(l => uniquePropertyIds.includes(l.property_id)) || [];
 
     const unitCount = unitsToUse.length;
     const propertyCount = uniquePropertyIds.length;
@@ -348,11 +370,12 @@ export function PortfolioTab() {
     
     // ANNUAL income (already annual in new structure)
     const totalIncome = unitsToUse.reduce((sum, u) => sum + (u.annual_net_cold_rent || 0), 0);
-    const totalDebt = relevantFinancing.reduce((sum, f) => sum + (f.current_balance || 0), 0);
+    // SSOT: Use loans for debt calculation
+    const totalDebt = relevantLoans.reduce((sum, l) => sum + (l.outstanding_balance_eur || 0), 0);
     const totalAnnuity = unitsToUse.reduce((sum, u) => sum + (u.annuity_pa || 0), 0);
-    const avgInterestRate = relevantFinancing.length 
-      ? relevantFinancing.reduce((sum, f) => sum + (f.interest_rate || 0), 0) / relevantFinancing.length 
-      : 3.5;
+    const avgInterestRate = relevantLoans.length 
+      ? relevantLoans.reduce((sum, l) => sum + (l.interest_rate_percent || 0), 0) / relevantLoans.length 
+      : 0;
     const netWealth = totalValue - totalDebt;
     const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
 
@@ -368,7 +391,7 @@ export function PortfolioTab() {
       avgYield, 
       avgInterestRate 
     };
-  }, [unitsWithProperties, filteredUnits, selectedContextId, financingData]);
+  }, [unitsWithProperties, filteredUnits, selectedContextId, loansData]);
 
   // Tilgungsverlauf Chart Data (30 Jahre Projektion)
   const amortizationData = useMemo(() => {
@@ -400,14 +423,15 @@ export function PortfolioTab() {
     return years;
   }, [totals]);
 
-  // EÜR Chart Data (Einnahmenüberschussrechnung) - ANNUAL
+  // EÜR Chart Data (Einnahmenüberschussrechnung) - ANNUAL (using loans SSOT)
   const eurChartData = useMemo(() => {
     if (!totals) return [];
     
     const annualIncome = totals.totalIncome;
-    const annualInterest = financingData?.reduce((sum, f) => {
-      const balance = f.current_balance || 0;
-      const rate = (f.interest_rate || 3.5) / 100;
+    // SSOT: Calculate interest from loans data
+    const annualInterest = loansData?.reduce((sum, l) => {
+      const balance = l.outstanding_balance_eur || 0;
+      const rate = (l.interest_rate_percent || 0) / 100;
       return sum + (balance * rate);
     }, 0) || 0;
     const nonRecoverableNk = totals.totalValue * 0.005;
@@ -421,7 +445,7 @@ export function PortfolioTab() {
       { name: 'Tilgung p.a.', value: -Math.round(annualAmort), type: 'expense', fill: 'hsl(var(--chart-4))' },
       { name: 'Überschuss p.a.', value: Math.round(surplus), type: 'result', fill: surplus >= 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))' },
     ];
-  }, [totals, financingData]);
+  }, [totals, loansData]);
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -706,7 +730,15 @@ export function PortfolioTab() {
             }
             onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
             rowActions={(row) => (
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/portal/immobilien/${row.property_id}`);
+                }}
+                title="Immobilienakte öffnen"
+              >
                 <Eye className="h-4 w-4" />
               </Button>
             )}
