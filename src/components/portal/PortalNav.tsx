@@ -1,5 +1,7 @@
 /**
- * PORTAL NAV — Manifest-Driven Navigation
+ * PORTAL NAV — Manifest-Driven Navigation (P0-Stabilized)
+ * 
+ * P0-FIX: Memoized tile arrays + stable effects + NavLink for navigation
  * 
  * Desktop Sidebar:
  * - Expanded: 256px (w-64)
@@ -8,12 +10,12 @@
  * - Chevron click: toggles submenu (no navigation)
  */
 
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Home,
@@ -78,6 +80,7 @@ interface TileDisplay {
   display_order: number;
   sub_tiles: SubTileDisplay[];
   requires_role?: string[];
+  visibilityDefault?: boolean;
 }
 
 interface PortalNavProps {
@@ -118,16 +121,9 @@ async function fetchUserRoles(userId: string): Promise<string[]> {
   }
 }
 
-// Get modules with visibility.default from manifest (for fallback)
-function getDefaultVisibleModuleCodes(): string[] {
-  const modules = getModulesSorted();
-  return modules
-    .filter(({ module }) => module.visibility.default === true)
-    .map(({ code }) => code);
-}
-
 // Build tiles from manifest (including requires_role and visibility)
-function buildTilesFromManifest(): (TileDisplay & { visibilityDefault: boolean })[] {
+// P0-FIX: This is a pure function, called once via useMemo
+function buildTilesFromManifest(): TileDisplay[] {
   const modules = getModulesSorted();
   
   return modules.map(({ code, module }) => {
@@ -135,8 +131,6 @@ function buildTilesFromManifest(): (TileDisplay & { visibilityDefault: boolean }
     const mainRoute = `/portal/${module.base}`;
     
     // Build sub-tiles from manifest tiles
-    // P0-FIX: Show ALL tiles in navigation (including default ones)
-    // The default tile is the main entry point but should still be navigable
     const subTiles: SubTileDisplay[] = module.tiles
       .map(tile => ({
         title: tile.title,
@@ -156,17 +150,27 @@ function buildTilesFromManifest(): (TileDisplay & { visibilityDefault: boolean }
   });
 }
 
+// Find active module code from pathname
+function findActiveModuleCode(pathname: string, tiles: TileDisplay[]): string | null {
+  const activeModule = tiles.find(t => 
+    pathname === t.route || pathname.startsWith(t.route + '/')
+  );
+  return activeModule?.code || null;
+}
+
 export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavProps) {
   const location = useLocation();
-  const navigate = useNavigate();
   const { activeOrganization, isDevelopmentMode, user } = useAuth();
   const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track previous active module to avoid redundant state updates
+  const prevActiveModuleRef = useRef<string | null>(null);
 
-  // Get tiles from manifest (SSOT)
-  const manifestTiles = buildTilesFromManifest();
+  // P0-FIX: Memoize manifest tiles (static, never changes)
+  const manifestTiles = useMemo(() => buildTilesFromManifest(), []);
 
   // Fetch user roles for role-gating
   useEffect(() => {
@@ -208,42 +212,48 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
     loadActivations();
   }, [activeOrganization?.id, isDevelopmentMode]);
 
-  // Filter tiles by activation overlay AND role-gating
-  // P0-STABILIZATION: Respect visibility.default from manifest
-  const visibleTiles = manifestTiles.filter(tile => {
-    // ALWAYS show tiles with visibility.default = true (manifest SSOT)
-    // Only apply activation overlay for tiles that require_activation
-    if (tile.visibilityDefault) {
-      // Default-visible tiles are always shown (manifest says so)
-      // Skip activation check for these
-    } else {
-      // Check activation overlay (tenant-specific) only for non-default tiles
-      if (activeTileCodes && !activeTileCodes.includes(tile.code)) {
-        return false;
+  // P0-FIX: Memoize visible tiles with stable dependencies
+  const visibleTiles = useMemo(() => {
+    return manifestTiles.filter(tile => {
+      // ALWAYS show tiles with visibility.default = true (manifest SSOT)
+      if (tile.visibilityDefault) {
+        // Default-visible tiles are always shown
+      } else {
+        // Check activation overlay (tenant-specific) only for non-default tiles
+        if (activeTileCodes && !activeTileCodes.includes(tile.code)) {
+          return false;
+        }
       }
-    }
-    
-    // Check role-gating (user-specific)
-    if (tile.requires_role && tile.requires_role.length > 0) {
-      // In dev mode, show all (for testing)
-      if (isDevelopmentMode) return true;
-      // User must have at least one of the required roles
-      const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role));
-      if (!hasRequiredRole) return false;
-    }
-    return true;
-  });
+      
+      // Check role-gating (user-specific)
+      if (tile.requires_role && tile.requires_role.length > 0) {
+        // In dev mode, show all (for testing)
+        if (isDevelopmentMode) return true;
+        // User must have at least one of the required roles
+        const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role));
+        if (!hasRequiredRole) return false;
+      }
+      return true;
+    });
+  }, [manifestTiles, activeTileCodes, isDevelopmentMode, userRoles]);
 
-  // Initialize open state for active module
+  // P0-FIX: Memoize active module code
+  const activeModuleCode = useMemo(
+    () => findActiveModuleCode(location.pathname, visibleTiles),
+    [location.pathname, visibleTiles]
+  );
+
+  // P0-FIX: Stable effect - only update openModules when activeModuleCode actually changes
   useEffect(() => {
-    const currentPath = location.pathname;
-    const activeModule = visibleTiles.find(t => 
-      currentPath === t.route || currentPath.startsWith(t.route + '/')
-    );
-    if (activeModule) {
-      setOpenModules(prev => ({ ...prev, [activeModule.code]: true }));
+    if (activeModuleCode && activeModuleCode !== prevActiveModuleRef.current) {
+      prevActiveModuleRef.current = activeModuleCode;
+      setOpenModules(prev => {
+        // Only update if not already open
+        if (prev[activeModuleCode]) return prev;
+        return { ...prev, [activeModuleCode]: true };
+      });
     }
-  }, [location.pathname, visibleTiles]);
+  }, [activeModuleCode]);
   
   const isActive = (route: string) => {
     if (route === '/portal') {
@@ -260,10 +270,6 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
     e.stopPropagation();
     e.preventDefault();
     setOpenModules(prev => ({ ...prev, [code]: !prev[code] }));
-  };
-
-  const handleParentClick = (route: string) => {
-    navigate(route);
   };
 
   // Home entry (always visible)
@@ -310,17 +316,17 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
                 return (
                   <Tooltip key={tile.code}>
                     <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleParentClick(tile.route)}
-                        className={cn(
+                      <NavLink
+                        to={tile.route}
+                        className={({ isActive: navActive }) => cn(
                           'flex items-center justify-center h-10 w-10 mx-auto rounded-lg transition-colors',
-                          active 
+                          navActive || active
                             ? 'bg-primary text-primary-foreground' 
                             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
                       >
                         <Icon className="h-5 w-5" />
-                      </button>
+                      </NavLink>
                     </TooltipTrigger>
                     <TooltipContent side="right" sideOffset={8}>
                       <p>{tile.title}</p>
@@ -329,41 +335,42 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
                 );
               }
 
-              // Expanded state: full labels
+              // Expanded state: full labels - no sub-tiles
               if (!hasSubTiles) {
                 return (
-                  <Link
+                  <NavLink
                     key={tile.code}
                     to={tile.route}
-                    className={cn(
+                    className={({ isActive: navActive }) => cn(
                       'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      active 
+                      navActive
                         ? 'bg-primary text-primary-foreground' 
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                   >
                     <Icon className="h-4 w-4" />
                     {tile.title}
-                  </Link>
+                  </NavLink>
                 );
               }
 
+              // P0-FIX: Parent is now NavLink (declarative) instead of button (imperative)
               return (
                 <div key={tile.code}>
                   <div className="flex items-center">
-                    {/* Parent: navigates to How-it-works */}
-                    <button
-                      onClick={() => handleParentClick(tile.route)}
-                      className={cn(
+                    {/* Parent: NavLink navigates to How-it-works */}
+                    <NavLink
+                      to={tile.route}
+                      className={({ isActive: navActive }) => cn(
                         'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-sm font-medium transition-colors text-left',
-                        active 
+                        navActive || active
                           ? 'bg-primary/10 text-primary' 
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
                     >
                       <Icon className="h-4 w-4" />
                       {tile.title}
-                    </button>
+                    </NavLink>
                     
                     {/* Chevron: toggles submenu, no navigation */}
                     <button
@@ -374,6 +381,7 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
                           ? 'bg-primary/10 text-primary hover:bg-primary/20' 
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
+                      aria-label={`${tile.title} Untermenü ${isOpen ? 'schließen' : 'öffnen'}`}
                     >
                       <ChevronDown 
                         className={cn(
@@ -388,18 +396,18 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
                     <CollapsibleContent>
                       <div className="ml-4 mt-1 space-y-1 border-l pl-3">
                         {tile.sub_tiles?.map(sub => (
-                          <Link
+                          <NavLink
                             key={sub.route}
                             to={sub.route}
-                            className={cn(
+                            className={({ isActive: subActive }) => cn(
                               'block px-3 py-1.5 rounded-lg text-sm transition-colors',
-                              isSubActive(sub.route)
+                              subActive
                                 ? 'bg-primary text-primary-foreground font-medium'
                                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                             )}
                           >
                             {sub.title}
-                          </Link>
+                          </NavLink>
                         ))}
                       </div>
                     </CollapsibleContent>

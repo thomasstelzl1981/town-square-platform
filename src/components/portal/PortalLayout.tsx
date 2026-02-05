@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { PortalHeader } from './PortalHeader';
@@ -12,7 +12,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /**
- * Zone 2: User Portal Layout
+ * Zone 2: User Portal Layout (P0-Stabilized)
+ * 
+ * P0-FIX: Loading state no longer unmounts the entire UI.
+ * Instead, we show an overlay on the content area only.
+ * Navigation remains visible and interactive during brief loading states.
  * 
  * Desktop:
  * - Left sidebar: collapsible (256px / 56px), persisted via localStorage
@@ -31,6 +35,15 @@ function PortalLayoutInner() {
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [armstrongSheetOpen, setArmstrongSheetOpen] = useState(false);
+  
+  // P0-FIX: Track if we've ever finished initial loading
+  const hasInitializedRef = useRef(false);
+  
+  useEffect(() => {
+    if (!isLoading) {
+      hasInitializedRef.current = true;
+    }
+  }, [isLoading]);
 
   // Derive context from current route
   const getContext = () => {
@@ -43,7 +56,8 @@ function PortalLayoutInner() {
     };
   };
 
-  if (isLoading) {
+  // P0-FIX: Only show fullscreen loader on INITIAL load, never after
+  if (isLoading && !hasInitializedRef.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -68,20 +82,8 @@ function PortalLayoutInner() {
     );
   }
 
-  // In development mode without org, show a simpler fallback message
-  if (!activeOrganization && isDevelopmentMode) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Lade Entwicklungsdaten...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            RLS-Bypass für Development Mode aktiv
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // P0-FIX: In development mode, always render the layout (even during brief loading)
+  // This prevents the entire UI from unmounting during navigation
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,11 +103,17 @@ function PortalLayoutInner() {
         {/* Main Content */}
         <main 
           className={cn(
-            'flex-1 min-w-0 overflow-x-hidden',
+            'flex-1 min-w-0 overflow-x-hidden relative',
             // Add right margin for Armstrong when visible on desktop
             !isMobile && armstrongVisible && 'lg:mr-80'
           )}
         >
+          {/* P0-FIX: Content overlay during loading (instead of unmounting) */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
           <Outlet />
         </main>
 
