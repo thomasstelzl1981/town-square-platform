@@ -10,6 +10,9 @@ import type {
   calculateCompletionScore 
 } from '@/types/finance';
 
+// Correct status for Zone 1 handoff
+const SUBMITTED_STATUS = 'submitted_to_zone1';
+
 export function useFinanceRequests() {
   const { activeOrganization, isDevelopmentMode } = useAuth();
 
@@ -170,14 +173,18 @@ export function useUpdateApplicantProfile() {
 
 export function useSubmitFinanceRequest() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      // Update request status
+      // Get current user for audit
+      const currentUserId = user?.id;
+      
+      // Update request status to submitted_to_zone1 (not just 'submitted')
       const { error: requestError } = await supabase
         .from('finance_requests')
         .update({
-          status: 'submitted' as FinanceRequestStatus,
+          status: SUBMITTED_STATUS as FinanceRequestStatus,
           submitted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -194,8 +201,8 @@ export function useSubmitFinanceRequest() {
 
       if (fetchError) throw fetchError;
 
-      // Create mandate in Zone 1
-      const { error: mandateError } = await supabase
+      // Create mandate in Zone 1 and get the ID for audit
+      const { data: mandateData, error: mandateError } = await supabase
         .from('finance_mandates')
         .insert([{
           tenant_id: requestData.tenant_id,
@@ -203,13 +210,39 @@ export function useSubmitFinanceRequest() {
           public_id: requestData.public_id,
           status: 'new',
           priority: 0,
-        }]);
+        }])
+        .select('id')
+        .single();
 
       if (mandateError) throw mandateError;
+
+      // D5: Insert audit_event for FIN_SUBMIT contract
+      const { error: auditError } = await supabase
+        .from('audit_events')
+        .insert({
+          actor_user_id: currentUserId || requestData.tenant_id,
+          event_type: 'FIN_SUBMIT',
+          target_org_id: requestData.tenant_id,
+          payload: {
+            finance_request_id: requestId,
+            finance_mandate_id: mandateData?.id,
+            public_id: requestData.public_id,
+            submitted_at: new Date().toISOString()
+          }
+        });
+
+      // Log audit error but don't fail the transaction
+      if (auditError) {
+        console.warn('Audit event insert failed:', auditError);
+      }
+
+      return { requestId, mandateId: mandateData?.id };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['finance-requests'] });
       queryClient.invalidateQueries({ queryKey: ['finance-request'] });
+      queryClient.invalidateQueries({ queryKey: ['future-room-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-mandates'] });
       toast.success('Antrag erfolgreich eingereicht');
     },
     onError: (error) => {
