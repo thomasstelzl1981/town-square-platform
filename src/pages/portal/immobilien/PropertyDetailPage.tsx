@@ -80,7 +80,7 @@ interface Unit {
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, activeTenantId } = useAuth();
   const { toast } = useToast();
   const [property, setProperty] = useState<Property | null>(null);
   const [financing, setFinancing] = useState<PropertyFinancing[]>([]);
@@ -95,9 +95,10 @@ export default function PropertyDetailPage() {
   const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
 
   async function fetchProperty() {
-    if (!id || !activeOrganization) {
+    // FIX: Use activeTenantId for consistent tenant scoping
+    if (!id || !activeTenantId) {
       setLoading(false);
-      setError('Keine Property-ID oder Organisation');
+      setError('Keine Property-ID oder Tenant-Kontext');
       return;
     }
     
@@ -108,39 +109,62 @@ export default function PropertyDetailPage() {
         .from('properties')
         .select('*')
         .eq('id', id)
-        .eq('tenant_id', activeOrganization.id)
-        .single();
+        .eq('tenant_id', activeTenantId)
+        .maybeSingle();
 
       if (propError) throw propError;
+      if (!propData) {
+        setError('Immobilie nicht gefunden oder kein Zugriff');
+        setLoading(false);
+        return;
+      }
       setProperty(propData);
 
-      const { data: finData } = await supabase
-        .from('property_financing')
-        .select('*')
+      // SSOT: Load financing from loans table (not property_financing)
+      const { data: loansResult } = await (supabase as any)
+        .from('loans')
+        .select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, is_active')
         .eq('property_id', id)
-        .eq('tenant_id', activeOrganization.id)
+        .eq('tenant_id', activeTenantId)
         .order('is_active', { ascending: false });
 
-      setFinancing(finData || []);
+      // Map loans to PropertyFinancing interface for backward compatibility
+      const mappedFinancing: PropertyFinancing[] = (loansResult || []).map((loan: any) => ({
+        id: loan.id,
+        loan_number: loan.loan_number,
+        bank_name: loan.lender_name,
+        original_amount: null,
+        current_balance: loan.outstanding_balance_eur,
+        interest_rate: loan.interest_rate_percent,
+        fixed_until: null,
+        monthly_rate: loan.annuity_monthly_eur,
+        annual_interest: loan.outstanding_balance_eur && loan.interest_rate_percent 
+          ? loan.outstanding_balance_eur * (loan.interest_rate_percent / 100) 
+          : null,
+        is_active: loan.is_active,
+      }));
+      setFinancing(mappedFinancing);
 
       const { data: unitData } = await supabase
         .from('units')
         .select('*')
         .eq('property_id', id)
-        .eq('tenant_id', activeOrganization.id)
+        .eq('tenant_id', activeTenantId)
         .eq('unit_number', 'MAIN')
-        .single();
+        .maybeSingle();
 
       setUnit(unitData);
     } catch (err: any) {
-      setError(err.message || 'Immobilie nicht gefunden');
+      console.error('PropertyDetailPage fetch error:', err);
+      setError(err.message || 'Fehler beim Laden der Immobilie');
     }
     setLoading(false);
   }
 
   useEffect(() => {
     fetchProperty();
-  }, [id, activeOrganization]);
+  }, [id, activeTenantId]);
+
 
   const getDocumentTitle = () => {
     if (!property) return 'Immobilie';
