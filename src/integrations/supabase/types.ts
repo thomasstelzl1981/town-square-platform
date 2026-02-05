@@ -6919,6 +6919,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_golden_path_data: { Args: never; Returns: Json }
       delete_test_batch: {
         Args: { p_batch_id: string }
         Returns: {
