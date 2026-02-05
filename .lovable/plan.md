@@ -1,130 +1,278 @@
 
+# P0/P1 Reparaturplan — System-of-a-Town Portal
 
-# Reparaturplan: UUID Cast Fehler in Seed-Funktion
+## Bestätigung der Präambel
 
-## Problem-Diagnose
-
-### Fehler
-```
-column "id" is of type uuid but expression is of type text
-```
-
-### Ursache
-In der `seed_golden_path_data()` Funktion (Migration `20260205011342`) wird in Zeile 98-100 eine UUID dynamisch aus Text zusammengesetzt:
-
-```sql
--- FEHLERHAFT (Zeile 100):
-'00000000-0000-4000-a000-0000000003' || lpad(row_number() OVER ()::text, 2, '0')
-```
-
-Das Ergebnis ist ein **TEXT-Wert** wie `'00000000-0000-4000-a000-000000000301'`, aber die `id`-Spalte der Tabelle `document_links` erwartet einen **UUID-Typ**.
-
-### Aktueller Datenbankstand (Demo-Tenant)
-
-| Tabelle | Count | SOLL |
-|---------|-------|------|
-| contacts | 0 | 5 |
-| landlord_contexts | 1 | 1 |
-| context_members | 2 | 2 |
-| properties | 1 | 1 |
-| units | 1 | 1 |
-| leases | 0 | 1 |
-| loans | 1 | 1 |
-| documents | 3 | 12 |
-| document_links | 3 | 12 |
-| storage_nodes | 29 | 19+ |
-| finance_requests | 1 | 1 |
-| finance_mandates | 0 | 0 |
-
-Die Daten stammen offensichtlich von einem früheren, teilweise erfolgreichen Seed-Lauf (vor der aktuellen Cleanup-First-Logik).
+1. ✅ Musterdaten dienen ausschließlich der Entwicklung im Musterportal (Demo-Tenant).
+2. ✅ Module sind getrennt und interagieren API-analog (Handoffs/Contracts), keine Cross-Writes.
+3. ✅ Routing bleibt manifest-driven (routesManifest SSOT). Keine zusätzlichen Routes.
+4. ✅ Umsetzung strikt in der Fix-Reihenfolge, mit Re-Audit Evidence nach jedem Schritt.
 
 ---
 
-## Reparatur
+## Analyse-Ergebnis
 
-### Änderung 1: UUID Cast hinzufügen
+### Root Cause des Infinite-Loader-Problems
 
-Ersetze in der `seed_golden_path_data()` Funktion:
+Das Problem liegt **nicht** im AuthContext selbst — dieser setzt bereits korrekt den `DEV_TENANT_UUID` in dev mode. Das Problem liegt in der **Reihenfolge und den Fallbacks**:
 
-**Zeile 100 (VORHER):**
-```sql
-'00000000-0000-4000-a000-0000000003' || lpad(row_number() OVER ()::text, 2, '0'),
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  AuthContext.tsx (aktuell)                                          │
+│  ─────────────────────────────────────────────────────────────────  │
+│  1. fetchDevelopmentData() sucht org_type='internal'                │
+│  2. Findet: "System of a Town" (a0000000-...-000000000001) ✓       │
+│  3. Setzt: activeOrganization + activeTenantId ✓                   │
+│                                                                     │
+│  ABER: Race Condition beim Initial Render:                          │
+│  ─────────────────────────────────────────────────────────────────  │
+│  - isLoading=true während fetch                                     │
+│  - Components rendern mit activeTenantId=null → Query disabled      │
+│  - Nach Load: activeTenantId gesetzt, aber Query nicht retriggert   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Zeile 100 (NACHHER):**
-```sql
-('00000000-0000-4000-a000-0000000003' || lpad(row_number() OVER ()::text, 2, '0'))::uuid,
-```
-
-### Änderung 2: Auch Zeile 122-124 prüfen
-
-Die Zeilen 122-124 verwenden bereits korrekte statische UUIDs als Strings, aber zur Sicherheit sollten auch diese explizit gecastet werden:
-
-**Zeilen 122-124 (VORHER):**
-```sql
-INSERT INTO document_links (id, tenant_id, document_id, link_status) VALUES
-  ('00000000-0000-4000-a000-000000000311', t_id, '00000000-0000-4000-a000-000000000211', 'active'),
-  ('00000000-0000-4000-a000-000000000312', t_id, '00000000-0000-4000-a000-000000000212', 'active');
-```
-
-**Zeilen 122-124 (NACHHER):**
-```sql
-INSERT INTO document_links (id, tenant_id, document_id, link_status) VALUES
-  ('00000000-0000-4000-a000-000000000311'::uuid, t_id, '00000000-0000-4000-a000-000000000211'::uuid, 'active'),
-  ('00000000-0000-4000-a000-000000000312'::uuid, t_id, '00000000-0000-4000-a000-000000000212'::uuid, 'active');
+**Zusätzliches Problem in `useFinanceRequest.ts`:**
+```typescript
+const tenantId = activeOrganization?.id || 'dev-tenant';  // FALSCH!
+// 'dev-tenant' ist nicht die DEV_TENANT_UUID (a000...001)
 ```
 
 ---
 
-## Migrations-Strategie
+## FIX-REIHENFOLGE (VERBINDLICH)
 
-Da die Funktion in einer bereits deployte Migration definiert wurde, muss eine **neue Migration** erstellt werden, die die Funktion mit `CREATE OR REPLACE` aktualisiert.
+### P0-1: TENANT-MISMATCH beheben (Portal Infinite Loader)
 
-### Neue Migration: Fix UUID Cast
+**Gewählte Option: A (empfohlen, minimaler Eingriff)**
 
-```sql
--- Fix: UUID cast in document_links INSERT
-CREATE OR REPLACE FUNCTION public.seed_golden_path_data()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-... (vollständige Funktion mit korrigiertem Cast)
-$$;
+**Begründung:**
+- AuthContext ist der zentrale Punkt für Tenant-Logik
+- Alle Hooks verwenden bereits `activeTenantId` oder `activeOrganization?.id`
+- Ein Fix an einer Stelle behebt alle abhängigen Module
+
+**devMode-Erkennung:**
+- Bereits implementiert: `isDevelopmentEnvironment()` prüft hostname (lovable.app, localhost, preview, id-preview)
+- Kein neuer env flag nötig
+
+**Implementierung:**
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  DATEI: src/contexts/AuthContext.tsx                                   │
+│  ────────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  ÄNDERUNG 1: DEV_TENANT_UUID Konstante hinzufügen (Zeile ~30)         │
+│  ─────────────────────────────────────────────────────────────────    │
+│  const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';       │
+│                                                                        │
+│  ÄNDERUNG 2: activeTenantId-Berechnung anpassen (Zeile ~52)           │
+│  ─────────────────────────────────────────────────────────────────    │
+│  VORHER:                                                               │
+│    const activeTenantId = profile?.active_tenant_id                    │
+│      || activeOrganization?.id                                         │
+│      || activeMembership?.tenant_id                                    │
+│      || null;                                                          │
+│                                                                        │
+│  NACHHER:                                                              │
+│    const activeTenantId = isDevelopmentMode                            │
+│      ? DEV_TENANT_UUID                                                 │
+│      : (profile?.active_tenant_id                                      │
+│          || activeOrganization?.id                                     │
+│          || activeMembership?.tenant_id                                │
+│          || null);                                                     │
+│                                                                        │
+│  ÄNDERUNG 3: activeOrganization frühzeitig setzen für devMode         │
+│  ─────────────────────────────────────────────────────────────────    │
+│  Im useEffect (Zeile ~248), vor dem async fetch:                      │
+│                                                                        │
+│  if (isDevelopmentMode && !session?.user) {                            │
+│    // Sofort Mock-Org setzen, bevor async fetch                        │
+│    const mockOrg: Organization = {                                     │
+│      id: DEV_TENANT_UUID,                                              │
+│      name: 'System of a Town',                                         │
+│      slug: 'system-of-a-town',                                         │
+│      public_id: 'SOT-T-INTERNAL01',                                    │
+│      org_type: 'internal',                                             │
+│      parent_id: null,                                                  │
+│      materialized_path: '/',                                           │
+│      depth: 0,                                                         │
+│      parent_access_blocked: false,                                     │
+│      settings: {},                                                     │
+│      created_at: new Date().toISOString(),                             │
+│      updated_at: new Date().toISOString(),                             │
+│    };                                                                  │
+│    setActiveOrganization(mockOrg);                                     │
+│  }                                                                     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  DATEI: src/hooks/useFinanceRequest.ts                                 │
+│  ────────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  ÄNDERUNG 1: DEV_TENANT_UUID Import (Zeile ~1)                        │
+│  ─────────────────────────────────────────────────────────────────    │
+│  import { DEV_TENANT_UUID } from '@/hooks/useGoldenPathSeeds';         │
+│                                                                        │
+│  ÄNDERUNG 2: Fallback korrigieren (Zeile ~24)                         │
+│  ─────────────────────────────────────────────────────────────────    │
+│  VORHER:                                                               │
+│    const tenantId = activeOrganization?.id || 'dev-tenant';            │
+│                                                                        │
+│  NACHHER:                                                              │
+│    const tenantId = activeOrganization?.id                             │
+│      || (isDevelopmentMode ? DEV_TENANT_UUID : null);                  │
+│                                                                        │
+│  ÄNDERUNG 3: Gleicher Fix für useCreateFinanceRequest (Zeile ~91)     │
+│  ─────────────────────────────────────────────────────────────────    │
+│    const tenantId = activeOrganization?.id                             │
+│      || (isDevelopmentMode ? DEV_TENANT_UUID : 'missing-tenant');      │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Rollback-Hinweis:**
+- Falls Production-User betroffen: isDevelopmentMode prüft hostname, daher kein Risiko
+- Git Revert möglich falls nötig
+
+---
+
+### P1-1: SEED-UI Initial-Counts anzeigen (ohne Klick)
+
+**Implementierung:**
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  DATEI: src/hooks/useGoldenPathSeeds.ts                                │
+│  ────────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  ÄNDERUNG 1: Neuer Export für getCounts Funktion                      │
+│  ─────────────────────────────────────────────────────────────────    │
+│  export async function fetchGoldenPathCounts(): Promise<SeedCounts>    │
+│    return getCounts(DEV_TENANT_UUID);                                  │
+│  }                                                                     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  DATEI: src/components/admin/TestDataManager.tsx                       │
+│  ────────────────────────────────────────────────────────────────────  │
+│                                                                        │
+│  ÄNDERUNG 1: Import erweitern (Zeile ~26)                             │
+│  ─────────────────────────────────────────────────────────────────    │
+│  import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID,               │
+│           fetchGoldenPathCounts, type SeedCounts }                     │
+│    from '@/hooks/useGoldenPathSeeds';                                  │
+│                                                                        │
+│  ÄNDERUNG 2: Neuer State für Initial-Counts (nach Zeile ~90)          │
+│  ─────────────────────────────────────────────────────────────────    │
+│  const [initialCounts, setInitialCounts] = useState<SeedCounts|null>   │
+│    (null);                                                             │
+│  const [isLoadingCounts, setIsLoadingCounts] = useState(true);         │
+│                                                                        │
+│  ÄNDERUNG 3: useEffect für Mount-Load (nach Zeile ~98)                │
+│  ─────────────────────────────────────────────────────────────────    │
+│  useEffect(() => {                                                     │
+│    fetchGoldenPathCounts()                                             │
+│      .then(counts => {                                                 │
+│        setInitialCounts(counts);                                       │
+│        setIsLoadingCounts(false);                                      │
+│      })                                                                │
+│      .catch(() => setIsLoadingCounts(false));                          │
+│  }, []);                                                               │
+│                                                                        │
+│  ÄNDERUNG 4: Status-Grid immer rendern (Zeile ~598-618)               │
+│  ─────────────────────────────────────────────────────────────────    │
+│  VORHER:                                                               │
+│    {lastResult && ( <StatusGrid .../> )}                               │
+│                                                                        │
+│  NACHHER:                                                              │
+│    // Merge: lastResult hat Vorrang, sonst initialCounts               │
+│    const displayCounts = lastResult?.after || initialCounts;           │
+│                                                                        │
+│    {isLoadingCounts ? (                                                │
+│      <div className="grid grid-cols-4 gap-2">                          │
+│        {[1,2,3,4].map(i => (                                           │
+│          <div key={i} className="p-2 bg-background rounded border      │
+│               animate-pulse h-8" />                                    │
+│        ))}                                                             │
+│      </div>                                                            │
+│    ) : displayCounts ? (                                               │
+│      <StatusGrid counts={displayCounts} />                             │
+│    ) : (                                                               │
+│      <p className="text-sm text-muted-foreground">                     │
+│        Keine Daten geladen                                             │
+│      </p>                                                              │
+│    )}                                                                  │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Erwartetes Ergebnis nach Fix
+## Evidence-Checkliste (nach Umsetzung)
 
-Nach erfolgreicher Migration und erneutem Seed-Aufruf:
+### P0-1 Evidence
 
-| Tabelle | Count |
-|---------|-------|
-| contacts | 5 |
-| landlord_contexts | 1 |
-| context_members | 2 |
-| properties | 1 |
-| units | 1 |
-| leases | 1 |
-| loans | 1 |
-| documents | 12 |
-| document_links | 12 |
-| storage_nodes | 19+ |
-| finance_requests | 1 |
+| Test | Erwartung | Screenshot/Log erforderlich |
+|------|-----------|----------------------------|
+| Öffne `/portal/immobilien/portfolio` | Network: Query mit `tenant_id=a0000..001` sichtbar | Ja (Network Tab) |
+| Portfolio-UI | Property "Leipzig Kapitalanlage 62m²" angezeigt | Ja (Screenshot) |
+| Öffne `/portal/dms/storage` | Storage Tree mit ≥19 Nodes | Ja (Screenshot) |
+| Öffne `/portal/finanzierung` | How-It-Works lädt, keine Spinner in Daten-Bereichen | Ja (Screenshot) |
+| Console | Keine unhandled promise rejections | Ja (Console Screenshot) |
+
+### P1-1 Evidence
+
+| Test | Erwartung | Screenshot erforderlich |
+|------|-----------|------------------------|
+| Page Refresh `/admin/tiles` → Testdaten | Status-Grid sichtbar OHNE Klick | Ja |
+| Counts korrekt | 5 Kontakte, 1 Immobilie, 12 Dokumente | Ja |
+| "Einspielen" klicken | Toast + Counts bleiben konsistent | Ja |
 
 ---
 
-## Technische Details
+## Technische Zusammenfassung
 
-### Betroffene Datei
-- `supabase/migrations/20260205011342_91598a2c-1d1c-4de2-ad53-5e7c4c36dcee.sql` (Zeile 100, 122-124)
+### Betroffene Dateien
 
-### Neuzuerstellende Datei
-- Neue Migration mit `CREATE OR REPLACE FUNCTION seed_golden_path_data()`
+| Datei | Änderungstyp | Zeilen (ca.) |
+|-------|-------------|--------------|
+| `src/contexts/AuthContext.tsx` | Modify | ~15 Zeilen |
+| `src/hooks/useFinanceRequest.ts` | Modify | ~6 Zeilen |
+| `src/hooks/useGoldenPathSeeds.ts` | Modify | ~5 Zeilen (Export) |
+| `src/components/admin/TestDataManager.tsx` | Modify | ~25 Zeilen |
 
-### Geschätzte Änderungen
-- ~3 Zeilen in der Funktion anpassen
-- 1 neue Migration erstellen
+### Nicht betroffene Dateien
 
+- Keine neuen Routen
+- Keine DB-Schema-Änderungen
+- Keine UI-Styling-Änderungen
+- Keine neuen Features
+
+### Risiken
+
+| Risiko | Mitigierung |
+|--------|-------------|
+| Production-User sieht Demo-Daten | `isDevelopmentMode` prüft hostname — Production hat andere Domain |
+| Cached Tenant-ID in React Query | `queryClient.invalidateQueries` nach Auth-State-Change |
+| Multi-Tenant später konfliktiert | DEV_TENANT_UUID nur in dev mode, echte Auth überschreibt |
+
+---
+
+## Sequenz
+
+```text
+Schritt 1 → P0-1: AuthContext + useFinanceRequest patchen
+        ↓
+Schritt 2 → Deployment + Browser Refresh
+        ↓
+Schritt 3 → Evidence sammeln (Network, Screenshots)
+        ↓
+Schritt 4 → P1-1: TestDataManager Initial-Counts
+        ↓
+Schritt 5 → Evidence sammeln
+        ↓
+Schritt 6 → Dokumentation im Commit
+```
