@@ -121,12 +121,12 @@ export default function PropertyDetailPage() {
       setProperty(propData);
 
       // SSOT: Load financing from loans table (not property_financing)
+      // P0-FIX: Removed .eq('is_active', true) and order — loans table has no is_active column
       const { data: loansResult } = await (supabase as any)
         .from('loans')
-        .select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, is_active')
+        .select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
         .eq('property_id', id)
-        .eq('tenant_id', activeTenantId)
-        .order('is_active', { ascending: false });
+        .eq('tenant_id', activeTenantId);
 
       // Map loans to PropertyFinancing interface for backward compatibility
       const mappedFinancing: PropertyFinancing[] = (loansResult || []).map((loan: any) => ({
@@ -141,7 +141,7 @@ export default function PropertyDetailPage() {
         annual_interest: loan.outstanding_balance_eur && loan.interest_rate_percent 
           ? loan.outstanding_balance_eur * (loan.interest_rate_percent / 100) 
           : null,
-        is_active: loan.is_active,
+        is_active: true, // Assume all loans are active since we don't have is_active column
       }));
       setFinancing(mappedFinancing);
 
