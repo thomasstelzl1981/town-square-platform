@@ -18,10 +18,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   Upload, Download, Trash2, Loader2, FileSpreadsheet, 
-  Building2, Users, FileText, Home, CheckCircle2, AlertCircle, Sparkles, X
+  Building2, Users, FileText, Home, CheckCircle2, AlertCircle, Sparkles, X,
+  Database, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID } from '@/hooks/useGoldenPathSeeds';
 
 interface TestBatch {
   batch_id: string;
@@ -85,6 +87,15 @@ export function TestDataManager() {
   const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
   const [importProgress, setImportProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Golden Path Seeds
+  const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(
+    activeOrganization?.id,
+    activeOrganization?.name,
+    activeOrganization?.org_type,
+    true // devMode
+  );
 
   // Fetch test batches from test_data_registry
   const { data: batches = [], isLoading } = useQuery({
@@ -519,8 +530,153 @@ export function TestDataManager() {
 
   const isProcessing = phase === 'uploading' || phase === 'analyzing' || phase === 'importing';
 
+  // Reset Golden Path data
+  const handleResetGoldenPath = async () => {
+    if (!activeOrganization?.id) return;
+    
+    setIsResetting(true);
+    const goldenPathPrefix = '00000000-0000-4000-a000-';
+    
+    try {
+      // Delete in correct order (respecting foreign keys)
+      // 1. Context Members
+      await supabase.from('context_members').delete().like('id', `${goldenPathPrefix}%`);
+      // 2. Document Links
+      await supabase.from('document_links').delete().like('document_id', `${goldenPathPrefix}%`);
+      // 3. Applicant Profiles
+      await supabase.from('applicant_profiles').delete().like('id', `${goldenPathPrefix}%`);
+      // 4. Finance Requests
+      await supabase.from('finance_requests').delete().like('id', `${goldenPathPrefix}%`);
+      // 5. Leases
+      await supabase.from('leases').delete().like('id', `${goldenPathPrefix}%`);
+      // 6. Loans
+      await supabase.from('loans').delete().like('id', `${goldenPathPrefix}%`);
+      // 7. Documents
+      await supabase.from('documents').delete().like('id', `${goldenPathPrefix}%`);
+      // 8. Units (Trigger deletes related storage nodes)
+      await supabase.from('units').delete().like('id', `${goldenPathPrefix}%`);
+      // 9. Landlord Contexts
+      await supabase.from('landlord_contexts').delete().like('id', `${goldenPathPrefix}%`);
+      // 10. Properties
+      await supabase.from('properties').delete().like('id', `${goldenPathPrefix}%`);
+      // 11. Contacts
+      await supabase.from('contacts').delete().like('id', `${goldenPathPrefix}%`);
+      
+      toast.success('Golden Path Daten zurückgesetzt');
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
+    } catch (error) {
+      toast.error('Fehler beim Zurücksetzen');
+      console.error('Golden Path reset error:', error);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // Run Golden Path Seeds
+  const handleRunSeeds = async () => {
+    const result = await runSeeds();
+    if (result.success) {
+      const delta = {
+        contacts: result.after.contacts - result.before.contacts,
+        properties: result.after.properties - result.before.properties,
+        documents: result.after.documents - result.before.documents,
+      };
+      toast.success(
+        `Golden Path erstellt: +${delta.contacts} Kontakte, +${delta.properties} Immobilien, +${delta.documents} Dokumente`
+      );
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
+    } else {
+      toast.error(result.error || 'Fehler beim Einspielen der Testdaten');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Golden Path Section */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Golden Path Demo-Daten
+          </CardTitle>
+          <CardDescription>
+            Komplette Demo-Umgebung für Musterportal-Entwicklung: 5 Kontakte (Max, Lisa, Mieter, HV, Bankberater), 
+            1 Musterimmobilie Leipzig mit Einheit/Mietvertrag/Darlehen, 12 Dokumente, Vermieter-Kontext (Ehepaar), 
+            und vollständige Selbstauskunft.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Status Grid */}
+          {lastResult && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              <div className="p-2 bg-background rounded border flex items-center gap-2">
+                <Users className="h-3 w-3 text-muted-foreground" />
+                <span>Kontakte: <strong>{lastResult.after.contacts}</strong>/5</span>
+              </div>
+              <div className="p-2 bg-background rounded border flex items-center gap-2">
+                <Building2 className="h-3 w-3 text-muted-foreground" />
+                <span>Immobilien: <strong>{lastResult.after.properties}</strong>/1</span>
+              </div>
+              <div className="p-2 bg-background rounded border flex items-center gap-2">
+                <FileText className="h-3 w-3 text-muted-foreground" />
+                <span>Dokumente: <strong>{lastResult.after.documents}</strong>/12</span>
+              </div>
+              <div className="p-2 bg-background rounded border flex items-center gap-2">
+                <Home className="h-3 w-3 text-muted-foreground" />
+                <span>Kontexte: <strong>{lastResult.after.landlord_contexts}</strong>/1</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleRunSeeds} 
+              disabled={isSeeding || isResetting || !isSeedAllowed}
+              className="flex-1"
+            >
+              {isSeeding ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Einspielen / Aktualisieren
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleResetGoldenPath} 
+              disabled={isSeeding || isResetting}
+            >
+              {isResetting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Zurücksetzen
+            </Button>
+          </div>
+          
+          {/* Info */}
+          <p className="text-xs text-muted-foreground">
+            Verwendet feste UUIDs (<code className="bg-muted px-1 rounded">00000000-0000-4000-a000-...</code>). 
+            Kann jederzeit vollständig gelöscht werden ohne andere Daten zu beeinflussen.
+          </p>
+
+          {!isSeedAllowed && (
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-700 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>Golden Path Seeds sind nur für interne Organisationen verfügbar.</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Import Section */}
       <Card>
         <CardHeader>

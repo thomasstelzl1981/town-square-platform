@@ -17,6 +17,7 @@ import React, { lazy, Component, ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
 // NON-LAZY: Create redirect must always work without Suspense
 import { CreatePropertyRedirect } from './immobilien/CreatePropertyRedirect';
@@ -85,8 +86,8 @@ const ImmobilienPage = () => {
         {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
         <Route path="neu" element={<CreatePropertyRedirect />} />
         
-        {/* PRIMARY: Portfolio (default tile) */}
-        <Route index element={<Navigate to="portfolio" replace />} />
+        {/* PRIMARY: How It Works landing page */}
+        <Route index element={<ModuleHowItWorks content={moduleContents['MOD-04']} />} />
         <Route path="portfolio" element={<PortfolioTab />} />
         
         {/* SECONDARY: Context management */}
@@ -98,7 +99,7 @@ const ImmobilienPage = () => {
         <Route path=":id" element={<PropertyDetailPage />} />
         
         {/* Fallback for any unmatched paths */}
-        <Route path="*" element={<Navigate to="portfolio" replace />} />
+        <Route path="*" element={<ModuleHowItWorks content={moduleContents['MOD-04']} />} />
       </Routes>
     </ImmobilienErrorBoundary>
   );
