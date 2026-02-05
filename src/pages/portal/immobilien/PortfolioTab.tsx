@@ -198,11 +198,11 @@ export function PortfolioTab() {
       // Note: Using explicit fetch to avoid TS2589 type recursion issue with Supabase client
       let loans: LoanData[] = [];
       try {
+        // P0-FIX: Removed .eq('is_active', true) — loans table has no such column
         const { data: loansResult, error: loansError } = await (supabase as any)
           .from('loans')
           .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-          .eq('tenant_id', activeTenantId)
-          .eq('is_active', true);
+          .eq('tenant_id', activeTenantId);
         
         if (loansError) {
           console.warn('Loans query error (non-fatal):', loansError);
@@ -306,12 +306,11 @@ export function PortfolioTab() {
     queryKey: ['portfolio-loans', activeTenantId],
     queryFn: async (): Promise<LoanData[]> => {
       if (!activeTenantId) return [];
-      // Use explicit cast to avoid TS2589 type recursion
+      // P0-FIX: Removed .eq('is_active', true) — loans table has no such column
       const { data, error } = await (supabase as any)
         .from('loans')
         .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-        .eq('tenant_id', activeTenantId)
-        .eq('is_active', true);
+        .eq('tenant_id', activeTenantId);
       
       if (error) {
         console.warn('Loans aggregation query error:', error);
