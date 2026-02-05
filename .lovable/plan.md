@@ -1,596 +1,334 @@
 
 
-# Umfassender Reparaturplan v4: Golden Path + Workflow-Dokumentation + Zone 2 Stabilisierung
-
-## Mein vollständiges Verständnis Ihrer Software
-
-### Architektur-Übersicht (3-Zonen-Modell)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              ZONE 1 — ADMIN PORTAL (/admin)                             │
-│                                                                                         │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────────────┐ │
-│  │ Tile Catalog        │  │ FutureRoom          │  │ Sales Desk (Verkaufslistings)   │ │
-│  │ → Testdaten-Tab     │  │ → Finanz-Inbox      │  │ → SSOT für alle Verkaufsobjekte │ │
-│  │ → Golden Path       │  │ → Zuweisung         │  │ → Verteilung an Zone 2 + 3      │ │
-│  │    Button (FEHLT!)  │  │ → Manager-Pool      │  │ → Blocking-Möglichkeit          │ │
-│  └─────────────────────┘  └─────────────────────┘  └─────────────────────────────────┘ │
-│                                      │                           │                      │
-│                                      ▼                           ▼                      │
-│                        ┌─────────────────────────────────────────────────────────────┐ │
-│                        │              LEAD POOL (Zone 3 Eingänge)                    │ │
-│                        │              → Verteilung an Partner mit MOD-09             │ │
-│                        └─────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-                                           │
-                    ┌──────────────────────┴──────────────────────┐
-                    ▼                                              ▼
-┌───────────────────────────────────────────┐  ┌───────────────────────────────────────────┐
-│        ZONE 2 — USER PORTAL (/portal)     │  │        ZONE 3 — PUBLIC WEBSITES           │
-│                                           │  │                                           │
-│  MOD-04: Immobilien (SSOT Kapitalanlagen) │  │  KAUFY Marktplatz                         │
-│  MOD-06: Verkauf → Zone 1 Sales Desk      │  │  → Nur Objekte mit Kaufy-Freigabe         │
-│  MOD-07: Finanzierung → Zone 1 FutureRoom │  │  → Leads → Zone 1 Pool                    │
-│  MOD-09: Vertriebspartner (empfängt von   │  │                                           │
-│          Zone 1 Sales Desk)               │  │  MIETY, SoT-Website, FutureRoom-Website   │
-│  MOD-11: Finanzierungsmanager (empfängt   │  │                                           │
-│          von Zone 1 FutureRoom)           │  │                                           │
-└───────────────────────────────────────────┘  └───────────────────────────────────────────┘
-```
-
-### Die Datendomänen (klar getrennt)
-
-| Domäne | SSOT | Beschreibung |
-|--------|------|--------------|
-| Kapitalanlage-Immobilien | MOD-04 | Vermietete Objekte, Units, Mietverträge, Darlehen |
-| Persönliche Bonität | MOD-07 | Selbstauskunft (Einkommen, Vermögen, Ausgaben) |
-| Selbstgenutzte Immobilie | MOD-07 | Eigenheim des Antragstellers (optional) |
-| Verkaufslistings | Zone 1 Sales Desk | Alle freigegebenen Verkaufsobjekte |
-| Finanzierungsanfragen | Zone 1 FutureRoom | Alle eingereichten Finanzierungen |
+# Umfassende Soll-/Ist-Analyse + Vervollständigungsplan
+## Module 3, 4, 5, 6, 7 und 11 im Golden Path Kontext
 
 ---
 
-## Der vollständige Golden Path (10 Phasen)
+## Executive Summary
 
-### Phase 1: STAMMDATEN (Fundament)
+Der Golden Path beschreibt den vollständigen E2E-Workflow eines Users durch die Software. Die aktuelle Implementierung ist **strukturell vorhanden** (Routing, Komponenten, DB-Tabellen), aber an kritischen Stellen fehlen **funktionale Verbindungen** zwischen den Modulen und zu Zone 1.
 
-```
-Zone 1: /admin/tiles → Tab "Testdaten"
-│
-├── [Golden Path einspielen] Button
-│   └── Erzeugt: 5 Kontakte, 1 Property, 12 Dokumente, 1 Selbstauskunft
-│
-└── Ergebnis sichtbar in:
-    ├── MOD-01 Stammdaten: Kundenprofil
-    └── MOD-02 Office/Kontakte: 5 Kontakte (Max, Lisa, Mieter, HV, Bankberater)
-```
-
-**Akzeptanzkriterien:**
-- [ ] Golden Path Button in `/admin/tiles` → Tab "Testdaten" sichtbar
-- [ ] Nach Klick: Toast mit Erfolgsmeldung + Counts
-- [ ] 5 Kontakte in `/portal/office/kontakte` sichtbar
+**Gesamtstatus: ~65% des Golden Path funktional**
 
 ---
 
-### Phase 2: IMMOBILIEN-SSOT (MOD-04)
+## Modul-für-Modul Analyse
 
-```
-/portal/immobilien
-│
-├── [How It Works] ← Landing Page (aktuell übersprungen → REPARATUR)
-│
-├── Kontexte
-│   └── Vermieter-Kontext "Familie Mustermann"
-│       ├── Max Mustermann (Eigentümer 50%)
-│       └── Lisa Mustermann (Eigentümerin 50%)
-│
-├── Portfolio
-│   └── Musterimmobilie Leipzig
-│       ├── Kennzahlen: 62m², Miete 650€, Restschuld 120.000€
-│       ├── Einnahmen-/Ausgabenrechnung (Buchhaltungsansicht)
-│       └── Dreifach-Grafik (Zins, Tilgung, Wertzuwachs)
-│
-└── Dossier (/portal/immobilien/:id)
-    └── Vollständige Immobilienakte (9 Blöcke A-J)
-        ├── A: Identität/Zuordnung
-        ├── B: Adresse/Lage
-        ├── C: Gebäude/Technik
-        ├── D: Recht/Erwerb
-        ├── E: Investment/KPIs (berechnet)
-        ├── F: Mietverhältnisse
-        ├── G: WEG/Nebenkosten
-        ├── H: Finanzierung
-        └── J: Dokumente (18 Kategorien)
-```
+### MOD-03 — DMS/Storage
 
-**Akzeptanzkriterien:**
-- [ ] `/portal/immobilien` zeigt "How It Works" (nicht Portfolio-Redirect)
-- [ ] Ehepaar in Kontexte-Tab tabellarisch sichtbar
-- [ ] 1 Immobilie im Portfolio mit Kennzahlen
-- [ ] Klick auf "Auge" öffnet Dossier mit allen Blöcken
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | "How It Works" als Landing | ✅ Zeile 20: `<Route index element={<ModuleHowItWorks ... />} />` | OK |
+| **18-Ordner-Struktur** | Property Dossier Template | ✅ DB: 19 storage_nodes vorhanden | OK |
+| **Document Links** | 12 Demo-Dokumente verknüpft | ⚠️ DB: nur 3 document_links | **LÜCKE** |
+| **Taxonomie-Icons** | 7 System-Ordner definiert | ✅ Zeile 56-64: SYSTEM_FOLDERS | OK |
+| **Ordner-Navigation** | Tree-basiert | ✅ StorageTab.tsx implementiert | OK |
+| **Upload-Anbindung** | Drag & Drop + Auto-Link | ✅ FileUploader Komponente | OK |
+
+**Befund MOD-03:** Grundstruktur funktional, aber Golden-Path-Seed erstellt nur 3 statt 12 Dokumente.
 
 ---
 
-### Phase 3: DMS/STORAGE (MOD-03)
+### MOD-04 — Immobilien (SSOT)
 
-```
-/portal/dms/storage
-│
-├── Property-Ordner (18-Ordner-Struktur)
-│   ├── 01_Grundbuch
-│   ├── 02_Kaufvertrag
-│   ├── 03_Exposé
-│   ├── ... (weitere 15 Ordner)
-│   └── 12 Dokumente verknüpft (document_links)
-│
-└── Finanzierungs-Ordner (für MOD-07)
-    ├── Selbstauskunft
-    ├── Einkommensnachweise
-    └── Vermögensnachweise
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | "How It Works" als Landing | ✅ Zeile 90: `<ModuleHowItWorks content={moduleContents['MOD-04']} />` | OK (repariert) |
+| **Kontexte-Tab** | Ehepaar Mustermann (50%/50%) | ⚠️ DB: 1 landlord_context, 0 context_members | **LÜCKE** |
+| **Portfolio-Tab** | 1 Property mit Kennzahlen | ✅ DB: 1 property vorhanden | OK |
+| **Dossier 9 Blöcke** | A-J vollständig | ✅ PropertyDetailPage.tsx mit Blöcken | OK |
+| **Mietvertrag** | 1 aktiver Lease mit Tenant | ❌ DB: 0 leases | **LÜCKE** |
+| **Darlehen** | 80% LTV Sparkasse | ✅ DB: 1 loan vorhanden | OK |
+| **Unit-basierte Ansicht** | 1 Row = 1 Unit | ✅ PortfolioTab.tsx Zeile 37-58 | OK |
+| **Kontexte-Picker** | Multi-Context Subbar | ✅ PortfolioTab.tsx Zeile 96 | OK |
 
-**Akzeptanzkriterien:**
-- [ ] 18-Ordner-Struktur sichtbar (keine Duplikate)
-- [ ] 12 Dokumente korrekt verlinkt
-- [ ] Dokumente aus Dossier-Blöcken referenzierbar
+**Befund MOD-04:** Routing jetzt korrekt, aber Seed-Funktion erstellt keine Kontakte und keinen Lease.
 
 ---
 
-### Phase 4: BONITÄT (MOD-07 Selbstauskunft)
+### MOD-05 — MSV (Mietsonderverwaltung)
 
-```
-/portal/finanzierung
-│
-├── [How It Works] ← Landing Page
-│
-├── Selbstauskunft (8 Tabs)
-│   ├── Persönliche Daten (Max Mustermann, ~85% befüllt)
-│   ├── Haushalt (2 Erwachsene, 1 Kind)
-│   ├── Einkommen (Arbeitgeber, Gehalt, Bonus)
-│   ├── Firma (optional, nur bei Unternehmern)
-│   ├── Ausgaben (Leasing, Versicherungen)
-│   ├── Vermögen (Bank, Wertpapiere, Bauspar)
-│   ├── Erklärungen (SCHUFA, Insolvenz)
-│   └── Finanzierung
-│       ├── Verwendungszweck
-│       ├── SELBSTGENUTZTE Immobilie (optional, Eigenheim)
-│       └── Eigenkapital, Darlehenswunsch
-│
-├── Dokumente
-│   └── Bonitätsunterlagen aus Storage
-│
-└── KUMULIERTE MOD-04-DATEN (read-only)
-    └── Vermietete Immobilien als Vermögenswerte
-        └── Aggregierte Mieteinnahmen, Restschulden, Verkehrswerte
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | "How It Works" als Landing | ✅ Zeile 21 | OK |
+| **Objekte-Tab** | Spiegelt MOD-04 Units | ⚠️ ObjekteTab fehlt in `msv/` | **LÜCKE** |
+| **Mieteingang** | Soll/Ist-Abgleich | ✅ MieteingangTab.tsx vorhanden | OK |
+| **Vermietung** | Vermietungs-Exposés | ✅ VermietungTab.tsx + RentalExposeDetail | OK |
+| **MOD-04 Read-Only** | Keine Writes auf units/properties | ✅ Consumer-Pattern implementiert | OK |
 
-**WICHTIG: Datentrennung**
-- **Selbstgenutzte Immobilie** → Felder in MOD-07 Selbstauskunft (editierbar)
-- **Kapitalanlage-Immobilien** → Aus MOD-04 (read-only in MOD-07)
-
-**Akzeptanzkriterien:**
-- [ ] Alle 8 Tabs der Selbstauskunft sichtbar
-- [ ] Alle Felder sichtbar (auch wenn leer)
-- [ ] MOD-04 Kapitalanlagen als read-only Vermögenswerte
-- [ ] Completion Score ~85% nach Seed
+**Befund MOD-05:** Strukturell korrekt, ObjekteTab existiert und liest aus MOD-04.
 
 ---
 
-### Phase 5: FINANZIERUNGSANFRAGE (MOD-07 → Zone 1)
+### MOD-06 — Verkauf
 
-```
-/portal/finanzierung/anfrage
-│
-├── Objekt wählen aus:
-│   ├── [A] MOD-04 Portfolio (Kapitalanlage)
-│   │   └── Objektfelder werden read-only aus MOD-04 befüllt
-│   ├── [B] Selbstauskunft (Eigennutzung)
-│   │   └── Objektfelder editierbar
-│   └── [C] MOD-08 Favoriten (Neuankauf, Zukunft)
-│       └── Objektfelder aus Listing befüllt
-│
-├── Einreichung
-│   └── useActionHandoff('FIN_SUBMIT')
-│       └── Status: draft → submitted_to_zone1
-│
-└── Übergabe an Zone 1 FutureRoom
-    └── finance_requests.status = 'submitted_to_zone1'
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | "How It Works" als Landing | ✅ Zeile 39 | OK |
+| **Objekte-Tab** | Units aus MOD-04 | ✅ ObjekteTab.tsx mit JOIN | OK |
+| **Exposé-Detail** | Listing erstellen/bearbeiten | ✅ ExposeDetail.tsx 671 Zeilen | OK |
+| **Partner-Freigabe ZUERST** | Consent-Gates | ✅ Zeile 306: `hasPartnerRelease` | OK |
+| **Kaufy-Freigabe NACH Partner** | Toggle-Logic | ✅ Zeile 311: `canEnableKaufy = hasPartnerRelease` | OK |
+| **3 Consents** | SALES_MANDATE, PARTNER_RELEASE, FEE | ⚠️ Dialoge vorhanden, aber Logik unvollständig | **TEILWEISE** |
+| **Zone 1 Integration** | Listing → Sales Desk | ❌ Keine Automatik | **LÜCKE** |
 
-**Akzeptanzkriterien:**
-- [ ] Objektwahl aus 3 Quellen möglich
-- [ ] Bei MOD-04-Objekt: Felder read-only
-- [ ] Einreichung ändert Status korrekt
-- [ ] Anfrage erscheint in Zone 1 FutureRoom
+**Befund MOD-06:** Frontend-Logik für Partner-Kaufy-Reihenfolge korrekt, aber kein automatischer Push nach Zone 1 Sales Desk.
 
 ---
 
-### Phase 6: GOVERNANCE (Zone 1 FutureRoom)
+### MOD-07 — Finanzierung
 
-```
-/admin/futureroom
-│
-├── Inbox
-│   └── Neue Finanzierungsanfrage erscheint
-│       └── Status: submitted_to_zone1
-│
-├── Zuweisung
-│   └── Admin wählt Finanzierungsmanager
-│       └── finance_mandates.status → 'assigned'
-│
-├── Finanzierungsmanager-Pool
-│   └── Übersicht aller Manager mit Kapazität
-│
-└── Notification
-    └── Edge Function: sot-finance-manager-notify
-        └── Manager erhält Benachrichtigung
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | "How It Works" als Landing | ✅ Zeile 22 | OK |
+| **Selbstauskunft 8 Tabs** | Alle Felder | ✅ SelbstauskunftForm.tsx 1115 Zeilen | OK |
+| **MOD-04 Kapitalanlagen read-only** | Vermögenswerte aggregiert | ❌ Nicht implementiert | **LÜCKE** |
+| **Objektfelder kontextabhängig** | read-only bei property_id | ❌ Nicht implementiert | **LÜCKE** |
+| **Anfrage-Tab** | 3 Objektquellen | ✅ AnfrageTab.tsx Zeile 47-51 | OK |
+| **Status-Wechsel** | draft → submitted_to_zone1 | ⚠️ Status-Update vorhanden, aber kein Zone 1 Trigger | **TEILWEISE** |
+| **Zone 1 Integration** | Anfrage → FutureRoom | ❌ Keine automatische Überleitung | **LÜCKE** |
 
-**Akzeptanzkriterien:**
-- [ ] Anfrage in `/admin/futureroom/inbox` sichtbar
-- [ ] Zuweisung an Manager möglich
-- [ ] Status-Update auf 'assigned'
+**Befund MOD-07:** Selbstauskunft vollständig, aber keine Integration von MOD-04-Daten und keine Zone 1 Handoff-Automatik.
 
 ---
 
-### Phase 6b: BEARBEITUNG (MOD-11 Finanzierungsmanager)
+### MOD-11 — Finanzierungsmanager
 
-```
-/portal/finanzierungsmanager
-│
-├── Dashboard
-│   └── Neuer Fall erscheint
-│
-├── Fälle
-│   └── Vollständiges Dossier
-│       ├── Selbstauskunft (read-only)
-│       ├── Dokumente
-│       └── Objektdaten (aus MOD-04 oder custom)
-│
-├── Manager akzeptiert
-│   └── useAcceptMandate()
-│       └── future_room_cases INSERT
-│
-└── Status-Updates
-    └── Spiegeln zurück zu MOD-07 und Zone 1
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **Routing** | 4 Tabs (Dashboard, Fälle, Kommunikation, Status) | ✅ Zeile 99-120 | OK |
+| **Rollen-Gate** | finance_manager required | ✅ Zeile 38: `isFinanceManager` | OK |
+| **Dashboard** | Zugewiesene Fälle | ✅ FMDashboard.tsx vorhanden | OK |
+| **Fall-Dossier** | Selbstauskunft read-only | ⚠️ FMFallDetail.tsx, aber Daten fehlen | **TEILWEISE** |
+| **Zone 1 Sync** | Status zurückspiegeln | ❌ Kein Sync implementiert | **LÜCKE** |
+| **useAcceptMandate** | future_room_cases INSERT | ⚠️ Hook existiert, aber Aufruf fehlt | **LÜCKE** |
 
-**Akzeptanzkriterien:**
-- [ ] Manager sieht zugewiesenen Fall
-- [ ] Vollständige Unterlagen einsehbar
-- [ ] Status-Änderungen synchronisieren
+**Befund MOD-11:** Struktur vollständig, aber Datenflusss von Zone 1 fehlt.
 
 ---
 
-### Phase 7: VERKAUF (MOD-06 → Zone 1 Sales Desk)
+### Zone 1 — FutureRoom + Sales Desk
 
-```
-/portal/verkauf
-│
-├── [How It Works] ← Landing Page
-│
-├── Objekte
-│   └── Musterimmobilie aus MOD-04 sichtbar
-│
-├── Exposé erstellen (/portal/verkauf/expose/:unitId)
-│   └── Listing anlegen mit Verkaufsdaten
-│
-├── SCHRITT 1: Partner-Freigabe (PFLICHT!)
-│   ├── Consent: SALES_MANDATE
-│   ├── Consent: PARTNER_RELEASE
-│   ├── Consent: SYSTEM_SUCCESS_FEE_2000
-│   └── Provision festlegen (3-15% netto)
-│
-│   └── → Listing geht an Zone 1 Sales Desk
-│
-└── SCHRITT 2: Kaufy-Freigabe (OPTIONAL, nur nach Schritt 1)
-    └── Toggle aktivierbar erst nach Partner-Freigabe
-        └── listing_publications (channel='kaufy', status='published')
-```
+| Aspekt | SOLL (Golden Path) | IST (Code) | Gap |
+|--------|---------------------|------------|-----|
+| **FutureRoom Inbox** | submitted_to_zone1 Anfragen | ✅ FutureRoomInbox.tsx | OK |
+| **FutureRoom Zuweisung** | Manager-Picker | ✅ FutureRoomZuweisung.tsx | OK |
+| **Sales Desk Listings** | Alle MOD-06 Listings | ⚠️ SalesDesk.tsx zeigt nur EmptyState | **LÜCKE** |
+| **Blocking-Funktion** | Admin kann blocken | ❌ Nicht implementiert | **LÜCKE** |
+| **Distribution MOD-09** | Freigegebene an Partner | ❌ Nicht implementiert | **LÜCKE** |
+| **Distribution Kaufy** | Freigegebene an Zone 3 | ⚠️ listing_publications vorhanden | **TEILWEISE** |
+| **Lead Pool** | Zone 3 → Zuweisung | ✅ LeadPool.tsx funktional | OK |
 
-**WICHTIG: Reihenfolge**
-1. Partner-Netzwerk ist IMMER ZUERST (Pflicht)
-2. Kaufy/Marktplatz ist OPTIONAL und nur nach Partner-Freigabe möglich
-3. Grund: Ohne Partner gibt es niemanden, der den Kunden betreut
-
-**Akzeptanzkriterien:**
-- [ ] MOD-04 Objekte in Objektliste sichtbar
-- [ ] Partner-Freigabe vor Kaufy-Freigabe erzwungen
-- [ ] 3 Consents bei Partner-Freigabe abgefragt
-- [ ] Listing erscheint in Zone 1 Sales Desk
+**Befund Zone 1:** FutureRoom strukturell OK, Sales Desk ist nur Stub ohne echte Daten.
 
 ---
 
-### Phase 8: DISTRIBUTION (Zone 1 Sales Desk → Zone 2 + Zone 3)
+## Kritische Lücken (Priorisiert)
 
-```
-/admin/sales-desk (oder entsprechender Menüpunkt in Zone 1)
-│
-├── Verkaufslistings (SSOT)
-│   └── Alle in MOD-06 freigegebenen Objekte
-│
-├── Admin-Kontrolle
-│   ├── Objekt freigeben für:
-│   │   ├── [A] Zone 2 Vertriebspartner-Modul (MOD-09)
-│   │   └── [B] Zone 3 Kaufy Marktplatz
-│   └── Objekt BLOCKEN (bei Bedarf)
-│
-├── [A] Distribution → Zone 2 (MOD-09)
-│   └── /portal/vertriebspartner/pipeline
-│       └── Objektkatalog zeigt freigegebene Listings
-│
-└── [B] Distribution → Zone 3 (Kaufy)
-    └── /kaufy/immobilien
-        └── Öffentlich sichtbar (nur wenn Kaufy-Freigabe aktiv)
-```
+### P0 — Seed-Funktion unvollständig
 
-**WICHTIG: Zone 1 als Gatekeeper**
-- Zone 1 Sales Desk ist SSOT für alle Verkaufslistings
-- Admin kann Objekte blocken bevor sie in Zone 2/3 erscheinen
-- Vertriebspartner erhalten Objekte aus Zone 1, nicht direkt aus MOD-06
+**Problem:** Die DB-Funktion `seed_golden_path_data` erstellt aktuell:
+- ✅ 1 Property, 1 Unit, 1 Loan, 1 Finance Request, 1 Applicant Profile
+- ❌ 0 Contacts (sollen 5 sein)
+- ❌ 0 Leases (soll 1 sein)
+- ❌ 0 Context Members (sollen 2 sein)
+- ⚠️ 3 statt 12 Dokumente
 
-**Akzeptanzkriterien:**
-- [ ] Alle MOD-06 Listings in Zone 1 Sales Desk sichtbar
-- [ ] Admin kann Freigabe für MOD-09 und Kaufy steuern
-- [ ] Blocking-Funktion vorhanden
-- [ ] Freigegebene Objekte erscheinen in MOD-09 und/oder Kaufy
+**Lösung:** DB-Funktion erweitern um:
+- INSERT contacts (5 Einträge)
+- INSERT leases (1 Eintrag mit tenant_contact_id)
+- INSERT context_members (Max + Lisa)
+- INSERT documents + document_links (12 Einträge)
 
----
+### P1 — MOD-07 ↔ MOD-04 Integration
 
-### Phase 9: LEAD-EINGANG (Zone 3 → Zone 1 → Zone 2)
+**Problem:** Selbstauskunft zeigt keine MOD-04 Kapitalanlagen als Vermögenswerte.
 
-```
-Zone 3: /kaufy/immobilien/:id
-│
-├── Interessent findet Musterimmobilie
-│
-├── Aktion: Anfrage/Reservierung
-│   └── POST /api/public/leads
-│       └── inquiry erstellt
-│
-└── Lead → Zone 1 Lead Pool
+**Lösung:**
+1. In `SelbstauskunftForm.tsx` neuen Tab oder Sektion "Kapitalanlagen"
+2. Query auf `properties`/`units`/`leases` mit tenant_id
+3. Aggregation: Mieteinnahmen p.a., Verkehrswerte, Restschulden
+4. Read-only Darstellung
 
-Zone 1: /admin/lead-pool (oder Acquiary)
-│
-├── Neuer Lead erscheint
-│   └── Quelle: kaufy, Objekt: Musterimmobilie
-│
-├── Admin-Verteilung
-│   └── Lead zuweisen an Vertriebspartner
-│       └── Nur Partner MIT aktivem MOD-09
-│
-└── Lead → Zone 2 (MOD-09)
+### P1 — MOD-07 → Zone 1 Handoff
 
-Zone 2: /portal/vertriebspartner
-│
-├── Pipeline
-│   └── Zugewiesener Lead erscheint
-│
-└── Partner bearbeitet Lead
-    └── Beratung, Reservierung, Abschluss
-```
+**Problem:** Bei Einreichung keine automatische Benachrichtigung an Zone 1.
 
-**WICHTIG: Lead-Monetarisierung**
-- Leads aus Zone 3 werden an Partner "verkauft"
-- Nur Partner mit aktivem MOD-09 können Leads empfangen
-- Pool-Lead-Split: 1/3 Platform (SoaT) : 2/3 Partner
+**Lösung:**
+1. Nach Status-Update auf `submitted_to_zone1`: Edge Function triggern
+2. Optional: `finance_mandates` automatisch erstellen
+3. Badge in Zone 1 FutureRoom aktualisieren
 
-**Akzeptanzkriterien:**
-- [ ] Kaufy-Anfragen erscheinen in Zone 1 Lead Pool
-- [ ] Admin kann Leads an Partner zuweisen
-- [ ] Nur Partner mit MOD-09 sind auswählbar
-- [ ] Zugewiesene Leads erscheinen in MOD-09 Pipeline
+### P1 — Zone 1 Sales Desk funktional machen
+
+**Problem:** Sales Desk zeigt nur EmptyState, keine echten Listings.
+
+**Lösung:**
+1. Query auf `listings` + `listing_publications`
+2. Admin-UI für Blocking (`is_blocked: true`)
+3. Toggle für MOD-09 + Kaufy Distribution
+
+### P2 — MOD-06 → Zone 1 automatischer Push
+
+**Problem:** Listings erscheinen nicht automatisch im Sales Desk.
+
+**Lösung:**
+1. Bei Partner-Release: `listing_publications` INSERT
+2. Zone 1 Sales Desk liest diese Tabelle
+3. Status-Sync bidirektional
+
+### P2 — MOD-11 Datenfluss
+
+**Problem:** Manager sieht zugewiesene Fälle, aber keine Detaildaten.
+
+**Lösung:**
+1. `useFutureRoomCases` erweitern mit Selbstauskunft-JOIN
+2. Fall-Dossier zeigt: Antragsteller, Objekt, Dokumente
+3. Accept-Button mit `useAcceptMandate`
 
 ---
 
-### Phase 10: INVESTMENT (MOD-08) + ABSCHLUSS
+## Vervollständigungsplan (6 Arbeitspakete)
 
-```
-/portal/investments
-│
-├── Suche (Multi-Source)
-│   ├── Tab "SoT-Verkauf": Eigene MOD-06 Listings
-│   ├── Tab "Kaufy": Zone 3 Marktplatz
-│   └── Tab "Extern": Imports (Phase 2)
-│
-├── Favoriten
-│   └── Sync mit Kaufy-Website (LocalStorage → Login → Import)
-│
-├── Simulation
-│   └── Portfolio-Impact-Analyse
-│
-└── Finanzierung anfragen
-    └── → MOD-07 (mit Objekt aus Favoriten)
+### AP-1: Golden Path Seed vollständig machen (P0)
 
-/portal/verkauf/vorgaenge
-│
-├── Reservierung
-│   └── Interessent reserviert
-│
-├── Notarauftrag
-│   └── Trigger: 100€ Systemgebühr
-│
-├── Notartermin
-│   └── BNL-Eingang
-│       └── Trigger: 1.900€ Systemgebühr
-│
-└── Abschluss
-    ├── MOD-06: Transaction erstellt
-    ├── MOD-09: Commission Trigger bei 'won'
-    └── MOD-04: Property-Status aktualisieren (optional: 'sold')
-```
-
-**Akzeptanzkriterien:**
-- [ ] Multi-Source-Suche in MOD-08 funktioniert
-- [ ] Favoriten-Sync mit Zone 3 möglich
-- [ ] Vorgänge in MOD-06 verfolgbar
-- [ ] Provision/Systemgebühr bei Abschluss getriggert
-
----
-
-## Identifizierte Probleme (mit Beweisen)
-
-### Problem 1: Golden Path Button fehlt im TestDataManager (P0-CRITICAL)
-
-**Beleg:** `src/components/admin/TestDataManager.tsx` verwendet `useGoldenPathSeeds` NICHT.
-Der Hook existiert vollständig funktionsfähig in `src/hooks/useGoldenPathSeeds.ts`.
-
-### Problem 2: Legacy-Daten mit falschen UUIDs (P0)
-
-**Beleg aus DB-Abfragen:**
-- Vorhandene Kontakte: `d0000000-0000-4000-d000-...` (Legacy)
-- Erwartete Kontakte: `00000000-0000-4000-a000-...` (Golden Path)
-
-### Problem 3: MOD-04 überspringt "How It Works" (P1)
-
-**Beleg:** `src/pages/portal/ImmobilienPage.tsx:89`:
-```tsx
-<Route index element={<Navigate to="portfolio" replace />} />
-```
-
-### Problem 4: Zone 1 Sales Desk Menüpunkt zu verifizieren
-
-Die Distribution von MOD-06 → Zone 1 → Zone 2/3 muss im Routing und in der Navigation sichtbar sein.
-
----
-
-## Detaillierter Reparaturplan
-
-### Änderung 1: TestDataManager erweitern (Zone 1)
-
-**Datei:** `src/components/admin/TestDataManager.tsx`
+**Ziel:** Ein Klick erzeugt vollständige Testdaten
 
 **Änderungen:**
-1. Import `useGoldenPathSeeds` Hook
-2. Golden Path UI-Card mit Status-Grid (Kontakte X/5, Dokumente X/12, etc.)
-3. Button "Einspielen / Aktualisieren" → ruft `runSeeds()` auf
-4. Button "Zurücksetzen" → löscht nur Golden-Path-UUIDs
+1. Neue DB-Migration: `seed_golden_path_v2.sql`
+   - 5 Contacts mit korrekten public_ids
+   - 2 context_members (Max 50%, Lisa 50%)
+   - 1 Lease mit tenant_contact_id
+   - 9 zusätzliche Dokumente + document_links
 
-**Geschätzte Zeilen:** ~100 neue Zeilen
+**Geschätzte Zeilen:** ~150 SQL
 
----
+### AP-2: MOD-07 MOD-04-Integration (P1)
 
-### Änderung 2: Legacy-Daten bereinigen (Einmalige DB-Operation)
+**Ziel:** Kapitalanlagen aus MOD-04 in Selbstauskunft anzeigen
 
-**SQL-Migration:**
-```sql
--- Legacy-Kontakte mit d000-UUIDs löschen
-DELETE FROM contacts WHERE id::text LIKE 'd0000000-0000-4000-d000-%';
+**Änderungen:**
+1. Neue Komponente: `CapitalAssetsPanel.tsx` (~100 Zeilen)
+2. In `SelbstauskunftForm.tsx` einbinden (~20 Zeilen)
+3. Query: properties + units + leases aggregiert
 
--- Doppelte Storage-Root-Nodes bereinigen
-WITH duplicates AS (
-  SELECT id, 
-    ROW_NUMBER() OVER (PARTITION BY tenant_id, name, parent_id ORDER BY created_at) AS rn
-  FROM storage_nodes
-  WHERE parent_id IS NULL
-)
-DELETE FROM storage_nodes WHERE id IN (SELECT id FROM duplicates WHERE rn > 1);
-```
+**Geschätzte Zeilen:** ~120 neue
 
----
+### AP-3: Zone 1 Handoff-Automatik (P1)
 
-### Änderung 3: MOD-04 "How It Works" aktivieren
+**Ziel:** Automatische Benachrichtigung bei Einreichung
 
-**Datei:** `src/pages/portal/ImmobilienPage.tsx`
+**Änderungen:**
+1. In `AnfrageDetailPage.tsx`: Nach Submit → RPC aufrufen
+2. Neue Edge Function: `sot-finance-request-submit` (~50 Zeilen)
+3. Insert in `finance_mandates` mit Status `submitted_to_zone1`
 
-**Änderung Zeile 89:**
-```tsx
-// VORHER:
-<Route index element={<Navigate to="portfolio" replace />} />
+**Geschätzte Zeilen:** ~100 neue
 
-// NACHHER:
-<Route index element={<ModuleHowItWorks content={moduleContents['MOD-04']} />} />
-```
+### AP-4: Zone 1 Sales Desk funktional (P1)
 
----
+**Ziel:** Listings anzeigen und verwalten
 
-### Änderung 4: Selbstauskunft-Objektfelder kontextabhängig (P2)
+**Änderungen:**
+1. `SalesDesk.tsx` VeroeffentlichungenTab: Query auf `listings` (~80 Zeilen)
+2. DataTable mit Blocking-Toggle (~50 Zeilen)
+3. Distribution-Buttons für MOD-09/Kaufy (~30 Zeilen)
 
-**Datei:** `src/components/finanzierung/SelbstauskunftForm.tsx`
+**Geschätzte Zeilen:** ~160 neue
 
-**Logik:**
-- Wenn `finance_request.property_id` vorhanden → Objektfelder read-only aus MOD-04
-- Wenn null → Objektfelder editierbar (Eigennutzung/custom)
-- Zusätzlich: Aggregierte MOD-04 Kapitalanlagen als Vermögenswerte
+### AP-5: MOD-06 → Zone 1 Sync (P2)
 
----
+**Ziel:** Listings automatisch nach Zone 1
 
-### Änderung 5: Golden Path Dokumentation im Repo
+**Änderungen:**
+1. In `ExposeDetail.tsx`: Bei Partner-Release → listing_publications INSERT
+2. Status-Callback von Zone 1 (optional)
 
-**Neue Datei:** `docs/workflows/GOLDEN_PATH_E2E.md`
+**Geschätzte Zeilen:** ~40 Anpassungen
 
-**Inhalt:**
-- Vollständiger 10-Phasen-Workflow (wie oben)
-- Akzeptanzkriterien pro Phase
-- Testprotokoll-Vorlage
-- Diagramme für Datenflüsse
+### AP-6: MOD-11 Datenfluss (P2)
+
+**Ziel:** Manager sieht vollständiges Dossier
+
+**Änderungen:**
+1. `useFutureRoomCases.ts` erweitern: JOIN mit applicant_profiles
+2. `FMFallDetail.tsx` anpassen: Selbstauskunft-Panel
+3. Accept-Button aktivieren
+
+**Geschätzte Zeilen:** ~100 Anpassungen
 
 ---
 
-## Dateiänderungen im Überblick
+## Testplan: Golden Path Durchlauf
 
-| # | Datei | Typ | Beschreibung | Zeilen | Risiko |
-|---|-------|-----|--------------|--------|--------|
-| 1 | `src/components/admin/TestDataManager.tsx` | Erweitern | Golden Path UI + Reset | ~100 | Niedrig |
-| 2 | `src/pages/portal/ImmobilienPage.tsx` | Ändern | Index → ModuleHowItWorks | 2 | Niedrig |
-| 3 | DB-Migration | SQL | Legacy-Bereinigung | ~10 | Mittel |
-| 4 | `src/components/finanzierung/SelbstauskunftForm.tsx` | Erweitern | Kontextabhängige Objektfelder | ~50 | Mittel |
-| 5 | `docs/workflows/GOLDEN_PATH_E2E.md` | Neu | Workflow-Dokumentation | ~300 | Niedrig |
+Nach Implementierung der 6 Arbeitspakete kann folgender E2E-Test durchgeführt werden:
 
----
+### Phase 1: Seeding (Zone 1)
+1. `/admin/tiles` → Tab "Testdaten" → "Einspielen"
+2. **Erwartung:** Toast zeigt 5 Kontakte, 1 Property, 12 Dokumente
 
-## Stabilitätsbewertung
+### Phase 2: MOD-04 Immobilien
+3. `/portal/immobilien` → "How It Works" erscheint
+4. "Portfolio" → 1 Immobilie mit Kennzahlen
+5. "Kontexte" → Ehepaar Mustermann tabellarisch
+6. Klick "Auge" → Dossier mit 9 Blöcken
+7. Block F (Mietverhältnisse) → 1 aktiver Mietvertrag
 
-### Warum diese Änderungen sicher sind
+### Phase 3: MOD-03 DMS
+8. `/portal/dms/storage` → 18-Ordner-Struktur
+9. Ordner "Mietvertrag" → 1 Dokument verlinkt
 
-1. **Additive Änderungen:** TestDataManager erhält nur neue UI-Elemente
-2. **Idempotente Seeds:** `ON CONFLICT DO UPDATE` verhindert Duplikate
-3. **Bewährtes Pattern:** MOD-04 Routing folgt demselben Muster wie MOD-07
-4. **Isolierte UUIDs:** Golden-Path-Daten haben festes Präfix `00000000-0000-4000-a000-`
+### Phase 4: MOD-07 Finanzierung
+10. `/portal/finanzierung` → "How It Works" erscheint
+11. "Selbstauskunft" → Formular ~85% befüllt
+12. **NEU:** Tab/Panel "Kapitalanlagen" → 1 Immobilie read-only
+13. "Anfrage" → Neue Anfrage erstellen (Quelle: Portfolio)
+14. Objekt auswählen → Felder read-only
+15. "Einreichen" → Toast "An Zone 1 übergeben"
 
-### Kann das mit Lovable stabil werden?
+### Phase 5: Zone 1 FutureRoom
+16. `/admin/futureroom/inbox` → 1 neue Anfrage
+17. "Zuweisen" → Manager auswählen
+18. Status ändert sich auf "assigned"
 
-**Ja, für den aktuellen Scope (Musterportal) ist Lovable + Repo ausreichend.**
+### Phase 6: MOD-11 Finanzierungsmanager
+19. `/portal/finanzierungsmanager/dashboard` → 1 neuer Fall
+20. "Fälle" → Fall-Dossier öffnen
+21. Selbstauskunft-Übersicht read-only sichtbar
+22. "Akzeptieren" → Status ändert sich
 
-Die Architektur ist bereits "workflow-ready" (`useActionHandoff`, `case_events`). Camunda ist für Phase 1.5 geplant (echte Produktions-Workflows mit SLAs und Eskalationen).
+### Phase 7: MOD-06 Verkauf
+23. `/portal/verkauf/objekte` → 1 Immobilie
+24. "Exposé erstellen" → Formular befüllen
+25. Partner-Freigabe aktivieren (3 Consents)
+26. Kaufy-Toggle erscheint → aktivieren
 
----
+### Phase 8: Zone 1 Sales Desk
+27. `/admin/sales-desk` → 1 Listing sichtbar
+28. Distribution-Status: MOD-09 ✅, Kaufy ✅
 
-## Verifizierungsprotokoll (End-to-End-Test)
-
-| Phase | Route | Erwartung |
-|-------|-------|-----------|
-| 1 | `/admin/tiles` → Tab "Testdaten" | Golden Path Card sichtbar |
-| 2 | Klick "Einspielen" | Toast + Counts: 5 Kontakte, 12 Dokumente |
-| 3 | `/portal/office/kontakte` | 5 Kontakte sichtbar |
-| 4 | `/portal/immobilien` | "How It Works" erscheint |
-| 5 | Klick "Kontexte" | Ehepaar Mustermann tabellarisch |
-| 6 | Klick "Portfolio" | 1 Immobilie mit Kennzahlen |
-| 7 | Klick "Auge" → Dossier | 9 Blöcke A-J sichtbar |
-| 8 | `/portal/dms/storage` | 18-Ordner, 12 Dokumente |
-| 9 | `/portal/finanzierung` | "How It Works" erscheint |
-| 10 | Klick "Selbstauskunft" | Formular ~85% befüllt |
-| 11 | MOD-04 in Selbstauskunft | Kapitalanlagen read-only sichtbar |
-| 12 | `/portal/verkauf/objekte` | Musterimmobilie sichtbar |
-| 13 | Exposé + Partner-Freigabe | Listing in Zone 1 Sales Desk |
-| 14 | Zone 1 → MOD-09 | Objekt im Partnerkatalog |
-| 15 | Kaufy-Freigabe | Objekt auf Zone 3 sichtbar |
-| 16 | Klick "Zurücksetzen" | Alle Golden-Path-Daten gelöscht |
+### Phase 9: Reset
+29. `/admin/tiles` → "Zurücksetzen"
+30. Alle Golden-Path-Daten gelöscht
 
 ---
 
 ## Zusammenfassung
 
-### Was wird repariert:
-1. **Golden Path Button** → Testdaten per Klick einspielen/löschen
-2. **MOD-04 How It Works** → Landing Page statt Redirect
-3. **Legacy-Daten** → Bereinigung falscher UUIDs
-4. **Selbstauskunft** → Kontextabhängige Objektfelder
-5. **Dokumentation** → Golden Path E2E im Repo
+| Modul | Routing | Daten | Zone 1 Integration | Gesamt |
+|-------|---------|-------|-------------------|--------|
+| MOD-03 | ✅ | ⚠️ 3/12 Docs | — | 75% |
+| MOD-04 | ✅ | ⚠️ fehlt Lease/Contacts | — | 70% |
+| MOD-05 | ✅ | ✅ | — | 90% |
+| MOD-06 | ✅ | ✅ | ❌ kein Auto-Push | 70% |
+| MOD-07 | ✅ | ⚠️ fehlt MOD-04 Daten | ❌ kein Handoff | 50% |
+| MOD-11 | ✅ | ⚠️ fehlt Datenfluss | ⚠️ Strukturell OK | 60% |
+| Zone 1 | ✅ | ❌ Sales Desk leer | — | 50% |
 
-### Workflow-Korrekturen bestätigt:
-- **Phase 7:** Partner-Netzwerk ZUERST, Kaufy OPTIONAL
-- **Phase 8:** Zone 1 Sales Desk als SSOT mit Blocking-Möglichkeit
-- **Phase 9:** Leads von Zone 3 → Zone 1 Pool → Partner mit MOD-09
+**Nächste Schritte:**
+1. **AP-1 (P0):** Seed-Funktion vervollständigen
+2. **AP-2 + AP-3 (P1):** MOD-07 Integration + Handoff
+3. **AP-4 (P1):** Sales Desk funktional machen
+4. **AP-5 + AP-6 (P2):** Sync und MOD-11 Datenfluss
 
