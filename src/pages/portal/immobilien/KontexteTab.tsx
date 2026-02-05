@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, ArrowRight, Plus, ClipboardList, User, MapPin } from 'lucide-react';
+import { Building2, ArrowRight, Plus, ClipboardList, User, MapPin, Link2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { CreateContextDialog } from '@/components/shared';
+import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
 
 interface LandlordContext {
   id: string;
@@ -29,6 +30,7 @@ export function KontexteTab() {
   const navigate = useNavigate();
   const { activeOrganization, activeTenantId } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [assignerContext, setAssignerContext] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch landlord contexts
   const { data: contexts = [], isLoading } = useQuery({
@@ -42,6 +44,27 @@ export function KontexteTab() {
       
       if (error) throw error;
       return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch property counts per context
+  const { data: contextPropertyCounts = {} } = useQuery({
+    queryKey: ['context-property-counts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_property_assignment')
+        .select('context_id, property_id')
+        .eq('tenant_id', activeTenantId!);
+      
+      if (error) throw error;
+      
+      // Count properties per context
+      const counts: Record<string, number> = {};
+      data?.forEach(a => {
+        counts[a.context_id] = (counts[a.context_id] || 0) + 1;
+      });
+      return counts;
     },
     enabled: !!activeTenantId,
   });
@@ -187,6 +210,9 @@ export function KontexteTab() {
                   <div className="flex items-center gap-4 text-sm">
                     <Badge variant="outline">{ctx.tax_regime || 'EÜR'}</Badge>
                     {ctx.hrb_number && <span className="text-muted-foreground text-xs">{ctx.hrb_number}</span>}
+                    <Badge variant="secondary" className="ml-auto">
+                      {contextPropertyCounts[ctx.id] || 0} Objekt(e)
+                    </Badge>
                   </div>
                   {formatAddress(ctx) && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -194,6 +220,16 @@ export function KontexteTab() {
                       {formatAddress(ctx)}
                     </div>
                   )}
+                  <div className="pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setAssignerContext({ id: ctx.id, name: ctx.name })}
+                    >
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Objekte zuordnen
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -217,6 +253,16 @@ export function KontexteTab() {
         open={showCreateDialog} 
         onOpenChange={setShowCreateDialog} 
       />
+
+      {/* Property Assigner Dialog */}
+      {assignerContext && (
+        <PropertyContextAssigner
+          open={!!assignerContext}
+          onOpenChange={(open) => !open && setAssignerContext(null)}
+          contextId={assignerContext.id}
+          contextName={assignerContext.name}
+        />
+      )}
     </div>
   );
 }
