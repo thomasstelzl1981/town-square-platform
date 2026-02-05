@@ -1,278 +1,180 @@
 
-# P0/P1 Reparaturplan — System-of-a-Town Portal
+## Ziel (P0)
+Das Immobilien-Modul (MOD-04) muss im Portal zuverlässig:
+1) die Golden-Path Seed-Immobilie im Portfolio anzeigen,  
+2) Finanzierungsdaten (Restschuld/Rate/Zins/Tilgung) im Portfolio anzeigen,  
+3) die Immobilienakte (/portal/immobilien/:id) per Klick sicher öffnen (expliziter Link/Button, nicht “versteckt”).
 
-## Bestätigung der Präambel
-
-1. ✅ Musterdaten dienen ausschließlich der Entwicklung im Musterportal (Demo-Tenant).
-2. ✅ Module sind getrennt und interagieren API-analog (Handoffs/Contracts), keine Cross-Writes.
-3. ✅ Routing bleibt manifest-driven (routesManifest SSOT). Keine zusätzlichen Routes.
-4. ✅ Umsetzung strikt in der Fix-Reihenfolge, mit Re-Audit Evidence nach jedem Schritt.
-
----
-
-## Analyse-Ergebnis
-
-### Root Cause des Infinite-Loader-Problems
-
-Das Problem liegt **nicht** im AuthContext selbst — dieser setzt bereits korrekt den `DEV_TENANT_UUID` in dev mode. Das Problem liegt in der **Reihenfolge und den Fallbacks**:
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  AuthContext.tsx (aktuell)                                          │
-│  ─────────────────────────────────────────────────────────────────  │
-│  1. fetchDevelopmentData() sucht org_type='internal'                │
-│  2. Findet: "System of a Town" (a0000000-...-000000000001) ✓       │
-│  3. Setzt: activeOrganization + activeTenantId ✓                   │
-│                                                                     │
-│  ABER: Race Condition beim Initial Render:                          │
-│  ─────────────────────────────────────────────────────────────────  │
-│  - isLoading=true während fetch                                     │
-│  - Components rendern mit activeTenantId=null → Query disabled      │
-│  - Nach Load: activeTenantId gesetzt, aber Query nicht retriggert   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Zusätzliches Problem in `useFinanceRequest.ts`:**
-```typescript
-const tenantId = activeOrganization?.id || 'dev-tenant';  // FALSCH!
-// 'dev-tenant' ist nicht die DEV_TENANT_UUID (a000...001)
-```
+Ich setze dabei den Fokus auf “es funktioniert immer” statt “es sollte funktionieren”.
 
 ---
 
-## FIX-REIHENFOLGE (VERBINDLICH)
+## Was ich bereits sicher weiß (aus Code + Datenbank-Snapshot)
+### Seed-Daten sind in der Datenbank vorhanden
+- `properties` enthält die Seed-Immobilie (DEMO-001, Leipzig, status=active) im Demo-Tenant `a000...0001`.
+- `leases` enthält einen aktiven Mietvertrag für Unit `MAIN`.
+- **Finanzierung ist im Seed als `loans` gespeichert** (z.B. outstanding_balance_eur / annuity_monthly_eur / interest_rate_percent sind vorhanden).
+- **`property_financing` ist leer** (mindestens für den Demo-Tenant/Seed).
 
-### P0-1: TENANT-MISMATCH beheben (Portal Infinite Loader)
+### Warum du “keine Finanzierungsdaten” siehst (Root Cause #1: falsche Datenquelle)
+In `src/pages/portal/immobilien/PortfolioTab.tsx` wird Finanzierung aktuell aus **`property_financing`** geladen:
+- Query: `from('property_financing') ...`
+- Seed schreibt die Finanzierung aber in **`loans`**.
+=> Ergebnis: Portfolio kann Miet-/Objektdaten anzeigen, aber **Finanzierungs-Spalten bleiben leer**.
 
-**Gewählte Option: A (empfohlen, minimaler Eingriff)**
+Das erklärt exakt den Teil “keine Finanzierungsdaten drin”, selbst wenn die Seed-Immobilie sichtbar ist.
 
-**Begründung:**
-- AuthContext ist der zentrale Punkt für Tenant-Logik
-- Alle Hooks verwenden bereits `activeTenantId` oder `activeOrganization?.id`
-- Ein Fix an einer Stelle behebt alle abhängigen Module
+### Warum “Immobilienakte nicht erreichbar” plausibel ist (Root Cause #2: UX/Click-Pfad kaputt)
+In der Portfolio-Tabelle ist rechts ein Eye-Icon gerendert, aber:
+- `rowActions={(row) => (<Button ...><Eye/></Button>)}`
+- **Kein onClick / keine Navigation**.
+- Außerdem stoppt die Action-Zelle Propagation (`onClick={(e) => e.stopPropagation()}`) – d.h. wer auf das Eye klickt, löst NICHT den Row-Click aus.
+=> Für Nutzer wirkt es so, als gäbe es “keinen Link” zur Akte, obwohl Row-Click existiert.
 
-**devMode-Erkennung:**
-- Bereits implementiert: `isDevelopmentEnvironment()` prüft hostname (lovable.app, localhost, preview, id-preview)
-- Kein neuer env flag nötig
+Das ist ein klassischer Usability-P0: UI signalisiert “öffnen”, macht aber nichts.
 
-**Implementierung:**
+### Zusätzliches Stabilitätsrisiko (Root Cause #3: Render-Side-Effect Bug)
+In `PortfolioTab.tsx` wird SearchParam-Cleanup mit `useState(() => { ... setSearchParams(...) })` gemacht.
+Das ist ein Side-Effect im Render-Initialisierer (sollte `useEffect` sein) und kann:
+- zu “Update during render”-Problemen führen,
+- zu instabilem/leerem Render (je nach Timing / StrictMode / Router State).
 
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│  DATEI: src/contexts/AuthContext.tsx                                   │
-│  ────────────────────────────────────────────────────────────────────  │
-│                                                                        │
-│  ÄNDERUNG 1: DEV_TENANT_UUID Konstante hinzufügen (Zeile ~30)         │
-│  ─────────────────────────────────────────────────────────────────    │
-│  const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';       │
-│                                                                        │
-│  ÄNDERUNG 2: activeTenantId-Berechnung anpassen (Zeile ~52)           │
-│  ─────────────────────────────────────────────────────────────────    │
-│  VORHER:                                                               │
-│    const activeTenantId = profile?.active_tenant_id                    │
-│      || activeOrganization?.id                                         │
-│      || activeMembership?.tenant_id                                    │
-│      || null;                                                          │
-│                                                                        │
-│  NACHHER:                                                              │
-│    const activeTenantId = isDevelopmentMode                            │
-│      ? DEV_TENANT_UUID                                                 │
-│      : (profile?.active_tenant_id                                      │
-│          || activeOrganization?.id                                     │
-│          || activeMembership?.tenant_id                                │
-│          || null);                                                     │
-│                                                                        │
-│  ÄNDERUNG 3: activeOrganization frühzeitig setzen für devMode         │
-│  ─────────────────────────────────────────────────────────────────    │
-│  Im useEffect (Zeile ~248), vor dem async fetch:                      │
-│                                                                        │
-│  if (isDevelopmentMode && !session?.user) {                            │
-│    // Sofort Mock-Org setzen, bevor async fetch                        │
-│    const mockOrg: Organization = {                                     │
-│      id: DEV_TENANT_UUID,                                              │
-│      name: 'System of a Town',                                         │
-│      slug: 'system-of-a-town',                                         │
-│      public_id: 'SOT-T-INTERNAL01',                                    │
-│      org_type: 'internal',                                             │
-│      parent_id: null,                                                  │
-│      materialized_path: '/',                                           │
-│      depth: 0,                                                         │
-│      parent_access_blocked: false,                                     │
-│      settings: {},                                                     │
-│      created_at: new Date().toISOString(),                             │
-│      updated_at: new Date().toISOString(),                             │
-│    };                                                                  │
-│    setActiveOrganization(mockOrg);                                     │
-│  }                                                                     │
-└────────────────────────────────────────────────────────────────────────┘
-```
+Das ist ein wahrscheinlichster Kandidat für “manchmal leer / manchmal nicht”.
 
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│  DATEI: src/hooks/useFinanceRequest.ts                                 │
-│  ────────────────────────────────────────────────────────────────────  │
-│                                                                        │
-│  ÄNDERUNG 1: DEV_TENANT_UUID Import (Zeile ~1)                        │
-│  ─────────────────────────────────────────────────────────────────    │
-│  import { DEV_TENANT_UUID } from '@/hooks/useGoldenPathSeeds';         │
-│                                                                        │
-│  ÄNDERUNG 2: Fallback korrigieren (Zeile ~24)                         │
-│  ─────────────────────────────────────────────────────────────────    │
-│  VORHER:                                                               │
-│    const tenantId = activeOrganization?.id || 'dev-tenant';            │
-│                                                                        │
-│  NACHHER:                                                              │
-│    const tenantId = activeOrganization?.id                             │
-│      || (isDevelopmentMode ? DEV_TENANT_UUID : null);                  │
-│                                                                        │
-│  ÄNDERUNG 3: Gleicher Fix für useCreateFinanceRequest (Zeile ~91)     │
-│  ─────────────────────────────────────────────────────────────────    │
-│    const tenantId = activeOrganization?.id                             │
-│      || (isDevelopmentMode ? DEV_TENANT_UUID : 'missing-tenant');      │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-**Rollback-Hinweis:**
-- Falls Production-User betroffen: isDevelopmentMode prüft hostname, daher kein Risiko
-- Git Revert möglich falls nötig
+### Tenant-Scoping-Risiko (Root Cause #4: activeOrganization vs activeTenantId)
+Im Auth-Kontext wird im Dev-Mode **activeTenantId erzwungen**, aber PortfolioTab filtert Daten über `activeOrganization.id`.
+Wenn diese beiden je nach Session/Timing auseinanderlaufen, bekommst du:
+- Portfolio leer,
+- Akte “nicht gefunden/kein Zugriff”.
+=> Stabiler ist: **für Datenabfragen überall activeTenantId verwenden** (SSOT fürs Tenant-Scoping).
 
 ---
 
-### P1-1: SEED-UI Initial-Counts anzeigen (ohne Klick)
+## Fix-Strategie (minimal-invasiv, aber “funktioniert immer”)
+### A) Portfolio: Finanzierung auf `loans` umstellen (SSOT)
+**Änderungen:**
+- In `PortfolioTab.tsx`:
+  - Finanzierung nicht mehr aus `property_financing` holen.
+  - Stattdessen `loans` lesen, tenant-gescoped über `activeTenantId`.
+  - `loanMap` bauen: `property_id -> latest loan` (oder aktivster Loan).
+  - Spaltenwerte mappen:
+    - Restschuld = `outstanding_balance_eur`
+    - Annuität p.a. = `annuity_monthly_eur * 12`
+    - Zins p.a. = `outstanding_balance_eur * (interest_rate_percent/100)`
+    - Tilgung p.a. = `Annuität p.a. - Zins p.a.`
+- Optional/Fallback:
+  - Wenn keine Loans existieren, kann `property_financing` weiterhin als Fallback dienen (für Excel-Import-Fälle), aber **Seed und SSOT laufen über loans**.
 
-**Implementierung:**
-
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│  DATEI: src/hooks/useGoldenPathSeeds.ts                                │
-│  ────────────────────────────────────────────────────────────────────  │
-│                                                                        │
-│  ÄNDERUNG 1: Neuer Export für getCounts Funktion                      │
-│  ─────────────────────────────────────────────────────────────────    │
-│  export async function fetchGoldenPathCounts(): Promise<SeedCounts>    │
-│    return getCounts(DEV_TENANT_UUID);                                  │
-│  }                                                                     │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│  DATEI: src/components/admin/TestDataManager.tsx                       │
-│  ────────────────────────────────────────────────────────────────────  │
-│                                                                        │
-│  ÄNDERUNG 1: Import erweitern (Zeile ~26)                             │
-│  ─────────────────────────────────────────────────────────────────    │
-│  import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID,               │
-│           fetchGoldenPathCounts, type SeedCounts }                     │
-│    from '@/hooks/useGoldenPathSeeds';                                  │
-│                                                                        │
-│  ÄNDERUNG 2: Neuer State für Initial-Counts (nach Zeile ~90)          │
-│  ─────────────────────────────────────────────────────────────────    │
-│  const [initialCounts, setInitialCounts] = useState<SeedCounts|null>   │
-│    (null);                                                             │
-│  const [isLoadingCounts, setIsLoadingCounts] = useState(true);         │
-│                                                                        │
-│  ÄNDERUNG 3: useEffect für Mount-Load (nach Zeile ~98)                │
-│  ─────────────────────────────────────────────────────────────────    │
-│  useEffect(() => {                                                     │
-│    fetchGoldenPathCounts()                                             │
-│      .then(counts => {                                                 │
-│        setInitialCounts(counts);                                       │
-│        setIsLoadingCounts(false);                                      │
-│      })                                                                │
-│      .catch(() => setIsLoadingCounts(false));                          │
-│  }, []);                                                               │
-│                                                                        │
-│  ÄNDERUNG 4: Status-Grid immer rendern (Zeile ~598-618)               │
-│  ─────────────────────────────────────────────────────────────────    │
-│  VORHER:                                                               │
-│    {lastResult && ( <StatusGrid .../> )}                               │
-│                                                                        │
-│  NACHHER:                                                              │
-│    // Merge: lastResult hat Vorrang, sonst initialCounts               │
-│    const displayCounts = lastResult?.after || initialCounts;           │
-│                                                                        │
-│    {isLoadingCounts ? (                                                │
-│      <div className="grid grid-cols-4 gap-2">                          │
-│        {[1,2,3,4].map(i => (                                           │
-│          <div key={i} className="p-2 bg-background rounded border      │
-│               animate-pulse h-8" />                                    │
-│        ))}                                                             │
-│      </div>                                                            │
-│    ) : displayCounts ? (                                               │
-│      <StatusGrid counts={displayCounts} />                             │
-│    ) : (                                                               │
-│      <p className="text-sm text-muted-foreground">                     │
-│        Keine Daten geladen                                             │
-│      </p>                                                              │
-│    )}                                                                  │
-└────────────────────────────────────────────────────────────────────────┘
-```
+**Outcome:**
+- Seed-Finanzierung wird sofort sichtbar.
+- MOD-04 entspricht dem internen “Financing metrics are sourced from loans”-Prinzip.
 
 ---
 
-## Evidence-Checkliste (nach Umsetzung)
+### B) Portfolio: Eye-Action wirklich zu “Akte öffnen” machen (Usability-P0)
+**Änderungen:**
+- In `PortfolioTab.tsx` `rowActions`:
+  - Button bekommt `onClick={() => navigate(\`/portal/immobilien/${row.property_id}\`)}`.
+  - Tooltip/aria-label “Immobilienakte öffnen”.
+- Zusätzlich (optional, aber sinnvoll):
+  - In der “Objekt”-Zelle (Address) eine explizite Link-Optik “Akte öffnen” oder klickbaren Titel (Unterstreichung/hover), damit es nicht nur “Row click hidden” ist.
 
-### P0-1 Evidence
-
-| Test | Erwartung | Screenshot/Log erforderlich |
-|------|-----------|----------------------------|
-| Öffne `/portal/immobilien/portfolio` | Network: Query mit `tenant_id=a0000..001` sichtbar | Ja (Network Tab) |
-| Portfolio-UI | Property "Leipzig Kapitalanlage 62m²" angezeigt | Ja (Screenshot) |
-| Öffne `/portal/dms/storage` | Storage Tree mit ≥19 Nodes | Ja (Screenshot) |
-| Öffne `/portal/finanzierung` | How-It-Works lädt, keine Spinner in Daten-Bereichen | Ja (Screenshot) |
-| Console | Keine unhandled promise rejections | Ja (Console Screenshot) |
-
-### P1-1 Evidence
-
-| Test | Erwartung | Screenshot erforderlich |
-|------|-----------|------------------------|
-| Page Refresh `/admin/tiles` → Testdaten | Status-Grid sichtbar OHNE Klick | Ja |
-| Counts korrekt | 5 Kontakte, 1 Immobilie, 12 Dokumente | Ja |
-| "Einspielen" klicken | Toast + Counts bleiben konsistent | Ja |
+**Outcome:**
+- Ein “einfacher Link zur Immobilienakte” existiert sichtbar und funktioniert immer.
 
 ---
 
-## Technische Zusammenfassung
+### C) Portfolio: SearchParam-Cleanup korrekt via `useEffect` (Stabilität)
+**Änderungen:**
+- Ersetze den aktuellen Block:
+  - `useState(() => { if (create) { ... setSearchParams(...) } })`
+- durch:
+  - `useEffect(() => { ... }, [searchParams, setSearchParams])` (oder sauberer: nur einmalig bei Mount, mit stabilem Pattern).
+- Ziel: keine Router-State-Updates während Render.
 
-### Betroffene Dateien
-
-| Datei | Änderungstyp | Zeilen (ca.) |
-|-------|-------------|--------------|
-| `src/contexts/AuthContext.tsx` | Modify | ~15 Zeilen |
-| `src/hooks/useFinanceRequest.ts` | Modify | ~6 Zeilen |
-| `src/hooks/useGoldenPathSeeds.ts` | Modify | ~5 Zeilen (Export) |
-| `src/components/admin/TestDataManager.tsx` | Modify | ~25 Zeilen |
-
-### Nicht betroffene Dateien
-
-- Keine neuen Routen
-- Keine DB-Schema-Änderungen
-- Keine UI-Styling-Änderungen
-- Keine neuen Features
-
-### Risiken
-
-| Risiko | Mitigierung |
-|--------|-------------|
-| Production-User sieht Demo-Daten | `isDevelopmentMode` prüft hostname — Production hat andere Domain |
-| Cached Tenant-ID in React Query | `queryClient.invalidateQueries` nach Auth-State-Change |
-| Multi-Tenant später konfliktiert | DEV_TENANT_UUID nur in dev mode, echte Auth überschreibt |
+**Outcome:**
+- Wegfall von instabilem Rendering/Blank Screens durch Render-Side-Effects.
 
 ---
 
-## Sequenz
+### D) Alle MOD-04 Queries tenant-stabil machen (activeTenantId als SSOT)
+**Änderungen:**
+- `PortfolioTab.tsx`: `.eq('tenant_id', activeTenantId)` statt `activeOrganization.id`.
+- `PropertyDetailPage.tsx`: ebenfalls `activeTenantId` verwenden.
+- Guards: wenn `!activeTenantId`, dann sichtbarer Fallback (kein stilles “null”).
 
-```text
-Schritt 1 → P0-1: AuthContext + useFinanceRequest patchen
-        ↓
-Schritt 2 → Deployment + Browser Refresh
-        ↓
-Schritt 3 → Evidence sammeln (Network, Screenshots)
-        ↓
-Schritt 4 → P1-1: TestDataManager Initial-Counts
-        ↓
-Schritt 5 → Evidence sammeln
-        ↓
-Schritt 6 → Dokumentation im Commit
-```
+**Outcome:**
+- Kein “Tenant mismatch” mehr zwischen Dev-Mode-Fallbacks und echten Sessions.
+- Akte/Portfolio verhalten sich konsistent.
+
+---
+
+### E) Immobilienakte: Finanzierung konsistent anzeigen (PropertyDetailPage)
+Aktuell:
+- `PropertyDetailPage.tsx` lädt Finanzierung aus `property_financing`, während `useUnitDossier.ts` bereits `loans` nutzt.
+
+**Änderungen:**
+- `PropertyDetailPage.tsx`:
+  - Finanzierung für Exposé/Finanzierungsansicht über `loans` laden (oder `useUnitDossier`-Finanzierungsblock als Quelle nutzen).
+  - `properties` / `units` fetch `.single()` ggf. auf `.maybeSingle()` umstellen + bessere Fehlermeldung (nicht “Drama”, sondern klar: “Kein Zugriff” vs “nicht existent”).
+
+**Outcome:**
+- Akte zeigt dieselbe Finanzierung wie Portfolio (und wie Seed).
+
+---
+
+## Validierungs-Checkliste (Acceptance / “Beweis, dass es wirklich geht”)
+Nach Implementierung teste ich (Preview):
+1) `/admin/tiles` → Golden Path “Counts” prüfen (sollten stimmen).
+2) `/portal/immobilien/portfolio`:
+   - 1 Zeile sichtbar (DEMO-001 / Leipziger Straße 42).
+   - Restschuld/Annuität/Zins/Tilgung sind **nicht leer**.
+3) Klick auf Eye-Icon → navigiert zu `/portal/immobilien/0000...0001`.
+4) Akte lädt:
+   - Tab “Akte” zeigt `EditableUnitDossierView` (keine “nicht gefunden” Meldung).
+   - Finanzierung im Akten-Block H ist befüllt (Restschuld/Rate/Zins).
+5) Hard refresh auf `/portal/immobilien/0000...0001` (Incognito/Reload) funktioniert weiterhin.
+
+Optionaler “Anti-Lüge”-Beweis:
+- Ein kleines “Dev Diagnostic” im Portfolio (nur dev-mode): zeigt `activeTenantId` + `properties/units/loans` Counts live, damit wir nie wieder “Audit sagt ok, UI sagt leer” haben, ohne sofort den Grund zu sehen.
+
+---
+
+## Konkrete betroffene Dateien (voraussichtlich)
+- `src/pages/portal/immobilien/PortfolioTab.tsx`
+  - financing source: `loans`
+  - Eye button navigation
+  - useEffect statt useState side-effect
+  - tenant scoping via `activeTenantId`
+- `src/pages/portal/immobilien/PropertyDetailPage.tsx`
+  - tenant scoping via `activeTenantId`
+  - financing source konsistent (loans)
+  - robustere fetch patterns
+- (falls nötig) `src/components/shared/PropertyTable.tsx`
+  - nur wenn wir explizite Link-Elemente/Row-Action UX verbessern wollen (optional)
+- (falls RLS blockiert) Datenbank-Migration:
+  - SELECT-Policy für `loans` für authentifizierte Nutzer (tenant-basiert), ohne öffentliche Öffnung.
+
+---
+
+## Risiken / Trade-offs
+- Umstellung auf `loans` kann Auswirkungen auf importierte Daten haben, falls diese nur `property_financing` füllen. Darum:
+  - entweder Fallback belassen,
+  - oder Import künftig parallel einen `loans`-Datensatz erzeugen.
+- RLS kann `loans` ggf. für authentifizierte Nutzer blockieren. Dann wäre UI trotz korrekter Queries leer. In dem Fall ergänzen wir gezielt eine sichere Policy (tenant-basiert).
+
+---
+
+## Warum das bisher in Audits “funktioniert” wirkte, aber du es nicht siehst
+- Datenbankseitig ist Seed korrekt (Property/Lease/Loan existieren).
+- UI-seitig zeigt Portfolio Finanzierung aus der falschen Tabelle (`property_financing` statt `loans`).
+- Zusätzlich war der “Akte öffnen”-Klickpfad UX-seitig kaputt (Eye ohne Navigation).
+- Das erklärt, warum man in einem Audit leicht “Daten existieren” bestätigt, aber der Nutzer trotzdem “es ist leer und nicht erreichbar” erlebt.
+
+---
+
+## Was ich von dir (kurz) zur Absicherung brauche (ohne Technik-Deepdive)
+1) Wenn du im Portfolio auf das Auge klickst: erwartest du, dass es die Akte öffnet? (Ich gehe: ja.)
+2) Wenn du auf die Tabellenzeile klickst: passiert bei dir etwas oder bleibt es auch dann “tot”?
+
+Wenn du den Plan freigibst, setze ich diese Fixes in einem einzigen, kleinen Commit-Umfang um und wir haben danach einen stabilen “Rebirth Point” speziell für MOD-04.
