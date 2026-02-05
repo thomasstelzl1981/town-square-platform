@@ -1,3 +1,9 @@
+/**
+ * @deprecated This component is LEGACY and should not be used.
+ * Use /portal/immobilien/:id (PropertyDetailPage) instead.
+ * This file exists only for backward compatibility during migration.
+ * See STATUS_AND_STRATEGY.md - Etappe 5 for migration plan.
+ */
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -238,12 +244,14 @@ export default function PropertyDetail() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild className="no-print">
+            {/* DEPRECATED: This component is legacy. Use /portal/immobilien/:id instead */}
+            {/* TODO: Implement edit functionality - route not yet defined */}
+            {/* <Button variant="outline" asChild className="no-print">
               <Link to={`/portal/immobilien/${id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Bearbeiten
               </Link>
-            </Button>
+            </Button> */}
             <Button 
               variant="outline" 
               onClick={handleGenerateDescription}

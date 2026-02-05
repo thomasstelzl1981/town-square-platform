@@ -267,12 +267,13 @@ export default function PropertyDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild className="no-print">
+            {/* TODO: Implement edit functionality - route /portal/immobilien/:id/edit not yet defined */}
+            {/* <Button variant="outline" asChild className="no-print">
               <Link to={`/portal/immobilien/${id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Bearbeiten
               </Link>
-            </Button>
+            </Button> */}
             <Button 
               variant="outline" 
               onClick={handleGenerateDescription}
