@@ -3,6 +3,9 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 
+// Fixed Dev-Tenant UUID - MUST match the seeded internal organization
+const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
+
 type Membership = Tables<'memberships'>;
 type Profile = Tables<'profiles'>;
 type Organization = Tables<'organizations'>;
@@ -49,7 +52,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isPlatformAdmin = memberships.some(m => m.role === 'platform_admin');
   const activeMembership = memberships.find(m => m.tenant_id === profile?.active_tenant_id) || memberships[0] || null;
-  const activeTenantId = profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null;
+  
+  // P0-1 FIX: In dev mode, ALWAYS force DEV_TENANT_UUID to prevent tenant mismatch
+  const activeTenantId = isDevelopmentMode 
+    ? DEV_TENANT_UUID 
+    : (profile?.active_tenant_id || activeOrganization?.id || activeMembership?.tenant_id || null);
 
   // ============================================================================
   // P0-ID-CTX-INTERNAL-DEFAULT: INTERNAL ORG IS DEFAULT CONTEXT FOR PLATFORM ADMIN
@@ -256,6 +263,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchUserData(session.user.id);
           }, 0);
         } else if (isDevelopmentMode) {
+          // P0-1 FIX: Immediately set mock org to prevent race condition
+          const mockOrg: Organization = {
+            id: DEV_TENANT_UUID,
+            name: 'System of a Town',
+            slug: 'system-of-a-town',
+            public_id: 'SOT-T-INTERNAL01',
+            org_type: 'internal',
+            parent_id: null,
+            materialized_path: '/',
+            depth: 0,
+            parent_access_blocked: false,
+            settings: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setActiveOrganization(mockOrg);
+          
           // In development mode, load data without auth
           setTimeout(() => {
             fetchDevelopmentData();
@@ -275,6 +299,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchUserData(session.user.id);
       } else if (isDevelopmentMode) {
+        // P0-1 FIX: Immediately set mock org to prevent race condition
+        const mockOrg: Organization = {
+          id: DEV_TENANT_UUID,
+          name: 'System of a Town',
+          slug: 'system-of-a-town',
+          public_id: 'SOT-T-INTERNAL01',
+          org_type: 'internal',
+          parent_id: null,
+          materialized_path: '/',
+          depth: 0,
+          parent_access_blocked: false,
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setActiveOrganization(mockOrg);
+        
         // In development mode, load data without auth
         fetchDevelopmentData();
       }
