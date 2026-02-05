@@ -1,135 +1,520 @@
 
-## Ziel (P0)
-Zone 2 (Portal) soll sich wieder wie “normale Navigation” anfühlen:
-- Jeder Klick auf ein Modul/Tile navigiert sofort (kein “erst Loader, dann zweiter Klick”).
-- Kein Flackern/Unmount der gesamten Portal-UI beim Navigieren.
-- Immobilienakte / Portfolio etc. bleiben stabil erreichbar, ohne dass Navigation “verschluckt” wird.
+# MOD-04 Immobilien — Vollständiger Implementierungsplan
 
-## Was wir bereits sicher wissen (aus Code-Review)
-### Root Cause #1 (sehr wahrscheinlich, systemisch): Render-Loop in `PortalNav.tsx`
-In `src/components/portal/PortalNav.tsx` passiert aktuell Folgendes:
-- `manifestTiles = buildTilesFromManifest()` wird **bei jedem Render neu gebaut** (neues Array).
-- `visibleTiles = manifestTiles.filter(...)` ist dadurch ebenfalls **bei jedem Render eine neue Referenz**.
-- Der Effekt “Auto-open active module” hat `visibleTiles` in den Dependencies:
-  - `useEffect(..., [location.pathname, visibleTiles])`
-- Ergebnis: Der Effekt läuft extrem häufig / potenziell jede Navigation löst eine Render-Kaskade aus und setzt `openModules`, was wieder rerendert.
+## Projektübersicht
 
-Das kann Router-Transitions, Lazy-Mounts und Click-Events “gefühlt” instabil machen (erste Navigation wird gestartet, UI remountet/ändert Zustand, der Nutzer klickt erneut und dann klappt es).
+Dieser Plan adressiert die vollständige Überarbeitung des MOD-04 Immobilien-Moduls mit folgenden Kernzielen:
+- **Kontexte** als Basis für steuerliche Vermietereinheiten
+- **Portfolio-Dashboard** mit Summenzeile und kumulierten Visualisierungen
+- **Investment-Simulation** für Bestandsimmobilien (Wertzuwachs/Mietsteigerung)
+- **Synchronisation** mit Zone 1 Master-Vorlagen und Tile-Katalog
 
-### Root Cause #2: Imperative Navigation per `<button>` + `navigate()` (Zone 2) vs. deklarative Links (Zone 1)
-In Zone 2 nutzt der Parent-Eintrag für Module mit Subtiles (z.B. Immobilien, Finanzierung) ein `<button>` mit `navigate(route)`.
-Zone 1 nutzt durchgehend `NavLink` (declarativ), was stabiler ist.
+---
 
-In einer UI, die durch Root Cause #1 stark rerendert, ist ein `<button>`-Click deutlich anfälliger dafür, “unterzugehen”, weil der DOM unter dem Cursor ggf. neu gerendert wird.
+## Phase 1: P0 Sofort-Fixes (Query-Reparatur)
 
-### Root Cause #3: PortalLayout unmountet die gesamte UI bei `isLoading`
-`src/components/portal/PortalLayout.tsx`:
-- Wenn `isLoading` true ist, wird **die komplette Portal-UI ersetzt** durch einen Fullscreen-Loader.
-- Wenn `AuthContext` während Navigation kurz “wackelt” (z.B. dev-mode fetches / setActiveOrganization / setProfile), ist das ein kompletter Remount von Nav + Outlet.
-Das fühlt sich exakt so an wie: “Erster Klick → Rad → nichts passiert; zweiter Klick → klappt”.
+### 1.1 loans-Query korrigieren
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
 
-### Root Cause #4: Dev-Mode AuthContext erzeugt unnötige State-Updates (Objekt-Referenzen)
-In `src/contexts/AuthContext.tsx` wird in Dev-Mode mehrfach ein neues `mockOrg`-Objekt literal erstellt und in State gesetzt.
-Auch wenn die Daten “gleich” sind, ist die Referenz neu → React sieht das als Änderung → Portal remountet häufiger als nötig.
+Das aktuelle Problem: Die Query filtert nach `.eq('is_active', true)`, aber die `loans`-Tabelle hat keine `is_active`-Spalte.
 
-## Umsetzung (konkret, minimal-invasiv, aber wirksam)
+**Änderungen:**
+- Zeile 205: `.eq('is_active', true)` entfernen
+- Zeile 314: `.eq('is_active', true)` entfernen
 
-### Schritt 1 — `PortalNav.tsx` stabilisieren (P0)
-**Ziel:** Keine render-getriebene State-Loop mehr.
+**Ergebnis:** Finanzierungsspalten (Restschuld, Annuität, Zins, Tilgung) werden sofort angezeigt.
 
-Maßnahmen:
-1) `manifestTiles` memoizen
-- `const manifestTiles = useMemo(() => buildTilesFromManifest(), []);`
-  - (Manifest ist SSOT und statisch; wenn wir jemals dynamisch werden, hängen wir es an eine saubere dependency).
+### 1.2 PropertyDetailPage Query-Fix
+**Datei:** `src/pages/portal/immobilien/PropertyDetailPage.tsx`
 
-2) `visibleTiles` memoizen
-- `const visibleTiles = useMemo(() => manifestTiles.filter(...), [manifestTiles, activeTileCodes, isDevelopmentMode, userRoles]);`
+Zeile 129 verwendet ebenfalls `is_active` für die loans-Query → entfernen.
 
-3) Auto-open-Effect so umbauen, dass er NICHT an einem ständig-neuen Array hängt
-Option A (präferiert):
-- `const activeModuleCode = useMemo(() => findActiveModuleCode(location.pathname, visibleTiles), [location.pathname, visibleTiles]);`
-- `useEffect(() => { if(activeModuleCode) setOpenModules(prev => prev[activeModuleCode] ? prev : ({...prev, [activeModuleCode]: true})) }, [activeModuleCode]);`
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Zeilen 205, 314: `.eq('is_active', true)` entfernen |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Zeile 129: `.eq('is_active', true)` entfernen |
 
-Damit setzt er `openModules` nur, wenn wirklich nötig.
+---
 
-### Schritt 2 — Parent-Navigation von `<button>` auf `<Link/NavLink>` umstellen (P0)
-**Ziel:** Router soll Navigation “nativ” behandeln; kein Event-Verlust durch imperative Navigation.
+## Phase 2: Portfolio-Dashboard Erweiterungen
 
-Maßnahmen:
-- In der Expanded-Variante für Module mit Subtiles:
-  - Parent wird `Link`/`NavLink` statt `button`.
-  - Chevron bleibt ein `button` und macht ausschließlich Toggle.
-- In collapsed state ebenso: statt `button` könnte man ebenfalls `Link`/`NavLink` verwenden (oder button lassen, aber stabiler ist Link).
+### 2.1 Summenzeile in der Portfolio-Tabelle
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
 
-Wichtig: Styling behalten, Funktion gleich:
-- Parent click: /portal/{base}
-- Chevron: nur submenu toggle, `stopPropagation` bleibt.
+**Neue Komponente am Ende der Tabelle:**
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Code   │ Adresse           │ Miete p.a. │ Restschuld │ Annuität │ Zins p.a.│
+├──────────────────────────────────────────────────────────────────────────────┤
+│  DEMO-1 │ Leipziger Str. 42 │   8.160€   │  152.000€  │  8.964€  │ 5.472€   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ΣΣΣΣΣΣ │ 1 Objekt(e)       │   8.160€   │  152.000€  │  8.964€  │ 5.472€   │ ← SUMME
+└──────────────────────────────────────────────────────────────────────────────┘
+```
 
-### Schritt 3 — `PortalLayout.tsx` Loading-Guard entschärfen (P0)
-**Ziel:** Portal-UI (Navigation) darf beim kurzzeitigen Loading nicht unmounten.
+**Eigenschaften:**
+- Nutzt die bereits berechneten `totals` (Zeilen 349-394)
+- Summenzeile ist nicht klickbar (keine Navigation zu einer Immobilie)
+- Klick auf Summenzeile öffnet Modal mit kumulierter Grafik + EÜR
+- Styling: `font-bold bg-muted/50 border-t-2`
 
-Maßnahmen:
-- Statt `if(isLoading) return FullscreenLoader`:
-  - Portal layout immer rendern,
-  - bei loading: ein **Overlay** (oder nur “Content skeleton”) über dem Outlet, aber Sidebar/Header bleiben.
-- Alternative (noch minimaler):
-  - “Initial loading only”: nur beim allerersten Mount blocken, danach niemals mehr Fullscreen ersetzen.
-  - Umsetzen via `hasInitialized` state/ref.
+### 2.2 Kumulierte Investment-Visualisierung (Modal bei Klick auf Summenzeile)
+**Neue Datei:** `src/components/portfolio/PortfolioSummaryModal.tsx`
 
-### Schritt 4 — `AuthContext.tsx` Dev-Mode State stabilisieren (P0)
-**Ziel:** Keine unnötigen “neue Objekt-Referenz” Updates; weniger Remounts.
+**Inhalte:**
+1. **30-Jahres-Tilgungsverlauf** (bereits implementiert in `amortizationData`)
+   - Verkehrswert (steigend)
+   - Restschuld (sinkend)  
+   - Netto-Vermögen (Differenz)
 
-Maßnahmen:
-1) `DEV_MOCK_ORG` und `DEV_MOCK_PROFILE/MEMBERSHIP` als **Konstanten außerhalb** der Komponente definieren (oder via useMemo).
-2) Beim Setzen: nur updaten, wenn sich `id` wirklich ändert (guard):
-- `setActiveOrganization(prev => prev?.id === DEV_TENANT_UUID ? prev : DEV_MOCK_ORG);`
-3) Dev-Mode init nicht doppelt triggern:
-- Aktuell passieren `onAuthStateChange` und `getSession()` beide; prüfen, dass wir nicht 2x hintereinander denselben Dev-Init fahren.
+2. **Kumulierte EÜR (Einnahmen-Überschuss-Rechnung)**
+   - Mieteinnahmen p.a. (alle Objekte)
+   - Zinskosten p.a. (alle Objekte)
+   - Nicht umlagefähige NK (geschätzt 0,5% vom Wert)
+   - Tilgung p.a.
+   - **NEU: Steuervorteil** (basierend auf Kontext-Steuersatz)
+   - Netto-Überschuss nach Steuer
 
-### Schritt 5 — (Optional, aber sinnvoll) “Anti-Lüge” Diagnostik für Zone 2 Navigation
-**Ziel:** Wenn wieder Instabilität auftritt, sehen wir es sofort.
+### 2.3 Kontexte-Integration im Portfolio
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
 
-Maßnahmen (nur dev-mode):
-- Kleine Debug-Info im PortalHeader oder PortalNav:
-  - renderCount (useRef++)
-  - currentPath
-  - activeModuleCode
-  - isLoading flags (auth + nav loading)
+**Änderungen:**
+- Bei Auswahl eines spezifischen Kontexts (z.B. "Familie Mustermann") werden nur die diesem Kontext zugeordneten Immobilien angezeigt
+- Summenzeile aggregiert dann nur diese Teilmenge
+- Steuerberechnung nutzt den Grenzsteuersatz des gewählten Kontexts
 
-Das hilft, ohne weitere Audit-Runden.
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Summenzeile + Modal-Trigger |
+| `src/components/portfolio/PortfolioSummaryModal.tsx` | NEU: Kumulierte Ansicht |
 
-## Betroffene Dateien
-- `src/components/portal/PortalNav.tsx` (Memoization + Link/NavLink + openModules-effect fix)
-- `src/components/portal/PortalLayout.tsx` (Loading UI: Overlay statt Unmount)
-- `src/contexts/AuthContext.tsx` (Dev-mode state stabilization)
-- Optional:
-  - `src/components/portal/MobileDrawer.tsx` (wahrscheinlich nicht nötig, aber falls wir Patterns angleichen wollen)
-  - `src/components/portal/PortalHeader.tsx` (nur falls Debug-Badge)
+---
 
-## Risiken / Trade-offs
-- Memoization muss sauber abhängig sein von `activeTileCodes/userRoles`; sonst könnte das Menü nicht “nachladen”. Wir lösen das durch korrektes `useMemo` dependency set.
-- Änderung von Fullscreen-Loader zu Overlay kann “kurz falsche Daten” zeigen, wenn Outlet-Page auf Auth-Daten wartet. Deshalb ggf. nur Outlet blocken, nicht Header/Nav.
+## Phase 3: Kontexte-Erweiterungen
 
-## Validierung (Akzeptanztests)
-1) Reproduzierbarkeit:
-- Browser hard refresh auf `/portal`
-- Dann 10x hintereinander verschiedene Module klicken (Immobilien, DMS, Finanzierung, …)
-- Erwartung: Jede Navigation beim ersten Klick.
+### 3.1 Property-Zuordnung zu Kontexten
+**Datei:** `src/pages/portal/immobilien/KontexteTab.tsx`
 
-2) “Spinner-/Loader”:
-- Kein dauerndes Flackern im PortalLayout (Nav bleibt stabil sichtbar).
+**Neue Funktionalität:**
+- Button "Objekte zuordnen" pro Kontext-Karte
+- Öffnet Dialog mit Multi-Select aller Properties des Tenants
+- Speichert Zuordnungen in `context_property_assignment`
 
-3) Deep link:
-- Direkt `/portal/immobilien/00000000-0000-4000-a000-000000000001` laden
-- Erwartung: Seite bleibt stehen, kein “kurz sichtbar, dann wieder Loader” Loop.
+### 3.2 Seed-Daten für Context-Property-Assignment
+**Neue Migration:** Verknüpfung der Demo-Property mit "Familie Mustermann"
 
-4) Regression Zone 1:
-- Admin weiterhin stabil (sollte unangetastet bleiben).
+```sql
+INSERT INTO context_property_assignment (
+  id, tenant_id, context_id, property_id, assigned_at
+) VALUES (
+  '00000000-0000-4000-a000-000000000120',
+  'a0000000-0000-4000-a000-000000000001',
+  '00000000-0000-4000-a000-000000000110',  -- Familie Mustermann
+  '00000000-0000-4000-a000-000000000001',  -- Leipzig Property
+  NOW()
+) ON CONFLICT DO NOTHING;
+```
 
-## Reihenfolge (damit wir schnell Wirkung sehen)
-1) PortalNav Memoization + Effect Fix (wahrscheinlich größter Hebel)
-2) Parent Buttons -> Link/NavLink
-3) PortalLayout Loader entschärfen
-4) AuthContext Dev-mode Stabilisierung
-5) Optional Debug-Badge
+### 3.3 Kontext-Details erweitern
+**Datei:** `src/pages/portal/immobilien/KontexteTab.tsx`
 
+**Zusätzliche Anzeige pro Kontext:**
+- Anzahl zugeordneter Objekte
+- Kumulierter Verkehrswert
+- Steuerliche Kennzahlen (zvE, Grenzsteuersatz)
+
+**Neue Dialog-Komponente:** `src/components/shared/PropertyContextAssigner.tsx`
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/KontexteTab.tsx` | Property-Zuordnung Button + Anzeige |
+| `src/components/shared/PropertyContextAssigner.tsx` | NEU: Zuordnungs-Dialog |
+| `supabase/migrations/YYYYMMDDHHMMSS_seed_context_assignment.sql` | Seed-Daten |
+
+---
+
+## Phase 4: Bestandsimmobilien-Simulation
+
+### 4.1 Neue Simulationskomponente
+**Neue Datei:** `src/components/immobilienakte/InventoryInvestmentSimulation.tsx`
+
+**Slider (nur 2, da Bestandsimmobilie mit existierendem Darlehen):**
+- Wertzuwachs p.a.: 0% – 3%
+- Mietsteigerung p.a.: 0% – 3%
+
+**NICHT einstellbar (fest aus Datenbank):**
+- Eigenkapital (Darlehen existiert)
+- Zinsbindung (aus `loans.fixed_interest_end_date`)
+- Tilgungsrate (aus `loans.repayment_rate_percent`)
+
+**Visualisierungen:**
+1. **40-Jahres-Chart** (Recharts AreaChart)
+   - Verkehrswert (steigend)
+   - Restschuld (sinkend)
+   - Netto-Vermögen (Differenz)
+   - Tooltip bei Mouse-over mit exakten Werten
+
+2. **10-Jahres-Tabelle**
+   | Jahr | Verkehrswert | Restschuld | Netto-Vermögen |
+   |------|--------------|------------|----------------|
+   | 2026 | 180.000€ | 152.000€ | 28.000€ |
+   | 2036 | 219.000€ | 89.000€ | 130.000€ |
+   | 2046 | 267.000€ | 15.000€ | 252.000€ |
+   | 2056 | 325.000€ | 0€ | 325.000€ |
+
+3. **Steuer-Info-Box**
+   - Vermieter-Kontext anzeigen (Name, Typ)
+   - Grenzsteuersatz (aus `landlord_contexts`)
+   - Berechneter Steuervorteil Jahr 1
+
+### 4.2 Integration in Immobilienakte
+**Datei:** `src/pages/portal/immobilien/PropertyDetailPage.tsx`
+
+**Neuer Tab "Simulation"** oder Integration in bestehenden "Akte"-Tab:
+- Lädt Daten aus:
+  - `properties` (Kaufpreis, Verkehrswert)
+  - `loans` (Restschuld, Zinssatz, Annuität)
+  - `property_accounting` (AfA-Werte)
+  - `landlord_contexts` via `context_property_assignment` (Steuersatz)
+
+### 4.3 Datenfluss-Mapping
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DATENQUELLEN (alle dynamisch aus DB)                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  properties.purchase_price          → Kaufpreis                             │
+│  properties.market_value            → Aktueller Verkehrswert                │
+│  loans.outstanding_balance_eur      → Restschuld                            │
+│  loans.interest_rate_percent        → Zinssatz                              │
+│  loans.annuity_monthly_eur          → Monatliche Rate                       │
+│  property_accounting.building_share_percent → Gebäudeanteil (AfA-Basis)     │
+│  property_accounting.afa_rate_percent       → AfA-Satz (2-4%)               │
+│  property_accounting.afa_method             → linear/denkmal/sonder         │
+│  landlord_contexts.marginal_tax_rate        → Grenzsteuersatz               │
+│  landlord_contexts.taxable_income_yearly    → zvE                           │
+│  leases.rent_cold_eur               → Kaltmiete (Summe aller aktiven)       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/components/immobilienakte/InventoryInvestmentSimulation.tsx` | NEU |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Simulation-Tab hinzufügen |
+| `src/hooks/useUnitDossier.ts` | property_accounting + landlord_context laden |
+
+---
+
+## Phase 5: Seed-Daten Ergänzung
+
+### 5.1 property_accounting Seed
+**Migration:** `YYYYMMDDHHMMSS_seed_property_accounting.sql`
+
+```sql
+INSERT INTO property_accounting (
+  id, tenant_id, property_id,
+  land_share_percent, building_share_percent, book_value_eur,
+  afa_rate_percent, afa_method, afa_start_date, remaining_useful_life_years
+) VALUES (
+  '00000000-0000-4000-a000-000000000130',
+  'a0000000-0000-4000-a000-000000000001',
+  '00000000-0000-4000-a000-000000000001',
+  20.0,   -- 20% Grundstück
+  80.0,   -- 80% Gebäude
+  144000, -- 180k × 80%
+  2.0,    -- 2% linear
+  'linear',
+  '2020-01-15',
+  48      -- 50 - 2 Jahre seit Kauf
+) ON CONFLICT DO NOTHING;
+```
+
+### 5.2 Erweiterung useGoldenPathSeeds
+**Datei:** `src/hooks/useGoldenPathSeeds.ts`
+
+Die `seed_golden_path_data()` Funktion muss erweitert werden um:
+- `property_accounting` Eintrag für Demo-Property
+- `context_property_assignment` für Verknüpfung
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `supabase/migrations/YYYYMMDDHHMMSS_seed_property_accounting.sql` | NEU |
+| `src/hooks/useGoldenPathSeeds.ts` | property_accounting in Seed-Logik |
+
+---
+
+## Phase 6: Zone 1 Master-Vorlagen Synchronisation
+
+### 6.1 Immobilienakte-Vorlage aktualisieren
+**Datei:** `src/pages/admin/MasterTemplates.tsx`
+
+**Änderungen:**
+- Block I (Accounting) als aktiv markieren (nicht mehr "UI pending")
+- Neue Felder dokumentieren:
+  - `land_share_percent`, `building_share_percent`
+  - `afa_rate_percent`, `afa_method`, `afa_start_date`
+  - `remaining_useful_life_years`
+
+### 6.2 AfA-Modell-Referenz ergänzen
+**Datei:** `src/pages/admin/MasterTemplates.tsx` → Tab "Berechnungsparameter"
+
+**Neue Tabelle mit AfA-Modellen:**
+| Modell | Satz | Anwendung |
+|--------|------|-----------|
+| Linear (§7.4 EStG) | 2-4% | Standard Bestandsimmobilien |
+| Denkmal (§7i/7h) | 9%/7% + 2% | Drei-Komponenten-Modell |
+| Sonder-AfA (§7b) | 5% (4 Jahre) | Neubau EH40/QNG |
+| Degressiv (§7.5a) | 5% vom Restwert | Neubau 2023-2029 |
+
+### 6.3 Link zur Detail-Dokumentation
+**Neue Datei oder existierend erweitern:** `src/pages/admin/MasterTemplateImmobilienakte.tsx`
+
+Diese Seite zeigt die vollständige Feld-Katalog-Referenz für MOD-04 mit allen 106 Feldern in 10 Blöcken (A–J).
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/admin/MasterTemplates.tsx` | Block I aktivieren, AfA-Tabelle |
+| Ggf. Detail-Page für Immobilienakte-Felder | Feld-Katalog-Referenz |
+
+---
+
+## Phase 7: Tile-Katalog Aktualisierung
+
+### 7.1 tile_catalog.yaml prüfen
+**Datei:** `manifests/tile_catalog.yaml`
+
+MOD-04 Tiles sind bereits korrekt definiert:
+- Kontexte ✓
+- Portfolio ✓
+- Sanierung ✓
+- Bewertung ✓
+
+**Keine Änderungen erforderlich**, da die 4-Tile-Struktur bereits korrekt ist.
+
+### 7.2 routes_manifest.yaml prüfen
+**Datei:** `manifests/routes_manifest.yaml`
+
+MOD-04 Routes sind bereits vollständig:
+- `/kontexte` ✓
+- `/portfolio` ✓
+- `/sanierung` ✓
+- `/bewertung` ✓
+- Dynamic Routes (`/:id`, `/:id/edit`, `/neu`, `/vorlage`) ✓
+
+**Keine Änderungen erforderlich**.
+
+### 7.3 zone2_modules.json aktualisieren (Audit-Artefakt)
+**Datei:** `artifacts/audit/zone2_modules.json`
+
+Das Label für MOD-04 Tiles sollte synchron mit dem aktuellen Stand sein:
+```json
+{
+  "code": "MOD-04",
+  "name": "Immobilien",
+  "base": "immobilien",
+  "tiles": ["kontexte", "portfolio", "sanierung", "bewertung"],
+  "tile_count": 4
+}
+```
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `manifests/tile_catalog.yaml` | Keine Änderung (bereits korrekt) |
+| `manifests/routes_manifest.yaml` | Keine Änderung (bereits korrekt) |
+| `artifacts/audit/zone2_modules.json` | Optional: Labels prüfen |
+
+---
+
+## Phase 8: Immobilienakte Erweiterungen
+
+### 8.1 Block I (Accounting) aktivieren
+**Datei:** `src/components/immobilienakte/EditableUnitDossierView.tsx`
+
+**Neuer Block hinzufügen:**
+- EditableAccountingBlock mit Feldern:
+  - Grundstücksanteil (%)
+  - Gebäudeanteil (%)
+  - AfA-Satz (%)
+  - AfA-Methode (Select: linear, denkmal_7i, denkmal_7h, sonder_7b, degressiv)
+  - AfA-Beginn (Date)
+  - Restnutzungsdauer (Jahre)
+  - Buchwert (€)
+
+### 8.2 useUnitDossier erweitern
+**Datei:** `src/hooks/useUnitDossier.ts`
+
+**Neue Query:**
+```typescript
+// Load property_accounting
+const { data: accountingData } = await supabase
+  .from('property_accounting')
+  .select('*')
+  .eq('property_id', property.id)
+  .eq('tenant_id', activeTenantId)
+  .maybeSingle();
+```
+
+**Neue Felder im Return-Objekt:**
+- `landSharePercent`, `buildingSharePercent`
+- `afaRatePercent`, `afaMethod`, `afaStartDate`
+- `remainingUsefulLifeYears`, `bookValueEur`
+
+### 8.3 landlord_context in Dossier laden
+**Datei:** `src/hooks/useUnitDossier.ts`
+
+**Neue Query:**
+```typescript
+// Load landlord context for this property
+const { data: contextAssignment } = await supabase
+  .from('context_property_assignment')
+  .select('context_id, landlord_contexts(*)')
+  .eq('property_id', property.id)
+  .eq('tenant_id', activeTenantId)
+  .maybeSingle();
+```
+
+**Neue Felder:**
+- `landlordContextId`, `landlordContextName`
+- `marginalTaxRate`, `taxableIncomeYearly`
+
+**Betroffene Dateien:**
+| Datei | Änderung |
+|-------|----------|
+| `src/components/immobilienakte/EditableUnitDossierView.tsx` | Block I (Accounting) |
+| `src/components/immobilienakte/editable/EditableAccountingBlock.tsx` | NEU |
+| `src/hooks/useUnitDossier.ts` | property_accounting + context laden |
+| `src/types/immobilienakte.ts` | Neue Felder im Type |
+
+---
+
+## Zusammenfassung: Dateien nach Phase
+
+### Phase 1 (P0 Sofort-Fix)
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Query-Fix |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Query-Fix |
+
+### Phase 2 (Portfolio-Dashboard)
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Summenzeile |
+| `src/components/portfolio/PortfolioSummaryModal.tsx` | NEU |
+
+### Phase 3 (Kontexte)
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/KontexteTab.tsx` | Property-Zuordnung |
+| `src/components/shared/PropertyContextAssigner.tsx` | NEU |
+| `supabase/migrations/...seed_context_assignment.sql` | NEU |
+
+### Phase 4 (Bestandssimulation)
+| Datei | Änderung |
+|-------|----------|
+| `src/components/immobilienakte/InventoryInvestmentSimulation.tsx` | NEU |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Tab-Integration |
+
+### Phase 5 (Seed-Daten)
+| Datei | Änderung |
+|-------|----------|
+| `supabase/migrations/...seed_property_accounting.sql` | NEU |
+| `src/hooks/useGoldenPathSeeds.ts` | Erweiterung |
+
+### Phase 6 (Zone 1 Master-Vorlagen)
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/admin/MasterTemplates.tsx` | Block I + AfA-Tabelle |
+
+### Phase 7 (Tile-Katalog)
+| Datei | Änderung |
+|-------|----------|
+| Keine Änderungen erforderlich | ✓ |
+
+### Phase 8 (Immobilienakte)
+| Datei | Änderung |
+|-------|----------|
+| `src/components/immobilienakte/editable/EditableAccountingBlock.tsx` | NEU |
+| `src/components/immobilienakte/EditableUnitDossierView.tsx` | Block I |
+| `src/hooks/useUnitDossier.ts` | Accounting + Context |
+| `src/types/immobilienakte.ts` | Neue Felder |
+
+---
+
+## Technische Details
+
+### Steuer-Berechnung (Steuervorteil)
+```
+Steuervorteil p.a. = Grenzsteuersatz × (Zinskosten + AfA − Mieteinnahmen)
+
+Beispiel Demo-Daten:
+- Grenzsteuersatz: 42% (aus landlord_contexts.marginal_tax_rate)
+- Zinskosten: 5.472€ (152.000€ × 3,6%)
+- AfA: 2.880€ (144.000€ × 2,0%)
+- Mieteinnahmen: 8.160€
+
+→ Werbungskostenüberschuss = 5.472 + 2.880 - 8.160 = 192€
+→ Steuervorteil = 42% × 192 = 80,64€
+```
+
+### AfA-Modelle (dokumentiert, Umsetzung später)
+| Modell | Satz | Beschreibung |
+|--------|------|--------------|
+| Linear | 2-4% | Standard (3% ab 2023, 2% Altbau) |
+| Denkmal §7i/7h | 9%/7% + 2% | Sanierung: 8J×9% + 4J×7% auf Sanierungsanteil; Altbau: 2% |
+| Sonder-AfA §7b | 5% (4 Jahre) | Zusätzlich zu Linear/Degressiv für Neubau EH40/QNG |
+| Degressiv §7.5a | 5% vom Restwert | Neubau 2023-2029 |
+
+---
+
+## Validierung nach Umsetzung
+
+### Phase 1 Validierung
+- [ ] Portfolio zeigt Finanzierungsspalten (Restschuld, Annuität, Zins, Tilgung)
+- [ ] Immobilienakte zeigt Financing-Block mit Daten
+
+### Phase 2 Validierung
+- [ ] Summenzeile am Tabellenende sichtbar
+- [ ] Klick auf Summenzeile öffnet Modal
+- [ ] Modal zeigt kumulierte Grafik + EÜR
+
+### Phase 3 Validierung
+- [ ] Kontexte-Tab zeigt "Objekte zuordnen" Button
+- [ ] Property-Zuordnung speichert in DB
+- [ ] Portfolio filtert nach gewähltem Kontext
+
+### Phase 4 Validierung
+- [ ] Immobilienakte hat Simulation-Tab
+- [ ] Slider für Wertzuwachs/Mietsteigerung funktionieren
+- [ ] 40-Jahre-Chart reagiert auf Slider
+- [ ] Steuervorteil wird aus Kontext berechnet
+
+### Phase 5 Validierung
+- [ ] Golden Path Seed erstellt property_accounting
+- [ ] Golden Path Seed erstellt context_property_assignment
+
+### Phase 6 Validierung
+- [ ] Zone 1 Master-Vorlagen zeigt Block I (Accounting)
+- [ ] AfA-Modell-Tabelle ist sichtbar
+
+### Phase 8 Validierung
+- [ ] Immobilienakte zeigt Block I (Accounting) mit editierbaren Feldern
+- [ ] Speichern funktioniert für Accounting-Felder
+
+---
+
+## Reihenfolge der Implementierung
+
+1. **Phase 1** (P0): Query-Fix → Finanzierungsdaten sichtbar
+2. **Phase 5**: Seed-Daten erweitern (property_accounting + context_assignment)
+3. **Phase 3**: Kontexte-Tab mit Property-Zuordnung
+4. **Phase 2**: Portfolio Summenzeile + Modal
+5. **Phase 8**: Immobilienakte Block I (Accounting)
+6. **Phase 4**: Investment-Simulation für Bestandsimmobilien
+7. **Phase 6**: Zone 1 Master-Vorlagen Update
+8. **Phase 7**: Tile-Katalog prüfen (keine Änderungen erwartet)
