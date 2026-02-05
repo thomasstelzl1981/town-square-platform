@@ -158,8 +158,9 @@ export function useGoldenPathSeeds(
   const [isSeeding, setIsSeeding] = useState(false);
   const [lastResult, setLastResult] = useState<SeedResult | null>(null);
 
-  // Use fixed dev tenant if in dev mode and no tenant provided
-  const effectiveTenantId = tenantId || (devMode ? DEV_TENANT_UUID : undefined);
+  // IMPORTANT: seed_golden_path_data is hard-scoped to the DEV demo tenant in the backend.
+  // In dev mode we therefore also compute counts against that tenant to avoid misleading “+0”.
+  const effectiveTenantId = devMode ? DEV_TENANT_UUID : tenantId;
 
   const runSeeds = useCallback(async (): Promise<SeedResult> => {
     if (!effectiveTenantId) {
@@ -175,7 +176,7 @@ export function useGoldenPathSeeds(
     }
 
     // Only allow seeding for internal org type
-    if (orgType && orgType !== 'internal') {
+    if (!devMode && orgType && orgType !== 'internal') {
       const result: SeedResult = {
         success: false,
         tenant_id: effectiveTenantId,
@@ -216,7 +217,7 @@ export function useGoldenPathSeeds(
     } finally {
       setIsSeeding(false);
     }
-  }, [effectiveTenantId, orgType]);
+  }, [effectiveTenantId, orgType, devMode]);
 
   return {
     runSeeds,

@@ -532,37 +532,20 @@ export function TestDataManager() {
 
   // Reset Golden Path data
   const handleResetGoldenPath = async () => {
-    if (!activeOrganization?.id) return;
-    
     setIsResetting(true);
-    const goldenPathPrefix = '00000000-0000-4000-a000-';
-    
+
     try {
-      // Delete in correct order (respecting foreign keys)
-      // 1. Context Members
-      await supabase.from('context_members').delete().like('id', `${goldenPathPrefix}%`);
-      // 2. Document Links
-      await supabase.from('document_links').delete().like('document_id', `${goldenPathPrefix}%`);
-      // 3. Applicant Profiles
-      await supabase.from('applicant_profiles').delete().like('id', `${goldenPathPrefix}%`);
-      // 4. Finance Requests
-      await supabase.from('finance_requests').delete().like('id', `${goldenPathPrefix}%`);
-      // 5. Leases
-      await supabase.from('leases').delete().like('id', `${goldenPathPrefix}%`);
-      // 6. Loans
-      await supabase.from('loans').delete().like('id', `${goldenPathPrefix}%`);
-      // 7. Documents
-      await supabase.from('documents').delete().like('id', `${goldenPathPrefix}%`);
-      // 8. Units (Trigger deletes related storage nodes)
-      await supabase.from('units').delete().like('id', `${goldenPathPrefix}%`);
-      // 9. Landlord Contexts
-      await supabase.from('landlord_contexts').delete().like('id', `${goldenPathPrefix}%`);
-      // 10. Properties
-      await supabase.from('properties').delete().like('id', `${goldenPathPrefix}%`);
-      // 11. Contacts
-      await supabase.from('contacts').delete().like('id', `${goldenPathPrefix}%`);
-      
-      toast.success('Golden Path Daten zurückgesetzt');
+      // Use deterministic, scoped backend cleanup (demo tenant only)
+      const { data, error } = await supabase.rpc('cleanup_golden_path_data');
+      if (error) throw error;
+
+      const cleanupCounts = (data as any)?.cleanup_counts;
+      toast.success('Golden Path Daten zurückgesetzt', {
+        description: cleanupCounts
+          ? `Gelöscht: Kontakte ${cleanupCounts.contacts ?? 0}, Immobilien ${cleanupCounts.properties ?? 0}, Dokumente ${cleanupCounts.documents ?? 0}`
+          : undefined,
+      });
+
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
@@ -584,9 +567,9 @@ export function TestDataManager() {
         properties: result.after.properties - result.before.properties,
         documents: result.after.documents - result.before.documents,
       };
-      toast.success(
-        `Golden Path erstellt: +${delta.contacts} Kontakte, +${delta.properties} Immobilien, +${delta.documents} Dokumente`
-      );
+      toast.success('Golden Path aktualisiert', {
+        description: `Δ +${delta.contacts} Kontakte, +${delta.properties} Immobilien, +${delta.documents} Dokumente | Stand: ${result.after.contacts}/5, ${result.after.properties}/1, ${result.after.documents}/12`,
+      });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
