@@ -1,11 +1,12 @@
 # MOD-03 — DMS (Posteingang + Storage Vault)
 
-**Spec Version:** v1.0  
-**Status:** READY FOR IMPLEMENTATION  
-**Date:** 2026-01-25  
+**Version:** 2.0  
+**Status:** ACTIVE  
+**Datum:** 2026-02-06  
 **Zone:** 2 (User Portal, tenant-scoped)  
-**Base Route:** `/portal/dms`  
-**Entry:** `/portal/dms` (Dashboard)
+**Route-Prefix:** `/portal/dms`  
+**Entry:** `/portal/dms` (How-It-Works)  
+**API-Range:** INTERNAL-003, INTERNAL-004, INTERNAL-007
 
 ---
 
