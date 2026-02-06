@@ -1,5 +1,11 @@
+/**
+ * KundenTab — MOD-09 Vertriebspartner Kundenakte
+ * Mit echten Kontakt-Daten aus der Datenbank
+ */
 import { useState } from 'react';
-import { Search, UserPlus, Calculator, Handshake, Archive, MoreHorizontal, Circle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Search, UserPlus, Calculator, Handshake, Archive, MoreHorizontal, Circle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,96 +41,88 @@ import {
 import { HowItWorks } from '@/components/vertriebspartner';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-type CustomerStatus = 'active' | 'running' | 'archived';
-
-interface Customer {
+interface Contact {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: CustomerStatus;
-  propertyInterests: string[];
-  lastActivity: Date;
-  notes: string;
-  history: { date: Date; action: string }[];
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-const mockCustomers: Customer[] = [
-  {
-    id: 'c1',
-    name: 'Max Mustermann',
-    email: 'max@example.com',
-    phone: '+49 171 1234567',
-    status: 'active',
-    propertyInterests: ['MFH Leipzig-Connewitz', 'Zinshaus Chemnitz'],
-    lastActivity: new Date(),
-    notes: 'Interessiert an Objekten in Sachsen, Budget bis 500k',
-    history: [
-      { date: new Date(), action: 'Simulation ZL001 (50k EK, 2% Tilgung)' },
-      { date: new Date(Date.now() - 86400000), action: 'Erstgespräch, Profil erstellt' },
-    ],
-  },
-  {
-    id: 'c2',
-    name: 'Erika Muster',
-    email: 'erika@example.com',
-    phone: '+49 172 9876543',
-    status: 'running',
-    propertyInterests: ['ETW Dresden-Neustadt'],
-    lastActivity: new Date(Date.now() - 86400000),
-    notes: 'Finanzierung läuft bei der Sparkasse',
-    history: [
-      { date: new Date(Date.now() - 86400000), action: 'Finanzierungsanfrage gestellt' },
-      { date: new Date(Date.now() - 172800000), action: 'Beratungsgespräch' },
-    ],
-  },
-  {
-    id: 'c3',
-    name: 'Hans Schmidt',
-    email: 'hans@example.com',
-    phone: '+49 173 5555555',
-    status: 'archived',
-    propertyInterests: [],
-    lastActivity: new Date(Date.now() - 864000000),
-    notes: 'Kein Interesse mehr, möchte später nochmal kontaktiert werden',
-    history: [
-      { date: new Date(Date.now() - 864000000), action: 'Archiviert - kein Interesse' },
-    ],
-  },
-];
-
-const statusConfig: Record<CustomerStatus, { label: string; color: string; icon: string }> = {
-  active: { label: 'Aktiv', color: 'bg-green-500', icon: '🟢' },
-  running: { label: 'Laufend', color: 'bg-yellow-500', icon: '🟡' },
-  archived: { label: 'Archiv', color: 'bg-gray-500', icon: '⚫' },
-};
-
 const KundenTab = () => {
-  const [customers, setCustomers] = useState(mockCustomers);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const filteredCustomers = customers.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          c.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  // Fetch contacts from database
+  const { data: contacts = [], isLoading, refetch } = useQuery({
+    queryKey: ['partner-contacts'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return [];
+      
+      // Get user's active tenant
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.active_tenant_id) return [];
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('tenant_id', profile.active_tenant_id)
+        .order('updated_at', { ascending: false });
+        
+      if (error) throw error;
+      return (data || []) as Contact[];
+    }
   });
 
-  const openCustomerDetail = (customer: Customer) => {
-    setSelectedCustomer(customer);
+  const filteredContacts = contacts.filter(c => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      c.first_name?.toLowerCase().includes(search) ||
+      c.last_name?.toLowerCase().includes(search) ||
+      c.email?.toLowerCase().includes(search) ||
+      c.company?.toLowerCase().includes(search)
+    );
+  });
+
+  const openContactDetail = (contact: Contact) => {
+    setSelectedContact(contact);
     setIsDrawerOpen(true);
   };
 
-  const updateStatus = (id: string, newStatus: CustomerStatus) => {
-    setCustomers(prev => prev.map(c => 
-      c.id === id ? { ...c, status: newStatus } : c
-    ));
+  const handleOpenInBeratung = (contact: Contact) => {
+    // Navigate to Beratung with customer pre-selected
+    toast.info('Öffne Beratung...', { description: `Für ${contact.first_name} ${contact.last_name}` });
+    navigate('/portal/vertriebspartner/beratung');
+  };
+
+  const handleStartDeal = (contact: Contact) => {
+    toast.success('Deal wird erstellt...', { description: `Für ${contact.first_name} ${contact.last_name}` });
+  };
+
+  const getDisplayName = (contact: Contact) => {
+    if (contact.first_name || contact.last_name) {
+      return `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+    }
+    if (contact.company) return contact.company;
+    return contact.email || 'Unbenannt';
   };
 
   return (
@@ -147,19 +145,10 @@ const KundenTab = () => {
               </div>
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Status</SelectItem>
-                <SelectItem value="active">🟢 Aktiv</SelectItem>
-                <SelectItem value="running">🟡 Laufend</SelectItem>
-                <SelectItem value="archived">⚫ Archiv</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button className="ml-auto">
+            <Button 
+              className="ml-auto"
+              onClick={() => navigate('/portal/office/kontakte')}
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               Neuer Kunde
             </Button>
@@ -170,115 +159,102 @@ const KundenTab = () => {
       {/* Customers Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Kundenakte</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Kundenakte</CardTitle>
+            <Badge variant="secondary">{contacts.length} Kontakte</Badge>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[200px]">Name</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead>Objekt-Interesse</TableHead>
-                <TableHead className="w-[150px]">Letzte Aktivität</TableHead>
-                <TableHead className="text-right w-[100px]">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Keine Kunden gefunden.
-                  </TableCell>
+                  <TableHead className="w-[250px]">Name</TableHead>
+                  <TableHead>E-Mail</TableHead>
+                  <TableHead>Telefon</TableHead>
+                  <TableHead>Firma</TableHead>
+                  <TableHead className="w-[150px]">Letzte Aktivität</TableHead>
+                  <TableHead className="text-right w-[100px]">Aktionen</TableHead>
                 </TableRow>
-              ) : (
-                filteredCustomers.map((customer) => (
-                  <TableRow 
-                    key={customer.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => openCustomerDetail(customer)}
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{customer.name}</div>
-                        <div className="text-sm text-muted-foreground">{customer.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-1">
-                        <Circle className={`h-2 w-2 fill-current ${
-                          customer.status === 'active' ? 'text-green-500' :
-                          customer.status === 'running' ? 'text-yellow-500' : 'text-gray-500'
-                        }`} />
-                        {statusConfig[customer.status].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {customer.propertyInterests.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {customer.propertyInterests.slice(0, 2).map((prop, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {prop}
-                            </Badge>
-                          ))}
-                          {customer.propertyInterests.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{customer.propertyInterests.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(customer.lastActivity, 'dd.MM.yyyy', { locale: de })}
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openCustomerDetail(customer)}>
-                            Details anzeigen
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Calculator className="mr-2 h-4 w-4" />
-                            In Beratung öffnen
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Handshake className="mr-2 h-4 w-4" />
-                            Deal starten
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => updateStatus(customer.id, 'archived')}>
-                            <Archive className="mr-2 h-4 w-4" />
-                            Archivieren
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {filteredContacts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {searchTerm 
+                        ? 'Keine Kunden gefunden.'
+                        : 'Noch keine Kunden vorhanden. Legen Sie Kontakte im KI-Office an.'}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredContacts.map((contact) => (
+                    <TableRow 
+                      key={contact.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openContactDetail(contact)}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{getDisplayName(contact)}</div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contact.email || '–'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contact.phone || '–'}
+                      </TableCell>
+                      <TableCell>
+                        {contact.company ? (
+                          <Badge variant="outline" className="text-xs">
+                            {contact.company}
+                          </Badge>
+                        ) : '–'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDistanceToNow(new Date(contact.updated_at), { locale: de, addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openContactDetail(contact)}>
+                              Details anzeigen
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenInBeratung(contact)}>
+                              <Calculator className="mr-2 h-4 w-4" />
+                              In Beratung öffnen
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStartDeal(contact)}>
+                              <Handshake className="mr-2 h-4 w-4" />
+                              Deal starten
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Customer Detail Drawer */}
+      {/* Contact Detail Drawer */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          {selectedCustomer && (
+          {selectedContact && (
             <>
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  {selectedCustomer.name}
-                  <Badge variant="outline" className="ml-2">
-                    {statusConfig[selectedCustomer.status].icon} {statusConfig[selectedCustomer.status].label}
-                  </Badge>
+                  {getDisplayName(selectedContact)}
                 </SheetTitle>
               </SheetHeader>
 
@@ -287,42 +263,18 @@ const KundenTab = () => {
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-xs uppercase">Kontaktdaten</Label>
                   <div className="space-y-1 text-sm">
-                    <div>📧 {selectedCustomer.email}</div>
-                    <div>📱 {selectedCustomer.phone}</div>
+                    {selectedContact.email && <div>📧 {selectedContact.email}</div>}
+                    {selectedContact.phone && <div>📱 {selectedContact.phone}</div>}
+                    {selectedContact.company && <div>🏢 {selectedContact.company}</div>}
                   </div>
                 </div>
 
-                {/* Property Interests */}
+                {/* Timestamps */}
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs uppercase">Objekt-Interesse</Label>
-                  {selectedCustomer.propertyInterests.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedCustomer.propertyInterests.map((prop, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                          <span className="text-sm">♥ {prop}</span>
-                          <Button variant="ghost" size="sm">
-                            → Beratung öffnen
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Keine Objekte ausgewählt</p>
-                  )}
-                </div>
-
-                {/* History */}
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs uppercase">Beratungs-Historie</Label>
-                  <div className="space-y-2">
-                    {selectedCustomer.history.map((item, idx) => (
-                      <div key={idx} className="flex gap-3 text-sm">
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {format(item.date, 'dd.MM.yyyy HH:mm', { locale: de })}
-                        </span>
-                        <span>{item.action}</span>
-                      </div>
-                    ))}
+                  <Label className="text-muted-foreground text-xs uppercase">Zeitstempel</Label>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <div>Erstellt: {format(new Date(selectedContact.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</div>
+                    <div>Aktualisiert: {format(new Date(selectedContact.updated_at), 'dd.MM.yyyy HH:mm', { locale: de })}</div>
                   </div>
                 </div>
 
@@ -330,19 +282,27 @@ const KundenTab = () => {
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-xs uppercase">Notizen</Label>
                   <Textarea 
-                    value={selectedCustomer.notes}
+                    value={selectedContact.notes || ''}
                     placeholder="Interne Notizen zum Kunden..."
                     className="min-h-[100px]"
+                    readOnly
                   />
                 </div>
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  <Button variant="outline" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleOpenInBeratung(selectedContact)}
+                  >
                     <Calculator className="mr-2 h-4 w-4" />
                     In Beratung
                   </Button>
-                  <Button className="flex-1">
+                  <Button 
+                    className="flex-1"
+                    onClick={() => handleStartDeal(selectedContact)}
+                  >
                     <Handshake className="mr-2 h-4 w-4" />
                     Deal starten
                   </Button>
