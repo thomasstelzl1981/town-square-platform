@@ -382,12 +382,15 @@ const KatalogTab = () => {
                 
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Stadt/Lage</Label>
-                  <Select value={cityFilter} onValueChange={setCityFilter}>
+                  <Select 
+                    value={cityFilter || "__all__"} 
+                    onValueChange={(v) => setCityFilter(v === "__all__" ? "" : v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Alle Städte" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Alle Städte</SelectItem>
+                      <SelectItem value="__all__">Alle Städte</SelectItem>
                       {uniqueCities.map(city => (
                         <SelectItem key={city} value={city}>{city}</SelectItem>
                       ))}

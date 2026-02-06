@@ -206,7 +206,7 @@ const BeratungTab = () => {
               </SelectTrigger>
               <SelectContent>
                 {selectedListings.length === 0 ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="__no_objects__" disabled>
                     Keine Objekte vorgemerkt
                   </SelectItem>
                 ) : (
@@ -250,7 +250,7 @@ const BeratungTab = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {customers.length === 0 ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__no_customers__" disabled>
                       Keine Kunden vorhanden
                     </SelectItem>
                   ) : (
