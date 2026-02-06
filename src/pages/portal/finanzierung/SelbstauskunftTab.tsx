@@ -48,6 +48,11 @@ const createEmptyProfile = (): ApplicantProfile => ({
   id_document_valid_until: null,
   tax_id: null,
   iban: null,
+  // NEW: Tax basis fields
+  taxable_income_yearly: null,
+  church_tax: null,
+  tax_assessment_type: null,
+  marginal_tax_rate: null,
   adults_count: null,
   children_count: null,
   children_ages: null,

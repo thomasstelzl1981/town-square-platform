@@ -18,6 +18,7 @@ export type MaritalStatus = 'ledig' | 'verheiratet' | 'geschieden' | 'verwitwet'
 export type FinancePurpose = 'eigennutzung' | 'kapitalanlage' | 'neubau' | 'modernisierung' | 'umschuldung';
 export type RentalStatus = 'vermietet' | 'leer' | 'teil';
 export type IdDocumentType = 'PA' | 'RP';
+export type TaxAssessmentType = 'EINZEL' | 'SPLITTING';
 
 export interface ApplicantProfile {
   id: string;
@@ -45,6 +46,12 @@ export interface ApplicantProfile {
   id_document_valid_until: string | null;
   tax_id: string | null;
   iban: string | null;
+  
+  // NEW: Tax basis fields (mirrored from landlord_contexts)
+  taxable_income_yearly: number | null;
+  church_tax: boolean | null;
+  tax_assessment_type: TaxAssessmentType | null;
+  marginal_tax_rate: number | null;
   
   // Household
   adults_count: number | null;
