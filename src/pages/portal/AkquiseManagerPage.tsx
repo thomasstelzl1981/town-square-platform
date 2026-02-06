@@ -2,7 +2,7 @@
  * Akquise-Manager Page (MOD-12)
  * AkquiseManager Workbench with Gate, Sourcing, Outreach, Analysis, Delivery
  * 
- * Enhanced: Self-created mandates + Tools suite
+ * 4 Tiles: Dashboard, Mandate, Objekteingang, Tools
  */
 
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Briefcase, Users, FileText, Wrench, Loader2, CheckCircle2, 
-  Clock, ArrowRight, Search, Mail, Inbox, Brain, Send, Plus, Edit
+  Clock, ArrowRight, Search, Mail, Inbox, Brain, Send, Plus, Edit, Building2
 } from 'lucide-react';
 import { 
   useAcqMandatesPending, 
@@ -39,13 +39,15 @@ import {
   PropertyResearchTool,
   QuickCalcTool
 } from './akquise-manager/components';
+import { ObjekteingangList } from './akquise-manager/ObjekteingangList';
+import { ObjekteingangDetail } from './akquise-manager/ObjekteingangDetail';
 
 // Workflow steps for mandate detail
 export const AKQUISE_MANAGER_WORKFLOW_STEPS = [
-  { id: 'gate', label: 'Annahme', path: 'dashboard' },
-  { id: 'sourcing', label: 'Sourcing', path: 'kunden' },
-  { id: 'outreach', label: 'Outreach', path: 'mandate' },
-  { id: 'delivery', label: 'Delivery', path: 'tools' },
+  { id: 'dashboard', label: 'Dashboard', path: 'dashboard' },
+  { id: 'mandate', label: 'Mandate', path: 'mandate' },
+  { id: 'objekteingang', label: 'Objekteingang', path: 'objekteingang' },
+  { id: 'tools', label: 'Tools', path: 'tools' },
 ];
 
 // Dashboard with Pending + Active + Self-created Mandates
@@ -82,7 +84,7 @@ function AkquiseDashboard() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card 
           className="border-dashed border-2 border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50 hover:bg-primary/10 transition-colors"
-          onClick={() => navigate('/portal/investments/mandat')}
+          onClick={() => navigate('/portal/akquise-manager/mandate/neu')}
         >
           <CardContent className="p-6 flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -238,7 +240,7 @@ function AkquiseDashboard() {
             <p className="text-muted-foreground mb-4">
               Erstellen Sie ein eigenes Mandat oder warten Sie auf Zuweisungen.
             </p>
-            <Button onClick={() => navigate('/portal/investments/mandat')}>
+            <Button onClick={() => navigate('/portal/akquise-manager/mandate/neu')}>
               <Plus className="h-4 w-4 mr-2" />
               Erstes Mandat erstellen
             </Button>
@@ -411,10 +413,7 @@ function AkquiseMandateDetail() {
   );
 }
 
-// Simple placeholder tiles
-function AkquiseKunden() {
-  return <ModuleTilePage title="Kunden" description="Kontaktverwaltung" icon={Users} moduleBase="akquise-manager" status="empty" emptyTitle="Keine Kontakte" emptyDescription="Fügen Sie Kontakte über Sourcing hinzu." emptyIcon={Users} />;
-}
+// Kunden tile removed - contacts managed in MOD-02
 
 function AkquiseMandate() {
   const navigate = useNavigate();
@@ -468,13 +467,50 @@ export default function AkquiseManagerPage() {
         <Routes>
           <Route index element={<ModuleHowItWorks content={content} />} />
           <Route path="dashboard" element={<AkquiseDashboard />} />
-          <Route path="kunden" element={<AkquiseKunden />} />
           <Route path="mandate" element={<AkquiseMandate />} />
+          <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
           <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
+          <Route path="objekteingang" element={<ObjekteingangList />} />
+          <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
           <Route path="tools" element={<AkquiseTools />} />
           <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
         </Routes>
       </div>
+    </div>
+  );
+}
+
+// Placeholder for mandate creation wizard (to be implemented)
+function MandatCreateWizardManager() {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/mandate')}>←</Button>
+        <div>
+          <h1 className="text-2xl font-bold">Neues Mandat erstellen</h1>
+          <p className="text-muted-foreground">Kontakt-First Workflow</p>
+        </div>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Schritt 1: Kontakt auswählen oder anlegen</CardTitle>
+          <CardDescription>
+            Wählen Sie einen bestehenden Kontakt aus MOD-02 oder legen Sie einen neuen an.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-8 text-center">
+          <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">
+            Der Kontakt-First Wizard wird in Phase 2 implementiert.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/akquise-manager/mandate')}>
+            Zurück
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

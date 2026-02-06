@@ -1,6 +1,13 @@
+# MOD-12 Akquise-Manager — Implementierungsstand
 
+## ✅ Phase 1-4 ERLEDIGT (2026-02-06)
 
-# MOD-12 Akquise-Manager — Finaler Implementierungsplan
+| Phase | Status | Beschreibung |
+|-------|--------|--------------|
+| 1. Routing | ✅ | 4 Tiles: Dashboard, Mandate, Objekteingang, Tools (Kunden entfernt) |
+| 2. Objekteingang | ✅ | ObjekteingangList + ObjekteingangDetail mit 6 Tabs |
+| 3. Kalkulation | ✅ | BestandCalculation (30-Jahres-Charts) + AufteilerCalculation (Flip) |
+| 4. Tools | 🔸 | Grundstruktur vorhanden, Drag-Drop in nächster Iteration |
 
 ## Modul-Struktur: 4 Tiles (korrigiert)
 
