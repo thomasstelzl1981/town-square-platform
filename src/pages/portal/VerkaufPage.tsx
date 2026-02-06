@@ -12,6 +12,7 @@ import { Settings } from 'lucide-react';
 const ObjekteTab = lazy(() => import('./verkauf/ObjekteTab'));
 const ReportingTab = lazy(() => import('./verkauf/ReportingTab'));
 const VorgaengeTab = lazy(() => import('./verkauf/VorgaengeTab'));
+const AnfragenTab = lazy(() => import('./verkauf/AnfragenTab'));
 const ExposeDetail = lazy(() => import('./verkauf/ExposeDetail'));
 
 // Tile: Einstellungen
@@ -38,14 +39,15 @@ const VerkaufPage = () => {
       {/* How It Works as index */}
       <Route index element={<ModuleHowItWorks content={content} />} />
       
-      {/* Tile routes - 4 tiles per manifest */}
+      {/* Tile routes - 5 tiles per manifest */}
       <Route path="objekte" element={<ObjekteTab />} />
+      <Route path="anfragen" element={<AnfragenTab />} />
       <Route path="vorgaenge" element={<VorgaengeTab />} />
       <Route path="reporting" element={<ReportingTab />} />
       <Route path="einstellungen" element={<EinstellungenTile />} />
       
-      {/* Detail routes */}
-      <Route path="expose/:propertyId" element={<ExposeDetail />} />
+      {/* Detail routes - unitId für Einheit-basiertes Exposé */}
+      <Route path="expose/:unitId" element={<ExposeDetail />} />
       
       {/* Legacy redirect */}
       <Route path="so-funktionierts" element={<Navigate to="/portal/verkauf" replace />} />
