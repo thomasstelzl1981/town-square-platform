@@ -2810,6 +2810,53 @@ export type Database = {
         }
         Relationships: []
       }
+      document_checklist_items: {
+        Row: {
+          category: string
+          checklist_type: string
+          created_at: string | null
+          doc_type: string
+          for_employment_type: string | null
+          id: string
+          is_required: boolean | null
+          label: string
+          sort_index: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          category: string
+          checklist_type: string
+          created_at?: string | null
+          doc_type: string
+          for_employment_type?: string | null
+          id?: string
+          is_required?: boolean | null
+          label: string
+          sort_index?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          category?: string
+          checklist_type?: string
+          created_at?: string | null
+          doc_type?: string
+          for_employment_type?: string | null
+          id?: string
+          is_required?: boolean | null
+          label?: string
+          sort_index?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_checklist_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_links: {
         Row: {
           created_at: string | null
@@ -2874,6 +2921,54 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_reminders: {
+        Row: {
+          created_at: string | null
+          finance_request_id: string | null
+          id: string
+          last_sent_at: string | null
+          next_reminder_at: string | null
+          reminder_type: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          finance_request_id?: string | null
+          id?: string
+          last_sent_at?: string | null
+          next_reminder_at?: string | null
+          reminder_type?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          finance_request_id?: string | null
+          id?: string
+          last_sent_at?: string | null
+          next_reminder_at?: string | null
+          reminder_type?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_reminders_finance_request_id_fkey"
+            columns: ["finance_request_id"]
+            isOneToOne: false
+            referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
