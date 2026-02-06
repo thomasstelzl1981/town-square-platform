@@ -1,10 +1,11 @@
 /**
  * MOD-07: Anfrage Tab
  * Lists finance requests with create action
+ * Now auto-redirects to detail page after creation
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,6 +54,7 @@ const objectSourceOptions = [
 export default function AnfrageTab() {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [objectSource, setObjectSource] = useState<string>('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
@@ -86,7 +88,7 @@ export default function AnfrageTab() {
 
       const { data } = await supabase
         .from('properties')
-        .select('id, address, city')
+        .select('id, address, city, postal_code, property_type, total_area_sqm, purchase_price, market_value, year_built')
         .eq('tenant_id', activeOrganization.id)
         .limit(50);
 
@@ -95,21 +97,46 @@ export default function AnfrageTab() {
     enabled: !!activeOrganization?.id && objectSource === 'portfolio',
   });
 
-  // Create mutation
+  // Create mutation - now auto-prefills and redirects
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!activeOrganization?.id) throw new Error('Keine Organisation');
 
-      const newRequest = {
+      // Get the selected property for prefilling
+      const selectedProperty = objectSource === 'portfolio' && selectedPropertyId 
+        ? properties?.find(p => p.id === selectedPropertyId)
+        : null;
+
+      // Build the insert payload with proper typing
+      const insertPayload: {
+        tenant_id: string;
+        status: string;
+        object_source: string;
+        property_id: string | null;
+        object_address?: string;
+        object_type?: string | null;
+        object_construction_year?: number | null;
+        object_living_area_sqm?: number | null;
+        purchase_price?: number | null;
+      } = {
         tenant_id: activeOrganization.id,
         status: 'draft',
         object_source: objectSource || 'custom',
         property_id: objectSource === 'portfolio' && selectedPropertyId ? selectedPropertyId : null,
       };
 
+      // Auto-prefill from selected MOD-04 property
+      if (selectedProperty) {
+        insertPayload.object_address = `${selectedProperty.address}, ${selectedProperty.postal_code} ${selectedProperty.city}`;
+        insertPayload.object_type = selectedProperty.property_type || null;
+        insertPayload.object_construction_year = selectedProperty.year_built || null;
+        insertPayload.object_living_area_sqm = selectedProperty.total_area_sqm || null;
+        insertPayload.purchase_price = selectedProperty.purchase_price || selectedProperty.market_value || null;
+      }
+
       const { data, error } = await supabase
         .from('finance_requests')
-        .insert(newRequest)
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -122,6 +149,8 @@ export default function AnfrageTab() {
       setShowCreateDialog(false);
       setObjectSource('');
       setSelectedPropertyId('');
+      // Auto-redirect to the detail page
+      navigate(`/portal/finanzierung/anfrage/${data.id}`);
     },
     onError: (error) => {
       toast.error('Fehler: ' + (error as Error).message);
