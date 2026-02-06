@@ -21,6 +21,11 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BestandCalculation } from './components/BestandCalculation';
 import { AufteilerCalculation } from './components/AufteilerCalculation';
+import { AbsageDialog } from './components/AbsageDialog';
+import { PreisvorschlagDialog } from './components/PreisvorschlagDialog';
+import { InteresseDialog } from './components/InteresseDialog';
+import { SourceEmailViewer } from './components/SourceEmailViewer';
+import { ActivityLogPanel } from './components/ActivityLogPanel';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' },
@@ -41,6 +46,9 @@ export function ObjekteingangDetail() {
   const updateStatus = useUpdateOfferStatus();
   
   const [calcTab, setCalcTab] = React.useState<'bestand' | 'aufteiler'>('bestand');
+  const [absageOpen, setAbsageOpen] = React.useState(false);
+  const [preisOpen, setPreisOpen] = React.useState(false);
+  const [interesseOpen, setInteresseOpen] = React.useState(false);
 
   // Active tab from URL hash
   const getActiveTab = () => {
@@ -126,19 +134,45 @@ export function ObjekteingangDetail() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
+          <Button 
+            variant="outline" 
+            className="text-destructive border-destructive hover:bg-destructive/10"
+            onClick={() => setAbsageOpen(true)}
+          >
             <X className="h-4 w-4 mr-2" />
             Absage
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setPreisOpen(true)}>
             <MessageSquare className="h-4 w-4 mr-2" />
             Preisvorschlag
           </Button>
-          <Button>
+          <Button onClick={() => setInteresseOpen(true)}>
             <ThumbsUp className="h-4 w-4 mr-2" />
             Interesse
           </Button>
         </div>
+
+        {/* Action Dialogs */}
+        <AbsageDialog
+          open={absageOpen}
+          onOpenChange={setAbsageOpen}
+          offerId={offer.id}
+          offerTitle={offer.title || offer.address}
+        />
+        <PreisvorschlagDialog
+          open={preisOpen}
+          onOpenChange={setPreisOpen}
+          offerId={offer.id}
+          offerTitle={offer.title || offer.address}
+          currentPrice={offer.price_asking || undefined}
+        />
+        <InteresseDialog
+          open={interesseOpen}
+          onOpenChange={setInteresseOpen}
+          offerId={offer.id}
+          offerTitle={offer.title || offer.address}
+          mandateId={offer.mandate_id || undefined}
+        />
       </div>
 
       {/* Metadata Bar */}
@@ -340,25 +374,11 @@ export function ObjekteingangDetail() {
 
         {/* Tab: E-Mail / Quelle */}
         <TabsContent value="quelle" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Original-E-Mail</CardTitle>
-              <CardDescription>
-                Die eingegangene Nachricht mit dem Exposé
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {offer.source_inbound_id ? (
-                <p className="text-sm">
-                  Verknüpft mit Inbound-Nachricht: <code className="bg-muted px-2 py-1 rounded">{offer.source_inbound_id}</code>
-                </p>
-              ) : (
-                <p className="text-muted-foreground">
-                  Dieses Angebot wurde manuell hochgeladen.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <SourceEmailViewer
+            sourceInboundId={offer.source_inbound_id}
+            sourceType={offer.source_type}
+            sourceUrl={offer.source_url}
+          />
         </TabsContent>
 
         {/* Tab: Dokumente */}
@@ -402,34 +422,7 @@ export function ObjekteingangDetail() {
 
         {/* Tab: Aktivitäten */}
         <TabsContent value="aktivitaeten" className="mt-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Aktivitäten</CardTitle>
-                <CardDescription>Verlauf und Notizen</CardDescription>
-              </div>
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Aktivität hinzufügen
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Auto-generated activity */}
-                <div className="flex gap-3">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Objekt eingegangen</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(offer.created_at), { locale: de, addSuffix: true })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ActivityLogPanel offerId={offer.id} />
         </TabsContent>
       </Tabs>
     </div>

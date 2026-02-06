@@ -403,6 +403,44 @@ export type Database = {
           },
         ]
       }
+      acq_offer_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          offer_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          offer_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          offer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_offer_activities_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acq_offer_documents: {
         Row: {
           created_at: string
@@ -456,6 +494,7 @@ export type Database = {
           calc_bestand: Json | null
           city: string | null
           created_at: string
+          data_room_folder_id: string | null
           extracted_data: Json | null
           extraction_confidence: number | null
           geomap_data: Json | null
@@ -484,6 +523,7 @@ export type Database = {
           calc_bestand?: Json | null
           city?: string | null
           created_at?: string
+          data_room_folder_id?: string | null
           extracted_data?: Json | null
           extraction_confidence?: number | null
           geomap_data?: Json | null
@@ -512,6 +552,7 @@ export type Database = {
           calc_bestand?: Json | null
           city?: string | null
           created_at?: string
+          data_room_folder_id?: string | null
           extracted_data?: Json | null
           extraction_confidence?: number | null
           geomap_data?: Json | null
@@ -533,6 +574,13 @@ export type Database = {
           yield_indicated?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "acq_offers_data_room_folder_id_fkey"
+            columns: ["data_room_folder_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "acq_offers_mandate_id_fkey"
             columns: ["mandate_id"]
