@@ -1,5 +1,6 @@
 /**
  * FM Fälle — Case List
+ * Uses centralized status labels from types/finance.ts
  */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,24 +13,12 @@ import { FolderOpen, Search, Loader2, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { FutureRoomCase } from '@/types/finance';
+import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 
 interface Props {
   cases: FutureRoomCase[];
   isLoading: boolean;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Entwurf',
-  incomplete: 'Unvollständig',
-  ready_to_submit: 'Bereit',
-  submitted_to_zone1: 'Eingereicht',
-  assigned: 'Zugewiesen',
-  in_processing: 'In Bearbeitung',
-  needs_customer_action: 'Wartet auf Kunde',
-  completed: 'Abgeschlossen',
-  rejected: 'Abgelehnt',
-  active: 'Aktiv',
-};
 
 export default function FMFaelle({ cases, isLoading }: Props) {
   const navigate = useNavigate();
@@ -126,8 +115,8 @@ export default function FMFaelle({ cases, isLoading }: Props) {
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={requestStatus === 'needs_customer_action' ? 'destructive' : 'secondary'}>
-                        {STATUS_LABELS[requestStatus] || requestStatus}
+                      <Badge variant={getStatusBadgeVariant(requestStatus)}>
+                        {getStatusLabel(requestStatus)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

@@ -13,8 +13,11 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubmitFinanceRequest } from '@/hooks/useSubmitFinanceRequest';
+import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +32,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Building2,
   FileStack,
   Calculator,
@@ -39,6 +52,7 @@ import {
   Target,
   Info,
   ArrowRight,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -243,9 +257,37 @@ function PercentInput({
 export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFormV2Props) {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState<Partial<FinanceRequestData>>({});
   const [isDirty, setIsDirty] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+
+  // Submit mutation
+  const submitMutation = useSubmitFinanceRequest();
+
+  // Fetch self-disclosure completion score
+  const { data: completionData } = useQuery({
+    queryKey: ['self-disclosure-completion', activeOrganization?.id],
+    queryFn: async () => {
+      if (!activeOrganization?.id) return { score: 0 };
+
+      const { data } = await supabase
+        .from('applicant_profiles')
+        .select('completion_score')
+        .eq('tenant_id', activeOrganization.id)
+        .eq('party_role', 'primary')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return { score: data?.completion_score ?? 0 };
+    },
+    enabled: !!activeOrganization?.id,
+  });
+
+  const completionScore = completionData?.score ?? 0;
+  const canSubmit = completionScore >= 80;
 
   // Fetch request data
   const { data: request, isLoading } = useQuery({
@@ -410,9 +452,17 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
             Objektdaten und Finanzierungswunsch erfassen
           </p>
         </div>
-        <Badge variant={request?.status === 'draft' ? 'secondary' : 'default'}>
-          {request?.status === 'draft' ? 'Entwurf' : request?.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          {/* Completion Score Badge */}
+          {!isReadOnly && (
+            <Badge variant={canSubmit ? 'default' : 'secondary'} className="text-xs">
+              Selbstauskunft: {completionScore}%
+            </Badge>
+          )}
+          <Badge variant={getStatusBadgeVariant(request?.status || 'draft')}>
+            {getStatusLabel(request?.status || 'draft')}
+          </Badge>
+        </div>
       </div>
 
       {/* Property Selector for Prefilling */}
@@ -801,14 +851,53 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
                 )}
                 Speichern
               </Button>
-              <Button disabled>
-                Zur Selbstauskunft
-                <ArrowRight className="h-4 w-4 ml-2" />
+              <Button 
+                onClick={() => setShowSubmitDialog(true)}
+                disabled={!canSubmit || isDirty || submitMutation.isPending}
+                title={!canSubmit ? `Selbstauskunft muss mind. 80% vollständig sein (aktuell: ${completionScore}%)` : ''}
+              >
+                {submitMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Zur Prüfung einreichen
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Submit Confirmation Dialog */}
+      <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Anfrage einreichen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ihre Finanzierungsanfrage wird zur Bearbeitung weitergeleitet. 
+              Nach dem Einreichen können Sie die Daten nicht mehr selbst bearbeiten.
+              <br /><br />
+              <strong>Selbstauskunft:</strong> {completionScore}% vollständig
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                submitMutation.mutate({
+                  requestId,
+                  onSuccess: () => {
+                    setShowSubmitDialog(false);
+                    navigate('/portal/finanzierung/status');
+                  },
+                });
+              }}
+            >
+              Jetzt einreichen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
