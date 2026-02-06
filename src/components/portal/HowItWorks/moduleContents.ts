@@ -418,9 +418,9 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     cta: 'Starten Sie mit dem nächsten Fall – und bringen Sie ihn bankfertig.',
     hint: 'Zuweisung von Mandaten erfolgt intern.',
     subTiles: [
-      { title: 'So funktioniert\'s', route: '/portal/finanzierungsmanager', icon: HelpCircle },
-      { title: 'Selbstauskunft', route: '/portal/finanzierungsmanager/selbstauskunft', icon: FileEdit },
-      { title: 'Einreichen', route: '/portal/finanzierungsmanager/einreichen', icon: Send },
+      { title: 'Dashboard', route: '/portal/finanzierungsmanager/dashboard', icon: LayoutGrid },
+      { title: 'Fälle', route: '/portal/finanzierungsmanager/faelle', icon: ClipboardList },
+      { title: 'Kommunikation', route: '/portal/finanzierungsmanager/kommunikation', icon: MessageCircle },
       { title: 'Status', route: '/portal/finanzierungsmanager/status', icon: Activity },
     ],
   },
@@ -492,9 +492,9 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     cta: 'Projektübersicht öffnen – und behalten Sie den Überblick.',
     subTiles: [
       { title: 'Übersicht', route: '/portal/projekte/uebersicht', icon: FolderKanban },
-      { title: 'Portfolio', route: '/portal/projekte/portfolio', icon: LayoutGrid },
       { title: 'Timeline', route: '/portal/projekte/timeline', icon: Clock },
-      { title: 'Einstellungen', route: '/portal/projekte/settings', icon: Cog },
+      { title: 'Dokumente', route: '/portal/projekte/dokumente', icon: FileText },
+      { title: 'Einstellungen', route: '/portal/projekte/einstellungen', icon: Cog },
     ],
   },
 
