@@ -2857,6 +2857,60 @@ export type Database = {
           },
         ]
       }
+      document_chunks: {
+        Row: {
+          char_end: number | null
+          char_start: number | null
+          chunk_index: number
+          created_at: string
+          document_id: string
+          id: string
+          metadata: Json | null
+          page_number: number | null
+          tenant_id: string
+          text: string
+        }
+        Insert: {
+          char_end?: number | null
+          char_start?: number | null
+          chunk_index?: number
+          created_at?: string
+          document_id: string
+          id?: string
+          metadata?: Json | null
+          page_number?: number | null
+          tenant_id: string
+          text: string
+        }
+        Update: {
+          char_end?: number | null
+          char_start?: number | null
+          chunk_index?: number
+          created_at?: string
+          document_id?: string
+          id?: string
+          metadata?: Json | null
+          page_number?: number | null
+          tenant_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_chunks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_links: {
         Row: {
           created_at: string | null
@@ -3097,14 +3151,18 @@ export type Database = {
       }
       extractions: {
         Row: {
+          actual_cost: number | null
           actual_cost_cents: number | null
           actual_pages: number | null
+          chunks_count: number | null
           consent_given_at: string | null
           consent_given_by: string | null
+          consent_mode: string | null
           created_at: string
           document_id: string
           engine: string
           error_message: string | null
+          estimated_cost: number | null
           estimated_cost_cents: number | null
           estimated_pages: number | null
           finished_at: string | null
@@ -3117,14 +3175,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_cost?: number | null
           actual_cost_cents?: number | null
           actual_pages?: number | null
+          chunks_count?: number | null
           consent_given_at?: string | null
           consent_given_by?: string | null
+          consent_mode?: string | null
           created_at?: string
           document_id: string
           engine: string
           error_message?: string | null
+          estimated_cost?: number | null
           estimated_cost_cents?: number | null
           estimated_pages?: number | null
           finished_at?: string | null
@@ -3137,14 +3199,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_cost?: number | null
           actual_cost_cents?: number | null
           actual_pages?: number | null
+          chunks_count?: number | null
           consent_given_at?: string | null
           consent_given_by?: string | null
+          consent_mode?: string | null
           created_at?: string
           document_id?: string
           engine?: string
           error_message?: string | null
+          estimated_cost?: number | null
           estimated_cost_cents?: number | null
           estimated_pages?: number | null
           finished_at?: string | null
@@ -9095,6 +9161,16 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
+      search_document_chunks: {
+        Args: { p_limit?: number; p_query: string; p_tenant_id: string }
+        Returns: {
+          chunk_id: string
+          chunk_text: string
+          document_id: string
+          page_number: number
+          rank: number
+        }[]
+      }
       seed_golden_path_data: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

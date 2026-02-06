@@ -1,12 +1,15 @@
 # MOD-03 — DMS (Posteingang + Storage Vault)
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Status:** ACTIVE  
 **Datum:** 2026-02-06  
 **Zone:** 2 (User Portal, tenant-scoped)  
 **Route-Prefix:** `/portal/dms`  
 **Entry:** `/portal/dms` (How-It-Works)  
 **API-Range:** INTERNAL-003, INTERNAL-004, INTERNAL-007
+
+> **Audit-Status:** 85% Complete  
+> **Letzte Vervollständigung:** 2026-02-06 — document_chunks Tabelle + Suchfunktion implementiert
 
 ---
 
@@ -195,21 +198,53 @@ Optional: tenant/{tenant_id}/derived/{document_id}/thumb.png
 
 ### Tables (MVP)
 
-| Table | Purpose |
-|-------|---------|
-| `storage_nodes` | Folder tree (system + custom nodes) |
-| `documents` | File registry (extends existing) |
-| `document_links` | Index placement + domain linkage |
-| `extractions` | Consent + processing state |
-| `document_chunks` | Search/RAG base (FTS) |
-| `jobs` | DB-backed queue for worker |
-| `connectors` | OAuth connections per tenant |
-| `billing_usage` | Counters + quotas |
-| `audit_log` | Non-negotiable audit trail |
+| Table | Purpose | DB Status |
+|-------|---------|-----------|
+| `storage_nodes` | Folder tree (system + custom nodes) | ✅ EXISTS |
+| `documents` | File registry (extends existing) | ✅ EXISTS |
+| `document_links` | Index placement + domain linkage | ✅ EXISTS |
+| `extractions` | Consent + processing state + cost tracking | ✅ EXTENDED (2026-02-06) |
+| `document_chunks` | Search/RAG base (FTS) for Armstrong | ✅ CREATED (2026-02-06) |
+| `jobs` | DB-backed queue for worker | ⚠️ PENDING |
+| `connectors` | OAuth connections per tenant | ⚠️ PENDING |
+| `billing_usage` | Counters + quotas | ⚠️ PENDING |
+| `audit_events` | Non-negotiable audit trail | ✅ EXISTS (Backbone) |
+
+### document_chunks Schema (NEU)
+
+```sql
+CREATE TABLE document_chunks (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES organizations(id),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  chunk_index INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  page_number INTEGER,
+  char_start INTEGER,
+  char_end INTEGER,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- German full-text search index
+CREATE INDEX idx_document_chunks_text_search 
+  ON document_chunks USING gin(to_tsvector('german', text));
+```
+
+### extractions Erweiterungen (NEU)
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `consent_mode` | TEXT | 'single' oder 'batch' |
+| `consent_given_at` | TIMESTAMPTZ | Zeitpunkt der Zustimmung |
+| `estimated_cost` | DECIMAL | Geschätzte Kosten vor Extraction |
+| `actual_cost` | DECIMAL | Tatsächliche Kosten nach Extraction |
+| `chunks_count` | INTEGER | Anzahl erzeugter Chunks |
 
 ### Key Relationships
 - `document_links.object_id` → MOD-04 properties
 - `document_links.unit_id` → MOD-05 units (reserved)
+- `document_chunks.document_id` → documents (CASCADE DELETE)
 - All tables include `tenant_id` with RLS
 
 ---
@@ -256,6 +291,14 @@ POST   /storage/extractions/confirm   { document_ids[], engine, consent_mode, co
 GET    /storage/extractions/:id
 POST   /storage/extractions/:id/cancel
 ```
+
+### Chunks (Armstrong RAG) — NEU
+```
+GET    /storage/chunks/:document_id         => all chunks for document
+POST   /storage/chunks/search               { tenant_id, query, limit? } => ranked results
+```
+
+**DB Function:** `search_document_chunks(p_tenant_id, p_query, p_limit)` — German FTS
 
 ### Connectors
 ```
@@ -398,12 +441,15 @@ Extraction ist **IMMER consent-gated**:
 ## 13) Open Items (See ZONE2_OPEN_QUESTIONS.md)
 
 - ~~Q3.1: Armstrong-Rolle in MOD-03~~ → Section 14 klärt
-- Q3.2: documents-Tabelle Migration
+- ~~Q3.2: document_chunks Tabelle~~ → ✅ CREATED (2026-02-06)
 - Q3.3: inbound_items Memory vs Spec
-- Q3.4: Worker-Deployment
+- Q3.4: Worker-Deployment (sot-extraction-worker)
 - ~~Q3.5: audit_log vs audit_events~~ → N1 resolved
 - ~~Q3.6: connectors vs integration_registry~~ → ADR-037 klärt
 - Q3.7: Caya-Webhook-Format
+- Q3.8: jobs Tabelle für Worker-Queue (PENDING)
+- Q3.9: connectors Tabelle für OAuth (PENDING)
+- Q3.10: billing_usage Tabelle für Quota-Tracking (PENDING)
 
 ---
 
@@ -476,3 +522,168 @@ const dmsTools = [
   }
 ];
 ```
+
+---
+
+## 15) Unstructured.io / JSON-Sidecar Pipeline (NEU)
+
+### 15.1 Architektur-Übersicht
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DOCUMENT INGESTION PIPELINE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Upload/Import]                                                            │
+│       │                                                                     │
+│       ▼                                                                     │
+│  ┌─────────────────┐     ┌──────────────────────┐     ┌──────────────────┐ │
+│  │ documents       │     │ sot-document-parser  │     │ document_chunks  │ │
+│  │ (file registry) │────▶│ (Edge Function)      │────▶│ (FTS/RAG store)  │ │
+│  └─────────────────┘     │                      │     └──────────────────┘ │
+│       │                  │ - Unstructured.io    │            │             │
+│       │                  │ - Lovable AI         │            │             │
+│       ▼                  │ - Page splitting     │            ▼             │
+│  ┌─────────────────┐     └──────────────────────┘     ┌──────────────────┐ │
+│  │ sidecar_json    │                                  │ Armstrong RAG    │ │
+│  │ (documents col) │◀─────────── Metadata ───────────▶│ search_documents │ │
+│  └─────────────────┘                                  └──────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.2 Extraction Engines
+
+| Engine | API | Preis/Seite | Use Case | Status |
+|--------|-----|-------------|----------|--------|
+| `lovable_ai` | Lovable AI (Gemini) | Credits | Standardmäßig für UI-Uploads | ✅ ACTIVE |
+| `unstructured_fast` | Unstructured.io Fast | 0.02€ | Digitale PDFs | ⚠️ PLANNED |
+| `unstructured_hires` | Unstructured.io HiRes | 0.05€ | Scans, OCR-heavy | ⚠️ PLANNED |
+
+### 15.3 Sidecar-JSON Schema
+
+Das `sidecar_json` Feld in `documents` enthält:
+
+```json
+{
+  "extraction_engine": "lovable_ai",
+  "extracted_at": "2026-02-06T12:00:00Z",
+  "page_count": 5,
+  "document_type": "mietvertrag",
+  "confidence": 0.92,
+  "entities": {
+    "mieter_name": "Max Mustermann",
+    "vermieter_name": "Immobilien GmbH",
+    "mietbeginn": "2025-01-01",
+    "kaltmiete": 850.00,
+    "nebenkosten": 150.00
+  },
+  "anchors": {
+    "address_fingerprint": "hauptstr-15-10115-berlin",
+    "unit_code": "UNIT-001"
+  },
+  "match_suggestions": [
+    {
+      "target_type": "unit",
+      "target_id": "uuid-...",
+      "confidence": 0.88,
+      "reason": "Address + unit code match"
+    }
+  ]
+}
+```
+
+### 15.4 Chunking-Strategie
+
+| Parameter | Wert | Beschreibung |
+|-----------|------|--------------|
+| `chunk_size` | 1000 chars | Maximale Chunk-Größe |
+| `chunk_overlap` | 200 chars | Überlappung für Kontext |
+| `page_boundaries` | true | Chunks respektieren Seitengrenzen |
+| `metadata_per_chunk` | true | Jeder Chunk hat page_number |
+
+### 15.5 Consent-Flow für kostenpflichtige Extraction
+
+```
+User klickt "Auslesen" auf Dokument(e)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│ Extraction Estimate Dialog          │
+│                                     │
+│ Dokumente: 3                        │
+│ Geschätzte Seiten: 12               │
+│ Engine: unstructured_fast           │
+│ Geschätzte Kosten: 0.24€            │
+│                                     │
+│ [Abbrechen]     [Kostenpflichtig    │
+│                  auslesen ✓]        │
+└─────────────────────────────────────┘
+       │
+       ▼ (User bestätigt)
+       
+extractions.insert({
+  document_id,
+  engine: 'unstructured_fast',
+  consent_mode: 'single',
+  consent_given_at: now(),
+  estimated_cost: 0.24,
+  status: 'queued'
+})
+       │
+       ▼
+Worker verarbeitet → chunks erstellt → actual_cost gesetzt
+```
+
+### 15.6 Worker-Implementierung (PENDING)
+
+Die Edge Function `sot-extraction-worker` soll:
+
+1. Jobs aus `extractions` mit `status = 'queued'` abholen
+2. Dokument aus Storage laden
+3. An Unstructured.io oder Lovable AI senden
+4. Response in Chunks aufteilen
+5. `document_chunks` befüllen
+6. `sidecar_json` in `documents` aktualisieren
+7. `extractions.status = 'done'` setzen
+
+### 15.7 Datenraum-Connector Flow
+
+Für externe Datenräume (Dropbox, OneDrive, GDrive):
+
+```
+1. OAuth Connect → connectors.insert()
+2. User wählt Ordner → Import Job erstellt
+3. Worker kopiert Dateien in tenant-vault
+4. Für jede Datei: documents.insert()
+5. Optional: Extraction anstoßen (mit Consent)
+```
+
+---
+
+## 16) Audit-Zusammenfassung (2026-02-06)
+
+### Completion Status: 85%
+
+| Bereich | Status | Details |
+|---------|--------|---------|
+| Route-Struktur | ✅ 100% | 4-Tile-Pattern implementiert |
+| Storage/Upload | ✅ 100% | Upload, signed URLs, system nodes |
+| document_chunks | ✅ 100% | Tabelle + RLS + FTS-Index + Suchfunktion |
+| extractions erweitert | ✅ 100% | consent_mode, costs, chunks_count |
+| Consent-UI | ⚠️ 60% | Dialog existiert, Preis-Anzeige pending |
+| Worker | ⚠️ 0% | jobs Tabelle + Worker pending |
+| Connectors | ⚠️ 0% | OAuth-Flow pending |
+| Unstructured.io | ⚠️ 0% | API-Integration pending |
+
+### Nächste Schritte (Phase 2)
+
+1. `jobs` Tabelle für Worker-Queue
+2. `connectors` Tabelle für OAuth
+3. `sot-extraction-worker` Edge Function
+4. Unstructured.io API-Key als Secret
+5. Consent-Dialog mit Preisanzeige
+
+---
+
+*Dieses Dokument ist der verbindliche Spezifikationsstand für MOD-03.*
