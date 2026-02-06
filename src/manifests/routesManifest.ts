@@ -332,12 +332,14 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["partner"], requires_activation: true, requires_role: ["akquise_manager"] },
       tiles: [
         { path: "dashboard", component: "AkquiseDashboard", title: "Dashboard", default: true },
-        { path: "kunden", component: "AkquiseKunden", title: "Kunden" },
         { path: "mandate", component: "AkquiseMandate", title: "Mandate" },
+        { path: "objekteingang", component: "AkquiseObjekteingang", title: "Objekteingang" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
       ],
       dynamic_routes: [
+        { path: "mandate/neu", component: "MandatCreateWizardManager", title: "Neues Mandat" },
         { path: "mandate/:mandateId", component: "AkquiseMandateDetail", title: "Mandat-Workbench", dynamic: true },
+        { path: "objekteingang/:offerId", component: "ObjekteingangDetail", title: "Objekteingang Detail", dynamic: true },
       ],
     },
     "MOD-13": {
