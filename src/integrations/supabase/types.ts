@@ -819,15 +819,80 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_liabilities: {
+        Row: {
+          applicant_profile_id: string
+          created_at: string | null
+          creditor_name: string | null
+          end_date: string | null
+          id: string
+          interest_rate_fixed_until: string | null
+          liability_type: string
+          monthly_rate: number | null
+          original_amount: number | null
+          remaining_balance: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_profile_id: string
+          created_at?: string | null
+          creditor_name?: string | null
+          end_date?: string | null
+          id?: string
+          interest_rate_fixed_until?: string | null
+          liability_type: string
+          monthly_rate?: number | null
+          original_amount?: number | null
+          remaining_balance?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_profile_id?: string
+          created_at?: string | null
+          creditor_name?: string | null
+          end_date?: string | null
+          id?: string
+          interest_rate_fixed_until?: string | null
+          liability_type?: string
+          monthly_rate?: number | null
+          original_amount?: number | null
+          remaining_balance?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_liabilities_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_liabilities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicant_profiles: {
         Row: {
           address_city: string | null
           address_postal_code: string | null
+          address_since: string | null
           address_street: string | null
           adults_count: number | null
+          alimony_income_monthly: number | null
           ancillary_costs: number | null
           bank_savings: number | null
+          bic: string | null
+          birth_country: string | null
           birth_date: string | null
+          birth_name: string | null
           birth_place: string | null
           bonus_yearly: number | null
           building_society_value: number | null
@@ -836,6 +901,7 @@ export type Database = {
           child_support_amount_monthly: number | null
           child_support_obligation: boolean | null
           children_ages: string | null
+          children_birth_dates: string | null
           children_count: number | null
           church_tax: boolean | null
           company_address: string | null
@@ -849,11 +915,13 @@ export type Database = {
           company_register_number: string | null
           company_vat_id: string | null
           completion_score: number | null
+          contract_type: string | null
           created_at: string
           current_rent_monthly: number | null
           data_correct_confirmed: boolean | null
           email: string | null
           employed_since: string | null
+          employer_in_germany: boolean | null
           employer_industry: string | null
           employer_location: string | null
           employer_name: string | null
@@ -863,6 +931,7 @@ export type Database = {
           finance_request_id: string | null
           first_name: string | null
           fixed_rate_period_years: number | null
+          has_side_job: boolean | null
           health_insurance_monthly: number | null
           iban: string | null
           id: string
@@ -890,31 +959,53 @@ export type Database = {
           other_income_description: string | null
           other_regular_income_monthly: number | null
           party_role: string
+          pension_private_monthly: number | null
+          pension_state_monthly: number | null
           phone: string | null
+          phone_mobile: string | null
           planned_rent_monthly: number | null
           position: string | null
+          previous_address_city: string | null
+          previous_address_postal_code: string | null
+          previous_address_street: string | null
           probation_until: string | null
           profile_type: string
+          property_separation: boolean | null
           purchase_price: number | null
           purpose: string | null
+          rental_income_monthly: number | null
           rental_status: string | null
           repayment_rate_percent: number | null
+          retirement_date: string | null
+          salary_currency: string | null
+          salary_payments_per_year: number | null
+          salutation: string | null
           schufa_consent: boolean | null
           securities_value: number | null
+          self_employed_income_monthly: number | null
+          side_job_income_monthly: number | null
+          side_job_since: string | null
+          side_job_type: string | null
           tax_assessment_type: string | null
           tax_id: string | null
           taxable_income_yearly: number | null
           tenant_id: string
           updated_at: string
+          vehicles_count: number | null
         }
         Insert: {
           address_city?: string | null
           address_postal_code?: string | null
+          address_since?: string | null
           address_street?: string | null
           adults_count?: number | null
+          alimony_income_monthly?: number | null
           ancillary_costs?: number | null
           bank_savings?: number | null
+          bic?: string | null
+          birth_country?: string | null
           birth_date?: string | null
+          birth_name?: string | null
           birth_place?: string | null
           bonus_yearly?: number | null
           building_society_value?: number | null
@@ -923,6 +1014,7 @@ export type Database = {
           child_support_amount_monthly?: number | null
           child_support_obligation?: boolean | null
           children_ages?: string | null
+          children_birth_dates?: string | null
           children_count?: number | null
           church_tax?: boolean | null
           company_address?: string | null
@@ -936,11 +1028,13 @@ export type Database = {
           company_register_number?: string | null
           company_vat_id?: string | null
           completion_score?: number | null
+          contract_type?: string | null
           created_at?: string
           current_rent_monthly?: number | null
           data_correct_confirmed?: boolean | null
           email?: string | null
           employed_since?: string | null
+          employer_in_germany?: boolean | null
           employer_industry?: string | null
           employer_location?: string | null
           employer_name?: string | null
@@ -950,6 +1044,7 @@ export type Database = {
           finance_request_id?: string | null
           first_name?: string | null
           fixed_rate_period_years?: number | null
+          has_side_job?: boolean | null
           health_insurance_monthly?: number | null
           iban?: string | null
           id?: string
@@ -977,31 +1072,53 @@ export type Database = {
           other_income_description?: string | null
           other_regular_income_monthly?: number | null
           party_role?: string
+          pension_private_monthly?: number | null
+          pension_state_monthly?: number | null
           phone?: string | null
+          phone_mobile?: string | null
           planned_rent_monthly?: number | null
           position?: string | null
+          previous_address_city?: string | null
+          previous_address_postal_code?: string | null
+          previous_address_street?: string | null
           probation_until?: string | null
           profile_type?: string
+          property_separation?: boolean | null
           purchase_price?: number | null
           purpose?: string | null
+          rental_income_monthly?: number | null
           rental_status?: string | null
           repayment_rate_percent?: number | null
+          retirement_date?: string | null
+          salary_currency?: string | null
+          salary_payments_per_year?: number | null
+          salutation?: string | null
           schufa_consent?: boolean | null
           securities_value?: number | null
+          self_employed_income_monthly?: number | null
+          side_job_income_monthly?: number | null
+          side_job_since?: string | null
+          side_job_type?: string | null
           tax_assessment_type?: string | null
           tax_id?: string | null
           taxable_income_yearly?: number | null
           tenant_id: string
           updated_at?: string
+          vehicles_count?: number | null
         }
         Update: {
           address_city?: string | null
           address_postal_code?: string | null
+          address_since?: string | null
           address_street?: string | null
           adults_count?: number | null
+          alimony_income_monthly?: number | null
           ancillary_costs?: number | null
           bank_savings?: number | null
+          bic?: string | null
+          birth_country?: string | null
           birth_date?: string | null
+          birth_name?: string | null
           birth_place?: string | null
           bonus_yearly?: number | null
           building_society_value?: number | null
@@ -1010,6 +1127,7 @@ export type Database = {
           child_support_amount_monthly?: number | null
           child_support_obligation?: boolean | null
           children_ages?: string | null
+          children_birth_dates?: string | null
           children_count?: number | null
           church_tax?: boolean | null
           company_address?: string | null
@@ -1023,11 +1141,13 @@ export type Database = {
           company_register_number?: string | null
           company_vat_id?: string | null
           completion_score?: number | null
+          contract_type?: string | null
           created_at?: string
           current_rent_monthly?: number | null
           data_correct_confirmed?: boolean | null
           email?: string | null
           employed_since?: string | null
+          employer_in_germany?: boolean | null
           employer_industry?: string | null
           employer_location?: string | null
           employer_name?: string | null
@@ -1037,6 +1157,7 @@ export type Database = {
           finance_request_id?: string | null
           first_name?: string | null
           fixed_rate_period_years?: number | null
+          has_side_job?: boolean | null
           health_insurance_monthly?: number | null
           iban?: string | null
           id?: string
@@ -1064,22 +1185,39 @@ export type Database = {
           other_income_description?: string | null
           other_regular_income_monthly?: number | null
           party_role?: string
+          pension_private_monthly?: number | null
+          pension_state_monthly?: number | null
           phone?: string | null
+          phone_mobile?: string | null
           planned_rent_monthly?: number | null
           position?: string | null
+          previous_address_city?: string | null
+          previous_address_postal_code?: string | null
+          previous_address_street?: string | null
           probation_until?: string | null
           profile_type?: string
+          property_separation?: boolean | null
           purchase_price?: number | null
           purpose?: string | null
+          rental_income_monthly?: number | null
           rental_status?: string | null
           repayment_rate_percent?: number | null
+          retirement_date?: string | null
+          salary_currency?: string | null
+          salary_payments_per_year?: number | null
+          salutation?: string | null
           schufa_consent?: boolean | null
           securities_value?: number | null
+          self_employed_income_monthly?: number | null
+          side_job_income_monthly?: number | null
+          side_job_since?: string | null
+          side_job_type?: string | null
           tax_assessment_type?: string | null
           tax_id?: string | null
           taxable_income_yearly?: number | null
           tenant_id?: string
           updated_at?: string
+          vehicles_count?: number | null
         }
         Relationships: [
           {
@@ -3259,48 +3397,102 @@ export type Database = {
       }
       finance_requests: {
         Row: {
+          broker_fee: number | null
           created_at: string
           created_by: string | null
           custom_object_data: Json | null
+          equity_amount: number | null
+          fixed_rate_period_years: number | null
           id: string
           listing_id: string | null
+          loan_amount_requested: number | null
+          max_monthly_rate: number | null
+          modernization_costs: number | null
+          notary_costs: number | null
+          object_address: string | null
+          object_construction_year: number | null
+          object_equipment_level: string | null
+          object_land_area_sqm: number | null
+          object_living_area_sqm: number | null
+          object_location_quality: string | null
           object_source: string | null
+          object_type: string | null
           property_id: string | null
           public_id: string | null
+          purchase_price: number | null
+          purpose: string | null
+          repayment_rate_percent: number | null
           status: string
           storage_folder_id: string | null
           submitted_at: string | null
           tenant_id: string
+          transfer_tax: number | null
           updated_at: string
         }
         Insert: {
+          broker_fee?: number | null
           created_at?: string
           created_by?: string | null
           custom_object_data?: Json | null
+          equity_amount?: number | null
+          fixed_rate_period_years?: number | null
           id?: string
           listing_id?: string | null
+          loan_amount_requested?: number | null
+          max_monthly_rate?: number | null
+          modernization_costs?: number | null
+          notary_costs?: number | null
+          object_address?: string | null
+          object_construction_year?: number | null
+          object_equipment_level?: string | null
+          object_land_area_sqm?: number | null
+          object_living_area_sqm?: number | null
+          object_location_quality?: string | null
           object_source?: string | null
+          object_type?: string | null
           property_id?: string | null
           public_id?: string | null
+          purchase_price?: number | null
+          purpose?: string | null
+          repayment_rate_percent?: number | null
           status?: string
           storage_folder_id?: string | null
           submitted_at?: string | null
           tenant_id: string
+          transfer_tax?: number | null
           updated_at?: string
         }
         Update: {
+          broker_fee?: number | null
           created_at?: string
           created_by?: string | null
           custom_object_data?: Json | null
+          equity_amount?: number | null
+          fixed_rate_period_years?: number | null
           id?: string
           listing_id?: string | null
+          loan_amount_requested?: number | null
+          max_monthly_rate?: number | null
+          modernization_costs?: number | null
+          notary_costs?: number | null
+          object_address?: string | null
+          object_construction_year?: number | null
+          object_equipment_level?: string | null
+          object_land_area_sqm?: number | null
+          object_living_area_sqm?: number | null
+          object_location_quality?: string | null
           object_source?: string | null
+          object_type?: string | null
           property_id?: string | null
           public_id?: string | null
+          purchase_price?: number | null
+          purpose?: string | null
+          repayment_rate_percent?: number | null
           status?: string
           storage_folder_id?: string | null
           submitted_at?: string | null
           tenant_id?: string
+          transfer_tax?: number | null
           updated_at?: string
         }
         Relationships: [
