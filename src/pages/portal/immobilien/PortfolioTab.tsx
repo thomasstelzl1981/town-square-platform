@@ -394,32 +394,32 @@ export function PortfolioTab() {
     };
   }, [unitsWithProperties, filteredUnits, selectedContextId, loansData]);
 
-  // Tilgungsverlauf Chart Data (30 Jahre Projektion)
+  // Tilgungsverlauf Chart Data (30 Jahre Projektion) — korrigiert mit objektwert/vermoegen
   const amortizationData = useMemo(() => {
-    if (!totals || totals.totalDebt === 0) return [];
+    if (!totals || totals.totalDebt <= 0) return [];
     
+    const appreciationRate = 0.02; // 2% Wertzuwachs p.a.
     const years = [];
-    let debt = totals.totalDebt;
-    let equity = totals.totalValue - totals.totalDebt;
-    const annualPayment = totals.totalAnnuity;
-    const interestRate = totals.avgInterestRate / 100;
-    const valueGrowthRate = 0.02; // 2% jährlicher Wertzuwachs
+    let currentDebt = totals.totalDebt;
     let currentValue = totals.totalValue;
+    const annuity = totals.totalAnnuity;
+    const interestRate = totals.avgInterestRate / 100;
     
     for (let year = 0; year <= 30; year++) {
+      const wealth = currentValue - currentDebt;
+      
       years.push({ 
         year: 2026 + year, 
-        restschuld: Math.max(0, Math.round(debt)),
-        eigenkapital: Math.round(equity),
-        verkehrswert: Math.round(currentValue)
+        objektwert: Math.round(currentValue),     // Verkehrswert (steigend)
+        restschuld: Math.max(0, Math.round(currentDebt)),  // Restschuld (fallend)
+        vermoegen: Math.round(wealth)             // Netto-Vermögen (Differenz)
       });
       
-      // Berechnung für nächstes Jahr
-      const interest = debt * interestRate;
-      const amortization = Math.min(annualPayment - interest, debt);
-      debt = Math.max(0, debt - amortization);
-      currentValue = currentValue * (1 + valueGrowthRate);
-      equity = currentValue - debt;
+      // Nächstes Jahr berechnen
+      const interest = currentDebt * interestRate;
+      const amortization = Math.min(annuity - interest, currentDebt);
+      currentDebt = Math.max(0, currentDebt - amortization);
+      currentValue = currentValue * (1 + appreciationRate);
     }
     return years;
   }, [totals]);
@@ -600,10 +600,10 @@ export function PortfolioTab() {
         />
       </div>
 
-      {/* Charts: Tilgungsverlauf & EÜR */}
+      {/* Charts: Tilgungsverlauf & Monatliche EÜR */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Tilgungsverlauf über 30 Jahre */}
-        <ChartCard title="Tilgungsverlauf & Wertzuwachs (30 Jahre)">
+        {/* Tilgungsverlauf über 30 Jahre — korrigiert mit objektwert/vermoegen */}
+        <ChartCard title="Vermögensentwicklung (30 Jahre)">
           {hasData && amortizationData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={amortizationData}>
@@ -622,22 +622,25 @@ export function PortfolioTab() {
                   labelFormatter={(label) => `Jahr ${label}`}
                 />
                 <Legend />
+                {/* Objektwert als äußere Fläche (hellblau) */}
                 <Area 
                   type="monotone" 
-                  dataKey="verkehrswert" 
-                  name="Verkehrswert"
+                  dataKey="objektwert" 
+                  name="Objektwert"
                   stroke="hsl(var(--chart-1))" 
                   fill="hsl(var(--chart-1))"
-                  fillOpacity={0.2}
+                  fillOpacity={0.15}
                 />
+                {/* Vermögen als innere Fläche (grün) */}
                 <Area 
                   type="monotone" 
-                  dataKey="eigenkapital" 
-                  name="Eigenkapital"
-                  stroke="hsl(var(--chart-2))" 
-                  fill="hsl(var(--chart-2))"
-                  fillOpacity={0.3}
+                  dataKey="vermoegen" 
+                  name="Netto-Vermögen"
+                  stroke="hsl(142, 71%, 45%)" 
+                  fill="hsl(142, 71%, 45%)"
+                  fillOpacity={0.4}
                 />
+                {/* Restschuld als Linie (rot, fallend) */}
                 <Line 
                   type="monotone" 
                   dataKey="restschuld" 
@@ -658,40 +661,104 @@ export function PortfolioTab() {
           )}
         </ChartCard>
 
-        {/* EÜR-Darstellung */}
-        <ChartCard title="Einnahmenüberschussrechnung (EÜR) p.a.">
-          {hasData && eurChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={eurChartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  type="number" 
-                  tick={{ fontSize: 11 }} 
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k €`}
-                />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  width={120} 
-                  tick={{ fontSize: 11 }} 
-                />
-                <Tooltip formatter={(value: number) => formatCurrency(Math.abs(value))} />
-                <Bar 
-                  dataKey="value" 
-                  radius={[0, 4, 4, 0]}
-                  fill="hsl(var(--primary))"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[280px] flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <p>Keine Einnahmen-/Ausgabendaten vorhanden</p>
-                <p className="text-xs mt-1">Fügen Sie Immobilien mit Mieteinnahmen hinzu</p>
+        {/* Monatliche EÜR-Übersicht als Zwei-Spalten-Layout */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Monatliche Übersicht (EÜR)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {hasData && totals ? (
+              (() => {
+                // Monatliche Werte berechnen
+                const monthlyRent = totals.totalIncome / 12;
+                const annualInterest = loansData?.reduce((sum, l) => {
+                  const balance = l.outstanding_balance_eur || 0;
+                  const rate = (l.interest_rate_percent || 0) / 100;
+                  return sum + (balance * rate);
+                }, 0) || 0;
+                const monthlyInterest = annualInterest / 12;
+                const monthlyAmortization = (totals.totalAnnuity - annualInterest) / 12;
+                const monthlyNK = (totals.totalValue * 0.005) / 12; // 0.5% nicht umlagefähig p.a.
+                
+                // Steuervorteil (vereinfacht: 42% Grenzsteuersatz auf Zinsen + NK + AfA)
+                const afaAnnual = totals.totalValue * 0.02; // 2% AfA
+                const taxDeduction = (annualInterest + (totals.totalValue * 0.005) + afaAnnual) * 0.42;
+                const monthlyTaxBenefit = taxDeduction / 12;
+                
+                const totalIncome = monthlyRent + monthlyTaxBenefit;
+                const totalExpenses = monthlyInterest + monthlyAmortization + monthlyNK;
+                const monthlyResult = totalIncome - totalExpenses;
+
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-8">
+                      {/* Einnahmen */}
+                      <div>
+                        <h4 className="font-medium text-green-600 mb-3">Einnahmen</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Mieteinnahmen</span>
+                            <span className="font-medium">{formatCurrency(monthlyRent)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Steuervorteil</span>
+                            <span className="font-medium">{formatCurrency(monthlyTaxBenefit)}</span>
+                          </div>
+                          <div className="border-t pt-2 mt-2">
+                            <div className="flex justify-between font-semibold">
+                              <span>Summe</span>
+                              <span className="text-green-600">{formatCurrency(totalIncome)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Ausgaben */}
+                      <div>
+                        <h4 className="font-medium text-red-600 mb-3">Ausgaben</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Nicht umlf. NK</span>
+                            <span className="font-medium text-red-600">-{formatCurrency(monthlyNK)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Zinsen</span>
+                            <span className="font-medium text-red-600">-{formatCurrency(monthlyInterest)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Tilgung</span>
+                            <span className="font-medium text-red-600">-{formatCurrency(monthlyAmortization)}</span>
+                          </div>
+                          <div className="border-t pt-2 mt-2">
+                            <div className="flex justify-between font-semibold">
+                              <span>Summe</span>
+                              <span className="text-red-600">-{formatCurrency(totalExpenses)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Ergebnis */}
+                    <div className="mt-6 pt-4 border-t text-center">
+                      <span className="text-muted-foreground">Monatliches Ergebnis: </span>
+                      <span className={`text-lg font-bold ${monthlyResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {monthlyResult >= 0 ? '+' : ''}{formatCurrency(monthlyResult)}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <p>Keine Einnahmen-/Ausgabendaten vorhanden</p>
+                  <p className="text-xs mt-1">Fügen Sie Immobilien mit Mieteinnahmen hinzu</p>
+                </div>
               </div>
-            </div>
-          )}
-        </ChartCard>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Excel Import Zone (collapsed) */}
