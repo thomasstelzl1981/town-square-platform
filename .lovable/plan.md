@@ -135,8 +135,8 @@ Aktuell fehlt in Schritt 2b die Firmenadresse - diese wird nur in Schritt 1 erfa
 
 ## Validierungskriterien
 
-- [ ] Karten zeigen Eigentümer-Daten kompakt
-- [ ] Buttons haben ausreichend Platz
-- [ ] Dialog zeigt korrekten Titel (Anlegen vs. Bearbeiten)
-- [ ] Schritt 2 zeigt Eigentümer-Daten im Edit-Modus
-- [ ] Speichern aktualisiert die Karten-Ansicht korrekt
+- [x] Karten zeigen Eigentümer-Daten kompakt
+- [x] Buttons haben ausreichend Platz
+- [x] Dialog zeigt korrekten Titel (Anlegen vs. Bearbeiten)
+- [x] Schritt 2 zeigt Eigentümer-Daten im Edit-Modus
+- [x] Speichern aktualisiert die Karten-Ansicht korrekt
