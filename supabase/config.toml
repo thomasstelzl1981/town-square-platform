@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.sot-excel-ai-import]
 verify_jwt = false
+
+[functions.sot-acq-generate-response]
+verify_jwt = false
+
+[functions.sot-acq-create-dataroom]
+verify_jwt = false
