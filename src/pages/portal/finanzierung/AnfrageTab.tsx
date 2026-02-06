@@ -1,23 +1,20 @@
 /**
  * MOD-07: Anfrage Tab
- * Lists finance requests with create action
- * Now auto-redirects to detail page after creation
+ * Draft-First Logic: Zeigt direkt AnfrageFormV2 wenn Draft existiert
+ * Falls kein Draft: Wizard zur Erstellung mit MOD-04 Objektauswahl
  */
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
@@ -29,21 +26,10 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { 
-  Plus, FileStack, Building2, Heart, Edit,
-  Loader2, ArrowRight, Clock
+  Plus, FileStack, Building2, Heart, Edit, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
-
-const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  draft: { label: 'Entwurf', variant: 'secondary' },
-  submitted: { label: 'Eingereicht', variant: 'default' },
-  in_review: { label: 'In Prüfung', variant: 'outline' },
-  delegated: { label: 'Zugewiesen', variant: 'outline' },
-  accepted: { label: 'Angenommen', variant: 'default' },
-  rejected: { label: 'Abgelehnt', variant: 'destructive' },
-};
+import AnfrageFormV2 from '@/components/finanzierung/AnfrageFormV2';
 
 const objectSourceOptions = [
   { value: 'portfolio', label: 'Aus meinem Portfolio (MOD-04)', icon: Building2 },
@@ -54,33 +40,33 @@ const objectSourceOptions = [
 export default function AnfrageTab() {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [objectSource, setObjectSource] = useState<string>('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
 
-  // Fetch existing requests
-  const { data: requests, isLoading } = useQuery({
-    queryKey: ['finance-requests', activeOrganization?.id],
+  // 1. Lade die aktuellste Draft-Anfrage (falls vorhanden)
+  const { data: draftRequest, isLoading: loadingDraft } = useQuery({
+    queryKey: ['draft-finance-request', activeOrganization?.id],
     queryFn: async () => {
-      if (!activeOrganization?.id) return [];
+      if (!activeOrganization?.id) return null;
 
       const { data, error } = await supabase
         .from('finance_requests')
-        .select(`
-          *,
-          property:properties(id, address, city)
-        `)
+        .select('*')
         .eq('tenant_id', activeOrganization.id)
-        .order('created_at', { ascending: false });
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
-      return data || [];
+      return data;
     },
     enabled: !!activeOrganization?.id,
   });
 
-  // Fetch properties for selection
+  // Fetch properties for selection (MOD-04)
   const { data: properties } = useQuery({
     queryKey: ['properties-for-finance', activeOrganization?.id],
     queryFn: async () => {
@@ -97,7 +83,7 @@ export default function AnfrageTab() {
     enabled: !!activeOrganization?.id && objectSource === 'portfolio',
   });
 
-  // Create mutation - now auto-prefills and redirects
+  // Create mutation
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!activeOrganization?.id) throw new Error('Keine Organisation');
@@ -107,7 +93,7 @@ export default function AnfrageTab() {
         ? properties?.find(p => p.id === selectedPropertyId)
         : null;
 
-      // Build the insert payload with proper typing
+      // Build the insert payload
       const insertPayload: {
         tenant_id: string;
         status: string;
@@ -145,180 +131,137 @@ export default function AnfrageTab() {
     },
     onSuccess: (data) => {
       toast.success('Finanzierungsanfrage erstellt');
-      queryClient.invalidateQueries({ queryKey: ['finance-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['draft-finance-request'] });
       setShowCreateDialog(false);
       setObjectSource('');
       setSelectedPropertyId('');
-      // Auto-redirect to the detail page
-      navigate(`/portal/finanzierung/anfrage/${data.id}`);
+      setCreatedRequestId(data.id);
     },
     onError: (error) => {
       toast.error('Fehler: ' + (error as Error).message);
     },
   });
 
+  // Loading state
+  if (loadingDraft) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // 2. Falls Draft existiert oder gerade erstellt → Formular direkt zeigen
+  const activeRequestId = createdRequestId || draftRequest?.id;
+  
+  if (activeRequestId) {
+    return <AnfrageFormV2 requestId={activeRequestId} />;
+  }
+
+  // 3. Falls kein Draft → Dialog zur Erstellung zeigen
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <FileStack className="h-5 w-5" />
-            Finanzierungsanfragen
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Verwalten Sie Ihre Finanzierungsanfragen
+      <Card>
+        <CardContent className="text-center py-12">
+          <FileStack className="h-12 w-12 mx-auto text-muted-foreground/50" />
+          <h3 className="mt-4 text-lg font-medium">
+            Neue Finanzierungsanfrage starten
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+            Erstellen Sie eine neue Finanzierungsanfrage. Sie können ein Objekt aus 
+            Ihrem Portfolio wählen oder die Daten manuell eingeben.
           </p>
-        </div>
+          <Button 
+            className="mt-6 gap-2" 
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Anfrage starten
+          </Button>
+        </CardContent>
+      </Card>
 
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Neue Anfrage
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Neue Finanzierungsanfrage</DialogTitle>
-            </DialogHeader>
+      {/* Create Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neue Finanzierungsanfrage</DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Objektquelle</Label>
+              <Select value={objectSource} onValueChange={setObjectSource}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Woher stammt das Objekt?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {objectSourceOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex items-center gap-2">
+                        <opt.icon className="h-4 w-4" />
+                        {opt.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {objectSource === 'portfolio' && properties && properties.length > 0 && (
               <div className="space-y-2">
-                <Label>Objektquelle</Label>
-                <Select value={objectSource} onValueChange={setObjectSource}>
+                <Label>Immobilie auswählen</Label>
+                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Woher stammt das Objekt?" />
+                    <SelectValue placeholder="Immobilie wählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {objectSourceOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="flex items-center gap-2">
-                          <opt.icon className="h-4 w-4" />
-                          {opt.label}
-                        </div>
+                    {properties.map(prop => (
+                      <SelectItem key={prop.id} value={prop.id}>
+                        {prop.address}, {prop.city}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            )}
 
-              {objectSource === 'portfolio' && properties && properties.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Immobilie auswählen</Label>
-                  <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Immobilie wählen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties.map(prop => (
-                        <SelectItem key={prop.id} value={prop.id}>
-                          {prop.address}, {prop.city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            {objectSource === 'portfolio' && properties && properties.length === 0 && (
+              <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                <Building2 className="h-4 w-4 mb-2" />
+                Keine Immobilien im Portfolio gefunden. Bitte legen Sie erst eine Immobilie in MOD-04 an.
+              </div>
+            )}
 
-              {objectSource === 'listing' && (
-                <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
-                  <Heart className="h-4 w-4 mb-2" />
-                  Favoriten-Auswahl wird in einer späteren Phase implementiert.
-                </div>
-              )}
+            {objectSource === 'listing' && (
+              <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                <Heart className="h-4 w-4 mb-2" />
+                Favoriten-Auswahl wird in einer späteren Phase implementiert.
+              </div>
+            )}
 
-              {objectSource === 'custom' && (
-                <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
-                  <Edit className="h-4 w-4 mb-2" />
-                  Objektdaten können nach Erstellung manuell eingegeben werden.
-                </div>
-              )}
-            </div>
+            {objectSource === 'custom' && (
+              <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                <Edit className="h-4 w-4 mb-2" />
+                Objektdaten können im Formular manuell eingegeben werden.
+              </div>
+            )}
+          </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                Abbrechen
-              </Button>
-              <Button 
-                onClick={() => createMutation.mutate()}
-                disabled={!objectSource || createMutation.isPending}
-              >
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Anfrage erstellen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Request List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : !requests || requests.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <FileStack className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <p className="mt-4 text-muted-foreground">
-              Noch keine Finanzierungsanfragen
-            </p>
-            <Button 
-              className="mt-4" 
-              variant="outline"
-              onClick={() => setShowCreateDialog(true)}
-            >
-              Erste Anfrage erstellen
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Abbrechen
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {requests.map(request => {
-            const statusInfo = statusLabels[request.status] || statusLabels.draft;
-
-            return (
-              <Card key={request.id} className="hover:border-primary/50 transition-colors">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-muted rounded-lg">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <div className="font-medium">
-                          {request.property 
-                            ? `${request.property.address}, ${request.property.city}`
-                            : `Anfrage ${request.public_id || request.id.slice(0, 8)}`
-                          }
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(request.created_at), 'dd.MM.yyyy', { locale: de })}
-                          <span>•</span>
-                          <span className="capitalize">{request.object_source || 'custom'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Badge variant={statusInfo.variant}>
-                        {statusInfo.label}
-                      </Badge>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/portal/finanzierung/anfrage/${request.id}`}>
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+            <Button 
+              onClick={() => createMutation.mutate()}
+              disabled={!objectSource || createMutation.isPending}
+            >
+              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Anfrage erstellen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
