@@ -8,6 +8,76 @@
  */
 
 // ============================================
+// Status Labels (German Localization)
+// ============================================
+
+/**
+ * Human-readable status labels for finance_requests and finance_mandates
+ * Used across MOD-07 (StatusTab, AnfrageFormV2) and MOD-11 (FMFaelle, FMDashboard)
+ */
+export const FINANCE_STATUS_LABELS: Record<string, string> = {
+  // MOD-07 Request States
+  draft: 'Entwurf',
+  collecting: 'In Erfassung',
+  incomplete: 'Unvollständig',
+  ready: 'Bereit zur Einreichung',
+  ready_to_submit: 'Bereit zur Einreichung',
+  submitted: 'Eingereicht',
+  submitted_to_zone1: 'Eingereicht',
+  
+  // Zone 1 States
+  new: 'Neu eingegangen',
+  triage: 'In Prüfung',
+  assigned: 'Zugewiesen',
+  delegated: 'Übergeben an Manager',
+  
+  // MOD-11 Manager States
+  accepted: 'Angenommen',
+  in_processing: 'In Bearbeitung',
+  bank_submitted: 'Bei Bank eingereicht',
+  needs_customer_action: 'Aktion erforderlich',
+  waiting_for_bank: 'Warte auf Bankentscheidung',
+  
+  // Terminal States
+  completed: 'Abgeschlossen',
+  rejected: 'Abgelehnt',
+  cancelled: 'Storniert',
+  
+  // FutureRoomCase States
+  active: 'Aktiv',
+  missing_docs: 'Unterlagen fehlen',
+  closed: 'Geschlossen',
+};
+
+/**
+ * Get status badge variant based on status
+ */
+export function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case 'completed':
+    case 'accepted':
+      return 'default';
+    case 'needs_customer_action':
+    case 'missing_docs':
+    case 'rejected':
+    case 'cancelled':
+      return 'destructive';
+    case 'draft':
+    case 'collecting':
+      return 'outline';
+    default:
+      return 'secondary';
+  }
+}
+
+/**
+ * Get human-readable label for a status
+ */
+export function getStatusLabel(status: string): string {
+  return FINANCE_STATUS_LABELS[status] || status;
+}
+
+// ============================================
 // Applicant Profile Types
 // ============================================
 
