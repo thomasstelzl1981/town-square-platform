@@ -1,6 +1,7 @@
 /**
- * Zone 1 — Selbstauskunft Mastervorlage (v1)
- * READ-ONLY viewer showing the 8-section structure with fields derived from src/types/finance.ts
+ * Zone 1 — Selbstauskunft Mastervorlage (v2)
+ * READ-ONLY viewer showing the 9-section structure with fields derived from src/types/finance.ts
+ * Updated: 2026-02-06 to match SelbstauskunftFormV2 implementation
  */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { 
   User, Home, Briefcase, Building2, CreditCard, PiggyBank, 
-  Wallet, FileText, ArrowLeft, Info 
+  Wallet, FileText, ArrowLeft, Info, Landmark, AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // =============================================================================
 // FIELD DEFINITIONS — Derived from src/types/finance.ts (ApplicantProfile)
+// Updated to match SelbstauskunftFormV2.tsx 9-section structure
 // =============================================================================
 
 interface FieldDefinition {
@@ -26,6 +28,7 @@ interface FieldDefinition {
 
 interface SectionDefinition {
   id: string;
+  number: number;
   title: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
@@ -33,169 +36,187 @@ interface SectionDefinition {
   conditional?: string;
 }
 
-// Section 1: Identity / Persönliche Daten
-const sectionIdentity: SectionDefinition = {
-  id: 'identity',
-  title: 'Identität',
+// Section 1: Angaben zur Person
+const section1Person: SectionDefinition = {
+  id: 'person',
+  number: 1,
+  title: 'Angaben zur Person',
   icon: User,
-  description: 'Persönliche Daten, Anschrift, Kontakt, Ausweisdokument, Steuer & Bank',
+  description: 'Identität, Adresse, Kontaktdaten, Ausweis, Steuer-ID',
   fields: [
+    { fieldKey: 'salutation', labelDe: 'Anrede', type: 'enum', notes: 'Herr | Frau | Divers' },
     { fieldKey: 'first_name', labelDe: 'Vorname', type: 'string' },
     { fieldKey: 'last_name', labelDe: 'Nachname', type: 'string' },
+    { fieldKey: 'birth_name', labelDe: 'Geburtsname', type: 'string' },
     { fieldKey: 'birth_date', labelDe: 'Geburtsdatum', type: 'date' },
     { fieldKey: 'birth_place', labelDe: 'Geburtsort', type: 'string' },
+    { fieldKey: 'birth_country', labelDe: 'Geburtsland', type: 'string', notes: 'default: DE' },
     { fieldKey: 'nationality', labelDe: 'Staatsangehörigkeit', type: 'string', notes: 'default: DE' },
-    { fieldKey: 'marital_status', labelDe: 'Familienstand', type: 'enum', notes: 'ledig | verheiratet | geschieden | verwitwet | getrennt' },
-    { fieldKey: 'address_street', labelDe: 'Straße', type: 'string' },
+    { fieldKey: 'address_street', labelDe: 'Straße, Nr.', type: 'string' },
     { fieldKey: 'address_postal_code', labelDe: 'PLZ', type: 'string' },
-    { fieldKey: 'address_city', labelDe: 'Stadt', type: 'string' },
-    { fieldKey: 'phone', labelDe: 'Telefon', type: 'string' },
+    { fieldKey: 'address_city', labelDe: 'Ort', type: 'string' },
+    { fieldKey: 'address_since', labelDe: 'Wohnhaft seit', type: 'date' },
+    { fieldKey: 'previous_address_street', labelDe: 'Vorherige Adresse Straße', type: 'string' },
+    { fieldKey: 'previous_address_postal_code', labelDe: 'Vorherige Adresse PLZ', type: 'string' },
+    { fieldKey: 'previous_address_city', labelDe: 'Vorherige Adresse Ort', type: 'string' },
+    { fieldKey: 'phone', labelDe: 'Telefon (Festnetz)', type: 'string' },
+    { fieldKey: 'phone_mobile', labelDe: 'Telefon (Mobil)', type: 'string' },
     { fieldKey: 'email', labelDe: 'E-Mail', type: 'string' },
-    { fieldKey: 'id_document_type', labelDe: 'Dokumenttyp', type: 'enum', notes: 'PA (Personalausweis) | RP (Reisepass)' },
-    { fieldKey: 'id_document_number', labelDe: 'Ausweisnummer', type: 'string' },
-    { fieldKey: 'id_document_valid_until', labelDe: 'Gültig bis', type: 'date' },
-    { fieldKey: 'tax_id', labelDe: 'Steuer-ID', type: 'string', notes: '11-stellige Steuer-Identifikationsnummer' },
-    { fieldKey: 'iban', labelDe: 'IBAN', type: 'string' },
+    { fieldKey: 'tax_id', labelDe: 'Steuer-IdNr.', type: 'string', notes: '11-stellig' },
   ],
 };
 
-// Section 2: Household / Haushalt
-const sectionHousehold: SectionDefinition = {
+// Section 2: Haushalt
+const section2Haushalt: SectionDefinition = {
   id: 'household',
+  number: 2,
   title: 'Haushalt',
   icon: Home,
-  description: 'Haushaltsgröße, Kinder, Unterhaltspflichten, sonstige Einkünfte',
+  description: 'Familienstand, Gütertrennung, Kinder',
   fields: [
-    { fieldKey: 'adults_count', labelDe: 'Anzahl Erwachsene', type: 'number' },
+    { fieldKey: 'marital_status', labelDe: 'Familienstand', type: 'enum', notes: 'ledig | verheiratet | geschieden | verwitwet | getrennt' },
+    { fieldKey: 'property_separation', labelDe: 'Gütertrennung vereinbart', type: 'boolean' },
     { fieldKey: 'children_count', labelDe: 'Anzahl Kinder', type: 'number' },
-    { fieldKey: 'children_ages', labelDe: 'Alter der Kinder', type: 'string', notes: 'Freitext' },
-    { fieldKey: 'child_support_obligation', labelDe: 'Unterhaltspflicht', type: 'boolean' },
-    { fieldKey: 'child_support_amount_monthly', labelDe: 'Unterhalt monatlich (EUR)', type: 'decimal' },
-    { fieldKey: 'child_benefit_monthly', labelDe: 'Kindergeld monatlich (EUR)', type: 'decimal' },
-    { fieldKey: 'other_regular_income_monthly', labelDe: 'Sonstiges regelmäßiges Einkommen (EUR)', type: 'decimal' },
-    { fieldKey: 'other_income_description', labelDe: 'Beschreibung sonstiges Einkommen', type: 'string' },
+    { fieldKey: 'children_birth_dates', labelDe: 'Geburtsdaten Kinder', type: 'string', notes: 'Freitext oder Array' },
   ],
 };
 
-// Section 3: Employment / Beschäftigung
-const sectionEmployment: SectionDefinition = {
+// Section 3: Beschäftigung (Switch: Angestellt / Selbstständig)
+const section3Beschaeftigung: SectionDefinition = {
   id: 'employment',
-  title: 'Einkommen',
+  number: 3,
+  title: 'Beschäftigung',
   icon: Briefcase,
-  description: 'Arbeitgeber, Beschäftigungsverhältnis, Einkommen',
+  description: 'Angestellt ODER Selbstständig (Switch-basiert)',
   fields: [
-    { fieldKey: 'employer_name', labelDe: 'Arbeitgeber', type: 'string' },
-    { fieldKey: 'employer_location', labelDe: 'Standort Arbeitgeber', type: 'string' },
-    { fieldKey: 'employer_industry', labelDe: 'Branche', type: 'string' },
-    { fieldKey: 'employment_type', labelDe: 'Beschäftigungsart', type: 'enum', notes: 'unbefristet | befristet | beamter | selbststaendig | rentner' },
-    { fieldKey: 'position', labelDe: 'Position', type: 'string' },
-    { fieldKey: 'employed_since', labelDe: 'Beschäftigt seit', type: 'date' },
+    // Gemeinsam
+    { fieldKey: 'employment_type', labelDe: 'Beschäftigungsart', type: 'enum', notes: 'employed | self_employed (Switch)' },
+    // Angestellt
+    { fieldKey: 'employer_name', labelDe: 'Arbeitgeber', type: 'string', notes: 'nur bei employed' },
+    { fieldKey: 'employer_location', labelDe: 'Standort Arbeitgeber', type: 'string', notes: 'nur bei employed' },
+    { fieldKey: 'employed_since', labelDe: 'Beschäftigt seit', type: 'date', notes: 'nur bei employed' },
+    { fieldKey: 'contract_type', labelDe: 'Vertragsart', type: 'enum', notes: 'unbefristet | befristet' },
     { fieldKey: 'probation_until', labelDe: 'Probezeit bis', type: 'date' },
-    { fieldKey: 'net_income_monthly', labelDe: 'Nettoeinkommen monatlich (EUR)', type: 'decimal' },
-    { fieldKey: 'bonus_yearly', labelDe: 'Jahresbonus (EUR)', type: 'decimal' },
+    { fieldKey: 'salary_payments_per_year', labelDe: 'Gehaltszahlungen/Jahr', type: 'number', notes: 'default: 12' },
+    // Selbstständig
+    { fieldKey: 'company_name', labelDe: 'Firma', type: 'string', notes: 'nur bei self_employed' },
+    { fieldKey: 'company_industry', labelDe: 'Branche', type: 'string', notes: 'nur bei self_employed' },
+    { fieldKey: 'company_founded', labelDe: 'Selbstständig seit', type: 'date', notes: 'nur bei self_employed' },
+    { fieldKey: 'company_register_number', labelDe: 'Handelsregister / Gesellschaftsvertrag', type: 'string', notes: 'nur bei self_employed' },
   ],
 };
 
-// Section 4: Company / Firma (conditional: entrepreneur)
-const sectionCompany: SectionDefinition = {
-  id: 'company',
-  title: 'Firma',
-  icon: Building2,
-  description: 'Unternehmensdaten (nur für Unternehmer / Selbstständige)',
-  conditional: 'profile_type === "entrepreneur"',
+// Section 4: Bankverbindung
+const section4Bank: SectionDefinition = {
+  id: 'bank',
+  number: 4,
+  title: 'Bankverbindung',
+  icon: Landmark,
+  description: 'IBAN und BIC für Auszahlungen',
   fields: [
-    { fieldKey: 'company_name', labelDe: 'Firmenname', type: 'string' },
-    { fieldKey: 'company_legal_form', labelDe: 'Rechtsform', type: 'string', notes: 'GmbH, UG, GbR, etc.' },
-    { fieldKey: 'company_address', labelDe: 'Firmenadresse', type: 'string' },
-    { fieldKey: 'company_founded', labelDe: 'Gründungsdatum', type: 'date' },
-    { fieldKey: 'company_register_number', labelDe: 'Handelsregisternummer', type: 'string' },
-    { fieldKey: 'company_vat_id', labelDe: 'USt-IdNr.', type: 'string' },
-    { fieldKey: 'company_industry', labelDe: 'Branche', type: 'string' },
-    { fieldKey: 'company_employees', labelDe: 'Mitarbeiterzahl', type: 'number' },
-    { fieldKey: 'company_ownership_percent', labelDe: 'Beteiligungsquote (%)', type: 'decimal' },
-    { fieldKey: 'company_managing_director', labelDe: 'Geschäftsführer', type: 'boolean' },
+    { fieldKey: 'iban', labelDe: 'IBAN', type: 'string' },
+    { fieldKey: 'bic', labelDe: 'BIC', type: 'string' },
   ],
 };
 
-// Section 5: Expenses / Ausgaben
-const sectionExpenses: SectionDefinition = {
+// Section 5: Monatliche Einnahmen
+const section5Einnahmen: SectionDefinition = {
+  id: 'income',
+  number: 5,
+  title: 'Monatliche Einnahmen',
+  icon: Wallet,
+  description: 'Alle regelmäßigen Einkünfte pro Monat',
+  fields: [
+    { fieldKey: 'net_income_monthly', labelDe: 'Nettoeinkommen (Gehalt)', type: 'decimal' },
+    { fieldKey: 'side_job_income_monthly', labelDe: 'Nebentätigkeit', type: 'decimal' },
+    { fieldKey: 'rental_income_monthly', labelDe: 'Mieteinnahmen', type: 'decimal', notes: 'Vorausfüllung aus MOD-04 möglich' },
+    { fieldKey: 'child_benefit_monthly', labelDe: 'Kindergeld', type: 'decimal' },
+    { fieldKey: 'alimony_income_monthly', labelDe: 'Unterhalt (erhalten)', type: 'decimal' },
+    { fieldKey: 'pension_state_monthly', labelDe: 'Rente (gesetzlich)', type: 'decimal' },
+    { fieldKey: 'pension_private_monthly', labelDe: 'Rente (privat)', type: 'decimal' },
+    { fieldKey: 'other_regular_income_monthly', labelDe: 'Sonstiges', type: 'decimal' },
+    { fieldKey: 'other_income_description', labelDe: 'Beschreibung Sonstiges', type: 'string' },
+  ],
+};
+
+// Section 6: Monatliche Ausgaben
+const section6Ausgaben: SectionDefinition = {
   id: 'expenses',
-  title: 'Ausgaben',
+  number: 6,
+  title: 'Monatliche Ausgaben',
   icon: CreditCard,
-  description: 'Monatliche Fixkosten und Verbindlichkeiten',
+  description: 'Fixkosten und regelmäßige Ausgaben',
   fields: [
-    { fieldKey: 'current_rent_monthly', labelDe: 'Aktuelle Miete (EUR)', type: 'decimal' },
-    { fieldKey: 'living_expenses_monthly', labelDe: 'Lebenshaltungskosten (EUR)', type: 'decimal' },
-    { fieldKey: 'car_leasing_monthly', labelDe: 'Kfz-Leasing (EUR)', type: 'decimal' },
-    { fieldKey: 'health_insurance_monthly', labelDe: 'Krankenversicherung (EUR)', type: 'decimal' },
-    { fieldKey: 'other_fixed_costs_monthly', labelDe: 'Sonstige Fixkosten (EUR)', type: 'decimal' },
+    { fieldKey: 'current_rent_monthly', labelDe: 'Aktuelle Warmmiete', type: 'decimal' },
+    { fieldKey: 'health_insurance_monthly', labelDe: 'Private Krankenversicherung', type: 'decimal' },
+    { fieldKey: 'child_support_amount_monthly', labelDe: 'Unterhaltsverpflichtungen', type: 'decimal' },
+    { fieldKey: 'car_leasing_monthly', labelDe: 'Leasing (Kfz)', type: 'decimal' },
+    { fieldKey: 'other_fixed_costs_monthly', labelDe: 'Sonstige Fixkosten', type: 'decimal' },
   ],
 };
 
-// Section 6: Assets / Vermögen
-const sectionAssets: SectionDefinition = {
+// Section 7: Vermögen
+const section7Vermoegen: SectionDefinition = {
   id: 'assets',
+  number: 7,
   title: 'Vermögen',
   icon: PiggyBank,
-  description: 'Liquide Mittel, Wertpapiere, Versicherungen, sonstige Vermögenswerte',
+  description: 'Liquide Mittel und Vermögenswerte',
   fields: [
-    { fieldKey: 'bank_savings', labelDe: 'Bankguthaben (EUR)', type: 'decimal' },
-    { fieldKey: 'securities_value', labelDe: 'Wertpapiere (EUR)', type: 'decimal' },
-    { fieldKey: 'building_society_value', labelDe: 'Bausparverträge (EUR)', type: 'decimal' },
-    { fieldKey: 'life_insurance_value', labelDe: 'Lebensversicherung Rückkaufswert (EUR)', type: 'decimal' },
-    { fieldKey: 'other_assets_value', labelDe: 'Sonstige Vermögenswerte (EUR)', type: 'decimal' },
-    { fieldKey: 'other_assets_description', labelDe: 'Beschreibung sonstige Vermögenswerte', type: 'string' },
+    { fieldKey: 'bank_savings', labelDe: 'Bank-/Sparguthaben', type: 'decimal' },
+    { fieldKey: 'securities_value', labelDe: 'Wertpapiere/Fonds', type: 'decimal' },
+    { fieldKey: 'building_society_value', labelDe: 'Bausparguthaben', type: 'decimal' },
+    { fieldKey: 'life_insurance_value', labelDe: 'Rückkaufswert Lebensversicherung', type: 'decimal' },
+    { fieldKey: 'other_assets_value', labelDe: 'Sonstige Vermögenswerte', type: 'decimal' },
+    { fieldKey: 'other_assets_description', labelDe: 'Beschreibung Sonstige', type: 'string' },
+    // Hinweis: Immobilienvermögen aus MOD-04 (read-only)
   ],
 };
 
-// Section 7: Financing / Finanzierungswunsch
-const sectionFinancing: SectionDefinition = {
-  id: 'financing',
-  title: 'Finanzierung',
-  icon: Wallet,
-  description: 'Objekt, Kaufpreis, Eigenkapital, gewünschte Darlehenskonditionen',
+// Section 8: Verbindlichkeiten (1:N Tabelle)
+const section8Verbindlichkeiten: SectionDefinition = {
+  id: 'liabilities',
+  number: 8,
+  title: 'Verbindlichkeiten',
+  icon: AlertCircle,
+  description: 'Bestehende Kredite und Verpflichtungen (1:N via applicant_liabilities)',
   fields: [
-    { fieldKey: 'purpose', labelDe: 'Verwendungszweck', type: 'enum', notes: 'eigennutzung | kapitalanlage | neubau | modernisierung | umschuldung' },
-    { fieldKey: 'object_address', labelDe: 'Objektadresse', type: 'string' },
-    { fieldKey: 'object_type', labelDe: 'Objekttyp', type: 'string' },
-    { fieldKey: 'purchase_price', labelDe: 'Kaufpreis (EUR)', type: 'decimal' },
-    { fieldKey: 'ancillary_costs', labelDe: 'Erwerbsnebenkosten (EUR)', type: 'decimal' },
-    { fieldKey: 'modernization_costs', labelDe: 'Modernisierungskosten (EUR)', type: 'decimal' },
-    { fieldKey: 'planned_rent_monthly', labelDe: 'Geplante Miete (EUR/Monat)', type: 'decimal', notes: 'Bei Kapitalanlage' },
-    { fieldKey: 'rental_status', labelDe: 'Vermietungsstatus', type: 'enum', notes: 'vermietet | leer | teil' },
-    { fieldKey: 'equity_amount', labelDe: 'Eigenkapital (EUR)', type: 'decimal' },
-    { fieldKey: 'equity_source', labelDe: 'Herkunft Eigenkapital', type: 'string' },
-    { fieldKey: 'loan_amount_requested', labelDe: 'Gewünschter Darlehensbetrag (EUR)', type: 'decimal' },
-    { fieldKey: 'fixed_rate_period_years', labelDe: 'Zinsbindung (Jahre)', type: 'number', notes: 'default: 10' },
-    { fieldKey: 'repayment_rate_percent', labelDe: 'Tilgungssatz (%)', type: 'decimal', notes: 'default: 2%' },
-    { fieldKey: 'max_monthly_rate', labelDe: 'Maximale Monatsrate (EUR)', type: 'decimal' },
+    { fieldKey: 'liability_type', labelDe: 'Art', type: 'enum', notes: 'immobiliendarlehen | ratenkredit | leasing | sonstige' },
+    { fieldKey: 'creditor_name', labelDe: 'Gläubiger/Bank', type: 'string' },
+    { fieldKey: 'original_amount', labelDe: 'Ursprungsbetrag', type: 'decimal' },
+    { fieldKey: 'remaining_balance', labelDe: 'Restschuld', type: 'decimal' },
+    { fieldKey: 'monthly_rate', labelDe: 'Monatsrate', type: 'decimal' },
+    { fieldKey: 'interest_rate_fixed_until', labelDe: 'Zinsbindung bis', type: 'date' },
+    { fieldKey: 'end_date', labelDe: 'Laufzeitende', type: 'date' },
   ],
 };
 
-// Section 8: Declarations / Erklärungen
-const sectionDeclarations: SectionDefinition = {
+// Section 9: Erklärungen
+const section9Erklaerungen: SectionDefinition = {
   id: 'declarations',
+  number: 9,
   title: 'Erklärungen',
   icon: FileText,
-  description: 'SCHUFA-Einwilligung, Bestätigungen, Pflichtangaben',
+  description: 'SCHUFA-Einwilligung und rechtliche Bestätigungen',
   fields: [
     { fieldKey: 'schufa_consent', labelDe: 'SCHUFA-Einwilligung', type: 'boolean' },
-    { fieldKey: 'no_insolvency', labelDe: 'Keine Insolvenz', type: 'boolean', notes: 'Bestätigung: kein laufendes Insolvenzverfahren' },
-    { fieldKey: 'no_tax_arrears', labelDe: 'Keine Steuerrückstände', type: 'boolean', notes: 'Bestätigung: keine offenen Steuerschulden' },
-    { fieldKey: 'data_correct_confirmed', labelDe: 'Richtigkeit bestätigt', type: 'boolean', notes: 'Bestätigung der Datenrichtigkeit' },
+    { fieldKey: 'no_insolvency', labelDe: 'Kein Insolvenzverfahren', type: 'boolean' },
+    { fieldKey: 'no_tax_arrears', labelDe: 'Keine Steuerrückstände', type: 'boolean' },
+    { fieldKey: 'data_correct_confirmed', labelDe: 'Richtigkeit der Angaben bestätigt', type: 'boolean' },
   ],
 };
 
-// All 8 sections
+// All 9 sections
 const sections: SectionDefinition[] = [
-  sectionIdentity,
-  sectionHousehold,
-  sectionEmployment,
-  sectionCompany,
-  sectionExpenses,
-  sectionAssets,
-  sectionFinancing,
-  sectionDeclarations,
+  section1Person,
+  section2Haushalt,
+  section3Beschaeftigung,
+  section4Bank,
+  section5Einnahmen,
+  section6Ausgaben,
+  section7Vermoegen,
+  section8Verbindlichkeiten,
+  section9Erklaerungen,
 ];
 
 // =============================================================================
@@ -258,7 +279,7 @@ export default function MasterTemplatesSelbstauskunft() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">Selbstauskunft — Mastervorlage (v1)</h1>
+              <h1 className="text-2xl font-bold">Selbstauskunft — Mastervorlage (v2)</h1>
               <Badge variant="secondary">Read-only</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -280,30 +301,33 @@ export default function MasterTemplatesSelbstauskunft() {
           <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-medium text-foreground">
-              Referenz aus aktueller Implementierung
+              Referenz aus aktueller Implementierung (v2)
             </p>
             <p className="text-muted-foreground mt-1">
               Feldstruktur abgeleitet aus <code className="bg-muted px-1 rounded">src/types/finance.ts</code> (ApplicantProfile Interface) 
-              und UI-Labels aus <code className="bg-muted px-1 rounded">SelbstauskunftForm.tsx</code>.
+              und UI-Struktur aus <code className="bg-muted px-1 rounded">SelbstauskunftFormV2.tsx</code>.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Profile Variant Info */}
+      {/* Section Structure Overview */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">Profiltypen:</span>
-            <Badge variant="outline">Private (Standard)</Badge>
-            <Badge variant="secondary">Entrepreneur (Firma-Sektion aktiviert)</Badge>
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-sm font-medium">9-Sektionen-Struktur:</span>
+            {sections.map((s) => (
+              <Badge key={s.id} variant="outline" className="gap-1">
+                <span className="font-bold">{s.number}.</span> {s.title}
+              </Badge>
+            ))}
           </div>
         </CardContent>
       </Card>
 
       {/* Tabbed Sections */}
-      <Tabs defaultValue="identity" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+      <Tabs defaultValue="person" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 h-auto">
           {sections.map((section) => {
             const Icon = section.icon;
             return (
@@ -313,7 +337,7 @@ export default function MasterTemplatesSelbstauskunft() {
                 className="flex flex-col gap-1 py-2 px-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 <Icon className="h-4 w-4" />
-                <span className="text-xs">{section.title}</span>
+                <span className="text-xs">{section.number}. {section.title}</span>
                 {section.conditional && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0">cond.</Badge>
                 )}
@@ -335,6 +359,7 @@ export default function MasterTemplatesSelbstauskunft() {
                       </div>
                       <div>
                         <CardTitle className="text-lg flex items-center gap-2">
+                          <span className="text-primary font-bold">{section.number}.</span>
                           {section.title}
                           <Badge variant="outline" className="font-normal">
                             {section.fields.length} Felder
@@ -365,22 +390,17 @@ export default function MasterTemplatesSelbstauskunft() {
           <CardTitle className="text-base">Zusammenfassung</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3">
             {sections.map((section) => {
               const Icon = section.icon;
               return (
                 <div 
                   key={section.id} 
-                  className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30"
+                  className="flex flex-col items-center gap-1 p-3 rounded-lg border bg-muted/30 text-center"
                 >
                   <Icon className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{section.title}</div>
-                    <div className="text-xs text-muted-foreground">{section.fields.length} Felder</div>
-                  </div>
-                  {section.conditional && (
-                    <Badge variant="outline" className="text-[10px]">cond.</Badge>
-                  )}
+                  <div className="text-xs font-medium">{section.number}. {section.title}</div>
+                  <div className="text-xs text-muted-foreground">{section.fields.length} Felder</div>
                 </div>
               );
             })}
@@ -391,38 +411,47 @@ export default function MasterTemplatesSelbstauskunft() {
       {/* Consistency Check */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Konsistenzprüfung (Must-Elemente)</CardTitle>
-          <CardDescription>
-            Diese Felder müssen in ApplicantProfile vorhanden sein
-          </CardDescription>
+          <CardTitle className="text-base">Änderungshistorie</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            {[
-              'first_name',
-              'last_name',
-              'birth_date',
-              'nationality',
-              'marital_status',
-              'email',
-              'phone',
-              'adults_count',
-              'children_count',
-              'net_income_monthly',
-              'employer_name',
-              'company_name',
-              'bank_savings',
-              'purchase_price',
-              'equity_amount',
-              'loan_amount_requested',
-              'schufa_consent',
-              'data_correct_confirmed',
-            ].map((fieldKey) => (
-              <div key={fieldKey} className="flex items-center gap-2 p-2 rounded bg-accent/50 text-accent-foreground">
-                <span className="font-mono text-xs">{fieldKey}</span>
-                <Badge variant="outline" className="text-[10px] ml-auto">✓</Badge>
-              </div>
-            ))}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Version</TableHead>
+                <TableHead>Datum</TableHead>
+                <TableHead>Änderung</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-mono">v1</TableCell>
+                <TableCell>2026-01-26</TableCell>
+                <TableCell>Initial (8 Sektionen)</TableCell>
+              </TableRow>
+              <TableRow className="bg-primary/5">
+                <TableCell className="font-mono font-bold">v2</TableCell>
+                <TableCell>2026-02-06</TableCell>
+                <TableCell>
+                  <strong>9 Sektionen:</strong> Bankverbindung separiert, Einnahmen/Ausgaben getrennt, 
+                  Verbindlichkeiten als 1:N Tabelle (applicant_liabilities)
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Related Docs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Verknüpfte Dokumentation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3 flex-wrap">
+            <Badge variant="outline">docs/modules/MOD-07_FINANZIERUNG.md</Badge>
+            <Badge variant="outline">docs/workflows/GOLDEN_PATH_FINANZIERUNG.md</Badge>
+            <Badge variant="outline">src/types/finance.ts</Badge>
+            <Badge variant="outline">src/components/finanzierung/SelbstauskunftFormV2.tsx</Badge>
           </div>
         </CardContent>
       </Card>
