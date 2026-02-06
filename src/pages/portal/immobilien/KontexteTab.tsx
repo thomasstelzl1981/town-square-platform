@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, ClipboardList, User, MapPin, Link2, Users, Calendar, Percent } from 'lucide-react';
+import { Building2, Plus, ClipboardList, User, MapPin, Link2, Users, Calendar, Percent, Pencil, Briefcase, Euro } from 'lucide-react';
 import { CreateContextDialog } from '@/components/shared';
 import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
 
@@ -35,12 +35,18 @@ interface ContextMember {
   ownership_share: number | null;
   birth_name: string | null;
   birth_date: string | null;
+  // NEU: Steuerdaten
+  tax_class: string | null;
+  profession: string | null;
+  gross_income_yearly: number | null;
+  church_tax: boolean | null;
 }
 
 export function KontexteTab() {
   const navigate = useNavigate();
   const { activeTenantId } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingContext, setEditingContext] = useState<LandlordContext | null>(null);
   const [assignerContext, setAssignerContext] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch landlord contexts
@@ -59,13 +65,13 @@ export function KontexteTab() {
     enabled: !!activeTenantId,
   });
 
-  // Fetch context members for owner display
+  // Fetch context members for owner display - mit erweiterten Feldern
   const { data: membersByContext = new Map<string, ContextMember[]>() } = useQuery({
     queryKey: ['context-members', activeTenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('context_members')
-        .select('id, context_id, first_name, last_name, ownership_share, birth_name, birth_date')
+        .select('id, context_id, first_name, last_name, ownership_share, birth_name, birth_date, tax_class, profession, gross_income_yearly, church_tax')
         .eq('tenant_id', activeTenantId!);
       
       if (error) throw error;
@@ -120,6 +126,14 @@ export function KontexteTab() {
     } catch {
       return null;
     }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
@@ -186,22 +200,19 @@ export function KontexteTab() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Tax Regime & Tax Rate */}
-                  <div className="flex items-center gap-3 text-sm">
-                    <Badge variant="outline">{ctx.tax_regime || 'EÜR'}</Badge>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Percent className="h-3 w-3" />
-                      <span>{ctx.tax_rate_percent ?? 30}% Steuersatz</span>
-                    </div>
+                  {/* Tax Rate */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Percent className="h-3 w-3 text-muted-foreground" />
+                    <span className="font-medium">{ctx.tax_rate_percent ?? 30}% Steuersatz</span>
                   </div>
 
-                  {/* PRIVATE: Show owners */}
+                  {/* PRIVATE: Show owners with tax data */}
                   {isPrivate && members.length > 0 && (
                     <div className="pt-2 border-t">
                       <p className="text-xs text-muted-foreground mb-2">Eigentümer:</p>
                       <div className="grid grid-cols-2 gap-3">
                         {members.map(member => (
-                          <div key={member.id} className="text-sm space-y-0.5">
+                          <div key={member.id} className="text-sm space-y-0.5 p-2 bg-muted/30 rounded">
                             <p className="font-medium">
                               {member.first_name} {member.last_name}
                             </p>
@@ -210,17 +221,38 @@ export function KontexteTab() {
                                 geb. {member.birth_name}
                               </p>
                             )}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                               {member.birth_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
                                   *{formatBirthDate(member.birth_date)}
                                 </span>
                               )}
-                              {member.ownership_share && (
-                                <span>{member.ownership_share}%</span>
+                              {member.tax_class && (
+                                <Badge variant="outline" className="text-xs h-5">
+                                  Stkl. {member.tax_class}
+                                </Badge>
                               )}
                             </div>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              {member.profession && (
+                                <span className="flex items-center gap-1">
+                                  <Briefcase className="h-3 w-3" />
+                                  {member.profession}
+                                </span>
+                              )}
+                              {member.gross_income_yearly && (
+                                <span className="flex items-center gap-1">
+                                  <Euro className="h-3 w-3" />
+                                  {formatCurrency(member.gross_income_yearly)}
+                                </span>
+                              )}
+                            </div>
+                            {member.ownership_share && (
+                              <p className="text-xs font-medium">
+                                {member.ownership_share}% Anteil
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -258,14 +290,24 @@ export function KontexteTab() {
                     <Badge variant="secondary">
                       {contextPropertyCounts[ctx.id] || 0} Objekt(e)
                     </Badge>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setAssignerContext({ id: ctx.id, name: ctx.name })}
-                    >
-                      <Link2 className="mr-2 h-4 w-4" />
-                      Objekte zuordnen
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditingContext(ctx)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Bearbeiten
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setAssignerContext({ id: ctx.id, name: ctx.name })}
+                      >
+                        <Link2 className="mr-2 h-4 w-4" />
+                        Objekte zuordnen
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -279,17 +321,22 @@ export function KontexteTab() {
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
             <strong>Hinweis:</strong> Vermietereinheiten ermöglichen die Trennung von Objekten nach 
-            unterschiedlichen steuerlichen Regimes (FIBU, EÜR, Vermögensverwaltung) oder 
-            Eigentümerstrukturen (z.B. Ehepaar, Gesellschaft). Der hinterlegte Steuersatz wird 
-            für Renditeberechnungen verwendet.
+            unterschiedlichen steuerlichen Regimes oder Eigentümerstrukturen (z.B. Ehepaar, Gesellschaft). 
+            Der hinterlegte Steuersatz wird für Renditeberechnungen verwendet.
           </p>
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
+      {/* Create/Edit Dialog */}
       <CreateContextDialog 
-        open={showCreateDialog} 
-        onOpenChange={setShowCreateDialog} 
+        open={showCreateDialog || !!editingContext} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setEditingContext(null);
+          }
+        }}
+        editContext={editingContext}
       />
 
       {/* Property Assigner Dialog */}
