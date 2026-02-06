@@ -76,6 +76,124 @@ export type Database = {
           },
         ]
       }
+      acq_mandate_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: Database["public"]["Enums"]["acq_mandate_event_type"]
+          id: string
+          mandate_id: string
+          payload: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: Database["public"]["Enums"]["acq_mandate_event_type"]
+          id?: string
+          mandate_id: string
+          payload?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["acq_mandate_event_type"]
+          id?: string
+          mandate_id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_mandate_events_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acq_mandates: {
+        Row: {
+          asset_focus: string[] | null
+          assigned_at: string | null
+          assigned_manager_user_id: string | null
+          client_display_name: string | null
+          code: string
+          created_at: string
+          created_by_user_id: string
+          exclusions: string | null
+          id: string
+          notes: string | null
+          price_max: number | null
+          price_min: number | null
+          profile_keywords: string[] | null
+          profile_text_email: string | null
+          profile_text_long: string | null
+          search_area: Json | null
+          split_terms_confirmed_at: string | null
+          split_terms_confirmed_by: string | null
+          status: Database["public"]["Enums"]["acq_mandate_status"]
+          tenant_id: string
+          updated_at: string
+          yield_target: number | null
+        }
+        Insert: {
+          asset_focus?: string[] | null
+          assigned_at?: string | null
+          assigned_manager_user_id?: string | null
+          client_display_name?: string | null
+          code: string
+          created_at?: string
+          created_by_user_id: string
+          exclusions?: string | null
+          id?: string
+          notes?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          profile_keywords?: string[] | null
+          profile_text_email?: string | null
+          profile_text_long?: string | null
+          search_area?: Json | null
+          split_terms_confirmed_at?: string | null
+          split_terms_confirmed_by?: string | null
+          status?: Database["public"]["Enums"]["acq_mandate_status"]
+          tenant_id: string
+          updated_at?: string
+          yield_target?: number | null
+        }
+        Update: {
+          asset_focus?: string[] | null
+          assigned_at?: string | null
+          assigned_manager_user_id?: string | null
+          client_display_name?: string | null
+          code?: string
+          created_at?: string
+          created_by_user_id?: string
+          exclusions?: string | null
+          id?: string
+          notes?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          profile_keywords?: string[] | null
+          profile_text_email?: string | null
+          profile_text_long?: string | null
+          search_area?: Json | null
+          split_terms_confirmed_at?: string | null
+          split_terms_confirmed_by?: string | null
+          status?: Database["public"]["Enums"]["acq_mandate_status"]
+          tenant_id?: string
+          updated_at?: string
+          yield_target?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_mandates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_campaign_leads: {
         Row: {
           campaign_id: string
@@ -6872,6 +6990,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       valuation_credits: {
         Row: {
           created_at: string
@@ -6987,6 +7126,13 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       increment_billing_usage: {
         Args: {
           p_cost_cents: number
@@ -7009,17 +7155,47 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_akquise_manager: { Args: { _user_id: string }; Returns: boolean }
       is_parent_access_blocked: {
         Args: { target_org_id: string }
         Returns: boolean
       }
-      is_platform_admin: { Args: never; Returns: boolean }
+      is_platform_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { _user_id: string }; Returns: boolean }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
       seed_golden_path_data: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      acq_mandate_event_type:
+        | "created"
+        | "submitted"
+        | "assigned"
+        | "assignment_accepted"
+        | "split_confirmed"
+        | "status_changed"
+        | "profile_generated"
+        | "email_sent"
+        | "inbound_received"
+        | "offer_created"
+        | "analysis_completed"
+        | "delivery_sent"
+        | "closed"
+      acq_mandate_status:
+        | "draft"
+        | "submitted_to_zone1"
+        | "assigned"
+        | "active"
+        | "paused"
+        | "closed"
+      app_role:
+        | "platform_admin"
+        | "moderator"
+        | "user"
+        | "finance_manager"
+        | "akquise_manager"
       commission_status:
         | "pending"
         | "approved"
@@ -7250,6 +7426,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      acq_mandate_event_type: [
+        "created",
+        "submitted",
+        "assigned",
+        "assignment_accepted",
+        "split_confirmed",
+        "status_changed",
+        "profile_generated",
+        "email_sent",
+        "inbound_received",
+        "offer_created",
+        "analysis_completed",
+        "delivery_sent",
+        "closed",
+      ],
+      acq_mandate_status: [
+        "draft",
+        "submitted_to_zone1",
+        "assigned",
+        "active",
+        "paused",
+        "closed",
+      ],
+      app_role: [
+        "platform_admin",
+        "moderator",
+        "user",
+        "finance_manager",
+        "akquise_manager",
+      ],
       commission_status: [
         "pending",
         "approved",
