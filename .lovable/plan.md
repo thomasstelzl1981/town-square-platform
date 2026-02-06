@@ -1,18 +1,18 @@
-1: # MOD-01 Stammdaten: Bereinigung und Neustrukturierung
-2: 
-3: ## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
-4: 
-5: ### Durchgeführte Änderungen
-6: 
-7: | Datei | Aktion | Status |
-8: |-------|--------|--------|
-9: | `src/pages/portal/stammdaten/PersonenTab.tsx` | **GELÖSCHT** | ✅ |
-10: | `src/pages/portal/stammdaten/FirmaTab.tsx` | **GELÖSCHT** | ✅ |
-11: | `src/pages/portal/stammdaten/VertraegeTab.tsx` | **NEU** — Verträge-Übersicht | ✅ |
-12: | `src/pages/portal/stammdaten/index.ts` | **UPDATE** — Exporte bereinigt | ✅ |
-13: | `src/pages/portal/StammdatenPage.tsx` | **UPDATE** — Routen angepasst + Legacy-Redirects | ✅ |
-14: | `src/manifests/routesManifest.ts` | **UPDATE** — Tile "firma" → "vertraege" | ✅ |
-15: | `src/components/portal/HowItWorks/moduleContents.ts` | **UPDATE** — SubTile angepasst | ✅ |
+# MOD-01 Stammdaten: Bereinigung und Neustrukturierung
+
+## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
+
+### Durchgeführte Änderungen
+
+| Datei | Aktion | Status |
+|-------|--------|--------|
+| `src/pages/portal/stammdaten/PersonenTab.tsx` | **GELÖSCHT** | ✅ |
+| `src/pages/portal/stammdaten/FirmaTab.tsx` | **GELÖSCHT** | ✅ |
+| `src/pages/portal/stammdaten/VertraegeTab.tsx` | **NEU** — Verträge-Übersicht | ✅ |
+| `src/pages/portal/stammdaten/index.ts` | **UPDATE** — Exporte bereinigt | ✅ |
+| `src/pages/portal/StammdatenPage.tsx` | **UPDATE** — Routen angepasst + Legacy-Redirects | ✅ |
+| `src/manifests/routesManifest.ts` | **UPDATE** — Tile "firma" → "vertraege" | ✅ |
+| `src/components/portal/HowItWorks/moduleContents.ts` | **UPDATE** — SubTile angepasst | ✅ |
 
 ---
 
@@ -30,72 +30,63 @@
 | **Status-Spiegelung** | `src/pages/portal/finanzierung/StatusTab.tsx` | ✅ KOMPLETT NEU |
 | **MOD-11 Integration** | `src/pages/portal/finanzierungsmanager/FMFaelle.tsx` | ✅ AKTUALISIERT |
 
-### Neuer Submit-Flow
-
-```
-1. User füllt Selbstauskunft aus (>=80% completion)
-2. User füllt Anfrage-Formular aus
-3. User klickt "Zur Prüfung einreichen"
-4. Confirmation-Dialog mit Completion-Score
-5. System:
-   - Setzt finance_requests.status = 'submitted_to_zone1'
-   - Erstellt finance_mandate mit status = 'new'
-   - Erstellt audit_event (FIN_SUBMIT)
-6. Redirect zu /portal/finanzierung/status
-```
-
-### Status-Spiegelung (MOD-07 ↔ MOD-11)
-
-| MOD-11 Case Status | Anzeige in MOD-07 StatusTab |
-|--------------------|----------------------------|
-| `active` | "In Bearbeitung" + Progress 4/6 |
-| `missing_docs` | "Aktion erforderlich" Alert |
-| `submitted` | "Bei Bank eingereicht" + Progress 5/6 |
-| `bank_response` | "Rückmeldung erhalten" Timeline-Event |
-| `completed` | "Abgeschlossen" + Progress 6/6 |
-
-### Manager-Sichtbarkeit
-
-- **Vorher:** Manager-Card nur sichtbar nach `accepted_at`
-- **Nachher:** Manager-Card sichtbar ab `assigned_manager_id` (mit Status-Badge "Zugewiesen" vs "Aktiv")
-
-### Neue UI-Komponenten
-
-1. **Progress-Indikator:** 6-stufiger Fortschrittsbalken
-2. **Manager-Card:** Zeigt zugewiesenen Manager mit E-Mail
-3. **Action-Alert:** Rot markiert wenn Kunde Aktion benötigt
-4. **Erweiterte Timeline:** Events aus `future_room_cases` gespiegelt
-
-### Zentralisierte Status-Labels
-
-```typescript
-// src/types/finance.ts
-export const FINANCE_STATUS_LABELS = {
-  draft: 'Entwurf',
-  submitted_to_zone1: 'Eingereicht',
-  assigned: 'Zugewiesen',
-  delegated: 'Übergeben an Manager',
-  in_processing: 'In Bearbeitung',
-  bank_submitted: 'Bei Bank eingereicht',
-  needs_customer_action: 'Aktion erforderlich',
-  completed: 'Abgeschlossen',
-  // ...
-};
-```
-
-### Technische Details
-
-- `useSubmitFinanceRequest` validiert completion_score >= 80%
-- Query in StatusTab inkludiert `future_room_cases` für Spiegelung
-- `getEffectiveStatus()` priorisiert: FutureRoomCase > Mandate > Request
-- Alle Status-Labels via `getStatusLabel()` / `getStatusBadgeVariant()`
-
----
-
-## Ergebnis
+### Ergebnis
 
 1. ✅ **Submit-Flow vollständig:** Button + Validation + Confirmation
 2. ✅ **Status-Spiegelung aktiv:** MOD-11 → MOD-07 in Echtzeit
 3. ✅ **Manager früh sichtbar:** Ab Zuweisung, nicht erst Annahme
 4. ✅ **Konsistente Labels:** Zentralisiert in `types/finance.ts`
 5. ✅ **Golden Path MOD-07:** 98% Complete
+
+---
+
+# MOD-08/09 Investment & Vertriebspartner: Vollständiges Refactoring
+
+## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
+
+### Durchgeführte Änderungen (MOD-09)
+
+| Datei | Aktion | Status |
+|-------|--------|--------|
+| `src/hooks/usePartnerListingSelections.ts` | **NEU** — Favorites-Hook | ✅ |
+| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | **ERWEITERT** — Filter (Lage, Typ, Preis, Provision, Rendite) | ✅ |
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | **ERWEITERT** — Portfolio-Dashboard + Selection-Integration | ✅ |
+| `src/pages/portal/vertriebspartner/KundenTab.tsx` | **ERWEITERT** — Echte DB-Anbindung | ✅ |
+
+### Golden Path Validierung
+
+```
+MOD-04 (SSOT) → MOD-06 (Listing) → MOD-09 (Katalog) = ✅ FUNKTIONAL
+```
+
+| Phase | Beschreibung | Status |
+|-------|--------------|--------|
+| 1 | Property in MOD-04 anlegen | ✅ |
+| 2 | Listing in MOD-06 erstellen | ✅ |
+| 3 | Partner-Freigabe aktivieren | ✅ |
+| 4 | Partner sieht im Katalog | ✅ |
+| 5 | Partner merkt vor (♥) | ✅ |
+| 6 | Nutzung in Beratung | ✅ |
+
+### Completion Status
+
+| Modul | Vorher | Nachher |
+|-------|--------|---------|
+| MOD-08 Investment-Suche | 35% | **45%** |
+| MOD-09 Vertriebspartner | 55% | **78%** |
+
+### Verbleibende Aufgaben
+
+| Prio | Task | Modul |
+|------|------|-------|
+| P0 | MOD-08 Dashboard | MOD-08 |
+| P0 | Deal-Flow vervollständigen | MOD-09 |
+| P1 | Beratungsmaterialien (Videos) | MOD-09 |
+| P1 | Kaufy-Import | MOD-08 |
+| P2 | Netzwerk-Tab (Sub-Partner) | MOD-09 |
+
+---
+
+## Vollständiger Audit-Report
+
+Siehe: `public/AUDIT_MOD08_MOD09_2026-02-06.md`
