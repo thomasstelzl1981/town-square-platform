@@ -7,7 +7,7 @@ import {
   User, Loader2, ArrowRight, CheckCircle2, Clock,
   AlertTriangle
 } from 'lucide-react';
-import { SelbstauskunftForm } from '@/components/finanzierung/SelbstauskunftForm';
+import { SelbstauskunftFormV2 } from '@/components/finanzierung/SelbstauskunftFormV2';
 import { AcceptMandateDialog } from '@/components/finanzierung/AcceptMandateDialog';
 import { useAcceptMandate } from '@/hooks/useFinanceMandate';
 import { supabase } from '@/integrations/supabase/client';
@@ -307,7 +307,7 @@ export default function CaseDetailTab({ cases, isLoading }: CaseDetailTabProps) 
 
       {/* Selbstauskunft Form */}
       {applicant ? (
-        <SelbstauskunftForm 
+        <SelbstauskunftFormV2 
           profile={applicant as unknown as ApplicantProfile} 
           readOnly={needsAcceptance} 
         />
