@@ -25,12 +25,15 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, Percent, 
-  Plus, Upload, Eye, Calculator
+  Plus, Upload, Eye, Calculator, Table2, ChevronDown
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
   ResponsiveContainer, CartesianGrid, Legend, Area, ComposedChart 
 } from 'recharts';
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from '@/components/ui/table';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
@@ -92,6 +95,7 @@ export function PortfolioTab() {
   const { activeOrganization, activeTenantId } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showAllYears, setShowAllYears] = useState(false);
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
   
@@ -695,30 +699,30 @@ export function PortfolioTab() {
                   labelFormatter={(label) => `Jahr ${label}`}
                 />
                 <Legend />
-                {/* Objektwert als äußere Fläche (hellblau) */}
+                {/* Objektwert als äußere Fläche (hellblau) - EXPLIZITE FARBEN */}
                 <Area 
                   type="monotone" 
                   dataKey="objektwert" 
                   name="Objektwert"
-                  stroke="hsl(var(--chart-1))" 
-                  fill="hsl(var(--chart-1))"
+                  stroke="hsl(210, 70%, 50%)"
+                  fill="hsl(210, 70%, 50%)"
                   fillOpacity={0.15}
                 />
-                {/* Vermögen als innere Fläche (grün) */}
+                {/* Vermögen als innere Fläche (grün) - EXPLIZITE FARBEN */}
                 <Area 
                   type="monotone" 
                   dataKey="vermoegen" 
                   name="Netto-Vermögen"
-                  stroke="hsl(var(--chart-2))" 
-                  fill="hsl(var(--chart-2))"
+                  stroke="hsl(142, 70%, 45%)"
+                  fill="hsl(142, 70%, 45%)"
                   fillOpacity={0.4}
                 />
-                {/* Restschuld als Linie (rot, fallend) — now ON TOP */}
+                {/* Restschuld als Linie (rot, fallend) — now ON TOP - EXPLIZITE FARBEN */}
                 <Line 
                   type="monotone" 
                   dataKey="restschuld" 
                   name="Restschuld"
-                  stroke="hsl(var(--destructive))" 
+                  stroke="hsl(0, 70%, 50%)"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -933,6 +937,58 @@ export function PortfolioTab() {
                     Details →
                   </Badge>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* 10-Jahres-Investmentkalkulation Tabelle */}
+          {hasData && projectionData.length > 0 && (
+            <div className="mt-6 border rounded-lg">
+              <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Table2 className="h-4 w-4" />
+                  <h3 className="font-semibold">Investmentkalkulation ({showAllYears ? '30' : '10'} Jahre)</h3>
+                </div>
+                {projectionData.length > 11 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowAllYears(!showAllYears)}
+                  >
+                    <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${showAllYears ? 'rotate-180' : ''}`} />
+                    {showAllYears ? 'Weniger anzeigen' : 'Alle Jahre'}
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Jahr</TableHead>
+                      <TableHead className="text-right">Miete p.a.</TableHead>
+                      <TableHead className="text-right text-destructive">Zinsen</TableHead>
+                      <TableHead className="text-right" style={{ color: 'hsl(210, 70%, 50%)' }}>Tilgung</TableHead>
+                      <TableHead className="text-right" style={{ color: 'hsl(0, 70%, 50%)' }}>Restschuld</TableHead>
+                      <TableHead className="text-right" style={{ color: 'hsl(210, 70%, 50%)' }}>Objektwert</TableHead>
+                      <TableHead className="text-right" style={{ color: 'hsl(142, 70%, 45%)' }}>Vermögen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projectionData
+                      .slice(1, showAllYears ? 31 : 11)
+                      .map((row) => (
+                        <TableRow key={row.year}>
+                          <TableCell className="font-medium">{row.year}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(row.rent)}</TableCell>
+                          <TableCell className="text-right text-destructive">{formatCurrency(row.interest)}</TableCell>
+                          <TableCell className="text-right" style={{ color: 'hsl(210, 70%, 50%)' }}>{formatCurrency(row.amortization)}</TableCell>
+                          <TableCell className="text-right" style={{ color: 'hsl(0, 70%, 50%)' }}>{formatCurrency(row.restschuld)}</TableCell>
+                          <TableCell className="text-right" style={{ color: 'hsl(210, 70%, 50%)' }}>{formatCurrency(row.objektwert)}</TableCell>
+                          <TableCell className="text-right font-medium" style={{ color: 'hsl(142, 70%, 45%)' }}>{formatCurrency(row.vermoegen)}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
