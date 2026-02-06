@@ -145,15 +145,18 @@ CREATE TABLE service_case_inbound (
 - **sot-renovation-inbound-webhook**: Resend Webhook → E-Mail parsen, Tender-ID matchen
 
 ### Acceptance Criteria
-- [ ] Eingehende E-Mails werden automatisch per Tender-ID zugeordnet
+- [x] DB-Tabellen: service_case_inbound, service_case_providers
+- [x] UnassignedInboundList Komponente
+- [x] OffersComparisonPanel mit Vergabe-Workflow
+- [x] Edge Function sot-renovation-inbound-webhook
+- [x] Hook useServiceCaseInbound mit CRUD
+- [ ] Eingehende E-Mails werden automatisch per Tender-ID zugeordnet (Resend Webhook konfigurieren)
 - [ ] Unzugeordnete E-Mails erscheinen in separater Liste
 - [ ] Angebotsvergleich zeigt ALLE Kontaktdaten der Dienstleister
 - [ ] Vergabe-Mail wird als Entwurf erstellt
 - [ ] Vorgang kann abgeschlossen werden
 
----
-
-## NÄCHSTER SCHRITT
+**✅ PHASE 4 UI + EDGE FUNCTIONS ABGESCHLOSSEN**
 
 **Empfehlung:** Mit **Phase 1** starten (Datenbank + Grundgerüst).
 
