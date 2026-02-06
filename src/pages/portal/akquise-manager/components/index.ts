@@ -11,6 +11,8 @@ export { DeliveryTab } from './DeliveryTab';
 export { PortalSearchTool } from './PortalSearchTool';
 export { PropertyResearchTool } from './PropertyResearchTool';
 export { QuickCalcTool } from './QuickCalcTool';
+export { ExposeDragDropUploader } from './ExposeDragDropUploader';
+export { StandaloneCalculatorPanel } from './StandaloneCalculatorPanel';
 
 // Calculation Components
 export { BestandCalculation } from './BestandCalculation';

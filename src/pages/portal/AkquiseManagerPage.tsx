@@ -35,6 +35,8 @@ import {
   InboundTab, 
   AnalysisTab, 
   DeliveryTab,
+  ExposeDragDropUploader,
+  StandaloneCalculatorPanel,
   PortalSearchTool,
   PropertyResearchTool,
   QuickCalcTool
@@ -445,14 +447,17 @@ function AkquiseTools() {
         </p>
       </div>
 
-      {/* Portal Search */}
+      {/* 7.1 Exposé Upload & Analyse */}
+      <ExposeDragDropUploader />
+
+      {/* 7.2 Standalone Calculators with Drag-Drop */}
+      <StandaloneCalculatorPanel />
+
+      {/* 7.3 Portal Search */}
       <PortalSearchTool />
 
-      {/* Property Research */}
+      {/* 7.4 Property Research */}
       <PropertyResearchTool />
-
-      {/* Quick Calculators */}
-      <QuickCalcTool />
     </div>
   );
 }
