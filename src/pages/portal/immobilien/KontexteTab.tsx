@@ -179,78 +179,56 @@ export function KontexteTab() {
             
             return (
               <Card key={ctx.id}>
-                <CardHeader className="pb-3">
+                {/* Header: Name + Badge kompakt */}
+                <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-muted">
+                    <div className="p-2 rounded-lg bg-muted shrink-0">
                       {isPrivate ? (
                         <Users className="h-4 w-4" />
                       ) : (
                         <Building2 className="h-4 w-4" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-base">{ctx.name}</CardTitle>
-                      {ctx.legal_form && (
-                        <CardDescription>{ctx.legal_form}</CardDescription>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-base truncate">{ctx.name}</CardTitle>
+                        <Badge variant={isPrivate ? 'secondary' : 'default'} className="shrink-0">
+                          {isPrivate ? 'Privat' : 'Geschäftlich'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {ctx.tax_rate_percent ?? 30}% Steuersatz
+                        {ctx.legal_form && ` · ${ctx.legal_form}`}
+                      </p>
                     </div>
-                    <Badge variant={isPrivate ? 'secondary' : 'default'}>
-                      {isPrivate ? 'Privat' : 'Geschäftlich'}
-                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Tax Rate */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <Percent className="h-3 w-3 text-muted-foreground" />
-                    <span className="font-medium">{ctx.tax_rate_percent ?? 30}% Steuersatz</span>
-                  </div>
-
-                  {/* PRIVATE: Show owners with tax data */}
+                
+                <CardContent className="space-y-3 pt-0">
+                  {/* PRIVATE: Kompakte Eigentümer-Anzeige */}
                   {isPrivate && members.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground mb-2">Eigentümer:</p>
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="border-t pt-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {members.map(member => (
-                          <div key={member.id} className="text-sm space-y-0.5 p-2 bg-muted/30 rounded">
-                            <p className="font-medium">
+                          <div key={member.id} className="text-sm p-2 bg-muted/40 rounded-md space-y-0.5">
+                            <p className="font-medium truncate">
                               {member.first_name} {member.last_name}
                             </p>
-                            {member.birth_name && (
-                              <p className="text-xs text-muted-foreground">
-                                geb. {member.birth_name}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                              {member.birth_date && (
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  *{formatBirthDate(member.birth_date)}
-                                </span>
-                              )}
-                              {member.tax_class && (
-                                <Badge variant="outline" className="text-xs h-5">
-                                  Stkl. {member.tax_class}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                              {member.profession && (
-                                <span className="flex items-center gap-1">
-                                  <Briefcase className="h-3 w-3" />
-                                  {member.profession}
-                                </span>
-                              )}
-                              {member.gross_income_yearly && (
-                                <span className="flex items-center gap-1">
-                                  <Euro className="h-3 w-3" />
-                                  {formatCurrency(member.gross_income_yearly)}
-                                </span>
-                              )}
-                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {[
+                                member.birth_name && `geb. ${member.birth_name}`,
+                                member.tax_class && `Stkl. ${member.tax_class}`,
+                              ].filter(Boolean).join(' · ') || '–'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {[
+                                member.profession,
+                                member.gross_income_yearly && formatCurrency(member.gross_income_yearly),
+                              ].filter(Boolean).join(' · ') || '–'}
+                            </p>
                             {member.ownership_share && (
-                              <p className="text-xs font-medium">
-                                {member.ownership_share}% Anteil
+                              <p className="text-xs font-medium text-primary">
+                                {member.ownership_share}%
                               </p>
                             )}
                           </div>
@@ -259,53 +237,55 @@ export function KontexteTab() {
                     </div>
                   )}
 
-                  {/* BUSINESS: Show company details */}
+                  {/* BUSINESS: Kompakte Firmendaten */}
                   {!isPrivate && (
-                    <div className="pt-2 border-t space-y-1 text-sm">
+                    <div className="border-t pt-3 space-y-1 text-sm">
                       {ctx.managing_director && (
                         <div className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-muted-foreground" />
-                          <span>GF: {ctx.managing_director}</span>
+                          <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate">GF: {ctx.managing_director}</span>
                         </div>
                       )}
-                      {ctx.hrb_number && (
-                        <p className="text-xs text-muted-foreground">HRB: {ctx.hrb_number}</p>
-                      )}
-                      {ctx.ust_id && (
-                        <p className="text-xs text-muted-foreground">USt-ID: {ctx.ust_id}</p>
-                      )}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {[
+                          ctx.hrb_number && `HRB: ${ctx.hrb_number}`,
+                          ctx.ust_id && `USt-ID: ${ctx.ust_id}`,
+                        ].filter(Boolean).join(' · ') || '–'}
+                      </p>
                     </div>
                   )}
 
-                  {/* Address */}
+                  {/* Adresse */}
                   {formatAddress(ctx) && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {formatAddress(ctx)}
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{formatAddress(ctx)}</span>
                     </div>
                   )}
 
-                  {/* Property count & Actions */}
-                  <div className="pt-2 flex items-center justify-between">
-                    <Badge variant="secondary">
-                      {contextPropertyCounts[ctx.id] || 0} Objekt(e)
+                  {/* Footer: Objektzahl + Buttons in eigener Zeile */}
+                  <div className="border-t pt-3 space-y-2">
+                    <Badge variant="outline" className="text-xs">
+                      {contextPropertyCounts[ctx.id] || 0} Objekt(e) zugeordnet
                     </Badge>
                     <div className="flex gap-2">
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="flex-1"
                         onClick={() => setEditingContext(ctx)}
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
                         Bearbeiten
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="flex-1"
                         onClick={() => setAssignerContext({ id: ctx.id, name: ctx.name })}
                       >
-                        <Link2 className="mr-2 h-4 w-4" />
-                        Objekte zuordnen
+                        <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                        Zuordnen
                       </Button>
                     </div>
                   </div>

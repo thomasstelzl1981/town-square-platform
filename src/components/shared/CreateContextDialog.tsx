@@ -414,25 +414,30 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
 
             <Separator />
 
-            {/* Steuersatz - für beide Typen */}
-            <div className="space-y-2">
-              <Label htmlFor="tax_rate">Steuersatz (%)</Label>
+            {/* Steuersatz - prominente Box */}
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+              <Label htmlFor="tax_rate" className="text-sm font-medium">
+                Steuersatz für Renditeberechnungen
+              </Label>
               <div className="flex items-center gap-3">
-                <Input
-                  id="tax_rate"
-                  type="number"
-                  min={0}
-                  max={100}
-                  className="w-24"
-                  value={formData.tax_rate_percent}
-                  onChange={(e) => updateField('tax_rate_percent', parseFloat(e.target.value) || 30)}
-                />
-                <span className="text-sm text-muted-foreground">
-                  {formData.context_type === 'PRIVATE' 
-                    ? 'Persönlicher Grenzsteuersatz (für Renditeberechnungen)' 
-                    : 'Gesamtsteuersatz (KSt + GewSt, Default 30%)'}
-                </span>
+                <div className="relative">
+                  <Input
+                    id="tax_rate"
+                    type="number"
+                    min={0}
+                    max={100}
+                    className="w-24 pr-6"
+                    value={formData.tax_rate_percent}
+                    onChange={(e) => updateField('tax_rate_percent', parseFloat(e.target.value) || 30)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                {formData.context_type === 'PRIVATE' 
+                  ? 'Persönlicher Grenzsteuersatz für Steuervorteils-Berechnungen.' 
+                  : 'Effektiver Gesamtsteuersatz (KSt + GewSt + Soli). Standard: 30%'}
+              </p>
             </div>
 
             <Separator />
@@ -483,21 +488,23 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
               </Button>
             </div>
 
-            <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(owners.length, 2)}, 1fr)` }}>
+            <div className="grid gap-4 md:grid-cols-2 max-h-[50vh] overflow-y-auto pr-1">
               {owners.map((owner, idx) => (
-                <div key={idx} className="space-y-3 p-4 border rounded-lg relative">
-                  {owners.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-6 w-6"
-                      onClick={() => removeOwner(idx)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                  <p className="text-sm font-medium text-muted-foreground">Eigentümer {idx + 1}</p>
+                <div key={idx} className="space-y-3 p-3 border rounded-lg relative bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Eigentümer {idx + 1}</p>
+                    {owners.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeOwner(idx)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                   
                   {/* Persönliche Daten */}
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Persönliche Daten</p>
