@@ -1,92 +1,317 @@
-# MOD-01 Stammdaten: Bereinigung und Neustrukturierung
 
-## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
+# MOD-08 Investment-Suche: Vervollständigungsplan v3.0
 
-### Durchgeführte Änderungen
+## Korrigierte Workflow-Architektur
 
-| Datei | Aktion | Status |
-|-------|--------|--------|
-| `src/pages/portal/stammdaten/PersonenTab.tsx` | **GELÖSCHT** | ✅ |
-| `src/pages/portal/stammdaten/FirmaTab.tsx` | **GELÖSCHT** | ✅ |
-| `src/pages/portal/stammdaten/VertraegeTab.tsx` | **NEU** — Verträge-Übersicht | ✅ |
-| `src/pages/portal/stammdaten/index.ts` | **UPDATE** — Exporte bereinigt | ✅ |
-| `src/pages/portal/StammdatenPage.tsx` | **UPDATE** — Routen angepasst + Legacy-Redirects | ✅ |
-| `src/manifests/routesManifest.ts` | **UPDATE** — Tile "firma" → "vertraege" | ✅ |
-| `src/components/portal/HowItWorks/moduleContents.ts` | **UPDATE** — SubTile angepasst | ✅ |
+### ZWEI GETRENNTE GOLDEN PATHS
+
+MOD-08 beinhaltet **zwei völlig unabhängige Workflows**, die nicht vermischt werden dürfen:
 
 ---
 
-# MOD-07 Finanzierung: Status-Spiegelung + Submit-Flow
+## Workflow A: Objektsuche & Favoriten
 
-## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
+**Datenquelle:** Public Listings aus MOD-06 (Verkauf)
 
-### Implementierte Features
+```text
+MOD-04 (Property anlegen)
+    │
+    ▼
+MOD-06 (Listing erstellen)
+    │
+    ├─── Partner-Netzwerk freigeben (Pflicht zuerst)
+    │         │
+    │         └─► MOD-09 KatalogTab (Vertriebspartner sieht Objekt)
+    │
+    └─── Kaufy freigeben (Optional, nach Partner)
+              │
+              ├─► Zone 3 Kaufy Marktplatz (öffentlich)
+              │
+              └─► MOD-08 Suche (User sucht Investment)
+                      │
+                      ▼
+              MOD-08 Favoriten (User merkt vor)
+                      │
+                      ▼
+              MOD-08 Simulation (Portfolio + Favorit)
+```
 
-| Feature | Datei | Status |
-|---------|-------|--------|
-| **Submit-Hook** | `src/hooks/useSubmitFinanceRequest.ts` | ✅ NEU |
-| **STATUS_LABELS** | `src/types/finance.ts` | ✅ ERWEITERT |
-| **Submit-Button** | `src/components/finanzierung/AnfrageFormV2.tsx` | ✅ ERWEITERT |
-| **Status-Spiegelung** | `src/pages/portal/finanzierung/StatusTab.tsx` | ✅ KOMPLETT NEU |
-| **MOD-11 Integration** | `src/pages/portal/finanzierungsmanager/FMFaelle.tsx` | ✅ AKTUALISIERT |
-
-### Ergebnis
-
-1. ✅ **Submit-Flow vollständig:** Button + Validation + Confirmation
-2. ✅ **Status-Spiegelung aktiv:** MOD-11 → MOD-07 in Echtzeit
-3. ✅ **Manager früh sichtbar:** Ab Zuweisung, nicht erst Annahme
-4. ✅ **Konsistente Labels:** Zentralisiert in `types/finance.ts`
-5. ✅ **Golden Path MOD-07:** 98% Complete
+**Regel:** Objekte erscheinen in MOD-08 Suche UND MOD-09 Katalog, sobald sie via MOD-06 freigegeben sind.
 
 ---
 
-# MOD-08/09 Investment & Vertriebspartner: Vollständiges Refactoring
+## Workflow B: Akquise-Mandat (KOMPLETT EIGENSTÄNDIG)
 
-## STATUS: ✅ ABGESCHLOSSEN (2026-02-06)
+**Datenquelle:** Suchauftrag des Investors → Zone 1 Acquiary → MOD-12 Akquise-Manager
 
-### Durchgeführte Änderungen (MOD-09)
-
-| Datei | Aktion | Status |
-|-------|--------|--------|
-| `src/hooks/usePartnerListingSelections.ts` | **NEU** — Favorites-Hook | ✅ |
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | **ERWEITERT** — Filter (Lage, Typ, Preis, Provision, Rendite) | ✅ |
-| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | **ERWEITERT** — Portfolio-Dashboard + Selection-Integration | ✅ |
-| `src/pages/portal/vertriebspartner/KundenTab.tsx` | **ERWEITERT** — Echte DB-Anbindung | ✅ |
-
-### Golden Path Validierung
-
+```text
+MOD-08 Mandat
+├── MandatCreateWizard (5-Step Wizard)
+│   └── Suchkriterien definieren (Region, Preis, Rendite, Objektart)
+│
+└── Status: draft → submitted_to_zone1
+                        │
+                        ▼
+            Zone 1 ACQUIARY (/admin/acquiary)
+            ├── Inbox: Neue Mandate prüfen
+            ├── Zuweisung: Akquise-Manager auswählen
+            └── Status: assigned
+                        │
+                        ▼
+            MOD-12 AKQUISE-MANAGER (/portal/akquise)
+            ├── Dashboard: Zugewiesene Mandate
+            ├── Mandate: Workbench für Sourcing
+            ├── Objekteingang: Gefundene Objekte analysieren
+            └── Status: active → closed
 ```
-MOD-04 (SSOT) → MOD-06 (Listing) → MOD-09 (Katalog) = ✅ FUNKTIONAL
-```
 
-| Phase | Beschreibung | Status |
+**Regel:** Dieses Mandat hat NICHTS mit dem MOD-04/MOD-06 Verkaufs-Flow zu tun. Es ist ein eigenständiger Suchauftrag.
+
+---
+
+## Menüpunkt-Spezifikationen (Aktualisiert)
+
+### 1. Suche (`/portal/investments/suche`)
+
+**Kernfunktion:** Investment-Suche mit zVE + EK-Engine (identisch Zone 3 Kaufy + MOD-09 Beratung)
+
+| Modus | Beschreibung | Engine |
 |-------|--------------|--------|
-| 1 | Property in MOD-04 anlegen | ✅ |
-| 2 | Listing in MOD-06 erstellen | ✅ |
-| 3 | Partner-Freigabe aktivieren | ✅ |
-| 4 | Partner sieht im Katalog | ✅ |
-| 5 | Partner merkt vor (♥) | ✅ |
-| 6 | Nutzung in Beratung | ✅ |
+| **Investment-Suche** | zVE + EK → Netto-Belastung pro Objekt | `sot-investment-engine` |
+| **Klassische Suche** | Stadt, Preis, Fläche, Rendite | Direkte Query |
 
-### Completion Status
+**UI-Struktur:**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Objektsuche                                                                 │
+│ Finden Sie passende Kapitalanlage-Objekte für Ihre Situation               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [⊛ Investment-Suche]  [⊙ Klassische Suche]                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ INVESTMENT-SUCHE:                                                           │
+│ ┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────────┐ │
+│ │ zVE (Einkommen)     │ │ Eigenkapital        │ │ [▼ Mehr Optionen]       │ │
+│ │ [60.000 €         ] │ │ [50.000 €         ] │ │ Familienstand, Kirche   │ │
+│ └─────────────────────┘ └─────────────────────┘ └─────────────────────────┘ │
+│                                                                             │
+│                               [Ergebnisse anzeigen →]                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 12 Objekte · berechnet für 60.000€ zVE · 50.000€ EK                        │
+│                                                                             │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐                 │
+│ │ [Bild]          │ │ [Bild]          │ │ [Bild]          │                 │
+│ │ MFH München     │ │ ETW Berlin      │ │ EFH Leipzig     │                 │
+│ │ 890.000€        │ │ 385.000€        │ │ 295.000€        │                 │
+│ │ Rendite: 5,7%   │ │ Rendite: 4,5%   │ │ Rendite: 4,0%   │                 │
+│ │ ─────────────── │ │ ─────────────── │ │ ─────────────── │                 │
+│ │ +Miete: +4.200€ │ │ +Miete: +1.450€ │ │ +Miete: +980€   │                 │
+│ │ −Rate:  −2.900€ │ │ −Rate:  −1.200€ │ │ −Rate:  −800€   │                 │
+│ │ ═══════════════ │ │ ═══════════════ │ │ ═══════════════ │                 │
+│ │ Belastung:      │ │ Belastung:      │ │ Belastung:      │                 │
+│ │ −180€/Mo    [♡] │ │ +120€/Mo    [♥] │ │ +80€/Mo     [♡] │                 │
+│ └─────────────────┘ └─────────────────┘ └─────────────────┘                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-| Modul | Vorher | Nachher |
-|-------|--------|---------|
-| MOD-08 Investment-Suche | 35% | **45%** |
-| MOD-09 Vertriebspartner | 55% | **78%** |
+**Datenquelle:** 
+- `v_public_listings` (Kaufy-freigegebene Listings)
+- ODER: `listings` + `listing_publications` WHERE `channel IN ('kaufy', 'partner_network')`
 
-### Verbleibende Aufgaben
-
-| Prio | Task | Modul |
-|------|------|-------|
-| P0 | MOD-08 Dashboard | MOD-08 |
-| P0 | Deal-Flow vervollständigen | MOD-09 |
-| P1 | Beratungsmaterialien (Videos) | MOD-09 |
-| P1 | Kaufy-Import | MOD-08 |
-| P2 | Netzwerk-Tab (Sub-Partner) | MOD-09 |
+**Technische Implementierung:**
+- Wiederverwendung: `sot-investment-engine` Edge Function (Zone 1)
+- Wiederverwendung: `InvestmentSearchCard.tsx` (Zone 3 Kaufy Style)
+- Heart-Toggle → `investment_favorites` Tabelle
 
 ---
 
-## Vollständiger Audit-Report
+### 2. Favoriten (`/portal/investments/favoriten`)
 
-Siehe: `public/AUDIT_MOD08_MOD09_2026-02-06.md`
+**Kernfunktion:** Gespeicherte Objekte mit Finanzierungseinstellungen
+
+**Datenstruktur (investment_favorites erweitern):**
+```sql
+ALTER TABLE investment_favorites 
+ADD COLUMN search_params JSONB DEFAULT '{}',
+ADD COLUMN calculated_burden NUMERIC;
+```
+
+**UI-Struktur:**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Meine Favoriten                                          [+ Kaufy Sync]    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ ┌─────────┐ ETW Berlin-Mitte                              Quelle: Suche │ │
+│ │ │  [Bild] │ 385.000€ · 4,5% Rendite · 95m²                             │ │
+│ │ │         │ Berechnet mit: 60.000€ zVE, 50.000€ EK                      │ │
+│ │ └─────────┘ Netto-Belastung: +120€/Mo ✓                                 │ │
+│ │                                                                         │ │
+│ │ [Zur Simulation hinzufügen]  [Anfrage stellen*]  [Bearbeiten]  [×]     │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ *Hinweis: Für eine aktive Objektsuche durch einen Akquise-Manager         │
+│  erstellen Sie ein Suchmandat unter "Mandat".                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Aktionen:**
+- **Zur Simulation:** Navigiert zu `/portal/investments/simulation?add=:favoriteId`
+- **Anfrage stellen:** Deep-Link zu MOD-07 Finanzierungsanfrage (falls Objekt gekauft werden soll)
+- **Bearbeiten:** Notiz + Neu-Berechnung
+- **Entfernen:** Soft-Delete
+
+---
+
+### 3. Mandat (`/portal/investments/mandat`) — EIGENSTÄNDIGER WORKFLOW
+
+**Kernfunktion:** Suchmandat an Zone 1 Acquiary senden (NICHT mit Favoriten verknüpft)
+
+**Zwei Einstiegspunkte:**
+| Einstieg | Route | Beschreibung |
+|----------|-------|--------------|
+| **Direkt** | `/portal/investments/mandat/neu` | Neues Mandat von Grund auf |
+| **Nach Marktanalyse** | `/portal/investments/mandat/neu?region=Berlin&type=apartment` | Prefill aus vorheriger Suche |
+
+**WICHTIG:** Ein Mandat ist KEIN konkretes Objekt, sondern ein **Suchauftrag**. Der User beschreibt, WAS er sucht, und ein Akquise-Manager wird beauftragt, passende Objekte zu finden.
+
+**Wizard-Flow (5 Steps):**
+1. **Suchgebiet:** Region, Stadt, PLZ-Bereiche
+2. **Objektart:** ETW, MFH, EFH, Gewerbe, Mixed
+3. **Budget:** Preis-Range, max. monatliche Belastung
+4. **Anforderungen:** Rendite, Baujahr, Zustand
+5. **Zusammenfassung + Einreichung**
+
+**Nach Einreichung:**
+- Status → `submitted_to_zone1`
+- Mandat erscheint in Zone 1 Acquiary Inbox
+- Admin weist Akquise-Manager zu
+- Manager bearbeitet in MOD-12
+
+---
+
+### 4. Simulation (`/portal/investments/simulation`)
+
+**Kernfunktion:** Portfolio-Spiegelung aus MOD-04 + Favoriten hinzufügen
+
+**Drei Bereiche:**
+
+**A) Aktuelles Portfolio (MOD-04 Spiegelung)**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📊 Ihr aktuelles Portfolio                                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Objekte: 3    Verkehrswert: 1.200.000€    Restschuld: 800.000€              │
+│ Netto-Vermögen: 400.000€                                                    │
+│                                                                             │
+│ EINNAHMEN p.a.               AUSGABEN p.a.                                  │
+│ + Miete:      +48.000€       − Zins:     −24.000€ (rot)                    │
+│ + Steuer:      +6.000€       − Tilgung:  −12.000€ (blau)                   │
+│ ─────────────────────        ─────────────────────                          │
+│ Summe:        +54.000€       Summe:      −36.000€                           │
+│                                                                             │
+│ Jahresüberschuss: +18.000€ (= +1.500€/Mo)                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**B) Objekt hinzufügen (aus Favoriten)**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ➕ Neues Objekt hinzufügen                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [Dropdown: Aus Ihren Favoriten wählen ▼]                                    │
+│   ├─ ETW Berlin (385.000€, +120€/Mo, berechnet mit 60k zVE)                │
+│   ├─ MFH Hamburg (1.200.000€, −180€/Mo, berechnet mit 60k zVE)             │
+│   └─ [+ Manuell eingeben...]                                                │
+│                                                                             │
+│ Ausgewählt: ETW Berlin-Mitte                                                │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Die gespeicherten Finanzierungsparameter werden übernommen:             │ │
+│ │ EK: 50.000€ · Zins: 3,5% · Tilgung: 2,0% · Belastung: +120€/Mo          │ │
+│ │ [Anpassen...]                                                           │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                              [+ Zur Simulation hinzufügen]                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**C) Kombinierte Projektion (Charts)**
+- 40-Jahres-Vermögensentwicklung (ComposedChart aus MOD-04)
+- 10-Jahres-Detailtabelle (Jahr, Miete, Zinsen, Tilgung, Restschuld, Wert, Vermögen)
+- Monatliche EÜR (Haushaltsrechnung aus MOD-04)
+- Slider für Projektion: Wertsteigerung, Mietsteigerung
+
+---
+
+## Technische Umsetzung
+
+### Neue Dateien
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/pages/portal/investments/SucheTab.tsx` | Investment-Engine + Klassische Suche |
+| `src/pages/portal/investments/FavoritenTab.tsx` | Favoriten-Verwaltung |
+| `src/pages/portal/investments/SimulationTab.tsx` | Portfolio + Projektion |
+| `src/hooks/useInvestmentFavorites.ts` | CRUD für investment_favorites |
+| `src/hooks/usePortfolioSummary.ts` | MOD-04 Aggregation extrahiert |
+| `src/components/investment/FavoriteCard.tsx` | Favoriten-Karte |
+| `src/components/investment/PortfolioCombinedView.tsx` | Vorher/Nachher Charts |
+
+### Wiederverwendung
+
+| Komponente | Quelle | Verwendung |
+|------------|--------|------------|
+| `sot-investment-engine` | Zone 1 Edge Function | Suche + Favoriten Berechnung |
+| `InvestmentSearchCard` | Zone 3 Kaufy | Such-Ergebniskarten |
+| `ComposedChart` | MOD-04 PortfolioSummaryModal | Simulation Charts |
+| `DetailTable40Jahre` | MOD-04 | Simulation Tabelle |
+| `Haushaltsrechnung` | MOD-04 | Simulation EÜR |
+
+### Datenbank-Änderungen
+
+```sql
+-- investment_favorites erweitern
+ALTER TABLE investment_favorites 
+ADD COLUMN IF NOT EXISTS search_params JSONB DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS calculated_burden NUMERIC,
+ADD COLUMN IF NOT EXISTS listing_id UUID REFERENCES listings(id);
+
+COMMENT ON COLUMN investment_favorites.search_params IS 
+  'Gespeicherte zVE, EK, Familienstand, Kirchensteuer';
+```
+
+---
+
+## Abgrenzung der Workflows (KRITISCH)
+
+| Aspekt | Workflow A (Suche/Favoriten/Simulation) | Workflow B (Mandat) |
+|--------|----------------------------------------|---------------------|
+| **Zweck** | Selbstständig Objekte finden & bewerten | Akquise-Manager beauftragen |
+| **Datenquelle** | `v_public_listings` (MOD-06) | `acq_mandates` (eigenständig) |
+| **Ziel** | Kauf eines konkreten Objekts | Professionelle Objektsuche |
+| **Downstream** | → MOD-07 Finanzierung | → Zone 1 Acquiary → MOD-12 |
+| **Output** | Favorit + Simulation | Suchmandat-Record |
+
+---
+
+## Fertigstellungsgrad nach Plan
+
+| Bereich | Vorher | Nachher |
+|---------|--------|---------|
+| Suche | 5% | **100%** |
+| Favoriten | 5% | **100%** |
+| Simulation | 30% | **100%** |
+| Mandat | 95% | **100%** |
+| **Gesamt MOD-08** | **48%** | **100%** |
+
+---
+
+## Implementierungs-Reihenfolge
+
+| Phase | Task | Dateien | Aufwand |
+|-------|------|---------|---------|
+| **1** | DB-Migration: investment_favorites erweitern | Migration | Klein |
+| **2** | `useInvestmentFavorites` Hook | 1 neue Datei | Klein |
+| **3** | `SucheTab.tsx` mit Investment-Engine Toggle | 1 neue Datei | Mittel |
+| **4** | `FavoritenTab.tsx` mit Aktionen | 1 neue Datei | Mittel |
+| **5** | `usePortfolioSummary` Hook (MOD-04 Extraktion) | 1 neue Datei | Klein |
+| **6** | `SimulationTab.tsx` komplett neu | 4 Komponenten | Groß |
+| **7** | InvestmentsPage.tsx Integration | 1 Datei anpassen | Klein |
