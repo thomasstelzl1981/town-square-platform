@@ -1,21 +1,25 @@
 /**
  * Akquise-Manager Page (MOD-12)
- * AkquiseManager Workbench with Gate, Sourcing, Outreach, Analysis
+ * AkquiseManager Workbench with Gate, Sourcing, Outreach, Analysis, Delivery
  */
 
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { WorkflowSubbar } from '@/components/shared/WorkflowSubbar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, FileText, Wrench, Plus, Loader2, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Briefcase, Users, FileText, Wrench, Loader2, CheckCircle2, 
+  Clock, ArrowRight, Search, Mail, Inbox, Brain, Send
+} from 'lucide-react';
 import { useAcqMandatesPending, useAcqMandatesActive, useAcqMandate, useAcceptAcqMandate } from '@/hooks/useAcqMandate';
 import { MANDATE_STATUS_CONFIG, canViewClientInfo } from '@/types/acquisition';
-import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { SourcingTab, OutreachTab, InboundTab, AnalysisTab, DeliveryTab } from './akquise-manager/components';
 
 // Workflow steps for mandate detail
 export const AKQUISE_MANAGER_WORKFLOW_STEPS = [
@@ -132,12 +136,28 @@ function AkquiseDashboard() {
   );
 }
 
-// Mandate Detail with Gate Panel
+// Mandate Detail with Gate Panel + Workbench Tabs
 function AkquiseMandateDetail() {
   const { mandateId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: mandate, isLoading } = useAcqMandate(mandateId);
   const acceptMandate = useAcceptAcqMandate();
+
+  // Determine active tab from URL hash
+  const getActiveTab = () => {
+    const hash = location.hash.replace('#', '');
+    if (['sourcing', 'outreach', 'inbound', 'analysis', 'delivery'].includes(hash)) {
+      return hash;
+    }
+    return 'sourcing';
+  };
+  
+  const activeTab = getActiveTab();
+
+  const setActiveTab = (tab: string) => {
+    navigate(`${location.pathname}#${tab}`, { replace: true });
+  };
 
   if (isLoading) {
     return (
@@ -163,17 +183,34 @@ function AkquiseMandateDetail() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/dashboard')}>←</Button>
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold font-mono">{mandate.code}</h1>
-            <Badge variant={MANDATE_STATUS_CONFIG[mandate.status].variant as any}>
+            <Badge variant={MANDATE_STATUS_CONFIG[mandate.status].variant as 'default' | 'secondary' | 'destructive' | 'outline'}>
               {MANDATE_STATUS_CONFIG[mandate.status].label}
             </Badge>
           </div>
           {canViewClientInfo(mandate) && mandate.client_display_name && (
             <p className="text-muted-foreground">{mandate.client_display_name}</p>
+          )}
+        </div>
+        
+        {/* Search criteria summary */}
+        <div className="text-right text-sm">
+          {mandate.asset_focus && mandate.asset_focus.length > 0 && (
+            <div className="text-muted-foreground">
+              {mandate.asset_focus.join(', ')}
+            </div>
+          )}
+          {(mandate.price_min || mandate.price_max) && (
+            <div className="text-muted-foreground">
+              {mandate.price_min && `ab ${(mandate.price_min / 1000000).toFixed(1)}M €`}
+              {mandate.price_min && mandate.price_max && ' – '}
+              {mandate.price_max && `bis ${(mandate.price_max / 1000000).toFixed(1)}M €`}
+            </div>
           )}
         </div>
       </div>
@@ -202,16 +239,60 @@ function AkquiseMandateDetail() {
 
       {/* Active Mandate Workbench */}
       {!needsGate && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card><CardHeader><CardTitle>Sourcing</CardTitle></CardHeader>
-            <CardContent className="text-muted-foreground text-sm">Kontaktrecherche via Apollo/Apify (Placeholder)</CardContent></Card>
-          <Card><CardHeader><CardTitle>Outreach</CardTitle></CardHeader>
-            <CardContent className="text-muted-foreground text-sm">System-E-Mail versenden (Placeholder)</CardContent></Card>
-          <Card><CardHeader><CardTitle>Inbound</CardTitle></CardHeader>
-            <CardContent className="text-muted-foreground text-sm">Eingegangene Nachrichten (Placeholder)</CardContent></Card>
-          <Card><CardHeader><CardTitle>Analyse</CardTitle></CardHeader>
-            <CardContent className="text-muted-foreground text-sm">KI Research + GeoMap + Rechner (Placeholder)</CardContent></Card>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="sourcing" className="gap-2">
+              <Search className="h-4 w-4" />
+              Sourcing
+            </TabsTrigger>
+            <TabsTrigger value="outreach" className="gap-2">
+              <Mail className="h-4 w-4" />
+              Outreach
+            </TabsTrigger>
+            <TabsTrigger value="inbound" className="gap-2">
+              <Inbox className="h-4 w-4" />
+              Eingang
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="gap-2">
+              <Brain className="h-4 w-4" />
+              Analyse
+            </TabsTrigger>
+            <TabsTrigger value="delivery" className="gap-2">
+              <Send className="h-4 w-4" />
+              Delivery
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sourcing" className="mt-6">
+            <SourcingTab mandateId={mandate.id} mandateCode={mandate.code} />
+          </TabsContent>
+
+          <TabsContent value="outreach" className="mt-6">
+            <OutreachTab 
+              mandateId={mandate.id} 
+              mandateCode={mandate.code}
+              clientName={canViewClientInfo(mandate) ? mandate.client_display_name ?? undefined : undefined}
+              searchArea={(mandate.search_area as { region?: string } | null)?.region}
+              assetFocus={mandate.asset_focus ?? undefined}
+            />
+          </TabsContent>
+
+          <TabsContent value="inbound" className="mt-6">
+            <InboundTab mandateId={mandate.id} mandateCode={mandate.code} />
+          </TabsContent>
+
+          <TabsContent value="analysis" className="mt-6">
+            <AnalysisTab mandateId={mandate.id} mandateCode={mandate.code} />
+          </TabsContent>
+
+          <TabsContent value="delivery" className="mt-6">
+            <DeliveryTab 
+              mandateId={mandate.id} 
+              mandateCode={mandate.code}
+              clientName={canViewClientInfo(mandate) ? mandate.client_display_name ?? undefined : undefined}
+            />
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
