@@ -29,30 +29,30 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     oneLiner: 'Alles, was Ihr Konto "fähig macht" – einmal sauber einrichten, überall profitieren.',
     benefits: [
       'Ihre Daten werden automatisch in Anträgen, Exposés und Dokumenten vorbefüllt.',
-      'Abrechnung, Credits und Sicherheit sind transparent an einem Ort.',
-      'Änderungen wirken sofort – ohne Doppeleingaben.',
+      'Alle Verträge und Vereinbarungen zentral an einem Ort einsehbar.',
+      'Abrechnung, Credits und Sicherheit sind transparent und jederzeit zugänglich.',
     ],
     whatYouDo: [
       'Profil- und Kontaktdaten pflegen',
-      'Firmen-/Nutzungsmodus verwalten (privat/geschäftlich)',
-      'Abrechnung & Rechnungen einsehen',
+      'Verträge und Vereinbarungen einsehen (AGB, Mandate, Provisionen)',
+      'Abrechnung & Rechnungen prüfen',
       'Bankdaten für Auszahlungen hinterlegen',
       'Sicherheitseinstellungen (Passwort, 2FA, Sessions)',
     ],
     flows: [
       {
         title: 'Startklar nach Registrierung',
-        steps: ['Profil vervollständigen', 'Abrechnung prüfen', 'Bankdaten hinterlegen', 'Sicherheit aktivieren'],
+        steps: ['Profil vervollständigen', 'Verträge prüfen', 'Abrechnung einrichten', 'Sicherheit aktivieren'],
       },
       {
-        title: 'Wechsel in geschäftliche Nutzung',
-        steps: ['Firma öffnen', 'Angaben ergänzen', 'Abrechnung anpassen', 'fertig'],
+        title: 'Vertragsübersicht nutzen',
+        steps: ['Verträge öffnen', 'Vereinbarungen durchsehen', 'Details bei Bedarf aufrufen'],
       },
     ],
     cta: 'Vervollständigen Sie Ihr Profil – das beschleunigt alle Prozesse.',
     subTiles: [
       { title: 'Profil', route: '/portal/stammdaten/profil', icon: User },
-      { title: 'Firma', route: '/portal/stammdaten/firma', icon: Building },
+      { title: 'Verträge', route: '/portal/stammdaten/vertraege', icon: FileText },
       { title: 'Abrechnung', route: '/portal/stammdaten/abrechnung', icon: CreditCard },
       { title: 'Sicherheit', route: '/portal/stammdaten/sicherheit', icon: Shield },
     ],

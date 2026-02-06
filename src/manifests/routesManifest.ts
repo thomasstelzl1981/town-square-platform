@@ -150,7 +150,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: true, org_types: ["client", "partner", "subpartner"] },
       tiles: [
         { path: "profil", component: "ProfilTab", title: "Profil" },
-        { path: "firma", component: "FirmaTab", title: "Firma" },
+        { path: "vertraege", component: "VertraegeTab", title: "Verträge" },
         { path: "abrechnung", component: "AbrechnungTab", title: "Abrechnung" },
         { path: "sicherheit", component: "SicherheitTab", title: "Sicherheit" },
       ],
