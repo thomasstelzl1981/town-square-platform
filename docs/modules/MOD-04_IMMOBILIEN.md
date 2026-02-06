@@ -1,11 +1,15 @@
 # MOD-04 — IMMOBILIEN (Property Portfolio Hub)
 
-> **Version**: 1.1  
-> **Status**: SPEC READY  
-> **Datum**: 2026-01-25  
+> **Version**: 2.0  
+> **Status**: ACTIVE  
+> **Datum**: 2026-02-06  
 > **Zone**: 2 (User Portal)  
 > **Route-Prefix**: `/portal/immobilien`  
-> **Owner**: Kaufy / Acquiary / Futureroom
+> **Owner**: Kaufy / Acquiary / Futureroom  
+> **API-Range**: API-700 bis API-747
+
+> **Audit-Status:** 92% Complete  
+> **Letzte Prüfung:** 2026-02-06
 
 ---
 
@@ -474,25 +478,32 @@ POST   /bewertung/:property_id/cancel             (optional)
 
 ## 12. Datenmodell
 
-### 12.1 Existierende Tabellen
+### 12.1 Existierende Tabellen (DB Status)
 
-- `properties` — Property-Stammdaten
-- `units` — Einheiten-Struktur
-- `property_features` — Feature-Flags
-- `property_financing` — Finanzierungsdaten
+| Tabelle | Beschreibung | DB Status |
+|---------|--------------|-----------|
+| `properties` | Property-Stammdaten (55+ Spalten) | ✅ EXISTS |
+| `units` | Einheiten-Struktur (32 Spalten) | ✅ EXISTS |
+| `landlord_contexts` | Vermieter-Kontexte (28 Spalten inkl. Steuer) | ✅ EXISTS |
+| `context_property_assignment` | Kontext-Objekt-Zuordnung | ✅ EXISTS |
+| `property_financing` | Legacy Finanzierungsdaten | ✅ EXISTS |
+| `loans` | **SSOT** Finanzierungsdaten (23 Spalten) | ✅ EXISTS |
+| `property_accounting` | AfA/SKR04 Daten (16 Spalten) | ✅ EXISTS |
+| `property_valuations` | Bewertungsergebnisse | ✅ EXISTS |
 
-### 12.2 Neue Tabellen (Phase 1)
+### 12.2 Sanierung Tabellen (Phase 2)
 
-- `landlord_contexts` — Vermieter-Kontexte
-- `context_property_assignment` — Kontext-Objekt-Zuordnung
-- `property_valuations` — Bewertungsergebnisse
+| Tabelle | Beschreibung | DB Status |
+|---------|--------------|-----------|
+| `service_cases` | Sanierungsvorgänge (39 Spalten) | ✅ EXISTS |
+| `service_case_offers` | Eingegangene Angebote | ✅ EXISTS |
+| `service_case_outbound` | Versendete Ausschreibungen | ✅ EXISTS |
 
-### 12.3 Neue Tabellen (Phase 2 - Sanierung)
+### 12.3 Fehlende Tabellen
 
-- `service_cases` — Sanierungsvorgänge
-- `service_case_vendors` — Dienstleister (optional)
-- `service_case_outbound` — Versendete Ausschreibungen
-- `service_case_offers` — Eingegangene Angebote
+| Tabelle | Beschreibung | Priorität |
+|---------|--------------|-----------|
+| `service_case_vendors` | Dienstleister-Pool (optional) | P2 |
 
 Siehe: `docs/modules/MOD-04_DB_SCHEMA.md`
 
@@ -541,7 +552,78 @@ Siehe: `docs/modules/MOD-04_DB_SCHEMA.md`
 
 ## 15. Offene Punkte
 
-Siehe: `docs/modules/ZONE2_OPEN_QUESTIONS.md` (Q4.6 - Q4.12)
+- ~~Q4.6: Kontext-Zuordnung~~ → ✅ context_property_assignment EXISTS
+- ~~Q4.7: Sanierung End-to-End~~ → ✅ service_cases + outbound/offers + Edge Functions
+- Q4.8: Bewertung-Worker (Sprengnetter API Integration) → PENDING
+- Q4.9: Valuations Job Queue → PENDING (benötigt jobs Tabelle)
+- Q4.10: DMS-Verknüpfung bei Sanierung → ✅ dms_folder_id in service_cases
+- Q4.11: service_case_vendors Tabelle → P2 (Optional)
+- Q4.12: Inbound-Webhook E-Mail-Parsing → ✅ sot-renovation-inbound-webhook EXISTS
+
+---
+
+## 16. Edge Functions (MOD-04)
+
+| Function | API-ID | Status | Beschreibung |
+|----------|--------|--------|--------------|
+| `sot-property-crud` | API-701 | ✅ ACTIVE | Property CRUD Operations |
+| `sot-expose-description` | INTERNAL-002 | ✅ ACTIVE | KI-Beschreibungsgenerator |
+| `sot-places-search` | INTERNAL-009 | ✅ ACTIVE | Google Places Suche |
+| `sot-renovation-outbound` | INTERNAL-010 | ✅ ACTIVE | Ausschreibungs-Versand |
+| `sot-renovation-inbound-webhook` | INTERNAL-011 | ✅ ACTIVE | Inbound E-Mail-Matching |
+| `sot-renovation-scope-ai` | INTERNAL-008 | ✅ ACTIVE | KI-Leistungsanalyse |
+| `sot-geomap-snapshot` | — | ✅ ACTIVE | Kartenvisualisierung |
+
+---
+
+## 17. UI-Komponenten (Repository)
+
+### 17.1 Pages
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `PortfolioTab.tsx` | Portfolio-Liste mit 13-Spalten + Investment-Simulation |
+| `PropertyDetailPage.tsx` | Immobilienakte mit Tabs |
+| `KontexteTab.tsx` | Vermietereinheiten-Verwaltung |
+| `SanierungTab.tsx` | Sanierungsvorgänge |
+| `BewertungTab.tsx` | Bewertungsübersicht |
+
+### 17.2 Immobilienakte-Blöcke
+
+| Komponente | Block | Beschreibung |
+|------------|-------|--------------|
+| `IdentityBlock.tsx` | A | ID, Code, Typ |
+| `CoreDataBlock.tsx` | B+C | Adresse + Gebäude |
+| `LegalBlock.tsx` | D | Grundbuch + Erwerb |
+| `InvestmentKPIBlock.tsx` | E | Investment-Kennzahlen |
+| `TenancyBlock.tsx` | F | Mietverhältnisse |
+| `NKWEGBlock.tsx` | G | WEG/NK |
+| `FinancingBlock.tsx` | H | Finanzierung |
+| `InventoryInvestmentSimulation.tsx` | — | 40-Jahres-Simulation |
+
+---
+
+## 18. Audit-Zusammenfassung (2026-02-06)
+
+### Completion Status: 92%
+
+| Bereich | Status | Details |
+|---------|--------|---------|
+| Route-Struktur | ✅ 100% | 4-Tile-Pattern (Portfolio, Kontexte, Sanierung, Bewertung) |
+| Manifest-Sync | ✅ 100% | routesManifest + moduleContents synchron |
+| DB-Tabellen | ✅ 95% | Alle Kerntabellen existieren |
+| RLS-Policies | ✅ 100% | Vollständig für properties, units, contexts |
+| Edge Functions | ✅ 100% | 7 Edge Functions aktiv |
+| Immobilienakte UI | ✅ 90% | 10-Block-Struktur implementiert |
+| Investment-Simulation | ✅ 100% | 40-Jahres-Chart + Tabelle |
+| Sanierung E2E | ✅ 85% | Outbound + Inbound aktiv |
+| Bewertung E2E | ⚠️ 60% | UI vorhanden, Worker pending |
+
+### Nächste Schritte (Phase 2)
+
+1. Sprengnetter API Integration für Bewertung
+2. jobs Tabelle für async Valuation Worker
+3. service_case_vendors für Dienstleister-Pool (optional)
 
 ---
 
@@ -550,3 +632,8 @@ Siehe: `docs/modules/ZONE2_OPEN_QUESTIONS.md` (Q4.6 - Q4.12)
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 1.1 | 2026-01-25 | Initial erstellt aus Master Spec v1.1 Prompt |
+| **2.0** | **2026-02-06** | **Audit-Update:** DB-Status verifiziert, Edge Functions dokumentiert, UI-Komponenten katalogisiert |
+
+---
+
+*Dieses Dokument ist der verbindliche Spezifikationsstand für MOD-04.*
