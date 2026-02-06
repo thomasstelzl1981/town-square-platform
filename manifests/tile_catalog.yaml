@@ -441,22 +441,22 @@ tiles:
       - title: "Dashboard"
         route: "/portal/akquise-manager/dashboard"
         icon: "LayoutDashboard"
-        description: "Übersicht aller Aktivitäten"
-        
-      - title: "Kunden"
-        route: "/portal/akquise-manager/kunden"
-        icon: "Users"
-        description: "Kundenakquise verwalten"
+        description: "KPIs und Quick-Actions"
         
       - title: "Mandate"
         route: "/portal/akquise-manager/mandate"
         icon: "FileSignature"
-        description: "Aktive Mandate"
+        description: "Workbench für Sourcing und Profiling"
+        
+      - title: "Objekteingang"
+        route: "/portal/akquise-manager/objekteingang"
+        icon: "Inbox"
+        description: "Zentrale Inbox für Objekt-Leads"
         
       - title: "Tools"
         route: "/portal/akquise-manager/tools"
         icon: "Wrench"
-        description: "Akquise-Werkzeuge"
+        description: "Ad-hoc Analyse mit Drag-and-Drop"
 
   # ============================================================================
   # MOD-13: PROJEKTE (NEU)
