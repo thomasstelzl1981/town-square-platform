@@ -92,10 +92,13 @@ export interface AcqMandateEvent {
 export interface CreateAcqMandateData {
   client_display_name: string;
   search_area: {
+    region?: string;
     regions?: string[];
     cities?: string[];
     postal_codes?: string[];
     free_text?: string;
+    radius?: number;
+    states?: string[];
   };
   asset_focus: string[];
   price_min?: number | null;
@@ -168,18 +171,18 @@ export const MANDATE_STATUS_CONFIG: Record<AcqMandateStatus, {
 // ============================================================================
 
 export const ASSET_FOCUS_OPTIONS = [
-  { value: 'MFH', label: 'Mehrfamilienhaus (MFH)' },
-  { value: 'ETW', label: 'Eigentumswohnung (ETW)' },
-  { value: 'EFH', label: 'Einfamilienhaus (EFH)' },
-  { value: 'ZFH', label: 'Zweifamilienhaus (ZFH)' },
-  { value: 'WGH', label: 'Wohn- und Geschäftshaus' },
-  { value: 'GEW', label: 'Gewerbeimmobilie' },
-  { value: 'BUERO', label: 'Bürogebäude' },
-  { value: 'HANDEL', label: 'Handelsfläche' },
-  { value: 'LAGER', label: 'Lager/Logistik' },
-  { value: 'HOTEL', label: 'Hotel/Gastgewerbe' },
-  { value: 'GRUNDSTUECK', label: 'Grundstück' },
-  { value: 'PORTFOLIO', label: 'Portfolio' },
+  { value: 'MFH', label: 'Mehrfamilienhaus (MFH)', description: 'Wohngebäude mit 3+ Einheiten' },
+  { value: 'ETW', label: 'Eigentumswohnung (ETW)', description: 'Einzelne Wohneinheit' },
+  { value: 'EFH', label: 'Einfamilienhaus (EFH)', description: 'Freistehendes Wohnhaus' },
+  { value: 'ZFH', label: 'Zweifamilienhaus (ZFH)', description: 'Wohnhaus mit 2 Einheiten' },
+  { value: 'WGH', label: 'Wohn- und Geschäftshaus', description: 'Gemischte Nutzung' },
+  { value: 'GEW', label: 'Gewerbeimmobilie', description: 'Gewerbliche Nutzung' },
+  { value: 'BUERO', label: 'Bürogebäude', description: 'Büronutzung' },
+  { value: 'HANDEL', label: 'Handelsfläche', description: 'Einzelhandel' },
+  { value: 'LAGER', label: 'Lager/Logistik', description: 'Logistiknutzung' },
+  { value: 'HOTEL', label: 'Hotel/Gastgewerbe', description: 'Hotelnutzung' },
+  { value: 'GRUNDSTUECK', label: 'Grundstück', description: 'Unbebautes Land' },
+  { value: 'PORTFOLIO', label: 'Portfolio', description: 'Mehrere Objekte' },
 ] as const;
 
 // ============================================================================

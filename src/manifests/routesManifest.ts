@@ -116,11 +116,13 @@ export const zone1Admin: ZoneDefinition = {
     { path: "agents/instances", component: "AgentsInstances", title: "Agenten-Instanzen" },
     { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
     { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
-    // Acquiary
-    { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
-    { path: "acquiary/zuordnung", component: "AcquiaryZuordnung", title: "Zuordnung" },
-    { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
-    { path: "acquiary/mandate", component: "AcquiaryMandate", title: "Mandate" },
+    // Acquiary (Akquise Governance)
+    { path: "acquiary", component: "Acquiary", title: "Acquiary" },
+    { path: "acquiary/inbox", component: "Acquiary", title: "Inbox" },
+    { path: "acquiary/assignments", component: "Acquiary", title: "Zuweisungen" },
+    { path: "acquiary/mandates", component: "Acquiary", title: "Mandate" },
+    { path: "acquiary/audit", component: "Acquiary", title: "Audit" },
+    { path: "acquiary/needs-routing", component: "Acquiary", title: "Needs Routing" },
     // Sales Desk
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
@@ -267,6 +269,10 @@ export const zone2Portal: ZoneDefinition = {
         { path: "mandat", component: "MandatTab", title: "Mandat" },
         { path: "simulation", component: "SimulationTab", title: "Simulation" },
       ],
+      dynamic_routes: [
+        { path: "mandat/neu", component: "MandatCreateWizard", title: "Neues Mandat" },
+        { path: "mandat/:mandateId", component: "MandatDetail", title: "Mandat-Details", dynamic: true },
+      ],
     },
     "MOD-09": {
       name: "Vertriebspartner",
@@ -323,12 +329,15 @@ export const zone2Portal: ZoneDefinition = {
       base: "akquise-manager",
       icon: "Briefcase",
       display_order: 12,
-      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      visibility: { default: false, org_types: ["partner"], requires_activation: true, requires_role: ["akquise_manager"] },
       tiles: [
-        { path: "dashboard", component: "AkquiseDashboard", title: "Dashboard" },
+        { path: "dashboard", component: "AkquiseDashboard", title: "Dashboard", default: true },
         { path: "kunden", component: "AkquiseKunden", title: "Kunden" },
         { path: "mandate", component: "AkquiseMandate", title: "Mandate" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
+      ],
+      dynamic_routes: [
+        { path: "mandate/:mandateId", component: "AkquiseMandateDetail", title: "Mandat-Workbench", dynamic: true },
       ],
     },
     "MOD-13": {
