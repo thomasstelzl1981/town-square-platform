@@ -1,12 +1,14 @@
 /**
  * Investments Page (MOD-08) - Routes Pattern with How It Works
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Heart, UserCircle } from 'lucide-react';
+import { Search, Heart } from 'lucide-react';
 import { InvestmentCalculator } from '@/components/investment';
+import MandatTab from './investments/MandatTab';
+import MandatCreateWizard from './investments/MandatCreateWizard';
+import MandatDetail from './investments/MandatDetail';
 
 // Sub-tile components
 function SucheTab() {
@@ -55,29 +57,6 @@ function FavoritenTab() {
   );
 }
 
-function MandatTab() {
-  return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Suchmandat</h1>
-        <p className="text-muted-foreground">Erstellen Sie einen Suchauftrag</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Suchmandat</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="p-8 border-2 border-dashed rounded-lg text-center text-muted-foreground">
-            <UserCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Kein aktives Suchmandat</p>
-            <p className="text-sm">Definieren Sie Ihre Suchkriterien</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 function SimulationTab() {
   return (
     <div className="p-6 space-y-6">
@@ -102,6 +81,8 @@ const InvestmentsPage = () => {
       <Route path="suche" element={<SucheTab />} />
       <Route path="favoriten" element={<FavoritenTab />} />
       <Route path="mandat" element={<MandatTab />} />
+      <Route path="mandat/neu" element={<MandatCreateWizard />} />
+      <Route path="mandat/:mandateId" element={<MandatDetail />} />
       <Route path="simulation" element={<SimulationTab />} />
       
       {/* Fallback */}

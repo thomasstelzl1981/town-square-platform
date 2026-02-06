@@ -188,7 +188,7 @@ export function useAcqMandate(mandateId: string | undefined) {
 }
 
 /**
- * Fetch mandate events (audit trail)
+ * Fetch mandate events (audit trail) for a single mandate
  */
 export function useAcqMandateEvents(mandateId: string | undefined) {
   return useQuery({
@@ -206,6 +206,28 @@ export function useAcqMandateEvents(mandateId: string | undefined) {
       return data as AcqMandateEvent[];
     },
     enabled: !!mandateId,
+  });
+}
+
+/**
+ * Fetch all mandate events for Zone-1 Audit view
+ */
+export function useAllAcqMandateEvents() {
+  const { isPlatformAdmin } = useAuth();
+
+  return useQuery({
+    queryKey: ['acq-mandate-events', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('acq_mandate_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data as AcqMandateEvent[];
+    },
+    enabled: isPlatformAdmin,
   });
 }
 
