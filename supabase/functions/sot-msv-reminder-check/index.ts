@@ -1,10 +1,83 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+/**
+ * SOT-MSV-REMINDER-CHECK (API-801)
+ * 
+ * Automatisches Mahnwesen für Premium-MSV-Enrollments.
+ * Läuft am 10. des Monats oder manuell mit forceRun: true.
+ * 
+ * Mahnstufen:
+ * - friendly (Erinnerung) → MAHNUNG_1
+ * - first (1. Mahnung) → MAHNUNG_2
+ * - final (Letzte Mahnung) → MAHNUNG_3
+ * 
+ * E-Mail-Versand:
+ * - Benötigt RESEND_API_KEY Secret
+ * - Sender-Domain muss bei Resend verifiziert sein
+ * - Ohne API-Key: Nur Reminder-Erstellung, kein Versand
+ */
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Resend E-Mail versenden (nur wenn API-Key konfiguriert)
+async function sendReminderEmail(params: {
+  to: string;
+  subject: string;
+  content: string;
+  tenantName: string;
+  stage: string;
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  
+  if (!resendApiKey) {
+    console.log("RESEND_API_KEY not configured - skipping email send");
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "MSV Mietsonderverwaltung <msv@kaufy.app>", // Domain muss verifiziert sein
+        to: [params.to],
+        subject: params.subject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1a1a1a;">Zahlungserinnerung</h2>
+            <p>Sehr geehrte/r ${params.tenantName},</p>
+            <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              ${params.content.replace(/\n/g, '<br>')}
+            </div>
+            <p style="color: #666; font-size: 12px;">
+              Dies ist eine automatische Nachricht der Mietsonderverwaltung.
+            </p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Resend API error:", error);
+      return { success: false, error };
+    }
+
+    const result = await response.json();
+    console.log(`Email sent successfully: ${result.id}`);
+    return { success: true, messageId: result.id };
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -28,7 +101,9 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Starting reminder check for premium MSV enrollments...");
+    // Check if Resend is configured
+    const resendConfigured = !!Deno.env.get("RESEND_API_KEY");
+    console.log(`Starting reminder check... Resend configured: ${resendConfigured}`);
 
     // Get all premium enrollments
     const { data: enrollments, error: enrollmentError } = await supabase
@@ -52,6 +127,7 @@ serve(async (req: Request) => {
     const periodEnd = new Date(currentYear, currentMonth + 1, 0);
 
     const remindersCreated: any[] = [];
+    const emailsSent: any[] = [];
 
     for (const enrollment of enrollments || []) {
       // Get active leases for this property
@@ -128,12 +204,12 @@ serve(async (req: Request) => {
               stage: newStage,
               content_text: template?.content,
               status: "pending",
-              auto_sent: false // Will be set to true after sending
+              auto_sent: false
             })
             .select()
             .single();
 
-          if (!reminderError) {
+          if (!reminderError && reminder) {
             remindersCreated.push({
               lease_id: lease.id,
               stage: newStage,
@@ -141,9 +217,40 @@ serve(async (req: Request) => {
               reminder_id: reminder.id
             });
 
-            // TODO: Send via Resend when RESEND_API_KEY is configured
-            // For now, just mark as created
             console.log(`Created ${newStage} reminder for lease ${lease.id}`);
+
+            // Attempt to send email if Resend is configured
+            if (contact?.email && template?.content) {
+              const tenantName = contact.first_name && contact.last_name 
+                ? `${contact.first_name} ${contact.last_name}`
+                : "Mieter/in";
+
+              const emailResult = await sendReminderEmail({
+                to: contact.email,
+                subject: template.title || `Zahlungserinnerung - ${newStage === "friendly" ? "Freundliche Erinnerung" : newStage === "first" ? "1. Mahnung" : "Letzte Mahnung"}`,
+                content: template.content,
+                tenantName,
+                stage: newStage,
+              });
+
+              if (emailResult.success) {
+                // Update reminder as sent
+                await supabase
+                  .from("rent_reminders")
+                  .update({ 
+                    auto_sent: true, 
+                    status: "sent",
+                    sent_at: new Date().toISOString()
+                  })
+                  .eq("id", reminder.id);
+
+                emailsSent.push({
+                  reminder_id: reminder.id,
+                  to: contact.email,
+                  messageId: emailResult.messageId
+                });
+              }
+            }
           }
         }
       }
@@ -153,8 +260,10 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         date: today.toISOString(),
+        resendConfigured,
         remindersCreated: remindersCreated.length,
-        details: remindersCreated
+        emailsSent: emailsSent.length,
+        details: { reminders: remindersCreated, emails: emailsSent }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
