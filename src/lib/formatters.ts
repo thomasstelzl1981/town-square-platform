@@ -81,3 +81,16 @@ export function formatArea(value: number | null | undefined): string {
   if (value == null) return '–';
   return `${formatNumber(value, 1)} m²`;
 }
+
+/**
+ * Format file size in human readable format
+ */
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (bytes == null || bytes === 0) return '0 B';
+  
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, i);
+  
+  return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}

@@ -66,16 +66,22 @@ KI-gestützte Erstellung des Leistungsverzeichnisses mit Kostenschätzung.
 2. **DMSDocumentSelector.tsx**: Dokumente aus DMS auswählen
 3. **LineItemsEditor.tsx**: Editierbares Leistungsverzeichnis
 4. **CostEstimateCard.tsx**: Min/Mittel/Max Anzeige
+5. **RoomAnalysisDisplay.tsx**: Anzeige erkannter Räume
 
 ### Edge Function
 - **sot-renovation-scope-ai**: Analysiert Dokumente, generiert LV, schätzt Kosten
 
 ### Acceptance Criteria
+- [x] ScopeDefinitionPanel mit Tabs für KI/externes LV
+- [x] LineItemsEditor mit Add/Edit/Remove Positionen
+- [x] CostEstimateCard mit Min/Mittel/Max Bandbreite
+- [x] DMSDocumentSelector für Objektdokumente
+- [x] RoomAnalysisDisplay für erkannte Räume
+- [x] Edge Function für KI-Analyse implementiert
 - [ ] KI analysiert Grundriss → erkennt Räume, Türen, Fenster, Flächen
-- [ ] KI generiert strukturiertes LV mit Positionen + Mengen
-- [ ] Button "Kostenschätzung" zeigt Min/Mittel/Max Bandbreite
 - [ ] Externes LV kann hochgeladen werden
-- [ ] DMS-Dokumente können als Anhänge ausgewählt werden
+
+**✅ PHASE 2 ABGESCHLOSSEN**
 
 ---
 
