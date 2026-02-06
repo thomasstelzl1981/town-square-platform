@@ -1,164 +1,348 @@
 
 
-# MOD-04 SANIERUNG — IMPLEMENTIERUNG IN 4 PHASEN
+# MOD-07 FINANZIERUNG — VERFEINERTER REFACTORING-PLAN
 
-## ÜBERSICHT
+## KLARSTELLUNG: GOLDEN PATH FINANZIERUNG
 
-Der vollständige Ausschreibungs-Workflow wird in 4 unabhängige Phasen aufgeteilt:
-
-| Phase | Titel | Umfang | Geschätzte Dauer |
-|-------|-------|--------|------------------|
-| **Phase 1** | Datenbank + Grundgerüst | Schema, UI-Skeleton, Navigation | 2-3 Tage |
-| **Phase 2** | Leistungsumfang (Schritt 2) | KI-Analyse, LV-Editor, Kostenschätzung | 4-5 Tage |
-| **Phase 3** | Ausschreibung (Schritt 3-4) | Provider-Suche, E-Mail-Versand | 3-4 Tage |
-| **Phase 4** | Inbound + Vergabe (Schritt 5-8) | Angebote empfangen, vergleichen, vergeben | 4-5 Tage |
-
----
-
-## PHASE 1: DATENBANK + GRUNDGERÜST
-
-### Ziel
-Stabile Datenbankstruktur und navigierbares UI-Skeleton für den Sanierungsbereich.
-
-### Datenbank-Migration
-```sql
--- service_cases Erweiterungen
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS unit_id uuid REFERENCES units(id);
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS tender_id text UNIQUE;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS scope_status text DEFAULT 'pending';
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS scope_description text;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS scope_line_items jsonb DEFAULT '[]';
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS cost_estimate_min integer;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS cost_estimate_max integer;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS contact_name text;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS contact_phone text;
-ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS contact_email text;
-
--- Trigger für Tender-ID Generierung
--- Format: TND-{ORG_PUBLIC_ID}-{YYMMDD}-{SEQ}
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           FINANZIERUNG GOLDEN PATH                                          │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                             │
+│  ZONE 2: MOD-07 (Kunde)              ZONE 1: FutureRoom (Admin)     ZONE 2: MOD-11 (Manager)│
+│  ═══════════════════════             ══════════════════════════     ═════════════════════════│
+│                                                                                             │
+│  ┌─────────────────────┐                                                                    │
+│  │ 1. SELBSTAUSKUNFT   │    Nur Datenerfassung                                              │
+│  │    9 Sektionen      │    ─────────────────►  KEINE Übergabe an Banken!                   │
+│  │    (Antragsteller   │                        KEIN Europace/BaufiSmart!                   │
+│  │     1 + optional 2) │                                                                    │
+│  └─────────┬───────────┘                                                                    │
+│            │                                                                                │
+│            ▼                                                                                │
+│  ┌─────────────────────┐                                                                    │
+│  │ 2. DOKUMENTE        │    DMS-Checkliste                                                  │
+│  │    (Bonitäts-       │    für Bankunterlagen                                              │
+│  │     unterlagen)     │                                                                    │
+│  └─────────┬───────────┘                                                                    │
+│            │                                                                                │
+│            ▼                                                                                │
+│  ┌─────────────────────┐                                                                    │
+│  │ 3. ANFRAGE          │    Objektdaten                                                     │
+│  │    (Finanzierungs-  │    + Kostenaufstellung                                             │
+│  │     vorhaben)       │    + Finanzierungsplan                                             │
+│  └─────────┬───────────┘                                                                    │
+│            │                                                                                │
+│            │  status = 'submitted'                                                          │
+│            ▼                                                                                │
+│  ┌─────────────────────┐   ┌─────────────────────────┐                                      │
+│  │ 4. STATUS           │──►│ FutureRoom INBOX        │                                      │
+│  │    (Einreichung)    │   │ Triage + Delegation     │                                      │
+│  └─────────────────────┘   └───────────┬─────────────┘                                      │
+│                                        │                                                    │
+│       ◄──────────────────────────────  │  status = 'assigned'                               │
+│       Benachrichtigung                 ▼                                                    │
+│                            ┌─────────────────────────┐   ┌─────────────────────────────────┐│
+│                            │ FutureRoom ZUWEISUNG    │──►│ MOD-11 FINANZIERUNGSMANAGER     ││
+│                            │ Manager auswählen       │   │                                 ││
+│                            └─────────────────────────┘   │ ┌─────────────────────────────┐ ││
+│                                                          │ │ Dashboard                   │ ││
+│                                                          │ │ Fälle                       │ ││
+│                                                          │ │ Kommunikation               │ ││
+│                                                          │ │ Status                      │ ││
+│                                                          │ └─────────────────────────────┘ ││
+│                                                          │                                 ││
+│                                                          │ ┌─────────────────────────────┐ ││
+│                                                          │ │ EINREICHEN AN BANK          │ ││
+│                                                          │ │ • E-Mail + Datenraum-Link   │ ││
+│                                                          │ │ • ODER Europace API         │ ││
+│                                                          │ │   (NUR HIER!)               │ ││
+│                                                          │ └─────────────────────────────┘ ││
+│                                                          └─────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### UI-Komponenten
-1. **SanierungTab.tsx** (Refactoring): Übersicht mit Stats + Vorgangsliste
-2. **ServiceCaseCreateDialog.tsx**: Schritt 1 - Objekt, Einheit, Kategorie, Titel
+## KRITISCHE KLARSTELLUNG
 
-### Acceptance Criteria
-- [x] Neuer Vorgang kann angelegt werden
-- [x] Tender-ID wird automatisch generiert
-- [x] Status-Flow: draft → scope_pending → ...
-- [x] Vorgangsliste zeigt alle Service Cases
+| Modul | Funktion | Bank-Übergabe |
+|-------|----------|---------------|
+| **MOD-07** | Datenerfassung durch Kunden | **NEIN** — nur Einreichung an Zone 1 |
+| **Zone 1 FutureRoom** | Triage + Delegation | **NEIN** — nur Zuweisung an Manager |
+| **MOD-11** | Operatives Processing | **JA** — E-Mail oder Europace API |
 
-**✅ PHASE 1 ABGESCHLOSSEN**
+**Die Europace/BaufiSmart-API wird AUSSCHLIESSLICH in MOD-11 implementiert, NICHT in MOD-07!**
 
 ---
 
-## PHASE 2: LEISTUNGSUMFANG DEFINIEREN
+## IST-STAND: PROBLEME IM AKTUELLEN CODE
 
-### Ziel
-KI-gestützte Erstellung des Leistungsverzeichnisses mit Kostenschätzung.
+### 1. API-Katalog-Bereinigung erforderlich
 
-### Zwei Wege
-1. **KI-gestützt**: Grundriss + Fotos analysieren → LV generieren
-2. **Externes LV**: PDF hochladen → als Anhang nutzen
+**Zu entfernen aus API-600..699 (MOD-07):**
+- ❌ `API-650`: Generate Export — gehört zu MOD-11
+- ❌ `API-651`: List Exports — gehört zu MOD-11
+- ❌ `API-660`: Prepare Handoff — gehört zu MOD-11
+- ❌ `API-661`: Send Handoff — gehört zu MOD-11
 
-### UI-Komponenten
-1. **ScopeDefinitionPanel.tsx**: Hauptcontainer für Schritt 2
-2. **DMSDocumentSelector.tsx**: Dokumente aus DMS auswählen
-3. **LineItemsEditor.tsx**: Editierbares Leistungsverzeichnis
-4. **CostEstimateCard.tsx**: Min/Mittel/Max Anzeige
-5. **RoomAnalysisDisplay.tsx**: Anzeige erkannter Räume
+**Neu hinzufügen zu API-Bereich MOD-11 (neuer Range: API-1100..1199):**
+- ✅ `API-1100`: GET `/manager/cases` — Liste der zugewiesenen Fälle
+- ✅ `API-1101`: GET `/manager/cases/:id` — Fall-Detail
+- ✅ `API-1110`: POST `/manager/cases/:id/export/email` — Export als E-Mail mit Datenraum-Link
+- ✅ `API-1111`: POST `/manager/cases/:id/export/europace` — Export via Europace API
+- ✅ `API-1120`: GET `/manager/banks` — Bankkontakte
+- ✅ `API-1130`: POST `/manager/cases/:id/submit` — Bei Bank einreichen
 
-### Edge Function
-- **sot-renovation-scope-ai**: Analysiert Dokumente, generiert LV, schätzt Kosten
+### 2. Types zu bereinigen (`src/types/finance.ts`)
 
-### Acceptance Criteria
-- [x] ScopeDefinitionPanel mit Tabs für KI/externes LV
-- [x] LineItemsEditor mit Add/Edit/Remove Positionen
-- [x] CostEstimateCard mit Min/Mittel/Max Bandbreite
-- [x] DMSDocumentSelector für Objektdokumente
-- [x] RoomAnalysisDisplay für erkannte Räume
-- [x] Edge Function für KI-Analyse implementiert
-- [ ] KI analysiert Grundriss → erkennt Räume, Türen, Fenster, Flächen
-- [ ] Externes LV kann hochgeladen werden
+**Felder die NICHT in MOD-07 gehören:**
+- Objektdaten sind derzeit in `ApplicantProfile` — diese gehören in `finance_requests`
 
-**✅ PHASE 2 ABGESCHLOSSEN**
+### 3. SelbstauskunftForm.tsx (1327 Zeilen!)
+
+**Aktuell vermischt:**
+- Personendaten ✓ (korrekt)
+- Firmendaten ✓ (korrekt)
+- Objektdaten ✗ (gehören in Anfrage!)
+- Finanzierungsdaten ✗ (gehören in Anfrage!)
 
 ---
 
-## PHASE 3: AUSSCHREIBUNG VERSENDEN
+## SOLL-STRUKTUR
 
-### Ziel
-Dienstleister finden, E-Mail-Entwürfe erstellen, Versand nach Bestätigung.
+### Sub-Tile 1: SELBSTAUSKUNFT
 
-### UI-Komponenten
-1. **ProviderSearchPanel.tsx**: Google Places Suche
-2. **TenderDraftPanel.tsx**: E-Mail-Vorschau mit allen Daten
+**9 Sektionen entsprechend PDF (selbstauskunft.pdf):**
 
-### Edge Functions
-- **sot-places-search**: Google Places API Integration
-- **sot-renovation-outbound**: E-Mail-Rendering + Resend-Versand
+| # | Sektion | Felder | Besonderheit |
+|---|---------|--------|--------------|
+| 1 | Angaben zur Person | Anrede, Name, Geburtsdaten, Adresse, Ausweis | Antragsteller 1 + optional 2 (Tabs) |
+| 2 | Haushalt | Familienstand, Kinder, Gütertrennung | — |
+| 3 | Beschäftigung | Arbeitgeber ODER Firma | Switch: "Angestellt" ↔ "Selbstständig" |
+| 4 | Bankverbindung | IBAN, BIC | — |
+| 5 | Monatliche Einnahmen | Netto, Bonus, Mieteinnahmen, Kindergeld | Mit Vorausfüllung aus MOD-04 |
+| 6 | Monatliche Ausgaben | Miete, PKV, Unterhalt, Raten | — |
+| 7 | Vermögen | Bankguthaben, Wertpapiere, Bausparer, **MOD-04 Immobilien (read-only)** | — |
+| 8 | Verbindlichkeiten | Immobiliendarlehen, Ratenkredite (1:N Tabelle) | Neue Tabelle `applicant_liabilities` |
+| 9 | Erklärungen | SCHUFA, Insolvenz, Steuerrückstände, Datenrichtigkeit | Checkboxen |
 
-### E-Mail enthält
-- Tender-ID im Betreff
-- Vollständige Leistungsbeschreibung
-- Anhänge (LV, Grundriss, Fotos)
-- Link zum Online-Datenraum
-- **Kundenkontaktdaten** (Telefon, E-Mail, WhatsApp)
+**Vorausfüllung:**
+- Button "Aus Vermietereinheit übernehmen" → lädt Daten aus MOD-04 `landlord_contexts` + `context_members`
 
-### Acceptance Criteria
-- [x] ProviderSearchPanel mit Google Places Suche (Mock-Daten ohne API Key)
-- [x] TenderDraftPanel mit E-Mail-Vorschau
-- [x] Edge Function sot-places-search implementiert
-- [x] Edge Function sot-renovation-outbound implementiert
-- [ ] Dienstleister können via Google Places gesucht werden (benötigt API Key)
-- [ ] E-Mails werden als ENTWURF erstellt
-- [ ] Versand NUR nach expliziter Bestätigung
-- [ ] Kundenkontaktdaten sind in jeder E-Mail enthalten
+### Sub-Tile 2: DOKUMENTE
 
-**✅ PHASE 3 UI + EDGE FUNCTIONS ABGESCHLOSSEN** (API Keys für Live-Betrieb erforderlich)
+**Unverändert** — DMS-Checkliste für Bonitätsunterlagen
 
-## PHASE 4: INBOUND + VERGABE
+### Sub-Tile 3: ANFRAGE
 
-### Ziel
-Angebote empfangen, zuordnen, vergleichen und vergeben.
+**Entsprechend PDF (selbstauskunft_immo.pdf):**
 
-### Datenbank
+| # | Sektion | Felder | Besonderheit |
+|---|---------|--------|--------------|
+| A | Vorhaben | Kauf, Neubau, Umschuldung, Modernisierung | Dropdown |
+| B | Informationen zur Immobilie | Adresse, Typ, Baujahr, Flächen, Ausstattung | **Vorausfüllung aus MOD-04 möglich** |
+| C | Kostenzusammenstellung | Kaufpreis, Notar, GrESt, Makler, Modernisierung | Berechnung Gesamtkosten |
+| D | Finanzierungsplan | Eigenkapital, Darlehensbetrag, Zinsbindung, Tilgung | — |
+
+**Vorausfüllung:**
+- Button "Objekt aus Portfolio" → lädt Property-Daten aus MOD-04
+
+### Sub-Tile 4: STATUS
+
+**Unverändert** — Timeline der Anfrage
+
+---
+
+## TECHNISCHER IMPLEMENTIERUNGSPLAN
+
+### Phase 1: Datenbank-Bereinigung + Erweiterung
+
+**Migration 1: Neue Felder in `applicant_profiles`**
 ```sql
--- Neue Tabelle für eingehende E-Mails
-CREATE TABLE service_case_inbound (
-  id uuid PRIMARY KEY,
-  service_case_id uuid REFERENCES service_cases(id),
-  sender_email text NOT NULL,
-  subject text,
-  attachments jsonb,
-  match_confidence text,
-  status text DEFAULT 'pending'
+-- Personendaten (aus PDF)
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS salutation text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS birth_name text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS birth_country text DEFAULT 'DE';
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS address_since date;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS previous_address_street text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS previous_address_postal_code text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS previous_address_city text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS phone_mobile text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS property_separation boolean DEFAULT false;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS children_birth_dates text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS bic text;
+
+-- Erweiterte Beschäftigung
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS contract_type text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS employer_in_germany boolean DEFAULT true;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS salary_currency text DEFAULT 'EUR';
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS salary_payments_per_year integer DEFAULT 12;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS has_side_job boolean DEFAULT false;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS side_job_type text;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS side_job_since date;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS side_job_income_monthly numeric(12,2);
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS vehicles_count integer DEFAULT 0;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS retirement_date date;
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS pension_state_monthly numeric(12,2);
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS pension_private_monthly numeric(12,2);
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS rental_income_monthly numeric(12,2);
+ALTER TABLE applicant_profiles ADD COLUMN IF NOT EXISTS alimony_income_monthly numeric(12,2);
+```
+
+**Migration 2: Neue Tabelle `applicant_liabilities`**
+```sql
+CREATE TABLE applicant_liabilities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES organizations(id),
+  applicant_profile_id uuid NOT NULL REFERENCES applicant_profiles(id) ON DELETE CASCADE,
+  liability_type text NOT NULL, -- 'immobiliendarlehen' | 'ratenkredit' | 'leasing' | 'sonstige'
+  creditor_name text,
+  original_amount numeric(12,2),
+  remaining_balance numeric(12,2),
+  monthly_rate numeric(12,2),
+  interest_rate_fixed_until date,
+  end_date date,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
+
+-- RLS
+ALTER TABLE applicant_liabilities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "tenant_isolation" ON applicant_liabilities
+  FOR ALL USING (tenant_id = (SELECT active_tenant_id()));
 ```
 
-### UI-Komponenten
-1. **UnassignedInboundList.tsx**: Unzugeordnete E-Mails
-2. **OffersComparisonPanel.tsx**: Angebotsvergleich mit Kontaktdaten
-3. **AwardConfirmationDialog.tsx**: Vergabe bestätigen
+**Migration 3: Objektfelder in `finance_requests` (NICHT in applicant_profiles!)**
+```sql
+-- Diese Felder gehören zum ANTRAG, nicht zur Person
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS purpose text;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_address text;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_type text;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_construction_year integer;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_living_area_sqm numeric(10,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_land_area_sqm numeric(10,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_equipment_level text;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS object_location_quality text;
 
-### Edge Function
-- **sot-renovation-inbound-webhook**: Resend Webhook → E-Mail parsen, Tender-ID matchen
+-- Kostenaufstellung
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS purchase_price numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS modernization_costs numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS notary_costs numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS transfer_tax numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS broker_fee numeric(12,2);
 
-### Acceptance Criteria
-- [x] DB-Tabellen: service_case_inbound, service_case_providers
-- [x] UnassignedInboundList Komponente
-- [x] OffersComparisonPanel mit Vergabe-Workflow
-- [x] Edge Function sot-renovation-inbound-webhook
-- [x] Hook useServiceCaseInbound mit CRUD
-- [ ] Eingehende E-Mails werden automatisch per Tender-ID zugeordnet (Resend Webhook konfigurieren)
-- [ ] Unzugeordnete E-Mails erscheinen in separater Liste
-- [ ] Angebotsvergleich zeigt ALLE Kontaktdaten der Dienstleister
-- [ ] Vergabe-Mail wird als Entwurf erstellt
-- [ ] Vorgang kann abgeschlossen werden
+-- Finanzierungsplan
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS equity_amount numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS loan_amount_requested numeric(12,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS fixed_rate_period_years integer;
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS repayment_rate_percent numeric(5,2);
+ALTER TABLE finance_requests ADD COLUMN IF NOT EXISTS max_monthly_rate numeric(12,2);
+```
 
-**✅ PHASE 4 UI + EDGE FUNCTIONS ABGESCHLOSSEN**
+### Phase 2: UI-Refactoring
 
-**Empfehlung:** Mit **Phase 1** starten (Datenbank + Grundgerüst).
+**2.1 Neue Selbstauskunft-Komponenten**
+```text
+src/components/finanzierung/
+├── SelbstauskunftFormV2.tsx              # NEU: Haupt-Formular
+├── sections/
+│   ├── PersonSection.tsx                 # Antragsteller 1 + 2 (Tabs)
+│   ├── HouseholdSection.tsx              # Haushalt
+│   ├── EmploymentSection.tsx             # Angestellt/Selbstständig Switch
+│   ├── BankSection.tsx                   # Bankverbindung
+│   ├── IncomeSection.tsx                 # Einnahmen
+│   ├── ExpensesSection.tsx               # Ausgaben
+│   ├── AssetsSection.tsx                 # Vermögen + MOD-04 Preview
+│   ├── LiabilitiesSection.tsx            # Verbindlichkeiten (1:N)
+│   └── DeclarationsSection.tsx           # Erklärungen
+├── LiabilitiesEditor.tsx                 # Inline-Tabelle für Darlehen
+└── MOD04PropertiesCard.tsx               # Read-only Vermögensübersicht
+```
 
-Soll ich Phase 1 jetzt implementieren?
+**2.2 Neue Anfrage-Komponenten**
+```text
+src/components/finanzierung/
+├── AnfrageFormV2.tsx                     # NEU: Haupt-Formular
+├── request-sections/
+│   ├── PurposeSection.tsx                # Vorhaben
+│   ├── PropertySection.tsx               # Immobilie (mit MOD-04 Selector)
+│   ├── CostSection.tsx                   # Kostenzusammenstellung
+│   └── FinancingPlanSection.tsx          # Finanzierungsplan
+└── MOD04PropertySelector.tsx             # Vorausfüllung aus Portfolio
+```
+
+### Phase 3: Code-Bereinigung
+
+**Zu löschen/entfernen:**
+- `API-650..661` aus `API_NUMBERING_CATALOG.md` (gehören zu MOD-11)
+- Objektfelder aus `ApplicantProfile`-Interface entfernen (nach Migration)
+- Finanzierungsfelder aus `SelbstauskunftForm.tsx` entfernen
+
+**Alte Komponenten archivieren:**
+- `SelbstauskunftForm.tsx` → `SelbstauskunftForm.legacy.tsx` (temporär)
+
+### Phase 4: Dokumentation
+
+**Neue Dokumente:**
+1. `docs/workflows/GOLDEN_PATH_FINANZIERUNG.md` — Vollständiger Workflow
+2. Update `API_NUMBERING_CATALOG.md`:
+   - MOD-07 API-600..629 (nur Selbstauskunft + Anfrage)
+   - MOD-11 API-1100..1130 (Bank-Übergabe)
+
+---
+
+## DATENTRENNUNG: ZUSAMMENFASSUNG
+
+| Feld | Speicherort | Editable in |
+|------|-------------|-------------|
+| Personendaten (Name, Adresse, Ausweis) | `applicant_profiles` | MOD-07 Selbstauskunft |
+| Haushaltsdaten | `applicant_profiles` | MOD-07 Selbstauskunft |
+| Beschäftigungsdaten | `applicant_profiles` | MOD-07 Selbstauskunft |
+| Einnahmen/Ausgaben | `applicant_profiles` | MOD-07 Selbstauskunft |
+| Vermögen | `applicant_profiles` + MOD-04 (read-only) | MOD-07 Selbstauskunft |
+| Verbindlichkeiten | `applicant_liabilities` | MOD-07 Selbstauskunft |
+| **Objektdaten** | `finance_requests` | **MOD-07 Anfrage** |
+| **Kostenaufstellung** | `finance_requests` | **MOD-07 Anfrage** |
+| **Finanzierungsplan** | `finance_requests` | **MOD-07 Anfrage** |
+| Bank-Einreichung | `future_room_cases` | **MOD-11** |
+
+---
+
+## ACCEPTANCE CRITERIA
+
+### MOD-07 Selbstauskunft
+- [ ] 9 Sektionen wie in PDF
+- [ ] Antragsteller 1 + 2 in separaten Tabs
+- [ ] Beschäftigungsart als Switch (nicht als separate Module)
+- [ ] Vorausfüllung aus Vermietereinheit (MOD-04) funktioniert
+- [ ] Verbindlichkeiten als 1:N-Tabelle
+- [ ] MOD-04 Immobilien als read-only Vermögen
+- [ ] Alle Felder editierbar und speicherbar
+- [ ] Completion Score basierend auf Pflichtfeldern
+
+### MOD-07 Anfrage
+- [ ] Objektdaten in `finance_requests` (nicht in `applicant_profiles`)
+- [ ] Vorausfüllung aus MOD-04 Portfolio
+- [ ] Kostenzusammenstellung vollständig
+- [ ] Finanzierungsplan editierbar
+- [ ] Einreichung ändert Status → Zone 1
+
+### API-Katalog
+- [ ] API-650..661 aus MOD-07 entfernt
+- [ ] Neue API-Range für MOD-11: API-1100..1130
+
+### Dokumentation
+- [ ] Golden Path Finanzierung dokumentiert
+- [ ] Europace-Mapping in MOD-11 (nicht MOD-07) referenziert
+
+---
+
+## GESCHÄTZTE DAUER
+
+| Phase | Umfang | Dauer |
+|-------|--------|-------|
+| Phase 1 | DB-Migration (3 Skripte) | 1 Tag |
+| Phase 2 | UI-Refactoring (2 Formulare) | 3-4 Tage |
+| Phase 3 | Code-Bereinigung + API-Katalog | 1 Tag |
+| Phase 4 | Dokumentation | 0.5 Tage |
+| **Gesamt** | | **5-6 Tage** |
 
