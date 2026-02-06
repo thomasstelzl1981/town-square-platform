@@ -3964,15 +3964,18 @@ export type Database = {
       }
       investment_favorites: {
         Row: {
+          calculated_burden: number | null
           created_at: string | null
           external_listing_id: string | null
           external_listing_url: string | null
           id: string
           investment_profile_id: string
+          listing_id: string | null
           location: string | null
           notes: string | null
           price: number | null
           property_data: Json | null
+          search_params: Json | null
           source: string | null
           status: string | null
           synced_at: string | null
@@ -3981,15 +3984,18 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          calculated_burden?: number | null
           created_at?: string | null
           external_listing_id?: string | null
           external_listing_url?: string | null
           id?: string
           investment_profile_id: string
+          listing_id?: string | null
           location?: string | null
           notes?: string | null
           price?: number | null
           property_data?: Json | null
+          search_params?: Json | null
           source?: string | null
           status?: string | null
           synced_at?: string | null
@@ -3998,15 +4004,18 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          calculated_burden?: number | null
           created_at?: string | null
           external_listing_id?: string | null
           external_listing_url?: string | null
           id?: string
           investment_profile_id?: string
+          listing_id?: string | null
           location?: string | null
           notes?: string | null
           price?: number | null
           property_data?: Json | null
+          search_params?: Json | null
           source?: string | null
           status?: string | null
           synced_at?: string | null
@@ -4021,6 +4030,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "investment_profiles"
             referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "investment_favorites_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "investment_favorites_tenant_id_fkey"
