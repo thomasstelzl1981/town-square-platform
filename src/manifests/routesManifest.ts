@@ -285,6 +285,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "beratung", component: "BeratungTab", title: "Beratung" },
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
+        { path: "pipeline", component: "PipelineTab", title: "Pipeline" },
       ],
     },
     "MOD-10": {
