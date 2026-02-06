@@ -42,7 +42,7 @@ const ReportingTab = () => {
       const { data: listingsData, error } = await supabase
         .from('listings')
         .select(`
-          id, title, status, asking_price,
+          id, title, status, asking_price, tenant_id,
           properties (address, city)
         `)
         .in('status', ['active', 'reserved', 'sold'])
@@ -51,19 +51,27 @@ const ReportingTab = () => {
       if (error) throw error;
 
       const listingIds = listingsData?.map(l => l.id) || [];
+      const placeholderIds = ['00000000-0000-0000-0000-000000000000'];
+      const queryIds = listingIds.length > 0 ? listingIds : placeholderIds;
       
-      const { data: publications } = await supabase
-        .from('listing_publications')
-        .select('listing_id, channel, status')
-        .in('listing_id', listingIds.length > 0 ? listingIds : ['00000000-0000-0000-0000-000000000000']);
-
-      const { data: inquiries } = await supabase
-        .from('listing_inquiries')
-        .select('listing_id')
-        .in('listing_id', listingIds.length > 0 ? listingIds : ['00000000-0000-0000-0000-000000000000']);
+      // Parallel queries for publications, inquiries, and views
+      const [publicationsRes, inquiriesRes, viewsRes] = await Promise.all([
+        supabase
+          .from('listing_publications')
+          .select('listing_id, channel, status')
+          .in('listing_id', queryIds),
+        supabase
+          .from('listing_inquiries')
+          .select('listing_id')
+          .in('listing_id', queryIds),
+        supabase
+          .from('listing_views')
+          .select('listing_id')
+          .in('listing_id', queryIds)
+      ]);
 
       const pubMap = new Map<string, { kaufy: boolean; partner: boolean }>();
-      publications?.forEach(p => {
+      publicationsRes.data?.forEach(p => {
         const current = pubMap.get(p.listing_id) || { kaufy: false, partner: false };
         if (p.channel === 'kaufy' && p.status === 'active') current.kaufy = true;
         if (p.channel === 'partner_network' && p.status === 'active') current.partner = true;
@@ -71,7 +79,11 @@ const ReportingTab = () => {
       });
 
       const inqCounts = new Map<string, number>();
-      inquiries?.forEach(i => inqCounts.set(i.listing_id, (inqCounts.get(i.listing_id) || 0) + 1));
+      inquiriesRes.data?.forEach(i => inqCounts.set(i.listing_id, (inqCounts.get(i.listing_id) || 0) + 1));
+
+      // Count views per listing
+      const viewCounts = new Map<string, number>();
+      viewsRes.data?.forEach(v => viewCounts.set(v.listing_id, (viewCounts.get(v.listing_id) || 0) + 1));
 
       return listingsData?.map(l => ({
         id: l.id,
@@ -82,7 +94,7 @@ const ReportingTab = () => {
         kaufy_active: pubMap.get(l.id)?.kaufy || false,
         partner_active: pubMap.get(l.id)?.partner || false,
         inquiry_count: inqCounts.get(l.id) || 0,
-        views: 0 // Placeholder - wird später implementiert
+        views: viewCounts.get(l.id) || 0
       })) || [];
     }
   });
@@ -232,14 +244,15 @@ const ReportingTab = () => {
         </CardContent>
       </Card>
 
-      {/* Note about views */}
-      <Card className="bg-muted/50">
+      {/* Views Info */}
+      <Card className="bg-primary/5 border-primary/20">
         <CardContent className="p-4 flex items-start gap-3">
-          <Eye className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">View-Statistiken kommen bald</p>
-            <p className="mt-1">
-              Detaillierte Aufrufzahlen pro Kanal werden in einer zukünftigen Version verfügbar sein.
+          <Eye className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">View-Tracking aktiv</p>
+            <p className="mt-1 text-muted-foreground">
+              Views werden bei jedem Exposé-Aufruf gezählt (Portal, Kaufy-Marktplatz, Partner-Netzwerk).
+              Pro Session wird nur ein View gezählt.
             </p>
           </div>
         </CardContent>
