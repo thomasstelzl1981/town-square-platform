@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -26,7 +27,8 @@ import {
   Eye, 
   AlertTriangle, 
   ShieldCheck,
-  Users
+  Users,
+  Building2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
@@ -65,6 +67,12 @@ interface ContactData {
   email: string | null;
 }
 
+interface LandlordContext {
+  id: string;
+  name: string;
+  context_type: string;
+}
+
 // Unit with multi-lease aggregation for MSV
 interface UnitWithDetails {
   id: string;
@@ -86,16 +94,49 @@ interface UnitWithDetails {
 
 const ObjekteTab = () => {
   const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
   const [templateWizardOpen, setTemplateWizardOpen] = useState(false);
   const [leaseFormOpen, setLeaseFormOpen] = useState(false);
   const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<UnitWithDetails | null>(null);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
+  const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
+
+  // Fetch landlord contexts for filtering
+  const { data: contexts = [] } = useQuery({
+    queryKey: ['landlord-contexts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type')
+        .eq('tenant_id', activeTenantId!)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch context_property_assignment for filtering
+  const { data: contextAssignments = [] } = useQuery({
+    queryKey: ['context-property-assignments', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_property_assignment')
+        .select('context_id, property_id')
+        .eq('tenant_id', activeTenantId!);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeTenantId,
+  });
 
   // Fetch ALL units with multi-lease aggregation - NO FILTER on rental_managed
   const { data: units, isLoading } = useQuery({
-    queryKey: ['msv-objekte-list-multi-lease'],
+    queryKey: ['msv-objekte-list-multi-lease', activeTenantId],
     queryFn: async () => {
       const { data: unitsData, error } = await supabase
         .from('units')
@@ -111,6 +152,7 @@ const ObjekteTab = () => {
             code
           )
         `)
+        .eq('tenant_id', activeTenantId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -129,6 +171,7 @@ const ObjekteTab = () => {
           start_date,
           tenant_contact_id
         `)
+        .eq('tenant_id', activeTenantId!)
         .eq('status', 'active');
 
       // Fetch contacts for leases
@@ -179,8 +222,21 @@ const ObjekteTab = () => {
           warmmiete
         };
       }) || [];
-    }
+    },
+    enabled: !!activeTenantId,
   });
+
+  // Filter units by selected context
+  const filteredUnits = useMemo(() => {
+    if (!units) return [];
+    if (!selectedContextId) return units;
+    
+    const assignedPropertyIds = contextAssignments
+      .filter(a => a.context_id === selectedContextId)
+      .map(a => a.property_id);
+    
+    return units.filter(u => assignedPropertyIds.includes(u.property_id));
+  }, [units, selectedContextId, contextAssignments]);
 
   const handleAction = async (action: string, unit: UnitWithDetails) => {
     setSelectedUnit(unit);
@@ -413,8 +469,40 @@ const ObjekteTab = () => {
 
   return (
     <div className="space-y-4">
+      {/* Header with Context Dropdown */}
+      {contexts.length > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Vermietereinheit:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Building2 className="h-4 w-4" />
+                {selectedContextId 
+                  ? contexts.find(c => c.id === selectedContextId)?.name || 'Alle'
+                  : 'Alle Vermietereinheiten'}
+                <span className="ml-1 text-xs">▼</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setSelectedContextId(null)}>
+                Alle Vermietereinheiten
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {contexts.map(ctx => (
+                <DropdownMenuItem 
+                  key={ctx.id} 
+                  onClick={() => setSelectedContextId(ctx.id)}
+                >
+                  {ctx.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       <PropertyTable
-        data={units || []}
+        data={filteredUnits}
         columns={columns}
         isLoading={isLoading}
         showSearch

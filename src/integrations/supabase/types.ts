@@ -1018,43 +1018,70 @@ export type Database = {
       }
       context_members: {
         Row: {
+          birth_date: string | null
+          birth_name: string | null
           church_tax: boolean | null
+          city: string | null
           context_id: string
+          country: string | null
           created_at: string
+          email: string | null
           first_name: string
           gross_income_yearly: number | null
+          house_number: string | null
           id: string
           last_name: string
           ownership_share: number | null
+          phone: string | null
+          postal_code: string | null
           profession: string | null
+          street: string | null
           tax_class: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          birth_date?: string | null
+          birth_name?: string | null
           church_tax?: boolean | null
+          city?: string | null
           context_id: string
+          country?: string | null
           created_at?: string
+          email?: string | null
           first_name: string
           gross_income_yearly?: number | null
+          house_number?: string | null
           id?: string
           last_name: string
           ownership_share?: number | null
+          phone?: string | null
+          postal_code?: string | null
           profession?: string | null
+          street?: string | null
           tax_class?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          birth_date?: string | null
+          birth_name?: string | null
           church_tax?: boolean | null
+          city?: string | null
           context_id?: string
+          country?: string | null
           created_at?: string
+          email?: string | null
           first_name?: string
           gross_income_yearly?: number | null
+          house_number?: string | null
           id?: string
           last_name?: string
           ownership_share?: number | null
+          phone?: string | null
+          postal_code?: string | null
           profession?: string | null
+          street?: string | null
           tax_class?: string | null
           tenant_id?: string
           updated_at?: string
@@ -2546,6 +2573,7 @@ export type Database = {
           id: string
           is_default: boolean | null
           legal_form: string | null
+          managing_director: string | null
           marginal_tax_rate: number | null
           name: string
           notes: string | null
@@ -2553,6 +2581,7 @@ export type Database = {
           public_id: string
           solidarity_surcharge: boolean | null
           street: string | null
+          tax_rate_percent: number | null
           tax_regime: string | null
           taxable_income_yearly: number | null
           tenant_id: string
@@ -2573,6 +2602,7 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           legal_form?: string | null
+          managing_director?: string | null
           marginal_tax_rate?: number | null
           name: string
           notes?: string | null
@@ -2580,6 +2610,7 @@ export type Database = {
           public_id?: string
           solidarity_surcharge?: boolean | null
           street?: string | null
+          tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null
           tenant_id: string
@@ -2600,6 +2631,7 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           legal_form?: string | null
+          managing_director?: string | null
           marginal_tax_rate?: number | null
           name?: string
           notes?: string | null
@@ -2607,6 +2639,7 @@ export type Database = {
           public_id?: string
           solidarity_surcharge?: boolean | null
           street?: string | null
+          tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null
           tenant_id?: string
