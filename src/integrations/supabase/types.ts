@@ -76,6 +76,215 @@ export type Database = {
           },
         ]
       }
+      acq_analysis_runs: {
+        Row: {
+          completed_at: string | null
+          contact_staging_id: string | null
+          created_at: string
+          engine_version: string | null
+          error_message: string | null
+          id: string
+          input_data: Json | null
+          mandate_id: string | null
+          model_used: string | null
+          offer_id: string | null
+          output_data: Json | null
+          run_type: Database["public"]["Enums"]["acq_analysis_type"]
+          started_at: string | null
+          status: Database["public"]["Enums"]["acq_analysis_status"]
+          tokens_used: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_staging_id?: string | null
+          created_at?: string
+          engine_version?: string | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          mandate_id?: string | null
+          model_used?: string | null
+          offer_id?: string | null
+          output_data?: Json | null
+          run_type: Database["public"]["Enums"]["acq_analysis_type"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["acq_analysis_status"]
+          tokens_used?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          contact_staging_id?: string | null
+          created_at?: string
+          engine_version?: string | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          mandate_id?: string | null
+          model_used?: string | null
+          offer_id?: string | null
+          output_data?: Json | null
+          run_type?: Database["public"]["Enums"]["acq_analysis_type"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["acq_analysis_status"]
+          tokens_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_analysis_runs_contact_staging_id_fkey"
+            columns: ["contact_staging_id"]
+            isOneToOne: false
+            referencedRelation: "contact_staging"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_analysis_runs_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_analysis_runs_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acq_email_templates: {
+        Row: {
+          body_html_template: string
+          body_text_template: string | null
+          category: string | null
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject_template: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          body_html_template: string
+          body_text_template?: string | null
+          category?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject_template: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          body_html_template?: string
+          body_text_template?: string | null
+          category?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject_template?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      acq_inbound_messages: {
+        Row: {
+          attachments: Json | null
+          body_html: string | null
+          body_text: string | null
+          contact_id: string | null
+          created_at: string
+          from_email: string
+          id: string
+          in_reply_to_message_id: string | null
+          mandate_id: string | null
+          needs_routing: boolean | null
+          received_at: string
+          resend_inbound_id: string | null
+          routed_at: string | null
+          routed_by: string | null
+          routing_confidence: number | null
+          routing_method:
+            | Database["public"]["Enums"]["acq_routing_method"]
+            | null
+          subject: string | null
+          to_email: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          contact_id?: string | null
+          created_at?: string
+          from_email: string
+          id?: string
+          in_reply_to_message_id?: string | null
+          mandate_id?: string | null
+          needs_routing?: boolean | null
+          received_at?: string
+          resend_inbound_id?: string | null
+          routed_at?: string | null
+          routed_by?: string | null
+          routing_confidence?: number | null
+          routing_method?:
+            | Database["public"]["Enums"]["acq_routing_method"]
+            | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          contact_id?: string | null
+          created_at?: string
+          from_email?: string
+          id?: string
+          in_reply_to_message_id?: string | null
+          mandate_id?: string | null
+          needs_routing?: boolean | null
+          received_at?: string
+          resend_inbound_id?: string | null
+          routed_at?: string | null
+          routed_by?: string | null
+          routing_confidence?: number | null
+          routing_method?:
+            | Database["public"]["Enums"]["acq_routing_method"]
+            | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_inbound_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_inbound_messages_in_reply_to_message_id_fkey"
+            columns: ["in_reply_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "acq_outbound_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_inbound_messages_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acq_mandate_events: {
         Row: {
           actor_id: string | null
@@ -190,6 +399,234 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acq_offer_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          extracted_text: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          offer_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          extracted_text?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          offer_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          extracted_text?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          offer_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_offer_documents_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acq_offers: {
+        Row: {
+          address: string | null
+          analysis_summary: Json | null
+          area_sqm: number | null
+          calc_aufteiler: Json | null
+          calc_bestand: Json | null
+          city: string | null
+          created_at: string
+          extracted_data: Json | null
+          extraction_confidence: number | null
+          geomap_data: Json | null
+          id: string
+          mandate_id: string
+          noi_indicated: number | null
+          notes: string | null
+          postal_code: string | null
+          price_asking: number | null
+          source_contact_id: string | null
+          source_inbound_id: string | null
+          source_type: Database["public"]["Enums"]["acq_offer_source"]
+          source_url: string | null
+          status: Database["public"]["Enums"]["acq_offer_status"]
+          title: string | null
+          units_count: number | null
+          updated_at: string
+          year_built: number | null
+          yield_indicated: number | null
+        }
+        Insert: {
+          address?: string | null
+          analysis_summary?: Json | null
+          area_sqm?: number | null
+          calc_aufteiler?: Json | null
+          calc_bestand?: Json | null
+          city?: string | null
+          created_at?: string
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          geomap_data?: Json | null
+          id?: string
+          mandate_id: string
+          noi_indicated?: number | null
+          notes?: string | null
+          postal_code?: string | null
+          price_asking?: number | null
+          source_contact_id?: string | null
+          source_inbound_id?: string | null
+          source_type?: Database["public"]["Enums"]["acq_offer_source"]
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["acq_offer_status"]
+          title?: string | null
+          units_count?: number | null
+          updated_at?: string
+          year_built?: number | null
+          yield_indicated?: number | null
+        }
+        Update: {
+          address?: string | null
+          analysis_summary?: Json | null
+          area_sqm?: number | null
+          calc_aufteiler?: Json | null
+          calc_bestand?: Json | null
+          city?: string | null
+          created_at?: string
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          geomap_data?: Json | null
+          id?: string
+          mandate_id?: string
+          noi_indicated?: number | null
+          notes?: string | null
+          postal_code?: string | null
+          price_asking?: number | null
+          source_contact_id?: string | null
+          source_inbound_id?: string | null
+          source_type?: Database["public"]["Enums"]["acq_offer_source"]
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["acq_offer_status"]
+          title?: string | null
+          units_count?: number | null
+          updated_at?: string
+          year_built?: number | null
+          yield_indicated?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_offers_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_offers_source_contact_id_fkey"
+            columns: ["source_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_offers_source_inbound_id_fkey"
+            columns: ["source_inbound_id"]
+            isOneToOne: false
+            referencedRelation: "acq_inbound_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acq_outbound_messages: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          bounced_at: string | null
+          contact_id: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          mandate_id: string
+          opened_at: string | null
+          replied_at: string | null
+          resend_message_id: string | null
+          routing_token: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["acq_outbound_status"]
+          subject: string
+          template_code: string
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          bounced_at?: string | null
+          contact_id: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          mandate_id: string
+          opened_at?: string | null
+          replied_at?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["acq_outbound_status"]
+          subject: string
+          template_code: string
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          bounced_at?: string | null
+          contact_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          mandate_id?: string
+          opened_at?: string | null
+          replied_at?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["acq_outbound_status"]
+          subject?: string
+          template_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acq_outbound_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_outbound_messages_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
             referencedColumns: ["id"]
           },
         ]
@@ -1089,6 +1526,106 @@ export type Database = {
           },
           {
             foreignKeyName: "commissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_staging: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          company_name: string | null
+          created_at: string
+          dedupe_key: string | null
+          email: string | null
+          enrichment_data: Json | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          mandate_id: string | null
+          merged_contact_id: string | null
+          phone: string | null
+          quality_score: number | null
+          role_guess: string | null
+          service_area: string | null
+          source: string
+          source_id: string | null
+          source_url: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_name?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          email?: string | null
+          enrichment_data?: Json | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          mandate_id?: string | null
+          merged_contact_id?: string | null
+          phone?: string | null
+          quality_score?: number | null
+          role_guess?: string | null
+          service_area?: string | null
+          source: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_name?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          email?: string | null
+          enrichment_data?: Json | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          mandate_id?: string | null
+          merged_contact_id?: string | null
+          phone?: string | null
+          quality_score?: number | null
+          role_guess?: string | null
+          service_area?: string | null
+          source?: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_staging_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_staging_merged_contact_id_fkey"
+            columns: ["merged_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_staging_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -6990,6 +7527,54 @@ export type Database = {
           },
         ]
       }
+      user_contact_links: {
+        Row: {
+          contact_id: string
+          created_at: string
+          folder: string | null
+          id: string
+          in_outreach_queue: boolean | null
+          mandate_id: string | null
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          folder?: string | null
+          id?: string
+          in_outreach_queue?: boolean | null
+          mandate_id?: string | null
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          folder?: string | null
+          id?: string
+          in_outreach_queue?: boolean | null
+          mandate_id?: string | null
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_links_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -7169,6 +7754,14 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      acq_analysis_status: "pending" | "running" | "completed" | "failed"
+      acq_analysis_type:
+        | "ai_research"
+        | "geomap"
+        | "calc_bestand"
+        | "calc_aufteiler"
+        | "enrichment"
+        | "extraction"
       acq_mandate_event_type:
         | "created"
         | "submitted"
@@ -7190,6 +7783,35 @@ export type Database = {
         | "active"
         | "paused"
         | "closed"
+      acq_offer_source:
+        | "inbound_email"
+        | "upload"
+        | "manual"
+        | "portal_scrape"
+        | "firecrawl"
+      acq_offer_status:
+        | "new"
+        | "analyzing"
+        | "analyzed"
+        | "presented"
+        | "accepted"
+        | "rejected"
+        | "archived"
+      acq_outbound_status:
+        | "queued"
+        | "sending"
+        | "sent"
+        | "delivered"
+        | "opened"
+        | "bounced"
+        | "replied"
+        | "failed"
+      acq_routing_method:
+        | "token"
+        | "email_match"
+        | "thread"
+        | "ai_fallback"
+        | "manual"
       app_role:
         | "platform_admin"
         | "moderator"
@@ -7426,6 +8048,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      acq_analysis_status: ["pending", "running", "completed", "failed"],
+      acq_analysis_type: [
+        "ai_research",
+        "geomap",
+        "calc_bestand",
+        "calc_aufteiler",
+        "enrichment",
+        "extraction",
+      ],
       acq_mandate_event_type: [
         "created",
         "submitted",
@@ -7448,6 +8079,39 @@ export const Constants = {
         "active",
         "paused",
         "closed",
+      ],
+      acq_offer_source: [
+        "inbound_email",
+        "upload",
+        "manual",
+        "portal_scrape",
+        "firecrawl",
+      ],
+      acq_offer_status: [
+        "new",
+        "analyzing",
+        "analyzed",
+        "presented",
+        "accepted",
+        "rejected",
+        "archived",
+      ],
+      acq_outbound_status: [
+        "queued",
+        "sending",
+        "sent",
+        "delivered",
+        "opened",
+        "bounced",
+        "replied",
+        "failed",
+      ],
+      acq_routing_method: [
+        "token",
+        "email_match",
+        "thread",
+        "ai_fallback",
+        "manual",
       ],
       app_role: [
         "platform_admin",
