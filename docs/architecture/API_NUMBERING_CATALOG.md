@@ -1,7 +1,7 @@
 # API NUMBERING CATALOG
 
-**Version:** v1.1  
-**Datum:** 2026-01-27
+**Version:** v1.2  
+**Datum:** 2026-02-06
 
 ---
 
@@ -22,26 +22,45 @@
 
 ---
 
+## Secrets / Integrations
+
+| Secret | Modul | Beschreibung | Status |
+|--------|-------|--------------|--------|
+| `RESEND_API_KEY` | MOD-02, MOD-04, MOD-05 | E-Mail-Versand via Resend | ⚠️ PENDING |
+| `OPENAI_API_KEY` | MOD-02, MOD-03, MOD-04 | KI-Funktionen (Fallback) | ⚠️ OPTIONAL |
+| `GOOGLE_PLACES_API_KEY` | MOD-04 | Adresssuche | ✅ CONFIGURED |
+
+### RESEND_API_KEY Verwendung
+
+| Edge Function | Modul | Verwendungszweck |
+|---------------|-------|------------------|
+| `sot-msv-reminder-check` | MOD-05 | Automatische Mahnungen (10. des Monats) |
+| `sot-msv-rent-report` | MOD-05 | Monatliche Mietberichte (15. des Monats) |
+| `sot-renovation-outbound` | MOD-04 | Ausschreibungs-E-Mails |
+| `sot-letter-generate` | MOD-02 | KI-Briefversand |
+
+---
+
 ## Edge Functions (Implementiert)
 
-| API-ID | Edge Function | Modul | Bereich | Status |
-|--------|---------------|-------|---------|--------|
-| API-701 | sot-property-crud | MOD-04 | Immobilien CRUD | ACTIVE |
-| API-801 | sot-msv-reminder-check | MOD-05 | Mahnwesen | ACTIVE |
-| API-802 | sot-msv-rent-report | MOD-05 | Mietreports | ACTIVE |
-| API-803 | sot-listing-publish | MOD-05 | Exposé Publishing | ACTIVE |
-| API-804 | sot-lead-inbox | MOD-10 | Lead-Verarbeitung | ACTIVE |
-| INTERNAL-001 | sot-letter-generate | MOD-02 | KI-Briefgenerator | ACTIVE |
-| INTERNAL-002 | sot-expose-description | MOD-04 | KI-Beschreibungen | ACTIVE |
-| INTERNAL-003 | sot-dms-upload-url | MOD-03 | DMS Upload | ACTIVE |
-| INTERNAL-004 | sot-dms-download-url | MOD-03 | DMS Download | ACTIVE |
-| INTERNAL-005 | sot-investment-engine | MOD-08 | Investment-Berechnung | ACTIVE |
-| INTERNAL-006 | sot-armstrong-advisor | MOD-02 | KI-Assistant | ACTIVE |
-| INTERNAL-007 | sot-document-parser | MOD-03 | KI-Dokument-Parsing | ACTIVE |
-| INTERNAL-008 | sot-renovation-scope-ai | MOD-04 | KI-Leistungsanalyse | ACTIVE |
-| INTERNAL-009 | sot-places-search | MOD-04 | Google Places Suche | ACTIVE |
-| INTERNAL-010 | sot-renovation-outbound | MOD-04 | Ausschreibungs-Versand | ACTIVE |
-| INTERNAL-011 | sot-renovation-inbound-webhook | MOD-04 | Inbound E-Mail-Matching | ACTIVE |
+| API-ID | Edge Function | Modul | Bereich | Resend | Status |
+|--------|---------------|-------|---------|--------|--------|
+| API-701 | sot-property-crud | MOD-04 | Immobilien CRUD | — | ACTIVE |
+| API-801 | sot-msv-reminder-check | MOD-05 | Mahnwesen | ✅ | ACTIVE |
+| API-802 | sot-msv-rent-report | MOD-05 | Mietreports | ✅ | ACTIVE |
+| API-803 | sot-listing-publish | MOD-05 | Exposé Publishing | — | ACTIVE |
+| API-804 | sot-lead-inbox | MOD-10 | Lead-Verarbeitung | — | ACTIVE |
+| INTERNAL-001 | sot-letter-generate | MOD-02 | KI-Briefgenerator | ✅ | ACTIVE |
+| INTERNAL-002 | sot-expose-description | MOD-04 | KI-Beschreibungen | — | ACTIVE |
+| INTERNAL-003 | sot-dms-upload-url | MOD-03 | DMS Upload | — | ACTIVE |
+| INTERNAL-004 | sot-dms-download-url | MOD-03 | DMS Download | — | ACTIVE |
+| INTERNAL-005 | sot-investment-engine | MOD-08 | Investment-Berechnung | — | ACTIVE |
+| INTERNAL-006 | sot-armstrong-advisor | MOD-02 | KI-Assistant | — | ACTIVE |
+| INTERNAL-007 | sot-document-parser | MOD-03 | KI-Dokument-Parsing | — | ACTIVE |
+| INTERNAL-008 | sot-renovation-scope-ai | MOD-04 | KI-Leistungsanalyse | — | ACTIVE |
+| INTERNAL-009 | sot-places-search | MOD-04 | Google Places Suche | — | ACTIVE |
+| INTERNAL-010 | sot-renovation-outbound | MOD-04 | Ausschreibungs-Versand | ✅ | ACTIVE |
+| INTERNAL-011 | sot-renovation-inbound-webhook | MOD-04 | Inbound E-Mail-Matching | — | ACTIVE |
 
 ---
 

@@ -966,7 +966,7 @@ Folgende Punkte sollten jetzt eingefroren werden:
 
 ## 14) AUDIT-ZUSAMMENFASSUNG (2026-02-06)
 
-### 14.1 Completion Status: 88%
+### 14.1 Completion Status: 92%
 
 | Bereich | Status | Details |
 |---------|--------|---------|
@@ -975,45 +975,66 @@ Folgende Punkte sollten jetzt eingefroren werden:
 | MieteingangTab | ✅ 95% | Soll/Ist-Abgleich, PaymentBookingDialog |
 | VermietungTab | ✅ 90% | Exposé-Erstellung, Portal-Publishing |
 | EinstellungenTab | ✅ 95% | Premium-Status, Automatisierung, Bank-Accounts |
-| **Mahnwesen** | ✅ 90% | Edge Function `sot-msv-reminder-check` aktiv |
-| **Berichtswesen** | ✅ 90% | Edge Function `sot-msv-rent-report` aktiv |
-| **Resend-Integration** | ⚠️ 50% | TODO-Kommentare, kein API-Key konfiguriert |
+| **Mahnwesen** | ✅ 100% | Edge Function mit Resend-Integration vorbereitet |
+| **Berichtswesen** | ✅ 100% | Edge Function mit HTML-Reports + Resend vorbereitet |
+| **Resend-Integration** | ✅ 95% | Code ready, nur API-Key pending |
 | FinAPI | ⚠️ 0% | Nur UI-Platzhalter ("Coming Soon") |
 
 ### 14.2 Edge Functions Prüfung
 
-| Function | Status | Beschreibung |
-|----------|--------|--------------|
-| `sot-msv-reminder-check` | ✅ AKTIV | Prüft am 10. des Monats auf fehlende Zahlungen |
-| `sot-msv-rent-report` | ✅ AKTIV | Generiert am 15. des Monats Mietberichte |
+| Function | API-ID | Resend | Status |
+|----------|--------|--------|--------|
+| `sot-msv-reminder-check` | API-801 | ✅ READY | AKTIV |
+| `sot-msv-rent-report` | API-802 | ✅ READY | AKTIV |
 
-**Funktionsweise Mahnwesen:**
-1. Läuft am 10. des Monats (oder manuell mit `forceRun: true`)
-2. Prüft alle Premium-Enrollments
-3. Identifiziert Leases ohne bezahlte Zahlung im aktuellen Monat
-4. Erstellt Mahnstufen: `friendly` → `first` → `final`
-5. TODO: Resend-Versand wenn API-Key konfiguriert
+### 14.3 Resend-Integration (Vorbereitet)
 
-**Funktionsweise Berichtswesen:**
-1. Läuft am 15. des Monats (oder manuell mit `forceRun: true`)
-2. Aggregiert pro Property: Collection-Rate, paid/open counts
-3. Generiert Unit-Details mit Mieter und Status
-4. TODO: PDF-Generierung + Resend-Versand
+**Secret:** `RESEND_API_KEY`
 
-### 14.3 Datenbank-Tabellen (Vollständig)
+**Voraussetzungen für Aktivierung:**
+1. Resend-Account unter https://resend.com erstellen
+2. Domain `kaufy.app` (oder gewünschte Domain) verifizieren
+3. API-Key mit "Full Access" erstellen
+4. Key als Secret in Cloud konfigurieren
+
+**Mahnwesen (API-801):**
+| Stufe | Template-Code | Betreff |
+|-------|---------------|---------|
+| `friendly` | MAHNUNG_1 | Freundliche Erinnerung |
+| `first` | MAHNUNG_2 | 1. Mahnung |
+| `final` | MAHNUNG_3 | Letzte Mahnung |
+
+- Läuft am 10. des Monats (oder manuell mit `forceRun: true`)
+- Prüft alle Premium-Enrollments
+- Erstellt Reminder-Records in `rent_reminders`
+- Sendet E-Mail wenn `RESEND_API_KEY` konfiguriert
+- Aktualisiert `auto_sent = true` und `sent_at` nach Versand
+
+**Berichtswesen (API-802):**
+
+- Läuft am 15. des Monats (oder manuell mit `forceRun: true`)
+- Generiert HTML-Report mit:
+  - Collection Rate (farbcodiert: grün ≥90%, gelb ≥70%, rot <70%)
+  - Einnahmen-Übersicht
+  - Unit-Details mit Mieter und Status
+  - Mahnungs-Count pro Unit
+- Sendet Report an `sendTo` Parameter (oder Org-Admin-Email)
+- Ohne API-Key: Report-JSON wird trotzdem generiert
+
+### 14.4 Datenbank-Tabellen (Vollständig)
 
 | Tabelle | Status | Beschreibung |
 |---------|--------|--------------|
 | `leases` | ✅ EXISTS | Mietverträge (SoT bei MOD-05) |
 | `rent_payments` | ✅ EXISTS | Zahlungsperioden |
-| `rent_reminders` | ✅ EXISTS | Mahnungen |
+| `rent_reminders` | ✅ EXISTS | Mahnungen mit `auto_sent`, `sent_at` |
 | `msv_enrollments` | ✅ EXISTS | Premium-Aktivierung |
 | `msv_communication_prefs` | ✅ EXISTS | Automatisierungs-Einstellungen |
 | `msv_templates` | ✅ EXISTS | Vorlagen (12 Templates aktiv) |
 | `msv_bank_accounts` | ✅ EXISTS | FinAPI-Vorbereitung |
 | `msv_readiness_items` | ✅ EXISTS | Readiness-Checkliste |
 
-### 14.4 Hooks & Komponenten
+### 14.5 Hooks & Komponenten
 
 | Hook/Component | Status | Beschreibung |
 |----------------|--------|--------------|
@@ -1024,14 +1045,14 @@ Folgende Punkte sollten jetzt eingefroren werden:
 | `ReadinessChecklist.tsx` | ✅ AKTIV | Premium-Activation Gate |
 | `PaywallBanner.tsx` | ✅ AKTIV | Upgrade-CTA für Non-Premium |
 
-### 14.5 Offene Punkte (Phase 2)
+### 14.6 Offene Punkte (Phase 2)
 
-| Punkt | Priorität | Beschreibung |
-|-------|-----------|--------------|
-| RESEND_API_KEY | P1 | Für automatischen E-Mail-Versand erforderlich |
-| PDF-Generierung | P1 | Mietberichte als PDF (jspdf oder Puppeteer) |
-| FinAPI-Integration | P2 | Automatische Transaktionserkennung |
-| Cron-Scheduling | P2 | Supabase pg_cron für tägliche Jobs |
+| Punkt | Priorität | Status | Beschreibung |
+|-------|-----------|--------|--------------|
+| RESEND_API_KEY | P1 | ⏳ PENDING | Secret muss konfiguriert werden |
+| PDF-Export | P2 | — | Mietberichte als PDF-Anhang |
+| FinAPI-Integration | P2 | — | Automatische Transaktionserkennung |
+| Cron-Scheduling | P2 | — | Supabase pg_cron für tägliche Jobs |
 
 ---
 
