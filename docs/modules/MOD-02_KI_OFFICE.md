@@ -1,11 +1,11 @@
 # MOD-02 — KI OFFICE (Communication & AI Workspace)
 
-> **Version**: 1.1  
-> **Status**: SPEC READY  
-> **Datum**: 2026-01-25  
-> **Zone**: 2 (User Portal)  
-> **Route-Prefix**: `/portal/ki-office`  
-> **Conflict Resolution**: K1 (see CONFLICT_RESOLUTION_LOG.md)
+**Version:** 2.0  
+**Status:** ACTIVE  
+**Datum:** 2026-02-06  
+**Zone:** 2 (User Portal)  
+**Route-Prefix:** `/portal/office`  
+**API-Range:** (Backbone: contacts, communication_events)
 
 ---
 
@@ -19,15 +19,15 @@ MOD-02 "KI Office" ist der primäre Arbeitsbereich für Kommunikation und KI-ges
 
 ---
 
-## 2. Route-Struktur (BINDING)
+## 2. Route-Struktur (4-Tile-Pattern)
 
 | # | Name | Route | Beschreibung |
 |---|------|-------|--------------|
-| 0 | Dashboard | `/portal/ki-office` | Übersicht, Quick Actions, Armstrong |
-| 1 | Email | `/portal/ki-office/email` | Persönliche Mailbox (IMAP/Gmail/Exchange) |
-| 2 | Brief | `/portal/ki-office/brief` | KI-Briefgenerator (AI-assisted drafts) |
-| 3 | Kontakte | `/portal/ki-office/kontakte` | Master-Kontakte des Tenants |
-| 4 | Kalender | `/portal/ki-office/kalender` | Termine, Erinnerungen |
+| 0 | How It Works | `/portal/office` | Landingpage mit Erklärung |
+| 1 | E-Mail | `/portal/office/email` | Persönliche Mailbox (IMAP/Gmail/Exchange) |
+| 2 | Brief | `/portal/office/brief` | KI-Briefgenerator (AI-assisted drafts) |
+| 3 | Kontakte | `/portal/office/kontakte` | Master-Kontakte des Tenants |
+| 4 | Kalender | `/portal/office/kalender` | Termine, Erinnerungen |
 
 ---
 
