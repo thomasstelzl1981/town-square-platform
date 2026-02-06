@@ -1,6 +1,8 @@
 /**
  * Akquise-Manager Page (MOD-12)
  * AkquiseManager Workbench with Gate, Sourcing, Outreach, Analysis, Delivery
+ * 
+ * Enhanced: Self-created mandates + Tools suite
  */
 
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -13,13 +15,30 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Briefcase, Users, FileText, Wrench, Loader2, CheckCircle2, 
-  Clock, ArrowRight, Search, Mail, Inbox, Brain, Send
+  Clock, ArrowRight, Search, Mail, Inbox, Brain, Send, Plus, Edit
 } from 'lucide-react';
-import { useAcqMandatesPending, useAcqMandatesActive, useAcqMandate, useAcceptAcqMandate } from '@/hooks/useAcqMandate';
+import { 
+  useAcqMandatesPending, 
+  useAcqMandatesActive, 
+  useAcqMandate, 
+  useAcceptAcqMandate,
+  useMyAcqMandates,
+  useCreateAcqMandate,
+  useSubmitAcqMandate
+} from '@/hooks/useAcqMandate';
 import { MANDATE_STATUS_CONFIG, canViewClientInfo } from '@/types/acquisition';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { SourcingTab, OutreachTab, InboundTab, AnalysisTab, DeliveryTab } from './akquise-manager/components';
+import { 
+  SourcingTab, 
+  OutreachTab, 
+  InboundTab, 
+  AnalysisTab, 
+  DeliveryTab,
+  PortalSearchTool,
+  PropertyResearchTool,
+  QuickCalcTool
+} from './akquise-manager/components';
 
 // Workflow steps for mandate detail
 export const AKQUISE_MANAGER_WORKFLOW_STEPS = [
@@ -29,13 +48,20 @@ export const AKQUISE_MANAGER_WORKFLOW_STEPS = [
   { id: 'delivery', label: 'Delivery', path: 'tools' },
 ];
 
-// Dashboard with Pending + Active Mandates
+// Dashboard with Pending + Active + Self-created Mandates
 function AkquiseDashboard() {
   const navigate = useNavigate();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
+  const { data: myMandates, isLoading: loadingMy } = useMyAcqMandates();
+  const submitMandate = useSubmitAcqMandate();
 
-  if (loadingPending || loadingActive) {
+  // Filter self-created mandates (draft or submitted_to_zone1)
+  const selfCreatedMandates = myMandates?.filter(m => 
+    m.status === 'draft' || m.status === 'submitted_to_zone1'
+  ) || [];
+
+  if (loadingPending || loadingActive || loadingMy) {
     return (
       <div className="p-6 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -43,28 +69,50 @@ function AkquiseDashboard() {
     );
   }
 
-  const hasMandates = (pendingMandates?.length || 0) + (activeMandates?.length || 0) > 0;
-
-  if (!hasMandates) {
-    return (
-      <ModuleTilePage
-        title="Dashboard"
-        description="Übersicht Ihrer aktuellen Akquise-Aktivitäten"
-        icon={Briefcase}
-        moduleBase="akquise-manager"
-        status="empty"
-        emptyTitle="Keine aktiven Mandate"
-        emptyDescription="Warten Sie auf Mandatszuweisungen von Zone-1 Acquiary."
-        emptyIcon={Briefcase}
-      />
-    );
-  }
+  const hasMandates = (pendingMandates?.length || 0) + (activeMandates?.length || 0) + selfCreatedMandates.length > 0;
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Ihre Akquise-Mandate im Überblick</p>
+      </div>
+
+      {/* Create New Mandate Tile */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card 
+          className="border-dashed border-2 border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50 hover:bg-primary/10 transition-colors"
+          onClick={() => navigate('/portal/investments/mandat')}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Plus className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Neues Mandat erstellen</h3>
+              <p className="text-sm text-muted-foreground">
+                Eigene Kundenakquise starten
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pending Summary */}
+        {(pendingMandates?.length || 0) > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold">{pendingMandates?.length} Mandate warten</h3>
+                <p className="text-sm text-muted-foreground">
+                  Auf Ihre Annahme
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Pending Acceptance */}
@@ -103,16 +151,16 @@ function AkquiseDashboard() {
       {(activeMandates?.length || 0) > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <CheckCircle2 className="h-5 w-5 text-primary" />
             Aktive Mandate ({activeMandates?.length})
           </h3>
           {activeMandates?.map((mandate) => (
-            <Card key={mandate.id} className="border-green-200 cursor-pointer hover:border-primary/50"
+            <Card key={mandate.id} className="border-primary/30 cursor-pointer hover:border-primary/50"
               onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}>
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-green-600" />
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -131,6 +179,71 @@ function AkquiseDashboard() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Self-created Mandates */}
+      {selfCreatedMandates.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Edit className="h-5 w-5 text-blue-500" />
+            Meine selbst erstellten Mandate ({selfCreatedMandates.length})
+          </h3>
+          {selfCreatedMandates.map((mandate) => (
+            <Card key={mandate.id} className="border-blue-200 cursor-pointer hover:border-primary/50">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-medium">{mandate.code}</span>
+                      <Badge variant={mandate.status === 'draft' ? 'secondary' : 'outline'}>
+                        {mandate.status === 'draft' ? 'Entwurf' : 'Eingereicht'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Erstellt {formatDistanceToNow(new Date(mandate.created_at), { locale: de, addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+                {mandate.status === 'draft' && (
+                  <Button 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      submitMandate.mutate(mandate.id);
+                    }}
+                    disabled={submitMandate.isPending}
+                  >
+                    {submitMandate.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Einreichen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {!hasMandates && (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">Keine aktiven Mandate</h3>
+            <p className="text-muted-foreground mb-4">
+              Erstellen Sie ein eigenes Mandat oder warten Sie auf Zuweisungen.
+            </p>
+            <Button onClick={() => navigate('/portal/investments/mandat')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Erstes Mandat erstellen
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -324,7 +437,25 @@ function AkquiseMandate() {
 }
 
 function AkquiseTools() {
-  return <ModuleTilePage title="Tools" description="Akquise-Werkzeuge" icon={Wrench} moduleBase="akquise-manager" status="empty" emptyTitle="Tools entdecken" emptyDescription="Rechner und Hilfsmittel." emptyIcon={Wrench} />;
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Akquise-Tools</h1>
+        <p className="text-muted-foreground">
+          Werkzeuge für Recherche, Bewertung und Kalkulation
+        </p>
+      </div>
+
+      {/* Portal Search */}
+      <PortalSearchTool />
+
+      {/* Property Research */}
+      <PropertyResearchTool />
+
+      {/* Quick Calculators */}
+      <QuickCalcTool />
+    </div>
+  );
 }
 
 export default function AkquiseManagerPage() {
