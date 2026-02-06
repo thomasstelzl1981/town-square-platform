@@ -402,10 +402,10 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 17,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "uebersicht", component: "CarsUebersicht", title: "Übersicht" },
         { path: "fahrzeuge", component: "CarsFahrzeuge", title: "Fahrzeuge" },
-        { path: "service", component: "CarsService", title: "Service" },
-        { path: "settings", component: "CarsSettings", title: "Einstellungen" },
+        { path: "versicherungen", component: "CarsVersicherungen", title: "Versicherungen" },
+        { path: "fahrtenbuch", component: "CarsFahrtenbuch", title: "Fahrtenbuch" },
+        { path: "angebote", component: "CarsAngebote", title: "Angebote" },
       ],
     },
     "MOD-18": {

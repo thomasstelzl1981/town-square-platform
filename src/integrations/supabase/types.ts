@@ -1334,6 +1334,633 @@ export type Database = {
           },
         ]
       }
+      cars_claims: {
+        Row: {
+          created_at: string
+          currency: string
+          damage_date: string
+          damage_type: Database["public"]["Enums"]["car_damage_type"]
+          description: string | null
+          estimated_cost_cents: number | null
+          fault_assessment:
+            | Database["public"]["Enums"]["car_fault_assessment"]
+            | null
+          final_cost_cents: number | null
+          id: string
+          insurance_id: string | null
+          insurer_reference: string | null
+          location_description: string | null
+          notes: string | null
+          payout_cents: number | null
+          payout_date: string | null
+          police_reference: string | null
+          public_id: string
+          reported_at: string | null
+          status: Database["public"]["Enums"]["car_claim_status"]
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          damage_date: string
+          damage_type?: Database["public"]["Enums"]["car_damage_type"]
+          description?: string | null
+          estimated_cost_cents?: number | null
+          fault_assessment?:
+            | Database["public"]["Enums"]["car_fault_assessment"]
+            | null
+          final_cost_cents?: number | null
+          id?: string
+          insurance_id?: string | null
+          insurer_reference?: string | null
+          location_description?: string | null
+          notes?: string | null
+          payout_cents?: number | null
+          payout_date?: string | null
+          police_reference?: string | null
+          public_id?: string
+          reported_at?: string | null
+          status?: Database["public"]["Enums"]["car_claim_status"]
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          damage_date?: string
+          damage_type?: Database["public"]["Enums"]["car_damage_type"]
+          description?: string | null
+          estimated_cost_cents?: number | null
+          fault_assessment?:
+            | Database["public"]["Enums"]["car_fault_assessment"]
+            | null
+          final_cost_cents?: number | null
+          id?: string
+          insurance_id?: string | null
+          insurer_reference?: string | null
+          location_description?: string | null
+          notes?: string | null
+          payout_cents?: number | null
+          payout_date?: string | null
+          police_reference?: string | null
+          public_id?: string
+          reported_at?: string | null
+          status?: Database["public"]["Enums"]["car_claim_status"]
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_claims_insurance_id_fkey"
+            columns: ["insurance_id"]
+            isOneToOne: false
+            referencedRelation: "cars_insurances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_claims_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_claims_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_financing: {
+        Row: {
+          contract_number: string | null
+          created_at: string
+          currency: string
+          down_payment_cents: number | null
+          end_date: string | null
+          finance_type: Database["public"]["Enums"]["car_finance_type"]
+          id: string
+          interest_rate_percent: number | null
+          monthly_rate_cents: number | null
+          notes: string | null
+          provider_name: string | null
+          remaining_debt_cents: number | null
+          residual_value_cents: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["car_finance_status"]
+          tenant_id: string
+          total_km_limit: number | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          contract_number?: string | null
+          created_at?: string
+          currency?: string
+          down_payment_cents?: number | null
+          end_date?: string | null
+          finance_type?: Database["public"]["Enums"]["car_finance_type"]
+          id?: string
+          interest_rate_percent?: number | null
+          monthly_rate_cents?: number | null
+          notes?: string | null
+          provider_name?: string | null
+          remaining_debt_cents?: number | null
+          residual_value_cents?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["car_finance_status"]
+          tenant_id: string
+          total_km_limit?: number | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          contract_number?: string | null
+          created_at?: string
+          currency?: string
+          down_payment_cents?: number | null
+          end_date?: string | null
+          finance_type?: Database["public"]["Enums"]["car_finance_type"]
+          id?: string
+          interest_rate_percent?: number | null
+          monthly_rate_cents?: number | null
+          notes?: string | null
+          provider_name?: string | null
+          remaining_debt_cents?: number | null
+          residual_value_cents?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["car_finance_status"]
+          tenant_id?: string
+          total_km_limit?: number | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_financing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_financing_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_insurances: {
+        Row: {
+          annual_premium_cents: number
+          cancellation_deadline: string | null
+          coverage_type: Database["public"]["Enums"]["car_coverage_type"]
+          created_at: string
+          currency: string
+          deductible_full_cents: number | null
+          deductible_partial_cents: number | null
+          extras: Json | null
+          id: string
+          insurer_name: string
+          notes: string | null
+          payment_frequency: Database["public"]["Enums"]["car_payment_frequency"]
+          policy_number: string
+          renewal_date: string | null
+          sf_full_casco: number | null
+          sf_liability: number
+          status: Database["public"]["Enums"]["car_insurance_status"]
+          tenant_id: string
+          term_end: string | null
+          term_start: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          annual_premium_cents: number
+          cancellation_deadline?: string | null
+          coverage_type?: Database["public"]["Enums"]["car_coverage_type"]
+          created_at?: string
+          currency?: string
+          deductible_full_cents?: number | null
+          deductible_partial_cents?: number | null
+          extras?: Json | null
+          id?: string
+          insurer_name: string
+          notes?: string | null
+          payment_frequency?: Database["public"]["Enums"]["car_payment_frequency"]
+          policy_number: string
+          renewal_date?: string | null
+          sf_full_casco?: number | null
+          sf_liability?: number
+          status?: Database["public"]["Enums"]["car_insurance_status"]
+          tenant_id: string
+          term_end?: string | null
+          term_start: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          annual_premium_cents?: number
+          cancellation_deadline?: string | null
+          coverage_type?: Database["public"]["Enums"]["car_coverage_type"]
+          created_at?: string
+          currency?: string
+          deductible_full_cents?: number | null
+          deductible_partial_cents?: number | null
+          extras?: Json | null
+          id?: string
+          insurer_name?: string
+          notes?: string | null
+          payment_frequency?: Database["public"]["Enums"]["car_payment_frequency"]
+          policy_number?: string
+          renewal_date?: string | null
+          sf_full_casco?: number | null
+          sf_liability?: number
+          status?: Database["public"]["Enums"]["car_insurance_status"]
+          tenant_id?: string
+          term_end?: string | null
+          term_start?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_insurances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_insurances_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_logbook_connections: {
+        Row: {
+          api_credentials_encrypted: string | null
+          created_at: string
+          external_vehicle_ref: string | null
+          id: string
+          last_sync_at: string | null
+          provider: Database["public"]["Enums"]["car_logbook_provider"]
+          settings: Json | null
+          status: Database["public"]["Enums"]["car_logbook_status"]
+          sync_error_message: string | null
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          api_credentials_encrypted?: string | null
+          created_at?: string
+          external_vehicle_ref?: string | null
+          id?: string
+          last_sync_at?: string | null
+          provider?: Database["public"]["Enums"]["car_logbook_provider"]
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["car_logbook_status"]
+          sync_error_message?: string | null
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          api_credentials_encrypted?: string | null
+          created_at?: string
+          external_vehicle_ref?: string | null
+          id?: string
+          last_sync_at?: string | null
+          provider?: Database["public"]["Enums"]["car_logbook_provider"]
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["car_logbook_status"]
+          sync_error_message?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_logbook_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_logbook_connections_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: true
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_offers: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          down_payment_cents: number | null
+          id: string
+          image_url: string | null
+          is_featured: boolean
+          km_per_year: number | null
+          link_url: string
+          offer_type: Database["public"]["Enums"]["car_offer_type"]
+          payload: Json | null
+          price_daily_cents: number | null
+          price_monthly_cents: number | null
+          provider: Database["public"]["Enums"]["car_offer_provider"]
+          sort_order: number | null
+          tenant_id: string | null
+          term_months: number | null
+          title: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          down_payment_cents?: number | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean
+          km_per_year?: number | null
+          link_url: string
+          offer_type?: Database["public"]["Enums"]["car_offer_type"]
+          payload?: Json | null
+          price_daily_cents?: number | null
+          price_monthly_cents?: number | null
+          provider: Database["public"]["Enums"]["car_offer_provider"]
+          sort_order?: number | null
+          tenant_id?: string | null
+          term_months?: number | null
+          title: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          down_payment_cents?: number | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean
+          km_per_year?: number | null
+          link_url?: string
+          offer_type?: Database["public"]["Enums"]["car_offer_type"]
+          payload?: Json | null
+          price_daily_cents?: number | null
+          price_monthly_cents?: number | null
+          provider?: Database["public"]["Enums"]["car_offer_provider"]
+          sort_order?: number | null
+          tenant_id?: string | null
+          term_months?: number | null
+          title?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_offers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_trips: {
+        Row: {
+          classification: Database["public"]["Enums"]["car_trip_classification"]
+          connection_id: string | null
+          created_at: string
+          customer_name: string | null
+          distance_km: number
+          end_address: string | null
+          end_at: string | null
+          external_trip_id: string | null
+          id: string
+          purpose: string | null
+          source: Database["public"]["Enums"]["car_trip_source"]
+          source_payload: Json | null
+          start_address: string | null
+          start_at: string
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          classification?: Database["public"]["Enums"]["car_trip_classification"]
+          connection_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          distance_km?: number
+          end_address?: string | null
+          end_at?: string | null
+          external_trip_id?: string | null
+          id?: string
+          purpose?: string | null
+          source?: Database["public"]["Enums"]["car_trip_source"]
+          source_payload?: Json | null
+          start_address?: string | null
+          start_at: string
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          classification?: Database["public"]["Enums"]["car_trip_classification"]
+          connection_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          distance_km?: number
+          end_address?: string | null
+          end_at?: string | null
+          external_trip_id?: string | null
+          id?: string
+          purpose?: string | null
+          source?: Database["public"]["Enums"]["car_trip_source"]
+          source_payload?: Json | null
+          start_address?: string | null
+          start_at?: string
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_trips_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "cars_logbook_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trips_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trips_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_vehicles: {
+        Row: {
+          annual_mileage_km: number | null
+          au_valid_until: string | null
+          body_type: string | null
+          co2_g_km: number | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          current_mileage_km: number | null
+          dms_folder_id: string | null
+          doors: number | null
+          engine_ccm: number | null
+          first_registration_date: string | null
+          fuel_type: Database["public"]["Enums"]["car_fuel_type"] | null
+          holder_address: string | null
+          holder_name: string | null
+          hsn: string | null
+          hu_valid_until: string | null
+          id: string
+          license_plate: string
+          make: string | null
+          max_weight_kg: number | null
+          mileage_updated_at: string | null
+          model: string | null
+          notes: string | null
+          power_kw: number | null
+          primary_driver_birthdate: string | null
+          primary_driver_name: string | null
+          public_id: string
+          seats: number | null
+          status: Database["public"]["Enums"]["car_vehicle_status"]
+          tenant_id: string
+          tsn: string | null
+          updated_at: string
+          variant: string | null
+          vin: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          annual_mileage_km?: number | null
+          au_valid_until?: string | null
+          body_type?: string | null
+          co2_g_km?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_mileage_km?: number | null
+          dms_folder_id?: string | null
+          doors?: number | null
+          engine_ccm?: number | null
+          first_registration_date?: string | null
+          fuel_type?: Database["public"]["Enums"]["car_fuel_type"] | null
+          holder_address?: string | null
+          holder_name?: string | null
+          hsn?: string | null
+          hu_valid_until?: string | null
+          id?: string
+          license_plate: string
+          make?: string | null
+          max_weight_kg?: number | null
+          mileage_updated_at?: string | null
+          model?: string | null
+          notes?: string | null
+          power_kw?: number | null
+          primary_driver_birthdate?: string | null
+          primary_driver_name?: string | null
+          public_id?: string
+          seats?: number | null
+          status?: Database["public"]["Enums"]["car_vehicle_status"]
+          tenant_id: string
+          tsn?: string | null
+          updated_at?: string
+          variant?: string | null
+          vin?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          annual_mileage_km?: number | null
+          au_valid_until?: string | null
+          body_type?: string | null
+          co2_g_km?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_mileage_km?: number | null
+          dms_folder_id?: string | null
+          doors?: number | null
+          engine_ccm?: number | null
+          first_registration_date?: string | null
+          fuel_type?: Database["public"]["Enums"]["car_fuel_type"] | null
+          holder_address?: string | null
+          holder_name?: string | null
+          hsn?: string | null
+          hu_valid_until?: string | null
+          id?: string
+          license_plate?: string
+          make?: string | null
+          max_weight_kg?: number | null
+          mileage_updated_at?: string | null
+          model?: string | null
+          notes?: string | null
+          power_kw?: number | null
+          primary_driver_birthdate?: string | null
+          primary_driver_name?: string | null
+          public_id?: string
+          seats?: number | null
+          status?: Database["public"]["Enums"]["car_vehicle_status"]
+          tenant_id?: string
+          tsn?: string | null
+          updated_at?: string
+          variant?: string | null
+          vin?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_vehicles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_events: {
         Row: {
           actor_type: string | null
@@ -7866,6 +8493,60 @@ export type Database = {
         | "user"
         | "finance_manager"
         | "akquise_manager"
+      car_claim_status:
+        | "draft"
+        | "open"
+        | "awaiting_docs"
+        | "submitted"
+        | "in_review"
+        | "approved"
+        | "rejected"
+        | "closed"
+      car_coverage_type: "liability_only" | "liability_tk" | "liability_vk"
+      car_damage_type:
+        | "accident"
+        | "theft"
+        | "glass"
+        | "vandalism"
+        | "storm"
+        | "animal"
+        | "fire"
+        | "other"
+      car_fault_assessment:
+        | "own_fault"
+        | "partial_fault"
+        | "no_fault"
+        | "unclear"
+      car_finance_status: "active" | "completed" | "terminated"
+      car_finance_type: "owned" | "financed" | "leased"
+      car_fuel_type:
+        | "petrol"
+        | "diesel"
+        | "electric"
+        | "hybrid_petrol"
+        | "hybrid_diesel"
+        | "lpg"
+        | "cng"
+        | "hydrogen"
+      car_insurance_status: "active" | "expired" | "cancelled" | "draft"
+      car_logbook_provider: "vimcar" | "carcloud" | "none"
+      car_logbook_status: "not_connected" | "pending" | "connected" | "error"
+      car_offer_provider:
+        | "bmw_dealer"
+        | "mercedes_dealer"
+        | "vw_dealer"
+        | "audi_dealer"
+        | "miete24"
+        | "generic"
+      car_offer_type: "leasing" | "rental"
+      car_payment_frequency: "monthly" | "quarterly" | "semi_annual" | "yearly"
+      car_trip_classification:
+        | "business"
+        | "private"
+        | "commute"
+        | "unclassified"
+      car_trip_source: "manual" | "sync"
+      car_vehicle_status: "active" | "inactive" | "sold" | "returned"
       commission_status:
         | "pending"
         | "approved"
@@ -8168,6 +8849,66 @@ export const Constants = {
         "finance_manager",
         "akquise_manager",
       ],
+      car_claim_status: [
+        "draft",
+        "open",
+        "awaiting_docs",
+        "submitted",
+        "in_review",
+        "approved",
+        "rejected",
+        "closed",
+      ],
+      car_coverage_type: ["liability_only", "liability_tk", "liability_vk"],
+      car_damage_type: [
+        "accident",
+        "theft",
+        "glass",
+        "vandalism",
+        "storm",
+        "animal",
+        "fire",
+        "other",
+      ],
+      car_fault_assessment: [
+        "own_fault",
+        "partial_fault",
+        "no_fault",
+        "unclear",
+      ],
+      car_finance_status: ["active", "completed", "terminated"],
+      car_finance_type: ["owned", "financed", "leased"],
+      car_fuel_type: [
+        "petrol",
+        "diesel",
+        "electric",
+        "hybrid_petrol",
+        "hybrid_diesel",
+        "lpg",
+        "cng",
+        "hydrogen",
+      ],
+      car_insurance_status: ["active", "expired", "cancelled", "draft"],
+      car_logbook_provider: ["vimcar", "carcloud", "none"],
+      car_logbook_status: ["not_connected", "pending", "connected", "error"],
+      car_offer_provider: [
+        "bmw_dealer",
+        "mercedes_dealer",
+        "vw_dealer",
+        "audi_dealer",
+        "miete24",
+        "generic",
+      ],
+      car_offer_type: ["leasing", "rental"],
+      car_payment_frequency: ["monthly", "quarterly", "semi_annual", "yearly"],
+      car_trip_classification: [
+        "business",
+        "private",
+        "commute",
+        "unclassified",
+      ],
+      car_trip_source: ["manual", "sync"],
+      car_vehicle_status: ["active", "inactive", "sold", "returned"],
       commission_status: [
         "pending",
         "approved",
