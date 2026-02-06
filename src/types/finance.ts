@@ -29,52 +29,71 @@ export interface ApplicantProfile {
   profile_type: ProfileType;
   party_role: PartyRole;
   
-  // Identity
+  // Section 1: Identity (from PDF selbstauskunft.pdf)
+  salutation: string | null;
   first_name: string | null;
   last_name: string | null;
+  birth_name: string | null;
   birth_date: string | null;
   birth_place: string | null;
+  birth_country: string | null;
   nationality: string | null;
   marital_status: MaritalStatus | null;
   address_street: string | null;
   address_postal_code: string | null;
   address_city: string | null;
+  address_since: string | null;
+  previous_address_street: string | null;
+  previous_address_postal_code: string | null;
+  previous_address_city: string | null;
   phone: string | null;
+  phone_mobile: string | null;
   email: string | null;
   id_document_type: IdDocumentType | null;
   id_document_number: string | null;
   id_document_valid_until: string | null;
   tax_id: string | null;
-  iban: string | null;
   
-  // NEW: Tax basis fields (mirrored from landlord_contexts)
-  taxable_income_yearly: number | null;
-  church_tax: boolean | null;
-  tax_assessment_type: TaxAssessmentType | null;
-  marginal_tax_rate: number | null;
-  
-  // Household
+  // Section 2: Household
+  property_separation: boolean | null;
   adults_count: number | null;
   children_count: number | null;
   children_ages: string | null;
+  children_birth_dates: string | null;
   child_support_obligation: boolean;
   child_support_amount_monthly: number | null;
   child_benefit_monthly: number | null;
   other_regular_income_monthly: number | null;
   other_income_description: string | null;
   
-  // Employment (Private)
+  // Section 3: Employment (Angestellt)
   employer_name: string | null;
   employer_location: string | null;
   employer_industry: string | null;
   employment_type: EmploymentType | null;
   position: string | null;
   employed_since: string | null;
+  contract_type: string | null;
   probation_until: string | null;
+  employer_in_germany: boolean | null;
+  salary_currency: string | null;
+  salary_payments_per_year: number | null;
   net_income_monthly: number | null;
   bonus_yearly: number | null;
   
-  // Entrepreneur Extension
+  // Section 3: Employment (Nebentätigkeit)
+  has_side_job: boolean | null;
+  side_job_type: string | null;
+  side_job_since: string | null;
+  side_job_income_monthly: number | null;
+  
+  // Section 3: Employment (Rente)
+  vehicles_count: number | null;
+  retirement_date: string | null;
+  pension_state_monthly: number | null;
+  pension_private_monthly: number | null;
+  
+  // Section 3: Self-employed / Entrepreneur Extension
   company_name: string | null;
   company_legal_form: string | null;
   company_address: string | null;
@@ -85,15 +104,24 @@ export interface ApplicantProfile {
   company_employees: number | null;
   company_ownership_percent: number | null;
   company_managing_director: boolean | null;
+  self_employed_income_monthly: number | null;
   
-  // Expenses
+  // Section 4: Bankverbindung
+  iban: string | null;
+  bic: string | null;
+  
+  // Section 5: Income (additional fields)
+  rental_income_monthly: number | null;
+  alimony_income_monthly: number | null;
+  
+  // Section 6: Expenses
   current_rent_monthly: number | null;
   living_expenses_monthly: number | null;
   car_leasing_monthly: number | null;
   health_insurance_monthly: number | null;
   other_fixed_costs_monthly: number | null;
   
-  // Assets
+  // Section 7: Assets
   bank_savings: number | null;
   securities_value: number | null;
   building_society_value: number | null;
@@ -101,23 +129,44 @@ export interface ApplicantProfile {
   other_assets_value: number | null;
   other_assets_description: string | null;
   
-  // Financing Request
+  // Tax basis fields (mirrored from landlord_contexts)
+  taxable_income_yearly: number | null;
+  church_tax: boolean | null;
+  tax_assessment_type: TaxAssessmentType | null;
+  marginal_tax_rate: number | null;
+  
+  // Legacy: Financing Request fields (now moved to finance_requests table)
+  // Keep for backward compatibility but marked as deprecated
+  /** @deprecated Use finance_requests table instead */
   purpose: FinancePurpose | null;
+  /** @deprecated Use finance_requests table instead */
   object_address: string | null;
+  /** @deprecated Use finance_requests table instead */
   object_type: string | null;
+  /** @deprecated Use finance_requests table instead */
   purchase_price: number | null;
+  /** @deprecated Use finance_requests table instead */
   ancillary_costs: number | null;
+  /** @deprecated Use finance_requests table instead */
   modernization_costs: number | null;
+  /** @deprecated Use finance_requests table instead */
   planned_rent_monthly: number | null;
+  /** @deprecated Use finance_requests table instead */
   rental_status: RentalStatus | null;
+  /** @deprecated Use finance_requests table instead */
   equity_amount: number | null;
+  /** @deprecated Use finance_requests table instead */
   equity_source: string | null;
+  /** @deprecated Use finance_requests table instead */
   loan_amount_requested: number | null;
+  /** @deprecated Use finance_requests table instead */
   fixed_rate_period_years: number | null;
+  /** @deprecated Use finance_requests table instead */
   repayment_rate_percent: number | null;
+  /** @deprecated Use finance_requests table instead */
   max_monthly_rate: number | null;
   
-  // Self-declarations
+  // Section 9: Self-declarations
   schufa_consent: boolean;
   no_insolvency: boolean;
   no_tax_arrears: boolean;

@@ -1,21 +1,14 @@
 /**
  * MOD-07: Selbstauskunft Tab
- * Displays persistent applicant profile (finance_request_id IS NULL)
+ * Displays persistent applicant profile using V2 scrollable form
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  User, Building, CheckCircle, AlertCircle, 
-  FileEdit, Loader2, RefreshCw 
-} from 'lucide-react';
-import { SelbstauskunftForm } from '@/components/finanzierung/SelbstauskunftForm';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { SelbstauskunftFormV2 } from '@/components/finanzierung/SelbstauskunftFormV2';
 import type { ApplicantProfile } from '@/types/finance';
 
 // DEV MODE: Check if we're in development (no org required)
@@ -32,44 +25,64 @@ const createEmptyProfile = (): ApplicantProfile => ({
   tenant_id: 'dev-tenant',
   profile_type: 'private',
   party_role: 'primary',
+  // Section 1: Identity
+  salutation: null,
   first_name: null,
   last_name: null,
+  birth_name: null,
   birth_date: null,
   birth_place: null,
+  birth_country: 'DE',
   nationality: null,
   marital_status: null,
   address_street: null,
   address_postal_code: null,
   address_city: null,
+  address_since: null,
+  previous_address_street: null,
+  previous_address_postal_code: null,
+  previous_address_city: null,
   phone: null,
+  phone_mobile: null,
   email: null,
   id_document_type: null,
   id_document_number: null,
   id_document_valid_until: null,
   tax_id: null,
-  iban: null,
-  // NEW: Tax basis fields
-  taxable_income_yearly: null,
-  church_tax: null,
-  tax_assessment_type: null,
-  marginal_tax_rate: null,
+  // Section 2: Household
+  property_separation: null,
   adults_count: null,
   children_count: null,
   children_ages: null,
-  child_support_obligation: null,
+  children_birth_dates: null,
+  child_support_obligation: false,
   child_support_amount_monthly: null,
   child_benefit_monthly: null,
   other_regular_income_monthly: null,
   other_income_description: null,
+  // Section 3: Employment
   employer_name: null,
   employer_location: null,
   employer_industry: null,
   employment_type: null,
   position: null,
   employed_since: null,
+  contract_type: null,
   probation_until: null,
+  employer_in_germany: true,
+  salary_currency: 'EUR',
+  salary_payments_per_year: 12,
   net_income_monthly: null,
   bonus_yearly: null,
+  has_side_job: null,
+  side_job_type: null,
+  side_job_since: null,
+  side_job_income_monthly: null,
+  vehicles_count: null,
+  retirement_date: null,
+  pension_state_monthly: null,
+  pension_private_monthly: null,
+  // Company
   company_name: null,
   company_legal_form: null,
   company_address: null,
@@ -80,17 +93,32 @@ const createEmptyProfile = (): ApplicantProfile => ({
   company_employees: null,
   company_ownership_percent: null,
   company_managing_director: null,
+  self_employed_income_monthly: null,
+  // Section 4: Bank
+  iban: null,
+  bic: null,
+  // Section 5: Income
+  rental_income_monthly: null,
+  alimony_income_monthly: null,
+  // Section 6: Expenses
   current_rent_monthly: null,
   living_expenses_monthly: null,
   car_leasing_monthly: null,
   health_insurance_monthly: null,
   other_fixed_costs_monthly: null,
+  // Section 7: Assets
   bank_savings: null,
   securities_value: null,
   building_society_value: null,
   life_insurance_value: null,
   other_assets_value: null,
   other_assets_description: null,
+  // Tax basis
+  taxable_income_yearly: null,
+  church_tax: null,
+  tax_assessment_type: null,
+  marginal_tax_rate: null,
+  // Legacy financing fields
   purpose: null,
   object_address: null,
   object_type: null,
@@ -105,11 +133,13 @@ const createEmptyProfile = (): ApplicantProfile => ({
   fixed_rate_period_years: null,
   repayment_rate_percent: null,
   max_monthly_rate: null,
-  schufa_consent: null,
-  no_insolvency: null,
-  no_tax_arrears: null,
-  data_correct_confirmed: null,
-  completion_score: null,
+  // Section 9: Declarations
+  schufa_consent: false,
+  no_insolvency: false,
+  no_tax_arrears: false,
+  data_correct_confirmed: false,
+  // Meta
+  completion_score: 0,
   finance_request_id: null,
   last_synced_from_finapi_at: null,
   created_at: new Date().toISOString(),
@@ -207,99 +237,14 @@ export default function SelbstauskunftTab() {
         </Card>
       )}
 
-      {/* Header with Completion Score */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Meine Selbstauskunft
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Aktualisieren
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Vollständigkeit</span>
-              <span className="text-sm text-muted-foreground">{completionScore}%</span>
-            </div>
-            <Progress value={completionScore} className="h-2" />
-          </div>
-
-          <div className="flex items-center gap-2">
-            {isReadyToSubmit ? (
-              <Badge variant="default" className="gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Bereit zur Einreichung
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Daten unvollständig
-              </Badge>
-            )}
-            <span className="text-sm text-muted-foreground">
-              {isReadyToSubmit 
-                ? 'Ihre Daten sind vollständig für eine Finanzierungsanfrage.' 
-                : 'Bitte ergänzen Sie die fehlenden Angaben.'}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile Type Tabs */}
-      <Tabs defaultValue={profile?.profile_type || 'private'}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="private" className="gap-2">
-            <User className="h-4 w-4" />
-            Privatperson
-          </TabsTrigger>
-          <TabsTrigger value="business" className="gap-2">
-            <Building className="h-4 w-4" />
-            Unternehmer / Selbstständig
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="private" className="mt-6">
-          {(profile || devMode) && (
-            <SelbstauskunftForm
-              profile={profile || createEmptyProfile()}
-              onSave={() => refetch()}
-              readOnly={devMode}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="business" className="mt-6">
-          {(profile || devMode) && (
-            <SelbstauskunftForm
-              profile={profile || createEmptyProfile()}
-              onSave={() => refetch()}
-              readOnly={devMode}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Info Box */}
-      <Card className="bg-muted/50">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <FileEdit className="h-5 w-5 text-muted-foreground shrink-0" />
-            <div className="text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Dauerhafte Selbstauskunft</p>
-              <p className="mt-1">
-                Diese Daten werden dauerhaft gespeichert und bei jeder neuen Finanzierungsanfrage 
-                automatisch verwendet. Sie können die Daten jederzeit aktualisieren.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* V2 Scrollable Form */}
+      {(profile || devMode) && (
+        <SelbstauskunftFormV2
+          profile={profile || createEmptyProfile()}
+          onSave={() => refetch()}
+          readOnly={devMode}
+        />
+      )}
     </div>
   );
 }
