@@ -1,13 +1,13 @@
-# MOD-07 — FINANZIERUNG (Finance Case & Handoff Module)
+# MOD-07 — FINANZIERUNG (Self-Disclosure & Request Module)
 
-**Version:** v1.0.0  
-**Status:** COMPLETE SPEC  
-**Datum:** 2026-01-26  
+**Version:** v2.0.0  
+**Status:** ACTIVE  
+**Datum:** 2026-02-06  
 **Zone:** 2 (User Portal)  
 **Typ:** STANDARD (für alle Nutzer verfügbar)  
 **Route-Prefix:** `/portal/finanzierung`  
-**API-Range:** API-600 bis API-699  
-**Abhängig von:** MOD-04 (Immobilien), MOD-05 (MSV), MOD-03 (DMS), MOD-01 (Stammdaten), Backbone (Consents, Audit)
+**API-Range:** API-600 bis API-631  
+**Abhängig von:** MOD-04 (Immobilien), MOD-03 (DMS), MOD-01 (Stammdaten), Backbone (Consents, Audit)
 
 ---
 
@@ -15,595 +15,414 @@
 
 ### 1.1 Zweck
 
-MOD-07 „Finanzierung" ist das Modul zur strukturierten Erstellung eines **Finanzierungsfalls (Case)**, zum Sammeln/Validieren aller Unterlagen und Objekt-/Portfolio-Daten sowie zum Erstellen eines standardisierten **Finanzierungspakets**. Der Abschluss ist eine kontrollierte **Übergabe (Handoff)** an das externe System „Future Room" oder an interne Prozesse.
+MOD-07 „Finanzierung" ist das **Kundenmodul zur Datenerfassung** für Finanzierungsanfragen. Der Fokus liegt auf:
 
-**Kernfunktion:** Datenaggregation + Readiness-Prüfung + Export/Handoff
+1. **Selbstauskunft** — Persönliche Bonitätsdaten (permanent pro Tenant)
+2. **Dokumente** — Bonitätsunterlagen + Objektunterlagen (DMS-integriert)
+3. **Anfrage** — Finanzierungsvorhaben mit Objektdaten
+4. **Status** — Timeline-Ansicht des Fortschritts
+
+**WICHTIG:** MOD-07 ist **NUR** für Datenerfassung zuständig. Die Bank-Übergabe erfolgt in **MOD-11 (Finanzierungsmanager)**.
 
 ### 1.2 Zielnutzer / Rollen
 
 | Rolle | Zugang | Beschreibung |
 |-------|--------|--------------|
-| `org_admin` | Full | Legt Cases an, finalisiert Handoff |
-| `internal_ops` | Write | Dokumente prüfen, Daten nachpflegen |
-| `viewer` | Read | Lesend für Team (optional) |
+| `org_admin` | Full | Vollständige Bearbeitung aller Tabs |
+| `member` | Write | Eigene Daten pflegen |
+| `viewer` | Read | Lesend (optional) |
 
-### 1.3 Scope IN (testbar)
+### 1.3 Scope IN
 
-- Finanzierungscases anlegen/führen (pro Objekt oder Portfolio-weit)
-- Datensammlung aus MOD-04 (Immobilien), MOD-05 (MSV), MOD-03 (DMS), MOD-01 (Stammdaten)
-- Dokumenten-Checklisten + Readiness Gate (vollständig/unvollständig)
-- Paket-Generator (strukturierter Export: PDF + strukturierte Daten/ZIP)
-- Status-Maschine von Draft bis Submitted
-- Handoff zu Future Room: Export + Übergabe-Token/Link/Transmission
-- Audit Events und Consent Gates
+- Selbstauskunft pflegen (9 Sektionen)
+- Dokumente hochladen und verwalten (DMS-Checkliste)
+- Finanzierungsanfragen erstellen (4 Sektionen)
+- Status-Timeline verfolgen
+- Daten aus MOD-04 Portfolio vorausfüllen
+- Document Reminder aktivieren
 
 ### 1.4 Scope OUT (Nicht-Ziele)
 
-- ❌ Keine Banken-API Live-Abgabe (Phase 2)
-- ❌ Keine Kreditvermittlung/Produktberatung-Engine
-- ❌ Kein Nachbau von Future Room (nur Übergabe-Schnittstelle)
-- ❌ Keine Buchhaltungsautomatisierung
+- ❌ Keine Bank-API (Europace/BaufiSmart) — das macht MOD-11!
+- ❌ Keine Banken-Auswahl oder Produktvergleich
+- ❌ Keine Kreditvermittlung
+- ❌ Kein direkter Kundenkontakt mit Finanzierungsmanager (MOD-11)
 
 ---
 
 ## 2) ARCHITEKTUR-POSITION
 
-### 2.1 Cross-Module Abhängigkeiten
+### 2.1 Finanzierungs-Triade
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      FINANZIERUNGS-TRIADE                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   MOD-07 (Kunde)        Zone 1 (FutureRoom)     MOD-11 (Manager)       │
+│   ═══════════════       ═══════════════════     ═══════════════        │
+│   Datenerfassung   ──►  Triage + Delegation ──► Bank-Übergabe          │
+│   Dokumentenupload      Zuweisung an Manager    Europace API           │
+│   Status-Ansicht        Monitoring              Kundenkommunikation    │
+│                                                                         │
+│   SoT: draft..ready     SoT: submitted..assigned    SoT: in_review+    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Cross-Module Abhängigkeiten
 
 | Modul | Abhängigkeit | Datenfluss |
 |-------|--------------|------------|
-| MOD-04 Immobilien | Properties/Units/Finanzierungsdaten | READ (SoT) |
-| MOD-05 MSV | Mieteinnahmen/Reports | READ (Premium/Basis) |
-| MOD-03 DMS | Dokumentenablage, Data Rooms | READ/WRITE |
-| MOD-01 Stammdaten | Personen/Organisationen, Adressen | READ |
-| Zone 1 Admin | Oversight, Integrations, Audit | READ (Oversight) |
-
-### 2.2 High-Level Flow
-
-```
-User erstellt Case → wählt Objekt(e) → System zieht Daten → 
-  → fordert Dokumente → Readiness Gate → Paket generieren → Handoff Future Room
-```
+| MOD-04 Immobilien | Properties für Vorausfüllung | READ |
+| MOD-03 DMS | Dokumentenablage, storage_nodes | READ/WRITE |
+| MOD-01 Stammdaten | Kontakte, Profile | READ |
+| Zone 1 FutureRoom | Übernahme nach Submit | HANDOFF |
+| MOD-11 | Bearbeitung nach Zuweisung | READONLY |
 
 ---
 
-## 3) ROUTE-STRUKTUR
+## 3) ROUTE-STRUKTUR (4-Tile-Pattern)
 
-### 3.1 Kern-Screens (5 Screens)
+### 3.1 Haupt-Tiles
 
-| Route | UI-Label | Screen | Beschreibung |
-|-------|----------|--------|--------------|
-| `/portal/finanzierung` | Dashboard | FinanceDashboard | KPIs: offene Cases, Ready-to-submit, fehlende Unterlagen |
-| `/portal/finanzierung/faelle` | Fälle | FinanceCaseList | Filter: Status, Objekt, Portfolio, Responsible |
-| `/portal/finanzierung/faelle/:case_id` | Case Detail | FinanceCaseDetail | Tabs: Übersicht, Daten, Unterlagen, Export, Status |
-| `/portal/finanzierung/dokumente` | Dokumente | FinanceDocuments | Case-zentrierte Checklist, DMS-Verknüpfungen |
-| `/portal/finanzierung/einstellungen` | Einstellungen | FinanceSettings | Templates, Export-Formate, Readiness-Regeln |
+| Route | UI-Label | Komponente | Beschreibung |
+|-------|----------|------------|--------------|
+| `/portal/finanzierung/selbstauskunft` | Selbstauskunft | SelbstauskunftTab | 9-Sektionen-Formular (default) |
+| `/portal/finanzierung/dokumente` | Dokumente | DokumenteTab | DMS-Tree + Checkliste |
+| `/portal/finanzierung/anfrage` | Anfrage | AnfrageTab | 4-Sektionen-Formular (Draft-First) |
+| `/portal/finanzierung/status` | Status | StatusTab | Timeline aller Anfragen |
 
 ### 3.2 Dynamische Routes
 
-| Route | Screen | Beschreibung |
-|-------|--------|--------------|
-| `/portal/finanzierung/faelle/:case_id` | FinanceCaseDetail | Case-Detailansicht mit Tabs |
-| `/portal/finanzierung/faelle/:case_id/export` | FinanceCaseExport | Export-Wizard |
-| `/portal/finanzierung/faelle/:case_id/handoff` | FinanceCaseHandoff | Handoff-Wizard |
+| Route | Komponente | Beschreibung |
+|-------|------------|--------------|
+| `/portal/finanzierung/anfrage/:requestId` | AnfrageDetailPage | Detail einer spezifischen Anfrage |
 
 ### 3.3 UI-Prinzipien
 
-- **Readiness Panel** ist immer sichtbar: Ampel + fehlende Items
-- **Export/Handoff** ist gesperrt solange Readiness nicht erfüllt (oder bewusst Override durch `org_admin`)
-- **Progress Tracker** zeigt Status-Flow visuell an
+- **Durchscrollbare Formulare** — Keine verschachtelten Tabs in Selbstauskunft/Anfrage
+- **Draft-First** — Anfrage-Tab zeigt direkt das Formular (nicht Liste)
+- **DMS-Integration** — Dokumente-Tab mit echtem Tree und Checkliste
+- **Vorausfüllung** — Daten aus MOD-04 Portfolio übernehmen
 
 ---
 
 ## 4) DATENMODELL
 
-### 4.1 Neue Tabellen (MOD-07 Owner)
+### 4.1 Kerntabellen (MOD-07 Owner)
 
-#### A) `finance_cases`
+#### A) `applicant_profiles`
+
+Persistentes Profil für Selbstauskunft (1 pro Tenant, `finance_request_id IS NULL`).
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
 | id | uuid PK | — |
 | tenant_id | uuid FK | Tenant-Isolation |
-| public_id | text | `SOT-FIN-XXXXXXXX` |
-| case_code | text | Human-readable (z.B. FIN-2026-001) |
-| scope_type | text | `property` \| `portfolio` |
-| primary_property_id | uuid FK | Nullable |
-| included_property_ids | uuid[] | Alle einbezogenen Properties |
-| purpose | text | `refinance` \| `purchase` \| `equity_release` \| `construction` \| `other` |
-| status | text | Siehe Status-Maschine |
-| responsible_user_id | uuid FK | Zuständiger User |
-| notes | text | Freitext |
-| created_at | timestamptz | — |
-| updated_at | timestamptz | — |
+| profile_type | text | `private` \| `entrepreneur` |
+| party_role | text | `primary` \| `co_applicant` |
+| finance_request_id | uuid FK | NULL = persistent, sonst Snapshot |
+| **Sektion 1: Person** | | |
+| salutation | text | Anrede |
+| first_name | text | Vorname |
+| last_name | text | Nachname |
+| birth_date | date | Geburtsdatum |
+| birth_place | text | Geburtsort |
+| nationality | text | Staatsangehörigkeit |
+| address_* | text | Adressfelder |
+| phone, email | text | Kontaktdaten |
+| tax_id | text | Steuer-ID |
+| **Sektion 2: Haushalt** | | |
+| marital_status | text | Familienstand |
+| property_separation | boolean | Gütertrennung |
+| children_count | integer | Anzahl Kinder |
+| **Sektion 3: Beschäftigung** | | |
+| employment_type | text | `employed` \| `self_employed` |
+| employer_name | text | Arbeitgeber |
+| employed_since | date | Beschäftigt seit |
+| net_income_monthly | decimal | Nettoeinkommen |
+| **Sektion 4: Bank** | | |
+| iban | text | IBAN |
+| bic | text | BIC |
+| **Sektion 5-6: Einnahmen/Ausgaben** | decimal | Monatliche Werte |
+| **Sektion 7: Vermögen** | decimal | Vermögenswerte |
+| **Sektion 8: Verbindlichkeiten** | | via `applicant_liabilities` (1:N) |
+| **Sektion 9: Erklärungen** | boolean | Consents |
+| completion_score | integer | 0-100 |
+| created_at, updated_at | timestamptz | — |
 
-**Status-Enum:**
-```
-draft → collecting → ready → exported → submitted → acknowledged
-                  ↘ blocked
-submitted → failed → collecting (retry)
-```
+#### B) `applicant_liabilities`
 
-#### B) `finance_case_parties`
-
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| id | uuid PK | — |
-| tenant_id | uuid FK | — |
-| case_id | uuid FK | → finance_cases |
-| party_type | text | `borrower` \| `co_borrower` \| `guarantor` \| `advisor` \| `bank_contact` |
-| contact_id | uuid FK | → contacts (MOD-01) |
-| role_notes | text | — |
-| created_at | timestamptz | — |
-
-#### C) `finance_case_documents`
-
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| id | uuid PK | — |
-| tenant_id | uuid FK | — |
-| case_id | uuid FK | → finance_cases |
-| requirement_code | text | Siehe 4.3 |
-| document_id | uuid FK | → documents (MOD-03), nullable |
-| status | text | `missing` \| `provided` \| `waived` \| `needs_review` \| `approved` |
-| source | text | `upload` \| `dms_link` \| `generated` \| `external` |
-| meta | jsonb | Doc dates, validity, extracted fields |
-| reviewed_by | uuid FK | — |
-| reviewed_at | timestamptz | — |
-| created_at | timestamptz | — |
-| updated_at | timestamptz | — |
-
-#### D) `finance_readiness_snapshots`
+Verbindlichkeiten als 1:N Beziehung.
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
 | id | uuid PK | — |
 | tenant_id | uuid FK | — |
-| case_id | uuid FK | — |
-| snapshot_at | timestamptz | — |
-| readiness_score | integer | 0-100 |
-| missing_required | jsonb | Liste fehlender Pflichtdokumente |
-| warnings | jsonb | Warnungen (z.B. abgelaufene Dokumente) |
-| computed_by | text | `system` \| `manual` |
+| applicant_profile_id | uuid FK | → applicant_profiles |
+| liability_type | text | `immobiliendarlehen` \| `ratenkredit` \| `leasing` \| `sonstige` |
+| creditor_name | text | Gläubiger |
+| original_amount | decimal | Ursprungsbetrag |
+| remaining_balance | decimal | Restschuld |
+| monthly_rate | decimal | Monatsrate |
+| interest_rate_fixed_until | date | Zinsbindung bis |
+| end_date | date | Laufzeitende |
 
-#### E) `finance_exports`
+#### C) `finance_requests`
+
+Finanzierungsanfragen mit Objektdaten.
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| id | uuid PK | — |
+| tenant_id | uuid FK | Tenant-Isolation |
+| public_id | text | `FIN-XXXXXXXX` |
+| status | text | Status-Enum |
+| **Objektdaten** | | |
+| object_source | text | `portfolio` \| `listing` \| `custom` |
+| property_id | uuid FK | → properties (nullable) |
+| object_address | text | Adresse |
+| object_type | text | Objekttyp |
+| object_construction_year | integer | Baujahr |
+| object_living_area_sqm | decimal | Wohnfläche |
+| **Kostenaufstellung** | | |
+| purchase_price | decimal | Kaufpreis |
+| modernization_costs | decimal | Modernisierung |
+| notary_costs | decimal | Notar/Gericht |
+| transfer_tax | decimal | Grunderwerbsteuer |
+| broker_fee | decimal | Makler |
+| **Finanzierungsplan** | | |
+| equity_amount | decimal | Eigenkapital |
+| loan_amount_requested | decimal | Darlehenswunsch |
+| fixed_rate_period_years | integer | Zinsbindung |
+| repayment_rate_percent | decimal | Tilgung |
+| max_monthly_rate | decimal | Max. Monatsrate |
+| **Meta** | | |
+| storage_folder_id | uuid FK | DMS-Ordner |
+| submitted_at | timestamptz | Einreichungsdatum |
+| created_at, updated_at | timestamptz | — |
+
+#### D) `document_checklist_items`
+
+Dynamische Checkliste für Dokumentenanforderungen.
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| id | uuid PK | — |
+| checklist_type | text | `applicant` \| `request` |
+| category | text | `identity` \| `income` \| `assets` \| `liabilities` \| `property` |
+| doc_type | text | `DOC_PAYSLIP` etc. |
+| label | text | Anzeigename |
+| is_required | boolean | Pflichtdokument |
+| for_employment_type | text | `employed` \| `self_employed` \| NULL (alle) |
+| sort_index | integer | Sortierung |
+
+#### E) `document_reminders`
+
+Erinnerungseinstellungen für fehlende Dokumente.
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
 | id | uuid PK | — |
 | tenant_id | uuid FK | — |
-| case_id | uuid FK | — |
-| export_type | text | `pdf` \| `zip` \| `future_room_bundle` |
-| status | text | `draft` \| `generated` \| `transmitted` \| `failed` |
-| dms_document_id | uuid FK | Output in MOD-03 |
-| payload_ref | jsonb | File references |
-| manifest | jsonb | Strukturierte Daten für Export |
-| created_at | timestamptz | — |
-| generated_at | timestamptz | — |
+| user_id | uuid FK | — |
+| finance_request_id | uuid FK | — |
+| reminder_type | text | `weekly` \| `on_missing` \| `disabled` |
+| last_sent_at | timestamptz | Letzte Erinnerung |
+| next_reminder_at | timestamptz | Nächste Erinnerung |
 
-#### F) `finance_handoffs`
+### 4.2 Status-Maschine
 
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| id | uuid PK | — |
-| tenant_id | uuid FK | — |
-| case_id | uuid FK | — |
-| target_system | text | `future_room` |
-| handoff_status | text | `draft` \| `prepared` \| `sent` \| `acknowledged` \| `failed` |
-| handoff_method | text | `download` \| `api` \| `link` |
-| external_reference | text | Nullable |
-| handoff_token | text | Nullable |
-| handoff_url | text | Nullable |
-| consent_id | uuid FK | → user_consents |
-| created_at | timestamptz | — |
-| updated_at | timestamptz | — |
+```
+draft → incomplete → ready_to_submit → submitted_to_zone1 → assigned → in_review → bank_submitted → approved
+                                                                                  ↘ rejected
+```
 
-### 4.2 RLS-Konzept
-
-| Tabelle | Policy | Beschreibung |
-|---------|--------|--------------|
-| finance_cases | tenant_id = active_tenant | Standard Tenant-Isolation |
-| finance_case_parties | tenant_id = active_tenant | — |
-| finance_case_documents | tenant_id = active_tenant | — |
-| finance_readiness_snapshots | tenant_id = active_tenant | — |
-| finance_exports | tenant_id = active_tenant | Write: org_admin only |
-| finance_handoffs | tenant_id = active_tenant | Write: org_admin only |
-
-### 4.3 Requirement Codes (Dokument-Checkliste)
-
-| Code | Label | Pflicht | Scope | Auto-Quelle |
-|------|-------|---------|-------|-------------|
-| `IDENTITY_DOCS` | Ausweisdokumente | ✓ | Borrower | — |
-| `INCOME_PROOF` | Einkommensnachweise | ✓ | Borrower | — |
-| `TAX_ASSESSMENTS` | Steuerbescheide | ✓ | Borrower | — |
-| `RENT_ROLL` | Mieterliste | ✓ (wenn vermietet) | Property | MOD-05 |
-| `PROPERTY_VALUATION` | Wertgutachten | Optional | Property | MOD-04 |
-| `LOAN_STATEMENTS` | Darlehensauszüge | ✓ (bei Refinance) | Property | MOD-04 |
-| `PROPERTY_DOCS_BASIC` | Grundbuch/Teilungserklärung | ✓ | Property | MOD-03 |
-| `ENERGY_CERTIFICATE` | Energieausweis | ✓ | Property | MOD-04 |
-| `INSURANCE_PROOF` | Versicherungsnachweise | Optional | Property | — |
-| `BANK_STATEMENTS` | Kontoauszüge | Optional | Borrower | — |
-| `PORTFOLIO_OVERVIEW` | Portfolio-Übersicht | ✓ (bei Portfolio) | Portfolio | MOD-04/05/07 |
-| `SELF_DISCLOSURE` | Selbstauskunft | ✓ | Borrower | Generated |
+| Status | Zone | Beschreibung |
+|--------|------|--------------|
+| `draft` | MOD-07 | In Bearbeitung |
+| `incomplete` | MOD-07 | Felder fehlen |
+| `ready_to_submit` | MOD-07 | Bereit zur Einreichung |
+| `submitted_to_zone1` | Zone 1 | An FutureRoom übermittelt |
+| `assigned` | Zone 1 | Manager zugewiesen |
+| `in_review` | MOD-11 | Manager prüft |
+| `bank_submitted` | MOD-11 | Bei Bank eingereicht |
+| `approved` | MOD-11 | Genehmigt |
+| `rejected` | Zone 1/MOD-11 | Abgelehnt |
 
 ---
 
-## 5) STATUS-MASCHINEN
+## 5) API CONTRACT (API-600..631)
 
-### 5.1 `finance_cases.status`
+### 5.1 Selbstauskunft APIs
 
-```mermaid
-stateDiagram-v2
-    [*] --> draft
-    draft --> collecting : Start
-    collecting --> ready : All Required OK
-    collecting --> blocked : Missing Required
-    blocked --> collecting : Add Documents
-    ready --> exported : Generate Pack
-    exported --> submitted : Send Handoff
-    submitted --> acknowledged : FR Confirms
-    submitted --> failed : FR Error
-    failed --> collecting : Retry
-    acknowledged --> [*]
-```
+| API-ID | Endpoint | Method | Beschreibung |
+|--------|----------|--------|--------------|
+| API-600 | `/financing/self-disclosure` | GET | Get Selbstauskunft |
+| API-601 | `/financing/self-disclosure` | POST | Create Selbstauskunft |
+| API-602 | `/financing/self-disclosure/:id` | PATCH | Update Selbstauskunft |
+| API-603 | `/financing/self-disclosure/:id/completion` | GET | Completion Score |
 
-### 5.2 `finance_case_documents.status`
+### 5.2 Request APIs
 
-```mermaid
-stateDiagram-v2
-    [*] --> missing
-    missing --> provided : Link/Upload
-    missing --> waived : Admin Waive
-    provided --> needs_review : Auto
-    needs_review --> approved : Reviewer OK
-    needs_review --> missing : Rejected
-    waived --> [*]
-    approved --> [*]
-```
+| API-ID | Endpoint | Method | Beschreibung |
+|--------|----------|--------|--------------|
+| API-610 | `/financing/requests` | GET | List Anfragen |
+| API-611 | `/financing/requests` | POST | Create Anfrage |
+| API-612 | `/financing/requests/:id` | GET | Anfrage Detail |
+| API-613 | `/financing/requests/:id` | PATCH | Update Anfrage |
+| API-614 | `/financing/requests/:id/submit` | POST | Einreichung → Zone 1 |
 
-### 5.3 `finance_handoffs.handoff_status`
+### 5.3 Liabilities APIs
 
-```mermaid
-stateDiagram-v2
-    [*] --> draft
-    draft --> prepared : Prepare
-    prepared --> sent : Send
-    sent --> acknowledged : Confirm
-    sent --> failed : Error
-    prepared --> failed : Error
-    failed --> prepared : Retry
-    acknowledged --> [*]
-```
+| API-ID | Endpoint | Method | Beschreibung |
+|--------|----------|--------|--------------|
+| API-620 | `/financing/liabilities` | GET | List Verbindlichkeiten |
+| API-621 | `/financing/liabilities` | POST | Add Verbindlichkeit |
+| API-622 | `/financing/liabilities/:id` | PATCH | Update Verbindlichkeit |
+| API-623 | `/financing/liabilities/:id` | DELETE | Delete Verbindlichkeit |
+
+### 5.4 Document APIs
+
+| API-ID | Endpoint | Method | Beschreibung |
+|--------|----------|--------|--------------|
+| API-630 | `/financing/documents/checklist` | GET | Document Checklist |
+| API-631 | `/financing/documents/link` | POST | Link DMS Doc |
 
 ---
 
-## 6) API CONTRACT
+## 6) UI-KOMPONENTEN
 
-### 6.1 Core Case APIs (API-600 bis API-609)
+### 6.1 Selbstauskunft (9 Sektionen)
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-600 | `/financing/cases` | GET | org_admin, internal_ops | Liste aller Cases |
-| API-601 | `/financing/cases` | POST | org_admin | Case anlegen |
-| API-602 | `/financing/cases/:id` | GET | org_admin, internal_ops | Case Detail |
-| API-603 | `/financing/cases/:id` | PATCH | org_admin, internal_ops | Case aktualisieren |
-| API-604 | `/financing/cases/:id/transition` | POST | org_admin | Status-Transition mit Guards |
-| API-605 | `/financing/cases/:id/clone` | POST | org_admin | Case duplizieren |
+Die `SelbstauskunftFormV2.tsx` implementiert ein durchscrollbares Formular:
 
-### 6.2 Readiness APIs (API-610 bis API-619)
+1. **Angaben zur Person** — Identität, Adresse, Kontakt
+2. **Haushalt** — Familienstand, Kinder, Gütertrennung
+3. **Beschäftigung** — Switch: Angestellt ↔ Selbstständig
+4. **Bankverbindung** — IBAN, BIC
+5. **Monatliche Einnahmen** — Netto, Mieten, Kindergeld etc.
+6. **Monatliche Ausgaben** — Miete, Versicherung, Leasing etc.
+7. **Vermögen** — Bank, Wertpapiere, Immobilien (MOD-04 read-only)
+8. **Verbindlichkeiten** — 1:N Tabelle via `applicant_liabilities`
+9. **Erklärungen** — SCHUFA-Einwilligung, Bestätigungen
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-610 | `/financing/cases/:id/readiness` | GET | org_admin, internal_ops | Readiness-Status |
-| API-611 | `/financing/cases/:id/readiness/recompute` | POST | org_admin | Readiness neu berechnen |
-| API-612 | `/financing/cases/:id/readiness/snapshots` | GET | org_admin | Snapshot-History |
+### 6.2 Dokumente (DMS + Checkliste)
 
-### 6.3 Party APIs (API-620 bis API-629)
+Die `FinanceDocumentsManager.tsx` implementiert:
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-620 | `/financing/cases/:id/parties` | GET | org_admin, internal_ops | Liste Parteien |
-| API-621 | `/financing/cases/:id/parties` | POST | org_admin | Partei hinzufügen |
-| API-622 | `/financing/cases/:id/parties/:party_id` | DELETE | org_admin | Partei entfernen |
+- **Linke Spalte:** `FinanceStorageTree` — DMS-Ordnerstruktur
+- **Rechte Spalte:** `DocumentChecklistPanel` — Interaktive Checkliste
+- **Upload-Zone:** `FinanceUploadZone` — Drag & Drop
+- **MOD-04 Import:** `MOD04DocumentPicker` — Dokumente aus Portfolio übernehmen
+- **Reminder:** `DocumentReminderToggle` — Wöchentliche E-Mail-Erinnerung
 
-### 6.4 Document APIs (API-630 bis API-649)
+### 6.3 Anfrage (4 Sektionen)
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-630 | `/financing/cases/:id/documents` | GET | org_admin, internal_ops | Dokument-Checklist |
-| API-631 | `/financing/cases/:id/documents/link` | POST | org_admin, internal_ops | DMS-Dokument verknüpfen |
-| API-632 | `/financing/cases/:id/documents/upload` | POST | org_admin, internal_ops | Upload via DMS |
-| API-633 | `/financing/cases/:id/documents/:doc_id` | PATCH | org_admin, internal_ops | Status/Meta aktualisieren |
-| API-634 | `/financing/cases/:id/documents/:doc_id/waive` | POST | org_admin | Dokument als nicht erforderlich markieren |
-| API-635 | `/financing/cases/:id/documents/:doc_id/review` | POST | org_admin, internal_ops | Dokument prüfen/genehmigen |
+Die `AnfrageFormV2.tsx` implementiert:
 
-### 6.5 Export APIs (API-650 bis API-659)
+1. **Vorhaben** — Zweck (Kauf, Neubau, Umschuldung, Modernisierung)
+2. **Objektdaten** — Vorausfüllung aus MOD-04 möglich
+3. **Kostenzusammenstellung** — Kaufpreis + Nebenkosten
+4. **Finanzierungsplan** — Eigenkapital, Darlehen, Tilgung
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-650 | `/financing/cases/:id/exports` | POST | org_admin | Export-Pack generieren |
-| API-651 | `/financing/cases/:id/exports` | GET | org_admin | Export-Liste |
-| API-652 | `/financing/exports/:export_id/download` | GET | org_admin | Download Bundle |
-| API-653 | `/financing/exports/:export_id/retry` | POST | org_admin | Export wiederholen |
+### 6.4 Status (Timeline)
 
-### 6.6 Handoff APIs (API-660 bis API-669)
+Die `StatusTab.tsx` zeigt:
 
-| API-ID | Endpoint | Method | Auth | Beschreibung |
-|--------|----------|--------|------|--------------|
-| API-660 | `/financing/cases/:id/handoff/prepare` | POST | org_admin | Handoff vorbereiten |
-| API-661 | `/financing/cases/:id/handoff/send` | POST | org_admin | Handoff senden |
-| API-662 | `/financing/cases/:id/handoff/status` | GET | org_admin | Handoff-Status |
-| API-663 | `/financing/cases/:id/handoff/retry` | POST | org_admin | Handoff wiederholen |
+- Timeline-Events pro Anfrage
+- Manager-Kontaktdaten (wenn zugewiesen)
+- Status-Badges
 
 ---
 
-## 7) CONSENT & AUDIT
+## 7) VORAUSFÜLLUNG AUS MOD-04
 
-### 7.1 Consent Gates
+### 7.1 Selbstauskunft: Vermietereinheit
 
-| Code | Label | Trigger | Pflicht |
-|------|-------|---------|---------|
-| `FINANCING_SUBMISSION_ACK` | Datenweitergabe-Zustimmung | Vor Handoff-Send | ✓ |
-| `FINANCING_DATA_PROCESSING` | Datenverarbeitung | Bei Case-Erstellung | Optional |
-
-### 7.2 Audit Events
-
-| Event Type | Trigger | Payload |
-|------------|---------|---------|
-| `financing.case.created` | POST /cases | case_id, purpose, scope |
-| `financing.case.updated` | PATCH /cases/:id | changed_fields |
-| `financing.case.transitioned` | POST /transition | from_status, to_status |
-| `financing.readiness.blocked` | Recompute | missing_items |
-| `financing.readiness.ready` | Recompute | score |
-| `financing.document.linked` | POST /documents/link | doc_id, requirement_code |
-| `financing.document.uploaded` | POST /documents/upload | doc_id |
-| `financing.document.reviewed` | POST /review | status, reviewer |
-| `financing.document.waived` | POST /waive | reason |
-| `financing.export.generated` | POST /exports | export_id, type |
-| `financing.export.failed` | POST /exports | error |
-| `financing.export.downloaded` | GET /download | export_id |
-| `financing.handoff.prepared` | POST /prepare | handoff_id |
-| `financing.handoff.sent` | POST /send | method, target |
-| `financing.handoff.acknowledged` | Callback | external_ref |
-| `financing.handoff.failed` | Callback/Error | error |
-
----
-
-## 8) END-TO-END FLOWS
-
-### 8.1 Flow A: Case anlegen + Datenpull
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M7 as MOD-07
-    participant M4 as MOD-04
-    participant M5 as MOD-05
-    participant M3 as MOD-03
-    participant DB as Database
-
-    U->>M7: Create Case (purpose, scope)
-    M7->>DB: INSERT finance_cases (draft)
-    U->>M7: Select Properties
-    M7->>M4: GET property data
-    M4-->>M7: Property + Units + Financing
-    M7->>M5: GET rent data (if available)
-    M5-->>M7: Rent roll / References
-    M7->>M3: GET existing documents
-    M3-->>M7: Document links
-    M7->>DB: Generate requirement list
-    M7->>M7: Compute readiness
-    M7-->>U: Case created (status: collecting/blocked)
+```typescript
+const prefillFromContext = (context: LandlordContext, member: ContextMember) => ({
+  first_name: member.first_name,
+  last_name: member.last_name,
+  birth_date: member.birth_date,
+  address_street: `${member.street} ${member.house_number}`,
+  address_postal_code: member.postal_code,
+  address_city: member.city,
+  rental_income_monthly: context.total_rental_income_monthly,
+});
 ```
 
-### 8.2 Flow B: Dokumente vervollständigen
+### 7.2 Anfrage: Objekt aus Portfolio
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M7 as MOD-07
-    participant M3 as MOD-03
-    participant DB as Database
-
-    U->>M7: Link DMS document
-    M7->>M3: Validate document exists
-    M3-->>M7: Document metadata
-    M7->>DB: INSERT finance_case_documents (provided)
-    M7->>M7: Recompute readiness
-    alt All Required OK
-        M7->>DB: UPDATE case status = ready
-    else Still Missing
-        M7->>DB: UPDATE case status = blocked
-    end
-    M7-->>U: Updated checklist
-```
-
-### 8.3 Flow C: Export generieren
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M7 as MOD-07
-    participant M3 as MOD-03
-    participant DB as Database
-
-    U->>M7: Generate Export (type: zip)
-    M7->>M7: Check readiness = ready
-    M7->>M7: Compile manifest.json
-    M7->>M7: Generate PDF summary
-    M7->>M3: Store bundle in DMS
-    M3-->>M7: dms_document_id
-    M7->>DB: INSERT finance_exports (generated)
-    M7->>DB: UPDATE case status = exported
-    M7->>DB: INSERT audit_event
-    M7-->>U: Download link
-```
-
-### 8.4 Flow D: Handoff Future Room
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M7 as MOD-07
-    participant C as Consent Gate
-    participant FR as Future Room
-    participant DB as Database
-
-    U->>M7: Prepare Handoff
-    M7->>C: Check FINANCING_SUBMISSION_ACK
-    alt Consent Missing
-        C-->>U: Request Consent
-        U->>C: Accept
-        C->>DB: INSERT user_consents
-    end
-    M7->>DB: INSERT finance_handoffs (prepared)
-    U->>M7: Send Handoff (method: download)
-    M7->>M7: Generate handoff bundle
-    alt Method = download
-        M7-->>U: Download link + instructions
-    else Method = api
-        M7->>FR: POST bundle
-        FR-->>M7: external_reference
-    else Method = link
-        M7->>M7: Generate secure link
-        M7-->>U: Share link with FR
-    end
-    M7->>DB: UPDATE handoff_status = sent
-    M7->>DB: INSERT audit_event
-    Note over FR,M7: Later: FR confirms receipt
-    FR->>M7: Webhook/Callback (acknowledged)
-    M7->>DB: UPDATE handoff_status = acknowledged
+```typescript
+const prefillFromProperty = (property: Property) => ({
+  object_address: `${property.address}, ${property.postal_code} ${property.city}`,
+  object_type: property.property_type,
+  object_construction_year: property.construction_year,
+  object_living_area_sqm: property.total_area_sqm,
+  purchase_price: property.purchase_price,
+});
 ```
 
 ---
 
-## 9) OPEN QUESTIONS
+## 8) CONSENT & AUDIT
 
-| Q-ID | Frage | Empfehlung | Prio |
-|------|-------|------------|------|
-| FR-1 | Handoff-Methode: download/link/api? | **Download** in Phase 1 (einfachste Integration) | P0 |
-| FR-2 | Mindestfelder im Manifest? | Standard: property_data, borrower_data, documents[], summary | P0 |
-| FR-3 | Dokumenttypen je Case-Type? | Matrix definieren: Refinance/Purchase/Equity = unterschiedliche Pflichtdocs | P1 |
-| FR-4 | Mehrere Borrower (joint)? | **Ja**, via `finance_case_parties` mit `co_borrower` | P0 |
-| FR-5 | Exportformate? | **PDF + ZIP** in Phase 1, CSV optional | P1 |
-| FR-6 | Self-Disclosure-Formular integriert? | **Ja**, als generiertes Dokument (SELF_DISCLOSURE requirement) | P1 |
-| FR-7 | Future Room API-Spec verfügbar? | **Nein** — Download-Methode als Fallback | P2 |
+### 8.1 Consent Gates
 
----
+| Code | Label | Trigger |
+|------|-------|---------|
+| `SCHUFA_CONSENT` | SCHUFA-Einwilligung | Bei Selbstauskunft-Speicherung |
+| `DATA_PROCESSING` | Datenverarbeitung | Bei Anfrage-Einreichung |
 
-## 10) ACCEPTANCE CRITERIA
+### 8.2 Audit Events
 
-| # | Kriterium | Typ | Status |
-|---|-----------|-----|--------|
-| AC1 | Case kann angelegt werden mit Objekt/Portfolio-Scope | Functional | SPEC |
-| AC2 | Status-Transitions funktionieren mit Guards | Functional | SPEC |
-| AC3 | Readiness zeigt fehlende Items; blocked/ready korrekt | Functional | SPEC |
-| AC4 | DMS-Verknüpfung pro Requirement funktioniert | Functional | SPEC |
-| AC5 | Export erzeugt Bundle + Manifest im DMS | Functional | SPEC |
-| AC6 | Handoff prepare/send erzeugt Record + Audit Events | Functional | SPEC |
-| AC7 | Consent Gate blockt Handoff ohne Zustimmung | Security | SPEC |
-| AC8 | RLS isoliert Cases nach Tenant | Security | SPEC |
+| Event Type | Trigger |
+|------------|---------|
+| `financing.profile.created` | Profil erstellt |
+| `financing.profile.updated` | Profil aktualisiert |
+| `financing.request.created` | Anfrage erstellt |
+| `financing.request.submitted` | Anfrage eingereicht (→ Zone 1) |
+| `financing.document.linked` | Dokument verknüpft |
 
 ---
 
-## 11) CROSS-MODULE BERÜHRUNGSWEGE
+## 9) DATEIEN IM REPOSITORY
 
-| Von | Nach | Aktion |
-|-----|------|--------|
-| MOD-07 | MOD-04 | READ property/unit/financing data |
-| MOD-07 | MOD-05 | READ rent rolls, lease data |
-| MOD-07 | MOD-03 | READ/WRITE documents, store exports |
-| MOD-07 | MOD-01 | READ contacts for parties |
-| MOD-07 | Backbone | READ/WRITE consents, audit_events |
-| Zone 1 | MOD-07 | Oversight (read-only) |
+### 9.1 Pages
 
----
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/pages/portal/finanzierung/SelbstauskunftTab.tsx` | Selbstauskunft-Tab |
+| `src/pages/portal/finanzierung/DokumenteTab.tsx` | Dokumente-Tab |
+| `src/pages/portal/finanzierung/AnfrageTab.tsx` | Anfrage-Tab (Draft-First) |
+| `src/pages/portal/finanzierung/StatusTab.tsx` | Status-Tab |
+| `src/pages/portal/finanzierung/AnfrageDetailPage.tsx` | Detail-Route |
+| `src/pages/portal/finanzierung/index.ts` | Exporte |
 
-## 12) MERMAID: SYSTEM-INTEGRATION
+### 9.2 Komponenten
 
-```mermaid
-flowchart TB
-    subgraph Zone2["ZONE 2 — MOD-07 FINANZIERUNG"]
-        FC["Finance Cases"]
-        RG["Readiness Gate"]
-        EX["Export Engine"]
-        HO["Handoff Manager"]
-    end
-
-    subgraph DataSources["DATENQUELLEN"]
-        M4["MOD-04 Immobilien"]
-        M5["MOD-05 MSV"]
-        M3["MOD-03 DMS"]
-        M1["MOD-01 Stammdaten"]
-    end
-
-    subgraph External["EXTERN"]
-        FR["Future Room"]
-    end
-
-    subgraph Backbone["BACKBONE"]
-        CON["Consents"]
-        AUD["Audit Events"]
-    end
-
-    M4 -->|Properties, Units, Loans| FC
-    M5 -->|Rent Rolls, Payments| FC
-    M3 -->|Documents| FC
-    M1 -->|Contacts| FC
-
-    FC --> RG
-    RG -->|Ready| EX
-    EX -->|Bundle| M3
-    EX --> HO
-    HO -->|Consent Check| CON
-    HO -->|Audit Log| AUD
-    HO -->|Download/API/Link| FR
-
-    style Zone2 fill:#E8FDE8
-    style DataSources fill:#E8F4FD
-    style External fill:#FDF8E8
-    style Backbone fill:#F0E8FD
-```
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/components/finanzierung/SelbstauskunftFormV2.tsx` | 9-Sektionen-Formular |
+| `src/components/finanzierung/AnfrageFormV2.tsx` | 4-Sektionen-Formular |
+| `src/components/finanzierung/FinanceDocumentsManager.tsx` | DMS-Hauptkomponente |
+| `src/components/finanzierung/DocumentChecklistPanel.tsx` | Checkliste |
+| `src/components/finanzierung/FinanceStorageTree.tsx` | DMS-Tree |
+| `src/components/finanzierung/FinanceUploadZone.tsx` | Upload-Zone |
+| `src/components/finanzierung/MOD04DocumentPicker.tsx` | Portfolio-Import |
+| `src/components/finanzierung/DocumentReminderToggle.tsx` | Erinnerungen |
+| `src/components/finanzierung/index.ts` | Exporte |
 
 ---
 
-## 13) DOKUMENT-CHECKLISTEN (BEISPIEL)
+## 10) CHANGELOG
 
-### Refinance Case
-
-| # | Requirement | Pflicht | Quelle |
-|---|-------------|---------|--------|
-| 1 | IDENTITY_DOCS | ✓ | Upload |
-| 2 | INCOME_PROOF | ✓ | Upload |
-| 3 | TAX_ASSESSMENTS | ✓ | Upload |
-| 4 | RENT_ROLL | ✓ | MOD-05 |
-| 5 | LOAN_STATEMENTS | ✓ | MOD-04 |
-| 6 | PROPERTY_DOCS_BASIC | ✓ | MOD-03 |
-| 7 | ENERGY_CERTIFICATE | ✓ | MOD-04 |
-| 8 | SELF_DISCLOSURE | ✓ | Generated |
-| 9 | BANK_STATEMENTS | — | Upload |
-| 10 | INSURANCE_PROOF | — | Upload |
-
-### Purchase Case
-
-| # | Requirement | Pflicht | Quelle |
-|---|-------------|---------|--------|
-| 1 | IDENTITY_DOCS | ✓ | Upload |
-| 2 | INCOME_PROOF | ✓ | Upload |
-| 3 | TAX_ASSESSMENTS | ✓ | Upload |
-| 4 | PROPERTY_DOCS_BASIC | ✓ | Upload/External |
-| 5 | ENERGY_CERTIFICATE | ✓ | Upload/External |
-| 6 | SELF_DISCLOSURE | ✓ | Generated |
-| 7 | PROPERTY_VALUATION | — | Optional |
+| Version | Datum | Änderung |
+|---------|-------|----------|
+| v1.0.0 | 2026-01-26 | Initial (alte finance_cases Struktur) |
+| **v2.0.0** | **2026-02-06** | **Komplette Überarbeitung:** 4-Tile-Pattern, Trennung MOD-07/MOD-11, neue Tabellen (applicant_profiles, finance_requests, document_checklist_items), DMS-Integration, Draft-First Logik |
 
 ---
 
-## 14) CHANGELOG
-
-| Datum | Version | Änderung |
-|-------|---------|----------|
-| 2026-01-26 | v1.0.0 | Initial Complete Spec |
-
----
-
-*Dieses Dokument ist die vollständige Spezifikation für MOD-07 Finanzierung.*
+*Dieses Dokument ist der verbindliche Spezifikationsstand für MOD-07.*
