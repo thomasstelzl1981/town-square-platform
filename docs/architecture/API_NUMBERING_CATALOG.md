@@ -177,25 +177,47 @@
 
 ---
 
-## API-600..699 — MOD-07 Finanzierung
+## API-600..699 — MOD-07 Finanzierung (Datenerfassung)
 
-| API-ID | Method | Endpoint | Auth | Consent | Description |
-|--------|--------|----------|------|---------|-------------|
-| API-600 | GET | `/financing/cases` | org_admin | — | List Cases |
-| API-601 | POST | `/financing/cases` | org_admin | — | Create Case |
-| API-602 | GET | `/financing/cases/:id` | org_admin | — | Case Detail |
-| API-603 | PATCH | `/financing/cases/:id` | org_admin | — | Update Case |
-| API-604 | POST | `/financing/cases/:id/transition` | org_admin | — | Status Transition |
-| API-610 | GET | `/financing/cases/:id/readiness` | org_admin | — | Readiness Check |
-| API-611 | POST | `/financing/cases/:id/readiness/recompute` | org_admin | — | Recompute |
-| API-620 | GET | `/financing/cases/:id/parties` | org_admin | — | List Parties |
-| API-621 | POST | `/financing/cases/:id/parties` | org_admin | — | Add Party |
-| API-630 | GET | `/financing/cases/:id/documents` | org_admin | — | Document Checklist |
-| API-631 | POST | `/financing/cases/:id/documents/link` | org_admin | — | Link DMS Doc |
-| API-650 | POST | `/financing/cases/:id/exports` | org_admin | — | Generate Export |
-| API-651 | GET | `/financing/cases/:id/exports` | org_admin | — | List Exports |
-| API-660 | POST | `/financing/cases/:id/handoff/prepare` | org_admin | FINANCING_SUBMISSION_ACK | Prepare Handoff |
-| API-661 | POST | `/financing/cases/:id/handoff/send` | org_admin | — | Send Handoff |
+> **WICHTIG:** MOD-07 ist NUR für Datenerfassung zuständig. Bank-Übergabe erfolgt in MOD-11!
+
+| API-ID | Method | Endpoint | Auth | Description |
+|--------|--------|----------|------|-------------|
+| API-600 | GET | `/financing/self-disclosure` | User | Get Selbstauskunft |
+| API-601 | POST | `/financing/self-disclosure` | User | Create Selbstauskunft |
+| API-602 | PATCH | `/financing/self-disclosure/:id` | User | Update Selbstauskunft |
+| API-603 | GET | `/financing/self-disclosure/:id/completion` | User | Completion Score |
+| API-610 | GET | `/financing/requests` | User | List Anfragen |
+| API-611 | POST | `/financing/requests` | User | Create Anfrage |
+| API-612 | GET | `/financing/requests/:id` | User | Anfrage Detail |
+| API-613 | PATCH | `/financing/requests/:id` | User | Update Anfrage |
+| API-614 | POST | `/financing/requests/:id/submit` | User | Einreichung → Zone 1 |
+| API-620 | GET | `/financing/liabilities` | User | List Verbindlichkeiten |
+| API-621 | POST | `/financing/liabilities` | User | Add Verbindlichkeit |
+| API-622 | PATCH | `/financing/liabilities/:id` | User | Update Verbindlichkeit |
+| API-623 | DELETE | `/financing/liabilities/:id` | User | Delete Verbindlichkeit |
+| API-630 | GET | `/financing/documents/checklist` | User | Document Checklist |
+| API-631 | POST | `/financing/documents/link` | User | Link DMS Doc |
+
+---
+
+## API-1100..1199 — MOD-11 Finanzierungsmanager (Bank-Übergabe)
+
+> **WICHTIG:** Europace/BaufiSmart-API wird AUSSCHLIESSLICH hier implementiert!
+
+| API-ID | Method | Endpoint | Auth | Description |
+|--------|--------|----------|------|-------------|
+| API-1100 | GET | `/manager/cases` | finance_manager | List zugewiesene Fälle |
+| API-1101 | GET | `/manager/cases/:id` | finance_manager | Fall-Detail inkl. Selbstauskunft |
+| API-1102 | PATCH | `/manager/cases/:id` | finance_manager | Fall aktualisieren |
+| API-1103 | POST | `/manager/cases/:id/accept` | finance_manager | Fall annehmen |
+| API-1110 | POST | `/manager/cases/:id/export/email` | finance_manager | Export als E-Mail + Datenraum-Link |
+| API-1111 | POST | `/manager/cases/:id/export/europace` | finance_manager | Export via Europace API |
+| API-1112 | GET | `/manager/cases/:id/export/status` | finance_manager | Export-Status prüfen |
+| API-1120 | GET | `/manager/banks` | finance_manager | Bankkontakte abrufen |
+| API-1121 | POST | `/manager/banks` | finance_manager | Bankkontakt hinzufügen |
+| API-1130 | POST | `/manager/cases/:id/submit` | finance_manager | Bei Bank einreichen |
+| API-1131 | POST | `/manager/cases/:id/status` | finance_manager | Status-Update von Bank |
 
 ---
 
