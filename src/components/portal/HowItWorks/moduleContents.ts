@@ -603,30 +603,36 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-17': {
     moduleCode: 'MOD-17',
     title: 'Car-Management',
-    oneLiner: 'Fuhrpark, Versicherungen, Fahrtenbuch und Angebote — alles an einem Ort.',
+    oneLiner: 'Ihr digitaler Fuhrpark: Fahrzeuge, Versicherungen, Fahrtenbuch und Angebote an einem Ort.',
     benefits: [
-      'Alle Fahrzeuge mit Stammdaten, Finanzierung und Versicherung übersichtlich.',
-      'Versicherungsvergleich über Hector starten — mit automatischer Datenübernahme.',
-      'Fahrtenbuch-Integration für steuerliche Nachweise und Exports.',
+      'Alle Fahrzeuge mit Stammdaten, Finanzierung und Versicherung auf einen Blick.',
+      'Versicherungsvergleich starten und bis zu 40% sparen — Daten werden automatisch übernommen.',
+      'Fahrtenbuch für steuerliche Nachweise führen und als PDF oder CSV exportieren.',
+      'Leasing-Deals und Mietangebote von Top-Anbietern entdecken.',
     ],
     whatYouDo: [
       'Fahrzeuge anlegen und Stammdaten pflegen',
-      'Versicherungen verwalten und vergleichen',
-      'Schäden dokumentieren und melden',
-      'Fahrtenbuch anbinden und Fahrten exportieren',
-      'Leasing- und Mietangebote durchstöbern',
+      'Versicherungspolicen verwalten und vergleichen',
+      'Schadensfälle dokumentieren und melden',
+      'Fahrtenbuch anbinden und Fahrten klassifizieren',
+      'HU/AU-Termine im Blick behalten',
     ],
     flows: [
       {
         title: 'Fahrzeug erfassen',
-        steps: ['Fahrzeuge', 'Neues Fahrzeug', 'Daten eingeben', 'Optional: Fahrzeugschein hochladen'],
+        steps: ['Fahrzeuge öffnen', '+ Fahrzeug hinzufügen', 'Kennzeichen eingeben', 'Details ergänzen'],
       },
       {
         title: 'Versicherung vergleichen',
-        steps: ['Versicherungen', 'Police öffnen', 'Vergleich starten', 'Angebote erhalten'],
+        steps: ['Versicherungen öffnen', 'Police auswählen', 'Vergleich starten', 'Bestes Angebot wählen'],
+      },
+      {
+        title: 'Schaden melden',
+        steps: ['Fahrzeugakte öffnen', 'Schäden-Tab', 'Schaden melden', 'Fotos hochladen'],
       },
     ],
-    cta: 'Legen Sie Ihr erstes Fahrzeug an — und behalten Sie den Überblick.',
+    cta: 'Legen Sie Ihr erstes Fahrzeug an und behalten Sie den vollen Überblick.',
+    hint: 'Tipp: Laden Sie den Fahrzeugschein hoch — die Daten werden automatisch ausgelesen.',
     subTiles: [
       { title: 'Fahrzeuge', route: '/portal/cars/fahrzeuge', icon: Car },
       { title: 'Versicherungen', route: '/portal/cars/versicherungen', icon: ShieldCheck },
