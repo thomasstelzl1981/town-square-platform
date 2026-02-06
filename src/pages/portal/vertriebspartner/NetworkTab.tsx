@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { Check, Clock, UserPlus, Users, Info } from 'lucide-react';
+/**
+ * NetworkTab — MOD-09 Vertriebspartner Netzwerk & Provisionen
+ * Zeigt abgeschlossene Deals und Provisionsansprüche aus der DB
+ */
+import { Check, Clock, UserPlus, Users, Info, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +18,9 @@ import { HowItWorks } from '@/components/vertriebspartner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 interface Commission {
   id: string;
@@ -25,30 +31,62 @@ interface Commission {
   status: 'paid' | 'pending';
 }
 
-const mockCommissions: Commission[] = [
-  {
-    id: '1',
-    property: 'MFH Leipzig-Connewitz',
-    customer: 'Müller GmbH',
-    closedAt: new Date(2026, 0, 15),
-    amount: 7500,
-    status: 'paid',
-  },
-  {
-    id: '2',
-    property: 'Zinshaus Chemnitz',
-    customer: 'Schmidt & Partner',
-    closedAt: new Date(2026, 0, 20),
-    amount: 3200,
-    status: 'pending',
-  },
-];
-
 const formatCurrency = (value: number) => 
   new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 
 const NetworkTab = () => {
-  const [commissions] = useState(mockCommissions);
+  // Fetch won deals as commissions (partner_deals with stage = 'won')
+  const { data: commissions = [], isLoading } = useQuery({
+    queryKey: ['partner-commissions'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return [];
+      
+      // Get user's active tenant
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.active_tenant_id) return [];
+      
+      // Fetch won deals as commissions
+      const { data, error } = await supabase
+        .from('partner_deals')
+        .select(`
+          id, stage, deal_value, commission_rate, actual_close_date, notes, created_at,
+          contacts (first_name, last_name, company),
+          properties (address, city)
+        `)
+        .eq('tenant_id', profile.active_tenant_id)
+        .eq('stage', 'won')
+        .order('actual_close_date', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(d => {
+        const contact = d.contacts as any;
+        const property = d.properties as any;
+        const commissionAmount = (d.deal_value || 0) * ((d.commission_rate || 0) / 100);
+        
+        return {
+          id: d.id,
+          property: property ? `${property.address}, ${property.city}` : (d.notes || 'Objekt'),
+          customer: contact 
+            ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.company || 'Kunde'
+            : 'Kunde',
+          closedAt: d.actual_close_date ? new Date(d.actual_close_date) : new Date(d.created_at),
+          amount: commissionAmount,
+          // Simulation: 50% als bezahlt markieren (basierend auf Datum > 30 Tage)
+          status: d.actual_close_date && 
+            new Date(d.actual_close_date) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            ? 'paid' as const
+            : 'pending' as const
+        };
+      });
+    }
+  });
 
   const totalCommissions = commissions.reduce((sum, c) => sum + c.amount, 0);
   const paidCommissions = commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0);
@@ -59,7 +97,16 @@ const NetworkTab = () => {
       <HowItWorks variant="network" />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Abschlüsse</CardDescription>
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              {commissions.length}
+            </CardTitle>
+          </CardHeader>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Gesamt (2026)</CardDescription>
@@ -84,54 +131,65 @@ const NetworkTab = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Provisionen</CardTitle>
+          <CardDescription>
+            Provisionsansprüche aus gewonnenen Deals
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Objekt</TableHead>
-                <TableHead>Kunde</TableHead>
-                <TableHead>Abschluss</TableHead>
-                <TableHead className="text-right">Provision</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {commissions.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Noch keine abgeschlossenen Provisionen.
-                  </TableCell>
+                  <TableHead>Objekt</TableHead>
+                  <TableHead>Kunde</TableHead>
+                  <TableHead>Abschluss</TableHead>
+                  <TableHead className="text-right">Provision</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
-              ) : (
-                commissions.map((commission) => (
-                  <TableRow key={commission.id}>
-                    <TableCell className="font-medium">{commission.property}</TableCell>
-                    <TableCell>{commission.customer}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(commission.closedAt, 'dd.MM.yyyy', { locale: de })}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(commission.amount)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {commission.status === 'paid' ? (
-                        <Badge variant="default" className="bg-green-600">
-                          <Check className="mr-1 h-3 w-3" />
-                          Bezahlt
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <Clock className="mr-1 h-3 w-3" />
-                          Offen
-                        </Badge>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {commissions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Noch keine abgeschlossenen Provisionen. Gewonnene Deals erscheinen hier automatisch.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  commissions.map((commission) => (
+                    <TableRow key={commission.id}>
+                      <TableCell className="font-medium max-w-[200px] truncate">
+                        {commission.property}
+                      </TableCell>
+                      <TableCell>{commission.customer}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(commission.closedAt, 'dd.MM.yyyy', { locale: de })}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(commission.amount)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {commission.status === 'paid' ? (
+                          <Badge variant="default" className="bg-green-600">
+                            <Check className="mr-1 h-3 w-3" />
+                            Bezahlt
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            <Clock className="mr-1 h-3 w-3" />
+                            Offen
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

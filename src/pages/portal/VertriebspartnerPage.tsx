@@ -11,6 +11,7 @@ const KatalogTab = lazy(() => import('./vertriebspartner/KatalogTab'));
 const BeratungTab = lazy(() => import('./vertriebspartner/BeratungTab'));
 const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
 const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
+const PipelineTab = lazy(() => import('./vertriebspartner/PipelineTab'));
 
 const VertriebspartnerPage = () => {
   const content = moduleContents['MOD-09'];
@@ -25,9 +26,7 @@ const VertriebspartnerPage = () => {
       <Route path="beratung" element={<BeratungTab />} />
       <Route path="kunden" element={<KundenTab />} />
       <Route path="network" element={<NetworkTab />} />
-      
-      {/* Legacy redirect */}
-      <Route path="pipeline" element={<Navigate to="/portal/vertriebspartner/network" replace />} />
+      <Route path="pipeline" element={<PipelineTab />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/vertriebspartner" replace />} />
