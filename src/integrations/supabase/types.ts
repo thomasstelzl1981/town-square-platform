@@ -7289,6 +7289,102 @@ export type Database = {
           },
         ]
       }
+      service_case_inbound: {
+        Row: {
+          attachments: Json | null
+          body_html: string | null
+          body_text: string | null
+          created_at: string
+          id: string
+          match_confidence: string | null
+          match_method: string | null
+          matched_tender_id: string | null
+          offer_amount_cents: number | null
+          offer_notes: string | null
+          offer_valid_until: string | null
+          processed_at: string | null
+          processed_by: string | null
+          raw_payload: Json | null
+          received_at: string
+          sender_company: string | null
+          sender_email: string
+          sender_name: string | null
+          sender_phone: string | null
+          service_case_id: string | null
+          status: string
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          match_confidence?: string | null
+          match_method?: string | null
+          matched_tender_id?: string | null
+          offer_amount_cents?: number | null
+          offer_notes?: string | null
+          offer_valid_until?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          sender_company?: string | null
+          sender_email: string
+          sender_name?: string | null
+          sender_phone?: string | null
+          service_case_id?: string | null
+          status?: string
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          match_confidence?: string | null
+          match_method?: string | null
+          matched_tender_id?: string | null
+          offer_amount_cents?: number | null
+          offer_notes?: string | null
+          offer_valid_until?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          sender_company?: string | null
+          sender_email?: string
+          sender_name?: string | null
+          sender_phone?: string | null
+          service_case_id?: string | null
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_case_inbound_service_case_id_fkey"
+            columns: ["service_case_id"]
+            isOneToOne: false
+            referencedRelation: "service_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_case_inbound_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_case_offers: {
         Row: {
           contact_id: string | null
@@ -7516,6 +7612,103 @@ export type Database = {
           },
           {
             foreignKeyName: "service_case_outbound_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_case_providers: {
+        Row: {
+          award_notes: string | null
+          awarded_at: string | null
+          created_at: string
+          email_sent_at: string | null
+          email_status: string | null
+          email_subject: string | null
+          id: string
+          is_awarded: boolean | null
+          offer_amount_cents: number | null
+          offer_notes: string | null
+          offer_valid_until: string | null
+          place_id: string | null
+          provider_address: string | null
+          provider_email: string | null
+          provider_name: string
+          provider_phone: string | null
+          provider_website: string | null
+          response_inbound_id: string | null
+          response_received: boolean | null
+          service_case_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          award_notes?: string | null
+          awarded_at?: string | null
+          created_at?: string
+          email_sent_at?: string | null
+          email_status?: string | null
+          email_subject?: string | null
+          id?: string
+          is_awarded?: boolean | null
+          offer_amount_cents?: number | null
+          offer_notes?: string | null
+          offer_valid_until?: string | null
+          place_id?: string | null
+          provider_address?: string | null
+          provider_email?: string | null
+          provider_name: string
+          provider_phone?: string | null
+          provider_website?: string | null
+          response_inbound_id?: string | null
+          response_received?: boolean | null
+          service_case_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          award_notes?: string | null
+          awarded_at?: string | null
+          created_at?: string
+          email_sent_at?: string | null
+          email_status?: string | null
+          email_subject?: string | null
+          id?: string
+          is_awarded?: boolean | null
+          offer_amount_cents?: number | null
+          offer_notes?: string | null
+          offer_valid_until?: string | null
+          place_id?: string | null
+          provider_address?: string | null
+          provider_email?: string | null
+          provider_name?: string
+          provider_phone?: string | null
+          provider_website?: string | null
+          response_inbound_id?: string | null
+          response_received?: boolean | null
+          service_case_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_case_providers_response_inbound_id_fkey"
+            columns: ["response_inbound_id"]
+            isOneToOne: false
+            referencedRelation: "service_case_inbound"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_case_providers_service_case_id_fkey"
+            columns: ["service_case_id"]
+            isOneToOne: false
+            referencedRelation: "service_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_case_providers_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
