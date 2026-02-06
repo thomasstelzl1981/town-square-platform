@@ -1,147 +1,85 @@
 
-# Korrekturplan: Vermietereinheiten UI/UX Optimierung
+# Bugfix: Grenzsteuersatz-Berechnung bei Splitting
 
-## Zusammenfassung der identifizierten Probleme
+## Analyse des Problems
 
-| # | Problem | Bereich | Schweregrad |
-|---|---------|---------|-------------|
-| 1 | Optische Überladung der Eigentümer-Karten | KontexteTab | Mittel |
-| 2 | Buttons-Layout (Bearbeiten/Zuordnen) zu gedrängt | KontexteTab | Leicht |
-| 3 | Edit-Dialog zeigt nur Schritt 1 initial | CreateContextDialog | Mittel |
-| 4 | Dialog insgesamt etwas unübersichtlich | CreateContextDialog | Leicht |
+**Aktueller Screenshot zeigt:**
+- zVE: 98.000 €
+- Veranlagungsart: Splitting
+- Berechneter Grenzsteuersatz: **3472.1%** ❌
+- Effektiver Steuersatz: 19.9% ✅
 
-## Technische Analyse
-
-### Aktuelle Code-Struktur
-
-**Datei:** `src/components/shared/CreateContextDialog.tsx` (777 Zeilen)
-- Schritt 1 (Zeilen 376-474): Grunddaten (Name, Typ, Steuersatz, Adresse)
-- Schritt 2a (Zeilen 475-677): PRIVATE - Eigentümer mit Steuerdaten
-- Schritt 2b (Zeilen 678-748): BUSINESS - Gesellschaftsdaten
-
-**Datei:** `src/pages/portal/immobilien/KontexteTab.tsx` (353 Zeilen)
-- Zeilen 175-316: Karten-Grid mit Eigentümer-Anzeige
-
-### Bestätigung: Gleiche Datenquelle
-
-Beide Views nutzen:
-- `landlord_contexts` Tabelle (Grunddaten)
-- `context_members` Tabelle (Eigentümer mit Steuerdaten)
-- Identische Query-Keys: `['landlord-contexts']`, `['context-members']`
+**Erwarteter Grenzsteuersatz:** ca. **34-35%**
 
 ---
 
-## Korrekturplan
+## Fehlerursache identifiziert
 
-### Phase 1: KontexteTab UI-Optimierung
+**Datei:** `src/lib/taxCalculator.ts`
 
-**Datei:** `src/pages/portal/immobilien/KontexteTab.tsx`
+Die Funktion `calculateMarginalRate` hat eine inkonsistente Rückgabe:
 
-**1.1 Karten-Header kompakter gestalten:**
-```
-Aktuell:
-┌──────────────────────────────────────┐
-│ [Icon] Familie Mustermann   [Badge] │
-│         GmbH                         │
-└──────────────────────────────────────┘
+| Zone | Formel | Rückgabewert | Problem |
+|------|--------|--------------|---------|
+| Zone 4 (>66.760) | `return 0.42` | Dezimalwert (0.42) | ✅ Korrekt |
+| Zone 5 (>277.825) | `return 0.45` | Dezimalwert (0.45) | ✅ Korrekt |
+| Zone 2 (12.097-17.005) | `(2*922.98*y + 1400) / 100` | **Prozent als Zahl** (z.B. 14.5) | ❌ Falsch |
+| Zone 3 (17.006-66.760) | `(2*181.19*z + 2397) / 100` | **Prozent als Zahl** (z.B. 35.6) | ❌ Falsch |
 
-Neu:
-┌──────────────────────────────────────┐
-│ [Icon] Familie Mustermann · [Badge] │
-│ 30% Steuersatz                       │
-└──────────────────────────────────────┘
+Dann wird in Zeile 153 nochmal mit 100 multipliziert:
+```typescript
+const marginalTaxRate = calculateMarginalRate(...) * 100;
 ```
 
-**1.2 Eigentümer-Grid optimieren:**
-```
-Aktuell (überladen):
-┌─────────────────────────┬─────────────────────────┐
-│ Lisa Mustermann         │ Max Mustermann          │
-│ geb. Schmidt            │ *01.05.80 Stkl. III     │
-│ *15.08.82 Stkl. V       │ Software-Entwickler     │
-│ Marketing-Managerin     │ 72.000 €                │
-│ 54.000 €                │ 50% Anteil              │
-│ 50% Anteil              │                         │
-└─────────────────────────┴─────────────────────────┘
-
-Neu (kompakter):
-┌─────────────────────────┬─────────────────────────┐
-│ Max Mustermann          │ Lisa Mustermann         │
-│ Stkl. III · 72.000 €    │ geb. Schmidt · Stkl. V  │
-│ Software-Entwickler     │ 54.000 €                │
-│ 50%                     │ 50%                     │
-└─────────────────────────┴─────────────────────────┘
-```
-
-**1.3 Buttons-Layout verbessern:**
-```
-Aktuell:
-[1 Objekt(e)]  [Bearbeiten] [Objekte zuordnen]
-
-Neu:
-┌──────────────────────────────────────────────────┐
-│ 1 Objekt(e)                                      │
-├──────────────────────────────────────────────────┤
-│ [Bearbeiten]              [Objekte zuordnen]     │
-└──────────────────────────────────────────────────┘
-```
-
-### Phase 2: CreateContextDialog Optimierung
-
-**Datei:** `src/components/shared/CreateContextDialog.tsx`
-
-**2.1 Steuersatz-Feld prominenter machen:**
-- Eigene Card/Box für den Steuersatz mit Info-Text
-
-**2.2 Eigentümer-Grid Layout verbessern:**
-- Kompaktere Felder-Anordnung
-- Bessere visuelle Trennung zwischen Sektionen
-- Scroll-Bereich für viele Eigentümer
-
-**2.3 Business-Step: Adresse hinzufügen**
-Aktuell fehlt in Schritt 2b die Firmenadresse - diese wird nur in Schritt 1 erfasst. Das ist korrekt, aber die Beschreibung "Firmenadresse *" erscheint in Schritt 1 bei BUSINESS.
+**Rechenbeispiel (Splitting mit zVE=98.000 €):**
+- halfZvE = 49.000 €
+- Zone 3: z = (49.000 - 17.005) / 10.000 = 3.1995
+- Formel: (2 × 181.19 × 3.1995 + 2397) / 100 = **35.57**
+- Zeile 153 multipliziert: 35.57 × 100 = **3557%** ≈ 3472.1% (mit Kinderfreibetrag)
 
 ---
 
-## Betroffene Dateien
+## Korrektur
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/pages/portal/immobilien/KontexteTab.tsx` | Karten-Layout, Buttons, Eigentümer-Grid |
-| `src/components/shared/CreateContextDialog.tsx` | Steuersatz-Box, Eigentümer-Kompaktierung |
+**Die Formel in Zone 2 und Zone 3 muss Dezimalwerte liefern (wie Zone 4/5):**
 
-## Keine strukturellen Änderungen nötig
+```text
+Zone 2 (aktuell):   (2 * 922.98 * y + 1400) / 100
+Zone 2 (korrigiert): (2 * 922.98 * y + 1400) / 10000
 
-- Die Datenquelle ist bereits konsistent
-- Der Wizard-Flow (2 Schritte) ist korrekt
-- Edit-Modus lädt Daten korrekt (existingMembers Query)
-- Routen sind identisch (kein Route-Bruch)
+Zone 3 (aktuell):   (2 * 181.19 * z + 2397) / 100
+Zone 3 (korrigiert): (2 * 181.19 * z + 2397) / 10000
+```
 
----
-
-## Erwartetes Ergebnis nach Implementierung
-
-### KontexteTab:
-- Visuell aufgeräumtere Karten
-- Buttons in eigener Zeile mit mehr Platz
-- Eigentümer-Infos kompakter aber vollständig
-
-### CreateContextDialog:
-- Steuersatz visuell hervorgehoben
-- Eigentümer-Eingabe übersichtlicher
-- Konsistente Darstellung zwischen Anlegen und Bearbeiten
+**Erklärung:** Die BMF-Formel gibt den Grenzsteuersatz in Zehntelprozent aus (z.B. 2397 = 23.97%). Durch Division durch 10.000 statt 100 erhalten wir den korrekten Dezimalwert (0.2397).
 
 ---
 
-## Validierungskriterien
+## Zu ändernde Datei
 
-- [x] Karten zeigen Eigentümer-Daten kompakt
-- [x] Buttons haben ausreichend Platz
-- [x] Dialog zeigt korrekten Titel (Anlegen vs. Bearbeiten)
-- [x] Schritt 2 zeigt Eigentümer-Daten im Edit-Modus
-- [x] Speichern aktualisiert die Karten-Ansicht korrekt
-- [x] Privat-Steuerbasis mit automatischer Berechnung (zVE, Veranlagung, Kinder, Kirchensteuer)
-- [x] Kein manueller Prozentsatz bei Privat - exakte Berechnung nach BMF PAP
-- [x] Soli automatisch berechnet (ab Freigrenze)
-- [x] Datenübernahme von Vermietereinheit → Selbstauskunft (Phase 5 Option A)
-- [x] MOD-07 Selbstauskunft erweitert um Steuerfelder
+**Datei:** `src/lib/taxCalculator.ts`
+
+| Zeile | Aktuell | Korrigiert |
+|-------|---------|------------|
+| 90 | `return (2 * 922.98 * y + 1400) / 100;` | `return (2 * 922.98 * y + 1400) / 10000;` |
+| 94 | `return (2 * 181.19 * z + 2397) / 100;` | `return (2 * 181.19 * z + 2397) / 10000;` |
+
+---
+
+## Erwartetes Ergebnis nach Fix
+
+**Für zVE = 98.000 € mit Splitting:**
+- halfZvE = 49.000 €
+- z = 3.1995
+- Grenzsteuersatz = (2 × 181.19 × 3.1995 + 2397) / 10000 = **0.3557** (Dezimal)
+- Anzeige: 0.3557 × 100 = **35.6%** ✅
+
+---
+
+## Validierung
+
+Nach der Korrektur:
+- [ ] Splitting mit zVE 98.000 € → Grenzsteuersatz ~35%
+- [ ] Einzelveranlagung mit zVE 60.000 € → Grenzsteuersatz ~42%
+- [ ] Niedrige Einkommen (30.000 €) → Grenzsteuersatz ~28%
+- [ ] Hohe Einkommen (300.000 €) → Grenzsteuersatz 45%
