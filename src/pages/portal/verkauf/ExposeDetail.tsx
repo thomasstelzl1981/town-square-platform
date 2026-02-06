@@ -1,12 +1,19 @@
 /**
  * ExposeDetail - Professionelles Verkaufsexposé im Scout24-Stil
+ * 
+ * SSOT-Prinzip:
+ * - Alle Objektdaten werden READ-ONLY aus MOD-04 (properties, units) geladen
+ * - Nur Verkaufsdaten (Titel, Beschreibung, Preis) sind editierbar (listings)
+ * - Bilder kommen aus DMS (document_links)
+ * 
  * Features:
- * - Bildergalerie mit DMS-Platzhalter
+ * - Bildergalerie mit DMS-Integration
  * - Objektdaten aus MOD-04 (read-only)
  * - AfA-Daten und Mietrendite
  * - KI-generierte Beschreibung
  * - Freigabe-Workflow mit Provision
  * - Kaufy-Marktplatz-Aktivierung
+ * - View Tracking für Reporting
  */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -37,7 +44,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Image as ImageIcon,
   MapPin,
   Ruler,
   Calendar,
@@ -46,10 +52,10 @@ import {
   Percent,
   Home,
   Loader2,
-  Upload,
   PiggyBank
 } from 'lucide-react';
-import { PartnerReleaseDialog, SalesMandateDialog } from '@/components/verkauf';
+import { PartnerReleaseDialog, SalesMandateDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
+import { useViewTracking } from '@/hooks/useViewTracking';
 
 // Types
 interface UnitData {
@@ -402,6 +408,14 @@ const ExposeDetail = () => {
   const grossYield = askingPrice > 0 ? (annualRent / askingPrice) * 100 : 0;
   const pricePerSqm = unit?.area_sqm && askingPrice > 0 ? askingPrice / unit.area_sqm : 0;
 
+  // View Tracking - tracks when listing is viewed
+  useViewTracking({
+    listingId: listing?.id || null,
+    tenantId: listing?.tenant_id || null,
+    source: 'portal',
+    enabled: !!listing?.id && listing?.status !== 'draft' // Only track active listings
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
@@ -463,43 +477,16 @@ const ExposeDetail = () => {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Image Gallery Placeholder */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Bildergalerie
-              </CardTitle>
-              <CardDescription>Wählen Sie Bilder aus dem Datenraum für Ihr Exposé</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {/* Main Image Placeholder */}
-                <div className="col-span-2 row-span-2 aspect-[4/3] bg-muted rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors cursor-pointer">
-                  <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Hauptbild aus DMS wählen</p>
-                  <p className="text-xs text-muted-foreground mt-1">oder hierher ziehen</p>
-                </div>
-                {/* Thumbnail Placeholders */}
-                {[1, 2, 3, 4].map((i) => (
-                  <div 
-                    key={i}
-                    className="aspect-square bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors cursor-pointer"
-                  >
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />
-                Bilder werden aus dem{' '}
-                <Link to={`/portal/immobilien/${property.id}`} className="text-primary hover:underline">
-                  Datenraum der Immobilie
-                </Link>{' '}
-                verknüpft
-              </p>
-            </CardContent>
-          </Card>
+          {/* Image Gallery - DMS Integration */}
+          <ExposeImageGallery propertyId={property.id} unitId={unitId} />
+
+          {/* Location Map */}
+          <ExposeLocationMap 
+            address={property.address || ''}
+            city={property.city || ''}
+            postalCode={property.postal_code || ''}
+            showExactLocation={isActive} // Show exact location only for active listings
+          />
 
           {/* Key Facts Bar - Scout24 Style */}
           <Card className="bg-primary/5 border-primary/20">
