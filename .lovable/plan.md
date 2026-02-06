@@ -106,12 +106,16 @@ Dienstleister finden, E-Mail-Entwürfe erstellen, Versand nach Bestätigung.
 - **Kundenkontaktdaten** (Telefon, E-Mail, WhatsApp)
 
 ### Acceptance Criteria
-- [ ] Dienstleister können via Google Places gesucht werden
+- [x] ProviderSearchPanel mit Google Places Suche (Mock-Daten ohne API Key)
+- [x] TenderDraftPanel mit E-Mail-Vorschau
+- [x] Edge Function sot-places-search implementiert
+- [x] Edge Function sot-renovation-outbound implementiert
+- [ ] Dienstleister können via Google Places gesucht werden (benötigt API Key)
 - [ ] E-Mails werden als ENTWURF erstellt
 - [ ] Versand NUR nach expliziter Bestätigung
 - [ ] Kundenkontaktdaten sind in jeder E-Mail enthalten
 
----
+**✅ PHASE 3 UI + EDGE FUNCTIONS ABGESCHLOSSEN** (API Keys für Live-Betrieb erforderlich)
 
 ## PHASE 4: INBOUND + VERGABE
 

@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.sot-renovation-scope-ai]
 verify_jwt = false
+
+[functions.sot-places-search]
+verify_jwt = false
+
+[functions.sot-renovation-outbound]
+verify_jwt = false
