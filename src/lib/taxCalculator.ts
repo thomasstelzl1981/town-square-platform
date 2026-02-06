@@ -87,11 +87,13 @@ function calculateMarginalRate(zvE: number): number {
   if (zvE <= GRUNDFREIBETRAG) return 0;
   if (zvE <= 17005) {
     const y = (zvE - GRUNDFREIBETRAG) / 10000;
-    return (2 * 922.98 * y + 1400) / 100;
+    // BMF-Formel gibt Promille zurück, daher Division durch 10000 für Dezimalwert
+    return (2 * 922.98 * y + 1400) / 10000;
   }
   if (zvE <= 66760) {
     const z = (zvE - 17005) / 10000;
-    return (2 * 181.19 * z + 2397) / 100;
+    // BMF-Formel gibt Promille zurück, daher Division durch 10000 für Dezimalwert
+    return (2 * 181.19 * z + 2397) / 10000;
   }
   if (zvE <= 277825) return 0.42;
   return 0.45;
