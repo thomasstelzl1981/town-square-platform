@@ -7294,12 +7294,28 @@ export type Database = {
           contact_id: string | null
           created_at: string
           document_id: string | null
+          execution_duration_days: number | null
+          execution_end: string | null
+          execution_start: string | null
           id: string
+          inbound_email_id: string | null
           is_selected: boolean | null
           notes: string | null
           offer_amount: number | null
+          offer_amount_gross: number | null
+          offer_amount_net: number | null
           offer_date: string | null
+          provider_contact_person: string | null
+          provider_email: string | null
+          provider_mobile: string | null
+          provider_name: string | null
+          provider_phone: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           service_case_id: string
+          source: string | null
+          status: string | null
           tenant_id: string
           valid_until: string | null
         }
@@ -7307,12 +7323,28 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           document_id?: string | null
+          execution_duration_days?: number | null
+          execution_end?: string | null
+          execution_start?: string | null
           id?: string
+          inbound_email_id?: string | null
           is_selected?: boolean | null
           notes?: string | null
           offer_amount?: number | null
+          offer_amount_gross?: number | null
+          offer_amount_net?: number | null
           offer_date?: string | null
+          provider_contact_person?: string | null
+          provider_email?: string | null
+          provider_mobile?: string | null
+          provider_name?: string | null
+          provider_phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           service_case_id: string
+          source?: string | null
+          status?: string | null
           tenant_id: string
           valid_until?: string | null
         }
@@ -7320,12 +7352,28 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           document_id?: string | null
+          execution_duration_days?: number | null
+          execution_end?: string | null
+          execution_start?: string | null
           id?: string
+          inbound_email_id?: string | null
           is_selected?: boolean | null
           notes?: string | null
           offer_amount?: number | null
+          offer_amount_gross?: number | null
+          offer_amount_net?: number | null
           offer_date?: string | null
+          provider_contact_person?: string | null
+          provider_email?: string | null
+          provider_mobile?: string | null
+          provider_name?: string | null
+          provider_phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           service_case_id?: string
+          source?: string | null
+          status?: string | null
           tenant_id?: string
           valid_until?: string | null
         }
@@ -7342,6 +7390,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_case_offers_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -7362,39 +7417,82 @@ export type Database = {
       }
       service_case_outbound: {
         Row: {
+          attachments: Json | null
+          body_html: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string
+          dms_share_link: string | null
           email_template: string | null
           id: string
+          is_award_mail: boolean | null
           recipient_contact_id: string | null
           recipient_email: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          resend_message_id: string | null
+          routing_token: string | null
           sent_at: string | null
           sent_by: string | null
           service_case_id: string
+          status: string | null
+          subject: string | null
           tenant_id: string
         }
         Insert: {
+          attachments?: Json | null
+          body_html?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
+          dms_share_link?: string | null
           email_template?: string | null
           id?: string
+          is_award_mail?: boolean | null
           recipient_contact_id?: string | null
           recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
           sent_at?: string | null
           sent_by?: string | null
           service_case_id: string
+          status?: string | null
+          subject?: string | null
           tenant_id: string
         }
         Update: {
+          attachments?: Json | null
+          body_html?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
+          dms_share_link?: string | null
           email_template?: string | null
           id?: string
+          is_award_mail?: boolean | null
           recipient_contact_id?: string | null
           recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
           sent_at?: string | null
           sent_by?: string | null
           service_case_id?: string
+          status?: string | null
+          subject?: string | null
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_case_outbound_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_case_outbound_recipient_contact_id_fkey"
             columns: ["recipient_contact_id"]
@@ -7427,54 +7525,126 @@ export type Database = {
       }
       service_cases: {
         Row: {
+          ai_analysis_data: Json | null
+          award_confirmed_at: string | null
+          award_sent_at: string | null
           awarded_amount: number | null
           awarded_to_contact_id: string | null
           budget_estimate: number | null
           category: string
           completed_at: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_whatsapp: string | null
+          cost_estimate_generated_at: string | null
+          cost_estimate_max: number | null
+          cost_estimate_mid: number | null
+          cost_estimate_min: number | null
           created_at: string
           created_by: string | null
+          deadline_execution_end: string | null
+          deadline_execution_start: string | null
+          deadline_offers: string | null
           description: string | null
+          dms_folder_id: string | null
+          external_lv_document_id: string | null
           id: string
           property_id: string
           public_id: string
+          room_analysis: Json | null
+          scope_attachments: Json | null
+          scope_description: string | null
+          scope_line_items: Json | null
+          scope_source: string | null
+          scope_status: string | null
           status: string
           tenant_id: string
+          tender_id: string | null
           title: string
+          unit_id: string | null
           updated_at: string
         }
         Insert: {
+          ai_analysis_data?: Json | null
+          award_confirmed_at?: string | null
+          award_sent_at?: string | null
           awarded_amount?: number | null
           awarded_to_contact_id?: string | null
           budget_estimate?: number | null
           category: string
           completed_at?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          cost_estimate_generated_at?: string | null
+          cost_estimate_max?: number | null
+          cost_estimate_mid?: number | null
+          cost_estimate_min?: number | null
           created_at?: string
           created_by?: string | null
+          deadline_execution_end?: string | null
+          deadline_execution_start?: string | null
+          deadline_offers?: string | null
           description?: string | null
+          dms_folder_id?: string | null
+          external_lv_document_id?: string | null
           id?: string
           property_id: string
           public_id?: string
+          room_analysis?: Json | null
+          scope_attachments?: Json | null
+          scope_description?: string | null
+          scope_line_items?: Json | null
+          scope_source?: string | null
+          scope_status?: string | null
           status?: string
           tenant_id: string
+          tender_id?: string | null
           title: string
+          unit_id?: string | null
           updated_at?: string
         }
         Update: {
+          ai_analysis_data?: Json | null
+          award_confirmed_at?: string | null
+          award_sent_at?: string | null
           awarded_amount?: number | null
           awarded_to_contact_id?: string | null
           budget_estimate?: number | null
           category?: string
           completed_at?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          cost_estimate_generated_at?: string | null
+          cost_estimate_max?: number | null
+          cost_estimate_mid?: number | null
+          cost_estimate_min?: number | null
           created_at?: string
           created_by?: string | null
+          deadline_execution_end?: string | null
+          deadline_execution_start?: string | null
+          deadline_offers?: string | null
           description?: string | null
+          dms_folder_id?: string | null
+          external_lv_document_id?: string | null
           id?: string
           property_id?: string
           public_id?: string
+          room_analysis?: Json | null
+          scope_attachments?: Json | null
+          scope_description?: string | null
+          scope_line_items?: Json | null
+          scope_source?: string | null
+          scope_status?: string | null
           status?: string
           tenant_id?: string
+          tender_id?: string | null
           title?: string
+          unit_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -7493,6 +7663,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "service_cases_dms_folder_id_fkey"
+            columns: ["dms_folder_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_cases_external_lv_document_id_fkey"
+            columns: ["external_lv_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_cases_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -7504,6 +7688,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_cases_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]

@@ -43,10 +43,12 @@ ALTER TABLE service_cases ADD COLUMN IF NOT EXISTS contact_email text;
 2. **ServiceCaseCreateDialog.tsx**: Schritt 1 - Objekt, Einheit, Kategorie, Titel
 
 ### Acceptance Criteria
-- [ ] Neuer Vorgang kann angelegt werden
-- [ ] Tender-ID wird automatisch generiert
-- [ ] Status-Flow: draft → scope_pending → ...
-- [ ] Vorgangsliste zeigt alle Service Cases
+- [x] Neuer Vorgang kann angelegt werden
+- [x] Tender-ID wird automatisch generiert
+- [x] Status-Flow: draft → scope_pending → ...
+- [x] Vorgangsliste zeigt alle Service Cases
+
+**✅ PHASE 1 ABGESCHLOSSEN**
 
 ---
 
