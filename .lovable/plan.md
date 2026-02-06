@@ -140,3 +140,8 @@ Aktuell fehlt in Schritt 2b die Firmenadresse - diese wird nur in Schritt 1 erfa
 - [x] Dialog zeigt korrekten Titel (Anlegen vs. Bearbeiten)
 - [x] Schritt 2 zeigt Eigentümer-Daten im Edit-Modus
 - [x] Speichern aktualisiert die Karten-Ansicht korrekt
+- [x] Privat-Steuerbasis mit automatischer Berechnung (zVE, Veranlagung, Kinder, Kirchensteuer)
+- [x] Kein manueller Prozentsatz bei Privat - exakte Berechnung nach BMF PAP
+- [x] Soli automatisch berechnet (ab Freigrenze)
+- [x] Datenübernahme von Vermietereinheit → Selbstauskunft (Phase 5 Option A)
+- [x] MOD-07 Selbstauskunft erweitert um Steuerfelder

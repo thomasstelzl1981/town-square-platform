@@ -1,4 +1,7 @@
 import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,13 +10,23 @@ import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { 
   User, Briefcase, Home, Wallet, Building2, FileText, 
-  PiggyBank, CreditCard, Save, Loader2, CheckCircle2
+  PiggyBank, CreditCard, Save, Loader2, CheckCircle2, Download, Calculator, Baby, Church
 } from 'lucide-react';
 import { useUpdateApplicantProfile } from '@/hooks/useFinanceRequest';
-import type { ApplicantProfile, ApplicantFormData, ProfileType, calculateCompletionScore } from '@/types/finance';
+import type { ApplicantProfile, ApplicantFormData, ProfileType, TaxAssessmentType } from '@/types/finance';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { calculateTax } from '@/lib/taxCalculator';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface SelbstauskunftFormProps {
   profile: ApplicantProfile;
@@ -42,6 +55,11 @@ export function SelbstauskunftForm({ profile, onSave, readOnly = false }: Selbst
     id_document_valid_until: profile.id_document_valid_until || '',
     tax_id: profile.tax_id || '',
     iban: profile.iban || '',
+    // NEW: Tax basis fields
+    taxable_income_yearly: profile.taxable_income_yearly || null,
+    church_tax: profile.church_tax || false,
+    tax_assessment_type: profile.tax_assessment_type || 'SPLITTING',
+    marginal_tax_rate: profile.marginal_tax_rate || null,
     // Household
     adults_count: profile.adults_count || 1,
     children_count: profile.children_count || 0,
@@ -107,8 +125,82 @@ export function SelbstauskunftForm({ profile, onSave, readOnly = false }: Selbst
     data_correct_confirmed: profile.data_correct_confirmed || false,
   });
 
+  const { activeTenantId } = useAuth();
   const updateProfile = useUpdateApplicantProfile();
   const [activeTab, setActiveTab] = React.useState('identity');
+  const [showContextPicker, setShowContextPicker] = React.useState(false);
+
+  // Fetch landlord contexts for data transfer (Phase 5 Option A)
+  const { data: landlordContexts = [] } = useQuery({
+    queryKey: ['landlord-contexts-for-transfer', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type, taxable_income_yearly, tax_assessment_type, church_tax, children_count, tax_rate_percent, street, house_number, postal_code, city')
+        .eq('tenant_id', activeTenantId)
+        .eq('context_type', 'PRIVATE');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId && !readOnly,
+  });
+
+  // Fetch context members for the selected context
+  const fetchContextMembers = async (contextId: string) => {
+    const { data, error } = await supabase
+      .from('context_members')
+      .select('*')
+      .eq('context_id', contextId)
+      .limit(1);
+    if (error) throw error;
+    return data?.[0] || null;
+  };
+
+  const handleTransferFromContext = async (contextId: string) => {
+    const context = landlordContexts.find(c => c.id === contextId);
+    if (!context) return;
+
+    // Fetch first member for personal data
+    const member = await fetchContextMembers(contextId);
+
+    // Transfer data
+    const updates: Partial<ApplicantFormData> = {};
+
+    // From context
+    if (context.taxable_income_yearly) {
+      updates.taxable_income_yearly = context.taxable_income_yearly;
+    }
+    if (context.tax_assessment_type) {
+      updates.tax_assessment_type = context.tax_assessment_type as TaxAssessmentType;
+    }
+    if (context.church_tax !== null) {
+      updates.church_tax = context.church_tax;
+    }
+    if (context.children_count !== null) {
+      updates.children_count = context.children_count;
+    }
+
+    // From first member (if available)
+    if (member) {
+      if (member.first_name) updates.first_name = member.first_name;
+      if (member.last_name) updates.last_name = member.last_name;
+      if (member.email) updates.email = member.email;
+      if (member.phone) updates.phone = member.phone;
+      if (member.street && member.house_number) {
+        updates.address_street = `${member.street} ${member.house_number}`.trim();
+      }
+      if (member.postal_code) updates.address_postal_code = member.postal_code;
+      if (member.city) updates.address_city = member.city;
+      if (member.birth_date) updates.birth_date = member.birth_date;
+      if (member.profession) updates.position = member.profession;
+    }
+
+    // Apply updates
+    setFormData(prev => ({ ...prev, ...updates }));
+    setShowContextPicker(false);
+    toast.success(`Daten aus "${context.name}" übernommen`);
+  };
 
   const handleChange = (field: keyof ApplicantFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -135,8 +227,50 @@ export function SelbstauskunftForm({ profile, onSave, readOnly = false }: Selbst
 
   return (
     <div className="space-y-6">
-      {/* Header with Progress */}
-      <div className="flex items-center justify-between">
+      {/* Context Picker Dialog for Data Transfer */}
+      <Dialog open={showContextPicker} onOpenChange={setShowContextPicker}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Daten aus Vermietereinheit übernehmen</DialogTitle>
+            <DialogDescription>
+              Wählen Sie eine Vermietereinheit, um Steuerdaten und Kontaktdaten zu übernehmen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {landlordContexts.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Keine Vermietereinheiten vom Typ "Privat" gefunden.
+              </p>
+            ) : (
+              landlordContexts.map(ctx => (
+                <Button
+                  key={ctx.id}
+                  variant="outline"
+                  className="w-full justify-start h-auto py-3"
+                  onClick={() => handleTransferFromContext(ctx.id)}
+                >
+                  <div className="text-left">
+                    <p className="font-medium">{ctx.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ctx.taxable_income_yearly 
+                        ? `zVE: ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(ctx.taxable_income_yearly)} · ${ctx.tax_assessment_type === 'SPLITTING' ? 'Splitting' : 'Einzel'}`
+                        : 'Keine Steuerdaten hinterlegt'}
+                    </p>
+                  </div>
+                </Button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowContextPicker(false)}>
+              Abbrechen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Header with Progress + Transfer Button */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Badge variant={formData.profile_type === 'entrepreneur' ? 'secondary' : 'outline'}>
             {formData.profile_type === 'entrepreneur' ? 'Unternehmer' : 'Privatperson'}
@@ -144,6 +278,16 @@ export function SelbstauskunftForm({ profile, onSave, readOnly = false }: Selbst
           <Badge variant={formData.party_role === 'co_applicant' ? 'secondary' : 'outline'}>
             {formData.party_role === 'co_applicant' ? 'Mitantragsteller' : 'Hauptantragsteller'}
           </Badge>
+          {!readOnly && landlordContexts.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowContextPicker(true)}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Daten aus Vermietereinheit
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-3 w-64">
           <Progress value={completionPercent} className="flex-1" />
@@ -401,6 +545,74 @@ export function SelbstauskunftForm({ profile, onSave, readOnly = false }: Selbst
                     disabled={readOnly}
                   />
                 </FormRow>
+
+                {/* NEW: Tax basis fields */}
+                <div className="mt-4 p-4 border rounded-lg bg-primary/5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="h-4 w-4 text-primary" />
+                    <Label className="font-medium">Steuerbasis für Finanzierung</Label>
+                  </div>
+                  <FormRow>
+                    <FormInput
+                      label="Zu versteuerndes Einkommen (zVE)"
+                      name="taxable_income_yearly"
+                      type="number"
+                      value={formData.taxable_income_yearly || ''}
+                      onChange={e => handleChange('taxable_income_yearly', parseFloat(e.target.value) || null)}
+                      hint="Jährliches zVE in Euro"
+                      disabled={readOnly}
+                    />
+                    <div className="space-y-2">
+                      <Label>Veranlagungsart</Label>
+                      <Select
+                        value={formData.tax_assessment_type || 'SPLITTING'}
+                        onValueChange={(v) => handleChange('tax_assessment_type', v)}
+                        disabled={readOnly}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EINZEL">Einzelveranlagung</SelectItem>
+                          <SelectItem value="SPLITTING">Zusammenveranlagung (Splitting)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormRow>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="church_tax_profile"
+                        checked={formData.church_tax || false}
+                        onCheckedChange={(checked) => handleChange('church_tax', !!checked)}
+                        disabled={readOnly}
+                      />
+                      <Label htmlFor="church_tax_profile" className="cursor-pointer flex items-center gap-1">
+                        <Church className="h-3 w-3" />
+                        Kirchensteuerpflicht
+                      </Label>
+                    </div>
+                  </div>
+                  {formData.taxable_income_yearly && formData.taxable_income_yearly > 0 && (
+                    <div className="text-sm text-muted-foreground pt-2 border-t">
+                      {(() => {
+                        const result = calculateTax({
+                          taxableIncome: formData.taxable_income_yearly || 0,
+                          assessmentType: (formData.tax_assessment_type as TaxAssessmentType) || 'SPLITTING',
+                          churchTax: formData.church_tax || false,
+                          childrenCount: formData.children_count || 0,
+                        });
+                        return (
+                          <span>
+                            <strong>Berechnet:</strong> Grenzsteuersatz {result.marginalTaxRate}% · 
+                            Effektiv {result.effectiveTaxRate}%
+                            {result.solidaritySurcharge > 0 && ' (inkl. Soli)'}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
               </FormSection>
             </CardContent>
           </Card>

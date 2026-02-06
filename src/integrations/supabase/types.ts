@@ -234,6 +234,7 @@ export type Database = {
           child_support_obligation: boolean | null
           children_ages: string | null
           children_count: number | null
+          church_tax: boolean | null
           company_address: string | null
           company_employees: number | null
           company_founded: string | null
@@ -270,6 +271,7 @@ export type Database = {
           life_insurance_value: number | null
           living_expenses_monthly: number | null
           loan_amount_requested: number | null
+          marginal_tax_rate: number | null
           marital_status: string | null
           max_monthly_rate: number | null
           modernization_costs: number | null
@@ -296,7 +298,9 @@ export type Database = {
           repayment_rate_percent: number | null
           schufa_consent: boolean | null
           securities_value: number | null
+          tax_assessment_type: string | null
           tax_id: string | null
+          taxable_income_yearly: number | null
           tenant_id: string
           updated_at: string
         }
@@ -317,6 +321,7 @@ export type Database = {
           child_support_obligation?: boolean | null
           children_ages?: string | null
           children_count?: number | null
+          church_tax?: boolean | null
           company_address?: string | null
           company_employees?: number | null
           company_founded?: string | null
@@ -353,6 +358,7 @@ export type Database = {
           life_insurance_value?: number | null
           living_expenses_monthly?: number | null
           loan_amount_requested?: number | null
+          marginal_tax_rate?: number | null
           marital_status?: string | null
           max_monthly_rate?: number | null
           modernization_costs?: number | null
@@ -379,7 +385,9 @@ export type Database = {
           repayment_rate_percent?: number | null
           schufa_consent?: boolean | null
           securities_value?: number | null
+          tax_assessment_type?: string | null
           tax_id?: string | null
+          taxable_income_yearly?: number | null
           tenant_id: string
           updated_at?: string
         }
@@ -400,6 +408,7 @@ export type Database = {
           child_support_obligation?: boolean | null
           children_ages?: string | null
           children_count?: number | null
+          church_tax?: boolean | null
           company_address?: string | null
           company_employees?: number | null
           company_founded?: string | null
@@ -436,6 +445,7 @@ export type Database = {
           life_insurance_value?: number | null
           living_expenses_monthly?: number | null
           loan_amount_requested?: number | null
+          marginal_tax_rate?: number | null
           marital_status?: string | null
           max_monthly_rate?: number | null
           modernization_costs?: number | null
@@ -462,7 +472,9 @@ export type Database = {
           repayment_rate_percent?: number | null
           schufa_consent?: boolean | null
           securities_value?: number | null
+          tax_assessment_type?: string | null
           tax_id?: string | null
+          taxable_income_yearly?: number | null
           tenant_id?: string
           updated_at?: string
         }
@@ -2581,6 +2593,7 @@ export type Database = {
           public_id: string
           solidarity_surcharge: boolean | null
           street: string | null
+          tax_assessment_type: string | null
           tax_rate_percent: number | null
           tax_regime: string | null
           taxable_income_yearly: number | null
@@ -2610,6 +2623,7 @@ export type Database = {
           public_id?: string
           solidarity_surcharge?: boolean | null
           street?: string | null
+          tax_assessment_type?: string | null
           tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null
@@ -2639,6 +2653,7 @@ export type Database = {
           public_id?: string
           solidarity_surcharge?: boolean | null
           street?: string | null
+          tax_assessment_type?: string | null
           tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null

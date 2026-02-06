@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, ClipboardList, User, MapPin, Link2, Users, Calendar, Percent, Pencil, Briefcase, Euro } from 'lucide-react';
+import { Building2, Plus, ClipboardList, User, MapPin, Link2, Users, Calendar, Percent, Pencil, Briefcase, Euro, Calculator, Baby, Church } from 'lucide-react';
 import { CreateContextDialog } from '@/components/shared';
 import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
+import { calculateTax, TaxAssessmentType } from '@/lib/taxCalculator';
 
 interface LandlordContext {
   id: string;
@@ -25,6 +26,11 @@ interface LandlordContext {
   legal_form: string | null;
   tax_rate_percent: number | null;
   managing_director: string | null;
+  // Private tax basis fields (from DB)
+  taxable_income_yearly?: number | null;
+  tax_assessment_type?: string | null;
+  church_tax?: boolean | null;
+  children_count?: number | null;
 }
 
 interface ContextMember {
@@ -197,8 +203,22 @@ export function KontexteTab() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        {ctx.tax_rate_percent ?? 30}% Steuersatz
-                        {ctx.legal_form && ` · ${ctx.legal_form}`}
+                        {/* Show calculated tax info for PRIVATE */}
+                        {isPrivate && ctx.taxable_income_yearly ? (
+                          <>
+                            <Calculator className="inline h-3 w-3 mr-1" />
+                            {ctx.tax_rate_percent ?? 30}% Grenzsteuersatz · zVE {formatCurrency(ctx.taxable_income_yearly)} 
+                            · {ctx.tax_assessment_type === 'SPLITTING' ? 'Splitting' : 'Einzel'}
+                            {ctx.children_count && ctx.children_count > 0 && (
+                              <span className="ml-1">· {ctx.children_count} Kind(er)</span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {ctx.tax_rate_percent ?? 30}% Steuersatz
+                            {ctx.legal_form && ` · ${ctx.legal_form}`}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
