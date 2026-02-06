@@ -1,346 +1,173 @@
 
 
-# MOD-12 AkquiseManager Erweiterungen
+# MOD-12 Akquise-Manager — Finaler Implementierungsplan
 
-## Übersicht
+## Modul-Struktur: 4 Tiles (korrigiert)
 
-Erweiterung des MOD-12 AkquiseManager um zwei kritische Funktionen:
+| Tile | Route | Hauptfunktionen |
+|------|-------|-----------------|
+| **Dashboard** | `/portal/akquise-manager/dashboard` | • KPIs (Aktive Mandate, Objekteingänge, Freigegeben) • Schnellübersicht: Aktuelle Mandate + Objekte • Quick Actions: Neues Mandat, Objekt erfassen, Abgelehnte |
+| **Mandate** | `/portal/akquise-manager/mandate` | • Liste aller eigenen + zugewiesenen Mandate • Klick → Workbench mit Tabs (Profil, Sourcing, Outreach, Objekte, Aktivitäten) • Neues Mandat erstellen (Kontakt-First Wizard) |
+| **Objekteingang** | `/portal/akquise-manager/objekteingang` | • Zentrale Inbox aller eingegangenen Angebote/Exposés • Unabhängig von Mandats-Zuordnung sichtbar • Klick → Detail mit Kalkulation + Aktionen (Absage/Interesse/Preisvorschlag) |
+| **Tools** | `/portal/akquise-manager/tools` | • Exposé-Upload mit Drag-and-Drop + KI-Extraktion • Standalone-Kalkulatoren (Bestand + Aufteiler) mit eigenem Drag-and-Drop • Portal-Recherche (ImmoScout, Immowelt) • Immobilienbewertung (KI + GeoMap) |
 
-1. **Eigene Mandate erstellen** — Manager können selbstständig Kunden akquirieren
-2. **Tools-Seite** — Eigenständige Werkzeuge für Portal-Suche und Immobilienbewertung
-
----
-
-## 1. Dashboard-Erweiterung: Eigene Mandate
-
-### Aktueller Zustand
-Das Dashboard zeigt nur:
-- Pending Acceptance (zugewiesene Mandate)
-- Aktive Mandate
-
-### Neue Komponenten
-
-**Neue Kachel "Eigenes Mandat erstellen"**
-```text
-┌────────────────────────────────────────────────────┐
-│  📋 Dashboard                                      │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  ┌─────────────────┐  ┌─────────────────────────┐ │
-│  │  + Neues Mandat │  │  ⏱️ Warten auf Annahme  │ │
-│  │    erstellen    │  │     (zugewiesen)        │ │
-│  └─────────────────┘  └─────────────────────────┘ │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │  ✅ Aktive Mandate                            │ │
-│  │     (bereits angenommen)                      │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │  📋 Meine selbst erstellten Mandate          │ │
-│  │     (eigene Akquise)                         │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-└────────────────────────────────────────────────────┘
-```
-
-### Implementierung
-
-1. **Erweiterung `AkquiseDashboard`:**
-   - Neue Kachel-Karte für "Eigenes Mandat erstellen"
-   - Bei Klick → Weiterleitung zu `MandatCreateWizardManager`
-   - Neuer Query `useAcqMandatesCreatedByManager()` für selbst erstellte Mandate
-
-2. **Neuer Query-Hook:**
-   ```typescript
-   // Mandate, die der Manager selbst erstellt hat (created_by_user_id = current user)
-   export function useAcqMandatesCreatedByManager()
-   ```
-
-3. **Neuer Flow:**
-   - Manager erstellt Mandat → Status = `draft`
-   - Manager reicht ein → Status = `submitted_to_zone1`
-   - Zone 1 kann dem gleichen Manager zuweisen → Status = `assigned`
-   - Manager akzeptiert (Split-Gate) → Status = `active`
-
-### Dateien
-
-| Datei | Änderung |
-|-------|----------|
-| `src/pages/portal/AkquiseManagerPage.tsx` | Dashboard-Erweiterung mit 4. Sektion |
-| `src/hooks/useAcqMandate.ts` | Neuer Hook `useAcqMandatesCreatedByManager` |
-| `src/pages/portal/akquise-manager/MandatCreateWizardManager.tsx` | Kopie/Anpassung des MOD-08 Wizards |
+**Hinweis:** Das Tile "Kunden" wurde entfernt — Kontakte werden zentral in MOD-02 (KI Office) verwaltet.
 
 ---
 
-## 2. Tools-Seite: Vollständige Implementierung
+## Implementierungsplan
 
-### Aktueller Zustand
-Die `AkquiseTools` Komponente ist nur ein Placeholder:
-```tsx
-function AkquiseTools() {
-  return <ModuleTilePage ... emptyTitle="Tools entdecken" />
-}
-```
+### Phase 1–6: Wie bereits besprochen
 
-### Neue Struktur
+(Routing-Fix, Mandats-Wizard, Objekteingang-Liste/Detail, Kalkulation, Action-Dialoge, Datenraum)
+
+---
+
+### Phase 7: Tools-Seite (erweitert)
+
+#### 7.1 Exposé-Upload & Analyse
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  🔧 Akquise-Tools                                        │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │  🔍 PORTAL-RECHERCHE                                ││
-│  │                                                     ││
-│  │  ┌───────────────────────────────────────────────┐ ││
-│  │  │  Portal: [ ImmoScout24 ▼ ]                    │ ││
-│  │  │  Suche:  [ __________________ ]               │ ││
-│  │  │  Region: [ Berlin ▼ ]  Preis: [ 500k - 2M ]   │ ││
-│  │  │                                               │ ││
-│  │  │  [ 🔎 Objekte suchen ]  [ 👥 Makler suchen ]  │ ││
-│  │  └───────────────────────────────────────────────┘ ││
-│  │                                                     ││
-│  │  Ergebnisse:                                        ││
-│  │  ┌─────────────────────────────────────────────────┐││
-│  │  │ MFH Berlin Mitte | 1.2M € | 8 WE | [Details] │ ││
-│  │  │ ETW München      | 450k € | 3 Zi | [Details] │ ││
-│  │  └─────────────────────────────────────────────────┘││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │  🏠 IMMOBILIENBEWERTUNG                             ││
-│  │                                                     ││
-│  │  ┌───────────────────────────────────────────────┐ ││
-│  │  │  Freitext-Suche:                              │ ││
-│  │  │  [ MFH Berliner Allee 45, 10115 Berlin     ] │ ││
-│  │  │                                               │ ││
-│  │  │  [ 🧠 KI-Recherche starten ]                  │ ││
-│  │  │  [ 📍 GeoMap-Analyse starten ]                │ ││
-│  │  └───────────────────────────────────────────────┘ ││
-│  │                                                     ││
-│  │  Tabs: [ Standort | Markt | Risiken | Empfehlung ] ││
-│  │                                                     ││
-│  │  ┌─────────────────────────────────────────────────┐││
-│  │  │  Standortbewertung: ⭐⭐⭐⭐⭐⭐⭐⭐ 8/10         ││
-│  │  │                                                 ││
-│  │  │  Makrolage: Berlin-Mitte ist einer der...      ││
-│  │  │  Mikrolage: Gute ÖPNV-Anbindung, S-Bahn...     ││
-│  │  │                                                 ││
-│  │  │  Marktdaten:                                    ││
-│  │  │  • Durchschnittsmiete: 14.50 €/m²              ││
-│  │  │  • Kaufpreis-Niveau: 5.200 €/m²                ││
-│  │  │  • Leerstandsquote: 0.8%                       ││
-│  │  │  • Trend: ↗️ steigend                          ││
-│  │  │                                                 ││
-│  │  │  Risiko-Score: 3/10 (niedrig)                  ││
-│  │  │  • Keine Hochwasserzone                        ││
-│  │  │  • Geringe wirtschaftliche Abhängigkeit        ││
-│  │  │                                                 ││
-│  │  │  Investment-Empfehlung:                        ││
-│  │  │  ✅ Geeignet für: Bestand + Aufteilung         ││
-│  │  │  Stärken: Zentrale Lage, hohe Nachfrage        ││
-│  │  │  Schwächen: Hoher Kaufpreis, Mietpreisbremse   ││
-│  │  └─────────────────────────────────────────────────┘││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │  📊 QUICK-KALKULATOREN                              ││
-│  │                                                     ││
-│  │  [ Bestandskalkulation ]  [ Aufteilerkalkulation ] ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│ 📄 EXPOSÉ-UPLOAD & ANALYSE                                 │
+│                                                            │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │      📎 Exposé hier ablegen oder klicken             │  │
+│  │         PDF, DOCX, JPG, PNG                          │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                            │
+│  Nach Upload:                                              │
+│  → KI extrahiert Objektdaten automatisch                   │
+│  → Kann einem Mandat zugeordnet werden                     │
+│  → Aktionen: Absage / Interesse / Preisvorschlag           │
+│                                                            │
+│  [📊 Zur Bestandskalkulation] [📈 Zur Aufteilerkalkulation]│
+└────────────────────────────────────────────────────────────┘
 ```
 
-### Komponenten
-
-**1. PortalSearchTool**
-- Dropdown für Portal-Auswahl (ImmoScout24, Immowelt, eBay-Kleinanzeigen)
-- Freitext-Suche für Region/Keywords
-- Filter: Preisspanne, Objektart
-- Zwei Aktionen: "Objekte suchen" (→ Apify) + "Makler suchen" (→ Apify)
-- Ergebnisliste mit Schnellaktionen
-
-**2. PropertyResearchTool**
-- Freitext-Eingabe für Adresse/Objekt
-- Buttons: "KI-Recherche starten" + "GeoMap-Analyse"
-- Ergebnis-Tabs:
-  - Standort (Location Score, Makro-/Mikrolage)
-  - Markt (Mietpreis, Kaufpreis, Trend)
-  - Risiken (Flood Zone, Noise, Economic)
-  - Empfehlung (Strategie, Stärken/Schwächen)
-
-**3. QuickCalcTool**
-- Vereinfachte Rechner (analog AnalysisTab)
-- Bestandskalkulation: Eingabe → Rendite, Cash-Flow
-- Aufteilerkalkulation: Eingabe → Gewinn, ROI
-
-### Edge Functions
-
-Bereits vorhanden und nutzbar:
-- `sot-apify-portal-job` — Portal-Scraping
-- `sot-acq-ai-research` — KI-Immobilienanalyse
-- `sot-geomap-snapshot` — Standort-KPIs
-
-**Neu zu erstellen:**
-- `sot-acq-standalone-research` — KI-Recherche ohne Offer-Kontext (für Tools-Seite)
-
-### Hooks
-
-**Neue Hooks für Tools:**
-```typescript
-// src/hooks/useAcqTools.ts
-
-// Standalone KI-Recherche (nicht an Offer gebunden)
-export function useStandaloneAIResearch()
-
-// Standalone GeoMap (nicht an Offer gebunden)
-export function useStandaloneGeoMap()
-
-// Portal-Suche starten
-export function usePortalSearch()
-```
+**Zweck:** Exposés hochladen, die NICHT per E-Mail kamen (z.B. aus Newslettern, von Kollegen) → werden in Objekteingang aufgenommen und können Mandaten zugeordnet werden.
 
 ---
 
-## 3. Technische Details
-
-### Neue/Geänderte Dateien
+#### 7.2 Standalone-Kalkulatoren (MIT Drag-and-Drop)
 
 ```text
-src/pages/portal/AkquiseManagerPage.tsx
-├── AkquiseDashboard (erweitert)
-│   ├── Neue Kachel "Eigenes Mandat erstellen"
-│   └── Neue Sektion "Meine selbst erstellten Mandate"
-├── AkquiseTools (neu implementiert)
-│   ├── PortalSearchTool
-│   ├── PropertyResearchTool
-│   └── QuickCalcTool
-└── Route für MandatCreateWizardManager
-
-src/pages/portal/akquise-manager/
-├── MandatCreateWizardManager.tsx (NEU)
-└── components/
-    ├── PortalSearchTool.tsx (NEU)
-    ├── PropertyResearchTool.tsx (NEU)
-    └── QuickCalcTool.tsx (NEU)
-
-src/hooks/
-├── useAcqMandate.ts (erweitert)
-│   └── useAcqMandatesCreatedByManager()
-└── useAcqTools.ts (NEU)
-    ├── useStandaloneAIResearch()
-    ├── useStandaloneGeoMap()
-    └── usePortalSearch()
-
-supabase/functions/
-└── sot-acq-standalone-research/ (NEU)
-    └── index.ts
+┌────────────────────────────────────────────────────────────┐
+│ 📊 STANDALONE-KALKULATOREN                                 │
+│                                                            │
+│  Schnelle Kalkulation ohne Mandat-Kontext                  │
+│                                                            │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  📎 Exposé hier ablegen für automatische Befüllung  │   │
+│  │     oder Werte manuell eingeben                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                            │
+│  [ 🏠 Bestand (Hold) ]    [ 📊 Aufteiler (Flip) ]          │
+│                                                            │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  Eingabewerte (manuell oder aus Exposé):                   │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │
+│  │ Kaufpreis    │ │ Fläche m²    │ │ Einheiten    │        │
+│  │ [3.200.000]  │ │ [2.550]      │ │ [40]         │        │
+│  └──────────────┘ └──────────────┘ └──────────────┘        │
+│  ┌──────────────┐ ┌──────────────┐                         │
+│  │ Jahresmiete  │ │ Faktor       │                         │
+│  │ [217.687]    │ │ [14,7]       │                         │
+│  └──────────────┘ └──────────────┘                         │
+│                                                            │
+│  [Berechnung starten]                                      │
+│                                                            │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  📈 ERGEBNIS (Bestand / Aufteiler)                         │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ (Vollständige Kalkulation mit Charts + Tabellen)     │  │
+│  │ (Gleiche Darstellung wie im Objekteingang-Detail)    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                            │
+│  Hinweis: Diese Kalkulation wird nicht gespeichert.        │
+│  Um sie zu speichern, erstellen Sie einen Objekteingang.   │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
 ```
 
-### Datenbank
+**Funktionen:**
+1. **Drag-and-Drop Exposé-Upload** — PDF/DOCX ablegen
+2. **KI-Extraktion** — Werte werden automatisch befüllt (Kaufpreis, Fläche, Miete, etc.)
+3. **Manuelle Eingabe** — Alternative: Werte selbst eingeben
+4. **Tab-Auswahl** — Bestand (Hold) oder Aufteiler (Flip)
+5. **Vollständige Kalkulation** — Slider, Charts, Tabellen (identisch zum Objekteingang-Detail)
+6. **Kein DB-Speichern** — Rein temporär für schnelle Analyse
 
-**Keine neuen Tabellen erforderlich.**
-
-Die Standalone-Recherchen können:
-- Temporär im State gehalten werden (kein DB-Eintrag)
-- Optional in `acq_analysis_runs` gespeichert werden (mit `offer_id = null`)
-
-### RLS-Erweiterung
-
-Die bestehenden RLS-Policies decken bereits ab:
-- Manager kann eigene Mandate erstellen (`created_by_user_id = auth.uid()`)
-- Manager sieht nur zugewiesene Mandate (`assigned_manager_user_id = auth.uid()`)
+**Unterschied zu 7.1:**
+- 7.1 = Exposé hochladen → wird als Objekteingang gespeichert → kann Mandat zugeordnet werden
+- 7.2 = Schnelle Kalkulation → nur temporär → für Ad-hoc-Analysen ohne Persistenz
 
 ---
 
-## 4. Implementierungs-Reihenfolge
+#### 7.3 Portal-Recherche
 
-### Phase A: Dashboard-Erweiterung (Prio 1)
-1. Hook `useAcqMandatesCreatedByManager` erstellen
-2. `AkquiseDashboard` erweitern mit neuer Kachel + Sektion
-3. `MandatCreateWizardManager` erstellen (Kopie/Anpassung von MOD-08)
-4. Route hinzufügen: `/portal/akquise-manager/mandat-erstellen`
-
-### Phase B: Tools — Portal-Recherche (Prio 1)
-1. `PortalSearchTool` Komponente erstellen
-2. Integration mit `sot-apify-portal-job`
-3. Ergebnis-Anzeige mit Schnellaktionen
-
-### Phase C: Tools — Immobilienbewertung (Prio 1)
-1. `sot-acq-standalone-research` Edge Function erstellen
-2. `PropertyResearchTool` Komponente erstellen
-3. Integration mit KI + GeoMap
-4. Tabs für strukturierte Ergebnis-Darstellung
-
-### Phase D: Tools — Quick-Kalkulatoren (Prio 2)
-1. `QuickCalcTool` Komponente erstellen
-2. Vereinfachte Bestandskalkulation
-3. Vereinfachte Aufteilerkalkulation
+```text
+┌────────────────────────────────────────────────────────────┐
+│ 🔍 PORTAL-RECHERCHE                                        │
+│                                                            │
+│  Portal: [ImmoScout24 ▼]  Region: [Berlin ▼]               │
+│  Preis: [500k] - [2M]     Objektart: [MFH ▼]               │
+│                                                            │
+│  [🔎 Objekte suchen]  [👥 Makler suchen]                   │
+│                                                            │
+│  Ergebnisse:                                               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ (Liste gefundener Objekte/Makler via Apify)          │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 5. UI/UX Details
+#### 7.4 Immobilienbewertung
 
-### Portal-Recherche
-
-| Feld | Typ | Optionen |
-|------|-----|----------|
-| Portal | Select | ImmoScout24, Immowelt, eBay-Kleinanzeigen |
-| Suchbegriff | Text | Freitext |
-| Region | Text/Select | Freitext oder Dropdown |
-| Preis min | Number | EUR |
-| Preis max | Number | EUR |
-| Objektart | Multi-Select | MFH, ETW, ZFH, Gewerblich |
-
-**Aktionen:**
-- "Objekte suchen" → `sot-apify-portal-job` mit `searchType: 'listings'`
-- "Makler suchen" → `sot-apify-portal-job` mit `searchType: 'brokers'`
-
-### Immobilienbewertung
-
-**Eingabe:**
-- Freitext-Feld für Adresse/Objekt-Beschreibung
-- Beispiel: "MFH Berliner Allee 45, 10115 Berlin, 8 WE, Baujahr 1965"
-
-**Ausgabe-Tabs:**
-
-1. **Standort**
-   - Location Score (1-10) mit Visualisierung
-   - Makrolage (Region, Wirtschaft, Demografie)
-   - Mikrolage (Infrastruktur, ÖPNV, Schulen)
-
-2. **Markt**
-   - Durchschnittsmiete €/m²
-   - Durchschnittspreis €/m²
-   - Leerstandsquote
-   - Preistrend (steigend/stabil/fallend)
-
-3. **Risiken**
-   - Risiko-Score (1-10)
-   - Flood Zone
-   - Lärmbelastung
-   - Wirtschaftliche Abhängigkeit
-
-4. **Empfehlung**
-   - Geeignete Strategie (Bestand/Aufteilung)
-   - Stärken (Bullet-Liste)
-   - Schwächen (Bullet-Liste)
-   - Handlungsempfehlung
+```text
+┌────────────────────────────────────────────────────────────┐
+│ 🏠 IMMOBILIENBEWERTUNG                                     │
+│                                                            │
+│  Freitext-Suche:                                           │
+│  [MFH Berliner Allee 45, 10115 Berlin, 8 WE            ]   │
+│                                                            │
+│  [🧠 KI-Recherche starten]  [📍 GeoMap-Analyse starten]    │
+│                                                            │
+│  Tabs: [Standort] [Markt] [Risiken] [Empfehlung]           │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ (Strukturierte Ergebnisse aus KI + GeoMap)           │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 6. Acceptance Criteria
+## Zusammenfassung der Änderungen
 
-| # | Szenario | Erwartung |
-|---|----------|-----------|
-| A | Manager öffnet Dashboard | Sieht Kachel "Eigenes Mandat erstellen" |
-| B | Manager klickt auf Kachel | Wizard öffnet sich |
-| C | Manager erstellt Mandat | Status = draft, sichtbar in "Meine Mandate" |
-| D | Manager reicht Mandat ein | Status = submitted_to_zone1 |
-| E | Manager öffnet Tools | Sieht Portal-Recherche + Bewertungstool |
-| F | Manager sucht nach Objekten | Apify wird aufgerufen, Ergebnisse angezeigt |
-| G | Manager gibt Adresse ein | KI-Recherche + GeoMap liefern strukturierte Ergebnisse |
-| H | Manager nutzt Quick-Calc | Rendite/ROI wird berechnet |
+| Aspekt | Status |
+|--------|--------|
+| Tile "Kunden" | ❌ Entfernt (Kontakte in MOD-02) |
+| Tile "Objekteingang" | ✅ Hinzugefügt (zentrale Inbox) |
+| 4 Tiles gesamt | ✅ Dashboard, Mandate, Objekteingang, Tools |
+| 7.1 Exposé-Upload | ✅ Mit Drag-and-Drop, speichert als Objekteingang |
+| 7.2 Standalone-Kalkulatoren | ✅ **Jetzt auch mit Drag-and-Drop** für Exposé-Befüllung |
+| Objekteingang als Inbox | ✅ Zeigt ALLE eingegangenen Angebote (E-Mail + manuell) |
+
+---
+
+## Acceptance Criteria (erweitert)
+
+| # | Test | Erwartung |
+|---|------|-----------|
+| 1 | Navigation prüfen | 4 Tiles: Dashboard, Mandate, Objekteingang, Tools (KEIN "Kunden") |
+| 2 | Objekteingang öffnen | Zeigt alle Angebote (E-Mail-Inbound + manuell hochgeladen) |
+| 3 | Tools → Exposé-Upload | Drag-and-Drop → KI-Extraktion → wird als Objekteingang gespeichert |
+| 4 | Tools → Standalone-Kalkulator | **Drag-and-Drop → KI-Extraktion → Werte werden befüllt** |
+| 5 | Standalone-Kalkulator manuell | Werte eingeben → Berechnung funktioniert |
+| 6 | Standalone-Kalkulator Charts | Bestand: 30-Jahres-Charts; Aufteiler: Kosten/Erlöse/Gewinn |
+| 7 | Kein DB-Speichern in Standalone | Hinweis wird angezeigt, Daten sind nur temporär |
 
