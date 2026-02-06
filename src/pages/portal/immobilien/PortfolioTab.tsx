@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
-import { FileUploader, SubTabNav } from '@/components/shared';
+import { FileUploader } from '@/components/shared';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -22,7 +29,7 @@ import {
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
-  ResponsiveContainer, CartesianGrid, Legend, Area, AreaChart 
+  ResponsiveContainer, CartesianGrid, Legend, Area, ComposedChart 
 } from 'recharts';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
@@ -116,17 +123,7 @@ export function PortfolioTab() {
     enabled: !!activeTenantId,
   });
 
-  // Build context tabs for SubTabNav (only if multiple contexts)
-  const contextTabs = useMemo(() => {
-    if (contexts.length <= 1) return [];
-    return [
-      { title: 'Alle Kontexte', route: '/portal/immobilien/portfolio' },
-      ...contexts.map(ctx => ({
-        title: ctx.name,
-        route: `/portal/immobilien/portfolio?context=${ctx.id}`,
-      })),
-    ];
-  }, [contexts]);
+  // Removed: contextTabs for SubTabNav - now using Dropdown instead
 
   // Fetch context_property_assignment for filtering
   const { data: contextAssignments = [] } = useQuery({
@@ -424,7 +421,50 @@ export function PortfolioTab() {
     return years;
   }, [totals]);
 
-  // EÜR Chart Data (Einnahmenüberschussrechnung) - ANNUAL (using loans SSOT)
+  // Extended projection data for the 10-year table
+  const projectionData = useMemo(() => {
+    if (!totals || totals.totalDebt <= 0) return [];
+    
+    const appreciationRate = 0.02; // 2% Wertzuwachs p.a.
+    const rentGrowthRate = 0.015; // 1.5% Mietsteigerung p.a.
+    const years: Array<{
+      year: number;
+      rent: number;
+      interest: number;
+      amortization: number;
+      objektwert: number;
+      restschuld: number;
+      vermoegen: number;
+    }> = [];
+    
+    let currentDebt = totals.totalDebt;
+    let currentValue = totals.totalValue;
+    let currentRent = totals.totalIncome;
+    const annuity = totals.totalAnnuity;
+    const interestRate = totals.avgInterestRate / 100;
+    
+    for (let year = 0; year <= 30; year++) {
+      const interest = currentDebt * interestRate;
+      const amortization = Math.min(annuity - interest, currentDebt);
+      const wealth = currentValue - currentDebt;
+      
+      years.push({ 
+        year: 2026 + year, 
+        rent: Math.round(currentRent),
+        interest: Math.round(interest),
+        amortization: Math.round(amortization),
+        objektwert: Math.round(currentValue),
+        restschuld: Math.max(0, Math.round(currentDebt)),
+        vermoegen: Math.round(wealth)
+      });
+      
+      currentDebt = Math.max(0, currentDebt - amortization);
+      currentValue = currentValue * (1 + appreciationRate);
+      currentRent = currentRent * (1 + rentGrowthRate);
+    }
+    return years;
+  }, [totals]);
+
   const eurChartData = useMemo(() => {
     if (!totals) return [];
     
@@ -557,13 +597,46 @@ export function PortfolioTab() {
 
   return (
     <div className="space-y-6">
-      {/* Context Subbar - only shown if multiple contexts exist */}
-      {contextTabs.length > 0 && (
-        <SubTabNav tabs={contextTabs} />
-      )}
-
-      {/* Header mit Neue Immobilie Button */}
-      <div className="flex items-center justify-end">
+      {/* Header with Context Dropdown + New Property Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold">Immobilienportfolio</h2>
+          {contexts.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Building2 className="h-4 w-4" />
+                  {selectedContextId 
+                    ? contexts.find(c => c.id === selectedContextId)?.name || 'Alle Vermietereinheiten'
+                    : 'Alle Vermietereinheiten'}
+                  <span className="ml-1 text-xs">▼</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete('context');
+                  setSearchParams(newParams);
+                }}>
+                  Alle Vermietereinheiten
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {contexts.map(ctx => (
+                  <DropdownMenuItem 
+                    key={ctx.id} 
+                    onClick={() => {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('context', ctx.id);
+                      setSearchParams(newParams);
+                    }}
+                  >
+                    {ctx.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Neue Immobilie anlegen
@@ -606,7 +679,7 @@ export function PortfolioTab() {
         <ChartCard title="Vermögensentwicklung (30 Jahre)">
           {hasData && amortizationData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={amortizationData}>
+              <ComposedChart data={amortizationData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="year" 
@@ -636,11 +709,11 @@ export function PortfolioTab() {
                   type="monotone" 
                   dataKey="vermoegen" 
                   name="Netto-Vermögen"
-                  stroke="hsl(142, 71%, 45%)" 
-                  fill="hsl(142, 71%, 45%)"
+                  stroke="hsl(var(--chart-2))" 
+                  fill="hsl(var(--chart-2))"
                   fillOpacity={0.4}
                 />
-                {/* Restschuld als Linie (rot, fallend) */}
+                {/* Restschuld als Linie (rot, fallend) — now ON TOP */}
                 <Line 
                   type="monotone" 
                   dataKey="restschuld" 
@@ -649,7 +722,7 @@ export function PortfolioTab() {
                   strokeWidth={2}
                   dot={false}
                 />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-[280px] flex items-center justify-center text-muted-foreground">

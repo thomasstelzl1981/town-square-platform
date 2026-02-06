@@ -1,9 +1,18 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Globe, Users, ExternalLink } from 'lucide-react';
+import { Eye, Globe, Users, ExternalLink, Building2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -32,6 +41,12 @@ interface UnitWithListing {
   partner_active: boolean;
 }
 
+interface LandlordContext {
+  id: string;
+  name: string;
+  context_type: string;
+}
+
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   draft: { label: 'Entwurf', variant: 'secondary' },
   active: { label: 'Aktiv', variant: 'default' },
@@ -42,10 +57,43 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 
 const ObjekteTab = () => {
   const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
+  const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
+
+  // Fetch landlord contexts for filtering
+  const { data: contexts = [] } = useQuery({
+    queryKey: ['landlord-contexts', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('landlord_contexts')
+        .select('id, name, context_type')
+        .eq('tenant_id', activeTenantId!)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch context_property_assignment for filtering
+  const { data: contextAssignments = [] } = useQuery({
+    queryKey: ['context-property-assignments', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_property_assignment')
+        .select('context_id, property_id')
+        .eq('tenant_id', activeTenantId!);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeTenantId,
+  });
 
   // Fetch UNITS with LEFT JOIN to properties and listings (Unit-based view)
   const { data: units, isLoading } = useQuery({
-    queryKey: ['verkauf-units-with-listings'],
+    queryKey: ['verkauf-units-with-listings', activeTenantId],
     queryFn: async () => {
       // 1. Get all units with their properties
       const { data: unitsData, error: unitsError } = await supabase
@@ -66,6 +114,7 @@ const ObjekteTab = () => {
             status
           )
         `)
+        .eq('tenant_id', activeTenantId!)
         .eq('properties.status', 'active')
         .order('properties(code)', { ascending: true });
 
@@ -75,6 +124,7 @@ const ObjekteTab = () => {
       const { data: listingsData } = await supabase
         .from('listings')
         .select('id, property_id, unit_id, status, title, asking_price')
+        .eq('tenant_id', activeTenantId!)
         .in('status', ['draft', 'active', 'reserved', 'sold']);
 
       // 3. Get publications for channel status
@@ -126,8 +176,21 @@ const ObjekteTab = () => {
           partner_active: channels?.partner || false
         } as UnitWithListing;
       }) || [];
-    }
+    },
+    enabled: !!activeTenantId,
   });
+
+  // Filter units by selected context
+  const filteredUnits = useMemo(() => {
+    if (!units) return [];
+    if (!selectedContextId) return units;
+    
+    const assignedPropertyIds = contextAssignments
+      .filter(a => a.context_id === selectedContextId)
+      .map(a => a.property_id);
+    
+    return units.filter(u => assignedPropertyIds.includes(u.property_id));
+  }, [units, selectedContextId, contextAssignments]);
 
   const columns: PropertyTableColumn<UnitWithListing>[] = [
     {
@@ -229,9 +292,41 @@ const ObjekteTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {units?.length || 0} Einheit{units?.length !== 1 ? 'en' : ''} im Portfolio
-        </p>
+        <div className="flex items-center gap-3">
+          {contexts.length > 0 && (
+            <>
+              <span className="text-sm text-muted-foreground">Vermietereinheit:</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Building2 className="h-4 w-4" />
+                    {selectedContextId 
+                      ? contexts.find(c => c.id === selectedContextId)?.name || 'Alle'
+                      : 'Alle Vermietereinheiten'}
+                    <span className="ml-1 text-xs">▼</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setSelectedContextId(null)}>
+                    Alle Vermietereinheiten
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {contexts.map(ctx => (
+                    <DropdownMenuItem 
+                      key={ctx.id} 
+                      onClick={() => setSelectedContextId(ctx.id)}
+                    >
+                      {ctx.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {filteredUnits?.length || 0} Einheit{filteredUnits?.length !== 1 ? 'en' : ''} im Portfolio
+          </p>
+        </div>
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <ExternalLink className="h-3 w-3" />
           Stammdaten bearbeiten Sie im{' '}
@@ -242,7 +337,7 @@ const ObjekteTab = () => {
       </div>
 
       <PropertyTable
-        data={units || []}
+        data={filteredUnits}
         columns={columns}
         isLoading={isLoading}
         showSearch

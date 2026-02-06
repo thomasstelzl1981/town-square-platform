@@ -141,10 +141,10 @@ tiles:
         - client
     
     sub_tiles:
-      - title: "Kontexte"
+      - title: "Vermietereinheiten"
         route: "/portal/immobilien/kontexte"
         icon: "FolderTree"
-        description: "Vermieter-Kontexte verwalten"
+        description: "Vermietereinheiten verwalten"
         
       - title: "Portfolio"
         route: "/portal/immobilien/portfolio"

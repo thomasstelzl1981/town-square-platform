@@ -6,8 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, ArrowRight, Plus, ClipboardList, User, MapPin, Link2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Building2, Plus, ClipboardList, User, MapPin, Link2, Users, Calendar, Percent } from 'lucide-react';
 import { CreateContextDialog } from '@/components/shared';
 import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
 
@@ -24,11 +23,23 @@ interface LandlordContext {
   hrb_number: string | null;
   ust_id: string | null;
   legal_form: string | null;
+  tax_rate_percent: number | null;
+  managing_director: string | null;
+}
+
+interface ContextMember {
+  id: string;
+  context_id: string;
+  first_name: string;
+  last_name: string;
+  ownership_share: number | null;
+  birth_name: string | null;
+  birth_date: string | null;
 }
 
 export function KontexteTab() {
   const navigate = useNavigate();
-  const { activeOrganization, activeTenantId } = useAuth();
+  const { activeTenantId } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [assignerContext, setAssignerContext] = useState<{ id: string; name: string } | null>(null);
 
@@ -40,10 +51,33 @@ export function KontexteTab() {
         .from('landlord_contexts')
         .select('*')
         .eq('tenant_id', activeTenantId!)
-        .order('is_default', { ascending: false });
+        .order('created_at', { ascending: true });
       
       if (error) throw error;
       return data as LandlordContext[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch context members for owner display
+  const { data: membersByContext = new Map<string, ContextMember[]>() } = useQuery({
+    queryKey: ['context-members', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_members')
+        .select('id, context_id, first_name, last_name, ownership_share, birth_name, birth_date')
+        .eq('tenant_id', activeTenantId!);
+      
+      if (error) throw error;
+      
+      // Group by context_id
+      const byContext = new Map<string, ContextMember[]>();
+      data?.forEach(m => {
+        const list = byContext.get(m.context_id) || [];
+        list.push(m as ContextMember);
+        byContext.set(m.context_id, list);
+      });
+      return byContext;
     },
     enabled: !!activeTenantId,
   });
@@ -69,130 +103,75 @@ export function KontexteTab() {
     enabled: !!activeTenantId,
   });
 
-  // Standard-Kontext aus der aktuellen Organisation (wenn keine landlord_contexts existieren)
-  const defaultContext = {
-    name: activeOrganization?.name || 'Meine Firma',
-    type: activeOrganization?.org_type === 'client' ? 'BUSINESS' : 'PRIVATE',
-    regime: 'FIBU',
-  };
-
-  const additionalContexts = contexts.filter(c => !c.is_default);
-  const primaryContext = contexts.find(c => c.is_default);
-
   const formatAddress = (ctx: LandlordContext) => {
     const parts = [ctx.street, ctx.house_number].filter(Boolean).join(' ');
     const cityParts = [ctx.postal_code, ctx.city].filter(Boolean).join(' ');
     return [parts, cityParts].filter(Boolean).join(', ') || null;
   };
 
+  const formatBirthDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    try {
+      return new Date(dateStr).toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Standard-Kontext (aus Stammdaten oder primary landlord_context) */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Vermietereinheiten</h2>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Vermietereinheit anlegen
+        </Button>
+      </div>
+
+      {/* Context Cards Grid */}
+      {isLoading ? (
+        <Card className="border-dashed">
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Lade Vermietereinheiten...
+          </CardContent>
+        </Card>
+      ) : contexts.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-3 rounded-full bg-muted mb-4">
+              <ClipboardList className="h-8 w-8 text-muted-foreground" />
             </div>
-            <div className="flex-1">
-              <CardTitle className="text-lg">Standard-Kontext</CardTitle>
-              <CardDescription>
-                {primaryContext ? 'Ihr primärer Vermieter-Kontext' : 'Automatisch aus Ihren Firmendaten übernommen'}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <InfoItem label="Name" value={primaryContext?.name || defaultContext.name} />
-            <InfoItem 
-              label="Typ" 
-              value={
-                <Badge variant={(primaryContext?.context_type || defaultContext.type) === 'BUSINESS' ? 'default' : 'secondary'}>
-                  {(primaryContext?.context_type || defaultContext.type) === 'BUSINESS' ? 'Geschäftlich' : 'Privat'}
-                </Badge>
-              } 
-            />
-            <InfoItem 
-              label="Regime" 
-              value={
-                <Badge variant="outline">{primaryContext?.tax_regime || defaultContext.regime}</Badge>
-              } 
-            />
-            <InfoItem label="Objekte" value="– (alle nicht zugeordneten)" />
-          </div>
-
-          {primaryContext && formatAddress(primaryContext) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              {formatAddress(primaryContext)}
-            </div>
-          )}
-
-          {primaryContext?.hrb_number && (
-            <div className="flex gap-4 text-xs text-muted-foreground">
-              <span>HRB: {primaryContext.hrb_number}</span>
-              {primaryContext.ust_id && <span>USt-ID: {primaryContext.ust_id}</span>}
-            </div>
-          )}
-
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate('/portal/stammdaten/firma')}
-          >
-            Stammdaten bearbeiten
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Weitere Kontexte */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Weitere Kontexte</h2>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Kontext anlegen
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Lade Kontexte...
-            </CardContent>
-          </Card>
-        ) : additionalContexts.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-3 rounded-full bg-muted mb-4">
-                <ClipboardList className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium mb-2">Keine weiteren Kontexte angelegt</h3>
-              <p className="text-sm text-muted-foreground max-w-md mb-6">
-                Erstellen Sie zusätzliche Vermieter-Kontexte, um Objekte nach steuerlichen 
-                oder organisatorischen Kriterien zu gruppieren.
-              </p>
-              <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Kontext anlegen
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {additionalContexts.map((ctx) => (
+            <h3 className="font-medium mb-2">Keine Vermietereinheiten angelegt</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-6">
+              Erstellen Sie Vermietereinheiten, um Ihre Immobilien nach steuerlichen 
+              oder organisatorischen Kriterien zu gruppieren (z.B. Ehepaar, GmbH).
+            </p>
+            <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Vermietereinheit anlegen
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {contexts.map((ctx) => {
+            const members = membersByContext.get(ctx.id) || [];
+            const isPrivate = ctx.context_type === 'PRIVATE';
+            
+            return (
               <Card key={ctx.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-muted">
-                      {ctx.context_type === 'BUSINESS' ? (
-                        <Building2 className="h-4 w-4" />
+                      {isPrivate ? (
+                        <Users className="h-4 w-4" />
                       ) : (
-                        <User className="h-4 w-4" />
+                        <Building2 className="h-4 w-4" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -201,26 +180,84 @@ export function KontexteTab() {
                         <CardDescription>{ctx.legal_form}</CardDescription>
                       )}
                     </div>
-                    <Badge variant={ctx.context_type === 'BUSINESS' ? 'default' : 'secondary'}>
-                      {ctx.context_type === 'BUSINESS' ? 'Geschäftlich' : 'Privat'}
+                    <Badge variant={isPrivate ? 'secondary' : 'default'}>
+                      {isPrivate ? 'Privat' : 'Geschäftlich'}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-4 text-sm">
+                <CardContent className="space-y-3">
+                  {/* Tax Regime & Tax Rate */}
+                  <div className="flex items-center gap-3 text-sm">
                     <Badge variant="outline">{ctx.tax_regime || 'EÜR'}</Badge>
-                    {ctx.hrb_number && <span className="text-muted-foreground text-xs">{ctx.hrb_number}</span>}
-                    <Badge variant="secondary" className="ml-auto">
-                      {contextPropertyCounts[ctx.id] || 0} Objekt(e)
-                    </Badge>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Percent className="h-3 w-3" />
+                      <span>{ctx.tax_rate_percent ?? 30}% Steuersatz</span>
+                    </div>
                   </div>
+
+                  {/* PRIVATE: Show owners */}
+                  {isPrivate && members.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground mb-2">Eigentümer:</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {members.map(member => (
+                          <div key={member.id} className="text-sm space-y-0.5">
+                            <p className="font-medium">
+                              {member.first_name} {member.last_name}
+                            </p>
+                            {member.birth_name && (
+                              <p className="text-xs text-muted-foreground">
+                                geb. {member.birth_name}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {member.birth_date && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  *{formatBirthDate(member.birth_date)}
+                                </span>
+                              )}
+                              {member.ownership_share && (
+                                <span>{member.ownership_share}%</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BUSINESS: Show company details */}
+                  {!isPrivate && (
+                    <div className="pt-2 border-t space-y-1 text-sm">
+                      {ctx.managing_director && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <span>GF: {ctx.managing_director}</span>
+                        </div>
+                      )}
+                      {ctx.hrb_number && (
+                        <p className="text-xs text-muted-foreground">HRB: {ctx.hrb_number}</p>
+                      )}
+                      {ctx.ust_id && (
+                        <p className="text-xs text-muted-foreground">USt-ID: {ctx.ust_id}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Address */}
                   {formatAddress(ctx) && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <MapPin className="h-3 w-3" />
                       {formatAddress(ctx)}
                     </div>
                   )}
-                  <div className="pt-2">
+
+                  {/* Property count & Actions */}
+                  <div className="pt-2 flex items-center justify-between">
+                    <Badge variant="secondary">
+                      {contextPropertyCounts[ctx.id] || 0} Objekt(e)
+                    </Badge>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -232,18 +269,19 @@ export function KontexteTab() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Info-Box */}
       <Card className="bg-muted/50">
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            <strong>Hinweis:</strong> Vermieter-Kontexte ermöglichen die Trennung von Objekten nach 
+            <strong>Hinweis:</strong> Vermietereinheiten ermöglichen die Trennung von Objekten nach 
             unterschiedlichen steuerlichen Regimes (FIBU, EÜR, Vermögensverwaltung) oder 
-            Eigentümerstrukturen. Alle Objekte ohne explizite Zuordnung gehören zum Standard-Kontext.
+            Eigentümerstrukturen (z.B. Ehepaar, Gesellschaft). Der hinterlegte Steuersatz wird 
+            für Renditeberechnungen verwendet.
           </p>
         </CardContent>
       </Card>
@@ -263,15 +301,6 @@ export function KontexteTab() {
           contextName={assignerContext.name}
         />
       )}
-    </div>
-  );
-}
-
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="font-medium">{value}</div>
     </div>
   );
 }
