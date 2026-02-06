@@ -1,9 +1,12 @@
 # MOD-05 — MSV (Miet-Sonderverwaltung)
 
-**Version:** v2.0.0-FINAL  
-**Status:** FROZEN (Phase 1 MVP)  
-**Letzte Aktualisierung:** 2026-01-25  
+**Version:** v2.1.0  
+**Status:** ACTIVE (Phase 1 MVP)  
+**Letzte Aktualisierung:** 2026-02-06  
 **Abhängig von:** MOD-04 (Properties/Units), MOD-01 (Contacts), MOD-03 (DMS), Billing Backbone, Agreements Backbone
+
+> **Audit-Status:** 88% Complete  
+> **Letzte Prüfung:** 2026-02-06
 
 ---
 
@@ -958,6 +961,77 @@ Folgende Punkte sollten jetzt eingefroren werden:
 3. **Readiness-Codes:** RENTER_* Naming + Liste (FROZEN)
 4. **COMM_PREF_VALID Validierung:** Kanal muss zu Daten passen (FROZEN)
 5. **Auto-Send Default:** require_confirmation = true (FROZEN)
+
+---
+
+## 14) AUDIT-ZUSAMMENFASSUNG (2026-02-06)
+
+### 14.1 Completion Status: 88%
+
+| Bereich | Status | Details |
+|---------|--------|---------|
+| Route-Struktur | ✅ 100% | 4-Tile-Pattern korrekt implementiert |
+| ObjekteTab | ✅ 100% | Unit-Liste mit Multi-Lease-Aggregation |
+| MieteingangTab | ✅ 95% | Soll/Ist-Abgleich, PaymentBookingDialog |
+| VermietungTab | ✅ 90% | Exposé-Erstellung, Portal-Publishing |
+| EinstellungenTab | ✅ 95% | Premium-Status, Automatisierung, Bank-Accounts |
+| **Mahnwesen** | ✅ 90% | Edge Function `sot-msv-reminder-check` aktiv |
+| **Berichtswesen** | ✅ 90% | Edge Function `sot-msv-rent-report` aktiv |
+| **Resend-Integration** | ⚠️ 50% | TODO-Kommentare, kein API-Key konfiguriert |
+| FinAPI | ⚠️ 0% | Nur UI-Platzhalter ("Coming Soon") |
+
+### 14.2 Edge Functions Prüfung
+
+| Function | Status | Beschreibung |
+|----------|--------|--------------|
+| `sot-msv-reminder-check` | ✅ AKTIV | Prüft am 10. des Monats auf fehlende Zahlungen |
+| `sot-msv-rent-report` | ✅ AKTIV | Generiert am 15. des Monats Mietberichte |
+
+**Funktionsweise Mahnwesen:**
+1. Läuft am 10. des Monats (oder manuell mit `forceRun: true`)
+2. Prüft alle Premium-Enrollments
+3. Identifiziert Leases ohne bezahlte Zahlung im aktuellen Monat
+4. Erstellt Mahnstufen: `friendly` → `first` → `final`
+5. TODO: Resend-Versand wenn API-Key konfiguriert
+
+**Funktionsweise Berichtswesen:**
+1. Läuft am 15. des Monats (oder manuell mit `forceRun: true`)
+2. Aggregiert pro Property: Collection-Rate, paid/open counts
+3. Generiert Unit-Details mit Mieter und Status
+4. TODO: PDF-Generierung + Resend-Versand
+
+### 14.3 Datenbank-Tabellen (Vollständig)
+
+| Tabelle | Status | Beschreibung |
+|---------|--------|--------------|
+| `leases` | ✅ EXISTS | Mietverträge (SoT bei MOD-05) |
+| `rent_payments` | ✅ EXISTS | Zahlungsperioden |
+| `rent_reminders` | ✅ EXISTS | Mahnungen |
+| `msv_enrollments` | ✅ EXISTS | Premium-Aktivierung |
+| `msv_communication_prefs` | ✅ EXISTS | Automatisierungs-Einstellungen |
+| `msv_templates` | ✅ EXISTS | Vorlagen (12 Templates aktiv) |
+| `msv_bank_accounts` | ✅ EXISTS | FinAPI-Vorbereitung |
+| `msv_readiness_items` | ✅ EXISTS | Readiness-Checkliste |
+
+### 14.4 Hooks & Komponenten
+
+| Hook/Component | Status | Beschreibung |
+|----------------|--------|--------------|
+| `useMSVPremium.ts` | ✅ AKTIV | Premium-Status + Unit-Count |
+| `useMSVCommunicationPrefs` | ✅ AKTIV | Einstellungen laden/speichern |
+| `PaymentBookingDialog.tsx` | ✅ AKTIV | Manuelle Zahlungsbuchung |
+| `TemplateWizard.tsx` | ✅ AKTIV | Vorlagen-Generator |
+| `ReadinessChecklist.tsx` | ✅ AKTIV | Premium-Activation Gate |
+| `PaywallBanner.tsx` | ✅ AKTIV | Upgrade-CTA für Non-Premium |
+
+### 14.5 Offene Punkte (Phase 2)
+
+| Punkt | Priorität | Beschreibung |
+|-------|-----------|--------------|
+| RESEND_API_KEY | P1 | Für automatischen E-Mail-Versand erforderlich |
+| PDF-Generierung | P1 | Mietberichte als PDF (jspdf oder Puppeteer) |
+| FinAPI-Integration | P2 | Automatische Transaktionserkennung |
+| Cron-Scheduling | P2 | Supabase pg_cron für tägliche Jobs |
 
 ---
 
