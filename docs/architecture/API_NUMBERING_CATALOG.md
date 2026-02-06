@@ -38,6 +38,10 @@
 | INTERNAL-005 | sot-investment-engine | MOD-08 | Investment-Berechnung | ACTIVE |
 | INTERNAL-006 | sot-armstrong-advisor | MOD-02 | KI-Assistant | ACTIVE |
 | INTERNAL-007 | sot-document-parser | MOD-03 | KI-Dokument-Parsing | ACTIVE |
+| INTERNAL-008 | sot-renovation-scope-ai | MOD-04 | KI-Leistungsanalyse | ACTIVE |
+| INTERNAL-009 | sot-places-search | MOD-04 | Google Places Suche | ACTIVE |
+| INTERNAL-010 | sot-renovation-outbound | MOD-04 | Ausschreibungs-Versand | ACTIVE |
+| INTERNAL-011 | sot-renovation-inbound-webhook | MOD-04 | Inbound E-Mail-Matching | ACTIVE |
 
 ---
 
@@ -209,6 +213,14 @@
 | API-720 | GET | `/properties/:id/financing` | User | Property Financing |
 | API-721 | POST | `/properties/:id/financing` | org_admin | Add Financing |
 | API-730 | GET | `/properties/:id/documents` | User | Property Documents |
+| API-740 | GET | `/service-cases` | User | List Service Cases |
+| API-741 | POST | `/service-cases` | org_admin | Create Service Case |
+| API-742 | GET | `/service-cases/:id` | User | Service Case Detail |
+| API-743 | PATCH | `/service-cases/:id` | org_admin | Update Service Case |
+| API-744 | GET | `/service-cases/:id/providers` | User | List Providers |
+| API-745 | POST | `/service-cases/:id/providers` | org_admin | Add Provider |
+| API-746 | GET | `/service-cases/:id/inbound` | User | List Inbound Messages |
+| API-747 | POST | `/service-cases/:id/award` | org_admin | Award Provider |
 
 ---
 
