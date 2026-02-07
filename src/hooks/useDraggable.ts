@@ -110,38 +110,72 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
 
   const [isDragging, setIsDragging] = useState(false);
   
-  // Initialize position
+  // Ref for current position (for event handlers to avoid stale closures)
+  const positionRef = useRef<Position | null>(null);
+  
+  // Initialize position with improved validation
   const [position, setPosition] = useState<Position>(() => {
-    // Try to load from storage first
+    const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
+    
+    // Try to load from storage
     const stored = loadStoredPosition(storageKey);
     if (stored) {
-      // Constrain stored position to current viewport
-      return constrainPosition(
+      const constrained = constrainPosition(
         stored.x,
         stored.y,
         containerSize.width,
         containerSize.height,
         boundaryPadding
       );
+      
+      // Validate: position must be in valid viewport range
+      // If constrained position differs too much from stored, the stored was invalid
+      const isValid = 
+        constrained.x >= boundaryPadding && 
+        constrained.y >= boundaryPadding &&
+        Math.abs(constrained.x - stored.x) <= 100 &&
+        Math.abs(constrained.y - stored.y) <= 100;
+      
+      if (isValid) {
+        positionRef.current = constrained;
+        return constrained;
+      }
+      
+      // Invalid stored position - clear it
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem(storageKey);
+        } catch (e) {
+          // Ignore
+        }
+      }
     }
     
     // Use initial position if provided
     if (initialPosition) {
-      return constrainPosition(
+      const constrained = constrainPosition(
         initialPosition.x,
         initialPosition.y,
         containerSize.width,
         containerSize.height,
         boundaryPadding
       );
+      positionRef.current = constrained;
+      return constrained;
     }
     
-    // Default position
-    return getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
+    // Default position (bottom-right)
+    positionRef.current = defaultPos;
+    return defaultPos;
   });
 
   // Track drag offset
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Keep positionRef in sync with position state
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
   // Handle window resize - constrain position to new viewport
   useEffect(() => {
@@ -164,12 +198,16 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     if (disabled) return;
     
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
+    
+    // Use ref for current position to avoid stale closure
+    const currentPos = positionRef.current || position;
     
     // Calculate offset from mouse to element position
     dragOffset.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
+      x: e.clientX - currentPos.x,
+      y: e.clientY - currentPos.y,
     };
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -208,6 +246,7 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
   const resetPosition = useCallback(() => {
     const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
     setPosition(defaultPos);
+    positionRef.current = defaultPos;
     saveStoredPosition(storageKey, defaultPos);
   }, [containerSize.width, containerSize.height, boundaryPadding, storageKey]);
 
