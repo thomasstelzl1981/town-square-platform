@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
@@ -35,14 +35,21 @@ import {
 import { cn } from '@/lib/utils';
 
 export function SystemBar() {
+  const navigate = useNavigate();
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
-  const { armstrongVisible, showArmstrong, hideArmstrong, resetArmstrong, isMobile } = usePortalLayout();
+  const { armstrongVisible, showArmstrong, hideArmstrong, resetArmstrong, isMobile, setActiveArea } = usePortalLayout();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState<{
     city: string;
     altitude: number | null;
   } | null>(null);
   const [locationError, setLocationError] = useState(false);
+
+  // Home button click handler - reset state and navigate
+  const handleHomeClick = () => {
+    setActiveArea(null);
+    navigate('/portal');
+  };
 
   // Update clock every minute
   useEffect(() => {
@@ -100,19 +107,18 @@ export function SystemBar() {
       <div className="flex h-12 items-center justify-between px-4">
         {/* Left section: Home + Theme Toggle + Logo placeholder */}
         <div className="flex items-center gap-1">
-          {/* Home button */}
-          <Link 
-            to="/portal" 
+          {/* Home button - onClick handler for proper state reset */}
+          <button 
+            onClick={handleHomeClick}
             className={cn(
               'flex items-center justify-center p-2 rounded-xl transition-all',
               'text-muted-foreground hover:text-foreground',
-              'hover:bg-white/20 dark:hover:bg-white/10',
-              'hover:shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)]'
+              'nav-tab-glass'
             )}
             title="Zur Portal-Startseite"
           >
             <Home className="h-5 w-5" />
-          </Link>
+          </button>
 
           {/* Theme Toggle — ORBITAL Design System requirement */}
           <ThemeToggle />
