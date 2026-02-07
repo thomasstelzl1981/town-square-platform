@@ -24,9 +24,8 @@ import {
   LogOut, 
   Settings, 
   User,
-  MessageCircle,
+  Rocket,
   KeyRound,
-  Clock,
   MapPin,
   Mountain
 } from 'lucide-react';
@@ -117,7 +116,7 @@ export function SystemBar() {
           </div>
         </div>
 
-        {/* Center section: Location + Time */}
+        {/* Center section: Location only (clock removed) */}
         <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
           {location ? (
             <>
@@ -131,55 +130,59 @@ export function SystemBar() {
                   <span className="text-sm">{location.altitude}m</span>
                 </div>
               )}
-              <span className="text-muted-foreground/50">·</span>
             </>
           ) : locationError ? (
-            <>
-              <button
-                onClick={() => {
-                  setLocationError(false);
-                  navigator.geolocation?.getCurrentPosition(
-                    async (position) => {
-                      const { latitude, longitude, altitude } = position.coords;
-                      try {
-                        const response = await fetch(
-                          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-                          { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
-                        );
-                        const data = await response.json();
-                        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
-                        setLocation({ city, altitude: altitude ? Math.round(altitude) : null });
-                      } catch (error) {
-                        console.error('Geocoding failed:', error);
-                        setLocationError(true);
-                      }
-                    },
-                    () => setLocationError(true),
-                    { enableHighAccuracy: true }
-                  );
-                }}
-                className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-                title="Standort aktivieren"
-              >
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm">Standort?</span>
-              </button>
-              <span className="text-muted-foreground/50">·</span>
-            </>
+            <button
+              onClick={() => {
+                setLocationError(false);
+                navigator.geolocation?.getCurrentPosition(
+                  async (position) => {
+                    const { latitude, longitude, altitude } = position.coords;
+                    try {
+                      const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+                        { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
+                      );
+                      const data = await response.json();
+                      const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
+                      setLocation({ city, altitude: altitude ? Math.round(altitude) : null });
+                    } catch (error) {
+                      console.error('Geocoding failed:', error);
+                      setLocationError(true);
+                    }
+                  },
+                  () => setLocationError(true),
+                  { enableHighAccuracy: true }
+                );
+              }}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              title="Standort aktivieren"
+            >
+              <MapPin className="h-4 w-4" />
+              <span className="text-sm">Standort?</span>
+            </button>
           ) : null}
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            <span className="text-sm font-mono">{formattedTime}</span>
-          </div>
         </div>
 
-        {/* Right section: Armstrong toggle + User avatar */}
-        <div className="flex items-center gap-2">
+        {/* Right section: Settings + Armstrong + User avatar */}
+        <div className="flex items-center gap-1">
+          {/* Settings button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="h-9 w-9"
+          >
+            <Link to="/portal/stammdaten/sicherheit" title="Einstellungen">
+              <Settings className="h-5 w-5" />
+            </Link>
+          </Button>
+
           {/* Armstrong toggle - Desktop only */}
           {!isMobile && (
             <Button
               variant={armstrongVisible ? 'secondary' : 'ghost'}
-              size="sm"
+              size="icon"
               onClick={() => {
                 if (!armstrongVisible) {
                   toggleArmstrong();
@@ -187,11 +190,10 @@ export function SystemBar() {
                   toggleArmstrongExpanded();
                 }
               }}
-              className="hidden lg:flex items-center gap-2"
+              className="h-9 w-9"
               title={armstrongVisible ? (armstrongExpanded ? 'Armstrong minimieren' : 'Armstrong erweitern') : 'Armstrong öffnen'}
             >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-xs">Armstrong</span>
+              <Rocket className="h-5 w-5" />
             </Button>
           )}
 
