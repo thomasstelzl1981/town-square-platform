@@ -34,6 +34,7 @@ export function ArmstrongContainer() {
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasInitialized = useRef(false);
 
   // Draggable positioning (different size for expanded vs collapsed)
   const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
@@ -44,6 +45,16 @@ export function ArmstrongContainer() {
     boundaryPadding: 20,
     disabled: isMobile,
   });
+
+  // One-time initialization: Clear old position and reset to default (bottom-right)
+  useEffect(() => {
+    if (armstrongVisible && !hasInitialized.current && !isMobile) {
+      hasInitialized.current = true;
+      // Clear any stale position data and reset to bottom-right
+      localStorage.removeItem('armstrong-position');
+      resetPosition();
+    }
+  }, [armstrongVisible, isMobile, resetPosition]);
 
   // Self-healing: Check if container is off-screen and reset if needed
   useEffect(() => {
