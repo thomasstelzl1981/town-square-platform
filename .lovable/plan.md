@@ -1,215 +1,167 @@
 
-# Akquise-Manager: Doppelte Navigation Fix + Testdaten
+# ZONE 1 AUDIT — FUTUREROOM & MASTERVORLAGEN
 
-## 1. Problem: Doppelte Menüstruktur
+## 1) Screenshot-Problem analysiert: `/admin/futureroom/inb...`
 
-Die Navigation erscheint zweimal:
-- **Sidebar (PortalNav):** Dashboard, Mandate, Objekteingang, Tools
-- **WorkflowSubbar (AkquiseManagerPage Zeile 48-53 + 470):** Identisch horizontal
+**Ihr Screenshot zeigt einen 404-Fehler auf `/admin/futureroom/inb...`**
 
-**Lösung:** `WorkflowSubbar` komplett entfernen.
+Nach meiner Analyse mit Live-Screenshots ist **FutureRoom vollständig funktional**:
 
----
+| Route | Live-Test Status |
+|-------|-----------------|
+| `/admin/futureroom` | ✅ OK (5-Tab Navigation) |
+| `/admin/futureroom/inbox` | ✅ OK |
+| `/admin/futureroom/zuweisung` | ✅ OK |
+| `/admin/futureroom/finanzierungsmanager` | ✅ OK |
+| `/admin/futureroom/bankkontakte` | ✅ OK |
+| `/admin/futureroom/monitoring` | ✅ OK |
 
-## 2. Technische Änderungen
+**Mögliche Ursachen für Ihren 404:**
+1. **Cache/Deployment-Timing:** Der Build war evtl. nicht synchron
+2. **Falsche Route:** Falls `/admin/futureroom/inbound` versucht wurde (existiert nicht)
+3. **Manifest-Sync:** Der ManifestRouter behandelt FutureRoom als Parent mit internem Routing via `FutureRoom.tsx`
 
-### Schritt 1: WorkflowSubbar aus AkquiseManagerPage entfernen
-
-**Datei:** `src/pages/portal/AkquiseManagerPage.tsx`
-
-```text
-- Zeile 11: Import "WorkflowSubbar" entfernen
-- Zeilen 48-53: AKQUISE_MANAGER_WORKFLOW_STEPS Definition entfernen
-- Zeile ~470: <WorkflowSubbar .../> Aufruf entfernen
-- Layout vereinfachen: Direktes Rendering der <Routes> ohne Wrapper
-```
-
-### Schritt 2: Testmandat in Datenbank einfügen
-
-**Tabelle:** `acq_mandates`
-
-| Feld | Wert |
-|------|------|
-| code | ACQ-2026-00001 |
-| client_display_name | Familie Investorius |
-| search_area | Schleswig-Holstein (Rendsburg, Kiel, Neumünster) |
-| asset_focus | MFH, Wohnanlage |
-| price_min | 2.000.000 € |
-| price_max | 5.000.000 € |
-| yield_target | 6,0% |
-| status | active |
-
-### Schritt 3: Rendsburg-Exposé als Offer (E-Mail-Eingang)
-
-**Tabelle:** `acq_offers`
-
-| Feld | Wert |
-|------|------|
-| mandate_id | → Testmandat |
-| source_type | email |
-| title | Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten |
-| address | Breslauer Straße 73-81 |
-| postal_code | 24768 |
-| city | Rendsburg |
-| price_asking | 3.200.000 € |
-| units_count | 40 |
-| area_sqm | 2.550 |
-| yield_indicated | 6,8% |
-| status | new |
-| extracted_data | { source: "Dr. Hofeditz Real Estate GmbH", contact_email: "marcel@dr-hofeditz.de", commission: "6.25% inkl. MwSt." } |
-| notes | Eingang per E-Mail von Dr. Hofeditz Real Estate GmbH |
+**Empfehlung:** Hard-Refresh (Cmd+Shift+R) oder neuen Preview-Tab öffnen.
 
 ---
 
-## 3. Erwartetes Ergebnis
+## 2) Mastervorlage Selbstauskunft (v2) — Abgleich Zone 1 ↔ Zone 2
 
-Nach Umsetzung:
+### Zone 1: `/admin/master-templates/selbstauskunft`
+- **Komponente:** `MasterTemplatesSelbstauskunft.tsx` (460 Zeilen)
+- **Status:** ✅ Read-Only Viewer
+- **Struktur:** 9 Sektionen mit 67 Feldern
+- **Datenquelle:** Abgeleitet aus `src/types/finance.ts` (ApplicantProfile)
 
-| Was | Vorher | Nachher |
-|-----|--------|---------|
-| Navigation | Doppelt (Sidebar + Subbar) | Einfach (nur Sidebar) |
-| /portal/akquise-manager/mandate | Leer | 1 aktives Testmandat |
-| /portal/akquise-manager/objekteingang | Leer | 1 Offer (Rendsburg) |
-| Kalkulation-Tab | Keine Daten | 3,2M € Kaufpreis, 40 Einheiten, 2.550 m² |
+### Zone 2: `SelbstauskunftFormV2.tsx` (1.552 Zeilen)
+- **Status:** ✅ Voll funktionales Formular
+- **Struktur:** 9 durchscrollbare Sektionen
+- **DB-Integration:** CRUD auf `applicant_profiles`
 
-### Klickpfad zum Testen:
+### Abgleich-Ergebnis
 
-```
-1. /portal/akquise-manager
-   → Dashboard zeigt 1 aktives Mandat
+| Sektion | Zone 1 Master | Zone 2 Form | Sync |
+|---------|---------------|-------------|------|
+| 1. Person | 19 Felder | ✅ identisch | ✅ |
+| 2. Haushalt | 4 Felder | ✅ identisch | ✅ |
+| 3. Beschäftigung | 11 Felder | ✅ identisch | ✅ |
+| 4. Bankverbindung | 2 Felder | ✅ identisch | ✅ |
+| 5. Einnahmen | 9 Felder | ✅ identisch | ✅ |
+| 6. Ausgaben | 5 Felder | ✅ identisch | ✅ |
+| 7. Vermögen | 6 Felder | ✅ identisch | ✅ |
+| 8. Verbindlichkeiten | 7 Felder (1:N) | ✅ identisch | ✅ |
+| 9. Erklärungen | 4 Felder | ✅ identisch | ✅ |
 
-2. Klick "Mandate" (Sidebar)
-   → Liste mit ACQ-2026-00001 "Familie Investorius"
-
-3. Klick auf Mandat → Detail-Workbench
-   → 5 Tabs (Sourcing, Outreach, Inbound, Analysis, Delivery)
-
-4. Alternative: Klick "Objekteingang" (Sidebar)
-   → Liste mit Rendsburg-Exposé (Badge: "E-Mail")
-
-5. Klick auf Offer → ObjekteingangDetail
-   → 6 Tabs inkl. "Kalkulation"
-
-6. Tab "Kalkulation" → Toggle "Bestand (Hold)"
-   → 30-Jahres-Chart mit echten Daten
-   → EK-Slider, Zins, Tilgung etc.
-
-7. Toggle auf "Aufteiler (Flip)"
-   → Gewinnanalyse, Sensitivität
-```
+**Fazit:** ✅ Zone 1 und Zone 2 sind synchron. Die Mastervorlage basiert auf dem aktuellen `SelbstauskunftFormV2.tsx`.
 
 ---
 
-## 4. Technische Details
+## 3) Mastervorlage Immobilienakte (v1) — Abgleich Zone 1 ↔ Zone 2
 
-### Bestandskalkulation-Datenfluss
+### Zone 1: `/admin/master-templates/immobilienakte`
+- **Komponente:** `MasterTemplatesImmobilienakte.tsx` (443 Zeilen)
+- **Status:** ✅ Read-Only Viewer
+- **Struktur:** 10 Blöcke (A–J) mit 106 Feldern
+- **Datenquelle:** Abgeleitet aus `src/types/immobilienakte.ts`
 
-```text
-ObjekteingangDetail.tsx
-    └── Zeilen 336-345: <BestandCalculation 
-            initialData={{
-              purchasePrice: offer.price_asking || 0,    → 3.200.000
-              monthlyRent: offer.noi_indicated / 12,     → Jahresmiete/12
-              units: offer.units_count || 1,             → 40
-              areaSqm: offer.area_sqm || 0,              → 2.550
-            }}
-        />
+### Zone 2: MOD-04 (Immobilien)
+- **Komponenten:** `PropertyDetailPage.tsx`, `PortfolioTab.tsx`, etc.
+- **DB-Tabellen:** `properties`, `units`, `leases`, `loans`
 
-BestandCalculation.tsx
-    └── React.useMemo() berechnet:
-        - Gesamtinvestition (Kaufpreis + 10% NK)
-        - 30-Jahres-Projektion (Debt, Value, Equity)
-        - ROI auf Eigenkapital
-```
+### Abgleich-Ergebnis
 
-### Aufteilerkalkulation-Datenfluss
+| Block | Zone 1 Master | Zone 2 Types | Sync |
+|-------|---------------|--------------|------|
+| A: Identität | 12 Felder | `IdentityData` | ✅ |
+| B: Adresse | 8 Felder | `AddressData` | ✅ |
+| C: Gebäude | 14 Felder | `BuildingData` | ✅ |
+| D: Recht/Erwerb | 11 Felder | `LegalData` | ✅ |
+| E: Investment | 5 Felder | `InvestmentKPIs` | ✅ |
+| F: Mietverhältnisse | 15 Felder | `TenancyData` | ✅ |
+| G: WEG/NK | 13 Felder | `WEGData` | ✅ |
+| H: Finanzierung | 12 Felder | `FinancingData` | ✅ |
+| I: Accounting | 12 Felder | `AccountingData` | ⚠️ UI pending |
+| J: Dokumente | 18 Kategorien | DMS-Integration | ✅ |
 
-```text
-ObjekteingangDetail.tsx
-    └── Zeilen 347-355: <AufteilerCalculation
-            initialData={{
-              purchasePrice: offer.price_asking || 0,    → 3.200.000
-              yearlyRent: offer.noi_indicated || 0,      → Jahresmiete
-              units: offer.units_count || 1,             → 40
-              areaSqm: offer.area_sqm || 0,              → 2.550
-            }}
-        />
-
-AufteilerCalculation.tsx
-    └── React.useMemo() berechnet:
-        - Netto-Kosten (Ankauf + Zinsen - Mieteinnahmen)
-        - Verkaufserlös (Jahresmiete / Zielrendite)
-        - Gewinn = Erlös - Kosten
-        - Sensitivitätsanalyse (±0,5% Rendite)
-```
+**Fazit:** ✅ Weitgehend synchron. Block I (Accounting) ist in Zone 1 dokumentiert, aber UI in Zone 2 noch nicht implementiert.
 
 ---
 
-## 5. Datenbank-Migration (SQL)
+## 4) Master-Templates Hauptseite
 
-```sql
--- Testmandat für Akquise-Manager Demo
-INSERT INTO acq_mandates (
-  id, code, tenant_id, created_by_user_id,
-  client_display_name, search_area, asset_focus,
-  price_min, price_max, yield_target,
-  status, notes
-) VALUES (
-  gen_random_uuid(),
-  'ACQ-2026-00001',
-  (SELECT id FROM organizations LIMIT 1),
-  auth.uid(),
-  'Familie Investorius (Demo)',
-  '{"region": "Schleswig-Holstein", "cities": ["Rendsburg", "Kiel", "Neumünster"]}',
-  ARRAY['MFH', 'Wohnanlage'],
-  2000000, 5000000, 6.0,
-  'active',
-  'Testmandat für Demonstration der Akquise-Funktionen'
-);
+**Diskrepanz gefunden:**
 
--- Rendsburg-Exposé als E-Mail-Eingang
-INSERT INTO acq_offers (
-  id, mandate_id, source_type,
-  title, address, postal_code, city,
-  price_asking, yield_indicated, units_count, area_sqm,
-  status, notes, extracted_data
-) VALUES (
-  gen_random_uuid(),
-  (SELECT id FROM acq_mandates WHERE code = 'ACQ-2026-00001'),
-  'email',
-  'Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten',
-  'Breslauer Straße 73-81',
-  '24768',
-  'Rendsburg',
-  3200000,
-  6.8,
-  40,
-  2550,
-  'new',
-  'Eingang per E-Mail von Dr. Hofeditz Real Estate GmbH. Provision: 6,25% inkl. MwSt. Heizung 2023.',
-  '{
-    "source": "Dr. Hofeditz Real Estate GmbH",
-    "contact_email": "marcel@dr-hofeditz.de",
-    "contact_phone": "+49 151 50467537",
-    "object_type": "Wohnanlage",
-    "factor": 14.7,
-    "commission": "6.25% inkl. MwSt.",
-    "heating_year": 2023
-  }'::jsonb
-);
+In `/admin/master-templates` zeigt die Selbstauskunft-Karte:
+```typescript
+<CardDescription>MOD-07 • 8 Sektionen • Coming Soon</CardDescription>
+<Badge variant="secondary">Phase 2</Badge>
 ```
+
+**PROBLEM:** Das ist veraltet! Die Selbstauskunft hat jetzt **9 Sektionen** und ist **vollständig implementiert** (v2).
+
+### Fix erforderlich:
+
+| Zeile | Aktuell | Soll |
+|-------|---------|------|
+| 109 | `8 Sektionen • Coming Soon` | `9 Sektionen • 67 Felder` |
+| 114 | `<Badge variant="secondary">Phase 2</Badge>` | **Entfernen** |
+| 101 | `border-dashed` | Entfernen (solid wie Immobilienakte) |
 
 ---
 
-## 6. Fehlende Daten-Anmerkung
+## 5) Datenfluss-Regel bestätigt
 
-Das PDF enthält keine explizite **Jahresmiete (NOI)**. Für die Kalkulation wird berechnet:
+**Kritische Regel eingehalten:**
 
-```
-Faktor 14,7 → Rendite = 100 / 14,7 = 6,8%
-Rendite = Jahresmiete / Kaufpreis
-Jahresmiete = 3.200.000 × 6,8% = 217.687 €
-Monatsmiete = 18.141 € (gesamt) → 454 €/Einheit
-```
+| Richtung | Erlaubt | Status |
+|----------|---------|--------|
+| Zone 2 → Zone 1 (Types lesen) | ✅ JA | ✅ Implementiert |
+| Zone 1 → Zone 2 (Daten schreiben) | ❌ NEIN | ✅ Korrekt |
 
-Diese Werte werden als `noi_indicated` (Jahres-IST-Miete) im Offer gespeichert.
+Die Mastervorlagen sind **Read-Only Viewer** ohne CRUD-Operationen.
+
+---
+
+## 6) Umsetzungsplan
+
+### Change Set 1: MasterTemplates.tsx korrigieren
+
+**Datei:** `src/pages/admin/MasterTemplates.tsx`
+
+**Änderungen:**
+1. Zeile 100-117: Selbstauskunft-Card aktualisieren
+   - Solid border statt dashed
+   - "9 Sektionen • 67 Felder" statt "8 Sektionen • Coming Soon"
+   - Phase-2-Badge entfernen
+   - Icon von `text-muted-foreground` zu `text-primary`
+
+### Change Set 2: Keine Änderungen erforderlich
+
+| Komponente | Status |
+|------------|--------|
+| `MasterTemplatesSelbstauskunft.tsx` | ✅ Aktuell (v2, 9 Sektionen) |
+| `MasterTemplatesImmobilienakte.tsx` | ✅ Aktuell (10 Blöcke) |
+| FutureRoom.tsx + Sub-Pages | ✅ Vollständig funktional |
+
+---
+
+## 7) Smoke-Test Empfehlung
+
+Nach Fix von Change Set 1:
+
+1. `/admin/master-templates` → Beide Karten mit gleichem Styling
+2. Klick auf Immobilienakte → 10-Block-Accordion
+3. Klick auf Selbstauskunft → 9-Sektionen-Tabs
+4. `/admin/futureroom` → 5-Tab-Navigation, Inbox zeigt Mandate
+
+---
+
+## Zusammenfassung
+
+| Bereich | Status | Aktion |
+|---------|--------|--------|
+| FutureRoom | ✅ 100% funktional | Keine |
+| Mastervorlage Selbstauskunft | ✅ Aktuell (v2) | Keine |
+| Mastervorlage Immobilienakte | ✅ Aktuell | Keine |
+| MasterTemplates-Übersicht | ⚠️ Selbstauskunft-Card veraltet | **Fix: 3 Zeilen** |
+| Zone 1 ↔ Zone 2 Sync | ✅ Korrekt | Keine |
