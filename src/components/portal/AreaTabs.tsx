@@ -21,7 +21,7 @@ export function AreaTabs() {
   const { activeArea, setActiveArea } = usePortalLayout();
 
   return (
-    <div className="flex items-center gap-1 px-4 py-2">
+    <div className="flex items-center justify-center gap-1 px-4 py-2">
       {areaConfig.map((area) => {
         const Icon = areaIcons[area.key];
         const isActive = activeArea === area.key;
