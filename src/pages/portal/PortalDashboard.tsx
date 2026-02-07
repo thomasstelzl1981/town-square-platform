@@ -1,34 +1,67 @@
+/**
+ * PortalDashboard — Redesigned with immersive welcome experience
+ * 
+ * Layout:
+ * +--------------------------------+--------------------------------+
+ * |     🌍 EARTH GLOBE             |    ☀️ WEATHER WIDGET           |
+ * +--------------------------------+--------------------------------+
+ * |     🤖 ARMSTRONG GREETING (full width)                          |
+ * +-----------------------------------------------------------------+
+ */
+
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LayoutGrid } from 'lucide-react';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { useWeather } from '@/hooks/useWeather';
+import { useTodayEvents } from '@/hooks/useTodayEvents';
+import { EarthGlobeCard } from '@/components/dashboard/EarthGlobeCard';
+import { WeatherCard } from '@/components/dashboard/WeatherCard';
+import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
 
 export default function PortalDashboard() {
-  const { activeOrganization, profile, isDevelopmentMode } = useAuth();
+  const { profile, isDevelopmentMode } = useAuth();
+  const { location, loading: locationLoading } = useGeolocation();
+  const { data: weather, isLoading: weatherLoading } = useWeather(
+    location?.latitude ?? null,
+    location?.longitude ?? null
+  );
+  const { data: todayEvents = [], isLoading: eventsLoading } = useTodayEvents();
+
+  const isLoading = locationLoading || weatherLoading || eventsLoading;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold uppercase">
-          Willkommen{profile?.display_name ? `, ${profile.display_name}` : ''}
-        </h1>
-        {isDevelopmentMode && (
-          <p className="text-xs text-amber-600 mt-1">
-            Entwicklungsmodus aktiv
-          </p>
-        )}
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
+      {/* Development Mode Indicator */}
+      {isDevelopmentMode && (
+        <p className="text-xs text-status-warn">
+          Entwicklungsmodus aktiv
+        </p>
+      )}
+
+      {/* Top Row: Earth Globe + Weather (side by side on desktop) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Google Earth 3D Globe Card */}
+        <EarthGlobeCard
+          latitude={location?.latitude ?? null}
+          longitude={location?.longitude ?? null}
+          city={location?.city}
+        />
+
+        {/* Weather Widget */}
+        <WeatherCard
+          latitude={location?.latitude ?? null}
+          longitude={location?.longitude ?? null}
+          city={location?.city}
+        />
       </div>
 
-      {/* Leerer Dashboard-Bereich */}
-      <Card className="p-12 text-center border-dashed">
-        <CardContent className="pt-6">
-          <LayoutGrid className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-lg font-medium">Dashboard</p>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Wählen Sie ein Modul aus dem Menü links, um zu beginnen.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Bottom Row: Armstrong Greeting (full width) */}
+      <ArmstrongGreetingCard
+        displayName={profile?.display_name || ''}
+        city={location?.city || ''}
+        weather={weather ?? null}
+        todayEvents={todayEvents}
+        isLoading={isLoading}
+      />
     </div>
   );
 }
