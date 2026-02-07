@@ -1,237 +1,194 @@
 
-# Umsetzungsplan: Exposé-Tab Datenkonsistenz & Duplikat-Bereinigung
+# Analyse: Storage-Ordnerstruktur Drift
 
-## Analyse der aktuellen Situation
+## 🔴 DRIFT GEFUNDEN: Zwei verschiedene Ordner-Definitionen
 
-### Datenquellen-Vergleich
+### Quelle 1: Datenbank (storage_nodes) - KORREKT ✅
 
-| Feld | Akte (dossierData) | Exposé (property) | Status |
-|------|-------------------|-------------------|--------|
-| Straße | ✅ street | ✅ address | OK |
-| PLZ | ✅ postalCode | ✅ postal_code | OK |
-| Ort | ✅ city | ✅ city | OK |
-| Land | ❌ (nicht editierbar) | ✅ country | Nur Exposé |
-| Lagebezeichnung | ✅ locationLabel | ❌ FEHLT | **Muss ergänzt werden** |
-| Objektbeschreibung | ✅ description | ✅ description | OK |
-| Koordinaten | ✅ latitude/longitude | ❌ FEHLT | Für Karte nutzen |
+Die Demo-Immobilie DEMO-001 hat bereits **18 korrekte Ordner** (00-17):
 
-### Duplikate im Exposé-Tab
+| Nr. | Ordnername | Status |
+|-----|------------|--------|
+| 00 | Projektdokumentation | ✅ vorhanden |
+| 01 | Exposé Ankauf | ✅ vorhanden |
+| 02 | Exposé Sonstiges | ✅ vorhanden |
+| 03 | Grundbuchauszug | ✅ vorhanden |
+| 04 | Teilungserklärung | ✅ vorhanden |
+| 05 | Grundriss | ✅ vorhanden |
+| 06 | Kurzgutachten | ✅ vorhanden |
+| 07 | Kaufvertrag | ✅ vorhanden |
+| 08 | Mietvertrag | ✅ vorhanden |
+| 09 | Rechnungen | ✅ vorhanden |
+| 10 | Wirtschaftsplan Abrechnungen Protokolle | ✅ vorhanden |
+| 11 | Fotos | ✅ vorhanden |
+| 12 | Energieausweis | ✅ vorhanden |
+| 13 | Wohngebäudeversicherung | ✅ vorhanden |
+| 14 | Sonstiges | ✅ vorhanden |
+| 15 | Darlehen und Finanzierung | ✅ vorhanden |
+| 16 | Sanierung | ✅ vorhanden |
+| 17 | Grundsteuer | ✅ vorhanden |
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ HEADER-KARTE                                                │
-│ Eigentumswohnung                                            │
-│ Leipziger Straße 42                    ← ADRESSE #1         │
-│ 04109 Leipzig, Deutschland             ← PLZ/ORT/LAND #1    │
-│                              Objekt-Code: DEMO-001          │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ LAGE & ADRESSE                                              │
-│ Straße: Leipziger Straße 42            ← ADRESSE #2 (DUPLIKAT)
-│ PLZ: 04109                             ← DUPLIKAT           │
-│ Ort: Leipzig                           ← DUPLIKAT           │
-│ Land: Deutschland                      ← DUPLIKAT           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Problem:** Die gleichen Adressdaten werden zweimal angezeigt.
+→ **Template**: `PROPERTY_DOSSIER_V1` (korrekt gemäß Memory)
 
 ---
 
-## Lösung: Exposé-Tab Struktur optimieren
-
-### Neue Karten-Struktur
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ HEADER (bleibt wie bisher)                                  │
-│ [Objekttyp] [Adresse] [PLZ Ort, Land] [Objekt-Code]         │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ LAGE & MIKROLAGE (NEU - ersetzt "Lage & Adresse")           │
-│ Lagebezeichnung: "Altbau am Waldstraßenviertel"   ← NEU     │
-│ (Freitext aus Akte locationNotes / location_notes)          │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ OBJEKTBESCHREIBUNG (Vollbreite, prominent)                  │
-│ [Beschreibungstext aus property.description]                │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ OBJEKTDATEN (zusammengefasst)                               │
-│ Baujahr: 1920 | Sanierung: 2015 | Wohnfläche: 65 qm         │
-│ Heizung: Fernwärme | Energieträger: Fernwärme               │
-└─────────────────────────────────────────────────────────────┘
-
-... weitere Karten (Grundbuch, Finanzierung, Miete) ...
-```
-
----
-
-## Technische Umsetzung
-
-### Schritt 1: Datenbank-Schema erweitern
-
-Die Spalte `location_notes` existiert möglicherweise nicht in `properties`. Prüfung erforderlich:
-
-```sql
--- Falls nicht vorhanden:
-ALTER TABLE properties 
-ADD COLUMN IF NOT EXISTS location_notes TEXT;
-```
-
-### Schritt 2: ExposeTab.tsx - Interface erweitern
-
-**Datei:** `src/components/portfolio/ExposeTab.tsx`
-
-Property-Interface erweitern (Zeile 7-29):
+### Quelle 2: StorageTab.tsx (Zeile 56-64) - VERALTET ❌
 
 ```typescript
-interface Property {
-  id: string;
-  code: string | null;
-  property_type: string;
-  city: string;
-  address: string;
-  postal_code: string | null;
-  country: string;
-  total_area_sqm: number | null;
-  year_built: number | null;
-  renovation_year: number | null;
-  // ... bestehende Felder ...
-  description: string | null;
-  location_notes: string | null;  // NEU: Lagebezeichnung
+const SYSTEM_FOLDERS = [
+  { key: 'inbox', name: 'Posteingang', icon: Inbox },
+  { key: 'immobilien', name: 'Immobilien', icon: Building2 },
+  { key: 'finanzierung', name: 'Finanzierung', icon: Landmark },
+  { key: 'bonitaetsunterlagen', name: 'Bonitätsunterlagen', icon: FileQuestion },
+  { key: 'needs_review', name: 'Zur Prüfung', icon: AlertCircle },
+  { key: 'archive', name: 'Archiv', icon: Archive },
+  { key: 'sonstiges', name: 'Sonstiges', icon: MoreHorizontal },
+];
+```
+
+→ Nur **7 generische System-Ordner** - keine Immobilien-spezifischen Ordner!
+
+---
+
+### Quelle 3: DatenraumTab.tsx - NEUTRAL (liest nur aus DB)
+
+Der `DatenraumTab.tsx` (in der Immobilienakte) liest korrekt aus `storage_nodes` und zeigt alle 18 Ordner, **WENN** sie in der DB existieren.
+
+---
+
+## 🔍 Warum sehen Sie nur 9 Punkte?
+
+### Mögliche Ursachen:
+
+1. **Sie sind auf `/portal/dms/storage`** (globales DMS):
+   - Zeigt nur die 7 `SYSTEM_FOLDERS` + evtl. 2 automatisch erstellte Ordner
+   - **Keine Immobilien-Unterordner sichtbar**, da die Query nur `tenant_id` filtert, nicht `property_id`
+
+2. **Sie sind auf der Immobilie** (Tab "Datenraum"):
+   - Sollte alle 18 Ordner zeigen (00-17)
+   - Query filtert auf `property_id`
+
+---
+
+## 📊 Architektur-Unterschied
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ GLOBALES DMS (/portal/dms/storage)                              │
+│ ─────────────────────────────────────────────────────────────── │
+│ StorageTab.tsx                                                  │
+│                                                                 │
+│ ├── Posteingang (system)                                        │
+│ ├── Immobilien (system)        ← Nur Container!                 │
+│ │   └── [Immobilien-Ordner werden NICHT geladen]                │
+│ ├── Finanzierung (system)                                       │
+│ ├── Bonitätsunterlagen (system)                                 │
+│ ├── Zur Prüfung (system)                                        │
+│ ├── Archiv (system)                                             │
+│ └── Sonstiges (system)                                          │
+│                                                                 │
+│ FEHLT: Rekursive Unterordner-Anzeige!                           │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ IMMOBILIEN-AKTE (/portal/immobilien/{id}) → Tab "Datenraum"     │
+│ ─────────────────────────────────────────────────────────────── │
+│ DatenraumTab.tsx                                                │
+│                                                                 │
+│ ├── DEMO-001 - Leipziger Straße 42 (root)                       │
+│ │   ├── 00_Projektdokumentation                                 │
+│ │   ├── 01_Exposé Ankauf                                        │
+│ │   ├── 02_Exposé Sonstiges                                     │
+│ │   ├── ... (alle 18 Ordner)                                    │
+│ │   └── 17_Grundsteuer                                          │
+│                                                                 │
+│ ✅ Korrekt: Alle 18 Ordner werden angezeigt!                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ Lösung: StorageTab.tsx erweitern
+
+### Option A: Rekursive Unterordner-Anzeige (empfohlen)
+
+Das globale DMS sollte auch Unterordner der Immobilien anzeigen:
+
+```typescript
+// Statt nur root-Nodes:
+const rootNodes = nodes.filter(n => n.parent_id === null);
+
+// Sollte werden:
+// 1. System-Ordner als Root
+// 2. Immobilien-Ordner unter "Immobilien"
+// 3. Unterordner rekursiv laden
+```
+
+### Option B: Navigationshierarchie anpassen
+
+Das globale DMS zeigt nur System-Ordner als Navigation, und bei Klick auf "Immobilien" werden die Properties mit ihren 18 Ordnern geladen.
+
+---
+
+## 📋 Umsetzungsplan
+
+### Schritt 1: StorageTab.tsx - Hierarchische Anzeige
+
+**Datei:** `src/pages/portal/dms/StorageTab.tsx`
+
+Änderungen:
+1. Query erweitern: Alle Nodes laden, nicht nur `parent_id === null`
+2. Baum-Struktur rekursiv rendern (wie in DatenraumTab.tsx)
+3. Property-Ordner unter "Immobilien" einordnen
+
+```typescript
+// Neue Query: Alle storage_nodes mit parent-child Beziehung
+const { data: allNodes } = await supabase
+  .from('storage_nodes')
+  .select(`
+    *,
+    properties (code, address)
+  `)
+  .eq('tenant_id', activeTenantId)
+  .order('name');
+
+// Baum bauen: System-Ordner → Properties → Unterordner
+function buildFullTree(nodes: StorageNode[]): TreeNode[] {
+  // 1. System-Ordner als Root (node_type = 'system')
+  // 2. Property-Ordner unter "Immobilien" einhängen
+  // 3. Unterordner (00-17) unter Property einhängen
 }
 ```
 
-### Schritt 3: ExposeTab.tsx - Karten-Struktur anpassen
+### Schritt 2: Memory-Abgleich sicherstellen
 
-**Zeile 97-109 ersetzen** (alte "Lage & Adresse"-Karte):
+Die 18-Ordner-Struktur aus Memory (`architecture/dms-standard-folder-hierarchy-v3-refined`) muss als SSOT verwendet werden:
 
-Von:
-```typescript
-{/* Lage & Adresse */}
-<Card>
-  <CardHeader>
-    <CardTitle className="text-base">Lage & Adresse</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3">
-    <InfoRow label="Straße" value={property.address} />
-    <InfoRow label="PLZ" value={property.postal_code} />
-    <InfoRow label="Ort" value={property.city} />
-    <InfoRow label="Land" value={property.country} />
-  </CardContent>
-</Card>
-```
+| Nr. | Memory-Name | DB-Name | Match? |
+|-----|-------------|---------|--------|
+| 00 | Projektdokumentation | 00_Projektdokumentation | ✅ |
+| 01 | Exposee Ankauf | 01_Exposé Ankauf | ✅ |
+| 02 | Exposee Verkauf | 02_Exposé Sonstiges | ⚠️ Abweichung! |
+| ... | ... | ... | ... |
+| 18 | Sonstiges | 14_Sonstiges | ⚠️ Nummern verschoben! |
 
-Zu:
-```typescript
-{/* Lage & Mikrolage - nur wenn vorhanden */}
-{property.location_notes && (
-  <Card>
-    <CardHeader>
-      <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm">{property.location_notes}</p>
-    </CardContent>
-  </Card>
-)}
-```
+### Schritt 3: Nummerierung korrigieren (falls gewünscht)
 
-### Schritt 4: Beschreibung prominenter platzieren
-
-**Zeile 193-203 verschieben** - Beschreibung nach oben, vor die Detail-Karten:
-
-```typescript
-{/* Beschreibung - jetzt direkt nach Header */}
-{property.description && (
-  <Card className="md:col-span-2">
-    <CardHeader>
-      <CardTitle className="text-base">Objektbeschreibung</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm whitespace-pre-wrap">{property.description}</p>
-    </CardContent>
-  </Card>
-)}
-```
-
-### Schritt 5: PropertyDetailPage.tsx - location_notes laden
-
-**Zeile 31-60** - Property-Interface erweitern und Abfrage anpassen:
-
-Interface ergänzen:
-```typescript
-interface Property {
-  // ... bestehende Felder ...
-  location_notes: string | null;  // NEU
-}
-```
-
-Die Supabase-Query `select('*')` lädt bereits alle Spalten, also ist keine Query-Änderung nötig.
+Memory sagt 18 Ordner (00-18), DB hat (00-17) mit leicht anderen Namen.
 
 ---
 
-## Zusammenfassung der Änderungen
+## Zusammenfassung
 
-| Datei | Änderung |
-|-------|----------|
-| `properties` Tabelle | `location_notes` Spalte hinzufügen (falls nicht vorhanden) |
-| `src/components/portfolio/ExposeTab.tsx` | - "Lage & Adresse"-Karte entfernen (Duplikat)<br>- "Lage & Mikrolage"-Karte mit location_notes hinzufügen<br>- Beschreibung nach oben verschieben |
-| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Property-Interface um `location_notes` erweitern |
+| Bereich | Status | Problem |
+|---------|--------|---------|
+| **Datenbank** | ✅ OK | 18 Ordner pro Immobilie vorhanden |
+| **DatenraumTab** | ✅ OK | Zeigt alle 18 Ordner korrekt |
+| **StorageTab** | ❌ Drift | Zeigt nur 7 System-Ordner, keine Property-Unterordner |
+| **Memory vs. DB** | ⚠️ Prüfen | Kleine Namensabweichungen (z.B. "Verkauf" vs. "Sonstiges") |
 
----
+### Empfohlene Maßnahme
 
-## Neue Exposé-Struktur (nach Implementierung)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ HEADER                                                      │
-│ Eigentumswohnung                                            │
-│ Leipziger Straße 42                                         │
-│ 04109 Leipzig, Deutschland              DEMO-001            │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ OBJEKTBESCHREIBUNG (Vollbreite)                             │
-│ Die Eigentumswohnung befindet sich in einem gepflegten      │
-│ Altbau aus dem Jahr 1920...                                 │
-└─────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ LAGE & MIKROLAGE          │  │ BAUJAHR & ZUSTAND         │
-│ Altbau am Waldstraßen-    │  │ Baujahr: 1920             │
-│ viertel, ruhige Seiten-   │  │ Sanierung: 2015           │
-│ straße mit guter ÖPNV-    │  │ Wohnfläche: 65 qm         │
-│ Anbindung                 │  │                           │
-└───────────────────────────┘  └───────────────────────────┘
-
-... weitere Karten ...
-```
-
----
-
-## Testplan
-
-### Test 1: Keine Duplikate
-1. Immobilienakte öffnen → Tab "Exposé"
-2. **Prüfen:** Adresse erscheint NUR im Header, nicht mehr in separater Karte
-
-### Test 2: Lagebezeichnung wird angezeigt
-1. In Akte → "Lage & Beschreibung" eine Lagebezeichnung eingeben
-2. Speichern
-3. Tab "Exposé" öffnen
-4. **Erwartung:** "Lage & Mikrolage"-Karte zeigt den eingegebenen Text
-
-### Test 3: Beschreibung prominent
-1. Tab "Exposé" öffnen
-2. **Prüfen:** Objektbeschreibung erscheint direkt nach dem Header (über den Detail-Karten)
-
-### Test 4: Leere Felder ausblenden
-1. Immobilie ohne Lagebezeichnung/Beschreibung
-2. Tab "Exposé" öffnen
-3. **Erwartung:** Leere Karten werden nicht angezeigt (kein "–" Platzhalter)
+1. **StorageTab.tsx erweitern**: Rekursive Hierarchie mit Property-Ordnern
+2. **Ordnernamen abgleichen**: Memory als SSOT verwenden
+3. **Einheitliches Seeding**: Template `PROPERTY_DOSSIER_V1` als einzige Quelle
