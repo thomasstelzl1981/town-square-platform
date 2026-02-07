@@ -1,157 +1,158 @@
 
-# Umfassende Überarbeitung: Exposé-Tab & Mieten-SSOT
 
-## Zusammenfassung der gefundenen Probleme
+# Erweiterter Plan: Portfolio-Ansicht UI-Bereinigung
 
-### Problem 1: Falsches Mieten-Label im Exposé-Tab
-**Zeile 213 in `ExposeTab.tsx`:**
+## Zusammenfassung der Probleme
+
+### Problem 1: Graue Punkte in den KPI-Kacheln
+**Ursache in `stat-card.tsx` Zeile 49-51:**
 ```tsx
-<InfoRow label="Warmmiete" value={formatCurrency(unit.current_monthly_rent)} />
+{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", ...)}>
+    
+</div>}
 ```
-- `unit.current_monthly_rent` enthält die **Kaltmiete** (682 €), nicht die Warmmiete!
-- Die Datenbank zeigt: `current_monthly_rent = 682` und `ancillary_costs = 155` (Nebenkosten)
-- Warmmiete wäre: 682 + 155 = 837 €
+Der Container für das Icon wird gerendert (grauer/halbtransparenter Hintergrund), aber **das Icon selbst wurde nie eingefügt**! Der `<Icon />` JSX-Tag fehlt komplett im Container.
 
-### Problem 2: Objektbeschreibung fehlt
-- Die `ExposeDescriptionCard` wurde **nie erstellt** (File not found)
-- Der statische Block in Zeile 117-126 zeigt nur vorhandene Beschreibungen, bietet aber keine Bearbeitung
+### Problem 2: "1 Objekte" Text entfernen
+In Zeile 652 der `PortfolioTab.tsx`:
+```tsx
+subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
+```
+Dieser Subtitle soll entfernt werden.
 
-### Problem 3: ExposeHeadlineCard UI-Flackern
-- Nach dem Speichern wird `queryClient.invalidateQueries` aufgerufen, was die ganze Seite neu lädt
-- Optimistisches Update fehlt
+### Problem 3: Fehlender Abstand unter Menüleiste
+Der Container beginnt ohne padding-top, daher klebt alles direkt an der Navigation.
 
-### Problem 4: Karte über volle Breite
-- Die `PropertyMap`-Komponente nimmt die gesamte Breite ein (unschön)
-- Vorschlag: Objektbeschreibung links, Karte rechts (je 50%)
+### Problem 4: Build-Fehler `{trend}` als ReactNode
+In Zeile 41 der `stat-card.tsx` wird das `trend`-Objekt direkt als JSX-Child gerendert – das funktioniert nicht, da es ein Objekt ist.
 
-### Problem 5: Daten-SSOT nicht konsistent
-Die **Leases-Tabelle** ist der SSOT für Mietdaten, aber das Exposé liest von der **Units-Tabelle**:
-- Leases hat: `rent_cold_eur`, `nk_advance_eur`, `heating_advance_eur` (korrekt aufgeteilt)
-- Units hat nur: `current_monthly_rent`, `ancillary_costs` (redundant, veraltet)
+### Problem 5: Großer Leerraum in der Vermögensentwicklung-Kachel
+**Ursache in `chart-card.tsx`:**
+```tsx
+<div className={cn(aspectClasses[aspectRatio], "relative")}>  // aspect-video = 16:9
+```
+Die ChartCard verwendet standardmäßig `aspect-video` (16:9 Verhältnis), aber der Chart selbst hat nur `height={280}`. Das führt zu einem großen leeren Bereich unter dem Chart.
+
+**Die Lösung:** Für die Portfolio-Ansicht soll kein festes Aspekt-Verhältnis verwendet werden. Stattdessen soll sich die Karte an den Inhalt anpassen.
 
 ---
 
 ## Lösungsplan
 
-### Phase 1: Mieten-Labels korrigieren (ExposeTab.tsx)
+### Fix 1: Icons in StatCard korrekt rendern (graue Punkte → echte Icons)
 
-**Aktuelle fehlerhafte Darstellung (Zeile 210-220):**
+**Datei:** `src/components/ui/stat-card.tsx`
+
+**Zeilen 49-51 — VORHER:**
 ```tsx
-<InfoRow label="Warmmiete" value={formatCurrency(unit.current_monthly_rent)} />
-<InfoRow label="NK-Vorauszahlung" value={formatCurrency(unit.ancillary_costs)} />
+{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
+    
+</div>}
 ```
 
-**Korrekte Darstellung:**
-| Label | Quelle | Beschreibung |
-|-------|--------|--------------|
-| Kaltmiete | `leases.rent_cold_eur` | Nettokaltmiete |
-| NK-Vorauszahlung | `leases.nk_advance_eur` | Nebenkosten-Vorauszahlung |
-| Heizkosten-VZ | `leases.heating_advance_eur` | Falls vorhanden |
-| **Warmmiete** | Summe aller obigen | Bruttowarmmiete |
-
-**Änderung:** Das Exposé muss die Lease-Daten laden, nicht die Unit-Daten.
-
-### Phase 2: ExposeDescriptionCard erstellen
-
-Neue Komponente `src/components/verkauf/ExposeDescriptionCard.tsx`:
-- Editierbare Textarea für `properties.description`
-- KI-Generierungs-Button (ruft `sot-expose-description` Edge Function auf)
-- Speichert direkt in `properties.description`
-- Optimistisches Update nach Speichern
-
-### Phase 3: Layout-Überarbeitung (Beschreibung + Karte)
-
-**Neues Layout:**
-```
-+-------------------------------+-------------------------------+
-| Objektbeschreibung (editbar)  | Karte (quadratisch)           |
-| - Textarea                    | - 300px Höhe                  |
-| - KI-Button                   | - Google Maps Embed           |
-+-------------------------------+-------------------------------+
+**NACHHER:**
+```tsx
+{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
+    <Icon className={cn("text-primary", isCompact ? "h-4 w-4" : "h-5 w-5")} />
+</div>}
 ```
 
-Änderungen in `ExposeTab.tsx`:
-- Grid mit 2 Spalten für Beschreibung + Karte
-- `PropertyMap` bekommt feste Höhe (quadratisch: ca. 300px x 300px)
+### Fix 2: Trend-Objekt korrekt als JSX rendern
 
-### Phase 4: ExposeHeadlineCard optimieren
+**Datei:** `src/components/ui/stat-card.tsx`
 
-Änderungen:
-1. **Optimistisches Update:** Nach Speichern lokalen State aktualisieren, nicht invalidieren
-2. **Query-Invalidierung entfernen:** Verhindert Flackern
-3. **Textgrößen anpassen:** Headline größer (text-2xl), Subline kleiner (text-sm)
-
-### Phase 5: Lease-Daten im Exposé verwenden (SSOT-Konformität)
-
-**Option A (empfohlen):** ExposeTab erhält Lease-Daten als Props
-
-Die `PropertyDetailPage` lädt bereits `dossierData` via `usePropertyDossier`, welches die korrekten Lease-Summen enthält:
-- `rentColdEur` (Kaltmiete aus Leases)
-- `nkAdvanceEur` (NK-Vorauszahlung aus Leases)
-- `heatingAdvanceEur` (Heizkosten-VZ aus Leases)
-- `rentWarmEur` (berechnete Summe)
-
-**Lösung:** ExposeTab bekommt `dossierData` als zusätzliche Props und verwendet diese für die Mieten-Anzeige.
-
----
-
-## Technische Änderungen
-
-### Datei 1: `src/components/portfolio/ExposeTab.tsx`
-
-Änderungen:
-1. **Props erweitern:** Neues Prop `dossierData` für Lease-basierte Mietdaten
-2. **Miete-Card korrigieren:** Kaltmiete, NK-VZ, (Heiz-VZ), Warmmiete
-3. **Layout-Änderung:** Beschreibung + Karte in 2-Spalten-Grid
-4. **Import:** `ExposeDescriptionCard` importieren
-
-### Datei 2: `src/components/verkauf/ExposeDescriptionCard.tsx` (NEU)
-
-Neue Komponente:
-- Inline-Editing für Objektbeschreibung
-- KI-Generierung über Edge Function
-- Speichert in `properties.description`
-- Optimistisches Update
-
-### Datei 3: `src/components/verkauf/ExposeHeadlineCard.tsx`
-
-Änderungen:
-1. Query-Invalidierung durch optimistisches Update ersetzen
-2. Textgrößen verbessern
-
-### Datei 4: `src/components/portfolio/PropertyMap.tsx`
-
-Änderungen:
-- Card-Wrapper entfernen (wird in ExposeTab gehandhabt)
-- Flexible Höhe ermöglichen via Props
-
-### Datei 5: `src/pages/portal/immobilien/PropertyDetailPage.tsx`
-
-Änderungen:
-- `dossierData` an ExposeTab weitergeben
-
----
-
-## Datenfluss nach Implementierung
-
+**Zeilen 40-45 — VORHER:**
+```tsx
+<div className="flex items-center gap-2 mt-1">
+  {trend}
+  {subtitle && ...}
+</div>
 ```
-leases (SSOT)
-    │
-    ├── rent_cold_eur ─────────┐
-    ├── nk_advance_eur ────────┼──► usePropertyDossier ──► dossierData
-    ├── heating_advance_eur ───┘            │
-    │                                       ▼
-    │                              ExposeTab (Props)
-    │                                       │
-    │                                       ▼
-    │                              Miete-Card (korrekt!)
-    │                              ├─ Kaltmiete: 682 €
-    │                              ├─ NK-VZ: 155 €
-    │                              └─ Warmmiete: 837 €
 
-properties (SSOT für Beschreibung)
-    │
-    └── description ──► ExposeDescriptionCard ──► Editierbar + KI
+**NACHHER:**
+```tsx
+<div className="flex items-center gap-2 mt-1">
+  {trend && (
+    <span className={cn(
+      "flex items-center text-xs font-medium",
+      trend.direction === "up" ? "text-green-600" : "text-red-600"
+    )}>
+      {trend.direction === "up" ? (
+        <TrendingUp className="h-3 w-3 mr-0.5" />
+      ) : (
+        <TrendingDown className="h-3 w-3 mr-0.5" />
+      )}
+      {trend.value}%
+    </span>
+  )}
+  {subtitle && ...}
+</div>
+```
+
+### Fix 3: ChartCard mit optionalem Aspekt-Verhältnis
+
+**Datei:** `src/components/ui/chart-card.tsx`
+
+Das `aspectRatio`-Prop soll optional sein. Wenn nicht gesetzt oder `"none"`, soll kein festes Verhältnis angewendet werden:
+
+**Zeilen 10, 14-19 — Erweitern:**
+```tsx
+aspectRatio?: "square" | "video" | "wide" | "none";
+
+const aspectClasses = {
+  square: "aspect-square",
+  video: "aspect-video",
+  wide: "aspect-[21/9]",
+  none: "", // Kein festes Verhältnis
+};
+```
+
+### Fix 4: Portfolio-Tab ChartCard ohne aspect-ratio
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
+
+**Zeile 679:**
+```tsx
+// VORHER:
+<ChartCard title="Vermögensentwicklung (30 Jahre)">
+
+// NACHHER:
+<ChartCard title="Vermögensentwicklung (30 Jahre)" aspectRatio="none">
+```
+
+### Fix 5: "1 Objekte" Subtitle entfernen
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
+
+**Zeile 652 entfernen:**
+```tsx
+// VORHER:
+<StatCard
+  title="Einheiten"
+  value={...}
+  icon={Building2}
+  subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
+/>
+
+// NACHHER:
+<StatCard
+  title="Einheiten"
+  value={...}
+  icon={Building2}
+/>
+```
+
+### Fix 6: Abstand unter Menüleiste
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
+
+**Zeile 603 (oder Container-Start):**
+```tsx
+// VORHER:
+<div className="space-y-6">
+
+// NACHHER:
+<div className="space-y-6 pt-6">
 ```
 
 ---
@@ -160,20 +161,61 @@ properties (SSOT für Beschreibung)
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/portfolio/ExposeTab.tsx` | Props erweitern, Mieten-Labels korrigieren, Layout 2-spaltig |
-| `src/components/verkauf/ExposeDescriptionCard.tsx` | **Neue Datei** |
-| `src/components/verkauf/ExposeHeadlineCard.tsx` | Optimistisches Update, UI-Verbesserungen |
-| `src/components/portfolio/PropertyMap.tsx` | Flexible Höhe, kein Card-Wrapper |
-| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | dossierData an ExposeTab übergeben |
-| `src/pages/portfolio/PropertyDetail.tsx` | dossierData an ExposeTab übergeben (falls verwendet) |
+| `src/components/ui/stat-card.tsx` | Icon-Element einfügen, trend-Rendering korrigieren |
+| `src/components/ui/chart-card.tsx` | `aspectRatio="none"` Option hinzufügen |
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Subtitle entfernen, Padding-Top, ChartCard ohne aspect |
 
 ---
 
-## Erwartetes Ergebnis
+## Visuelles Ergebnis
 
-Nach der Implementierung:
-1. **Miete-Card zeigt korrekt:** Kaltmiete 682 €, NK-VZ 155 €, Warmmiete 837 €
-2. **Objektbeschreibung:** Editierbar direkt im Exposé mit KI-Generierung
-3. **Layout:** Beschreibung links, Karte rechts (je 50%)
-4. **Kein Flackern:** Headline-Speicherung erfolgt optimistisch
-5. **SSOT-konform:** Alle Mietdaten kommen aus `leases`, nicht aus `units`
+**Vorher:**
+```
+[Navigation]
+Immobilienportfolio  Alle Vermietereinheiten ▼
++------------------+  +------------------+  ...
+| Einheiten    [○] |  | Verkehrswert [○] |
+| 1                |  | 220.000 €        |
+| 1 Objekte        |  |                  |
++------------------+  +------------------+
+
++----------------------------------------------------+
+| VERMÖGENSENTWICKLUNG (30 JAHRE)                    |
+| [Chart ~280px]                                     |
+|                                                    |
+|           ← großer Leerraum (aspect-video)         |
+|                                                    |
++----------------------------------------------------+
+```
+
+**Nachher:**
+```
+[Navigation]
+
+   ← 24px Abstand (pt-6)
+
+Immobilienportfolio  Alle Vermietereinheiten ▼
+
+   ← normaler space-y-6 Abstand
+
++------------------+  +------------------+  ...
+| Einheiten   [🏢] |  | Verkehrswert [📈]|  ← echte Icons
+| 1                |  | 220.000 €        |
++------------------+  +------------------+  ← kein Subtitle
+
++----------------------------------------------------+
+| VERMÖGENSENTWICKLUNG (30 JAHRE)                    |
+| [Chart ~280px]                                     |
++----------------------------------------------------+ ← Karte endet direkt nach Chart
+```
+
+---
+
+## Zusammenfassung
+
+1. **Graue Punkte → echte Icons**: Das `<Icon />` Element wird jetzt tatsächlich gerendert
+2. **Kein "1 Objekte"**: Subtitle aus der Einheiten-StatCard entfernt
+3. **Kompakte Chart-Kachel**: Kein festes 16:9 Verhältnis mehr, Höhe passt sich dem Inhalt an
+4. **Mehr Luft oben**: 24px Abstand zwischen Navigation und Inhalt
+5. **Build-Fehler behoben**: `trend`-Objekt wird korrekt als JSX mit Icon gerendert
+
