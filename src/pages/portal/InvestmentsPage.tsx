@@ -9,6 +9,7 @@ import MandatDetail from './investments/MandatDetail';
 import SucheTab from './investments/SucheTab';
 import FavoritenTab from './investments/FavoritenTab';
 import SimulationTab from './investments/SimulationTab';
+import InvestmentExposePage from './investments/InvestmentExposePage';
 
 const InvestmentsPage = () => {
   const content = moduleContents['MOD-08'];
@@ -25,6 +26,9 @@ const InvestmentsPage = () => {
       <Route path="mandat/neu" element={<MandatCreateWizard />} />
       <Route path="mandat/:mandateId" element={<MandatDetail />} />
       <Route path="simulation" element={<SimulationTab />} />
+      
+      {/* NEW: Full-page Exposé route */}
+      <Route path="objekt/:publicId" element={<InvestmentExposePage />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/investments" replace />} />

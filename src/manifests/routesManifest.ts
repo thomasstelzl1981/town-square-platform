@@ -272,6 +272,7 @@ export const zone2Portal: ZoneDefinition = {
       dynamic_routes: [
         { path: "mandat/neu", component: "MandatCreateWizard", title: "Neues Mandat" },
         { path: "mandat/:mandateId", component: "MandatDetail", title: "Mandat-Details", dynamic: true },
+        { path: "objekt/:publicId", component: "InvestmentExposePage", title: "Investment-Exposé", dynamic: true },
       ],
     },
     "MOD-09": {

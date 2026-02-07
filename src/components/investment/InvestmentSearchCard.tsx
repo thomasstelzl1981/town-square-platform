@@ -44,7 +44,7 @@ export function InvestmentSearchCard({
   onToggleFavorite,
   showProvision = false,
   variant = 'grid',
-  linkPrefix = '/kaufy/expose'
+  linkPrefix = '/portal/investments/objekt'  // Default: Portal-Route statt Zone 3
 }: InvestmentSearchCardProps) {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
@@ -113,7 +113,7 @@ export function InvestmentSearchCard({
                   {isPositiveCashflow ? '+' : ''}{formatCurrency(metrics.monthlyBurden)}/Mo
                 </div>
               )}
-              <Link to={`${linkPrefix}/${listing.public_id}`}>
+              <Link to={`${linkPrefix}/${listing.public_id || listing.listing_id}`}>
                 <Button size="sm" className="mt-2">
                   Details <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
@@ -210,7 +210,7 @@ export function InvestmentSearchCard({
         </div>
 
         {/* CTA */}
-        <Link to={`${linkPrefix}/${listing.public_id}`}>
+        <Link to={`${linkPrefix}/${listing.public_id || listing.listing_id}`}>
           <Button className="w-full" size="sm">
             Details ansehen
             <ArrowRight className="w-4 h-4 ml-2" />
