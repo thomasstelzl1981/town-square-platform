@@ -19,7 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-
+import { ThemeProvider } from "./components/ThemeProvider";
 // Special routes (not in manifest)
 import Auth from "./pages/Auth";
 import PresentationPage from "./pages/presentation/PresentationPage";
@@ -31,27 +31,29 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Root redirect */}
-            <Route path="/" element={<Navigate to="/portal" replace />} />
-            
-            {/* Special: Authentication (public) */}
-            <Route path="/auth" element={<Auth />} />
-            
-            {/* Special: Presentation (hidden, non-guessable URL) */}
-            <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
-            
-            {/* ALL OTHER ROUTES: Delegated to ManifestRouter */}
-            <Route path="/*" element={<ManifestRouter />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Root redirect */}
+              <Route path="/" element={<Navigate to="/portal" replace />} />
+              
+              {/* Special: Authentication (public) */}
+              <Route path="/auth" element={<Auth />} />
+              
+              {/* Special: Presentation (hidden, non-guessable URL) */}
+              <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
+              
+              {/* ALL OTHER ROUTES: Delegated to ManifestRouter */}
+              <Route path="/*" element={<ManifestRouter />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

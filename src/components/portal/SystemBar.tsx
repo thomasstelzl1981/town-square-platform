@@ -2,7 +2,9 @@
  * SYSTEM BAR — Top-level system controls for Zone 2
  * 
  * Fixed height: 48px
- * Contains: Home button, Logo placeholder, Local time, Armstrong toggle, User avatar
+ * Contains: Home button, Theme Toggle, Logo placeholder, Local time, Armstrong toggle, User avatar
+ * 
+ * ORBITAL Design System: Theme toggle is placed left side, after Home button
  */
 
 import { useState, useEffect } from 'react';
@@ -10,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,8 +98,8 @@ export function SystemBar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-12 items-center justify-between px-4">
-        {/* Left section: Home + Logo placeholder */}
-        <div className="flex items-center gap-3">
+        {/* Left section: Home + Theme Toggle + Logo placeholder */}
+        <div className="flex items-center gap-1">
           {/* Home button */}
           <Link 
             to="/portal" 
@@ -109,6 +112,8 @@ export function SystemBar() {
             <Home className="h-5 w-5" />
           </Link>
 
+          {/* Theme Toggle — ORBITAL Design System requirement */}
+          <ThemeToggle />
         </div>
 
 {/* Center section: Location + Time (digital only, no icon) */}
