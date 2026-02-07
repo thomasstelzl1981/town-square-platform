@@ -113,33 +113,36 @@ export function ArmstrongContainer() {
         }}
       >
         {armstrongExpanded ? (
-          /* EXPANDED: Full chat panel with gradient header */
+          /* EXPANDED: Full chat panel with gradient header - ALWAYS dark space theme */
           <div 
             ref={containerRef}
             className={cn(
               'w-80 rounded-2xl shadow-xl flex flex-col overflow-hidden',
-              'ring-2 ring-primary/20',
-              'bg-card',
-              isDragOver && 'ring-2 ring-primary ring-inset'
+              'ring-2 ring-[hsl(217_91%_60%/0.3)]',
+              'bg-[hsl(222_47%_11%)]', // Fixed dark background
+              isDragOver && 'ring-2 ring-[hsl(217_91%_60%)] ring-inset'
             )}
-            style={{ height: 500 }}
+            style={{ 
+              height: 500,
+              boxShadow: '0 8px 32px -8px rgba(0,0,0,0.5), 0 0 48px -12px hsl(217 91% 60% / 0.4)'
+            }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Header with gradient */}
-            <div className="flex items-center justify-between p-3 bg-gradient-to-br from-primary via-primary/80 to-purple-900/70">
+            {/* Header with fixed space gradient */}
+            <div className="flex items-center justify-between p-3 bg-gradient-to-br from-[hsl(217_91%_60%)] via-[hsl(217_91%_50%/0.8)] to-[hsl(280_60%_20%/0.7)]">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <Bot className="h-3 w-3 text-primary-foreground" />
+                  <Bot className="h-3 w-3 text-white" />
                 </div>
-                <span className="font-medium text-sm text-primary-foreground">Armstrong</span>
+                <span className="font-medium text-sm text-white">Armstrong</span>
               </div>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
+                  className="h-7 w-7 rounded-full text-white/80 hover:text-white hover:bg-white/20"
                   onClick={toggleArmstrongExpanded}
                   title="Minimieren"
                 >
@@ -148,7 +151,7 @@ export function ArmstrongContainer() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
+                  className="h-7 w-7 rounded-full text-white/80 hover:text-white hover:bg-white/20"
                   onClick={hideArmstrong}
                   title="Schließen"
                 >
@@ -166,13 +169,14 @@ export function ArmstrongContainer() {
             </div>
           </div>
         ) : (
-          /* COLLAPSED: Planetary Widget - 192px with atmospheric design */
+          /* COLLAPSED: Planetary Widget - ALWAYS dark space theme */
           <div 
             ref={containerRef}
             className={cn(
               'h-48 w-48 rounded-full',
-              'bg-gradient-to-br from-primary via-primary/80 to-purple-900/70',
-              'ring-4 ring-primary/20',
+              // Fixed space gradient - same in light & dark mode
+              'bg-gradient-to-br from-[hsl(217_91%_60%)] via-[hsl(217_91%_50%/0.8)] to-[hsl(280_60%_20%/0.7)]',
+              'ring-4 ring-[hsl(217_91%_60%/0.3)]',
               'shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),_0_0_48px_-12px_hsl(217_91%_60%/0.4)]',
               'hover:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.5),_0_0_64px_-8px_hsl(217_91%_60%/0.5)]',
               'hover:scale-105 transition-all duration-300',
@@ -198,13 +202,13 @@ export function ArmstrongContainer() {
               onChange={handleFileChange}
             />
             
-            {/* Bot Icon + Label */}
+            {/* Bot Icon + Label - fixed white text */}
             <div className="flex items-center gap-2 relative z-10">
-              <Bot className="h-5 w-5 text-primary-foreground/90" />
-              <span className="text-xs font-medium text-primary-foreground/80">Armstrong</span>
+              <Bot className="h-5 w-5 text-white/90" />
+              <span className="text-xs font-medium text-white/80">Armstrong</span>
             </div>
             
-            {/* Input Field */}
+            {/* Input Field - fixed white text */}
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -213,14 +217,14 @@ export function ArmstrongContainer() {
               placeholder="Fragen..."
               className={cn(
                 'w-full h-10 rounded-full bg-white/20 border-0 relative z-10',
-                'text-sm text-primary-foreground placeholder:text-primary-foreground/50',
+                'text-sm text-white placeholder:text-white/50',
                 'px-4 text-center',
                 'focus:outline-none focus:bg-white/30',
                 'transition-colors'
               )}
             />
             
-            {/* Upload + Send Buttons */}
+            {/* Upload + Send Buttons - fixed white icons */}
             <div className="flex items-center gap-3 relative z-10">
               <button 
                 onClick={handleUploadClick}
@@ -231,18 +235,18 @@ export function ArmstrongContainer() {
                 )}
                 title="Datei anhängen"
               >
-                <Paperclip className="h-4 w-4 text-primary-foreground/80" />
+                <Paperclip className="h-4 w-4 text-white/80" />
               </button>
               <button 
                 onClick={handleSendClick}
                 className={cn(
                   'h-8 w-8 rounded-full bg-white/30 hover:bg-white/40',
                   'flex items-center justify-center',
-                  'transition-colors'
+                'transition-colors'
                 )}
                 title="Senden"
               >
-                <Send className="h-4 w-4 text-primary-foreground" />
+                <Send className="h-4 w-4 text-white" />
               </button>
             </div>
           </div>
