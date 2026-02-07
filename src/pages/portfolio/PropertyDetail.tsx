@@ -43,6 +43,7 @@ interface Property {
   energy_source: string | null;
   heating_type: string | null;
   description: string | null;
+  location_notes: string | null;
   status: string;
   created_at: string;
   updated_at: string;
