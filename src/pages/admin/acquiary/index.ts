@@ -6,3 +6,4 @@ export { default as AcquiaryAssignments } from './AcquiaryAssignments';
 export { default as AcquiaryMandates } from './AcquiaryMandates';
 export { default as AcquiaryAudit } from './AcquiaryAudit';
 export { default as AcquiaryNeedsRouting } from './AcquiaryNeedsRouting';
+export { default as AcquiaryMonitoring } from './AcquiaryMonitoring';

@@ -227,6 +227,48 @@ export default function MandatDetail() {
         </Card>
       </div>
 
+      {/* Manager Contact Card (visible when assigned) */}
+      {['assigned', 'active', 'paused', 'closed'].includes(mandate.status) && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Ihr Akquise-Manager
+            </CardTitle>
+            <CardDescription>
+              Ihr persönlicher Ansprechpartner für dieses Suchmandat
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mandate.assigned_manager_user_id ? (
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Akquise-Manager</p>
+                  <p className="text-sm text-muted-foreground">
+                    {mandate.status === 'assigned' && 'Warte auf Annahme des Mandats...'}
+                    {mandate.status === 'active' && 'Aktiv an Ihrer Suche tätig'}
+                    {mandate.status === 'paused' && 'Mandat pausiert'}
+                    {mandate.status === 'closed' && 'Mandat abgeschlossen'}
+                  </p>
+                  {mandate.split_terms_confirmed_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Angenommen: {format(new Date(mandate.split_terms_confirmed_at), 'dd.MM.yyyy', { locale: de })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Ein Manager wird Ihnen in Kürze zugewiesen.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Deliveries Section (Placeholder) */}
       <Card>
         <CardHeader>

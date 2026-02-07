@@ -15,7 +15,7 @@ import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Loader2 } from 'lucide-react';
+import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Activity, Loader2 } from 'lucide-react';
 import { useAcqMandatesInbox, useAcqMandates } from '@/hooks/useAcqMandate';
 
 // Lazy load sub-pages
@@ -24,6 +24,7 @@ const AcquiaryAssignments = React.lazy(() => import('./acquiary/AcquiaryAssignme
 const AcquiaryMandates = React.lazy(() => import('./acquiary/AcquiaryMandates'));
 const AcquiaryAudit = React.lazy(() => import('./acquiary/AcquiaryAudit'));
 const AcquiaryNeedsRouting = React.lazy(() => import('./acquiary/AcquiaryNeedsRouting'));
+const AcquiaryMonitoring = React.lazy(() => import('./acquiary/AcquiaryMonitoring'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -49,6 +50,7 @@ export default function AcquiaryPage() {
     if (path.includes('/mandates')) return 'mandates';
     if (path.includes('/audit')) return 'audit';
     if (path.includes('/needs-routing')) return 'needs-routing';
+    if (path.includes('/monitoring')) return 'monitoring';
     if (path.includes('/inbox')) return 'inbox';
     return 'inbox';
   };
@@ -69,6 +71,9 @@ export default function AcquiaryPage() {
         break;
       case 'needs-routing':
         navigate('/admin/acquiary/needs-routing');
+        break;
+      case 'monitoring':
+        navigate('/admin/acquiary/monitoring');
         break;
     }
   };
@@ -95,16 +100,16 @@ export default function AcquiaryPage() {
             </Badge>
           )}
           {needsRoutingCount > 0 && (
-            <Badge variant="outline" className="text-sm border-orange-500 text-orange-600">
+            <Badge variant="outline" className="text-sm border-destructive/50 text-destructive">
               {needsRoutingCount} Routing offen
             </Badge>
           )}
         </div>
       </div>
 
-      {/* Navigation Tabs — 5 Items */}
+      {/* Navigation Tabs — 6 Items */}
       <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="inbox" className="gap-2">
             <Inbox className="h-4 w-4" />
             Inbox
@@ -135,6 +140,10 @@ export default function AcquiaryPage() {
               <Badge variant="destructive" className="ml-1">{needsRoutingCount}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="monitoring" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Monitoring
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -147,6 +156,7 @@ export default function AcquiaryPage() {
           <Route path="mandates" element={<AcquiaryMandates />} />
           <Route path="audit" element={<AcquiaryAudit />} />
           <Route path="needs-routing" element={<AcquiaryNeedsRouting />} />
+          <Route path="monitoring" element={<AcquiaryMonitoring />} />
           <Route path="*" element={<Navigate to="inbox" replace />} />
         </Routes>
       </React.Suspense>

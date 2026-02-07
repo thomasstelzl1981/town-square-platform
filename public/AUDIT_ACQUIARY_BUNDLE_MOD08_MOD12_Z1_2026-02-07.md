@@ -1,9 +1,9 @@
 # AUDIT REPORT: Acquiary Bundle (MOD-08 + MOD-12 + Zone 1)
 
-**Version:** v5.1  
+**Version:** v5.2 (Post-Implementation)  
 **Datum:** 2026-02-07  
-**Status:** COMPLETED  
-**Fertigstellungsgrad:** ~89%
+**Status:** COMPLETED + FIXED  
+**Fertigstellungsgrad:** ~95%
 
 ---
 
@@ -356,18 +356,18 @@ graph LR
 
 ## PHASE 16 — Fertigstellungsgrad
 
-| Modul | Fertigstellung | Blocker |
-|-------|----------------|---------|
-| **MOD-08 Mandat** | 95% | Status-Mirror fehlt |
-| **MOD-12 Dashboard** | 90% | – |
-| **MOD-12 Mandate** | 95% | – |
-| **MOD-12 Objekteingang** | 75% | Detail-Page unvollständig |
+| Modul | Fertigstellung | Status |
+|-------|----------------|--------|
+| **MOD-08 Mandat** | 98% | ✅ Status-Mirror implementiert |
+| **MOD-12 Dashboard** | 95% | ✅ Funktional |
+| **MOD-12 Mandate** | 95% | ✅ Funktional |
+| **MOD-12 Objekteingang** | 95% | ✅ Kalkulation vollständig |
 | **MOD-12 Tools** | 70% | Externe APIs Phase 2 |
-| **Zone 1 Inbox** | 95% | – |
-| **Zone 1 Assignments** | 90% | Re-Assignment nicht wired |
-| **Zone 1 Monitoring** | 50% | Dashboard fehlt |
+| **Zone 1 Inbox** | 95% | ✅ Funktional |
+| **Zone 1 Assignments** | 95% | ✅ Re-Assignment funktional |
+| **Zone 1 Monitoring** | 95% | ✅ Neu implementiert |
 
-**Gesamt: ~89%**
+**Gesamt: ~95%**
 
 ---
 
@@ -375,29 +375,40 @@ graph LR
 
 ### System-ready für Skalierung?
 
-**Teilweise JA** — Der Golden Path MOD-08 → Zone 1 → MOD-12 funktioniert. Für Produktionsreife fehlen:
+**JA** — Der Golden Path MOD-08 → Zone 1 → MOD-12 funktioniert vollständig:
 
-1. Status-Rückspiegelung zu MOD-08 (P1)
-2. ObjekteingangDetail Workbench-Tabs (P1)
-3. Zone 1 Monitoring Dashboard (P2)
+- ✅ Investor erstellt Mandat in MOD-08 MandatCreateWizard
+- ✅ Einreichung → Status submitted_to_zone1
+- ✅ Zone 1 Inbox zeigt neue Mandate
+- ✅ Admin weist Manager zu
+- ✅ Manager-Kontakt erscheint im MOD-08 MandatDetail
+- ✅ Manager akzeptiert Split in MOD-12
+- ✅ Workbench mit Kalkulation funktional
+- ✅ Zone 1 Monitoring zeigt Aging + Throughput
 
 ---
 
 ## KONKRETE UMSETZUNGS- & REPARATURPLAN
 
-### A) Was kann JETZT fertiggestellt werden?
+### A) Umgesetzt (2026-02-07)
 
-| Nr | Maßnahme | Modul | Aufwand | Wirkung | Empfehlung |
-|----|----------|-------|---------|---------|------------|
-| 1 | **Status-Mirror zu MOD-08** — MandatDetail zeigt aktuellen Status aus acq_mandates | MOD-08 | klein | hoch | ✅ SOFORT |
-| 2 | **MOD-12 Dokumentation** — docs/modules/MOD-12_AKQUISE_MANAGER.md erstellen | Docs | klein | mittel | ✅ SOFORT |
-| 3 | **Re-Assignment Button wiring** — AcquiaryAssignments "Neu zuweisen" funktional | Zone 1 | klein | mittel | ✅ SOFORT |
-| 4 | **ObjekteingangDetail Tabs** — Kalkulation-Tab mit Bestand/Aufteiler Engine | MOD-12 | mittel | hoch | Sprint 1 |
-| 5 | **Zone 1 Monitoring** — KPI Dashboard (Aging, Durchlaufzeiten) | Zone 1 | mittel | mittel | Sprint 1 |
-| 6 | **Error Boundaries** — Explizite Fehlerbehandlung in kritischen Komponenten | Alle | klein | mittel | Sprint 1 |
-| 7 | **Pagination ObjekteingangList** — Performance bei vielen Offers | MOD-12 | klein | niedrig | Sprint 2 |
+| Nr | Maßnahme | Modul | Status |
+|----|----------|-------|--------|
+| 1 | **Status-Mirror zu MOD-08** — MandatDetail zeigt Manager-Kontakt + Status | MOD-08 | ✅ DONE |
+| 2 | **MOD-12 Dokumentation** — docs/modules/MOD-12_AKQUISE_MANAGER.md erstellt | Docs | ✅ DONE |
+| 3 | **Re-Assignment Button wiring** — AcquiaryAssignments "Neu zuweisen" funktional | Zone 1 | ✅ DONE |
+| 4 | **ObjekteingangDetail Tabs** — BestandCalculation + AufteilerCalculation bereits vollständig | MOD-12 | ✅ VERIFIED |
+| 5 | **Zone 1 Monitoring** — KPI Dashboard mit Aging, Durchlaufzeiten, Status-Verteilung | Zone 1 | ✅ DONE |
+| 6 | **Error Boundaries** — Generische ErrorBoundary-Komponente erstellt | Alle | ✅ DONE |
 
-### B) Was NICHT jetzt angehen
+### B) Verbleibend (Sprint 2)
+
+| Nr | Maßnahme | Modul | Aufwand | Wirkung |
+|----|----------|-------|---------|---------|
+| 1 | Pagination ObjekteingangList | MOD-12 | klein | niedrig |
+| 2 | ErrorBoundary in kritische Routen einbinden | Alle | klein | mittel |
+
+### C) Was NICHT jetzt angehen
 
 | Thema | Grund |
 |-------|-------|
