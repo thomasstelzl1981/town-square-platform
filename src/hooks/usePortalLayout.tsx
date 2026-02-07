@@ -80,22 +80,18 @@ function buildModuleRouteMap(): Record<string, string> {
 // Migration key for localStorage cleanup — now v3 to also clear position
 const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v3';
 
+// Run migration BEFORE React renders (synchronous, outside component)
+if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
+  localStorage.removeItem(ARMSTRONG_KEY);
+  localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
+  localStorage.removeItem(ARMSTRONG_POSITION_KEY);
+  localStorage.removeItem('sot-armstrong-migrated-v2');
+  localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
+  console.log('[Armstrong] Migration v3: Cleared all stored state');
+}
+
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
-  
-  // === MIGRATION: Reset ALL old Armstrong localStorage values to ensure Planet is visible ===
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
-      // Clear all Armstrong-related storage keys
-      localStorage.removeItem(ARMSTRONG_KEY);
-      localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
-      localStorage.removeItem(ARMSTRONG_POSITION_KEY);
-      // Also clear old migration keys
-      localStorage.removeItem('sot-armstrong-migrated-v2');
-      localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-      console.log('[Armstrong] Migration v3: Cleared all stored state');
-    }
-  }, []);
   
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
