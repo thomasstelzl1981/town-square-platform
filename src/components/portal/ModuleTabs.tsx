@@ -95,10 +95,10 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
             to={route}
             onClick={() => setSubTabsVisible(true)}
             className={cn(
-              'flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
+              'flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium uppercase tracking-wide whitespace-nowrap',
               isActive
                 ? 'bg-accent/80 backdrop-blur-sm text-accent-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/10 backdrop-blur-sm',
+                : 'nav-tab-glass text-muted-foreground hover:text-foreground',
               requiresActivation && 'opacity-50'
             )}
           >

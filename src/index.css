@@ -643,4 +643,30 @@
     width: 4px;
     height: 4px;
   }
+
+  /* ===========================================================================
+     NAVIGATION TAB GLASS STYLE — Consistent glass effect for all nav levels
+     =========================================================================== */
+  .nav-tab-glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: hsla(0, 0%, 100%, 0.15);
+    border: 1px solid hsla(0, 0%, 100%, 0.1);
+    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, 0.1);
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  .nav-tab-glass:hover {
+    background: hsla(0, 0%, 100%, 0.25);
+    border-color: hsla(0, 0%, 100%, 0.15);
+  }
+
+  .dark .nav-tab-glass {
+    background: hsla(0, 0%, 100%, 0.05);
+    border-color: hsla(0, 0%, 100%, 0.05);
+  }
+
+  .dark .nav-tab-glass:hover {
+    background: hsla(0, 0%, 100%, 0.1);
+  }
 }
