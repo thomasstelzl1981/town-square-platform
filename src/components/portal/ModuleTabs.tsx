@@ -78,7 +78,7 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none">
+    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none">
       {modules.map(({ code, module, displayLabel }) => {
         const Icon = iconMap[module.icon] || Briefcase;
         const route = `/portal/${module.base}`;
@@ -92,7 +92,7 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
             key={code}
             to={route}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+              'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
               isActive
                 ? 'bg-accent text-accent-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
