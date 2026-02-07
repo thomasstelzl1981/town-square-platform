@@ -1,159 +1,182 @@
 
 
-# Erweiterter Plan: Portfolio-Ansicht UI-Bereinigung
+# Erweiterter Plan: Display-Name Sync, Geolocation Fallback & Google APIs
 
-## Zusammenfassung der Probleme
+## Zusammenfassung der Anforderungen
 
-### Problem 1: Graue Punkte in den KPI-Kacheln
-**Ursache in `stat-card.tsx` Zeile 49-51:**
-```tsx
-{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", ...)}>
-    
-</div>}
-```
-Der Container für das Icon wird gerendert (grauer/halbtransparenter Hintergrund), aber **das Icon selbst wurde nie eingefügt**! Der `<Icon />` JSX-Tag fehlt komplett im Container.
+### 1. Display-Name wird nicht aktualisiert
+**Problem:** Nach dem Speichern in `ProfilTab.tsx` wird nur die Query-Cache invalidiert, aber der AuthContext nicht aktualisiert.
 
-### Problem 2: "1 Objekte" Text entfernen
-In Zeile 652 der `PortfolioTab.tsx`:
-```tsx
-subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
-```
-Dieser Subtitle soll entfernt werden.
+**Lösung:** Nach erfolgreichem Update `refreshAuth()` aufrufen.
 
-### Problem 3: Fehlender Abstand unter Menüleiste
-Der Container beginnt ohne padding-top, daher klebt alles direkt an der Navigation.
+### 2. Geolocation funktioniert nicht (Chrome-Hinweis)
+**Browser-Berechtigung in Chrome aktivieren:**
+1. Klick auf das Schloss-Symbol links neben der URL
+2. "Website-Einstellungen" → "Standort" → "Zulassen"
+3. Seite neu laden
 
-### Problem 4: Build-Fehler `{trend}` als ReactNode
-In Zeile 41 der `stat-card.tsx` wird das `trend`-Objekt direkt als JSX-Child gerendert – das funktioniert nicht, da es ein Objekt ist.
+**Alternativ:** Chrome-Einstellungen → Datenschutz und Sicherheit → Website-Einstellungen → Standort
 
-### Problem 5: Großer Leerraum in der Vermögensentwicklung-Kachel
-**Ursache in `chart-card.tsx`:**
-```tsx
-<div className={cn(aspectClasses[aspectRatio], "relative")}>  // aspect-video = 16:9
-```
-Die ChartCard verwendet standardmäßig `aspect-video` (16:9 Verhältnis), aber der Chart selbst hat nur `height={280}`. Das führt zu einem großen leeren Bereich unter dem Chart.
+**Hinweis zur Lovable-Preview:** Im iFrame der Vorschau kann Geolocation eingeschränkt sein. In der veröffentlichten Version sollte es funktionieren.
 
-**Die Lösung:** Für die Portfolio-Ansicht soll kein festes Aspekt-Verhältnis verwendet werden. Stattdessen soll sich die Karte an den Inhalt anpassen.
+### 3. Fallback: Standort aus Nutzerprofil
+Wenn Browser-Geolocation fehlschlägt → Stadt aus `profile.city` (Stammdaten) anzeigen.
+
+### 4. Google APIs aktivieren (Zone 1)
+Die Integration Registry hat bereits Einträge für:
+- `GOOGLE_MAPS` (Status: `pending_setup`)
+- `GOOGLE_PLACES` (Status: `pending_setup`)
+
+Für die Aktivierung wird ein Google Cloud API-Key benötigt.
 
 ---
 
-## Lösungsplan
+## Technische Änderungen
 
-### Fix 1: Icons in StatCard korrekt rendern (graue Punkte → echte Icons)
+### Datei 1: `src/pages/portal/stammdaten/ProfilTab.tsx`
 
-**Datei:** `src/components/ui/stat-card.tsx`
-
-**Zeilen 49-51 — VORHER:**
+**Zeile 35:** `refreshAuth` aus useAuth importieren
 ```tsx
-{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
-    
-</div>}
+const { user, isDevelopmentMode, refreshAuth } = useAuth();
 ```
 
-**NACHHER:**
+**Zeilen 139-142:** `onSuccess` erweitern
 ```tsx
-{Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
-    <Icon className={cn("text-primary", isCompact ? "h-4 w-4" : "h-5 w-5")} />
-</div>}
+onSuccess: async () => {
+  queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+  await refreshAuth(); // ← NEU: AuthContext synchronisieren
+  toast.success('Profil gespeichert');
+},
 ```
 
-### Fix 2: Trend-Objekt korrekt als JSX rendern
+### Datei 2: `src/components/portal/SystemBar.tsx`
 
-**Datei:** `src/components/ui/stat-card.tsx`
+**Neue Fallback-Logik:**
 
-**Zeilen 40-45 — VORHER:**
 ```tsx
-<div className="flex items-center gap-2 mt-1">
-  {trend}
-  {subtitle && ...}
-</div>
+// Import erweitern
+import { useAuth } from '@/contexts/AuthContext';
+
+export function SystemBar() {
+  const { profile, signOut, isDevelopmentMode, user } = useAuth();
+  // ... bestehender Code ...
+
+  // Geolocation mit Fallback auf Profil-Stadt
+  useEffect(() => {
+    // Fallback-Funktion für Profil-Standort
+    const useProfileFallback = () => {
+      if (profile?.city) {
+        setLocation({
+          city: profile.city,
+          altitude: null  // Aus Profil keine Höhe verfügbar
+        });
+        console.log('Geolocation Fallback: Using profile city', profile.city);
+      } else {
+        setLocationError(true);
+      }
+    };
+
+    if (!navigator.geolocation) {
+      useProfileFallback();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, altitude } = position.coords;
+        console.log('Geolocation success:', { latitude, longitude, altitude });
+        
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
+          );
+          const data = await response.json();
+          const city = data.address?.city || data.address?.town || 
+                       data.address?.village || data.address?.municipality || 'Unbekannt';
+          
+          setLocation({
+            city,
+            altitude: altitude ? Math.round(altitude) : null
+          });
+        } catch (error) {
+          console.error('Geocoding failed, using fallback:', error);
+          useProfileFallback();
+        }
+      },
+      (error) => {
+        // Detailliertes Logging
+        const errorMessages: Record<number, string> = {
+          1: 'Berechtigung verweigert',
+          2: 'Position nicht verfügbar',
+          3: 'Zeitüberschreitung',
+        };
+        console.warn('Geolocation error:', errorMessages[error.code] || error.message);
+        // Fallback auf Profil-Stadt
+        useProfileFallback();
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 10000,      // 10 Sekunden Timeout
+        maximumAge: 300000   // Cache für 5 Minuten
+      }
+    );
+  }, [profile?.city]);  // Re-run wenn Profil-Stadt sich ändert
 ```
 
-**NACHHER:**
+**UI-Anpassung für Fallback-Anzeige:**
 ```tsx
-<div className="flex items-center gap-2 mt-1">
-  {trend && (
-    <span className={cn(
-      "flex items-center text-xs font-medium",
-      trend.direction === "up" ? "text-green-600" : "text-red-600"
-    )}>
-      {trend.direction === "up" ? (
-        <TrendingUp className="h-3 w-3 mr-0.5" />
-      ) : (
-        <TrendingDown className="h-3 w-3 mr-0.5" />
-      )}
-      {trend.value}%
-    </span>
-  )}
-  {subtitle && ...}
-</div>
+{location ? (
+  <>
+    <div className="flex items-center gap-1.5">
+      <MapPin className="h-4 w-4" />
+      <span className="text-sm">{location.city}</span>
+    </div>
+    {location.altitude !== null && (
+      <div className="flex items-center gap-1">
+        <Mountain className="h-3.5 w-3.5" />
+        <span className="text-sm">{location.altitude}m</span>
+      </div>
+    )}
+  </>
+) : locationError ? (
+  <span className="text-sm text-muted-foreground">Kein Standort</span>
+) : null}
 ```
 
-### Fix 3: ChartCard mit optionalem Aspekt-Verhältnis
+---
 
-**Datei:** `src/components/ui/chart-card.tsx`
+## Google APIs (Zone 1)
 
-Das `aspectRatio`-Prop soll optional sein. Wenn nicht gesetzt oder `"none"`, soll kein festes Verhältnis angewendet werden:
+### Bereits registriert in `integration_registry`:
 
-**Zeilen 10, 14-19 — Erweitern:**
-```tsx
-aspectRatio?: "square" | "video" | "wide" | "none";
+| Code | Name | Status |
+|------|------|--------|
+| `GOOGLE_MAPS` | Google Maps | pending_setup |
+| `GOOGLE_PLACES` | Google Places | pending_setup |
 
-const aspectClasses = {
-  square: "aspect-square",
-  video: "aspect-video",
-  wide: "aspect-[21/9]",
-  none: "", // Kein festes Verhältnis
-};
-```
+### Für Aktivierung benötigt:
+1. **Google Cloud Console** → Neues Projekt erstellen
+2. **APIs aktivieren:**
+   - Maps JavaScript API
+   - Places API
+   - Geocoding API
+   - Elevation API (für Höhe über Meeresspiegel)
+3. **API-Key erstellen** mit Einschränkungen (HTTP-Referrer)
+4. **In Lovable Cloud** als Secret speichern: `GOOGLE_MAPS_API_KEY`
 
-### Fix 4: Portfolio-Tab ChartCard ohne aspect-ratio
+### Vorteile von Google APIs:
+- **Maps:** Interaktive Karten statt statischer Embed
+- **Places:** Handwerkersuche, Autocomplete für Adressen
+- **Geocoding:** Präzisere Standortauflösung
+- **Elevation:** Echte Höhendaten (Meeresspiegel)
+- **Earth:** 3D-Ansichten für Immobilien
 
-**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
-
-**Zeile 679:**
-```tsx
-// VORHER:
-<ChartCard title="Vermögensentwicklung (30 Jahre)">
-
-// NACHHER:
-<ChartCard title="Vermögensentwicklung (30 Jahre)" aspectRatio="none">
-```
-
-### Fix 5: "1 Objekte" Subtitle entfernen
-
-**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
-
-**Zeile 652 entfernen:**
-```tsx
-// VORHER:
-<StatCard
-  title="Einheiten"
-  value={...}
-  icon={Building2}
-  subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
-/>
-
-// NACHHER:
-<StatCard
-  title="Einheiten"
-  value={...}
-  icon={Building2}
-/>
-```
-
-### Fix 6: Abstand unter Menüleiste
-
-**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
-
-**Zeile 603 (oder Container-Start):**
-```tsx
-// VORHER:
-<div className="space-y-6">
-
-// NACHHER:
-<div className="space-y-6 pt-6">
-```
+### Nächste Schritte für Google Integration:
+1. API-Key bereitstellen
+2. Secret in Cloud speichern
+3. Integration Registry auf `active` setzen
+4. Komponenten umstellen (Maps, Geocoding, etc.)
 
 ---
 
@@ -161,61 +184,60 @@ const aspectClasses = {
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/ui/stat-card.tsx` | Icon-Element einfügen, trend-Rendering korrigieren |
-| `src/components/ui/chart-card.tsx` | `aspectRatio="none"` Option hinzufügen |
-| `src/pages/portal/immobilien/PortfolioTab.tsx` | Subtitle entfernen, Padding-Top, ChartCard ohne aspect |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | `refreshAuth()` nach Speichern |
+| `src/components/portal/SystemBar.tsx` | Geolocation-Fallback auf Profil-Stadt |
 
 ---
 
-## Visuelles Ergebnis
+## Datenfluss nach Implementierung
 
-**Vorher:**
 ```
-[Navigation]
-Immobilienportfolio  Alle Vermietereinheiten ▼
-+------------------+  +------------------+  ...
-| Einheiten    [○] |  | Verkehrswert [○] |
-| 1                |  | 220.000 €        |
-| 1 Objekte        |  |                  |
-+------------------+  +------------------+
-
-+----------------------------------------------------+
-| VERMÖGENSENTWICKLUNG (30 JAHRE)                    |
-| [Chart ~280px]                                     |
-|                                                    |
-|           ← großer Leerraum (aspect-video)         |
-|                                                    |
-+----------------------------------------------------+
-```
-
-**Nachher:**
-```
-[Navigation]
-
-   ← 24px Abstand (pt-6)
-
-Immobilienportfolio  Alle Vermietereinheiten ▼
-
-   ← normaler space-y-6 Abstand
-
-+------------------+  +------------------+  ...
-| Einheiten   [🏢] |  | Verkehrswert [📈]|  ← echte Icons
-| 1                |  | 220.000 €        |
-+------------------+  +------------------+  ← kein Subtitle
-
-+----------------------------------------------------+
-| VERMÖGENSENTWICKLUNG (30 JAHRE)                    |
-| [Chart ~280px]                                     |
-+----------------------------------------------------+ ← Karte endet direkt nach Chart
+Browser Geolocation
+        │
+        ▼
+   ┌────────────────┐
+   │ getCurrentPosition │
+   └────────────────┘
+        │
+   ┌────┴────┐
+   │         │
+Erfolg    Fehler/Timeout
+   │         │
+   ▼         ▼
+Reverse   Profil-Fallback
+Geocoding    │
+   │         ▼
+   ▼    profile.city
+location.city   │
+   │         │
+   └────┬────┘
+        │
+        ▼
+   SystemBar zeigt:
+   📍 München  🏔 520m
 ```
 
 ---
 
-## Zusammenfassung
+## Chrome Standortberechtigung (Schnellanleitung)
 
-1. **Graue Punkte → echte Icons**: Das `<Icon />` Element wird jetzt tatsächlich gerendert
-2. **Kein "1 Objekte"**: Subtitle aus der Einheiten-StatCard entfernt
-3. **Kompakte Chart-Kachel**: Kein festes 16:9 Verhältnis mehr, Höhe passt sich dem Inhalt an
-4. **Mehr Luft oben**: 24px Abstand zwischen Navigation und Inhalt
-5. **Build-Fehler behoben**: `trend`-Objekt wird korrekt als JSX mit Icon gerendert
+1. **URL-Leiste:** Klick auf Schloss/Info-Icon links
+2. **"Berechtigungen"** oder **"Website-Einstellungen"**
+3. **"Standort"** → auf **"Zulassen"** ändern
+4. **Seite neu laden** (F5 oder ⌘R)
+
+Falls das nicht funktioniert:
+- `chrome://settings/content/location` in Adressleiste eingeben
+- Die Seite zur "Zulassen"-Liste hinzufügen
+
+---
+
+## Erwartetes Ergebnis
+
+| Szenario | Anzeige |
+|----------|---------|
+| Geolocation erfolgreich | 📍 München  🏔 520m |
+| Geolocation verweigert, aber Profil hat Stadt | 📍 München (ohne Höhe) |
+| Geolocation verweigert, kein Profil-Stadt | "Kein Standort" |
+| Display-Name geändert | Dashboard zeigt sofort neuen Namen |
 
