@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -38,6 +38,16 @@ interface Lease {
   rent_increase: string | null;
   renter_org_id: string | null;
   tenant_contact_id: string;
+  // Extended fields
+  lease_type?: string;
+  rent_cold_eur?: number;
+  nk_advance_eur?: number;
+  heating_advance_eur?: number;
+  deposit_amount_eur?: number;
+  deposit_status?: string;
+  payment_due_day?: number;
+  rent_model?: string;
+  next_rent_adjustment_date?: string;
 }
 
 interface Contact {
@@ -62,27 +72,58 @@ interface TenancyTabProps {
   unitId: string;
 }
 
+const LEASE_TYPES = [
+  { value: 'unbefristet', label: 'Unbefristet' },
+  { value: 'befristet', label: 'Befristet' },
+  { value: 'staffel', label: 'Staffelmiete' },
+  { value: 'index', label: 'Indexmiete' },
+  { value: 'gewerbe', label: 'Gewerbe' },
+];
+
+const DEPOSIT_STATUSES = [
+  { value: 'PAID', label: 'Gezahlt' },
+  { value: 'OPEN', label: 'Offen' },
+  { value: 'PARTIAL', label: 'Teilweise' },
+];
+
+const RENT_MODELS = [
+  { value: 'FIX', label: 'Festmiete' },
+  { value: 'INDEX', label: 'Indexmiete' },
+  { value: 'STAFFEL', label: 'Staffelmiete' },
+];
+
 export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const { user } = useAuth();
-  const [lease, setLease] = useState<Lease | null>(null);
-  const [leaseContact, setLeaseContact] = useState<Contact | null>(null);
+  const [allLeases, setAllLeases] = useState<(Lease & { tenant_contact?: Contact })[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [invites, setInvites] = useState<RenterInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Create lease dialog
-  const [createLeaseOpen, setCreateLeaseOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newLease, setNewLease] = useState({
+  // Create/Edit lease dialog
+  const [leaseDialogOpen, setLeaseDialogOpen] = useState(false);
+  const [editingLease, setEditingLease] = useState<Lease | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [leaseForm, setLeaseForm] = useState({
     tenant_contact_id: '',
-    monthly_rent: '',
+    lease_type: 'unbefristet',
     start_date: '',
+    end_date: '',
+    rent_cold_eur: '',
+    nk_advance_eur: '',
+    heating_advance_eur: '',
+    deposit_amount_eur: '',
+    deposit_status: 'OPEN',
+    payment_due_day: '1',
+    rent_model: 'FIX',
+    next_rent_adjustment_date: '',
   });
   
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [inviteLeaseId, setInviteLeaseId] = useState<string | null>(null);
+  const [inviteContact, setInviteContact] = useState<Contact | null>(null);
 
   async function fetchData() {
     if (!unitId) {
@@ -93,30 +134,25 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     setLoading(true);
     setError(null);
     try {
-      // Fetch active lease
-      const { data: leaseData } = await supabase
+      // Fetch all leases for this unit with contact info
+      const { data: leasesData } = await supabase
         .from('leases')
-        .select('*')
+        .select(`
+          *,
+          tenant_contact:contacts!tenant_contact_id(id, first_name, last_name, email)
+        `)
         .eq('unit_id', unitId)
         .eq('tenant_id', tenantId)
-        .in('status', ['active', 'notice_given', 'draft'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('start_date', { ascending: false });
 
-      setLease(leaseData);
-
-      // Fetch contact for this lease
-      if (leaseData?.tenant_contact_id) {
-        const { data: contactData } = await supabase
-          .from('contacts')
-          .select('id, first_name, last_name, email')
-          .eq('id', leaseData.tenant_contact_id)
-          .single();
-        setLeaseContact(contactData);
-      } else {
-        setLeaseContact(null);
-      }
+      // Map data to fix the array issue from Supabase joins
+      const mappedLeases = (leasesData || []).map(lease => ({
+        ...lease,
+        tenant_contact: Array.isArray(lease.tenant_contact) 
+          ? lease.tenant_contact[0] 
+          : lease.tenant_contact
+      }));
+      setAllLeases(mappedLeases);
 
       // Fetch contacts for creating lease
       const { data: contactsData } = await supabase
@@ -127,12 +163,13 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
 
       setContacts(contactsData || []);
 
-      // Fetch invites for this lease
-      if (leaseData) {
+      // Fetch invites for all leases
+      if (leasesData && leasesData.length > 0) {
+        const leaseIds = leasesData.map(l => l.id);
         const { data: invitesData } = await supabase
           .from('renter_invites')
           .select('*')
-          .eq('lease_id', leaseData.id)
+          .in('lease_id', leaseIds)
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
 
@@ -147,6 +184,10 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   useEffect(() => {
     fetchData();
   }, [unitId, tenantId]);
+
+  // Separate active and historical leases
+  const activeLeases = allLeases.filter(l => ['active', 'notice_given', 'draft'].includes(l.status));
+  const historicalLeases = allLeases.filter(l => ['terminated', 'ended'].includes(l.status));
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -163,6 +204,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       case 'draft': return <Badge variant="secondary">Entwurf</Badge>;
       case 'notice_given': return <Badge variant="destructive">Gekündigt</Badge>;
       case 'terminated': return <Badge variant="outline">Beendet</Badge>;
+      case 'ended': return <Badge variant="outline">Beendet</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -177,48 +219,106 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     }
   };
 
-  async function handleCreateLease() {
-    if (!newLease.tenant_contact_id || !newLease.monthly_rent || !newLease.start_date) {
+  function openCreateDialog() {
+    setEditingLease(null);
+    setLeaseForm({
+      tenant_contact_id: '',
+      lease_type: 'unbefristet',
+      start_date: '',
+      end_date: '',
+      rent_cold_eur: '',
+      nk_advance_eur: '',
+      heating_advance_eur: '',
+      deposit_amount_eur: '',
+      deposit_status: 'OPEN',
+      payment_due_day: '1',
+      rent_model: 'FIX',
+      next_rent_adjustment_date: '',
+    });
+    setLeaseDialogOpen(true);
+  }
+
+  function openEditDialog(lease: Lease) {
+    setEditingLease(lease);
+    setLeaseForm({
+      tenant_contact_id: lease.tenant_contact_id,
+      lease_type: lease.lease_type || 'unbefristet',
+      start_date: lease.start_date || '',
+      end_date: lease.end_date || '',
+      rent_cold_eur: lease.rent_cold_eur?.toString() || lease.monthly_rent?.toString() || '',
+      nk_advance_eur: lease.nk_advance_eur?.toString() || '',
+      heating_advance_eur: lease.heating_advance_eur?.toString() || '',
+      deposit_amount_eur: lease.deposit_amount_eur?.toString() || '',
+      deposit_status: lease.deposit_status || 'OPEN',
+      payment_due_day: lease.payment_due_day?.toString() || '1',
+      rent_model: lease.rent_model || 'FIX',
+      next_rent_adjustment_date: lease.next_rent_adjustment_date || '',
+    });
+    setLeaseDialogOpen(true);
+  }
+
+  async function handleSaveLease() {
+    if (!leaseForm.tenant_contact_id || !leaseForm.rent_cold_eur || !leaseForm.start_date) {
       toast.error('Bitte alle Pflichtfelder ausfüllen');
       return;
     }
 
-    setCreating(true);
+    setSaving(true);
     try {
-      const { error: insertError } = await supabase
-        .from('leases')
-        .insert({
-          tenant_id: tenantId,
-          unit_id: unitId,
-          tenant_contact_id: newLease.tenant_contact_id,
-          monthly_rent: parseFloat(newLease.monthly_rent),
-          start_date: newLease.start_date,
-          status: 'draft',
-        });
+      const rentCold = parseFloat(leaseForm.rent_cold_eur) || 0;
+      const nkAdvance = parseFloat(leaseForm.nk_advance_eur) || 0;
+      const heatingAdvance = parseFloat(leaseForm.heating_advance_eur) || 0;
+      const monthlyRent = rentCold + nkAdvance + heatingAdvance;
 
-      if (insertError) throw insertError;
+      const leaseData = {
+        tenant_id: tenantId,
+        unit_id: unitId,
+        tenant_contact_id: leaseForm.tenant_contact_id,
+        monthly_rent: monthlyRent,
+        start_date: leaseForm.start_date,
+        end_date: leaseForm.end_date || null,
+        lease_type: leaseForm.lease_type,
+        rent_cold_eur: rentCold,
+        nk_advance_eur: nkAdvance,
+        heating_advance_eur: heatingAdvance,
+        deposit_amount_eur: parseFloat(leaseForm.deposit_amount_eur) || null,
+        deposit_status: leaseForm.deposit_status,
+        payment_due_day: parseInt(leaseForm.payment_due_day) || 1,
+        rent_model: leaseForm.rent_model,
+        next_rent_adjustment_date: leaseForm.next_rent_adjustment_date || null,
+      };
 
-      toast.success('Mietvertrag erstellt');
-      setCreateLeaseOpen(false);
-      setNewLease({ tenant_contact_id: '', monthly_rent: '', start_date: '' });
+      if (editingLease) {
+        const { error: updateError } = await supabase
+          .from('leases')
+          .update(leaseData)
+          .eq('id', editingLease.id);
+        if (updateError) throw updateError;
+        toast.success('Mietvertrag aktualisiert');
+      } else {
+        const { error: insertError } = await supabase
+          .from('leases')
+          .insert({ ...leaseData, status: 'draft' });
+        if (insertError) throw insertError;
+        toast.success('Mietvertrag erstellt');
+      }
+
+      setLeaseDialogOpen(false);
       await fetchData();
     } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Erstellen');
+      toast.error(err.message || 'Fehler beim Speichern');
     }
-    setCreating(false);
+    setSaving(false);
   }
 
-  async function handleActivateLease() {
-    if (!lease) return;
-    
+  async function handleActivateLease(leaseId: string) {
     try {
       const { error: updateError } = await supabase
         .from('leases')
         .update({ status: 'active' })
-        .eq('id', lease.id);
+        .eq('id', leaseId);
 
       if (updateError) throw updateError;
-
       toast.success('Mietvertrag aktiviert');
       await fetchData();
     } catch (err: any) {
@@ -226,8 +326,33 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     }
   }
 
+  async function handleTerminateLease(leaseId: string) {
+    try {
+      const { error: updateError } = await supabase
+        .from('leases')
+        .update({ status: 'notice_given' })
+        .eq('id', leaseId);
+
+      if (updateError) throw updateError;
+      toast.success('Kündigung eingetragen');
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Kündigen');
+    }
+  }
+
+  function openInviteDialog(lease: Lease & { tenant_contact?: Contact }) {
+    if (!lease.tenant_contact?.email) {
+      toast.error('Keine E-Mail-Adresse hinterlegt');
+      return;
+    }
+    setInviteLeaseId(lease.id);
+    setInviteContact(lease.tenant_contact);
+    setInviteOpen(true);
+  }
+
   async function handleSendInvite() {
-    if (!lease || !leaseContact?.email) {
+    if (!inviteLeaseId || !inviteContact?.email) {
       toast.error('Keine E-Mail-Adresse hinterlegt');
       return;
     }
@@ -238,10 +363,10 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .from('renter_invites')
         .insert({
           tenant_id: tenantId,
-          lease_id: lease.id,
+          lease_id: inviteLeaseId,
           unit_id: unitId,
-          contact_id: lease.tenant_contact_id,
-          email: leaseContact.email,
+          contact_id: inviteContact.id,
+          email: inviteContact.email,
           created_by: user?.id,
         });
 
@@ -255,6 +380,13 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     }
     setInviting(false);
   }
+
+  const calculateWarmRent = () => {
+    const cold = parseFloat(leaseForm.rent_cold_eur) || 0;
+    const nk = parseFloat(leaseForm.nk_advance_eur) || 0;
+    const heating = parseFloat(leaseForm.heating_advance_eur) || 0;
+    return cold + nk + heating;
+  };
 
   if (loading) {
     return (
@@ -284,170 +416,155 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Current Lease */}
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Mietverträge</h3>
+          <p className="text-sm text-muted-foreground">
+            Verwalten Sie alle Mietverträge für diese Immobilie
+          </p>
+        </div>
+        <Button onClick={openCreateDialog}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Neuen Mietvertrag anlegen
+        </Button>
+      </div>
+
+      {/* Active Leases */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Mietvertrag</CardTitle>
-              <CardDescription>
-                Aktuelles Mietverhältnis für diese Immobilie
-              </CardDescription>
-            </div>
-            {!lease && (
-              <Dialog open={createLeaseOpen} onOpenChange={setCreateLeaseOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Mietvertrag anlegen
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Neuen Mietvertrag anlegen</DialogTitle>
-                    <DialogDescription>
-                      Wählen Sie einen Kontakt als Mieter aus.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Mieter (Kontakt)</Label>
-                      <Select
-                        value={newLease.tenant_contact_id}
-                        onValueChange={(v) => setNewLease(prev => ({ ...prev, tenant_contact_id: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Kontakt auswählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {contacts.map(c => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.last_name}, {c.first_name} {c.email && `(${c.email})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Warmmiete (€)</Label>
-                      <Input
-                        type="number"
-                        value={newLease.monthly_rent}
-                        onChange={(e) => setNewLease(prev => ({ ...prev, monthly_rent: e.target.value }))}
-                        placeholder="1200.00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Mietbeginn</Label>
-                      <Input
-                        type="date"
-                        value={newLease.start_date}
-                        onChange={(e) => setNewLease(prev => ({ ...prev, start_date: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setCreateLeaseOpen(false)}>Abbrechen</Button>
-                    <Button onClick={handleCreateLease} disabled={creating}>
-                      {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Anlegen
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-primary" />
+            Aktive Verträge ({activeLeases.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {lease ? (
+          {activeLeases.length > 0 ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">
-                    {leaseContact?.last_name}, {leaseContact?.first_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{leaseContact?.email || 'Keine E-Mail'}</p>
-                </div>
-                {getStatusBadge(lease.status)}
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Warmmiete</p>
-                  <p className="font-medium">{formatCurrency(lease.monthly_rent)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Mietbeginn</p>
-                  <p className="font-medium">{formatDate(lease.start_date)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Mietende</p>
-                  <p className="font-medium">{formatDate(lease.end_date)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Mieter seit</p>
-                  <p className="font-medium">{formatDate(lease.tenant_since)}</p>
-                </div>
-              </div>
+              {activeLeases.map(lease => (
+                <div key={lease.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">
+                        {lease.tenant_contact?.last_name}, {lease.tenant_contact?.first_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {lease.tenant_contact?.email || 'Keine E-Mail'}
+                      </p>
+                    </div>
+                    {getStatusBadge(lease.status)}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Warmmiete</p>
+                      <p className="font-medium">{formatCurrency(lease.monthly_rent)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Mietbeginn</p>
+                      <p className="font-medium">{formatDate(lease.start_date)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Mietende</p>
+                      <p className="font-medium">{formatDate(lease.end_date)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Vertragsart</p>
+                      <p className="font-medium">
+                        {LEASE_TYPES.find(t => t.value === lease.lease_type)?.label || 'Unbefristet'}
+                      </p>
+                    </div>
+                  </div>
 
-              {lease.rent_increase && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Mieterhöhung</p>
-                  <p className="font-medium">{lease.rent_increase}</p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t">
-                {lease.status === 'draft' && (
-                  <Button onClick={handleActivateLease}>
-                    Mietvertrag aktivieren
-                  </Button>
-                )}
-                
-                {lease.status === 'active' && !lease.renter_org_id && (
-                  <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        <Mail className="mr-2 h-4 w-4" />
-                        Mieter einladen
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(lease)}>
+                      <Edit2 className="mr-1 h-3 w-3" />
+                      Bearbeiten
+                    </Button>
+                    
+                    {lease.status === 'draft' && (
+                      <Button size="sm" onClick={() => handleActivateLease(lease.id)}>
+                        Aktivieren
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Mieter zum Portal einladen</DialogTitle>
-                        <DialogDescription>
-                          Eine Einladung wird an {leaseContact?.email} gesendet.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setInviteOpen(false)}>Abbrechen</Button>
-                        <Button onClick={handleSendInvite} disabled={inviting}>
-                          {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Einladung senden
+                    )}
+                    
+                    {lease.status === 'active' && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleTerminateLease(lease.id)}
+                        >
+                          Kündigen
                         </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-
-                {lease.renter_org_id && (
-                  <Badge variant="default" className="h-9 px-4">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Mieter hat Portal-Zugang
-                  </Badge>
-                )}
-              </div>
+                        
+                        {!lease.renter_org_id && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => openInviteDialog(lease)}
+                          >
+                            <Mail className="mr-1 h-3 w-3" />
+                            Einladen
+                          </Button>
+                        )}
+                        
+                        {lease.renter_org_id && (
+                          <Badge variant="default" className="h-7 px-3">
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Portal-Zugang
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-6">
               <UserPlus className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">Kein aktiver Mietvertrag</p>
+              <p className="mt-2 text-muted-foreground">Keine aktiven Mietverträge</p>
               <p className="text-sm text-muted-foreground">Legen Sie einen neuen Mietvertrag an.</p>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Historical Leases */}
+      {historicalLeases.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              Historische Verträge ({historicalLeases.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {historicalLeases.map(lease => (
+                <div key={lease.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <p className="font-medium text-muted-foreground">
+                      {lease.tenant_contact?.last_name}, {lease.tenant_contact?.first_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(lease.start_date)} – {formatDate(lease.end_date)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {getStatusBadge(lease.status)}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {formatCurrency(lease.monthly_rent)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invites */}
       {invites.length > 0 && (
@@ -472,6 +589,231 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Create/Edit Lease Dialog */}
+      <Dialog open={leaseDialogOpen} onOpenChange={setLeaseDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLease ? 'Mietvertrag bearbeiten' : 'Neuen Mietvertrag anlegen'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingLease 
+                ? 'Aktualisieren Sie die Vertragsdaten.'
+                : 'Wählen Sie einen Kontakt als Mieter und geben Sie die Vertragsdetails ein.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Mieter Auswahl */}
+            <div className="space-y-2">
+              <Label>Mieter (Kontakt) *</Label>
+              <Select
+                value={leaseForm.tenant_contact_id}
+                onValueChange={(v) => setLeaseForm(prev => ({ ...prev, tenant_contact_id: v }))}
+                disabled={!!editingLease}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Kontakt auswählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contacts.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.last_name}, {c.first_name} {c.email && `(${c.email})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Kontakte werden über Office → Kontakte angelegt
+              </p>
+            </div>
+
+            {/* Vertragsdetails */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Vertragsart</Label>
+                <Select
+                  value={leaseForm.lease_type}
+                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, lease_type: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEASE_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Mietmodell</Label>
+                <Select
+                  value={leaseForm.rent_model}
+                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, rent_model: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RENT_MODELS.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Laufzeit */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Mietbeginn *</Label>
+                <Input
+                  type="date"
+                  value={leaseForm.start_date}
+                  onChange={(e) => setLeaseForm(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mietende</Label>
+                <Input
+                  type="date"
+                  value={leaseForm.end_date}
+                  onChange={(e) => setLeaseForm(prev => ({ ...prev, end_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Miete */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Euro className="h-4 w-4 text-muted-foreground" />
+                <Label className="font-medium">Miete</Label>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Kaltmiete (€) *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={leaseForm.rent_cold_eur}
+                    onChange={(e) => setLeaseForm(prev => ({ ...prev, rent_cold_eur: e.target.value }))}
+                    placeholder="750.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">NK-Vorauszahlung (€)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={leaseForm.nk_advance_eur}
+                    onChange={(e) => setLeaseForm(prev => ({ ...prev, nk_advance_eur: e.target.value }))}
+                    placeholder="150.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Heizkosten-VZ (€)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={leaseForm.heating_advance_eur}
+                    onChange={(e) => setLeaseForm(prev => ({ ...prev, heating_advance_eur: e.target.value }))}
+                    placeholder="100.00"
+                  />
+                </div>
+              </div>
+              <div className="p-2 bg-muted rounded text-sm flex justify-between">
+                <span className="font-medium">Warmmiete</span>
+                <span className="font-semibold text-foreground">
+                  {calculateWarmRent().toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                </span>
+              </div>
+            </div>
+
+            {/* Kaution & Zahlung */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs">Kaution (€)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={leaseForm.deposit_amount_eur}
+                  onChange={(e) => setLeaseForm(prev => ({ ...prev, deposit_amount_eur: e.target.value }))}
+                  placeholder="2250.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Kaution-Status</Label>
+                <Select
+                  value={leaseForm.deposit_status}
+                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, deposit_status: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPOSIT_STATUSES.map(s => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Zahlungstag</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={leaseForm.payment_due_day}
+                  onChange={(e) => setLeaseForm(prev => ({ ...prev, payment_due_day: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Nächste Anpassung */}
+            <div className="space-y-2">
+              <Label className="text-xs">Nächste Mietanpassung frühestens</Label>
+              <Input
+                type="date"
+                value={leaseForm.next_rent_adjustment_date}
+                onChange={(e) => setLeaseForm(prev => ({ ...prev, next_rent_adjustment_date: e.target.value }))}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLeaseDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleSaveLease} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingLease ? 'Speichern' : 'Anlegen'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mieter zum Portal einladen</DialogTitle>
+            <DialogDescription>
+              Eine Einladung wird an {inviteContact?.email} gesendet.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleSendInvite} disabled={inviting}>
+              {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Einladung senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

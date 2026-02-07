@@ -10,7 +10,7 @@ import {
   EditableIdentityBlock,
   EditableAddressBlock,
   EditableBuildingBlock,
-  EditableTenancyBlock,
+  TenancySummaryBlock,
   EditableFinancingBlock,
   EditableLegalBlock,
   EditableWEGBlock,
@@ -123,14 +123,12 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           <EditableIdentityBlock
             unitCode={formData.unitCode}
             propertyType={formData.propertyType}
-            category={formData.category}
             status={formData.propertyStatus}
             saleEnabled={formData.saleEnabled}
             rentalManaged={formData.rentalManaged}
             reportingRegime={formData.reportingRegime}
             buildYear={formData.buildYear}
             wegFlag={formData.wegFlag}
-            meaOrTeNo={formData.meaOrTeNo}
             onFieldChange={handleFieldChange}
           />
 
@@ -188,22 +186,17 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Block F: Tenancy */}
-            <EditableTenancyBlock
+            {/* Block F: Tenancy Summary */}
+            <TenancySummaryBlock
               tenancyStatus={formData.tenancyStatus}
-              leaseType={formData.leaseType}
+              activeLeasesCount={formData.activeLeasesCount || (formData.tenancyStatus === 'ACTIVE' ? 1 : 0)}
+              totalRentWarmEur={
+                (formData.rentColdEur || 0) + 
+                (formData.nkAdvanceEur || 0) + 
+                (formData.heatingAdvanceEur || 0)
+              }
               tenantName={formData.tenantName}
-              startDate={formData.startDate}
-              endDate={formData.endDate}
-              rentColdEur={formData.rentColdEur}
-              nkAdvanceEur={formData.nkAdvanceEur}
-              heatingAdvanceEur={formData.heatingAdvanceEur}
-              depositAmountEur={formData.depositAmountEur}
-              depositStatus={formData.depositStatus}
-              paymentDueDay={formData.paymentDueDay}
-              rentModel={formData.rentModel}
-              nextRentAdjustmentDate={formData.nextRentAdjustmentDate}
-              onFieldChange={handleFieldChange}
+              tenantSince={formData.startDate}
             />
 
             {/* Block G: WEG/NK */}
