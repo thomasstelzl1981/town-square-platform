@@ -1,121 +1,158 @@
 
-# Überarbeitetes Konzept: Bildergalerie im Exposé-Tab
+# Umfassende Überarbeitung: Exposé-Tab & Mieten-SSOT
 
-## Analyse des aktuellen Problems
+## Zusammenfassung der gefundenen Probleme
 
-Die aktuelle `ExposeImageGallery`-Komponente hat folgende Probleme:
-
-1. **Zu große Darstellung**: Das Hauptbild nimmt 2/3 der Breite ein (2 Spalten von 3) - für die Bearbeitungsansicht überdimensioniert
-2. **Keine Titelbild-Funktion**: Es gibt keine Möglichkeit, ein Bild als Titelbild zu markieren
-3. **Keine Begrenzung**: Unbegrenzte Anzahl von Bildern möglich
-4. **Keine Sortierung**: Fehlende `display_order` für benutzerdefinierte Reihenfolge
-
-## Geplante Lösung
-
-### 1. Datenbank-Erweiterung
-
-Neue Spalten in der `document_links`-Tabelle:
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| `display_order` | INTEGER | Sortierreihenfolge (0-9, max. 10 Bilder) |
-| `is_title_image` | BOOLEAN | Markiert das Titelbild (nur 1 pro Objekt) |
-
-### 2. Kompaktere Galerie-Darstellung
-
-Neues Layout-Konzept für die Bearbeitungsansicht:
-
-```text
-+------------------------------------------+
-| Bildergalerie (3 von max. 10)     [Edit] |
-+------------------------------------------+
-| [T] [2] [3] [4] [5] [+]                  |
-+------------------------------------------+
+### Problem 1: Falsches Mieten-Label im Exposé-Tab
+**Zeile 213 in `ExposeTab.tsx`:**
+```tsx
+<InfoRow label="Warmmiete" value={formatCurrency(unit.current_monthly_rent)} />
 ```
+- `unit.current_monthly_rent` enthält die **Kaltmiete** (682 €), nicht die Warmmiete!
+- Die Datenbank zeigt: `current_monthly_rent = 682` und `ancillary_costs = 155` (Nebenkosten)
+- Warmmiete wäre: 682 + 155 = 837 €
 
-- **Thumbnail-Grid**: Alle Bilder als gleich große Thumbnails (max. 10)
-- **Titelbild-Markierung**: Stern-Icon auf dem Titelbild
-- **Kompakte Höhe**: ca. 80-100px Thumbnails statt riesigem Hauptbild
-- **"+"-Button**: Upload-Link zum Datenraum (falls < 10 Bilder)
-- **Lightbox**: Klick auf Thumbnail öffnet vergrößerte Ansicht
+### Problem 2: Objektbeschreibung fehlt
+- Die `ExposeDescriptionCard` wurde **nie erstellt** (File not found)
+- Der statische Block in Zeile 117-126 zeigt nur vorhandene Beschreibungen, bietet aber keine Bearbeitung
 
-### 3. Titelbild-Logik
+### Problem 3: ExposeHeadlineCard UI-Flackern
+- Nach dem Speichern wird `queryClient.invalidateQueries` aufgerufen, was die ganze Seite neu lädt
+- Optimistisches Update fehlt
 
-- Ein Bild kann per Klick als Titelbild markiert werden
-- Nur 1 Titelbild pro Property/Unit erlaubt
-- Titelbild wird immer als erstes angezeigt
-- Visuell durch goldenes Stern-Icon markiert
+### Problem 4: Karte über volle Breite
+- Die `PropertyMap`-Komponente nimmt die gesamte Breite ein (unschön)
+- Vorschlag: Objektbeschreibung links, Karte rechts (je 50%)
 
-### 4. 10-Bilder-Limit
-
-- Maximal 10 Bilder pro Exposé zulässig
-- Bei Erreichen des Limits verschwindet der "+"-Button
-- Klares Feedback: "3 von 10 Bildern"
+### Problem 5: Daten-SSOT nicht konsistent
+Die **Leases-Tabelle** ist der SSOT für Mietdaten, aber das Exposé liest von der **Units-Tabelle**:
+- Leases hat: `rent_cold_eur`, `nk_advance_eur`, `heating_advance_eur` (korrekt aufgeteilt)
+- Units hat nur: `current_monthly_rent`, `ancillary_costs` (redundant, veraltet)
 
 ---
 
-## Technische Umsetzung
+## Lösungsplan
 
-### Phase 1: Datenbank-Migration
+### Phase 1: Mieten-Labels korrigieren (ExposeTab.tsx)
 
-SQL-Migration für neue Spalten:
-
-```sql
-ALTER TABLE document_links 
-ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
-
-ALTER TABLE document_links 
-ADD COLUMN IF NOT EXISTS is_title_image BOOLEAN DEFAULT false;
-
--- Index für Sortierung
-CREATE INDEX IF NOT EXISTS idx_document_links_display_order 
-ON document_links(object_id, display_order);
-
--- Constraint: Nur ein Titelbild pro Objekt
-CREATE UNIQUE INDEX IF NOT EXISTS idx_document_links_title_image 
-ON document_links(object_id, object_type) 
-WHERE is_title_image = true;
+**Aktuelle fehlerhafte Darstellung (Zeile 210-220):**
+```tsx
+<InfoRow label="Warmmiete" value={formatCurrency(unit.current_monthly_rent)} />
+<InfoRow label="NK-Vorauszahlung" value={formatCurrency(unit.ancillary_costs)} />
 ```
 
-### Phase 2: Komponenten-Refactoring
+**Korrekte Darstellung:**
+| Label | Quelle | Beschreibung |
+|-------|--------|--------------|
+| Kaltmiete | `leases.rent_cold_eur` | Nettokaltmiete |
+| NK-Vorauszahlung | `leases.nk_advance_eur` | Nebenkosten-Vorauszahlung |
+| Heizkosten-VZ | `leases.heating_advance_eur` | Falls vorhanden |
+| **Warmmiete** | Summe aller obigen | Bruttowarmmiete |
 
-**ExposeImageGallery.tsx** (komplett überarbeitet):
+**Änderung:** Das Exposé muss die Lease-Daten laden, nicht die Unit-Daten.
 
-1. Query mit `display_order` Sortierung und `is_title_image` Priorität
-2. Kompaktes Grid-Layout (6 Spalten)
-3. Titelbild-Toggle per Klick auf Stern-Icon
-4. Drag-and-Drop für Reihenfolge (optional, spätere Phase)
-5. 10-Bilder-Limit mit visuellem Feedback
+### Phase 2: ExposeDescriptionCard erstellen
 
-### Phase 3: Erweiterte Funktionen
+Neue Komponente `src/components/verkauf/ExposeDescriptionCard.tsx`:
+- Editierbare Textarea für `properties.description`
+- KI-Generierungs-Button (ruft `sot-expose-description` Edge Function auf)
+- Speichert direkt in `properties.description`
+- Optimistisches Update nach Speichern
 
-- **Titelbild setzen**: Klick auf Stern-Icon → Mutation → Refresh
-- **Bild entfernen**: Klick auf X-Icon → Bestätigungsdialog → Unlink
-- **Sortierung**: Per Drag-and-Drop oder Pfeile (optional)
+### Phase 3: Layout-Überarbeitung (Beschreibung + Karte)
+
+**Neues Layout:**
+```
++-------------------------------+-------------------------------+
+| Objektbeschreibung (editbar)  | Karte (quadratisch)           |
+| - Textarea                    | - 300px Höhe                  |
+| - KI-Button                   | - Google Maps Embed           |
++-------------------------------+-------------------------------+
+```
+
+Änderungen in `ExposeTab.tsx`:
+- Grid mit 2 Spalten für Beschreibung + Karte
+- `PropertyMap` bekommt feste Höhe (quadratisch: ca. 300px x 300px)
+
+### Phase 4: ExposeHeadlineCard optimieren
+
+Änderungen:
+1. **Optimistisches Update:** Nach Speichern lokalen State aktualisieren, nicht invalidieren
+2. **Query-Invalidierung entfernen:** Verhindert Flackern
+3. **Textgrößen anpassen:** Headline größer (text-2xl), Subline kleiner (text-sm)
+
+### Phase 5: Lease-Daten im Exposé verwenden (SSOT-Konformität)
+
+**Option A (empfohlen):** ExposeTab erhält Lease-Daten als Props
+
+Die `PropertyDetailPage` lädt bereits `dossierData` via `usePropertyDossier`, welches die korrekten Lease-Summen enthält:
+- `rentColdEur` (Kaltmiete aus Leases)
+- `nkAdvanceEur` (NK-Vorauszahlung aus Leases)
+- `heatingAdvanceEur` (Heizkosten-VZ aus Leases)
+- `rentWarmEur` (berechnete Summe)
+
+**Lösung:** ExposeTab bekommt `dossierData` als zusätzliche Props und verwendet diese für die Mieten-Anzeige.
 
 ---
 
-## UI-Vorschau
+## Technische Änderungen
 
-### Kompakte Galerie (Standard)
+### Datei 1: `src/components/portfolio/ExposeTab.tsx`
 
-```text
-+------------------------------------------------------------+
-| Bildergalerie                          3/10  [Im Datenraum] |
-+------------------------------------------------------------+
-|  +--------+  +--------+  +--------+  +--------+             |
-|  | [Star] |  |   2    |  |   3    |  |   +    |             |
-|  | Außen  |  | Wohn-  |  | Küche  |  | Hinzu- |             |
-|  |        |  | zimmer |  |        |  | fügen  |             |
-|  +--------+  +--------+  +--------+  +--------+             |
-+------------------------------------------------------------+
+Änderungen:
+1. **Props erweitern:** Neues Prop `dossierData` für Lease-basierte Mietdaten
+2. **Miete-Card korrigieren:** Kaltmiete, NK-VZ, (Heiz-VZ), Warmmiete
+3. **Layout-Änderung:** Beschreibung + Karte in 2-Spalten-Grid
+4. **Import:** `ExposeDescriptionCard` importieren
+
+### Datei 2: `src/components/verkauf/ExposeDescriptionCard.tsx` (NEU)
+
+Neue Komponente:
+- Inline-Editing für Objektbeschreibung
+- KI-Generierung über Edge Function
+- Speichert in `properties.description`
+- Optimistisches Update
+
+### Datei 3: `src/components/verkauf/ExposeHeadlineCard.tsx`
+
+Änderungen:
+1. Query-Invalidierung durch optimistisches Update ersetzen
+2. Textgrößen verbessern
+
+### Datei 4: `src/components/portfolio/PropertyMap.tsx`
+
+Änderungen:
+- Card-Wrapper entfernen (wird in ExposeTab gehandhabt)
+- Flexible Höhe ermöglichen via Props
+
+### Datei 5: `src/pages/portal/immobilien/PropertyDetailPage.tsx`
+
+Änderungen:
+- `dossierData` an ExposeTab weitergeben
+
+---
+
+## Datenfluss nach Implementierung
+
 ```
+leases (SSOT)
+    │
+    ├── rent_cold_eur ─────────┐
+    ├── nk_advance_eur ────────┼──► usePropertyDossier ──► dossierData
+    ├── heating_advance_eur ───┘            │
+    │                                       ▼
+    │                              ExposeTab (Props)
+    │                                       │
+    │                                       ▼
+    │                              Miete-Card (korrekt!)
+    │                              ├─ Kaltmiete: 682 €
+    │                              ├─ NK-VZ: 155 €
+    │                              └─ Warmmiete: 837 €
 
-### Titelbild-Markierung
-
-- Goldener Stern-Icon oben links auf dem Titelbild
-- Hover-Tooltip: "Als Titelbild markiert"
-- Klick auf anderen Stern → neues Titelbild wählen
+properties (SSOT für Beschreibung)
+    │
+    └── description ──► ExposeDescriptionCard ──► Editierbar + KI
+```
 
 ---
 
@@ -123,12 +160,20 @@ WHERE is_title_image = true;
 
 | Datei | Änderung |
 |-------|----------|
-| `supabase/migrations/XXXXXX.sql` | Neue Spalten für document_links |
-| `src/components/verkauf/ExposeImageGallery.tsx` | Komplettes Refactoring |
-| `src/integrations/supabase/types.ts` | Auto-generiert nach Migration |
+| `src/components/portfolio/ExposeTab.tsx` | Props erweitern, Mieten-Labels korrigieren, Layout 2-spaltig |
+| `src/components/verkauf/ExposeDescriptionCard.tsx` | **Neue Datei** |
+| `src/components/verkauf/ExposeHeadlineCard.tsx` | Optimistisches Update, UI-Verbesserungen |
+| `src/components/portfolio/PropertyMap.tsx` | Flexible Höhe, kein Card-Wrapper |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | dossierData an ExposeTab übergeben |
+| `src/pages/portfolio/PropertyDetail.tsx` | dossierData an ExposeTab übergeben (falls verwendet) |
 
-## Risikobewertung
+---
 
-- **Gering**: Keine Breaking Changes für bestehende Daten
-- **Migration rückwärtskompatibel**: Neue Spalten haben sinnvolle Defaults
-- **Bestehende Bilder**: Behalten `display_order = 0` und `is_title_image = false`
+## Erwartetes Ergebnis
+
+Nach der Implementierung:
+1. **Miete-Card zeigt korrekt:** Kaltmiete 682 €, NK-VZ 155 €, Warmmiete 837 €
+2. **Objektbeschreibung:** Editierbar direkt im Exposé mit KI-Generierung
+3. **Layout:** Beschreibung links, Karte rechts (je 50%)
+4. **Kein Flackern:** Headline-Speicherung erfolgt optimistisch
+5. **SSOT-konform:** Alle Mietdaten kommen aus `leases`, nicht aus `units`
