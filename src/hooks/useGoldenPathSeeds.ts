@@ -74,6 +74,9 @@ export interface SeedCounts {
   landlord_contexts: number;
   context_members: number;
   tile_activations: number;
+  // Acquiary
+  acq_mandates: number;
+  acq_offers: number;
 }
 
 export interface SeedResult {
@@ -99,11 +102,13 @@ function emptyCounts(): SeedCounts {
     landlord_contexts: 0,
     context_members: 0,
     tile_activations: 0,
+    acq_mandates: 0,
+    acq_offers: 0,
   };
 }
 
 export async function getCounts(tenantId: string): Promise<SeedCounts> {
-  const [props, units, loans, leases, finReqs, appProfiles, contacts, docs, nodes, links, contexts, members, tiles] = await Promise.all([
+  const [props, units, loans, leases, finReqs, appProfiles, contacts, docs, nodes, links, contexts, members, tiles, acqMandates, acqOffers] = await Promise.all([
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('units').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('loans').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
@@ -117,6 +122,9 @@ export async function getCounts(tenantId: string): Promise<SeedCounts> {
     supabase.from('landlord_contexts').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('context_members').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('tenant_tile_activation').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+    supabase.from('acq_mandates').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+    // For acq_offers, we need to count via mandates
+    supabase.from('acq_offers').select('id, mandate:acq_mandates!inner(tenant_id)', { count: 'exact', head: true }).eq('acq_mandates.tenant_id', tenantId),
   ]);
 
   return {
@@ -133,6 +141,8 @@ export async function getCounts(tenantId: string): Promise<SeedCounts> {
     landlord_contexts: contexts.count ?? 0,
     context_members: members.count ?? 0,
     tile_activations: tiles.count ?? 0,
+    acq_mandates: acqMandates.count ?? 0,
+    acq_offers: acqOffers.count ?? 0,
   };
 }
 

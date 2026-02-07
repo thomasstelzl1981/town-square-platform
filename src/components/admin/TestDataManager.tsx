@@ -620,7 +620,7 @@ export function TestDataManager() {
               ))}
             </div>
           ) : (lastResult || initialCounts) ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
               {(() => {
                 const displayCounts = lastResult?.after || initialCounts;
                 return (
@@ -640,6 +640,15 @@ export function TestDataManager() {
                     <div className="p-2 bg-background rounded border flex items-center gap-2">
                       <Home className="h-3 w-3 text-muted-foreground" />
                       <span>Kontexte: <strong>{displayCounts?.landlord_contexts ?? 0}</strong>/1</span>
+                    </div>
+                    {/* Acquiary Data */}
+                    <div className="p-2 bg-primary/5 rounded border border-primary/20 flex items-center gap-2">
+                      <FileText className="h-3 w-3 text-primary" />
+                      <span>Mandate: <strong>{displayCounts?.acq_mandates ?? 0}</strong></span>
+                    </div>
+                    <div className="p-2 bg-primary/5 rounded border border-primary/20 flex items-center gap-2">
+                      <Building2 className="h-3 w-3 text-primary" />
+                      <span>Offers: <strong>{displayCounts?.acq_offers ?? 0}</strong></span>
                     </div>
                   </>
                 );

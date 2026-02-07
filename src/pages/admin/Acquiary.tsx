@@ -4,24 +4,29 @@
  * SoT for acq_mandates after submission until assignment to akquise_manager
  * Analog to FutureRoom.tsx pattern
  * 
- * Sub-Items (5):
+ * Sub-Items (7):
  * - Inbox: New submissions (status: submitted_to_zone1)
  * - Assignments: Assignment workstation
  * - Mandates: All mandates overview
+ * - Objekteingang: ALL offers across all mandates (NEW!)
  * - Audit: Event timeline
  * - Needs Routing: Inbound messages without clear assignment
+ * - Monitoring: KPIs and status tracking
  */
 import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Activity, Loader2 } from 'lucide-react';
+import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Activity, Loader2, Package } from 'lucide-react';
 import { useAcqMandatesInbox, useAcqMandates } from '@/hooks/useAcqMandate';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 // Lazy load sub-pages
 const AcquiaryInbox = React.lazy(() => import('./acquiary/AcquiaryInbox'));
 const AcquiaryAssignments = React.lazy(() => import('./acquiary/AcquiaryAssignments'));
 const AcquiaryMandates = React.lazy(() => import('./acquiary/AcquiaryMandates'));
+const AcquiaryObjekteingang = React.lazy(() => import('./acquiary/AcquiaryObjekteingang'));
 const AcquiaryAudit = React.lazy(() => import('./acquiary/AcquiaryAudit'));
 const AcquiaryNeedsRouting = React.lazy(() => import('./acquiary/AcquiaryNeedsRouting'));
 const AcquiaryMonitoring = React.lazy(() => import('./acquiary/AcquiaryMonitoring'));
@@ -38,16 +43,28 @@ export default function AcquiaryPage() {
   const { data: inboxMandates } = useAcqMandatesInbox();
   const { data: allMandates } = useAcqMandates();
 
+  // Count all offers for badge
+  const { data: offerCount = 0 } = useQuery({
+    queryKey: ['acq-offers-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('acq_offers')
+        .select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const newMandates = inboxMandates?.length || 0;
   const assignedNotAccepted = allMandates?.filter(m => m.status === 'assigned').length || 0;
-  // TODO: Replace with actual inbound needs_routing query
-  const needsRoutingCount = 0;
+  const needsRoutingCount = 0; // TODO: Replace with actual inbound needs_routing query
 
   // Determine active tab from route
   const getActiveTab = () => {
     const path = location.pathname;
     if (path.includes('/assignments')) return 'assignments';
     if (path.includes('/mandates')) return 'mandates';
+    if (path.includes('/objekteingang')) return 'objekteingang';
     if (path.includes('/audit')) return 'audit';
     if (path.includes('/needs-routing')) return 'needs-routing';
     if (path.includes('/monitoring')) return 'monitoring';
@@ -65,6 +82,9 @@ export default function AcquiaryPage() {
         break;
       case 'mandates':
         navigate('/admin/acquiary/mandates');
+        break;
+      case 'objekteingang':
+        navigate('/admin/acquiary/objekteingang');
         break;
       case 'audit':
         navigate('/admin/acquiary/audit');
@@ -107,9 +127,9 @@ export default function AcquiaryPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs — 6 Items */}
+      {/* Navigation Tabs — 7 Items */}
       <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="inbox" className="gap-2">
             <Inbox className="h-4 w-4" />
             Inbox
@@ -129,6 +149,13 @@ export default function AcquiaryPage() {
             Mandate
             <Badge variant="outline" className="ml-1">{allMandates?.length || 0}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="objekteingang" className="gap-2">
+            <Package className="h-4 w-4" />
+            Objekteingang
+            {offerCount > 0 && (
+              <Badge variant="secondary" className="ml-1">{offerCount}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <ClipboardList className="h-4 w-4" />
             Audit
@@ -142,7 +169,7 @@ export default function AcquiaryPage() {
           </TabsTrigger>
           <TabsTrigger value="monitoring" className="gap-2">
             <Activity className="h-4 w-4" />
-            Monitoring
+            Monitor
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -154,6 +181,7 @@ export default function AcquiaryPage() {
           <Route path="inbox" element={<AcquiaryInbox />} />
           <Route path="assignments" element={<AcquiaryAssignments />} />
           <Route path="mandates" element={<AcquiaryMandates />} />
+          <Route path="objekteingang" element={<AcquiaryObjekteingang />} />
           <Route path="audit" element={<AcquiaryAudit />} />
           <Route path="needs-routing" element={<AcquiaryNeedsRouting />} />
           <Route path="monitoring" element={<AcquiaryMonitoring />} />
