@@ -1,123 +1,199 @@
 
-# Bugfix: Logo + Settings-Icon + Uhrzeit wiederherstellen
+# Plan: Logo-Fix, Navigation-Hohe reduzieren und D-DIN Schriftart
 
-## Zusammenfassung der drei Fixes
+## Teil 1: Logo-Problem - Anleitung zur Uberarbeitung
 
-| Problem | Losung |
-|---------|--------|
-| Logo verschwunden | PNG statt SVG importieren |
-| Settings-Icon doppelt | Standalone Settings-Button entfernen (Zeilen 169-179) |
-| Uhrzeit fehlt | Digitale Zeit wieder hinzufugen (ohne Clock-Icon) |
+### Aktueller Zustand
+Die PNG-Dateien haben einen weissen Hintergrund, der im Dark Mode als Rechteck sichtbar ist.
 
----
+### Empfehlung fur Logo-Bearbeitung
 
-## Dateiänderungen
+| Anforderung | Beschreibung |
+|-------------|--------------|
+| **Format** | PNG mit Alpha-Kanal (Transparenz) |
+| **Hintergrund** | Komplett durchsichtig (Schachbrettmuster in Photoshop/Figma) |
+| **Variante Dark Mode** | Weisse/helle Logo-Grafik auf transparentem Hintergrund |
+| **Variante Light Mode** | Dunkle Logo-Grafik auf transparentem Hintergrund |
+| **Grosse** | Min. 400px breit fur scharfe Darstellung bei allen Grossen |
+| **Inhalt** | Nur Symbol/Icon, kein Text (oder Text separat) |
 
-### 1. AppLogo.tsx - PNG statt SVG verwenden
+### Bearbeitungsschritte (Photoshop/Figma/GIMP)
 
-**Datei:** `src/components/portal/AppLogo.tsx`
+1. **Hintergrund entfernen:**
+   - In Photoshop: Zauberstab auf weissen Hintergrund > Loschen
+   - In Figma: Hintergrund-Rechteck loschen
+   - Online: remove.bg oder photopea.com
 
-**Zeilen 11-13 andern von:**
-```tsx
-// Logo imports - SVG for native transparency
-import logoLight from '@/assets/logos/armstrong_logo_light.svg';
-import logoDark from '@/assets/logos/armstrong_logo_dark.svg';
-```
+2. **Zwei Varianten exportieren:**
+   - `armstrong_logo_dark.png` - Fur Dark Mode (helles Logo auf transparent)
+   - `armstrong_logo_light.png` - Fur Light Mode (dunkles Logo auf transparent)
 
-**Zu:**
-```tsx
-// Logo imports - PNG with transparency
-import logoLight from '@/assets/logos/armstrong_logo_light.png';
-import logoDark from '@/assets/logos/armstrong_logo_dark.png';
-```
+3. **Als PNG-24 mit Transparenz exportieren** (nicht JPEG!)
 
----
+### Mono-Variante als Fallback
+Falls das Logo komplex ist, konnte eine einfarbige Version besser funktionieren:
+- `armstrong_logo_mono_white.png` fur Dark Mode (100% weiss)
+- Diese Datei existiert bereits im Ordner
 
-### 2. SystemBar.tsx - Settings-Button entfernen
-
-**Zeilen 169-179 komplett entfernen:**
-```tsx
-{/* Settings button */}
-<Button
-  variant="ghost"
-  size="icon"
-  asChild
-  className="h-9 w-9"
->
-  <Link to="/portal/stammdaten/sicherheit" title="Einstellungen">
-    <Settings className="h-5 w-5" />
-  </Link>
-</Button>
-```
+**Code-Anderung:** Falls gewunscht, kann ich die AppLogo-Komponente auf die Mono-Versionen umstellen, bis neue transparente Logos bereit sind.
 
 ---
 
-### 3. SystemBar.tsx - Digitale Uhrzeit wieder hinzufugen
+## Teil 2: Navigation schmaler machen (ohne Schriftgrosse zu andern)
 
-**Zeilen 119-165 (Center section) erweitern:**
+### Aktuelle Hohen
 
-Die Uhrzeit soll nach dem Standort angezeigt werden, aber **ohne das Clock-Icon**:
+| Komponente | Zeile | Aktuell | Neu |
+|------------|-------|---------|-----|
+| **AreaTabs** (Level 1) | Zeile 24 | `py-2` (16px) | `py-1` (8px) |
+| **ModuleTabs** (Level 2) | Zeile 81 | `py-2` (16px) | `py-1` (8px) |
+| **SubTabs** (Level 3) | Zeile 25 | `py-2` (16px) | `py-1` (8px) |
 
+### Anderungen
+
+**Datei: `src/components/portal/AreaTabs.tsx`**
 ```tsx
-{/* Center section: Location + Time (digital only, no icon) */}
-<div className="hidden sm:flex items-center gap-3 text-muted-foreground">
-  {location ? (
-    <>
-      <div className="flex items-center gap-1.5">
-        <MapPin className="h-4 w-4" />
-        <span className="text-sm">{location.city}</span>
-      </div>
-      {location.altitude !== null && (
-        <div className="flex items-center gap-1">
-          <Mountain className="h-3.5 w-3.5" />
-          <span className="text-sm">{location.altitude}m</span>
-        </div>
-      )}
-    </>
-  ) : locationError ? (
-    <button
-      onClick={() => {
-        // ... retry logic bleibt gleich
-      }}
-      className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-      title="Standort aktivieren"
-    >
-      <MapPin className="h-4 w-4" />
-      <span className="text-sm">Standort?</span>
-    </button>
-  ) : null}
-  
-  {/* Digitale Uhrzeit - ohne Icon */}
-  <span className="text-sm font-mono tabular-nums">{formattedTime}</span>
-</div>
+// Zeile 24: py-2 -> py-1
+<div className="flex items-center justify-center gap-1 px-4 py-1">
+
+// Zeile 34: Button padding reduzieren
+'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
 ```
 
----
+**Datei: `src/components/portal/ModuleTabs.tsx`**
+```tsx
+// Zeile 81: py-2 -> py-1
+<div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none">
 
-## Visuelle Darstellung
+// Zeile 95: Button padding reduzieren
+'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+```
 
-### Vorher (fehlerhaft):
+**Datei: `src/components/portal/SubTabs.tsx`**
+```tsx
+// Zeile 25: py-2 -> py-1
+<div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
+
+// Zeile 35: py-1.5 -> py-1
+'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
+```
+
+### Vorher/Nachher
+
 ```text
-+--------------------------------------------------------------------+
-| [Haus]  [LOGO FEHLT]    Standort?           [Zahnrad] [Rakete] [T] |
-+--------------------------------------------------------------------+
-                          ^ Keine Uhr          ^ Doppelt
+Vorher (3 Zeilen a ca. 44px = 132px):
++--------------------------------------------------+
+|   Base   Missions   Operations   Services        | <- 44px
++--------------------------------------------------+
+|   Stammdaten   Objekte   Module3   Module4       | <- 44px
++--------------------------------------------------+
+|   Ubersicht   Kontakte   Dokumente   Finanzen    | <- 44px
++--------------------------------------------------+
+
+Nachher (3 Zeilen a ca. 32px = 96px):
++--------------------------------------------------+
+|   Base   Missions   Operations   Services        | <- 32px
++--------------------------------------------------+
+|   Stammdaten   Objekte   Module3   Module4       | <- 32px
++--------------------------------------------------+
+|   Ubersicht   Kontakte   Dokumente   Finanzen    | <- 32px
++--------------------------------------------------+
 ```
 
-### Nachher (korrigiert):
-```text
-+--------------------------------------------------------------------+
-| [Haus]  [ARMSTRONG LOGO]    Standort? · 11:05         [Rakete] [T] |
-+--------------------------------------------------------------------+
-          ^ Sichtbar          ^ Mit Uhrzeit             ^ Nur 2 Icons
-```
+**Ersparnis:** ~36px vertikal (ca. 27% weniger Hohe)
 
 ---
 
-## Zusammenfassung der Änderungen
+## Teil 3: D-DIN Schriftart integrieren
 
-| Datei | Zeilen | Aktion |
-|-------|--------|--------|
-| `src/components/portal/AppLogo.tsx` | 11-13 | SVG zu PNG andern |
-| `src/components/portal/SystemBar.tsx` | 169-179 | Settings-Button entfernen |
-| `src/components/portal/SystemBar.tsx` | 164 | Uhrzeit nach Standort hinzufugen |
+### Uber D-DIN
+- Frei verfugbar unter SIL Open Font License (OFL)
+- Von Datto/Monotype erstellt
+- Verfugbar auf: Font Squirrel, CDNFonts
+- **Einschrankung:** Nur 2 Gewichte (Regular, Bold) + 1 Italic
+
+### Implementierung
+
+**Schritt 1: Font-Dateien herunterladen**
+- Von https://www.fontsquirrel.com/fonts/d-din
+- Benotigten Formate: WOFF2, WOFF (fur Web-Optimierung)
+
+**Schritt 2: Font-Ordner erstellen**
+```
+src/assets/fonts/
+├── D-DIN.woff2
+├── D-DIN.woff
+├── D-DIN-Bold.woff2
+├── D-DIN-Bold.woff
+├── D-DIN-Italic.woff2 (optional)
+└── D-DIN-Italic.woff (optional)
+```
+
+**Schritt 3: CSS @font-face in `src/index.css` hinzufugen**
+```css
+/* D-DIN Font Family */
+@font-face {
+  font-family: 'D-DIN';
+  src: url('./assets/fonts/D-DIN.woff2') format('woff2'),
+       url('./assets/fonts/D-DIN.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'D-DIN';
+  src: url('./assets/fonts/D-DIN-Bold.woff2') format('woff2'),
+       url('./assets/fonts/D-DIN-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+```
+
+**Schritt 4: Tailwind Config anpassen (`tailwind.config.ts`)**
+```ts
+theme: {
+  extend: {
+    fontFamily: {
+      sans: ['D-DIN', 'system-ui', 'sans-serif'],
+      display: ['D-DIN', 'system-ui', 'sans-serif'],
+    },
+  },
+}
+```
+
+**Schritt 5: Body-Style anpassen (`src/index.css`)**
+```css
+body {
+  @apply bg-background text-foreground antialiased;
+  font-family: 'D-DIN', system-ui, sans-serif;
+}
+```
+
+### Hinweis zur Limitierung
+D-DIN hat nur Regular (400) und Bold (700). Fur Zwischen-Gewichte (300, 500, 600) gibt es keinen echten Font - der Browser interpoliert dann, was weniger scharf aussieht.
+
+**Alternative:** Falls mehr Gewichte benotigt werden, ware "Barlow" (Google Fonts) eine gute Alternative mit ahnlichem Look und 9 Gewichten.
+
+---
+
+## Zusammenfassung der Dateiänderungen
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/components/portal/AreaTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
+| `src/components/portal/ModuleTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
+| `src/components/portal/SubTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
+| `src/index.css` | MODIFY | @font-face fur D-DIN hinzufugen |
+| `tailwind.config.ts` | MODIFY | fontFamily erweitern |
+| `src/assets/fonts/` | CREATE | D-DIN Font-Dateien (mussen extern bereitgestellt werden) |
+
+---
+
+## Nachste Schritte (von Ihnen)
+
+1. **Logo:** Neue transparente PNGs erstellen und hochladen
+2. **Font:** D-DIN Font-Dateien (WOFF/WOFF2) bereitstellen oder bestatigen, dass ich sie von Font Squirrel integrieren soll
+
+Soll ich mit Teil 2 (Navigation schmaler) und Teil 3 (D-DIN vorbereiten) beginnen, wahrend Sie die Logos uberarbeiten?
