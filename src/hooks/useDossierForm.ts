@@ -53,7 +53,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
     const propertyFields = [
       'propertyType', 'category', 'propertyStatus', 'saleEnabled', 'rentalManaged',
       'vermieterKontextId', 'reportingRegime', 'street', 'houseNumber', 'postalCode',
-      'city', 'locationLabel', 'locationNotes', 'latitude', 'longitude', 'buildYear',
+      'city', 'locationLabel', 'locationNotes', 'description', 'latitude', 'longitude', 'buildYear',
       'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
       'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault'
@@ -85,6 +85,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if (changes.city !== undefined) mapped.city = changes.city;
       if (changes.locationLabel !== undefined) mapped.locationLabel = changes.locationLabel;
       if (changes.locationNotes !== undefined) mapped.locationNotes = changes.locationNotes;
+      if ((changes as any).description !== undefined) (mapped as any).description = (changes as any).description;
       if (changes.latitude !== undefined) mapped.latitude = changes.latitude;
       if (changes.longitude !== undefined) mapped.longitude = changes.longitude;
       if ((changes as any).buildYear !== undefined) mapped.yearBuilt = (changes as any).buildYear;

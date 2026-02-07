@@ -222,12 +222,13 @@ export interface UnitDossierData {
   vermieterKontextId?: string;
   reportingRegime: ReportingRegime;
 
-  // Block B: Address
+  // Block B: Address & Beschreibung
   street: string;
   houseNumber?: string;
   postalCode: string;
   city: string;
   locationNotes?: string;
+  description?: string;
   latitude?: number;
   longitude?: number;
 

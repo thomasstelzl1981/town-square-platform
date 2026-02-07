@@ -206,16 +206,21 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
             onFieldChange={handleFieldChange}
           />
 
-          {/* Block B: Address */}
+          {/* Block B: Lage & Beschreibung */}
           <EditableAddressBlock
             street={formData.street}
             houseNumber={formData.houseNumber}
             postalCode={formData.postalCode}
             city={formData.city}
             locationLabel={formData.locationLabel}
-            locationNotes={formData.locationNotes}
+            description={formData.description}
             latitude={formData.latitude}
             longitude={formData.longitude}
+            propertyType={formData.propertyType}
+            buildYear={formData.buildYear}
+            totalAreaSqm={formData.areaLivingSqm}
+            heatingType={formData.heatingType}
+            energySource={formData.energySource}
             onFieldChange={handleFieldChange}
           />
 
