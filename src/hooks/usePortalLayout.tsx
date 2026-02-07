@@ -113,9 +113,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
   });
   
   // Armstrong expanded state (collapsed = compact card, expanded = full stripe)
-  // Default TRUE: Armstrong opens expanded on login/page load
+  // Default FALSE: Armstrong always starts as collapsed circle (planet)
   const [armstrongExpanded, setArmstrongExpandedState] = useState(() => {
-    return getStoredValue(ARMSTRONG_EXPANDED_KEY, true);
+    return getStoredValue(ARMSTRONG_EXPANDED_KEY, false);
   });
   
   // Active area (derived from route initially) - null for Dashboard

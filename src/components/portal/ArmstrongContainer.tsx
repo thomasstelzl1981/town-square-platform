@@ -98,13 +98,13 @@ export function ArmstrongContainer() {
       <div 
         ref={containerRef}
         className={cn(
-          'fixed right-5 bottom-5 w-80 rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
+          'fixed w-80 rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
           // Outer ring for consistency with planet
           'ring-2 ring-primary/20',
           'bg-card',
           isDragOver && 'ring-2 ring-primary ring-inset'
         )}
-        style={{ height: 500 }}
+        style={{ right: '1.25rem', bottom: '1.25rem', height: 500 }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -156,7 +156,7 @@ export function ArmstrongContainer() {
       ref={containerRef}
       className={cn(
         // Position & Size (30% larger: 150 → 192px = h-48 w-48)
-        'fixed right-5 bottom-5 z-[60] h-48 w-48 rounded-full',
+        'fixed z-[60] h-48 w-48 rounded-full',
         
         // Planetary Gradient (from Primary to deep purple)
         'bg-gradient-to-br from-primary via-primary/80 to-purple-900/70',
@@ -178,6 +178,7 @@ export function ArmstrongContainer() {
         // Drag-Over state
         isDragOver && 'ring-4 ring-white/50 scale-110'
       )}
+      style={{ right: '1.25rem', bottom: '1.25rem' }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
