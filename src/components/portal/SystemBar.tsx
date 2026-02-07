@@ -116,7 +116,7 @@ export function SystemBar() {
           </div>
         </div>
 
-        {/* Center section: Location only (clock removed) */}
+{/* Center section: Location + Time (digital only, no icon) */}
         <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
           {location ? (
             <>
@@ -162,22 +162,13 @@ export function SystemBar() {
               <span className="text-sm">Standort?</span>
             </button>
           ) : null}
+          
+          {/* Digitale Uhrzeit - ohne Icon */}
+          <span className="text-sm font-mono tabular-nums">{formattedTime}</span>
         </div>
 
-        {/* Right section: Settings + Armstrong + User avatar */}
+{/* Right section: Armstrong + User avatar */}
         <div className="flex items-center gap-1">
-          {/* Settings button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="h-9 w-9"
-          >
-            <Link to="/portal/stammdaten/sicherheit" title="Einstellungen">
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
-
           {/* Armstrong toggle - Desktop only */}
           {!isMobile && (
             <Button
