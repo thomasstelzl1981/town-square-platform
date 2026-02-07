@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 
 export function SystemBar() {
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
-  const { armstrongVisible, toggleArmstrong, isMobile, armstrongExpanded, toggleArmstrongExpanded } = usePortalLayout();
+  const { armstrongVisible, toggleArmstrong, isMobile } = usePortalLayout();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState<{
     city: string;
@@ -170,19 +170,14 @@ export function SystemBar() {
 {/* Right section: Armstrong + User avatar */}
         <div className="flex items-center gap-1">
           {/* Armstrong toggle - Desktop only */}
+          {/* Armstrong toggle - Desktop only: ONLY toggles visibility */}
           {!isMobile && (
             <Button
               variant={armstrongVisible ? 'secondary' : 'ghost'}
               size="icon"
-              onClick={() => {
-                if (!armstrongVisible) {
-                  toggleArmstrong();
-                } else {
-                  toggleArmstrongExpanded();
-                }
-              }}
+              onClick={toggleArmstrong}
               className="h-9 w-9"
-              title={armstrongVisible ? (armstrongExpanded ? 'Armstrong minimieren' : 'Armstrong erweitern') : 'Armstrong öffnen'}
+              title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
             >
               <Rocket className="h-5 w-5" />
             </Button>

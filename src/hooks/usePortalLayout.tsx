@@ -71,8 +71,22 @@ function buildModuleRouteMap(): Record<string, string> {
   return map;
 }
 
+// Migration key for localStorage cleanup
+const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v2';
+
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
+  
+  // === MIGRATION: Reset old Armstrong localStorage values to ensure Planet is visible ===
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
+      localStorage.removeItem(ARMSTRONG_KEY);
+      localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
+      localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
+      // Force reload to apply new defaults
+      window.location.reload();
+    }
+  }, []);
   
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
