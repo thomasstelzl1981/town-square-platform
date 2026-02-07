@@ -98,19 +98,19 @@ export default function MasterTemplates() {
           </Card>
         </Link>
         <Link to="/admin/master-templates/selbstauskunft">
-          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group border-dashed">
+          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg text-muted-foreground">Selbstauskunft</CardTitle>
-                    <CardDescription>MOD-07 • 8 Sektionen • Coming Soon</CardDescription>
+                    <CardTitle className="text-lg">Selbstauskunft</CardTitle>
+                    <CardDescription>MOD-07 • 9 Sektionen • 67 Felder</CardDescription>
                   </div>
                 </div>
-                <Badge variant="secondary">Phase 2</Badge>
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
             </CardHeader>
           </Card>
