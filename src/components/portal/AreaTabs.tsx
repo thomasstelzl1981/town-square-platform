@@ -9,13 +9,13 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { areaConfig, AreaKey } from '@/manifests/areaConfig';
-import { Layers, Target, Settings, Grid } from 'lucide-react';
+import { Database, Rocket, Wrench, LayoutGrid } from 'lucide-react';
 
 const areaIcons: Record<AreaKey, React.ElementType> = {
-  base: Layers,
-  missions: Target,
-  operations: Settings,
-  services: Grid,
+  base: Database,
+  missions: Rocket,
+  operations: Wrench,
+  services: LayoutGrid,
 };
 
 export function AreaTabs() {
@@ -40,8 +40,8 @@ export function AreaTabs() {
             className={cn(
               'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
               isActive
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                ? 'bg-primary/90 backdrop-blur-md text-primary-foreground shadow-lg'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm'
             )}
           >
             <Icon className="h-4 w-4" />
