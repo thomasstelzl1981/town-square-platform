@@ -1,12 +1,13 @@
 /**
- * ArmstrongGreetingCard — Compact horizontal greeting from Armstrong AI assistant
- * Optimized for 1/3 grid layout with avatar left, text center
+ * ArmstrongGreetingCard — Compact square greeting from Armstrong AI assistant
+ * Updated for Widget System: aspect-square, no avatar icon
  */
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Rocket, Calendar, ArrowRight, Clock } from 'lucide-react';
+import { Calendar, ArrowRight, Clock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { getWeatherTextForGreeting } from '@/lib/weatherCodes';
 import { cn } from '@/lib/utils';
@@ -129,18 +130,17 @@ export function ArmstrongGreetingCard({
 
   if (isLoading) {
     return (
-      <Card className="glass-card border-primary/20 h-full">
-        <CardContent className="p-4 h-full flex items-center">
-          <div className="flex items-center gap-4 w-full">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                <Rocket className="h-5 w-5 text-primary animate-pulse" />
-              </div>
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="h-3 bg-muted/50 rounded animate-pulse w-3/4" />
-              <div className="h-3 bg-muted/50 rounded animate-pulse w-1/2" />
-            </div>
+      <Card className="glass-card border-primary/20 aspect-square">
+        <CardContent className="p-4 h-full flex flex-col justify-center">
+          <div className="flex items-center gap-3 mb-3">
+            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+            <span className="font-semibold text-sm text-foreground">Armstrong</span>
+            <Badge variant="secondary" className="text-[9px] h-4 px-1.5">KI</Badge>
+          </div>
+          <div className="space-y-2">
+            <div className="h-3 bg-muted/50 rounded animate-pulse w-3/4" />
+            <div className="h-3 bg-muted/50 rounded animate-pulse w-1/2" />
+            <div className="h-3 bg-muted/50 rounded animate-pulse w-2/3" />
           </div>
         </CardContent>
       </Card>
@@ -148,7 +148,7 @@ export function ArmstrongGreetingCard({
   }
 
   return (
-    <Card className="glass-card border-primary/20 relative overflow-hidden h-full">
+    <Card className="glass-card border-primary/20 aspect-square relative overflow-hidden">
       {/* Subtle gradient overlay */}
       <div 
         className="absolute inset-0 opacity-30 pointer-events-none"
@@ -158,39 +158,26 @@ export function ArmstrongGreetingCard({
       />
       
       <CardContent className="p-4 relative z-10 h-full flex flex-col">
-        <div className="flex items-start gap-3 flex-1">
-          {/* Armstrong Avatar - smaller */}
-          <div className="flex-shrink-0">
-            <div 
-              className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center",
-                "bg-gradient-to-br from-primary to-primary/70",
-                "shadow-lg shadow-primary/20"
-              )}
-            >
-              <Rocket className="h-5 w-5 text-primary-foreground" />
-            </div>
-          </div>
+        {/* Header - No avatar, just text */}
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-sm text-foreground">Armstrong</span>
+          <Badge variant="secondary" className="text-[9px] h-4 px-1.5">KI</Badge>
+        </div>
 
-          {/* Message Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm text-foreground">Armstrong</span>
-              <span className="text-[10px] text-muted-foreground">KI</span>
-            </div>
-            
-            <div className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed">
-              {displayedText}
-              {isTyping && (
-                <span className="inline-block w-1.5 h-3 bg-primary ml-0.5 animate-pulse" />
-              )}
-            </div>
+        {/* Message Content */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed line-clamp-6">
+            {displayedText}
+            {isTyping && (
+              <span className="inline-block w-1.5 h-3 bg-primary ml-0.5 animate-pulse" />
+            )}
           </div>
         </div>
 
         {/* Events Preview as Chips - horizontal */}
         {!isTyping && todayEvents.length > 0 && (
-          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-1">
             <Calendar className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             {todayEvents.slice(0, 2).map((event) => (
               <div 
@@ -204,7 +191,7 @@ export function ArmstrongGreetingCard({
                     minute: '2-digit' 
                   })}
                 </span>
-                <span className="truncate max-w-[80px]">{event.title}</span>
+                <span className="truncate max-w-[60px]">{event.title}</span>
               </div>
             ))}
             {todayEvents.length > 2 && (
@@ -217,12 +204,12 @@ export function ArmstrongGreetingCard({
 
         {/* Action Button */}
         {!isTyping && (
-          <div className="mt-3">
+          <div className="mt-2">
             <Button 
               variant="outline" 
               size="sm"
               onClick={handleOpenChat}
-              className="gap-1.5 h-7 text-xs w-full md:w-auto"
+              className="gap-1.5 h-7 text-xs w-full"
             >
               Chat öffnen
               <ArrowRight className="h-3 w-3" />
