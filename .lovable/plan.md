@@ -1,199 +1,132 @@
 
-# Plan: Logo-Fix, Navigation-Hohe reduzieren und D-DIN Schriftart
 
-## Teil 1: Logo-Problem - Anleitung zur Uberarbeitung
+# Plan: Navigation-Verhalten - Level 1 Klick schliesst Level 3
 
-### Aktueller Zustand
-Die PNG-Dateien haben einen weissen Hintergrund, der im Dark Mode als Rechteck sichtbar ist.
+## Verstandnis Ihrer Anforderung
 
-### Empfehlung fur Logo-Bearbeitung
+Basierend auf der aktuellen 3-Ebenen-Navigation:
 
-| Anforderung | Beschreibung |
-|-------------|--------------|
-| **Format** | PNG mit Alpha-Kanal (Transparenz) |
-| **Hintergrund** | Komplett durchsichtig (Schachbrettmuster in Photoshop/Figma) |
-| **Variante Dark Mode** | Weisse/helle Logo-Grafik auf transparentem Hintergrund |
-| **Variante Light Mode** | Dunkle Logo-Grafik auf transparentem Hintergrund |
-| **Grosse** | Min. 400px breit fur scharfe Darstellung bei allen Grossen |
-| **Inhalt** | Nur Symbol/Icon, kein Text (oder Text separat) |
+| Ebene | Komponente | Beispielinhalt |
+|-------|------------|----------------|
+| **Level 1 (SubLine1)** | `AreaTabs` | Base, Missions, Operations, Services |
+| **Level 2 (SubLine2)** | `ModuleTabs` | Stammdaten, KI Office, Dokumente, etc. |
+| **Level 3 (SubLine3)** | `SubTabs` | Ubersicht, Kontakte, Dokumente, etc. |
 
-### Bearbeitungsschritte (Photoshop/Figma/GIMP)
+**Ihre Anforderung:** Wenn der Benutzer auf Level 1 (AreaTabs) klickt, soll Level 3 (SubTabs) geschlossen/versteckt werden.
 
-1. **Hintergrund entfernen:**
-   - In Photoshop: Zauberstab auf weissen Hintergrund > Loschen
-   - In Figma: Hintergrund-Rechteck loschen
-   - Online: remove.bg oder photopea.com
+### Aktuelles Verhalten
+- Klick auf AreaTabs (z.B. "Missions") andert nur die `activeArea`
+- Die ModuleTabs zeigen dann die 5 Module des neuen Bereichs
+- Die SubTabs bleiben sichtbar (zeigen Tiles des aktuell aktiven Moduls)
 
-2. **Zwei Varianten exportieren:**
-   - `armstrong_logo_dark.png` - Fur Dark Mode (helles Logo auf transparent)
-   - `armstrong_logo_light.png` - Fur Light Mode (dunkles Logo auf transparent)
-
-3. **Als PNG-24 mit Transparenz exportieren** (nicht JPEG!)
-
-### Mono-Variante als Fallback
-Falls das Logo komplex ist, konnte eine einfarbige Version besser funktionieren:
-- `armstrong_logo_mono_white.png` fur Dark Mode (100% weiss)
-- Diese Datei existiert bereits im Ordner
-
-**Code-Anderung:** Falls gewunscht, kann ich die AppLogo-Komponente auf die Mono-Versionen umstellen, bis neue transparente Logos bereit sind.
+### Gewunschtes Verhalten
+- Klick auf AreaTabs schliesst die SubTabs-Leiste
+- SubTabs erscheinen erst wieder, wenn ein Modul aus Level 2 angeklickt wird
 
 ---
 
-## Teil 2: Navigation schmaler machen (ohne Schriftgrosse zu andern)
+## Technische Losung
 
-### Aktuelle Hohen
+### Ansatz: Neuer State `subTabsVisible`
 
-| Komponente | Zeile | Aktuell | Neu |
-|------------|-------|---------|-----|
-| **AreaTabs** (Level 1) | Zeile 24 | `py-2` (16px) | `py-1` (8px) |
-| **ModuleTabs** (Level 2) | Zeile 81 | `py-2` (16px) | `py-1` (8px) |
-| **SubTabs** (Level 3) | Zeile 25 | `py-2` (16px) | `py-1` (8px) |
+Ein neuer State im `usePortalLayout` Hook steuert die Sichtbarkeit der SubTabs:
 
-### Anderungen
-
-**Datei: `src/components/portal/AreaTabs.tsx`**
+**1. State erweitern (`usePortalLayout.tsx`):**
 ```tsx
-// Zeile 24: py-2 -> py-1
-<div className="flex items-center justify-center gap-1 px-4 py-1">
+// Neuer State
+subTabsVisible: boolean;
+setSubTabsVisible: (visible: boolean) => void;
 
-// Zeile 34: Button padding reduzieren
-'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
+// Initialisierung
+const [subTabsVisible, setSubTabsVisible] = useState(false);
 ```
 
-**Datei: `src/components/portal/ModuleTabs.tsx`**
+**2. AreaTabs anpassen (`AreaTabs.tsx`):**
 ```tsx
-// Zeile 81: py-2 -> py-1
-<div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none">
-
-// Zeile 95: Button padding reduzieren
-'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+// Beim Klick auf Area: SubTabs schliessen
+onClick={() => {
+  setActiveArea(area.key);
+  setSubTabsVisible(false);  // SubTabs ausblenden
+}}
 ```
 
-**Datei: `src/components/portal/SubTabs.tsx`**
+**3. ModuleTabs anpassen (`ModuleTabs.tsx`):**
 ```tsx
-// Zeile 25: py-2 -> py-1
-<div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
-
-// Zeile 35: py-1.5 -> py-1
-'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
+// Beim Klick auf Modul: SubTabs offnen (falls Tiles vorhanden)
+// Dies geschieht automatisch durch Navigation zum Modul
 ```
 
-### Vorher/Nachher
+**4. SubTabs anpassen (`SubTabs.tsx`):**
+```tsx
+// Bedingte Anzeige basierend auf subTabsVisible
+if (!subTabsVisible || !module.tiles || module.tiles.length === 0) {
+  return null;
+}
+```
 
+**5. Navigation-Logik (`PortalLayout.tsx` oder Router):**
+```tsx
+// Wenn auf Modul navigiert wird: SubTabs automatisch einblenden
+useEffect(() => {
+  if (activeModule && activeModule.tiles?.length > 0) {
+    setSubTabsVisible(true);
+  }
+}, [activeModule]);
+```
+
+---
+
+## Visuelles Verhalten
+
+### Szenario 1: Benutzer klickt auf "Missions" (Level 1)
 ```text
-Vorher (3 Zeilen a ca. 44px = 132px):
+Vorher:
 +--------------------------------------------------+
-|   Base   Missions   Operations   Services        | <- 44px
+|   Base   [Missions]   Operations   Services      | <- Level 1
 +--------------------------------------------------+
-|   Stammdaten   Objekte   Module3   Module4       | <- 44px
+|   Stammdaten   Objekte   Module3   Module4       | <- Level 2
 +--------------------------------------------------+
-|   Ubersicht   Kontakte   Dokumente   Finanzen    | <- 44px
+|   Ubersicht   Kontakte   Dokumente   Finanzen    | <- Level 3 (sichtbar)
 +--------------------------------------------------+
 
-Nachher (3 Zeilen a ca. 32px = 96px):
+Nachher:
 +--------------------------------------------------+
-|   Base   Missions   Operations   Services        | <- 32px
+|   Base   [Missions]   Operations   Services      | <- Level 1
 +--------------------------------------------------+
-|   Stammdaten   Objekte   Module3   Module4       | <- 32px
+|   Immobilien   MSV   Verkauf   Finanzierung ...  | <- Level 2 (neue Module)
 +--------------------------------------------------+
-|   Ubersicht   Kontakte   Dokumente   Finanzen    | <- 32px
-+--------------------------------------------------+
+                                                    <- Level 3 VERSTECKT
 ```
 
-**Ersparnis:** ~36px vertikal (ca. 27% weniger Hohe)
+### Szenario 2: Benutzer klickt dann auf "Immobilien" (Level 2)
+```text
++--------------------------------------------------+
+|   Base   [Missions]   Operations   Services      | <- Level 1
++--------------------------------------------------+
+|   [Immobilien]   MSV   Verkauf   Finanzierung    | <- Level 2
++--------------------------------------------------+
+|   Objekte   Mieter   Dokumente   Finanzen        | <- Level 3 erscheint wieder
++--------------------------------------------------+
+```
 
 ---
 
-## Teil 3: D-DIN Schriftart integrieren
-
-### Uber D-DIN
-- Frei verfugbar unter SIL Open Font License (OFL)
-- Von Datto/Monotype erstellt
-- Verfugbar auf: Font Squirrel, CDNFonts
-- **Einschrankung:** Nur 2 Gewichte (Regular, Bold) + 1 Italic
-
-### Implementierung
-
-**Schritt 1: Font-Dateien herunterladen**
-- Von https://www.fontsquirrel.com/fonts/d-din
-- Benotigten Formate: WOFF2, WOFF (fur Web-Optimierung)
-
-**Schritt 2: Font-Ordner erstellen**
-```
-src/assets/fonts/
-├── D-DIN.woff2
-├── D-DIN.woff
-├── D-DIN-Bold.woff2
-├── D-DIN-Bold.woff
-├── D-DIN-Italic.woff2 (optional)
-└── D-DIN-Italic.woff (optional)
-```
-
-**Schritt 3: CSS @font-face in `src/index.css` hinzufugen**
-```css
-/* D-DIN Font Family */
-@font-face {
-  font-family: 'D-DIN';
-  src: url('./assets/fonts/D-DIN.woff2') format('woff2'),
-       url('./assets/fonts/D-DIN.woff') format('woff');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'D-DIN';
-  src: url('./assets/fonts/D-DIN-Bold.woff2') format('woff2'),
-       url('./assets/fonts/D-DIN-Bold.woff') format('woff');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-```
-
-**Schritt 4: Tailwind Config anpassen (`tailwind.config.ts`)**
-```ts
-theme: {
-  extend: {
-    fontFamily: {
-      sans: ['D-DIN', 'system-ui', 'sans-serif'],
-      display: ['D-DIN', 'system-ui', 'sans-serif'],
-    },
-  },
-}
-```
-
-**Schritt 5: Body-Style anpassen (`src/index.css`)**
-```css
-body {
-  @apply bg-background text-foreground antialiased;
-  font-family: 'D-DIN', system-ui, sans-serif;
-}
-```
-
-### Hinweis zur Limitierung
-D-DIN hat nur Regular (400) und Bold (700). Fur Zwischen-Gewichte (300, 500, 600) gibt es keinen echten Font - der Browser interpoliert dann, was weniger scharf aussieht.
-
-**Alternative:** Falls mehr Gewichte benotigt werden, ware "Barlow" (Google Fonts) eine gute Alternative mit ahnlichem Look und 9 Gewichten.
-
----
-
-## Zusammenfassung der Dateiänderungen
+## Dateiänderungen
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/components/portal/AreaTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
-| `src/components/portal/ModuleTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
-| `src/components/portal/SubTabs.tsx` | MODIFY | Padding reduzieren (py-2 zu py-1) |
-| `src/index.css` | MODIFY | @font-face fur D-DIN hinzufugen |
-| `tailwind.config.ts` | MODIFY | fontFamily erweitern |
-| `src/assets/fonts/` | CREATE | D-DIN Font-Dateien (mussen extern bereitgestellt werden) |
+| `src/hooks/usePortalLayout.tsx` | MODIFY | Neuen State `subTabsVisible` hinzufugen |
+| `src/components/portal/AreaTabs.tsx` | MODIFY | `setSubTabsVisible(false)` bei Area-Klick |
+| `src/components/portal/SubTabs.tsx` | MODIFY | Bedingte Anzeige basierend auf `subTabsVisible` |
+| `src/components/portal/PortalLayout.tsx` | MODIFY | SubTabs einblenden wenn Modul aktiv |
 
 ---
 
-## Nachste Schritte (von Ihnen)
+## Ist das korrekt verstanden?
 
-1. **Logo:** Neue transparente PNGs erstellen und hochladen
-2. **Font:** D-DIN Font-Dateien (WOFF/WOFF2) bereitstellen oder bestatigen, dass ich sie von Font Squirrel integrieren soll
+**Zusammenfassung:**
+- Level 1 Klick (Area wechseln) → Level 3 (SubTabs) wird versteckt
+- Level 2 Klick (Modul offnen) → Level 3 (SubTabs) erscheint wieder
 
-Soll ich mit Teil 2 (Navigation schmaler) und Teil 3 (D-DIN vorbereiten) beginnen, wahrend Sie die Logos uberarbeiten?
+Falls dies nicht Ihrer Vorstellung entspricht, bitte korrigieren Sie mich!
+
