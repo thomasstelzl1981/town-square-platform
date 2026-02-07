@@ -1,235 +1,149 @@
 
-# Armstrong AI-Assistent Überarbeitung
+# Armstrong Orb — Copper/Bronze Metallic Redesign
 
-## Übersicht
+## Design-Referenz
 
-Diese Überarbeitung transformiert Armstrong in einen professionelleren KI-Co-Piloten mit:
-- Neuem visuellen Design (Erde statt abstrakte Planeten-Ästhetik, cleanes Pergament-Panel)
-- Vollständiger Spracheingabe/Ausgabe (OpenAI Realtime API)
-- **Task-Kacheln auf dem Dashboard** (nicht im Chatbot) für Freigabe-Workflows
-- Erweitertem Aktions-Manifest für alle Kommunikationskanäle
+Basierend auf dem hochgeladenen Bild:
+- Glänzender metallischer Orb mit **Kupfer/Bronze-Tönen**
+- Charakteristisches "Lächeln": Eine geschwungene Highlight-Linie in der unteren Hälfte
+- Kleiner Glanz-Punkt oben für 3D-Tiefe
+- Weicher Halo-Glow um den Orb
 
----
+## CSS-Änderungen (`src/index.css`)
 
-## Phase 1: Visuelles Redesign Armstrong ✅ ERLEDIGT
-
-### 1.1 Collapsed State — Planet Erde ✅
-
-**Vorher**: Abstrakte Gold-Blau-Purple Planeten-Textur
-**Jetzt**: Stilisierte Erde mit Blau/Grün-Tönen und Kontinenten-Andeutung
-
-Implementierte CSS-Änderungen:
-- `--armstrong-earth-ocean`: Tiefblau für Ozeane
-- `--armstrong-earth-land`: Grün für Kontinente
-- `--armstrong-earth-gradient`: Mehrschichtiger Gradient mit Wolken
-- `armstrong-earth-glow`: Blaue Atmosphären-Glow (Ozon-Effekt)
-
-### 1.2 Expanded State — Pergament/Clean Design ✅
-
-**Vorher**: Glassmorphism mit Gold→Blue Header-Gradient
-**Jetzt**: Cleanes weißes Design im Light Mode, dezenter Header
-
-Implementierte Änderungen:
-- `armstrong-glass-light`: Weißer Hintergrund (Pergament-Stil)
-- `armstrong-header-clean`: Schlichter Header ohne bunten Gradient
-- Globe-Icon statt Bot-Icon für konsistentes Erde-Thema
-
----
-
-## Phase 2: Spracheingabe/-ausgabe (OpenAI Realtime) ✅ ERLEDIGT
-
-### 2.1 Architektur ✅
+### Neue Farbpalette — Kupfer/Bronze Metallisch
 
 ```text
-┌─────────────────┐     WebSocket     ┌──────────────────────┐
-│  Browser        │◄─────────────────►│  sot-armstrong-voice │
-│  (Mic/Speaker)  │                   │  Edge Function       │
-└─────────────────┘                   └──────────┬───────────┘
-                                                 │
-                                                 ▼ WebSocket
-                                      ┌──────────────────────┐
-                                      │  OpenAI Realtime API │
-                                      │  (gpt-4o-realtime)   │
-                                      └──────────────────────┘
+Farben:
+├── armstrong-orb-copper: Warmer Kupferton (25 75% 45%)
+├── armstrong-orb-bronze: Tieferer Bronze (20 65% 35%)  
+├── armstrong-orb-gold-accent: Goldener Highlight (40 80% 60%)
+├── armstrong-orb-shadow: Dunkler Schatten (15 50% 20%)
+├── armstrong-orb-glow: Warmer Kupfer-Glow (25 60% 50%)
 ```
 
-### 2.2 Edge Function: `sot-armstrong-voice` ✅
-
-**Standort**: `supabase/functions/sot-armstrong-voice/index.ts`
-
-Implementierte Funktionen:
-- ✅ WebSocket-Proxy zum OpenAI Realtime API
-- ✅ Server-VAD (Voice Activity Detection)
-- ✅ Session-Management mit Armstrong-Kontext
-- ✅ Audio-Format: PCM16 @ 24kHz
-- ✅ Armstrong-spezifische System-Instructions
-
-### 2.3 Frontend Voice-Integration ✅
-
-**Implementierte Komponenten**:
-- ✅ `src/components/armstrong/VoiceButton.tsx` — Mikrofon-Toggle mit Puls-Animation
-- ✅ `src/hooks/useArmstrongVoice.ts` — WebSocket-Management, Audio-Recording/Playback
-
-**Integration**:
-- ✅ Mikrofon-Symbol prominent links in der Eingabezeile (ChatPanel)
-- ✅ Visuelle Feedback während Spracherkennung (Pulse-Animation)
-- ✅ Audio-Playback für Armstrong-Antworten
-- ✅ Transkript-Anzeige während Gespräch
-
----
-
-## Phase 3: Task-Kacheln auf dem Dashboard
-
-### 3.1 Konzept
-
-Wenn Armstrong Aufgaben plant, die:
-- **Credits verbrauchen** (metered actions)
-- **Nach außen kommunizieren** (Briefe, E-Mails, Faxe, Tickets)
-- **Schreibende Aktionen** ausführen
-
-...dann erscheinen diese als **Kacheln auf dem Portal Dashboard** (nicht im Chatbot).
-Diese Kacheln sind im gleichen Grid wie Begrüßung, Wetter und Globus.
-
-### 3.2 Dashboard Layout mit Pending Tasks
+### Orb-Gradient mit "Lächeln"-Effekt
 
 ```text
-+--------------------------------+--------------------------------+--------------------------------+
-|     🤖 ARMSTRONG GREETING      |    ☀️ WEATHER WIDGET           |     🌍 EARTH GLOBE             |
-+--------------------------------+--------------------------------+--------------------------------+
-|     📨 PENDING TASK 1          |     📄 PENDING TASK 2          |     📧 PENDING TASK 3          |
-|     Brief an Mustermann        |     Exposé generieren          |     E-Mail an Bank             |
-|     [Vorschau] [Freigeben]     |     [Vorschau] [Freigeben]     |     [Vorschau] [Freigeben]     |
-+--------------------------------+--------------------------------+--------------------------------+
+Aufbau:
+1. Oberer Glanz-Punkt (kleiner weißer Kreis oben-links)
+2. "Lächeln"-Highlight (geschwungene helle Linie unten-mitte)
+3. Haupt-Kupfer-Gradient (hell oben → dunkel unten)
+4. Tiefenschatten (dunkler am Rand)
 ```
 
-### 3.3 Neue Dashboard-Komponente: `PendingTaskCard`
-
-**Standort**: `src/components/dashboard/PendingTaskCard.tsx`
+### Glow-Effekt
 
 ```text
-Kachel-Design:
-├── Icon basierend auf Aktion (Brief, E-Mail, Fax, Ticket)
-├── Titel und kurze Beschreibung
-├── Kostenanzeige (falls metered)
-├── Buttons: [Vorschau] [Abbrechen] [Freigeben]
-└── Gleiches Card-Design wie andere Dashboard-Kacheln
+box-shadow:
+├── Innerer Ring: Kupfer-Glow 
+├── Mittlerer Halo: Warmer Schein
+├── Äußerer Schatten: Tiefe
 ```
 
-### 3.4 State Management für Tasks
+## ArmstrongContainer.tsx — Komplettes Refactoring
 
-**Neuer Hook**: `src/hooks/usePendingTasks.ts`
+### Entfernen
 
-```text
-Funktionen:
-├── fetchPendingTasks() — Lädt Tasks aus DB/localStorage
-├── approveTask(id) — Führt Aktion aus
-├── rejectTask(id) — Löscht Task
-├── previewTask(id) — Öffnet Vorschau-Modal
-└── Realtime-Updates wenn Armstrong neue Tasks erstellt
+- Input-Feld
+- Send-Button, Attach-Button
+- Komplexes Multi-Bereich Layout
+- Wolken/Earth Overlays
+
+### Neue Collapsed State Struktur
+
+```tsx
+<div 
+  ref={containerRef}
+  className="armstrong-orb armstrong-orb-glow"
+  style={{ left: position.x, top: position.y, position: 'fixed' }}
+  onMouseDown={handleDragStart}
+  onDragOver={handleFileDragOver}
+  onDrop={handleFileDrop}
+  onClick={handleOrbClick}
+>
+  {/* "Lächeln" Highlight via CSS */}
+  
+  {/* Oberer Glanz */}
+  <div className="absolute top-3 left-4 w-6 h-6 rounded-full bg-white/50 blur-sm" />
+  
+  {/* Zentraler Mikrofon-Button */}
+  <button 
+    onClick={handleMicClick}
+    className="h-14 w-14 rounded-full ..."
+  >
+    <Mic />
+  </button>
+  
+  {/* File Drop Indicator */}
+  {isFileDragOver && <Upload icon overlay />}
+</div>
 ```
 
-**Datenbank-Tabelle** (optional für Persistenz):
-```text
-pending_tasks:
-├── id (UUID)
-├── tenant_id
-├── user_id
-├── action_code (z.B. ARM.COMM.SEND_LETTER)
-├── title
-├── parameters (JSONB)
-├── cost_estimate_cents
-├── status (pending/approved/rejected)
-├── created_at
-└── expires_at
+### 4 Interaktions-Funktionen
+
+| Aktion | Handler | Ergebnis |
+|--------|---------|----------|
+| Klick Mikrofon | `onClick` + `stopPropagation` | Voice-Session starten |
+| Klick auf Orb | `onClick` | `toggleArmstrongExpanded()` |
+| Drag auf Orb | `useDraggable` Hook | Position im Browser verschieben |
+| Datei auf Orb | `onDrop` | Expand + "Was soll ich damit tun?" |
+
+### Drag-Integration
+
+```typescript
+const { 
+  position, 
+  isDragging, 
+  dragHandleProps 
+} = useDraggable({
+  storageKey: 'armstrong-orb-position',
+  containerSize: { width: 160, height: 160 },
+  boundaryPadding: 20,
+  disabled: isMobile || voice.isListening,
+});
 ```
 
-### 3.5 Integration in PortalDashboard
+### File-Drop Handling
 
-Das `PortalDashboard.tsx` wird erweitert um:
-1. Abruf der Pending Tasks via `usePendingTasks()`
-2. Dynamisches Grid das wächst wenn Tasks vorhanden
-3. Tasks erscheinen als zusätzliche Kacheln unter den Hauptwidgets
+```typescript
+const [droppedFile, setDroppedFile] = useState<File | null>(null);
+const [isFileDragOver, setIsFileDragOver] = useState(false);
 
----
-
-## Phase 4: Manifest-Erweiterung für Kommunikation
-
-### 4.1 Neue Aktions-Kategorie: COMM
-
-```text
-ARM.COMM.SEND_LETTER    — Brief versenden (Porto + Druck)
-ARM.COMM.SEND_EMAIL     — E-Mail versenden
-ARM.COMM.SEND_FAX       — Fax versenden
-ARM.COMM.CREATE_TICKET  — Ticket erstellen
+const handleFileDrop = (e: React.DragEvent) => {
+  e.preventDefault();
+  setIsFileDragOver(false);
+  
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    setDroppedFile(files[0]);
+    toggleArmstrongExpanded();
+    // ChatPanel erhält Datei als Kontext
+  }
+};
 ```
 
-### 4.2 Manifest-Struktur für Tasks
-
-Alle Aktionen mit `requires_confirmation: true` und/oder `cost_model: 'metered'` erzeugen automatisch einen Pending Task auf dem Dashboard, anstatt sofort ausgeführt zu werden.
-
----
-
-## Technische Übersicht
-
-### Neue Dateien
-
-| Datei | Zweck |
-|-------|-------|
-| `supabase/functions/sot-armstrong-voice/index.ts` | OpenAI Realtime WebSocket Proxy |
-| `src/components/armstrong/VoiceButton.tsx` | Mikrofon-UI mit Puls-Animation |
-| `src/components/dashboard/PendingTaskCard.tsx` | Task-Kachel für Dashboard |
-| `src/hooks/useArmstrongVoice.ts` | Voice-Session Management |
-| `src/hooks/usePendingTasks.ts` | Pending Tasks State + CRUD |
+## Dateien
 
 ### Geänderte Dateien
 
 | Datei | Änderungen |
 |-------|------------|
-| `src/index.css` | ✅ Neue Earth-Gradients, Pergament-Styles für Armstrong |
-| `src/components/portal/ArmstrongContainer.tsx` | ✅ Erde statt Planet, Pergament-Panel, Globe-Icon |
-| `src/components/chat/ChatPanel.tsx` | Mikrofon-Button prominent links |
-| `src/pages/portal/PortalDashboard.tsx` | Integration der PendingTaskCard-Kacheln |
-| `src/manifests/armstrongManifest.ts` | COMM-Aktionen hinzufügen |
-
-### Secrets (bereits vorhanden)
-
-- `OPENAI_API_KEY` — Für Realtime Voice API
-- `LOVABLE_API_KEY` — Für Text-Chat (bleibt primär)
-
----
-
-## Implementierungs-Reihenfolge
-
-```text
-1. Design-Overhaul Armstrong ✅ ERLEDIGT
-   ├── CSS: Earth-Gradient + Pergament-Styles ✅
-   ├── ArmstrongContainer: Erde-Visual, cleaner Header ✅
-   └── ChatPanel: Dezenteres Design (optional)
-
-2. Dashboard Task-System
-   ├── PendingTaskCard Component
-   ├── usePendingTasks Hook
-   ├── DB-Tabelle pending_tasks (optional)
-   └── Integration in PortalDashboard.tsx
-
-3. Manifest-Erweiterung
-   ├── COMM-Aktionen hinzufügen
-   └── Task-Logik in sot-armstrong-advisor
-
-4. Voice-System
-   ├── sot-armstrong-voice Edge Function
-   ├── VoiceButton Component
-   ├── useArmstrongVoice Hook
-   └── Audio Playback Integration
-```
-
----
+| `src/index.css` | Kupfer/Bronze Orb-Design statt Earth, "Lächeln"-Highlight |
+| `src/components/portal/ArmstrongContainer.tsx` | Minimalistischer Orb + Drag + File-Drop |
 
 ## Erwartetes Ergebnis
 
-Nach Implementierung:
+Ein eleganter Armstrong-Orb:
 
-1. **Visuell**: ✅ Armstrong zeigt eine stilisierte Erde im Collapsed State und ein cleanes Pergament-Design im geöffneten Zustand
-2. **Voice**: User können per Sprache mit Armstrong kommunizieren (Mikrofon prominent sichtbar)
-3. **Dashboard-Tasks**: Alle kostenpflichtigen/externen Aktionen erscheinen als Kacheln auf dem Dashboard zur Freigabe
-4. **Aktionen**: Vollständiges Manifest für Briefe, E-Mails, Faxe, Tickets
+**Visuell:**
+- Kupfer/Bronze metallischer Glanz
+- Charakteristisches "Lächeln" (geschwungene Highlight-Linie)
+- Kleiner Glanz-Punkt oben-links
+- Warmer Halo-Glow
+
+**Funktionen:**
+1. Mikrofon (Mitte) → Spracheingabe ohne Expand
+2. Klick → Expand für Textchat
+3. Drag → Positionierung im Browser
+4. File-Drop → Expand + Datei-Kontext
