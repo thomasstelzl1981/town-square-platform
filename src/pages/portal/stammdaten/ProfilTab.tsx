@@ -32,7 +32,7 @@ interface ProfileFormData {
 }
 
 export function ProfilTab() {
-  const { user, isDevelopmentMode } = useAuth();
+  const { user, isDevelopmentMode, refreshAuth } = useAuth();
   const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState<ProfileFormData>({
     display_name: '',
@@ -136,8 +136,9 @@ export function ProfilTab() {
         .eq('id', user!.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      await refreshAuth(); // AuthContext synchronisieren für sofortige Dashboard-Aktualisierung
       toast.success('Profil gespeichert');
     },
     onError: (error) => {
