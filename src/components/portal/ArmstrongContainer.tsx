@@ -76,6 +76,16 @@ export function ArmstrongContainer() {
     return () => clearTimeout(timeout);
   }, [armstrongVisible, armstrongExpanded, isMobile, resetPosition]);
 
+  // DEBUG: Log render state
+  useEffect(() => {
+    console.log('[Armstrong] Render state:', { 
+      armstrongVisible, 
+      armstrongExpanded, 
+      isMobile,
+      position 
+    });
+  }, [armstrongVisible, armstrongExpanded, isMobile, position]);
+
   // Derive context from current route
   const getContext = () => {
     const path = location.pathname;

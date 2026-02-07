@@ -30,9 +30,9 @@ interface PortalLayoutState {
   hideArmstrong: () => void;
   resetArmstrong: () => void;
   
-  // Area navigation (new 3-level nav)
-  activeArea: AreaKey;
-  setActiveArea: (area: AreaKey) => void;
+  // Area navigation (new 3-level nav) - null = Dashboard/no area selected
+  activeArea: AreaKey | null;
+  setActiveArea: (area: AreaKey | null) => void;
   
   // SubTabs visibility (Level 3 nav)
   subTabsVisible: boolean;
@@ -86,8 +86,11 @@ if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_K
   localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
   localStorage.removeItem(ARMSTRONG_POSITION_KEY);
   localStorage.removeItem('sot-armstrong-migrated-v2');
+  
+  // WICHTIG: Nach Löschen sofort den Default setzen
+  localStorage.setItem(ARMSTRONG_KEY, 'true');
   localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-  console.log('[Armstrong] Migration v3: Cleared all stored state');
+  console.log('[Armstrong] Migration v3: Reset to visible');
 }
 
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
@@ -114,9 +117,13 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     return getStoredValue(ARMSTRONG_EXPANDED_KEY, false);
   });
   
-  // Active area (derived from route initially)
-  const [activeArea, setActiveAreaState] = useState<AreaKey>(() => {
-    if (typeof window === 'undefined') return 'base';
+  // Active area (derived from route initially) - null for Dashboard
+  const [activeArea, setActiveAreaState] = useState<AreaKey | null>(() => {
+    if (typeof window === 'undefined') return null;
+    // Dashboard paths return null
+    if (location.pathname === '/portal' || location.pathname === '/portal/') {
+      return null;
+    }
     const moduleRouteMap = buildModuleRouteMap();
     return deriveAreaFromPath(location.pathname, moduleRouteMap);
   });
@@ -183,7 +190,7 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
 
   // NEW: Armstrong recovery helpers
   const showArmstrong = useCallback((options?: { resetPosition?: boolean; expanded?: boolean }) => {
-    const { resetPosition = false, expanded = false } = options || {};
+    const { resetPosition = false, expanded } = options || {};
     
     if (resetPosition) {
       localStorage.removeItem(ARMSTRONG_POSITION_KEY);
@@ -193,6 +200,7 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongVisibleState(true);
     localStorage.setItem(ARMSTRONG_KEY, 'true');
     
+    // NUR setzen wenn explizit übergeben (nicht undefined)
     if (expanded !== undefined) {
       setArmstrongExpandedState(expanded);
       localStorage.setItem(ARMSTRONG_EXPANDED_KEY, String(expanded));
@@ -219,8 +227,8 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     console.log('[Armstrong] Full reset completed');
   }, []);
 
-  // Area controls - hide SubTabs when area changes
-  const setActiveArea = useCallback((area: AreaKey) => {
+  // Area controls - hide SubTabs when area changes (accepts null for Dashboard)
+  const setActiveArea = useCallback((area: AreaKey | null) => {
     setActiveAreaState(area);
     setSubTabsVisible(false); // Hide Level 3 when Level 1 is clicked
   }, []);
