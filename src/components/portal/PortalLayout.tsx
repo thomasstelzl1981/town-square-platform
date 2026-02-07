@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SystemBar } from './SystemBar';
 import { TopNavigation } from './TopNavigation';
 import { ArmstrongContainer } from './ArmstrongContainer';
 import { MobileBottomNav } from './MobileBottomNav';
-import { MobileCardView } from './MobileCardView';
 import { ArmstrongInputBar } from './ArmstrongInputBar';
 import { ArmstrongSheet } from './ArmstrongSheet';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
@@ -31,8 +30,7 @@ import { cn } from '@/lib/utils';
 
 function PortalLayoutInner() {
   const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
-  const location = useLocation();
-  const { isMobile, mobileNavView } = usePortalLayout();
+  const { isMobile } = usePortalLayout();
   
   const [armstrongSheetOpen, setArmstrongSheetOpen] = useState(false);
   
@@ -44,9 +42,6 @@ function PortalLayoutInner() {
       hasInitializedRef.current = true;
     }
   }, [isLoading]);
-
-  // Check if we're on a module/tile route (not just /portal)
-  const isOnModulePage = location.pathname !== '/portal' && location.pathname.startsWith('/portal/');
 
   // P0-FIX: Only show fullscreen loader on INITIAL load, never after
   if (isLoading && !hasInitializedRef.current) {
@@ -74,14 +69,14 @@ function PortalLayoutInner() {
     );
   }
 
-  // Mobile Layout
+  // Mobile Layout - Identisch zu Desktop: Outlet für konsistentes Routing
   if (isMobile) {
     return (
       <div className="min-h-screen bg-atmosphere flex flex-col">
         {/* System Bar */}
         <SystemBar />
         
-        {/* Content Area */}
+        {/* Content Area - Always use Outlet for consistent routing (Dashboard or Module) */}
         <main className="flex-1 overflow-y-auto pb-28 relative">
           {/* Loading overlay */}
           {isLoading && (
@@ -90,12 +85,8 @@ function PortalLayoutInner() {
             </div>
           )}
           
-          {/* Show card navigation when on /portal root, otherwise show module content */}
-          {!isOnModulePage ? (
-            <MobileCardView />
-          ) : (
-            <Outlet />
-          )}
+          {/* Mobile: Same as Desktop - Outlet renders PortalDashboard or Module content */}
+          <Outlet />
         </main>
         
         {/* Bottom Navigation - Above Armstrong bar */}
