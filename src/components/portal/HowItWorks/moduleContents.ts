@@ -1,7 +1,7 @@
 import { HowItWorksContent } from './ModuleHowItWorks';
 import {
   User, Building, CreditCard, Shield,
-  Mail, FileText, Users, Calendar,
+  Mail, FileText, Users, Calendar, Layers,
   HardDrive, Inbox, ArrowUpDown, Settings,
   FolderTree, LayoutGrid, Hammer, TrendingUp,
   Building2, Wallet, Send, Activity,
@@ -91,6 +91,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Brief', route: '/portal/office/brief', icon: FileText },
       { title: 'Kontakte', route: '/portal/office/kontakte', icon: Users },
       { title: 'Kalender', route: '/portal/office/kalender', icon: Calendar },
+      { title: 'Widgets', route: '/portal/office/widgets', icon: Layers },
     ],
   },
 
