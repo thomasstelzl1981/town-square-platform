@@ -26,6 +26,7 @@ interface Property {
   energy_source: string | null;
   heating_type: string | null;
   description: string | null;
+  location_notes: string | null;
 }
 
 interface PropertyFinancing {
@@ -94,19 +95,30 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Lage & Adresse */}
+      {/* Objektbeschreibung - prominent nach Header */}
+      {property.description && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Lage & Adresse</CardTitle>
+            <CardTitle className="text-base">Objektbeschreibung</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow label="Straße" value={property.address} />
-            <InfoRow label="PLZ" value={property.postal_code} />
-            <InfoRow label="Ort" value={property.city} />
-            <InfoRow label="Land" value={property.country} />
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{property.description}</p>
           </CardContent>
         </Card>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Lage & Mikrolage - nur wenn vorhanden (ersetzt "Lage & Adresse" Duplikat) */}
+        {property.location_notes && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap">{property.location_notes}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Baujahr & Zustand */}
         <Card>
@@ -189,18 +201,6 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Beschreibung */}
-      {property.description && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Beschreibung</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{property.description}</p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Google Maps Kartenansicht */}
       <PropertyMap
