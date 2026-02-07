@@ -376,6 +376,7 @@ export default function PropertyDetailPage() {
             <DatenraumTab 
               propertyId={property.id}
               tenantId={property.tenant_id}
+              propertyCode={property.code || undefined}
             />
           </TabsContent>
         </Tabs>
