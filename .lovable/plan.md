@@ -1,188 +1,130 @@
 
-# Armstrong Korrektur — Immer Kreis, Immer Rechts Unten
-
-## Problem-Analyse
-
-Nach ausführlicher Code-Analyse habe ich folgende Probleme identifiziert:
-
-### Problem 1: Unterschiedliches Verhalten je nach Button
-
-| Button | Aufruf | Ergebnis |
-|--------|--------|----------|
-| Home-Button | `showArmstrong({ expanded: true })` | Expanded-Modus (Panel) |
-| Rocket-Button | `showArmstrong({ expanded: false })` | Collapsed-Modus (Kreis) |
-
-**Gewünscht**: Armstrong soll **immer als Kreis** erscheinen, unabhängig davon, welcher Button geklickt wird.
-
-### Problem 2: Position Links statt Rechts
-
-Der aktuelle Code in `ArmstrongContainer.tsx` hat `right-5 bottom-5`, was korrekt ist. Dennoch zeigt der Screenshot das Widget links unten. Dies deutet auf einen **Browser-Cache** oder **Build-Synchronisation** hin.
+## Zielbild (was danach garantiert sein soll)
+- Armstrong erscheint auf Desktop **immer unten rechts**, mit konstantem Abstand zum Viewport-Rand.
+- Armstrong startet/öffnet sich bei “Einblenden” **immer als Kreis** (collapsed), nie automatisch expanded.
+- Armstrong kann weiterhin durch Fokus/Interaktion in den Expanded-Modus wechseln, aber **nicht** durch “Home” oder “Rocket” ungewollt.
+- Keine “Altlasten” (persistierte Zustände/Positionen), die das Verhalten wieder kaputt machen.
 
 ---
 
-## Lösung
+## Beobachtung aus Screenshot + Diff (warum es aktuell links unten/abgeschnitten landen kann)
+Obwohl in `ArmstrongContainer.tsx` inline `right/bottom` gesetzt ist, zeigt dein Screenshot:
+- Widget sitzt **links unten** und ist **geclippt** (abgeschnitten).
 
-### 1. SystemBar.tsx — Home-Button korrigieren
+Das ist typisch, wenn `position: fixed` **nicht** zum echten Browser-Viewport relativ ist, sondern zu einem **kleineren Containing-Block** (z.B. durch ein übergeordnetes Element mit `transform`, `filter`, `backdrop-filter`, o.ä. – oder durch die Preview-Umgebung). Dann wird `right: 20px` relativ zu einem schmalen Container berechnet → das kann mathematisch zu einem **negativen left** führen und wird dann links geclippt.
 
-Der Home-Button soll Armstrong **als Kreis zeigen** (nicht expanded):
-
-```typescript
-// Zeile 49-54: handleHomeClick
-const handleHomeClick = () => {
-  setActiveArea(null);
-  navigate('/portal');
-  // KORREKTUR: expanded: false → zeigt Kreis
-  showArmstrong({ expanded: false });
-};
-```
-
-### 2. ArmstrongContainer.tsx — Position explizit setzen
-
-Um sicherzustellen, dass keine CSS-Spezifitätsprobleme auftreten, werden die Positionsangaben mit `!important` oder inline-Style verstärkt:
-
-```tsx
-// Collapsed State (Zeile 153-180)
-<div 
-  ref={containerRef}
-  className={cn(
-    // Position explizit rechts unten
-    'fixed z-[60] h-48 w-48 rounded-full',
-    // Planeten-Design...
-  )}
-  style={{
-    right: '1.25rem',  // = right-5 (20px)
-    bottom: '1.25rem', // = bottom-5 (20px)
-  }}
->
-```
-
-```tsx
-// Expanded State (Zeile 95-151)
-<div 
-  ref={containerRef}
-  className={cn(
-    'fixed w-80 rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
-    // ...
-  )}
-  style={{
-    right: '1.25rem',
-    bottom: '1.25rem',
-    height: 500,
-  }}
->
-```
-
-### 3. usePortalLayout.tsx — Default Expanded auf false
-
-Der Default-Wert für `armstrongExpanded` soll `false` sein, damit Armstrong immer als Kreis startet:
-
-```typescript
-// Zeile 117-119
-const [armstrongExpanded, setArmstrongExpandedState] = useState(() => {
-  return getStoredValue(ARMSTRONG_EXPANDED_KEY, false); // ← false statt true
-});
-```
+Die zuverlässigste Abhilfe ist, Armstrong **außerhalb** der Layout-Hierarchie zu rendern – direkt in `document.body` – damit `fixed` wirklich auf den Viewport geht und nicht “vererbt”/geclippt werden kann.
 
 ---
 
-## Betroffene Dateien
+## Änderungen (konkret, minimal-invasiv)
 
-| Datei | Änderung |
-|-------|----------|
-| `src/components/portal/SystemBar.tsx` | Home-Button: `expanded: false` |
-| `src/components/portal/ArmstrongContainer.tsx` | Inline-Styles für Position |
-| `src/hooks/usePortalLayout.tsx` | Default `armstrongExpanded: false` |
+### 1) Armstrong “viewport-sicher” machen (Portal in document.body)
+**Datei:** `src/components/portal/ArmstrongContainer.tsx`
 
----
+**Umsetzung:**
+- Armstrong nicht mehr “normal” im PortalLayout-DOM rendern, sondern via `createPortal(...)` nach `document.body`.
+- Dazu ein Overlay-Wrapper:
+  - `fixed inset-0 z-[...] pointer-events-none`
+  - Die eigentliche Armstrong-UI in einem Kind mit `pointer-events-auto`
+  - Positionierung über einen einzigen Anker-Wrapper: `absolute` + `right/bottom` (inkl. Safe-Area)
 
-## Technische Details
+**Warum das hilft:**
+- Kein Clipping mehr durch `overflow`-Container.
+- Kein “fixed-ist-doch-nicht-fixed” durch transformierte Eltern.
+- Position ist unabhängig von Routen/Layouts.
 
-### SystemBar.tsx — Zeile 49-54
+**Details zur Position:**
+- Verwenden von Safe-Area:
+  - `right: calc(1.25rem + env(safe-area-inset-right))`
+  - `bottom: calc(1.25rem + env(safe-area-inset-bottom))`
 
-```typescript
-const handleHomeClick = () => {
-  setActiveArea(null);
-  navigate('/portal');
-  // Armstrong als Kreis zeigen (nicht expanded)
-  showArmstrong({ expanded: false });
-};
-```
-
-### ArmstrongContainer.tsx — Collapsed State
-
-```tsx
-// COLLAPSED: Planetary Widget mit expliziten Inline-Styles
-return (
-  <div 
-    ref={containerRef}
-    className={cn(
-      // Keine right/bottom Tailwind-Klassen mehr (werden durch inline ersetzt)
-      'fixed z-[60] h-48 w-48 rounded-full',
-      'bg-gradient-to-br from-primary via-primary/80 to-purple-900/70',
-      'ring-4 ring-primary/20',
-      'shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),_0_0_48px_-12px_hsl(217_91%_60%/0.4)]',
-      'hover:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.5),_0_0_64px_-8px_hsl(217_91%_60%/0.5)]',
-      'hover:scale-105 transition-all duration-300',
-      'flex flex-col items-center justify-center gap-3 p-5',
-      'relative overflow-hidden',
-      isDragOver && 'ring-4 ring-white/50 scale-110'
-    )}
-    style={{
-      right: '1.25rem',  // 20px = Tailwind right-5
-      bottom: '1.25rem', // 20px = Tailwind bottom-5
-    }}
-    onDragOver={handleDragOver}
-    onDragLeave={handleDragLeave}
-    onDrop={handleDrop}
-  >
-    {/* ... Inhalt ... */}
-  </div>
-);
-```
-
-### ArmstrongContainer.tsx — Expanded State
-
-```tsx
-// EXPANDED: Chat-Panel mit expliziten Inline-Styles
-if (armstrongExpanded) {
-  return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        'fixed w-80 rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
-        'ring-2 ring-primary/20',
-        'bg-card',
-        isDragOver && 'ring-2 ring-primary ring-inset'
-      )}
-      style={{
-        right: '1.25rem',
-        bottom: '1.25rem',
-        height: 500,
-      }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {/* ... Inhalt ... */}
-    </div>
-  );
-}
-```
-
-### usePortalLayout.tsx — Zeile 117-119
-
-```typescript
-// Armstrong expanded state — Default FALSE (immer als Kreis starten)
-const [armstrongExpanded, setArmstrongExpandedState] = useState(() => {
-  return getStoredValue(ARMSTRONG_EXPANDED_KEY, false);
-});
-```
+Damit ist es auch auf macOS/iOS/Notch sauber.
 
 ---
 
-## Erwartetes Ergebnis
+### 2) “Immer Kreis beim Einblenden” wirklich erzwingen (Altzustände entfernen)
+Aktuell kann Expanded-State trotz “Default false” wieder auftauchen, weil:
+- `armstrongExpanded` weiterhin in `localStorage` persistiert wird
+- oder weil beim Schließen (`hideArmstrong`) Expanded nicht zurückgesetzt wird
 
-1. **Immer Kreis**: Armstrong erscheint immer im Collapsed-Modus (Kreis/Planet), nicht im Expanded-Modus
-2. **Immer Rechts Unten**: Position ist fix auf `right: 20px, bottom: 20px` durch Inline-Styles (überschreibt alles)
-3. **Konsistentes Verhalten**: Egal ob Home-Button oder Rocket-Button — Armstrong erscheint immer gleich
-4. **Kein Cache-Problem**: Inline-Styles haben höchste CSS-Spezifität
+**Datei:** `src/hooks/usePortalLayout.tsx`
+
+**Änderungen:**
+1. **Expanded nicht mehr aus localStorage initialisieren**
+   - `armstrongExpanded` initial immer `false` (keine Persistenz beim Boot).
+2. **hideArmstrong() setzt expanded zusätzlich zurück**
+   - Beim Schließen wird Expanded auf `false` gesetzt, damit “nächstes Einblenden” immer Kreis ist.
+3. Optional (sehr sinnvoll): **Expanded-State nicht mehr in localStorage speichern**
+   - `setArmstrongExpanded()` schreibt nicht mehr in localStorage (oder schreibt immer `false` beim hide/show).
+
+**Migration/Altlasten:**
+- Migration-Key von `sot-armstrong-migrated-v3` auf `v4` erhöhen
+- In der Migration:
+  - `ARMSTRONG_EXPANDED_KEY` explizit entfernen oder auf `'false'` setzen
+  - zusätzlich bekannte alte Keys entfernen (falls vorhanden), z.B.:
+    - `armstrong-position`
+    - `draggable-position`
+    - evtl. ältere Armstrong-Keys aus früheren Iterationen
+
+Damit bekommen alle Browser, die schon “v3” gesehen haben, nochmal einen sauberen Reset.
+
+---
+
+### 3) Home/Rocket Verhalten vereinheitlichen (keine Hidden-Path-Variante)
+**Datei:** `src/components/portal/SystemBar.tsx`
+
+**Ist bereits in deinem Diff korrekt:**
+- `handleHomeClick()` ruft `showArmstrong({ expanded: false })`
+- Rocket-Button: `showArmstrong({ resetPosition: true, expanded: false })`
+
+**Zusatz (klein, aber stabilisierend):**
+- Sicherstellen, dass `showArmstrong()` intern, wenn `expanded:false`, auch wirklich den gespeicherten Expanded-State überschreibt (falls wir Persistenz noch irgendwo drin lassen).
+
+---
+
+## Implementierungsreihenfolge (damit wir schnell einen “harten Fix” sehen)
+1. **ArmstrongContainer → Portal in document.body** (das löst Position + Clipping sofort)
+2. `usePortalLayout`:
+   - Expanded nicht persistieren/initialisieren
+   - `hideArmstrong` setzt expanded=false
+   - Migration v4 + Cleanup Keys
+3. Smoke-Test aller Trigger (Home, Rocket, Close X, Focus Input)
+
+---
+
+## Testplan (End-to-End, genau die Fälle aus deiner Beschreibung)
+1. Portal laden (`/portal`) → Armstrong sichtbar? (je nach Visible-State) und **wenn sichtbar: Kreis unten rechts**.
+2. Rocket:
+   - aus → an: **Kreis unten rechts**
+   - an → aus: verschwindet
+3. Home-Button:
+   - egal in welchem Modul: Navigiert zu `/portal` und Armstrong ist **Kreis unten rechts**
+4. Expanded/Collapsed:
+   - Klick in Input → expanded öffnet
+   - Minimieren → wieder Kreis unten rechts
+   - X (schließen) → verschwindet
+   - Rocket wieder an → **Kreis**, nicht expanded
+5. Hard Refresh (Cmd+Shift+R) → weiterhin Kreis unten rechts (keine Altzustände)
+
+---
+
+## Risiken / Nebenwirkungen
+- `createPortal` ist Standard React – aber wir müssen `document`-Guard einbauen (`typeof document === 'undefined'`) damit es nicht in Sonderfällen crasht.
+- Pointer-Events: Overlay muss `pointer-events-none` haben, die Armstrong-Box selbst `pointer-events-auto`, sonst blockiert ein Fullscreen-Overlay Klicks im Portal.
+- Z-Index: Armstrong muss über Navigation/Content liegen, aber unter modalen Dialogen (wenn gewünscht). Wir wählen z.B. `z-[60]`/`z-[70]` konsistent mit euren Overlays.
+
+---
+
+## Betroffene Dateien (final)
+- `src/components/portal/ArmstrongContainer.tsx`
+  - Render via `createPortal`
+  - neues Overlay-Layout + einheitlicher Bottom-Right-Anker
+- `src/hooks/usePortalLayout.tsx`
+  - Expanded-State-Init/Persistenz entschärfen (immer Kreis beim Start)
+  - `hideArmstrong` setzt expanded=false
+  - Migration v4 + lokales Cleanup alter Keys
+- `src/components/portal/SystemBar.tsx`
+  - bleibt wie im Diff (ggf. minimale Stabilisierung in showArmstrong-Logik)
+
+---
