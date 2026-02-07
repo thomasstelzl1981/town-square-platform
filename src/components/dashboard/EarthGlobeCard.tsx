@@ -7,7 +7,7 @@
  * - "Zoom In" button for future 3D upgrade when billing is enabled
  */
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, Navigation, ZoomIn, MapPin, Loader2 } from 'lucide-react';
