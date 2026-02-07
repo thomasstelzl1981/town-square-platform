@@ -324,6 +324,30 @@ export const armstrongActions: ArmstrongAction[] = [
   },
 
   // ===========================================================================
+  // MOD-02: KI OFFICE ACTIONS
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD02.SEND_LETTER',
+    title_de: 'Brief absenden',
+    description_de: 'Sendet einen vorbereiteten Brief per E-Mail, Fax oder Post',
+    zones: ['Z2'],
+    module: 'MOD-02',
+    risk_level: 'medium',
+    requires_confirmation: true,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['letter_drafts', 'contacts'],
+    data_scopes_write: ['letter_sent'],
+    cost_model: 'free',
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'edge_function', endpoint: 'sot-letter-send' },
+    ui_entrypoints: ['/portal/office/brief'],
+    audit_event_type: 'ARM_LETTER_SEND',
+    status: 'active',
+  },
+
+  // ===========================================================================
   // MOD-03: DMS ACTIONS
   // ===========================================================================
   {
