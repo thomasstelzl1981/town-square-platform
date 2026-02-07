@@ -23,6 +23,7 @@ interface VoiceState {
 interface UseArmstrongVoiceReturn extends VoiceState {
   startListening: () => Promise<void>;
   stopListening: () => void;
+  toggleVoice: () => void;
   disconnect: () => void;
 }
 
@@ -403,10 +404,20 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     };
   }, [cleanup]);
 
+  // Toggle voice on/off
+  const toggleVoice = useCallback(() => {
+    if (state.isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }, [state.isListening, startListening, stopListening]);
+
   return {
     ...state,
     startListening,
     stopListening,
+    toggleVoice,
     disconnect,
   };
 }

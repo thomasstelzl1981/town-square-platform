@@ -2,6 +2,7 @@
  * ARMSTRONG CONTAINER — Earth & Parchment Design
  * 
  * Collapsed State: Stylized Earth globe (160px) with blue/green gradient
+ *                  Microphone icon at top center for direct voice input
  * Expanded State: Clean parchment panel (320x500px) with professional styling
  * 
  * Design: Earth globe collapsed + clean white/parchment expanded
@@ -13,16 +14,19 @@ import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Button } from '@/components/ui/button';
 import { 
-  Bot, 
   Minimize2, 
   X,
   Paperclip,
   Send,
-  Globe
+  Globe,
+  Mic,
+  MicOff,
+  Volume2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from 'next-themes';
+import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 
 export function ArmstrongContainer() {
   const location = useLocation();
@@ -34,6 +38,9 @@ export function ArmstrongContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
+  
+  // Voice integration for collapsed state
+  const voice = useArmstrongVoice();
 
   useEffect(() => {
     setMounted(true);
@@ -165,15 +172,15 @@ export function ArmstrongContainer() {
             </div>
           </div>
         ) : (
-          /* COLLAPSED: Earth Globe Widget */
+          /* COLLAPSED: Earth Globe Widget with Voice Icon at Top */
           <div 
             ref={containerRef}
             className={cn(
               'h-40 w-40 rounded-full',
               'armstrong-earth armstrong-earth-glow',
               'hover:scale-105 transition-all duration-300 ease-out',
-              'flex flex-col items-center justify-center gap-2.5 p-4',
-              'cursor-pointer',
+              'flex flex-col items-center justify-between p-3',
+              'cursor-pointer relative',
               isDragOver && 'scale-110 ring-4 ring-white/40'
             )}
             onDragOver={handleDragOver}
@@ -206,15 +213,61 @@ export function ArmstrongContainer() {
               onChange={handleFileChange}
             />
             
-            {/* Bot Icon + Label */}
-            <div className="flex items-center gap-2 relative z-10">
-              <div className="h-6 w-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
-                <Globe className="h-3 w-3 text-white" />
-              </div>
-              <span className="text-xs font-medium text-white/95 tracking-wide drop-shadow-sm">Armstrong</span>
-            </div>
+            {/* TOP: Microphone Icon for Direct Voice Input */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                voice.toggleVoice();
+              }}
+              disabled={voice.isProcessing || voice.isSpeaking}
+              className={cn(
+                'h-9 w-9 rounded-full flex items-center justify-center relative z-10',
+                'transition-all duration-300',
+                voice.isListening 
+                  ? 'bg-primary shadow-lg shadow-primary/40' 
+                  : 'armstrong-btn-glass hover:bg-white/30',
+                (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
+              )}
+              title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
+            >
+              {/* Pulse rings when listening */}
+              {voice.isListening && !voice.isProcessing && (
+                <>
+                  <span
+                    className="absolute inset-0 rounded-full bg-primary/30 animate-ping"
+                    style={{ animationDuration: '1.5s' }}
+                  />
+                  <span
+                    className="absolute inset-[-4px] rounded-full bg-primary/20 animate-pulse"
+                    style={{ animationDuration: '2s' }}
+                  />
+                </>
+              )}
+              
+              {/* Processing indicator */}
+              {voice.isProcessing && (
+                <span
+                  className="absolute inset-0 rounded-full bg-white/20 animate-pulse"
+                  style={{ animationDuration: '0.8s' }}
+                />
+              )}
+              
+              {/* Icon */}
+              <span className="relative z-10 flex items-center justify-center">
+                {voice.isSpeaking ? (
+                  <Volume2 className="h-4 w-4 text-white animate-pulse" />
+                ) : voice.isListening ? (
+                  <Mic className="h-4 w-4 text-white" />
+                ) : (
+                  <Mic className={cn(
+                    'h-4 w-4',
+                    voice.error ? 'text-red-300' : 'text-white/85'
+                  )} />
+                )}
+              </span>
+            </button>
             
-            {/* Glass Input Field */}
+            {/* CENTER: Glass Input Field */}
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -222,35 +275,54 @@ export function ArmstrongContainer() {
               onClick={(e) => e.stopPropagation()}
               placeholder="Fragen..."
               className={cn(
-                'w-full h-9 rounded-full armstrong-input relative z-10',
+                'w-full h-8 rounded-full armstrong-input relative z-10',
                 'text-sm text-white placeholder:text-white/50',
                 'px-4 text-center',
                 'transition-all duration-200'
               )}
             />
             
-            {/* Glass Action Buttons */}
-            <div className="flex items-center gap-2.5 relative z-10">
+            {/* BOTTOM: Action Buttons (Attach + Send) */}
+            <div className="flex items-center gap-2 relative z-10">
               <button 
                 onClick={handleUploadClick}
-                className="h-8 w-8 rounded-full armstrong-btn-glass flex items-center justify-center"
+                className="h-7 w-7 rounded-full armstrong-btn-glass flex items-center justify-center"
                 title="Datei anhängen"
               >
-                <Paperclip className="h-3.5 w-3.5 text-white/85" />
+                <Paperclip className="h-3 w-3 text-white/85" />
               </button>
               <button 
                 onClick={handleSendClick}
                 className={cn(
-                  'h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200',
+                  'h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200',
                   inputValue.trim() 
                     ? 'bg-white/35 hover:bg-white/45' 
                     : 'armstrong-btn-glass'
                 )}
                 title="Senden"
               >
-                <Send className="h-3.5 w-3.5 text-white" />
+                <Send className="h-3 w-3 text-white" />
               </button>
             </div>
+            
+            {/* Voice Error Tooltip */}
+            {voice.error && (
+              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-red-400 bg-background/90 px-2 py-1 rounded-md shadow-lg whitespace-nowrap z-20">
+                {voice.error}
+              </div>
+            )}
+            
+            {/* Voice Transcript Overlay */}
+            {(voice.transcript || voice.assistantTranscript) && (
+              <div className="absolute -top-14 left-1/2 -translate-x-1/2 text-xs text-white/90 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg max-w-48 text-center z-20 shadow-lg">
+                {voice.transcript && (
+                  <p className="text-white/70 truncate">{voice.transcript}</p>
+                )}
+                {voice.assistantTranscript && (
+                  <p className="text-white font-medium truncate">{voice.assistantTranscript}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
