@@ -24,8 +24,8 @@ export function MobileBottomNav() {
   const { activeArea, setActiveArea, setMobileNavView, setSelectedMobileModule } = usePortalLayout();
 
   const handleHomeClick = () => {
-    navigate('/portal');
-    setActiveArea('base'); // Reset to base area
+    navigate('/portal/area/base');
+    setActiveArea('base');
     setMobileNavView('areas');
     setSelectedMobileModule(null);
   };
