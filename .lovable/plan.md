@@ -1,144 +1,269 @@
 
-# Vollständiger Fix-Plan: MOD-09 Vertriebspartner
+# Investment Engine — Zentraler Fix-Plan (Revidiert)
 
-## Übersicht der 5 Probleme
+## Analyse: Was ist das Problem?
 
-| # | Problem | Ursache | Priorität |
-|---|---------|---------|-----------|
-| 1 | Pipeline-Menüpunkt unnötig | Datei + Route noch vorhanden | P0 |
-| 2 | Immobilie erscheint nicht im Katalog | Query fragt `annual_rent_income` ab, Spalte heißt `annual_income` | P0 |
-| 3 | Beratung zeigt keine Objekte | Folge von Problem #2 | P0 |
-| 4 | Index-Export nicht bereinigt | `PipelineTab` wird noch exportiert | P1 |
-| 5 | Spec-Dokumente outdated | MOD-09 Spec enthält noch Pipeline | P1 |
+### 3 Stellen, 3 verschiedene Implementierungen
 
----
+| Kontext | Datei | Query-Problem | Card-Komponente |
+|---------|-------|---------------|-----------------|
+| **Zone 3 Kaufy** | `KaufyHome.tsx` | ❌ MOCK_PROPERTIES statt DB | `KaufyPropertyCard` |
+| **MOD-08 Suche** | `SucheTab.tsx` | ⚠️ Kein `annual_income` in Query | `InvestmentSearchCard` |
+| **MOD-09 Beratung** | `BeratungTab.tsx` | ❌ `annual_rent_income` (falsch!) | `PartnerPropertyGrid` |
 
-## Lösung 1: Pipeline komplett entfernen
+### Was funktioniert (Screenshots vs. Jetzt)
 
-### 1.1 Datei löschen
+| Element | Screenshot (Alt) | Jetzt | Problem |
+|---------|------------------|-------|---------|
+| Hero-Suche | ✅ zVE + EK + Toggle | ✅ Vorhanden | Funktioniert |
+| Property Cards | ✅ Mini-EÜR | ⚠️ Teilweise | Query liefert keine Mietdaten |
+| Detail-Modal | ✅ 5-Zeilen + Slider | ⚠️ Unterschiedlich | Verschiedene Modals |
+| Daten aus DB | ✅ Echte Listings | ❌ MOCK / Query-Fehler | Kernproblem! |
 
-```text
-src/pages/portal/vertriebspartner/PipelineTab.tsx → LÖSCHEN
-```
+### Root Cause (Warum alte Kaufy funktionierte, jetzt nicht)
 
-### 1.2 Export aus index.ts entfernen
-
-**Datei:** `src/pages/portal/vertriebspartner/index.ts`
-
-**Aktuelle Zeile 5 (zu löschen):**
-```typescript
-export { default as PipelineTab } from './PipelineTab';
-```
-
-**Neuer Inhalt der gesamten Datei:**
-```typescript
-export { default as KatalogTab } from './KatalogTab';
-export { default as BeratungTab } from './BeratungTab';
-export { default as KundenTab } from './KundenTab';
-export { default as NetworkTab } from './NetworkTab';
-```
-
-### 1.3 Route aus Manifest entfernen
-
-**Datei:** `src/manifests/routesManifest.ts` (Zeile 288)
-
-**Aktuell (Zeilen 283-289):**
-```typescript
-tiles: [
-  { path: "katalog", component: "KatalogTab", title: "Katalog" },
-  { path: "beratung", component: "BeratungTab", title: "Beratung" },
-  { path: "kunden", component: "KundenTab", title: "Kunden" },
-  { path: "network", component: "NetworkTab", title: "Netzwerk" },
-  { path: "pipeline", component: "PipelineTab", title: "Pipeline" },  // ← LÖSCHEN
-],
-```
-
-**Neu:**
-```typescript
-tiles: [
-  { path: "katalog", component: "KatalogTab", title: "Katalog" },
-  { path: "beratung", component: "BeratungTab", title: "Beratung" },
-  { path: "kunden", component: "KundenTab", title: "Kunden" },
-  { path: "network", component: "NetworkTab", title: "Netzwerk" },
-],
-```
+1. **Alte Kaufy:** Direkte DB-Anbindung mit korrektem Feldnamen
+2. **Jetzt:** 
+   - Zone 3: `MOCK_PROPERTIES` Array (keine DB!)
+   - MOD-08: Query ohne `annual_income`
+   - MOD-09: Query mit falschem Feldnamen `annual_rent_income`
 
 ---
 
-## Lösung 2: DB-Query fixen (Hauptursache für fehlende Immobilie)
+## Lösung: 3 Ebenen
 
-**Datei:** `src/pages/portal/vertriebspartner/KatalogTab.tsx`
+### Ebene 1: Daten-Fixes (KRITISCH — P0)
 
-### Zeile 104: Spaltenname korrigieren
+#### 1.1 BeratungTab.tsx — Query-Fix
 
-**Aktuell:**
+**Zeile 75:** `annual_rent_income` → `annual_income`
+
 ```typescript
-properties (address, city, property_type, total_area_sqm, annual_rent_income)
+// VORHER:
+properties!inner (
+  address, city, property_type, total_area_sqm, annual_rent_income
+)
+
+// NACHHER:
+properties!inner (
+  address, city, property_type, total_area_sqm, annual_income
+)
 ```
 
-**Neu:**
-```typescript
-properties (address, city, property_type, total_area_sqm, annual_income)
-```
+**Zeile 85:** Variable anpassen
 
-### Zeile 123: Variable anpassen
-
-**Aktuell:**
 ```typescript
+// VORHER:
 const annualRent = props?.annual_rent_income || 0;
-```
 
-**Neu:**
-```typescript
+// NACHHER:
 const annualRent = props?.annual_income || 0;
 ```
 
----
+#### 1.2 SucheTab.tsx — Query erweitern
 
-## Lösung 3: Spec-Dokumentation aktualisieren
+**Zeilen 86-98:** `annual_income` hinzufügen
 
-**Datei:** `docs/modules/MOD-09_VERTRIEBSPARTNER.md`
+```typescript
+// VORHER:
+properties!inner (
+  id, address, city, postal_code, property_type, total_area_sqm
+)
 
-### Änderung 1: Modul-Überschrift (Zeile ~44)
-```markdown
-## 2) ROUTE-STRUKTUR (5-Tile-Pattern)
-→
-## 2) ROUTE-STRUKTUR (4-Tile-Pattern)
+// NACHHER:
+properties!inner (
+  id, address, city, postal_code, property_type, total_area_sqm, annual_income
+)
 ```
 
-### Änderung 2: Route-Tabelle — Pipeline-Zeile entfernen
+**Zeile 130:** Echte Mietdaten verwenden
 
-### Änderung 3: Section 3.5 Pipeline komplett entfernen
+```typescript
+// VORHER:
+monthly_rent_total: 0
+
+// NACHHER:
+monthly_rent_total: item.properties?.annual_income 
+  ? item.properties.annual_income / 12 
+  : 0
+```
+
+#### 1.3 KaufyHome.tsx — Echte DB-Daten statt Mock
+
+**Zeilen 28-77:** `MOCK_PROPERTIES` ersetzen durch DB-Query
+
+```typescript
+// Neuer useQuery Hook:
+const { data: listings = [], isLoading: isLoadingListings } = useQuery({
+  queryKey: ['kaufy-public-listings'],
+  queryFn: async () => {
+    // 1. Hole Kaufy-Publikationen
+    const { data: publications } = await supabase
+      .from('listing_publications')
+      .select('listing_id')
+      .eq('channel', 'kaufy')
+      .eq('status', 'active');
+
+    if (!publications?.length) return [];
+
+    // 2. Hole Listing-Details mit Property-Daten
+    const { data: listingsData } = await supabase
+      .from('listings')
+      .select(`
+        id, public_id, title, asking_price,
+        properties!inner (
+          property_type, address, city, postal_code, 
+          total_area_sqm, construction_year, annual_income
+        )
+      `)
+      .in('id', publications.map(p => p.listing_id))
+      .eq('status', 'active');
+
+    // 3. Transformieren
+    return (listingsData || []).map(l => ({
+      public_id: l.public_id,
+      title: l.title || `${l.properties.property_type} ${l.properties.city}`,
+      asking_price: l.asking_price || 0,
+      monthly_rent: l.properties.annual_income ? l.properties.annual_income / 12 : 0,
+      property_type: l.properties.property_type,
+      city: l.properties.city,
+      postal_code: l.properties.postal_code,
+      total_area_sqm: l.properties.total_area_sqm,
+      year_built: l.properties.construction_year,
+      gross_yield: l.asking_price > 0 
+        ? ((l.properties.annual_income || 0) / l.asking_price) * 100 
+        : 0,
+    }));
+  },
+});
+
+// State anpassen:
+const [properties, setProperties] = useState<PropertyData[]>([]);
+
+useEffect(() => {
+  if (listings.length > 0) {
+    setProperties(listings);
+  }
+}, [listings]);
+```
+
+**handleSearch anpassen:** Verwendet `properties` aus DB statt `MOCK_PROPERTIES`
 
 ---
 
-## Zusammenfassung der Dateiänderungen
+### Ebene 2: Einheitliche Komponenten (P1)
 
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/portal/vertriebspartner/PipelineTab.tsx` | **LÖSCHEN** |
-| `src/pages/portal/vertriebspartner/index.ts` | Zeile 5 entfernen |
-| `src/manifests/routesManifest.ts` | Zeile 288 entfernen |
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | 2 Zeilen anpassen (104, 123) |
-| `docs/modules/MOD-09_VERTRIEBSPARTNER.md` | Pipeline-Referenzen entfernen |
+Die drei Card-Komponenten haben **ähnliches Design**, aber leichte Unterschiede. Für Konsistenz:
+
+#### 2.1 Gemeinsame Property-Card Features
+
+| Feature | KaufyPropertyCard | InvestmentSearchCard | PartnerPropertyGrid |
+|---------|------------------|---------------------|---------------------|
+| Typ-Badge | ✅ | ✅ | ✅ |
+| Rendite-Badge | ✅ | ✅ | ✅ |
+| Herz-Button | ✅ | ✅ | ✅ |
+| Mini-EÜR | ✅ 3 Zeilen | ⚠️ 2 Zeilen | ✅ 3 Zeilen |
+| Netto-Highlight | ✅ Box | ⚠️ Inline | ✅ Border |
+
+**Empfehlung:** Alle auf das 3-Zeilen-Format angleichen:
+
+```text
++ Cashflow vor Steuer    +XXX €/Mo  (grün/rot)
++ Steuervorteil          +XXX €/Mo  (grün)
+─────────────────────────────────────
+Netto-Belastung          +XXX €/Mo  (highlight)
+```
+
+#### 2.2 Unified Property Card (Optional, Phase 2)
+
+Eine neue `UnifiedPropertyCard.tsx` könnte alle drei ersetzen:
+
+```typescript
+interface UnifiedPropertyCardProps {
+  property: PropertyData;
+  metrics?: CalculatedMetrics;
+  variant: 'zone2' | 'zone3';  // Styling-Variante
+  onFavorite?: () => void;
+  linkTo: string;
+}
+```
 
 ---
 
-## Erwartetes Ergebnis
+### Ebene 3: Konsistentes Detail-Modal (P2)
 
-| Test | Route | Erwartetes Ergebnis |
-|------|-------|---------------------|
-| 1 | Navigation | Nur 4 Tiles: Katalog, Beratung, Kunden, Netzwerk |
-| 2 | `/portal/vertriebspartner/katalog` | Musterimmobilie "Leipziger Straße 42" sichtbar |
-| 3 | `/portal/vertriebspartner/beratung` | Musterimmobilie im Property-Grid |
-| 4 | `/portal/vertriebspartner/pipeline` | 404 (Route existiert nicht mehr) |
+Alle drei Kontexte sollten dasselbe Modal-Layout nutzen:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ [X] Investment-Kalkulation — Objekt-Titel                   │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┐  ┌────────────────────────────┐ │
+│ │ 40-JAHRES-CHART         │  │ PARAMETER (Slider)         │ │
+│ │ • Objektwert (blau)     │  │ zVE: [══════●══] 60.000 €  │ │
+│ │ • Restschuld (rot)      │  │ EK:  [══════●══] 50.000 €  │ │
+│ │ • Netto-Vermögen (grün) │  │ Zins: [══●═════] 3,5%      │ │
+│ └─────────────────────────┘  │ Tilg: [═══●════] 2,0%      │ │
+│                              │ Wert: [════●═══] 2,0%      │ │
+│ ┌─────────────────────────┐  │                            │ │
+│ │ MONATSÜBERSICHT         │  │ ════════════════════════   │ │
+│ │ Mieteinnahme    +500 €  │  │ Monatliche Belastung:      │ │
+│ │ Darlehensrate   -565 €  │  │ 108 € / Monat              │ │
+│ │ Bewirtschaftung -179 €  │  │                            │ │
+│ │ Steuereffekt    +112 €  │  │ [PDF] [Favorit] [Anfrage]  │ │
+│ │ ─────────────────────   │  └────────────────────────────┘ │
+│ │ Netto          -132 €   │                                 │
+│ └─────────────────────────┘                                 │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Technischer Hintergrund
+## Datei-Änderungen Übersicht
 
-### Root Cause für fehlende Immobilie
-Die Supabase-Query in `KatalogTab.tsx` fragt das **nicht existierende** Feld `properties.annual_rent_income` ab. Das korrekte Feld heißt `annual_income` (entspricht dem DB-Schema). Dieser Fehler führt zu einem 400 Bad Request, wodurch keine Listings geladen werden.
+| Datei | Änderung | Priorität |
+|-------|----------|-----------|
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | `annual_rent_income` → `annual_income` | **P0** |
+| `src/pages/portal/investments/SucheTab.tsx` | Query um `annual_income` erweitern | **P0** |
+| `src/pages/zone3/kaufy/KaufyHome.tsx` | MOCK durch DB-Query ersetzen | **P0** |
+| `src/components/investment/InvestmentSearchCard.tsx` | Mini-EÜR 3-Zeilen-Format | P1 |
+| `src/components/zone3/kaufy/KaufyPropertyCard.tsx` | (bereits korrekt) | — |
+| `src/components/vertriebspartner/PartnerPropertyGrid.tsx` | (bereits korrekt) | — |
 
-### Pipeline-Entfernung
-Die Pipeline war ursprünglich für Deal-Tracking gedacht, ist aber für Partner nicht relevant — Deals werden über Provisionen im "Netzwerk"-Tab abgebildet. Die Funktionalität war nie vollständig implementiert.
+---
+
+## Erwartetes Ergebnis nach Fix
+
+| Test | Route | Erwartung |
+|------|-------|-----------|
+| 1 | `/portal/vertriebspartner/beratung` | Musterimmobilie "Leipziger Straße 42" erscheint mit Metrics |
+| 2 | `/portal/investments/suche` | Objekte zeigen echte Rendite + Belastung |
+| 3 | `/kaufy` | Echte Listings aus DB (keine Mock-Daten) |
+| 4 | Alle Cards | Identisches 3-Zeilen EÜR-Format |
+
+---
+
+## Technische Details
+
+### Warum 3 Fixes genügen
+
+1. **Investment Engine funktioniert** — Der `sot-investment-engine` Edge Function ist korrekt
+2. **Card-Komponenten funktionieren** — Sie zeigen Daten korrekt an, wenn sie welche bekommen
+3. **Problem ist die Datenquelle** — Falsche Queries und Mock-Daten
+
+### Reihenfolge der Umsetzung
+
+1. **Schritt 1 (5 min):** BeratungTab.tsx Query-Fix
+2. **Schritt 2 (5 min):** SucheTab.tsx Query-Erweiterung  
+3. **Schritt 3 (15 min):** KaufyHome.tsx DB-Integration
+4. **Schritt 4 (Optional):** Card-Angleichung
+
+### Ist der Plan ausreichend?
+
+**Ja**, der Plan ist ausreichend für die **Kernfunktion**:
+- ✅ Behebt alle Query-Fehler
+- ✅ Ersetzt Mock-Daten durch echte DB
+- ✅ Nutzt vorhandene, funktionierende Investment Engine
+- ✅ Card-Komponenten sind bereits ähnlich genug
+
+Die optionale Vereinheitlichung (Unified Components) kann in einer späteren Phase erfolgen, wenn die Kernfunktion steht.
