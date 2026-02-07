@@ -115,6 +115,7 @@ const CarsPage = React.lazy(() => import('@/pages/portal/CarsPage'));
 const FinanzanalysePage = React.lazy(() => import('@/pages/portal/FinanzanalysePage'));
 const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPage'));
 const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
+const AreaOverviewPage = React.lazy(() => import('@/pages/portal/AreaOverviewPage'));
 
 // Zone 3: Kaufy Website
 import KaufyLayout from '@/pages/zone3/kaufy/KaufyLayout';
@@ -442,6 +443,13 @@ export function ManifestRouter() {
       <Route path={zone2Portal.base} element={<PortalLayout />}>
         {/* Dashboard */}
         <Route index element={<PortalDashboard />} />
+
+        {/* Area Overview Pages */}
+        <Route path="area/:areaKey" element={
+          <React.Suspense fallback={<LoadingFallback />}>
+            <AreaOverviewPage />
+          </React.Suspense>
+        } />
 
         {/* Module Routes - Each module gets direct routing to ModulePage */}
         {/* ModulePage handles all internal routing via nested <Routes> */}

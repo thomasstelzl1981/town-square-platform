@@ -2,9 +2,10 @@
  * AREA TABS — Level 1 Navigation
  * 
  * Horizontal tabs: Base | Missions | Operations | Services
- * Switching areas does NOT navigate — only changes visible module tabs
+ * Clicking navigates to /portal/area/:areaKey and updates state
  */
 
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { areaConfig, AreaKey } from '@/manifests/areaConfig';
@@ -18,7 +19,13 @@ const areaIcons: Record<AreaKey, React.ElementType> = {
 };
 
 export function AreaTabs() {
+  const navigate = useNavigate();
   const { activeArea, setActiveArea } = usePortalLayout();
+
+  const handleAreaClick = (areaKey: AreaKey) => {
+    setActiveArea(areaKey);
+    navigate(`/portal/area/${areaKey}`);
+  };
 
   return (
     <div className="flex items-center justify-center gap-1 px-4 py-1">
@@ -29,7 +36,7 @@ export function AreaTabs() {
         return (
           <button
             key={area.key}
-            onClick={() => setActiveArea(area.key)}
+            onClick={() => handleAreaClick(area.key)}
             className={cn(
               'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
               isActive

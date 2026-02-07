@@ -1,0 +1,98 @@
+/**
+ * AREA OVERVIEW PAGE
+ * 
+ * Dynamic page that displays promo + module cards for a given area.
+ * Reads from moduleContents.ts (SSOT for How It Works).
+ * 
+ * Route: /portal/area/:areaKey
+ */
+
+import { useParams, Navigate } from 'react-router-dom';
+import { useMemo, useEffect } from 'react';
+import { areaConfig, AreaKey, getModuleDisplayLabel } from '@/manifests/areaConfig';
+import { zone2Portal } from '@/manifests/routesManifest';
+import { moduleContents } from '@/components/portal/HowItWorks/moduleContents';
+import { areaPromoContent } from '@/config/areaPromoContent';
+import { AreaPromoCard } from '@/components/portal/AreaPromoCard';
+import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
+import { usePortalLayout } from '@/hooks/usePortalLayout';
+
+// Area descriptions for header
+const areaDescriptions: Record<AreaKey, string> = {
+  base: 'Stammdaten, KI Office, Dokumente und Services-Grundlagen',
+  missions: 'Immobilien, Mietverwaltung, Verkauf, Finanzierung und Investment',
+  operations: 'Akquise, Finanzierungsmanager, Projekte, Partner und Leads',
+  services: 'Kommunikation, Fortbildung, Fahrzeuge, Analyse und Photovoltaik',
+};
+
+export default function AreaOverviewPage() {
+  const { areaKey } = useParams<{ areaKey: string }>();
+  const { setActiveArea } = usePortalLayout();
+  
+  // Validate area key
+  const validAreaKey = areaKey as AreaKey;
+  const area = areaConfig.find(a => a.key === validAreaKey);
+  
+  // Sync area state with URL
+  useEffect(() => {
+    if (area) {
+      setActiveArea(area.key);
+    }
+  }, [area, setActiveArea]);
+  
+  // Build module data
+  const moduleData = useMemo(() => {
+    if (!area) return [];
+    
+    return area.modules.map(code => {
+      const content = moduleContents[code];
+      const moduleConfig = zone2Portal.modules?.[code];
+      const defaultRoute = moduleConfig ? `/portal/${moduleConfig.base}` : '/portal';
+      
+      return {
+        code,
+        content,
+        defaultRoute,
+      };
+    }).filter(m => m.content); // Only include modules with content
+  }, [area]);
+  
+  // Get promo content
+  const promo = validAreaKey ? areaPromoContent[validAreaKey] : null;
+  
+  // Invalid area → redirect to portal
+  if (!area) {
+    return <Navigate to="/portal" replace />;
+  }
+
+  return (
+    <div className="container max-w-7xl mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight uppercase mb-2">
+          {area.label}
+        </h1>
+        <p className="text-muted-foreground">
+          {areaDescriptions[area.key]}
+        </p>
+      </div>
+
+      {/* Grid: 1 Promo + 5 Modules = 6 cards */}
+      {/* Responsive: 1 col mobile, 2 cols tablet, 3 cols desktop */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Promo Card (always first) */}
+        {promo && <AreaPromoCard promo={promo} />}
+        
+        {/* Module Cards */}
+        {moduleData.map(({ code, content, defaultRoute }) => (
+          <AreaModuleCard
+            key={code}
+            moduleCode={code}
+            content={content}
+            defaultRoute={defaultRoute}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
