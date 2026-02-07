@@ -27,6 +27,10 @@ interface PortalLayoutState {
   activeArea: AreaKey;
   setActiveArea: (area: AreaKey) => void;
   
+  // SubTabs visibility (Level 3 nav)
+  subTabsVisible: boolean;
+  setSubTabsVisible: (visible: boolean) => void;
+  
   // Responsive state
   isMobile: boolean;
   isTablet: boolean;
@@ -100,6 +104,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
   // Mobile navigation state
   const [mobileNavView, setMobileNavView] = useState<'areas' | 'modules' | 'tiles'>('areas');
   const [selectedMobileModule, setSelectedMobileModule] = useState<string | null>(null);
+  
+  // SubTabs visibility (hidden by default, shown when module is selected)
+  const [subTabsVisible, setSubTabsVisible] = useState(false);
 
   // Handle breakpoint changes
   useEffect(() => {
@@ -154,9 +161,10 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongExpanded(!armstrongExpanded);
   }, [armstrongExpanded, setArmstrongExpanded]);
 
-  // Area controls
+  // Area controls - hide SubTabs when area changes
   const setActiveArea = useCallback((area: AreaKey) => {
     setActiveAreaState(area);
+    setSubTabsVisible(false); // Hide Level 3 when Level 1 is clicked
   }, []);
 
   const value: PortalLayoutState = {
@@ -171,6 +179,8 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     toggleArmstrongExpanded,
     activeArea,
     setActiveArea,
+    subTabsVisible,
+    setSubTabsVisible,
     isMobile,
     isTablet,
     isDesktop,

@@ -8,6 +8,7 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { ModuleDefinition } from '@/manifests/routesManifest';
 import { 
   Users,
@@ -68,6 +69,7 @@ interface ModuleTabsProps {
 
 export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
   const { isDevelopmentMode } = useAuth();
+  const { setSubTabsVisible } = usePortalLayout();
 
   if (modules.length === 0) {
     return (
@@ -91,6 +93,7 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
           <NavLink
             key={code}
             to={route}
+            onClick={() => setSubTabsVisible(true)} // Show Level 3 when Level 2 is clicked
             className={cn(
               'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
               isActive
