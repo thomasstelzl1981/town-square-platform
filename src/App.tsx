@@ -39,7 +39,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               {/* Root redirect */}
-              <Route path="/" element={<Navigate to="/portal" replace />} />
+              <Route path="/" element={<Navigate to="/portal/area/base" replace />} />
               
               {/* Special: Authentication (public) */}
               <Route path="/auth" element={<Auth />} />
