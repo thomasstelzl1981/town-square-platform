@@ -419,6 +419,10 @@ zone2_portal:
           component: "ObjekteTab"
           title: "Objekte"
           
+        - path: "/anfragen"
+          component: "AnfragenTab"
+          title: "Anfragen"
+          
         - path: "/vorgaenge"
           component: "VorgaengeTab"
           title: "Vorgänge"
@@ -432,7 +436,7 @@ zone2_portal:
           title: "Einstellungen"
       
       dynamic_routes:
-        - path: "/expose/:propertyId"
+        - path: "/expose/:unitId"
           component: "ExposeDetail"
           title: "Verkaufs-Exposé"
 
@@ -499,6 +503,21 @@ zone2_portal:
         - path: "/simulation"
           component: "SimulationTab"
           title: "Simulation"
+      
+      dynamic_routes:
+        - path: "/mandat/neu"
+          component: "MandatCreateWizard"
+          title: "Neues Mandat"
+          
+        - path: "/mandat/:mandateId"
+          component: "MandatDetail"
+          title: "Mandat-Details"
+          dynamic: true
+          
+        - path: "/objekt/:publicId"
+          component: "InvestmentExposePage"
+          title: "Investment-Exposé"
+          dynamic: true
 
     # ==========================================================================
     # MOD-09: VERTRIEBSPARTNER

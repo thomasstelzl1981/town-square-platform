@@ -238,6 +238,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     cta: 'Geben Sie ein Objekt frei – dann beginnt der strukturierte Prozess.',
     subTiles: [
       { title: 'Objekte', route: '/portal/verkauf/objekte', icon: Building2 },
+      { title: 'Anfragen', route: '/portal/verkauf/anfragen', icon: MessageSquare },
       { title: 'Vorgänge', route: '/portal/verkauf/vorgaenge', icon: GitBranch },
       { title: 'Reporting', route: '/portal/verkauf/reporting', icon: BarChart },
       { title: 'Einstellungen', route: '/portal/verkauf/einstellungen', icon: Settings },
@@ -328,7 +329,6 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     whatYouDo: [
       'Objekte aus dem Katalog präsentieren und filtern',
       'Investment-Simulationen mit Kunden durchführen',
-      'Deals in der Pipeline nachverfolgen',
       'Kunden-Kontakte verwalten und dokumentieren',
       'Provisionen und Netzwerk-Performance überwachen',
     ],
@@ -339,7 +339,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       },
       {
         title: 'Deal abschließen',
-        steps: ['Pipeline pflegen', 'Status aktualisieren', 'Provision nach Abschluss'],
+        steps: ['Kunden-Kontakt pflegen', 'Status aktualisieren', 'Provision im Netzwerk-Tab'],
       },
     ],
     cta: 'Starten Sie im Katalog – und führen Sie Ihren nächsten Kunden zum Investment.',
@@ -348,7 +348,6 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Beratung', route: '/portal/vertriebspartner/beratung', icon: MessageCircle },
       { title: 'Kunden', route: '/portal/vertriebspartner/kunden', icon: Users },
       { title: 'Netzwerk', route: '/portal/vertriebspartner/network', icon: Network },
-      { title: 'Pipeline', route: '/portal/vertriebspartner/pipeline', icon: GitBranch },
     ],
   },
 

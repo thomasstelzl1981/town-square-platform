@@ -226,12 +226,13 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
         { path: "objekte", component: "ObjekteTab", title: "Objekte" },
+        { path: "anfragen", component: "AnfragenTab", title: "Anfragen" },
         { path: "vorgaenge", component: "VorgaengeTab", title: "Vorgänge" },
         { path: "reporting", component: "ReportingTab", title: "Reporting" },
         { path: "einstellungen", component: "EinstellungenTab", title: "Einstellungen" },
       ],
       dynamic_routes: [
-        { path: "expose/:propertyId", component: "ExposeDetail", title: "Verkaufs-Exposé", dynamic: true },
+        { path: "expose/:unitId", component: "ExposeDetail", title: "Verkaufs-Exposé", dynamic: true },
       ],
     },
     // =========================================================================
