@@ -37,6 +37,7 @@ export function MobileBottomNav() {
     setActiveArea(areaKey);
     setMobileNavView('modules');
     setSelectedMobileModule(null);
+    navigate(`/portal/area/${areaKey}`);
   };
 
   // Check if home is active (no area selected)

@@ -66,7 +66,7 @@ export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridP
         <div 
           className="grid gap-4 md:gap-6"
           style={{
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
             justifyContent: 'center',
           }}
         >
