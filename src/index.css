@@ -68,10 +68,12 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    /* Radius System */
-    --radius: 0.75rem;
-    --radius-sm: 0.5rem;
-    --radius-lg: 1rem;
+    /* Radius System — iOS-style larger radii */
+    --radius: 1rem;           /* 16px */
+    --radius-sm: 0.75rem;     /* 12px */
+    --radius-lg: 1.25rem;     /* 20px */
+    --radius-xl: 1.5rem;      /* 24px */
+    --radius-full: 9999px;
 
     /* Sidebar */
     --sidebar-background: 0 0% 98%;
@@ -502,5 +504,143 @@
     background: hsl(var(--card-glass));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* ===========================================================================
+     iOS GLASS BUTTON STYLE
+     =========================================================================== */
+  .btn-glass {
+    background: hsla(0 0% 100% / 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsla(0 0% 100% / 0.3);
+    box-shadow: 
+      inset 0 1px 0 hsla(0 0% 100% / 0.2),
+      0 1px 3px hsla(0 0% 0% / 0.1);
+    transition: background 0.2s ease;
+  }
+
+  .btn-glass:hover {
+    background: hsla(0 0% 100% / 0.65);
+  }
+
+  .dark .btn-glass {
+    background: hsla(0 0% 100% / 0.1);
+    border-color: hsla(0 0% 100% / 0.1);
+  }
+
+  .dark .btn-glass:hover {
+    background: hsla(0 0% 100% / 0.18);
+  }
+
+  /* ===========================================================================
+     ARMSTRONG PLANET — 3D Sphere with Atmospheric Layers
+     =========================================================================== */
+  .armstrong-planet {
+    border-radius: 50%;
+    background:
+      /* Atmospheric highlight (top-left) */
+      radial-gradient(circle at 30% 25%, 
+        hsla(195 90% 85% / 0.9) 0%, 
+        hsla(200 80% 70% / 0.6) 25%, 
+        transparent 50%
+      ),
+      /* Core glow (bottom-right) */
+      radial-gradient(circle at 70% 70%, 
+        hsla(210 60% 65% / 0.7) 0%, 
+        transparent 40%
+      ),
+      /* Base color gradient */
+      radial-gradient(circle, 
+        hsl(200 75% 60%) 0%, 
+        hsl(215 70% 45%) 100%
+      );
+    box-shadow: 
+      inset -8px -8px 20px hsla(210 60% 30% / 0.4),
+      inset 4px 4px 15px hsla(195 80% 90% / 0.5),
+      0 0 30px hsla(200 90% 60% / 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .armstrong-planet:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      inset -8px -8px 20px hsla(210 60% 30% / 0.4),
+      inset 4px 4px 15px hsla(195 80% 90% / 0.5),
+      0 0 45px hsla(200 90% 60% / 0.45);
+  }
+
+  .dark .armstrong-planet {
+    background:
+      /* Atmospheric highlight (top-left) — violet nebula */
+      radial-gradient(circle at 25% 20%, 
+        hsla(275 45% 35% / 0.8) 0%, 
+        hsla(250 40% 25% / 0.5) 30%, 
+        transparent 50%
+      ),
+      /* Secondary glow (bottom-right) — blue accent */
+      radial-gradient(circle at 75% 75%, 
+        hsla(210 50% 30% / 0.6) 0%, 
+        transparent 45%
+      ),
+      /* Base color gradient — deep space purple */
+      radial-gradient(circle, 
+        hsl(250 40% 25%) 0%, 
+        hsl(275 35% 15%) 100%
+      );
+    box-shadow: 
+      inset -6px -6px 18px hsla(275 30% 10% / 0.6),
+      inset 3px 3px 12px hsla(275 50% 50% / 0.3),
+      0 0 40px hsla(275 45% 40% / 0.25);
+  }
+
+  .dark .armstrong-planet:hover {
+    box-shadow: 
+      inset -6px -6px 18px hsla(275 30% 10% / 0.6),
+      inset 3px 3px 12px hsla(275 50% 50% / 0.3),
+      0 0 55px hsla(275 45% 40% / 0.4);
+  }
+
+  /* ===========================================================================
+     iOS INPUT STYLE — Soft tiles without hard borders
+     =========================================================================== */
+  .input-ios {
+    background: hsl(var(--muted) / 0.6);
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 2px 4px hsla(0 0% 0% / 0.05);
+  }
+
+  .dark .input-ios {
+    background: hsl(var(--muted) / 0.4);
+  }
+
+  /* ===========================================================================
+     iOS FLOATING NAV — Pill-shaped with glass effect
+     =========================================================================== */
+  .nav-ios-floating {
+    background: hsla(0 0% 100% / 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsla(0 0% 100% / 0.3);
+    box-shadow: 
+      0 4px 20px hsla(0 0% 0% / 0.1),
+      inset 0 1px 0 hsla(0 0% 100% / 0.3);
+  }
+
+  .dark .nav-ios-floating {
+    background: hsla(0 0% 0% / 0.5);
+    border-color: hsla(0 0% 100% / 0.08);
+    box-shadow: 
+      0 4px 20px hsla(0 0% 0% / 0.4),
+      inset 0 1px 0 hsla(0 0% 100% / 0.05);
+  }
+
+  /* Active indicator pill */
+  .nav-active-pill {
+    background: hsl(var(--primary));
+    border-radius: 9999px;
+    width: 4px;
+    height: 4px;
   }
 }

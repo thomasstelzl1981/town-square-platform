@@ -1,13 +1,12 @@
 /**
  * ARMSTRONG POD — Mobile chat entry point
  * 
- * Positioned above the bottom nav
- * Compact pill: Icon + "Armstrong"
+ * Planet-style sphere positioned above the bottom nav
  * Tap opens ArmstrongSheet
  */
 
-import { Button } from '@/components/ui/button';
 import { MessageCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ArmstrongPodProps {
   onOpenSheet: () => void;
@@ -17,17 +16,22 @@ export function ArmstrongPod({ onOpenSheet }: ArmstrongPodProps) {
   return (
     <div 
       className="fixed left-4 z-40"
-      style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom) + 0.5rem)' }}
+      style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
     >
-      <Button
+      <button
         onClick={onOpenSheet}
-        variant="secondary"
-        size="sm"
-        className="rounded-full shadow-lg gap-2 px-4"
+        className={cn(
+          'flex flex-col items-center gap-1 transition-transform active:scale-95'
+        )}
       >
-        <MessageCircle className="h-4 w-4" />
-        <span className="text-xs font-medium">Armstrong</span>
-      </Button>
+        {/* Planet Sphere */}
+        <div className="armstrong-planet w-12 h-12 flex items-center justify-center shadow-lg">
+          <MessageCircle className="h-5 w-5 text-white/80" />
+        </div>
+        
+        {/* Label */}
+        <span className="text-[9px] font-medium text-muted-foreground">Armstrong</span>
+      </button>
     </div>
   );
 }
