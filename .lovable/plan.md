@@ -1,185 +1,176 @@
 
-Zielbild (UX) und aktuelle Architektur (Analyse)
-- Armstrong wird auf Desktop in `PortalLayout` immer gerendert (`<ArmstrongContainer />`) und in `ArmstrongContainer.tsx` via `createPortal(..., document.body)` direkt in den `body` geportalt.
-- Es gibt 2 Zustände:
-  1) Collapsed Orb (frei schwebend, soll rechts unten starten, klickbar, draggable, file-drop)
-  2) Expanded Panel (unten rechts „angedockt“, nicht draggable)
 
-UI/UX-Flow (wie es aktuell gedacht ist)
-- Klick auf Orb → `toggleArmstrongExpanded()` (öffnet Panel)
-- Klick auf Mic → `voice.toggleVoice()` ohne Expand (durch `e.stopPropagation()`)
-- Drag am Orb → `useDraggable` verschiebt Position (persistiert in localStorage unter `armstrong-orb-position`)
-- Datei auf Orb droppen → Expand + (später) Datei als Kontext
+# Pending Actions Widget — Demo-Implementierung
 
-Hauptfehler gefunden: Warum Orb links oben erscheint & „Drag“ scheinbar nicht geht
-- In `ArmstrongContainer.tsx` wird beim Collapsed Orb folgendes gemacht:
+## Überblick
 
-  - Es gibt ein `style={{ position:'fixed', left: position.x, top: position.y }}` am Orb.
-  - Danach wird `{...dragHandleProps}` gespreadet (Zeile ~210).
-  - `dragHandleProps` enthält ebenfalls ein `style` (Cursor + userSelect).
+Wir erstellen ein **PendingActionsWidget** als Demo auf dem Portal-Dashboard. Es zeigt eine Beispiel-Aktion ("Brief absenden an Max Müller"), die auf Freigabe wartet — ohne echte Datenbankanbindung vorerst, nur als visuelles Widget.
 
-  Ergebnis: Das spätere Spread überschreibt den vorherigen `style` komplett.
-  Dadurch gehen `left` und `top` verloren → der Orb landet im Standardfluss bei (quasi) links oben, und Positionsupdates aus `useDraggable` sind nicht sichtbar. Das erklärt exakt beide Symptome:
-  - „erscheint links oben“
-  - „man kann ihn nicht bewegen“ (Position ändert sich intern, aber wird nicht gerendert)
+## Konzept
 
-Sekundärer UX-Bug (nach Fix sichtbar): Drag vs Click
-- `useDraggable` setzt `isDragging` beim `mousedown` und wieder `false` beim `mouseup`.
-- Ein `click` feuert nach `mouseup` → zu diesem Zeitpunkt ist `isDragging` bereits wieder `false`.
-- Folge: Nach einem Drag kann trotzdem ein Click passieren und der Orb expandiert „aus Versehen“.
-- Das ist nicht der Root Cause, aber ein wichtiger UX-Fix, damit „Drag fühlt sich wie Drag an“.
+```text
+DASHBOARD LAYOUT (nach Änderung):
++----------------------------------+----------------------------------+----------------------------------+
+|  ARMSTRONG GREETING              |  WETTER                          |  GOOGLE EARTH                    |
++----------------------------------+----------------------------------+----------------------------------+
+|                     PENDING ACTIONS WIDGET (volle Breite, darunter)                                 |
+|  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐ |
+|  │  📬 Brief an Max Müller              ⚠️ Mittleres Risiko        [Freigeben] [Abbrechen]        │ |
+|  │  Betreff: Mieterhöhung zum 01.04     Kosten: Kostenlos          Via: E-Mail                    │ |
+|  └────────────────────────────────────────────────────────────────────────────────────────────────┘ |
++-----------------------------------------------------------------------------------------------------+
+```
 
-Bild-Referenz (Smile / Friendly Face) – was wir übernehmen
-Das hochgeladene Icon hat charakteristische Elemente:
-- Außenring / „Glasrim“ (glänzende Ringkante)
-- Inneres dunkleres „Visor“-Fenster (oben größer, unten eine klare Kurve)
-- Ein freundliches „Smile“-Gefühl entsteht durch:
-  - eine weiche, dunklere Bogenfläche (wie ein Visor/Mundbereich)
-  - eine sehr subtile helle Kante/Reflexion entlang dieses Bogens
-- Oben links ein kleiner, heller Glint für 3D-Tiefe
-- Insgesamt: edel, technisch, sympathisch – nicht kindisch
+## Neue Komponenten
 
-Gewünschtes Redesign
-- Weg vom Kupfer/Rot hin zu „Frozen Dark Grey“:
-  - Graphit/Steel-Basis
-  - kühle, frostige Highlights (leicht bläulich)
-  - Halo-Glow sehr subtil, „frostig“, nicht neon
+### 1. PendingActionsWidget
+**Datei:** `src/components/dashboard/PendingActionsWidget.tsx`
 
-Umsetzung (geänderte Planung) — Schritte & Dateien
+Hauptcontainer, der ausstehende Aktionen anzeigt:
+- Glass-Card Design (wie die anderen Dashboard-Kacheln)
+- Header mit "Ausstehende Aktionen" Titel + Badge mit Anzahl
+- Liste der einzelnen PendingActionCard-Komponenten
+- Demo-Daten hart kodiert (später: React Query Hook)
 
-1) Funktions-Fix: Style-Override reparieren (Position + Drag wieder sichtbar)
-Datei: `src/components/portal/ArmstrongContainer.tsx`
+### 2. PendingActionCard
+**Datei:** `src/components/dashboard/PendingActionCard.tsx`
 
-Änderung:
-- `dragHandleProps.style` darf den Orb-Style nicht überschreiben.
-- Wir mergen Styles explizit:
+Kompakte, horizontale Karte für eine einzelne Aktion:
+- Icon links (basierend auf Aktionstyp)
+- Titel + Beschreibung in der Mitte
+- Risiko-Badge + Kosten rechts
+- Freigeben/Abbrechen Buttons
+- Hover-Effekt für Details
 
-  - Variante A (empfohlen, sauber):
-    - `const { onMouseDown, style: dragStyle } = dragHandleProps;`
-    - `onMouseDown={onMouseDown}`
-    - `style={{ position:'fixed', left: position.x, top: position.y, ...dragStyle }}`
+## Design-Stil (konsistent mit bestehenden Kacheln)
 
-  - Zusätzlich: `cursor-pointer` Klasse entfernen/relativieren, damit Cursor aus Inline-Style konsistent ist.
+- `glass-card` Klasse mit `border-primary/20`
+- Gradient-Overlay wie bei `ArmstrongGreetingCard`
+- Kompakte Form mit horizontaler Anordnung
+- Responsive: Volle Breite, unter den 3-Spalten-Grid
 
-Erwartetes Ergebnis:
-- Orb erscheint wieder an berechneter Startposition (rechts unten)
-- Drag bewegt sichtbar den Orb
+## Demo-Daten (Beispiel-Brief)
 
-2) UX-Fix: Drag darf nicht automatisch Expand auslösen
-Dateien: 
-- `src/hooks/useDraggable.ts`
-- `src/components/portal/ArmstrongContainer.tsx`
+```typescript
+const demoActions = [
+  {
+    id: 'demo-1',
+    action_code: 'ARM.MOD02.SEND_LETTER',
+    title: 'Brief an Max Müller',
+    description: 'Mieterhöhung zum 01.04.2026',
+    parameters: {
+      recipient: 'Max Müller',
+      subject: 'Mieterhöhung',
+      channel: 'email',
+    },
+    risk_level: 'medium' as const,
+    cost_model: 'free' as const,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  },
+];
+```
 
-Option 1 (empfohlen, robust): `useDraggable` erweitert um „didDrag“ / „click suppression“
-- In `useDraggable`:
-  - Tracke Bewegung ab Threshold (z.B. 4–6px).
-  - Setze `didDragRef = true`, sobald der Threshold überschritten ist.
-  - Exponiere `didDrag` (oder `consumeDidDrag()`), damit Consumer einen unmittelbar folgenden Click ignorieren kann.
-- In `ArmstrongContainer`:
-  - `handleOrbClick` ignoriert Expand, wenn `didDrag` gerade passiert ist.
+## Integration im Dashboard
 
-Option 2 (minimal, weniger sauber): Click-Unterdrückung im Container per Zeit/Distance-Heuristik
-- Nicht ideal, weil `mousemove` in Hook hängt.
+**Datei:** `src/pages/portal/PortalDashboard.tsx`
 
-Erwartetes Ergebnis:
-- „Festhalten und ziehen“ fühlt sich stabil an
-- Kein „Oops expand“ nach Drag
+```tsx
+{/* Existing 3-column grid */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+  {/* ... Armstrong, Weather, Globe ... */}
+</div>
 
-3) Mic-Button darf niemals Drag starten
-Datei: `src/components/portal/ArmstrongContainer.tsx`
+{/* NEW: Pending Actions Widget - full width below */}
+<PendingActionsWidget className="mt-4 md:mt-6" />
+```
 
-Änderung:
-- Am Mic-Button zusätzlich `onMouseDown={(e) => e.stopPropagation()}` (und optional `onPointerDown`), damit der Parent-Drag nicht anspringt, wenn man nur Voice starten will.
+## Manifest-Erweiterung
 
-Erwartetes Ergebnis:
-- Voice-Klick bleibt „präzise“
-- Drag startet nur, wenn man den Orb selbst greift
+**Datei:** `src/manifests/armstrongManifest.ts`
 
-4) Startposition wirklich rechts unten (und Recovery, falls localStorage Müll enthält)
-Dateien:
-- `src/hooks/useDraggable.ts` (optional)
-- `src/components/portal/ArmstrongContainer.tsx`
-- optional: `src/hooks/usePortalLayout.tsx` (Migration)
+Neue Aktion hinzufügen (für die Demo und zukünftige Nutzung):
 
-Maßnahmen:
-- Entferne für den Orb den harten `-100` Offset aus der Default-Position (oder mache ihn konfigurierbar), weil das „nicht wirklich bottom-right“ wirkt.
-- Für Armstrong Orb:
-  - Entweder: `useDraggable` bekommt eine Option `bottomOffset` (für andere Widgets weiterhin nutzbar).
-  - Oder: In `ArmstrongContainer` wird eine `initialPosition` berechnet, die wirklich `bottom-right` ist.
-- Zusätzlich: Validierung beim Mount:
-  - Wenn `position` sehr nah an (padding,padding) ist und kein gültiger Storage existiert → `resetPosition()` ausführen.
-- Optional (sauber): Storage-Key versionieren:
-  - von `armstrong-orb-position` → `armstrong-orb-position-v2` (damit alte Werte nicht stören)
-  - oder Migration in `usePortalLayout` erweitern und den neuen Key auch einmalig löschen.
+```typescript
+{
+  action_code: 'ARM.MOD02.SEND_LETTER',
+  title_de: 'Brief absenden',
+  description_de: 'Sendet einen vorbereiteten Brief per E-Mail, Fax oder Post',
+  zones: ['Z2'],
+  module: 'MOD-02',
+  risk_level: 'medium',
+  requires_confirmation: true,
+  requires_consent_code: null,
+  roles_allowed: [],
+  data_scopes_read: ['letter_drafts', 'contacts'],
+  data_scopes_write: ['letter_sent'],
+  cost_model: 'free',
+  cost_unit: null,
+  cost_hint_cents: null,
+  api_contract: { type: 'edge_function', endpoint: 'sot-letter-send' },
+  ui_entrypoints: ['/portal/office/brief'],
+  audit_event_type: 'ARM_LETTER_SEND',
+  status: 'active',
+}
+```
 
-Erwartetes Ergebnis:
-- Standard: Orb startet rechts unten
-- Wenn User ihn verschiebt, bleibt Position erhalten
-- Keine „left-top“ Überraschungen durch alte Werte
+## Betroffene Dateien
 
-5) File-Drop UX stabilisieren (ohne Feature-Overkill)
-Datei: `src/components/portal/ArmstrongContainer.tsx`
+| Datei | Änderung |
+|-------|----------|
+| `src/components/dashboard/PendingActionsWidget.tsx` | **Neu** — Hauptcontainer mit Demo-Daten |
+| `src/components/dashboard/PendingActionCard.tsx` | **Neu** — Einzelne Aktionskarte |
+| `src/pages/portal/PortalDashboard.tsx` | Widget unter dem 3-Spalten-Grid einfügen |
+| `src/manifests/armstrongManifest.ts` | `ARM.MOD02.SEND_LETTER` Aktion hinzufügen |
 
-Verbesserungen:
-- Drag-over Visual bleibt, aber wir ergänzen:
-  - kleines Label im Overlay: „Datei loslassen“
-  - optional: `onDragEnter`/`onDragLeave` sauberer handhaben (DragLeave feuert oft beim Überfahren von Kindern)
-- Beim Drop:
-  - `setDroppedFile(file)` (State)
-  - Expand öffnen
-  - Im Expanded Panel Header optional eine kleine „Pending File“-Pill anzeigen (Name + X zum verwerfen)
-  - (Das eigentliche „auslesen“ kann als nächster Schritt kommen: FileReader für txt/md/csv, xlsx für Excel ist bereits installiert, Bilder als Preview; komplexere Dokumente via Backend-Funktion.)
+## Interaktivität (Demo)
 
-Erwartetes Ergebnis:
-- Drop fühlt sich zuverlässig an
-- User versteht sofort, dass Upload erkannt wurde
+**Freigeben-Button:**
+- Zeigt Toast "Aktion freigegeben" (Demo)
+- Entfernt Aktion aus der Liste (lokaler State)
+- Später: DB-Update + Edge Function Call
 
-6) Frozen Dark Grey Orb + Smile (Design neu, nah am hochgeladenen Referenz-Feeling)
-Datei: `src/index.css` (Armstrong Orb Design System Block)
+**Abbrechen-Button:**
+- Zeigt Toast "Aktion abgebrochen"
+- Entfernt Aktion aus der Liste
 
-Änderungen an Tokens (Beispielpalette, final nach Feintuning):
-- `--armstrong-orb-graphite` (Basis, dunkel)
-- `--armstrong-orb-steel` (Mid)
-- `--armstrong-orb-frost` (kühler Highlight)
-- `--armstrong-orb-visor` (sehr dunkel, für Face/Smile Bereich)
-- `--armstrong-orb-glow` (sehr subtil, frostig)
+## Technische Details
 
-Neuer Aufbau der Orb-Optik (orientiert am Bild):
-- Layer A: Outer rim / ring highlight (radial gradient, „glasige Kante“)
-- Layer B: Main body (radial gradient mit top-left glint)
-- Layer C: Inner visor / smile bowl
-  - als inneres Overlay (Pseudo-Element oder innere absolute Div)
-  - elliptische Form, die oben groß beginnt und unten einen weichen Bogen bildet
-- Layer D: Sehr subtile Smile-Kante (thin highlight), damit es „freundlich“ wirkt, ohne Comic zu werden
-- Glow: kühler Halo, stark reduziert, damit es „frozen“ und edel bleibt
+### PendingActionCard Props
 
-Markup-Entscheidung (für stabile Kontrolle):
-- Statt mehrere inline-Divs in `ArmstrongContainer` für glints/smile:
-  - möglichst in CSS (Pseudo-Elemente) abbilden
-  - im React-Markup nur noch: Orb-Container + Mic-Button + optional Drop-Overlay
-Das macht das Design konsistenter und leichter iterierbar.
+```typescript
+interface PendingActionCardProps {
+  id: string;
+  action_code: string;
+  title: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+  risk_level: 'low' | 'medium' | 'high';
+  cost_model: 'free' | 'metered' | 'premium';
+  created_at: string;
+  onConfirm: (id: string) => void;
+  onCancel: (id: string) => void;
+  isExecuting?: boolean;
+}
+```
 
-7) Fallback, falls Drag auf bestimmten Geräten nicht zuverlässig ist
-- Wenn nach den Fixes (Style-Merge + didDrag suppression + Mic stopPropagation) Drag trotzdem auf einem Gerät nicht funktioniert:
-  - Option „Drag deaktivieren“ (Feature-Flag / simple Condition)
-  - Orb dauerhaft rechts unten fixieren (ohne useDraggable), aber Click/Mic/Drop bleiben.
+### Visuelle Elemente
 
-Testplan (E2E manuell, wichtig für UX)
-1) Desktop /portal laden: Orb startet rechts unten.
-2) Orb klicken: expandiert.
-3) Minimize: collapses zurück, Position bleibt.
-4) Drag: Orb lässt sich bewegen, ohne danach zu expandieren.
-5) Mic klicken: Voice startet/stopt, Orb expandiert nicht, Drag startet nicht.
-6) Datei über Orb ziehen: Drop-State + Hinweis erscheint; Drop öffnet Panel.
-7) Refresh: Orb bleibt an letzter Position (oder sauber rechts unten, wenn Storage invalid).
-8) Mobile (breite <768): Orb wird nicht gerendert (bestehendes Verhalten), mobile bottom sheet weiterhin ok.
+- **Icon:** Mail-Icon für Briefe (dynamisch basierend auf `action_code`)
+- **Risiko-Badge:** Farbcodiert (grün/gelb/rot)
+- **Zeitstempel:** "vor X Minuten" relativ
+- **Channel-Chip:** E-Mail / Fax / Post
 
-Betroffene Dateien (nach heutigem Stand)
-- `src/components/portal/ArmstrongContainer.tsx` (Fix style merge, didDrag handling, mic mousedown stop, drop UX)
-- `src/hooks/useDraggable.ts` (didDrag/threshold + optional bottomOffset)
-- `src/index.css` (Frozen Dark Grey Orb Design + Smile/Visor neu)
-- optional: `src/hooks/usePortalLayout.tsx` (Migration/Key-reset für neue Position-Keys)
+## Mobile Ansicht
 
-Warum das die aktuelle Blockade löst
-- Der Kernbug ist deterministisch: `dragHandleProps.style` überschreibt `left/top`. Sobald wir das mergen statt überschreiben, sind Position und Drag visuell wieder korrekt.
-- Danach glätten wir die UX (kein Expand nach Drag, Mic nicht dragbar) und bringen den Look Richtung Referenzbild (frozen dark grey + visor-smile).
+- Widget erscheint auch auf Mobile (wichtig für unterwegs)
+- Kompakte vertikale Anordnung
+- Buttons untereinander statt nebeneinander
+
+## Nächste Schritte (nach dieser Implementierung)
+
+1. **Datenbank-Tabelle** `armstrong_pending_actions` erstellen
+2. **usePendingActions Hook** für React Query
+3. **Integration mit Armstrong Chat** — Aktionen aus dem Chat erstellen
+4. **Edge Function** `sot-letter-send` für echten Versand
+
