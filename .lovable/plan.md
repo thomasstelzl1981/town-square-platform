@@ -1,253 +1,354 @@
-# Plan: Armstrong Drag-and-Drop (Desktop Only)
 
-## Zielsetzung
-Armstrong (der AI-Assistent) soll auf Desktop-Geräten frei im Browser-Fenster positionierbar sein. Der Benutzer kann Armstrong an einem "Griff" packen und an eine beliebige Position ziehen.
 
-## Geltungsbereich
-- ✅ **Desktop**: Drag-and-Drop aktiv
-- ❌ **Mobile/Tablet**: Bleibt fixiert am unteren Rand (wie in `mobile-card-first-navigation` Memory definiert)
+# Plan: Uppercase-Transformation für alle Überschriften (Zone 1 & Zone 2)
 
----
+## Analyse-Ergebnis
 
-## Technische Architektur
+### Schriftart-Status: ✅ D-DIN korrekt konfiguriert
 
-### 1. Neuer Hook: `useDraggable`
+| Ort | Status |
+|-----|--------|
+| `src/index.css` - @font-face | ✅ D-DIN Regular + Bold definiert |
+| `src/index.css` - body | ✅ `font-family: 'D-DIN', system-ui...` |
+| Tailwind Config | ✅ `font-sans` und `font-display` konfiguriert |
 
-Ein wiederverwendbarer Hook für Drag-Funktionalität:
-
-```tsx
-// src/hooks/useDraggable.ts
-interface DraggableOptions {
-  storageKey?: string;           // localStorage Key für Persistenz
-  initialPosition?: Position;    // Startposition
-  boundaryPadding?: number;      // Abstand zum Viewport-Rand
-  disabled?: boolean;            // Deaktiviert (z.B. auf Mobile)
-}
-
-interface DraggableResult {
-  position: Position;            // Aktuelle {x, y} Position
-  isDragging: boolean;           // Wird gerade gezogen?
-  dragHandleProps: DragHandleProps; // Props für den Griff-Bereich
-  containerProps: ContainerProps;   // Props für den Container
-  resetPosition: () => void;     // Position zurücksetzen
-}
-```
-
-### 2. Position State & Persistenz
-
-| Aspekt | Lösung |
-|--------|--------|
-| **State** | `useState<{x: number, y: number}>` |
-| **Persistenz** | `localStorage` mit Key `armstrong-position` |
-| **Default** | Unten-rechts: `{ x: window.innerWidth - 340, y: window.innerHeight - 500 }` |
-| **Resize-Handling** | Position anpassen wenn Fenster kleiner wird |
-
-### 3. Boundary Constraints
-
-Armstrong darf nicht aus dem sichtbaren Bereich verschwinden:
-
-```tsx
-const constrainPosition = (x: number, y: number) => {
-  const padding = 20; // Mindestabstand zum Rand
-  const containerWidth = 320;  // Armstrong Breite
-  const containerHeight = 400; // Armstrong Höhe (variabel)
-  
-  return {
-    x: Math.max(padding, Math.min(x, window.innerWidth - containerWidth - padding)),
-    y: Math.max(padding, Math.min(y, window.innerHeight - containerHeight - padding))
-  };
-};
-```
-
-### 4. Grip Handle Design
-
-Ein visuell erkennbarer "Anfasser" am oberen Rand von Armstrong:
-
-```
-+------------------------------------------+
-|  ≡≡≡≡≡≡  ARMSTRONG  [−] [×]             |  <- Grip-Bereich (dragbar)
-+------------------------------------------+
-|                                          |
-|  Chat-Inhalt...                          |
-|                                          |
-+------------------------------------------+
-```
-
-**Grip-Styling:**
-- Cursor: `grab` / `grabbing`
-- Visuelles Feedback: Subtile Linien oder Dots
-- Hover-State: Leichte Farbänderung
+**D-DIN wird systemweit auf alle Texte angewendet.**
 
 ---
 
-## Dateiänderungen
+## Aktuelle Situation: Keine Uppercase-Transformation
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| `src/hooks/useDraggable.ts` | **NEU** | Wiederverwendbarer Drag-Hook |
-| `src/components/armstrong/ArmstrongContainer.tsx` | MODIFY | Draggable-Wrapper integrieren |
-| `src/components/armstrong/ArmstrongHeader.tsx` | **NEU** | Header mit Grip-Handle |
-| `src/components/armstrong/armstrong.css` | MODIFY | Cursor & Drag-Styles |
+Die Analyse zeigt: **Keine Navigation und keine Überschrift verwendet derzeit `uppercase`**.
+
+### Zone 2 Navigation (3 Ebenen)
+
+| Ebene | Komponente | Aktuelle Klassen | Status |
+|-------|------------|------------------|--------|
+| Level 1 | `AreaTabs.tsx` | `text-sm font-medium` | ❌ Kein uppercase |
+| Level 2 | `ModuleTabs.tsx` | `text-sm font-medium` | ❌ Kein uppercase |
+| Level 3 | `SubTabs.tsx` | `text-sm` | ❌ Kein uppercase |
+
+### Zone 1 Navigation
+
+| Komponente | Aktuelle Klassen | Status |
+|------------|------------------|--------|
+| `AdminLayout.tsx` Header | `text-lg font-semibold` | ❌ Kein uppercase |
+| `AdminSidebar.tsx` Menu Items | Standard Sidebar-Klassen | ❌ Kein uppercase |
+| `SidebarGroupLabel` (UI) | `text-xs font-medium` | ❌ Kein uppercase |
+
+### Zone 2 Seiten-Headlines (h1, h2, h3)
+
+| Datei | Element | Aktuelle Klassen |
+|-------|---------|------------------|
+| `PortalDashboard.tsx` | `<h1>` | `text-2xl font-bold` |
+| `ModuleTilePage.tsx` | 4x `<h1>` | `text-2xl font-bold` |
+| `ModuleHowItWorks.tsx` | `<h1>` | `text-2xl md:text-3xl font-bold` |
+| `ModuleHowItWorks.tsx` | `<h2>` | `text-lg font-semibold` |
+| Diverse Portal-Seiten | `<h2>`, `<h3>` | `text-xl font-semibold` / `text-lg font-semibold` |
+
+### Zone 1 Seiten-Headlines
+
+| Datei | Element | Aktuelle Klassen |
+|-------|---------|------------------|
+| `Dashboard.tsx` | `<h2>` | `text-2xl font-bold tracking-tight` |
+| `TileCatalog.tsx` | `<h1>` | `text-2xl font-bold` |
+| `MasterTemplates.tsx` | `<h1>` | `text-3xl font-bold` |
+| `AuditLog.tsx` | `<h1>` | `text-2xl font-bold` |
+| `CommissionApproval.tsx` | `<h1>` | `text-2xl font-bold` |
+| `LeadPool.tsx` | `<h1>` | `text-2xl font-bold` |
+| `FinanceDesk.tsx` | `<h1>`, `<h2>` | `text-2xl font-bold` / `text-xl font-semibold` |
+| `SalesDesk.tsx` | `<h1>`, `<h2>` | `text-2xl font-bold` / `text-xl font-semibold` |
+
+### UI-Komponenten (global)
+
+| Komponente | Datei | Aktuelle Klassen |
+|------------|-------|------------------|
+| `CardTitle` | `card.tsx` | `text-2xl font-semibold leading-none tracking-tight` |
+| `SidebarGroupLabel` | `sidebar.tsx` | `text-xs font-medium text-sidebar-foreground/70` |
 
 ---
 
-## Implementierungsdetails
+## Geplante Änderungen
 
-### Phase 1: useDraggable Hook
+### 1. Globale Utility-Klasse hinzufügen
 
-```tsx
-// Kernlogik
-const handleMouseDown = (e: React.MouseEvent) => {
-  if (disabled) return;
-  
-  setIsDragging(true);
-  const startX = e.clientX - position.x;
-  const startY = e.clientY - position.y;
-  
-  const handleMouseMove = (e: MouseEvent) => {
-    const newPos = constrainPosition(e.clientX - startX, e.clientY - startY);
-    setPosition(newPos);
-  };
-  
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    saveToStorage(position);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-  
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-};
-```
+**Datei: `src/index.css`**
 
-### Phase 2: Armstrong Integration
+Eine neue Utility-Klasse für konsistente Headlines:
 
-```tsx
-// ArmstrongContainer.tsx
-function ArmstrongContainer() {
-  const { isMobile } = usePortalLayout();
-  
-  const { position, dragHandleProps, containerProps, isDragging } = useDraggable({
-    storageKey: 'armstrong-position',
-    disabled: isMobile, // Auf Mobile deaktiviert
-    initialPosition: { x: window.innerWidth - 340, y: 100 }
-  });
-  
-  // Mobile: Fixiert am unteren Rand
-  if (isMobile) {
-    return <ArmstrongMobileBar />;
+```css
+@layer utilities {
+  /* Uppercase Headlines mit leichtem Letter-Spacing */
+  .text-headline {
+    @apply uppercase tracking-wide;
   }
-  
-  // Desktop: Frei positionierbar
-  return (
-    <div 
-      {...containerProps}
-      style={{ 
-        position: 'fixed',
-        left: position.x,
-        top: position.y,
-        zIndex: 9999
-      }}
-      className={cn(isDragging && 'select-none')}
-    >
-      <ArmstrongHeader dragHandleProps={dragHandleProps} />
-      <ArmstrongChat />
-    </div>
-  );
 }
 ```
 
-### Phase 3: Header mit Grip
+---
+
+### 2. Zone 2 Navigation — Drei Ebenen
+
+**Datei: `src/components/portal/AreaTabs.tsx` (Zeile 34)**
 
 ```tsx
-// ArmstrongHeader.tsx
-function ArmstrongHeader({ dragHandleProps }) {
-  return (
-    <div 
-      {...dragHandleProps}
-      className="flex items-center justify-between px-3 py-2 bg-background/80 
-                 backdrop-blur border-b cursor-grab active:cursor-grabbing"
-    >
-      {/* Grip-Indikator */}
-      <div className="flex gap-0.5">
-        <div className="w-1 h-4 rounded-full bg-muted-foreground/30" />
-        <div className="w-1 h-4 rounded-full bg-muted-foreground/30" />
-      </div>
-      
-      <span className="text-sm font-medium">Armstrong</span>
-      
-      {/* Aktionen */}
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" onClick={onMinimize}>
-          <Minus className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
+// Vorher:
+'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
+
+// Nachher:
+'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
+```
+
+**Datei: `src/components/portal/ModuleTabs.tsx` (Zeile 98)**
+
+```tsx
+// Vorher:
+'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+
+// Nachher:
+'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
+```
+
+**Datei: `src/components/portal/SubTabs.tsx` (Zeile 38)**
+
+```tsx
+// Vorher:
+'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
+
+// Nachher:
+'px-3 py-1 rounded-md text-sm uppercase tracking-wide transition-all whitespace-nowrap',
 ```
 
 ---
 
-## Benutzer-Interaktion
+### 3. Zone 1 Navigation
 
-### Drag-Ablauf
-1. Benutzer bewegt Maus über Grip-Bereich → Cursor wird `grab`
-2. Benutzer klickt und hält → Cursor wird `grabbing`
-3. Benutzer zieht → Armstrong folgt der Maus
-4. Benutzer lässt los → Position wird in localStorage gespeichert
-5. Bei Page-Reload → Position wird wiederhergestellt
+**Datei: `src/components/admin/AdminLayout.tsx` (Zeile 79)**
 
-### Edge Cases
-- **Fenster verkleinert**: Position automatisch anpassen
-- **Position außerhalb**: Zurück in sichtbaren Bereich bringen
-- **Touch-Geräte**: Drag auf Tablet optional (später)
+```tsx
+// Vorher:
+<h1 className="text-lg font-semibold">Admin Portal</h1>
 
----
-
-## Visuelles Verhalten
-
-### Expanded State (Draggable)
-```
-+----------------------------------+
-|  ≡≡  Armstrong           [−][×] |  <- Grip (cursor: grab)
-+----------------------------------+
-|                                  |
-|  💬 Wie kann ich helfen?         |
-|                                  |
-|  [Nachricht eingeben...]         |
-+----------------------------------+
+// Nachher:
+<h1 className="text-lg font-semibold uppercase tracking-wide">Admin Portal</h1>
 ```
 
-### Collapsed State (Mini-Orb)
-```
-    +--------+
-    |   🚀   |  <- Auch draggable
-    +--------+
+**Datei: `src/components/ui/sidebar.tsx` (Zeile 364)**
+
+```tsx
+// Vorher:
+"flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70...",
+
+// Nachher:
+"flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70...",
 ```
 
 ---
 
-## Zusammenfassung
+### 4. Zone 2 Seiten-Headlines
 
-| Feature | Desktop | Mobile |
-|---------|---------|--------|
-| Frei positionierbar | ✅ | ❌ |
-| Grip-Handle | ✅ | ❌ |
-| Position gespeichert | ✅ localStorage | ❌ |
-| Fixierte Position | ❌ | ✅ (unten) |
+**Datei: `src/pages/portal/PortalDashboard.tsx` (Zeile 12)**
 
-**Geschätzte Dateien:** 4 (1 neu, 3 modifiziert)
+```tsx
+// Vorher:
+<h1 className="text-2xl font-bold">
+
+// Nachher:
+<h1 className="text-2xl font-bold uppercase">
+```
+
+**Datei: `src/components/shared/ModuleTilePage.tsx` (Zeilen 78, 93, 119, 189)**
+
+```tsx
+// Vorher:
+<h1 className="text-2xl font-bold">{title}</h1>
+
+// Nachher:
+<h1 className="text-2xl font-bold uppercase">{title}</h1>
+```
+
+**Datei: `src/components/portal/HowItWorks/ModuleHowItWorks.tsx`**
+
+```tsx
+// Zeile 40 - Vorher:
+<h1 className="text-2xl md:text-3xl font-bold">{content.title}</h1>
+
+// Zeile 40 - Nachher:
+<h1 className="text-2xl md:text-3xl font-bold uppercase">{content.title}</h1>
+
+// Zeile 80 - Vorher:
+<h2 className="text-lg font-semibold">Typische Abläufe</h2>
+
+// Zeile 80 - Nachher:
+<h2 className="text-lg font-semibold uppercase">Typische Abläufe</h2>
+```
 
 ---
 
-## Nächste Schritte
+### 5. Zone 1 Seiten-Headlines
 
-1. **Plan genehmigen** → Ich implementiere die Änderungen
-2. Alternativ: Feedback geben, falls Anpassungen gewünscht sind
+**Datei: `src/pages/admin/Dashboard.tsx` (Zeile 114)**
 
-Soll ich mit der Implementierung beginnen?
+```tsx
+// Vorher:
+<h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+
+// Nachher:
+<h2 className="text-2xl font-bold tracking-tight uppercase">Dashboard</h2>
+```
+
+**Datei: `src/pages/admin/TileCatalog.tsx` (Zeile 221)**
+
+```tsx
+<h1 className="text-2xl font-bold uppercase">Tile Catalog & Testdaten</h1>
+```
+
+**Datei: `src/pages/admin/MasterTemplates.tsx` (Zeile 63)**
+
+```tsx
+<h1 className="text-3xl font-bold uppercase">Master-Vorlagen</h1>
+```
+
+**Datei: `src/pages/admin/AuditLog.tsx` (Zeile 149)**
+
+```tsx
+<h1 className="text-2xl font-bold uppercase">Audit Log</h1>
+```
+
+**Datei: `src/pages/admin/CommissionApproval.tsx` (Zeile 142)**
+
+```tsx
+<h1 className="text-2xl font-bold uppercase">Provisionen</h1>
+```
+
+**Datei: `src/pages/admin/LeadPool.tsx`**
+
+```tsx
+<h1 className="text-2xl font-bold uppercase">Lead Pool</h1>
+```
+
+**Datei: `src/pages/admin/desks/FinanceDesk.tsx`**
+
+```tsx
+// Zeile 15:
+<h1 className="text-2xl font-bold uppercase">Finance Desk</h1>
+
+// Zeilen 136, 145, 154, 163 (alle <h2>):
+<h2 className="text-xl font-semibold uppercase">...</h2>
+```
+
+**Datei: `src/pages/admin/desks/SalesDesk.tsx`**
+
+```tsx
+// Zeile 25:
+<h1 className="text-2xl font-bold uppercase">Sales Desk</h1>
+
+// Zeilen 172, 185, 283, 296, 309 (alle <h2>):
+<h2 className="text-xl font-semibold uppercase">...</h2>
+```
+
+---
+
+### 6. UI-Komponente CardTitle (global)
+
+**Datei: `src/components/ui/card.tsx` (Zeile 19)**
+
+```tsx
+// Vorher:
+className={cn("text-2xl font-semibold leading-none tracking-tight", className)}
+
+// Nachher:
+className={cn("text-2xl font-semibold leading-none tracking-tight uppercase", className)}
+```
+
+> **Hinweis:** Dies betrifft alle CardTitle-Instanzen systemweit. Da CardTitle primär für Überschriften verwendet wird, ist dies gewünscht.
+
+---
+
+## Übersicht aller Dateiänderungen
+
+| Nr. | Datei | Zone | Änderungstyp |
+|-----|-------|------|--------------|
+| 1 | `src/index.css` | Global | + `.text-headline` Utility |
+| 2 | `src/components/portal/AreaTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
+| 3 | `src/components/portal/ModuleTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
+| 4 | `src/components/portal/SubTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
+| 5 | `src/components/admin/AdminLayout.tsx` | Zone 1 | + `uppercase tracking-wide` |
+| 6 | `src/components/ui/sidebar.tsx` | Zone 1 | + `uppercase tracking-wide` |
+| 7 | `src/pages/portal/PortalDashboard.tsx` | Zone 2 | h1 + `uppercase` |
+| 8 | `src/components/shared/ModuleTilePage.tsx` | Zone 2 | 4x h1 + `uppercase` |
+| 9 | `src/components/portal/HowItWorks/ModuleHowItWorks.tsx` | Zone 2 | h1, h2 + `uppercase` |
+| 10 | `src/pages/admin/Dashboard.tsx` | Zone 1 | h2 + `uppercase` |
+| 11 | `src/pages/admin/TileCatalog.tsx` | Zone 1 | h1 + `uppercase` |
+| 12 | `src/pages/admin/MasterTemplates.tsx` | Zone 1 | h1 + `uppercase` |
+| 13 | `src/pages/admin/AuditLog.tsx` | Zone 1 | h1 + `uppercase` |
+| 14 | `src/pages/admin/CommissionApproval.tsx` | Zone 1 | h1 + `uppercase` |
+| 15 | `src/pages/admin/LeadPool.tsx` | Zone 1 | h1 + `uppercase` |
+| 16 | `src/pages/admin/desks/FinanceDesk.tsx` | Zone 1 | h1, 4x h2 + `uppercase` |
+| 17 | `src/pages/admin/desks/SalesDesk.tsx` | Zone 1 | h1, 5x h2 + `uppercase` |
+| 18 | `src/components/ui/card.tsx` | Global | CardTitle + `uppercase` |
+
+---
+
+## Visuelles Ergebnis
+
+### Zone 2 Navigation (vorher / nachher)
+
+```text
+Vorher:
+┌──────────────────────────────────────────────────┐
+│  Base   Missions   Operations   Services         │ ← Level 1
+├──────────────────────────────────────────────────┤
+│  Stammdaten  KI Office  Dokumente  Services      │ ← Level 2
+├──────────────────────────────────────────────────┤
+│  Übersicht  Kontakte  Dokumente  Finanzen        │ ← Level 3
+└──────────────────────────────────────────────────┘
+
+Nachher:
+┌──────────────────────────────────────────────────┐
+│  BASE   MISSIONS   OPERATIONS   SERVICES         │ ← Level 1
+├──────────────────────────────────────────────────┤
+│  STAMMDATEN  KI OFFICE  DOKUMENTE  SERVICES      │ ← Level 2
+├──────────────────────────────────────────────────┤
+│  ÜBERSICHT  KONTAKTE  DOKUMENTE  FINANZEN        │ ← Level 3
+└──────────────────────────────────────────────────┘
+```
+
+### Zone 1 Sidebar (vorher / nachher)
+
+```text
+Vorher:                        Nachher:
+┌───────────────────┐          ┌───────────────────┐
+│ Tenants & Access  │          │ TENANTS & ACCESS  │
+│   Dashboard       │          │   Dashboard       │
+│   Organizations   │          │   Organizations   │
+├───────────────────┤          ├───────────────────┤
+│ Master Data       │          │ MASTER DATA       │
+│   Master Contacts │          │   Master Contacts │
+└───────────────────┘          └───────────────────┘
+```
+
+### Seiten-Headlines (vorher / nachher)
+
+```text
+Vorher:                        Nachher:
+┌───────────────────────┐      ┌───────────────────────┐
+│ Dashboard             │      │ DASHBOARD             │
+│ Welcome to the...     │      │ Welcome to the...     │
+└───────────────────────┘      └───────────────────────┘
+
+┌───────────────────────┐      ┌───────────────────────┐
+│ Willkommen, Max       │      │ WILLKOMMEN, MAX       │
+│ Muster-Kunde GmbH     │      │ Muster-Kunde GmbH     │
+└───────────────────────┘      └───────────────────────┘
+```
+
+---
+
+## Wichtige Hinweise
+
+1. **Nur Styling-Änderungen** — Keine Logik oder Funktionalität wird verändert
+2. **CSS `text-transform: uppercase`** — Die eigentlichen Daten bleiben unverändert (z.B. Profilnamen aus der Datenbank)
+3. **Zone 3 bleibt unberührt** — Wie gewünscht werden keine Website-Komponenten geändert
+4. **`tracking-wide`** — Erhöht den Buchstabenabstand für bessere Lesbarkeit bei Großbuchstaben
+
