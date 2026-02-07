@@ -70,8 +70,8 @@ export function TopNavigation() {
         <ModuleTabs modules={areaModules} activeModule={activeModule} />
       </div>
       
-      {/* Level 3: Sub Tabs (only when a module is active) */}
-      {activeModule && (
+      {/* Level 3: Sub Tabs (only when a module is active and not on Area-Overview) */}
+      {activeModule && !location.pathname.startsWith('/portal/area/') && (
         <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
       )}
     </nav>

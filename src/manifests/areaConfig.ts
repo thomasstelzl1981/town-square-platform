@@ -89,7 +89,16 @@ export function getAreaByKey(key: AreaKey): AreaDefinition | undefined {
  * Returns the area that contains the active module, or 'base' as default
  */
 export function deriveAreaFromPath(pathname: string, moduleRouteMap: Record<string, string>): AreaKey {
-  // Find which module's route matches the current path
+  // First: Check for Area-Overview paths (/portal/area/:areaKey)
+  const areaMatch = pathname.match(/^\/portal\/area\/([a-z]+)/);
+  if (areaMatch) {
+    const areaKey = areaMatch[1] as AreaKey;
+    if (areaConfig.find(a => a.key === areaKey)) {
+      return areaKey;
+    }
+  }
+  
+  // Second: Check which module's route matches the current path
   for (const [code, route] of Object.entries(moduleRouteMap)) {
     if (pathname === route || pathname.startsWith(route + '/')) {
       const area = getAreaForModule(code);
