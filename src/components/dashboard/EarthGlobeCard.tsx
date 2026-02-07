@@ -10,29 +10,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Globe, Navigation, ZoomIn, RotateCcw, MapPin } from 'lucide-react';
+import { Globe, Navigation, ZoomIn, RotateCcw, MapPin, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Google Maps API Key (publishable key, safe for frontend)
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
-
-// Type declarations for Google Maps 3D API
-interface GoogleMaps3D {
-  Map3DElement: new (options: any) => any;
-  Marker3DElement: new (options: any) => any;
-}
-
-interface GoogleMapsNamespace {
-  maps?: {
-    maps3d?: GoogleMaps3D;
-  };
-}
-
-declare global {
-  interface Window {
-    google?: GoogleMapsNamespace;
-  }
-}
 
 interface EarthGlobeCardProps {
   latitude: number | null;
@@ -40,146 +22,121 @@ interface EarthGlobeCardProps {
   city?: string;
 }
 
-type ViewState = 'space' | 'flying' | 'location';
+type ViewState = 'loading' | 'space' | 'flying' | 'location' | 'error';
 
 export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const [viewState, setViewState] = useState<ViewState>('space');
-  const [isApiLoaded, setIsApiLoaded] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
-  const rotationRef = useRef<any>(null);
+  const [viewState, setViewState] = useState<ViewState>('loading');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Load Google Maps 3D API
+  // Load Google Maps 3D API using the correct importLibrary method
   useEffect(() => {
-    const loadGoogleMaps3D = async () => {
-      // Check if already loaded
-      if (window.google?.maps?.maps3d) {
-        setIsApiLoaded(true);
-        return;
-      }
+    let isMounted = true;
 
-      // Load the script
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=alpha&libraries=maps3d`;
-      script.async = true;
-      script.defer = true;
-      
-      script.onload = () => {
-        // Check if Map3DElement is supported
-        if (window.google?.maps?.maps3d?.Map3DElement) {
-          setIsApiLoaded(true);
-        } else {
-          console.warn('Map3DElement not supported in this browser');
-          setIsSupported(false);
-        }
-      };
+    const initMap3D = async () => {
+      if (!containerRef.current) return;
 
-      script.onerror = () => {
-        console.error('Failed to load Google Maps 3D API');
-        setIsSupported(false);
-      };
-
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMaps3D();
-  }, []);
-
-  // Initialize 3D Map
-  useEffect(() => {
-    if (!isApiLoaded || !containerRef.current || !isSupported) return;
-
-    const initMap = async () => {
       try {
-        const maps3d = window.google?.maps?.maps3d;
-        if (!maps3d) {
-          setIsSupported(false);
-          return;
+        // Load the Maps JavaScript API dynamically
+        if (!document.querySelector(`script[src*="maps.googleapis.com"]`)) {
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=alpha&libraries=maps3d`;
+            script.async = true;
+            script.defer = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Google Maps API'));
+            document.head.appendChild(script);
+          });
         }
-        
-        const { Map3DElement, Marker3DElement } = maps3d;
 
-        // Create 3D Map element
+        // Wait for google object to be available
+        let attempts = 0;
+        while (!(window as any).google?.maps && attempts < 50) {
+          await new Promise(r => setTimeout(r, 100));
+          attempts++;
+        }
+
+        const google = (window as any).google;
+        if (!google?.maps) {
+          throw new Error('Google Maps not available');
+        }
+
+        // Import the maps3d library using the correct method
+        const { Map3DElement } = await google.maps.importLibrary('maps3d');
+
+        if (!isMounted || !containerRef.current) return;
+
+        // Create the 3D Map element - starting from space view
         const map3D = new Map3DElement({
           center: { lat: 20, lng: 0, altitude: 0 },
           range: 25000000, // 25,000 km - view from space
           tilt: 0,
           heading: 0,
+          mode: 'SATELLITE',
         });
 
         // Clear container and add map
-        containerRef.current!.innerHTML = '';
-        containerRef.current!.appendChild(map3D);
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(map3D);
         mapRef.current = map3D;
 
         // Wait for map to be ready
         await map3D.ready;
 
-        // Add location marker if coordinates available
-        if (latitude !== null && longitude !== null) {
-          const marker = new Marker3DElement({
-            position: { lat: latitude, lng: longitude, altitude: 100 },
+        if (!isMounted) return;
+
+        // Start rotation animation after map is ready
+        try {
+          map3D.flyCameraAround({
+            camera: {
+              center: { lat: 20, lng: 0, altitude: 0 },
+              range: 25000000,
+              tilt: 0,
+              heading: 0,
+            },
+            durationMillis: 120000, // 2 minutes per full rotation
+            rounds: -1, // Infinite rotation
           });
-          map3D.append(marker);
+        } catch (e) {
+          console.log('Rotation animation not supported, using static view');
         }
 
-        // Start rotation animation
-        startRotation();
+        setViewState('space');
       } catch (error) {
         console.error('Error initializing Map3DElement:', error);
-        setIsSupported(false);
+        if (isMounted) {
+          setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
+          setViewState('error');
+        }
       }
     };
 
-    initMap();
+    initMap3D();
 
     return () => {
-      stopRotation();
-    };
-  }, [isApiLoaded, isSupported, latitude, longitude]);
-
-  // Start globe rotation
-  const startRotation = useCallback(() => {
-    if (!mapRef.current) return;
-
-    const map3D = mapRef.current;
-    
-    try {
-      // Use flyCameraAround for continuous rotation
-      rotationRef.current = map3D.flyCameraAround({
-        camera: {
-          center: { lat: 20, lng: 0, altitude: 0 },
-          range: 25000000,
-          tilt: 0,
-          heading: 0,
-        },
-        durationMillis: 120000, // 2 minutes per rotation
-        rounds: -1, // Infinite
-      });
-      setViewState('space');
-    } catch (error) {
-      console.error('Error starting rotation:', error);
-    }
-  }, []);
-
-  // Stop rotation
-  const stopRotation = useCallback(() => {
-    if (mapRef.current?.stopCameraAnimation) {
-      try {
-        mapRef.current.stopCameraAnimation();
-      } catch (error) {
-        // Ignore errors when stopping
+      isMounted = false;
+      if (mapRef.current?.stopCameraAnimation) {
+        try {
+          mapRef.current.stopCameraAnimation();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
       }
-    }
-    rotationRef.current = null;
+    };
   }, []);
 
   // Zoom to location
   const handleZoomIn = useCallback(async () => {
     if (!mapRef.current || latitude === null || longitude === null) return;
 
-    stopRotation();
+    try {
+      mapRef.current.stopCameraAnimation?.();
+    } catch (e) {
+      // Ignore
+    }
+
     setViewState('flying');
 
     try {
@@ -197,12 +154,43 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       console.error('Error during camera flight:', error);
       setViewState('location');
     }
-  }, [latitude, longitude, stopRotation]);
+  }, [latitude, longitude]);
 
-  // Return to space view
-  const handleResetView = useCallback(() => {
-    startRotation();
-  }, [startRotation]);
+  // Return to space view with rotation
+  const handleResetView = useCallback(async () => {
+    if (!mapRef.current) return;
+
+    setViewState('flying');
+
+    try {
+      await mapRef.current.flyCameraTo({
+        endCamera: {
+          center: { lat: 20, lng: 0, altitude: 0 },
+          range: 25000000,
+          tilt: 0,
+          heading: 0,
+        },
+        durationMillis: 3000,
+      });
+
+      // Restart rotation
+      mapRef.current.flyCameraAround({
+        camera: {
+          center: { lat: 20, lng: 0, altitude: 0 },
+          range: 25000000,
+          tilt: 0,
+          heading: 0,
+        },
+        durationMillis: 120000,
+        rounds: -1,
+      });
+
+      setViewState('space');
+    } catch (error) {
+      console.error('Error resetting view:', error);
+      setViewState('space');
+    }
+  }, []);
 
   // Format coordinates for display
   const formatCoord = (value: number | null, type: 'lat' | 'lng') => {
@@ -214,8 +202,8 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
     return `${abs.toFixed(4)}° ${dir}`;
   };
 
-  // Fallback for unsupported browsers
-  if (!isSupported) {
+  // Fallback for errors
+  if (viewState === 'error') {
     return <FallbackGlobe latitude={latitude} longitude={longitude} city={city} />;
   }
 
@@ -231,7 +219,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       />
 
       {/* Loading State */}
-      {!isApiLoaded && (
+      {viewState === 'loading' && (
         <div 
           className="absolute inset-0 flex items-center justify-center z-20"
           style={{
@@ -243,7 +231,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
           }}
         >
           <div className="flex flex-col items-center gap-3">
-            <Globe className="h-10 w-10 text-primary animate-pulse" />
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
             <span className="text-xs text-muted-foreground">Lade 3D Globus...</span>
           </div>
         </div>
@@ -268,9 +256,9 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       />
 
       {/* Content Overlay */}
-      <CardContent className="relative z-20 p-4 h-full flex flex-col justify-between">
+      <CardContent className="relative z-20 p-4 h-full flex flex-col justify-between pointer-events-none">
         {/* Header */}
-        <div className="flex items-center gap-2 pointer-events-none">
+        <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary drop-shadow-lg" />
           <span className="text-[10px] uppercase tracking-wider text-white/80 drop-shadow-md">
             Dein Standort
@@ -280,7 +268,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         {/* Bottom Section: Location Info + Action Button */}
         <div className="space-y-3">
           {/* Location Info */}
-          <div className="space-y-1 pointer-events-none">
+          <div className="space-y-1">
             {city && (
               <div className="flex items-center gap-2">
                 <Navigation className="h-3.5 w-3.5 text-primary drop-shadow-lg" />
@@ -295,7 +283,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
           {/* Action Button */}
           {latitude !== null && longitude !== null && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 pointer-events-auto">
               {viewState === 'location' ? (
                 <Button 
                   variant="glass" 
@@ -312,7 +300,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
                   size="sm" 
                   className="flex-1 text-xs"
                   onClick={handleZoomIn}
-                  disabled={viewState === 'flying'}
+                  disabled={viewState === 'flying' || viewState === 'loading'}
                 >
                   <ZoomIn className="h-3.5 w-3.5 mr-1" />
                   Zoom In
