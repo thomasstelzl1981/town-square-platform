@@ -85,9 +85,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     return getBreakpointDefault().sidebarCollapsed;
   });
   
-  // Armstrong visibility (default HIDDEN)
+  // Armstrong visibility (default VISIBLE as Planet)
   const [armstrongVisible, setArmstrongVisibleState] = useState(() => {
-    return getStoredValue(ARMSTRONG_KEY, false);
+    return getStoredValue(ARMSTRONG_KEY, true);
   });
   
   // Armstrong expanded state (collapsed = compact card, expanded = full stripe)
