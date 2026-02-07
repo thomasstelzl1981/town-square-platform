@@ -1,16 +1,13 @@
 /**
- * EarthGlobeCard — Interactive 3D Earth view
+ * EarthGlobeCard — Interactive 3D Earth view using Google Maps
  * 
- * Note: Google Maps 3D Tiles require API key. This component shows a beautiful
- * placeholder with coordinates until the API key is configured.
- * 
- * When GOOGLE_MAPS_API_KEY is available, this will use Photorealistic 3D Tiles
- * with flyCameraTo() animation from space to the user's location.
+ * Uses Google Maps Embed API with satellite view and zoom animation.
+ * Falls back to CSS globe visualization if coordinates unavailable.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Globe, MapPin, Navigation } from 'lucide-react';
+import { Globe, MapPin, Navigation, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface EarthGlobeCardProps {
@@ -20,16 +17,148 @@ interface EarthGlobeCardProps {
 }
 
 export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProps) {
-  const [isAnimating, setIsAnimating] = useState(true);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(2); // Start zoomed out (world view)
+  const [showMap, setShowMap] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Animate the "zoom" effect on mount
+  // Animate zoom from world view to location
+  useEffect(() => {
+    if (latitude === null || longitude === null) return;
+
+    // Start animation sequence
+    const zoomSequence = [2, 4, 6, 8, 10, 12, 14, 16, 17];
+    let currentIndex = 0;
+
+    const animateZoom = () => {
+      if (currentIndex < zoomSequence.length) {
+        setZoomLevel(zoomSequence[currentIndex]);
+        currentIndex++;
+        setTimeout(animateZoom, 400); // 400ms between zoom steps
+      }
+    };
+
+    // Start zoom animation after initial load
+    const timer = setTimeout(() => {
+      setShowMap(true);
+      setTimeout(animateZoom, 500);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [latitude, longitude]);
+
+  // Format coordinates for display
+  const formatCoord = (value: number | null, type: 'lat' | 'lng') => {
+    if (value === null) return '--';
+    const abs = Math.abs(value);
+    const dir = type === 'lat' 
+      ? (value >= 0 ? 'N' : 'S') 
+      : (value >= 0 ? 'O' : 'W');
+    return `${abs.toFixed(4)}° ${dir}`;
+  };
+
+  // Generate Google Maps embed URL with satellite view
+  const getMapUrl = () => {
+    if (latitude === null || longitude === null) return null;
+    
+    // Use satellite view (maptype=satellite) with the animated zoom level
+    return `https://www.google.com/maps/embed/v1/view?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}&center=${latitude},${longitude}&zoom=${zoomLevel}&maptype=satellite`;
+  };
+
+  const mapUrl = getMapUrl();
+  const hasApiKey = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  // If no API key or no coordinates, show the CSS fallback
+  if (!hasApiKey || !mapUrl) {
+    return <FallbackGlobe latitude={latitude} longitude={longitude} city={city} />;
+  }
+
+  return (
+    <Card className="relative h-full min-h-[280px] overflow-hidden border-primary/20 bg-black">
+      {/* Google Maps Satellite Embed */}
+      <div className={cn(
+        "absolute inset-0 transition-opacity duration-1000",
+        showMap ? "opacity-100" : "opacity-0"
+      )}>
+        <iframe
+          ref={iframeRef}
+          src={mapUrl}
+          className="w-full h-full border-0"
+          allowFullScreen={false}
+          loading="eager"
+          referrerPolicy="no-referrer-when-downgrade"
+          onLoad={() => setIsLoading(false)}
+          style={{ 
+            filter: 'saturate(1.1) contrast(1.05)',
+            pointerEvents: 'none' // Disable interaction for clean display
+          }}
+        />
+      </div>
+
+      {/* Loading State with Space Background */}
+      {(isLoading || !showMap) && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            background: `
+              radial-gradient(ellipse at 30% 20%, hsla(220, 60%, 15%, 0.8) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, hsla(270, 50%, 12%, 0.6) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, hsla(210, 80%, 8%, 1) 0%, hsla(220, 70%, 3%, 1) 100%)
+            `
+          }}
+        >
+          <div className="flex flex-col items-center gap-3">
+            <Globe className="h-12 w-12 text-primary animate-pulse" />
+            <span className="text-sm text-muted-foreground">Lade Satellitenansicht...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Vignette Overlay for cinematic effect */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)'
+        }}
+      />
+
+      {/* Content Overlay */}
+      <CardContent className="relative z-10 p-6 h-full flex flex-col justify-between pointer-events-none">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <Globe className="h-5 w-5 text-primary drop-shadow-lg" />
+          <span className="text-xs uppercase tracking-wider text-white/80 drop-shadow-md">
+            Dein Standort
+          </span>
+        </div>
+
+        {/* Location Info */}
+        <div className="space-y-2">
+          {city && (
+            <div className="flex items-center gap-2">
+              <Navigation className="h-4 w-4 text-primary drop-shadow-lg" />
+              <span className="text-lg font-semibold text-white drop-shadow-md">{city}</span>
+            </div>
+          )}
+          <div className="flex flex-col gap-1 text-xs font-mono text-white/70 drop-shadow-md">
+            <span>LAT: {formatCoord(latitude, 'lat')}</span>
+            <span>LNG: {formatCoord(longitude, 'lng')}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Fallback CSS Globe for when API key is not available
+function FallbackGlobe({ latitude, longitude, city }: EarthGlobeCardProps) {
+  const [isAnimating, setIsAnimating] = useState(true);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsAnimating(false), 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Format coordinates for display
   const formatCoord = (value: number | null, type: 'lat' | 'lng') => {
     if (value === null) return '--';
     const abs = Math.abs(value);
@@ -80,13 +209,11 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
       {/* Animated Globe Visualization */}
       <div 
-        ref={canvasRef}
         className={cn(
           "absolute inset-0 flex items-center justify-center transition-all duration-[3000ms]",
           isAnimating ? "scale-[0.3] opacity-50" : "scale-100 opacity-100"
         )}
       >
-        {/* Globe Circle with Earth-like gradient */}
         <div 
           className={cn(
             "relative w-40 h-40 rounded-full transition-all duration-1000",
@@ -106,7 +233,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
             animation: 'spin 60s linear infinite'
           }}
         >
-          {/* Atmosphere Glow */}
           <div 
             className="absolute -inset-2 rounded-full opacity-40"
             style={{
@@ -115,13 +241,10 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
             }}
           />
 
-          {/* Location Marker */}
           {latitude !== null && longitude !== null && (
             <div 
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-              style={{
-                animation: 'pulse 2s ease-in-out infinite'
-              }}
+              style={{ animation: 'pulse 2s ease-in-out infinite' }}
             >
               <div className="relative">
                 <MapPin className="h-6 w-6 text-primary drop-shadow-lg" fill="currentColor" />
@@ -134,7 +257,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
       {/* Content Overlay */}
       <CardContent className="relative z-10 p-6 h-full flex flex-col justify-between">
-        {/* Header */}
         <div className="flex items-center gap-2">
           <Globe className="h-5 w-5 text-primary" />
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -142,7 +264,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
           </span>
         </div>
 
-        {/* Location Info */}
         <div className="space-y-2">
           {city && (
             <div className="flex items-center gap-2">
@@ -157,7 +278,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         </div>
       </CardContent>
 
-      {/* CSS Keyframes */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
