@@ -63,19 +63,20 @@ function getWeatherBackground(code: number): { gradient: string; textClass: stri
     };
   }
 
-  // Fog - Mysterious misty atmosphere
+  // Fog - Deep atmospheric misty gradient
   if (code >= 45 && code <= 48) {
     return {
       gradient: `
         linear-gradient(180deg, 
-          hsl(210, 20%, 55%) 0%, 
-          hsl(200, 15%, 65%) 30%,
-          hsl(190, 18%, 75%) 60%,
-          hsl(180, 12%, 85%) 100%
+          hsl(215, 35%, 35%) 0%, 
+          hsl(210, 30%, 45%) 25%,
+          hsl(200, 25%, 55%) 50%,
+          hsl(195, 22%, 65%) 75%,
+          hsl(190, 18%, 75%) 100%
         )
       `,
-      textClass: 'text-gray-800',
-      overlayOpacity: 0.3
+      textClass: 'text-white',
+      overlayOpacity: 0.15
     };
   }
 
@@ -221,62 +222,104 @@ function WeatherEffects({ code }: { code: number }) {
     );
   }
 
-  // Fog - Layered moving mist effect
+  // Fog - Multi-layered atmospheric mist with depth
   if (code >= 45 && code <= 48) {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Layer 1 - Slow moving */}
+        {/* Deep atmospheric base layer */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 150% 100% at 50% 100%, 
+                rgba(255,255,255,0.35) 0%, 
+                rgba(200,210,220,0.2) 40%,
+                transparent 70%
+              )
+            `
+          }}
+        />
+        {/* Horizontal fog band 1 - slow drift */}
         <div 
           className="absolute inset-0"
           style={{
             background: `
               linear-gradient(90deg, 
                 transparent 0%, 
-                rgba(255,255,255,0.3) 20%,
-                rgba(255,255,255,0.5) 50%,
-                rgba(255,255,255,0.3) 80%,
+                rgba(255,255,255,0.25) 15%,
+                rgba(255,255,255,0.4) 35%,
+                rgba(255,255,255,0.35) 65%,
+                rgba(255,255,255,0.2) 85%,
                 transparent 100%
               )
             `,
-            animation: 'fog-slow 12s ease-in-out infinite alternate'
+            animation: 'fog-drift-1 18s ease-in-out infinite alternate'
           }}
         />
-        {/* Layer 2 - Faster moving */}
+        {/* Horizontal fog band 2 - counter drift */}
         <div 
           className="absolute inset-0"
           style={{
             background: `
               linear-gradient(90deg, 
-                transparent 0%, 
-                rgba(255,255,255,0.2) 30%,
-                rgba(255,255,255,0.4) 60%,
-                transparent 100%
+                transparent 10%, 
+                rgba(200,215,230,0.2) 30%,
+                rgba(220,230,240,0.35) 50%,
+                rgba(200,215,230,0.2) 70%,
+                transparent 90%
               )
             `,
-            animation: 'fog-fast 8s ease-in-out infinite alternate-reverse'
+            animation: 'fog-drift-2 14s ease-in-out infinite alternate-reverse'
           }}
         />
-        {/* Vertical gradient for depth */}
+        {/* Vertical mist layer rising from bottom */}
         <div 
           className="absolute inset-0"
           style={{
             background: `
               linear-gradient(180deg, 
                 transparent 0%, 
-                rgba(255,255,255,0.2) 50%,
+                rgba(255,255,255,0.1) 40%,
+                rgba(255,255,255,0.25) 70%,
                 rgba(255,255,255,0.4) 100%
               )
-            `
+            `,
+            animation: 'fog-rise 10s ease-in-out infinite alternate'
           }}
         />
+        {/* Soft particle spots */}
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: `${60 + Math.random() * 80}px`,
+              height: `${40 + Math.random() * 60}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${30 + Math.random() * 60}%`,
+              background: `radial-gradient(ellipse, rgba(255,255,255,${0.15 + Math.random() * 0.2}) 0%, transparent 70%)`,
+              filter: 'blur(8px)',
+              animation: `fog-particle ${8 + Math.random() * 6}s ease-in-out infinite alternate`,
+              animationDelay: `${Math.random() * 4}s`
+            }}
+          />
+        ))}
         <style>{`
-          @keyframes fog-slow {
-            0% { transform: translateX(-30%) scale(1.1); }
-            100% { transform: translateX(30%) scale(1); }
+          @keyframes fog-drift-1 {
+            0% { transform: translateX(-25%) scaleY(1); }
+            100% { transform: translateX(25%) scaleY(1.05); }
           }
-          @keyframes fog-fast {
-            0% { transform: translateX(20%) scale(1); opacity: 0.5; }
-            100% { transform: translateX(-40%) scale(1.05); opacity: 0.7; }
+          @keyframes fog-drift-2 {
+            0% { transform: translateX(20%) scaleY(1.02); opacity: 0.6; }
+            100% { transform: translateX(-30%) scaleY(0.98); opacity: 0.8; }
+          }
+          @keyframes fog-rise {
+            0% { opacity: 0.7; transform: translateY(5%); }
+            100% { opacity: 1; transform: translateY(-3%); }
+          }
+          @keyframes fog-particle {
+            0% { opacity: 0.4; transform: translateX(-10px) scale(1); }
+            100% { opacity: 0.7; transform: translateX(10px) scale(1.1); }
           }
         `}</style>
       </div>
