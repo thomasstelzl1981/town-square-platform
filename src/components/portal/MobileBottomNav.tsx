@@ -38,7 +38,7 @@ export function MobileBottomNav() {
 
   return (
     <nav 
-      className="fixed left-0 right-0 z-50 bg-background border-t"
+      className="fixed left-0 right-0 z-50 bg-card border-t"
       style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom))' }}
     >
       <div className="flex items-center justify-around h-14">

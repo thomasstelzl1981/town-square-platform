@@ -77,7 +77,7 @@ function PortalLayoutInner() {
   // Mobile Layout
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-atmosphere flex flex-col">
         {/* System Bar */}
         <SystemBar />
         
@@ -115,7 +115,7 @@ function PortalLayoutInner() {
 
   // Desktop Layout
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-atmosphere flex flex-col">
       {/* System Bar */}
       <SystemBar />
       
