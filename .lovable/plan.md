@@ -1,194 +1,157 @@
 
-# Analyse: Storage-Ordnerstruktur Drift
+# Umsetzungsplan: Bildergalerie im Exposé-Tab + Demo-Bilder
 
-## 🔴 DRIFT GEFUNDEN: Zwei verschiedene Ordner-Definitionen
+## 1. Analyse der Probleme
 
-### Quelle 1: Datenbank (storage_nodes) - KORREKT ✅
+### Problem 1: ExposeImageGallery nicht eingebunden
+Die Komponente `ExposeImageGallery` existiert bereits unter `src/components/verkauf/ExposeImageGallery.tsx`, wurde aber **nie in `ExposeTab.tsx` importiert und integriert**.
 
-Die Demo-Immobilie DEMO-001 hat bereits **18 korrekte Ordner** (00-17):
+### Problem 2: Keine Demo-Bilder vorhanden
+Das Golden-Path-Seed enthält nur 12 PDF-Dokumente. Der Ordner `11_Fotos` (ID: `5708b5bb-f3ac-4e19-bfc6-bb65fff26963`) ist leer.
 
-| Nr. | Ordnername | Status |
-|-----|------------|--------|
-| 00 | Projektdokumentation | ✅ vorhanden |
-| 01 | Exposé Ankauf | ✅ vorhanden |
-| 02 | Exposé Sonstiges | ✅ vorhanden |
-| 03 | Grundbuchauszug | ✅ vorhanden |
-| 04 | Teilungserklärung | ✅ vorhanden |
-| 05 | Grundriss | ✅ vorhanden |
-| 06 | Kurzgutachten | ✅ vorhanden |
-| 07 | Kaufvertrag | ✅ vorhanden |
-| 08 | Mietvertrag | ✅ vorhanden |
-| 09 | Rechnungen | ✅ vorhanden |
-| 10 | Wirtschaftsplan Abrechnungen Protokolle | ✅ vorhanden |
-| 11 | Fotos | ✅ vorhanden |
-| 12 | Energieausweis | ✅ vorhanden |
-| 13 | Wohngebäudeversicherung | ✅ vorhanden |
-| 14 | Sonstiges | ✅ vorhanden |
-| 15 | Darlehen und Finanzierung | ✅ vorhanden |
-| 16 | Sanierung | ✅ vorhanden |
-| 17 | Grundsteuer | ✅ vorhanden |
-
-→ **Template**: `PROPERTY_DOSSIER_V1` (korrekt gemäß Memory)
+### Problem 3: Empty-State wird nicht angezeigt
+Die ExposeImageGallery-Komponente hat zwar einen Empty-State, aber ohne Einbindung sieht man nichts.
 
 ---
 
-### Quelle 2: StorageTab.tsx (Zeile 56-64) - VERALTET ❌
+## 2. Technische Umsetzung
+
+### Schritt 1: ExposeTab.tsx - Galerie einbinden
+
+**Datei:** `src/components/portfolio/ExposeTab.tsx`
 
 ```typescript
-const SYSTEM_FOLDERS = [
-  { key: 'inbox', name: 'Posteingang', icon: Inbox },
-  { key: 'immobilien', name: 'Immobilien', icon: Building2 },
-  { key: 'finanzierung', name: 'Finanzierung', icon: Landmark },
-  { key: 'bonitaetsunterlagen', name: 'Bonitätsunterlagen', icon: FileQuestion },
-  { key: 'needs_review', name: 'Zur Prüfung', icon: AlertCircle },
-  { key: 'archive', name: 'Archiv', icon: Archive },
-  { key: 'sonstiges', name: 'Sonstiges', icon: MoreHorizontal },
-];
+// Import hinzufügen (Zeile 6)
+import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
+
+// Nach Header-Card (Zeile 96), vor Objektbeschreibung einfügen:
+{/* Bildergalerie - immer sichtbar */}
+<ExposeImageGallery propertyId={property.id} />
 ```
 
-→ Nur **7 generische System-Ordner** - keine Immobilien-spezifischen Ordner!
+Die Galerie zeigt automatisch einen Platzhalter-State, wenn keine Bilder vorhanden sind.
 
----
+### Schritt 2: Demo-Bilder generieren und einspielen
 
-### Quelle 3: DatenraumTab.tsx - NEUTRAL (liest nur aus DB)
+Da es sich um Demo-Daten handelt, verwende ich den KI-Bildgenerator, um 4-5 typische Immobilienfotos zu erstellen:
 
-Der `DatenraumTab.tsx` (in der Immobilienakte) liest korrekt aus `storage_nodes` und zeigt alle 18 Ordner, **WENN** sie in der DB existieren.
+| Nr | Motiv | Dateiname |
+|----|-------|-----------|
+| 1 | Außenansicht Altbau Leipzig | demo_aussen_1.jpg |
+| 2 | Wohnzimmer mit Parkettboden | demo_wohnzimmer_1.jpg |
+| 3 | Moderne Küche | demo_kueche_1.jpg |
+| 4 | Balkon mit Stadtblick | demo_balkon_1.jpg |
+| 5 | Treppenhaus historisch | demo_treppenhaus_1.jpg |
 
----
+### Schritt 3: Seed-Funktion erweitern (Zone 1)
 
-## 🔍 Warum sehen Sie nur 9 Punkte?
+**Datei:** Neue Migration für `seed_golden_path_data()`
 
-### Mögliche Ursachen:
+Die Bilder werden über eine Edge-Function in den Storage hochgeladen und mit dem Property verknüpft:
 
-1. **Sie sind auf `/portal/dms/storage`** (globales DMS):
-   - Zeigt nur die 7 `SYSTEM_FOLDERS` + evtl. 2 automatisch erstellte Ordner
-   - **Keine Immobilien-Unterordner sichtbar**, da die Query nur `tenant_id` filtert, nicht `property_id`
+```sql
+-- Ergänzung in seed_golden_path_data()
+-- 5 Demo-Bilder für 11_Fotos Ordner
+INSERT INTO documents (id, tenant_id, public_id, name, file_path, mime_type, size_bytes, doc_type, scope, source) VALUES 
+  ('00000000-0000-4000-a000-000000000301'::uuid, t_id, 'SOT-D-IMG001', 'Außenansicht.jpg', 'demo/fotos/aussen_1.jpg', 'image/jpeg', 250000, 'photo', 'property', 'import'),
+  ('00000000-0000-4000-a000-000000000302'::uuid, t_id, 'SOT-D-IMG002', 'Wohnzimmer.jpg', 'demo/fotos/wohnzimmer_1.jpg', 'image/jpeg', 280000, 'photo', 'property', 'import'),
+  ('00000000-0000-4000-a000-000000000303'::uuid, t_id, 'SOT-D-IMG003', 'Küche.jpg', 'demo/fotos/kueche_1.jpg', 'image/jpeg', 220000, 'photo', 'property', 'import'),
+  ('00000000-0000-4000-a000-000000000304'::uuid, t_id, 'SOT-D-IMG004', 'Balkon.jpg', 'demo/fotos/balkon_1.jpg', 'image/jpeg', 190000, 'photo', 'property', 'import'),
+  ('00000000-0000-4000-a000-000000000305'::uuid, t_id, 'SOT-D-IMG005', 'Treppenhaus.jpg', 'demo/fotos/treppenhaus_1.jpg', 'image/jpeg', 210000, 'photo', 'property', 'import');
 
-2. **Sie sind auf der Immobilie** (Tab "Datenraum"):
-   - Sollte alle 18 Ordner zeigen (00-17)
-   - Query filtert auf `property_id`
-
----
-
-## 📊 Architektur-Unterschied
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ GLOBALES DMS (/portal/dms/storage)                              │
-│ ─────────────────────────────────────────────────────────────── │
-│ StorageTab.tsx                                                  │
-│                                                                 │
-│ ├── Posteingang (system)                                        │
-│ ├── Immobilien (system)        ← Nur Container!                 │
-│ │   └── [Immobilien-Ordner werden NICHT geladen]                │
-│ ├── Finanzierung (system)                                       │
-│ ├── Bonitätsunterlagen (system)                                 │
-│ ├── Zur Prüfung (system)                                        │
-│ ├── Archiv (system)                                             │
-│ └── Sonstiges (system)                                          │
-│                                                                 │
-│ FEHLT: Rekursive Unterordner-Anzeige!                           │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ IMMOBILIEN-AKTE (/portal/immobilien/{id}) → Tab "Datenraum"     │
-│ ─────────────────────────────────────────────────────────────── │
-│ DatenraumTab.tsx                                                │
-│                                                                 │
-│ ├── DEMO-001 - Leipziger Straße 42 (root)                       │
-│ │   ├── 00_Projektdokumentation                                 │
-│ │   ├── 01_Exposé Ankauf                                        │
-│ │   ├── 02_Exposé Sonstiges                                     │
-│ │   ├── ... (alle 18 Ordner)                                    │
-│ │   └── 17_Grundsteuer                                          │
-│                                                                 │
-│ ✅ Korrekt: Alle 18 Ordner werden angezeigt!                    │
-└─────────────────────────────────────────────────────────────────┘
+-- Verknüpfung mit 11_Fotos-Ordner und Property
+INSERT INTO document_links (id, tenant_id, document_id, node_id, object_type, object_id, link_status) VALUES
+  ('00000000-0000-4000-a000-000000000401'::uuid, t_id, '00000000-0000-4000-a000-000000000301'::uuid, 
+   (SELECT id FROM storage_nodes WHERE property_id = prop_id AND name = '11_Fotos'), 
+   'property', prop_id, 'linked'),
+  -- ... (analog für alle 5 Bilder)
 ```
 
+### Schritt 4: Statische Platzhalter-Bilder hinterlegen
+
+Als Alternative zu KI-generierten Bildern können lizenzfreie Bilder verwendet werden:
+
+**Option A:** Public-Domain-Bilder von Unsplash/Pexels in `public/demo/fotos/` hinterlegen
+
+**Option B:** KI-generierte Bilder mit dem Nano Banana Model erstellen
+
+Die Bilder werden dann über eine Admin-Funktion oder manuell in den Storage-Bucket hochgeladen.
+
 ---
 
-## 🛠️ Lösung: StorageTab.tsx erweitern
+## 3. Datei-Änderungen
 
-### Option A: Rekursive Unterordner-Anzeige (empfohlen)
+| Datei | Änderung |
+|-------|----------|
+| `src/components/portfolio/ExposeTab.tsx` | Import + Integration von ExposeImageGallery |
+| `supabase/migrations/...` | Seed-Funktion um 5 Demo-Bilder erweitern |
+| `public/demo/fotos/` | 5 Platzhalter-Bilder (falls statisch) |
+| `src/hooks/useGoldenPathSeeds.ts` | SEED_IDS um Bild-IDs erweitern |
 
-Das globale DMS sollte auch Unterordner der Immobilien anzeigen:
+---
 
-```typescript
-// Statt nur root-Nodes:
-const rootNodes = nodes.filter(n => n.parent_id === null);
+## 4. Neue Exposé-Struktur nach Umsetzung
 
-// Sollte werden:
-// 1. System-Ordner als Root
-// 2. Immobilien-Ordner unter "Immobilien"
-// 3. Unterordner rekursiv laden
+```
+┌─────────────────────────────────────────────────────────────┐
+│ HEADER                                                      │
+│ Eigentumswohnung                                            │
+│ Leipziger Straße 42                                         │
+│ 04109 Leipzig, Deutschland              DEMO-001            │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ BILDERGALERIE (NEU - immer sichtbar)                        │
+│ ┌────────────────────────┐  ┌─────┐  ┌─────┐                │
+│ │                        │  │     │  │     │                │
+│ │    Hauptbild          │  │ Th1 │  │ Th2 │                │
+│ │    (Außenansicht)     │  │     │  │     │                │
+│ │                        │  ├─────┤  ├─────┤                │
+│ │                        │  │ Th3 │  │ Th4 │                │
+│ └────────────────────────┘  └─────┘  └─────┘                │
+│ 5 Bilder aus dem Datenraum          → Im Datenraum bearbeiten│
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ OBJEKTBESCHREIBUNG                                          │
+│ ...                                                         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Option B: Navigationshierarchie anpassen
+Falls keine Bilder vorhanden:
 
-Das globale DMS zeigt nur System-Ordner als Navigation, und bei Klick auf "Immobilien" werden die Properties mit ihren 18 Ordnern geladen.
-
----
-
-## 📋 Umsetzungsplan
-
-### Schritt 1: StorageTab.tsx - Hierarchische Anzeige
-
-**Datei:** `src/pages/portal/dms/StorageTab.tsx`
-
-Änderungen:
-1. Query erweitern: Alle Nodes laden, nicht nur `parent_id === null`
-2. Baum-Struktur rekursiv rendern (wie in DatenraumTab.tsx)
-3. Property-Ordner unter "Immobilien" einordnen
-
-```typescript
-// Neue Query: Alle storage_nodes mit parent-child Beziehung
-const { data: allNodes } = await supabase
-  .from('storage_nodes')
-  .select(`
-    *,
-    properties (code, address)
-  `)
-  .eq('tenant_id', activeTenantId)
-  .order('name');
-
-// Baum bauen: System-Ordner → Properties → Unterordner
-function buildFullTree(nodes: StorageNode[]): TreeNode[] {
-  // 1. System-Ordner als Root (node_type = 'system')
-  // 2. Property-Ordner unter "Immobilien" einhängen
-  // 3. Unterordner (00-17) unter Property einhängen
-}
+```
+┌─────────────────────────────────────────────────────────────┐
+│ BILDERGALERIE                                               │
+│ Wählen Sie Bilder aus dem Datenraum für Ihr Exposé          │
+│ ┌─────────────────────────────┐  ┌───┐┌───┐                 │
+│ │  [Upload-Icon]              │  │   ││   │                 │
+│ │  Bilder im Datenraum        │  │   ││   │                 │
+│ │  hochladen                  │  │   ││   │                 │
+│ │  → Immobilienakte öffnen    │  └───┘└───┘                 │
+│ └─────────────────────────────┘                             │
+│ Bilder werden aus dem Datenraum der Immobilie verknüpft     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Schritt 2: Memory-Abgleich sicherstellen
-
-Die 18-Ordner-Struktur aus Memory (`architecture/dms-standard-folder-hierarchy-v3-refined`) muss als SSOT verwendet werden:
-
-| Nr. | Memory-Name | DB-Name | Match? |
-|-----|-------------|---------|--------|
-| 00 | Projektdokumentation | 00_Projektdokumentation | ✅ |
-| 01 | Exposee Ankauf | 01_Exposé Ankauf | ✅ |
-| 02 | Exposee Verkauf | 02_Exposé Sonstiges | ⚠️ Abweichung! |
-| ... | ... | ... | ... |
-| 18 | Sonstiges | 14_Sonstiges | ⚠️ Nummern verschoben! |
-
-### Schritt 3: Nummerierung korrigieren (falls gewünscht)
-
-Memory sagt 18 Ordner (00-18), DB hat (00-17) mit leicht anderen Namen.
-
 ---
 
-## Zusammenfassung
+## 5. Testplan
 
-| Bereich | Status | Problem |
-|---------|--------|---------|
-| **Datenbank** | ✅ OK | 18 Ordner pro Immobilie vorhanden |
-| **DatenraumTab** | ✅ OK | Zeigt alle 18 Ordner korrekt |
-| **StorageTab** | ❌ Drift | Zeigt nur 7 System-Ordner, keine Property-Unterordner |
-| **Memory vs. DB** | ⚠️ Prüfen | Kleine Namensabweichungen (z.B. "Verkauf" vs. "Sonstiges") |
+### Test 1: Galerie-Karte sichtbar (auch ohne Bilder)
+1. Immobilienakte öffnen → Tab "Exposé"
+2. **Erwartung:** Bildergalerie-Karte erscheint direkt nach Header
+3. Empty-State mit Upload-Hinweis sichtbar
 
-### Empfohlene Maßnahme
+### Test 2: Demo-Bilder nach Seed
+1. Zone 1 → Testdaten → Golden Path Seeds ausführen
+2. Immobilienakte DEMO-001 öffnen → Tab "Exposé"
+3. **Erwartung:** 5 Bilder in Galerie sichtbar
 
-1. **StorageTab.tsx erweitern**: Rekursive Hierarchie mit Property-Ordnern
-2. **Ordnernamen abgleichen**: Memory als SSOT verwenden
-3. **Einheitliches Seeding**: Template `PROPERTY_DOSSIER_V1` als einzige Quelle
+### Test 3: Lightbox funktioniert
+1. Auf Hauptbild klicken
+2. **Erwartung:** Vollbild-Ansicht mit Navigation
+
+### Test 4: Konsistenz in Verkaufsmodulen
+1. MOD-06 Verkauf → Exposé für DEMO-001
+2. **Erwartung:** Dieselben 5 Bilder erscheinen
