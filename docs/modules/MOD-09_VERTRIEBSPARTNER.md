@@ -41,7 +41,7 @@ MOD-09 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner 
 
 ---
 
-## 2) ROUTE-STRUKTUR (5-Tile-Pattern)
+## 2) ROUTE-STRUKTUR (4-Tile-Pattern)
 
 | Route | UI-Label | Beschreibung |
 |-------|----------|--------------|
@@ -50,7 +50,6 @@ MOD-09 „Vertriebspartner" ist das operative ADDON-Modul für Vertriebspartner 
 | `/portal/vertriebspartner/beratung` | Beratung | Investment Engine + Simulation |
 | `/portal/vertriebspartner/kunden` | Kunden | Kontakt-Management |
 | `/portal/vertriebspartner/network` | Netzwerk | Provisionen + Team (Phase 2) |
-| `/portal/vertriebspartner/pipeline` | Pipeline | Deal-Tracking |
 
 ---
 
@@ -118,21 +117,6 @@ commission_amount = deal_value × (commission_rate / 100)
 status = actual_close_date > 30 Tage ? 'paid' : 'pending'
 ```
 
-### 3.5 Pipeline (`/portal/vertriebspartner/pipeline`)
-
-**Datenquelle:** `partner_deals`
-
-**Features:**
-- KPIs: Deals gesamt, Aktiv, Gewonnen, Provision
-- Deal-Tabelle mit Stage-Badges
-- Contact-Verknüpfung
-
-**Stage Enum:**
-```
-lead → qualified → proposal → negotiation → won → lost
-```
-
----
 
 ## 4) DATENBANK-TABELLEN
 

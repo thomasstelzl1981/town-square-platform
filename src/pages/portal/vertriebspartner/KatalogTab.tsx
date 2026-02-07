@@ -101,7 +101,7 @@ const KatalogTab = () => {
         .from('listings')
         .select(`
           id, public_id, title, asking_price, commission_rate, status,
-          properties (address, city, property_type, total_area_sqm, annual_rent_income)
+          properties (address, city, property_type, total_area_sqm, annual_income)
         `)
         .in('id', listingIds)
         .in('status', ['active', 'reserved']);
@@ -120,7 +120,7 @@ const KatalogTab = () => {
 
       return listingsData?.map(l => {
         const props = l.properties as any;
-        const annualRent = props?.annual_rent_income || 0;
+        const annualRent = props?.annual_income || 0;
         const price = l.asking_price || 0;
         const grossYield = price > 0 ? (annualRent / price) * 100 : null;
         
