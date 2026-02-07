@@ -38,10 +38,7 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(({
             
             {/* Subtitle & Trend */}
             <div className="flex items-center gap-2 mt-1">
-              {trend && <span className={cn("inline-flex items-center gap-0.5 text-xs font-medium", trend.direction === "up" ? "text-status-success" : "text-status-error")}>
-                  {trend.direction === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {trend.value > 0 ? "+" : ""}{trend.value}%
-                </span>}
+              {trend}
               {subtitle && <span className="text-xs text-muted-foreground truncate">
                   {subtitle}
                 </span>}
