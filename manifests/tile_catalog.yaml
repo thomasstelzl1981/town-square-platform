@@ -57,7 +57,32 @@ tiles:
         icon: "Shield"
 
   # ============================================================================
-  # MOD-02: KI OFFICE
+  # MOD-00: DASHBOARD (Widget-Basierte Startseite)
+  # ============================================================================
+  MOD-00:
+    code: "MOD-00"
+    title: "Dashboard"
+    icon: "LayoutDashboard"
+    main_route: "/portal"
+    display_order: 0
+    is_active: true
+    
+    visibility:
+      default: true
+      org_types:
+        - client
+        - partner
+        - subpartner
+    
+    sub_tiles: []  # Dashboard ist die Startseite, keine Sub-Tiles
+    
+    features:
+      - widget_grid
+      - drag_drop
+      - armstrong_integration
+
+  # ============================================================================
+  # MOD-02: KI OFFICE (5 Sub-Tiles — Sonderregelung wegen Widgets-Archiv)
   # ============================================================================
   MOD-02:
     code: "MOD-02"
@@ -89,6 +114,12 @@ tiles:
       - title: "Kalender"
         route: "/portal/office/kalender"
         icon: "Calendar"
+      
+      # NEU: Widgets-Archiv (5. Sub-Tile — bricht 4-Tile-Regel)
+      - title: "Widgets"
+        route: "/portal/office/widgets"
+        icon: "Layers"
+        description: "Erledigte Widgets & Aufgaben-Archiv"
 
   # ============================================================================
   # MOD-03: DMS
