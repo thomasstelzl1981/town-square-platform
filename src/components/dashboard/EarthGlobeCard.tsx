@@ -1,13 +1,13 @@
 /**
- * EarthGlobeCard — Interactive 3D Earth view using Google Maps 3D API
+ * EarthGlobeCard — Animated satellite zoom from space using Google Maps Embed API
  * 
- * Uses Google Maps JavaScript API with Map3DElement for true 3D globe
- * and animated camera flight from space to user location.
+ * Simulates a camera flight from space (zoom 2) to user location (zoom 18)
+ * using progressive iframe reloads with increasing zoom levels.
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Globe, Navigation, MapPin, Loader2 } from 'lucide-react';
+import { Globe, Navigation, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Google Maps API Key (publishable key, safe for frontend)
@@ -19,116 +19,47 @@ interface EarthGlobeCardProps {
   city?: string;
 }
 
-// Type declarations for Google Maps 3D API
-declare global {
-  interface Window {
-    google: any;
-  }
-}
-
 export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const map3DRef = useRef<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(2); // Start from space view
+  const [phase, setPhase] = useState<'loading' | 'flying' | 'arrived'>('loading');
+  const [showMap, setShowMap] = useState(false);
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load Google Maps script
+  // Animate zoom from world view to location
   useEffect(() => {
-    if (window.google?.maps) {
-      setScriptLoaded(true);
-      return;
-    }
+    if (latitude === null || longitude === null) return;
 
-    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => setScriptLoaded(true));
-      return;
-    }
+    // Zoom sequence: 2 -> 18 (space to street level)
+    const zoomSequence = [2, 4, 6, 8, 10, 12, 14, 16, 18];
+    let currentIndex = 0;
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=alpha&libraries=maps3d`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setScriptLoaded(true);
-    script.onerror = () => setError('Google Maps konnte nicht geladen werden');
-    document.head.appendChild(script);
-  }, []);
+    // Start showing map
+    setShowMap(true);
+    setPhase('flying');
 
-  // Initialize 3D Map
-  const initMap3D = useCallback(async () => {
-    if (!containerRef.current || !window.google?.maps) return;
-    
-    try {
-      // Check if Map3DElement is available
-      const maps3d = await window.google.maps.importLibrary('maps3d') as any;
-      
-      if (!maps3d?.Map3DElement) {
-        throw new Error('Map3DElement nicht verfügbar');
+    const animateZoom = () => {
+      if (currentIndex < zoomSequence.length) {
+        setZoomLevel(zoomSequence[currentIndex]);
+        currentIndex++;
+        
+        // Variable timing: slower at start, faster toward end
+        const delay = currentIndex < 3 ? 600 : currentIndex < 6 ? 400 : 300;
+        animationRef.current = setTimeout(animateZoom, delay);
+      } else {
+        setPhase('arrived');
       }
+    };
 
-      // Create 3D Map element
-      const map3DElement = new maps3d.Map3DElement({
-        center: { lat: 0, lng: 0, altitude: 25000000 }, // Start from space
-        tilt: 0,
-        heading: 0,
-        range: 25000000,
-      });
+    // Start zoom animation after initial load
+    const startTimer = setTimeout(() => {
+      animateZoom();
+    }, 800);
 
-      // Clear container and add map
-      containerRef.current.innerHTML = '';
-      containerRef.current.appendChild(map3DElement);
-      map3DRef.current = map3DElement;
-
-      // Wait for map to be ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setIsLoading(false);
-
-      // If we have coordinates, fly to location
-      if (latitude !== null && longitude !== null) {
-        // Start the camera flight animation
-        setTimeout(() => {
-          if (map3DRef.current?.flyCameraTo) {
-            map3DRef.current.flyCameraTo({
-              endCamera: {
-                center: { lat: latitude, lng: longitude, altitude: 500 },
-                tilt: 55,
-                heading: 0,
-                range: 2000,
-              },
-              durationMillis: 4500,
-            });
-          }
-        }, 1000);
-      }
-    } catch (err) {
-      console.warn('Map3DElement nicht verfügbar, verwende Fallback:', err);
-      setError('3D-Ansicht nicht verfügbar');
-    }
+    return () => {
+      clearTimeout(startTimer);
+      if (animationRef.current) clearTimeout(animationRef.current);
+    };
   }, [latitude, longitude]);
-
-  // Initialize when script is loaded
-  useEffect(() => {
-    if (scriptLoaded) {
-      initMap3D();
-    }
-  }, [scriptLoaded, initMap3D]);
-
-  // Fly to new location when coordinates change
-  useEffect(() => {
-    if (map3DRef.current?.flyCameraTo && latitude !== null && longitude !== null && !isLoading) {
-      map3DRef.current.flyCameraTo({
-        endCamera: {
-          center: { lat: latitude, lng: longitude, altitude: 500 },
-          tilt: 55,
-          heading: 0,
-          range: 2000,
-        },
-        durationMillis: 3000,
-      });
-    }
-  }, [latitude, longitude, isLoading]);
 
   // Format coordinates for display
   const formatCoord = (value: number | null, type: 'lat' | 'lng') => {
@@ -140,24 +71,46 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
     return `${abs.toFixed(4)}° ${dir}`;
   };
 
-  // Show fallback if error
-  if (error) {
+  // Generate Google Maps embed URL with satellite view
+  const getMapUrl = () => {
+    if (latitude === null || longitude === null) return null;
+    return `https://www.google.com/maps/embed/v1/view?key=${GOOGLE_MAPS_API_KEY}&center=${latitude},${longitude}&zoom=${zoomLevel}&maptype=satellite`;
+  };
+
+  const mapUrl = getMapUrl();
+
+  // Show fallback if no coordinates
+  if (latitude === null || longitude === null) {
     return <FallbackGlobe latitude={latitude} longitude={longitude} city={city} />;
   }
 
   return (
     <Card className="relative h-full aspect-square overflow-hidden border-primary/20 bg-black">
-      {/* 3D Map Container */}
-      <div 
-        ref={containerRef}
-        className="absolute inset-0 w-full h-full"
-        style={{ 
-          filter: 'saturate(1.1) contrast(1.05)',
-        }}
-      />
+      {/* Google Maps Satellite Embed with zoom animation */}
+      {mapUrl && (
+        <div 
+          className={cn(
+            "absolute inset-0 transition-opacity duration-700",
+            showMap ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <iframe
+            key={zoomLevel} // Force re-render on zoom change
+            src={mapUrl}
+            className="w-full h-full border-0"
+            allowFullScreen={false}
+            loading="eager"
+            referrerPolicy="no-referrer-when-downgrade"
+            style={{ 
+              filter: 'saturate(1.2) contrast(1.05)',
+              pointerEvents: 'none'
+            }}
+          />
+        </div>
+      )}
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Loading/Flying State with Space Background */}
+      {phase === 'loading' && (
         <div 
           className="absolute inset-0 flex items-center justify-center z-20"
           style={{
@@ -170,8 +123,18 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         >
           <div className="flex flex-col items-center gap-3">
             <Globe className="h-10 w-10 text-primary animate-pulse" />
-            <span className="text-xs text-muted-foreground">Lade 3D-Globus...</span>
+            <span className="text-xs text-muted-foreground">Starte Anflug...</span>
           </div>
+        </div>
+      )}
+
+      {/* Flying indicator */}
+      {phase === 'flying' && (
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1">
+          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-[10px] text-white/80 font-mono">
+            ZOOM {zoomLevel}x
+          </span>
         </div>
       )}
 
@@ -179,7 +142,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       <div 
         className="absolute inset-0 pointer-events-none z-10"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)'
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%)'
         }}
       />
 
@@ -211,7 +174,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
   );
 }
 
-// Fallback CSS Globe for when 3D API is not available
+// Fallback CSS Globe for when coordinates are not available
 function FallbackGlobe({ latitude, longitude, city }: EarthGlobeCardProps) {
   const [isAnimating, setIsAnimating] = useState(true);
 
