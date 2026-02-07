@@ -193,7 +193,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         </div>
 
         {/* Bottom Section */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Location Info */}
           <div className="space-y-1">
             {city && (
@@ -208,22 +208,20 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
             </div>
           </div>
 
-          {/* Action Button - Future: Will trigger 3D zoom when billing enabled */}
+          {/* Small round glass button in corner */}
           {latitude !== null && longitude !== null && (
             <Button 
-              variant="glass" 
-              size="sm" 
-              className="w-full text-xs"
+              variant="ghost" 
+              size="icon"
+              className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 transition-all"
               onClick={() => {
-                // Open Google Maps in new tab as fallback
                 window.open(
                   `https://www.google.com/maps/@${latitude},${longitude},1000m/data=!3m1!1e3`,
                   '_blank'
                 );
               }}
             >
-              <ZoomIn className="h-3.5 w-3.5 mr-1" />
-              Zoom In
+              <ZoomIn className="h-4 w-4 text-white drop-shadow-md" />
             </Button>
           )}
         </div>
