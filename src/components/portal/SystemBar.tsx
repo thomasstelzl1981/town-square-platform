@@ -61,15 +61,30 @@ export function SystemBar() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch user location on mount
+  // Fetch user location on mount with fallback to profile city
   useEffect(() => {
+    // Fallback function: use city from user profile
+    const useProfileFallback = () => {
+      if (profile?.city) {
+        setLocation({
+          city: profile.city as string,
+          altitude: null // No altitude from profile
+        });
+        console.log('Geolocation Fallback: Using profile city', profile.city);
+      } else {
+        setLocationError(true);
+      }
+    };
+
     if (!navigator.geolocation) {
+      useProfileFallback();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude, altitude } = position.coords;
+        console.log('Geolocation success:', { latitude, longitude, altitude });
         
         try {
           const response = await fetch(
@@ -84,16 +99,28 @@ export function SystemBar() {
             altitude: altitude ? Math.round(altitude) : null
           });
         } catch (error) {
-          console.error('Geocoding failed:', error);
+          console.error('Geocoding failed, using fallback:', error);
+          useProfileFallback();
         }
       },
       (error) => {
-        console.error('Geolocation error:', error);
-        setLocationError(true);
+        // Detailed logging for debugging
+        const errorMessages: Record<number, string> = {
+          1: 'Berechtigung verweigert',
+          2: 'Position nicht verfügbar',
+          3: 'Zeitüberschreitung',
+        };
+        console.warn('Geolocation error:', errorMessages[error.code] || error.message);
+        // Fallback to profile city
+        useProfileFallback();
       },
-      { enableHighAccuracy: true }
+      { 
+        enableHighAccuracy: true,
+        timeout: 10000,      // 10 second timeout
+        maximumAge: 300000   // Cache for 5 minutes
+      }
     );
-  }, []);
+  }, [profile?.city]); // Re-run when profile city changes
 
   const initials = profile?.display_name
     ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase()
