@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CheckCircle2, Sparkles, LucideIcon } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowRight, CheckCircle2, Sparkles, LucideIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface HowItWorksContent {
   moduleCode: string;
@@ -29,6 +32,74 @@ interface ModuleHowItWorksProps {
 }
 
 export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) {
+  const isMobile = useIsMobile();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // === MOBILE: Kompakte Ansicht ===
+  if (isMobile) {
+    return (
+      <div className={cn('space-y-4 p-4', className)}>
+        {/* Kompakter Header */}
+        <div className="space-y-2">
+          <h1 className="text-xl font-bold uppercase">{content.title}</h1>
+          <p className="text-sm text-muted-foreground">{content.oneLiner}</p>
+        </div>
+
+        {/* SubTile Buttons — PRIMÄRE NAVIGATION */}
+        {content.subTiles.length > 0 && (
+          <div className="grid gap-2">
+            {content.subTiles.map((tile) => (
+              <Button
+                key={tile.route}
+                variant="outline"
+                className="justify-start h-14 text-left px-4"
+                asChild
+              >
+                <Link to={tile.route}>
+                  {tile.icon && <tile.icon className="h-5 w-5 mr-3 flex-shrink-0" />}
+                  <span className="font-medium flex-1">{tile.title}</span>
+                  <ArrowRight className="h-4 w-4 flex-shrink-0" />
+                </Link>
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Optional: Details aufklappbar */}
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground">
+              {detailsOpen ? 'Weniger anzeigen' : 'Mehr erfahren'}
+              <ChevronDown className={cn("ml-1 h-3 w-3 transition-transform", detailsOpen && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-4">
+            {/* Benefits kompakt */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase">Nutzen</p>
+              <div className="space-y-1.5">
+                {content.benefits.slice(0, 3).map((benefit, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Hint */}
+            {content.hint && (
+              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/50 pl-3">
+                {content.hint}
+              </p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  }
+
+  // === DESKTOP: Bestehende Vollansicht ===
   return (
     <div className={cn('space-y-8 p-4 md:p-6 max-w-4xl mx-auto', className)}>
       {/* Hero */}
