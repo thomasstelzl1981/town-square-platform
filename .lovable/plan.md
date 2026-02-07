@@ -1,174 +1,380 @@
 
-# Verbesserungsplan: Intensivere atmosphärische Hintergründe
+# Design-Überarbeitung: iOS-Style, Planeten-Armstrong und Glass UI
 
-## Analyse des aktuellen Zustands
+## Übersicht
 
-### Light Mode (Zeilen 224-248)
-- Wolken-Opazität bei nur 30-50% — zu subtil
-- Himmelsblau mit 75-82% Lightness — zu blass
-- Fehlt: Tiefere Farbschichten am oberen Rand
+Basierend auf den Referenzbildern (abstrakte Planeten mit Farbverläufen, Textur und 3D-Wirkung) sowie der Anforderung nach iOS/iPhone-Design wird dieses Konzept folgende Bereiche abdecken:
 
-### Dark Mode (Zeilen 252-279)
-- Nebel-Effekte mit 10-15% Lightness — nicht kontrastreich genug
-- Sternenstaub nur 30% Opazität — kaum sichtbar
-- Basis bei 2-4% Lightness — könnte noch dunkler sein für mehr Kontrast
+1. **Armstrong Planet-Design** (Collapsed State)
+2. **iOS Glass-Buttons** (iPhone/Sonos-Style)
+3. **Abgerundete Eingabefelder** (Kachel-Optik)
+4. **Icon-Konzept** (Area Navigation)
+5. **Radius-System** (Mehr Rundung)
 
 ---
 
-## Verbesserungen
+## 1. Armstrong als Planet (Collapsed State)
 
-### Light Mode: "Lebendiger Himmel"
+Das aktuelle Design zeigt Armstrong als rechteckige Karte mit Header. Im minimierten Zustand soll Armstrong stattdessen als **atmosphärischer Planet** erscheinen — inspiriert von den Referenzbildern.
 
-**Neue Strategie:**
-- Wolken mit höherer Opazität (60-80%)
-- Zusätzliche Wolkenschichten für mehr Struktur
-- Intensiveres Cyan-Blau (Sättigung 90%+)
-- Subtiler Sonnenschein-Glow von oben
+### Technische Umsetzung
 
-| Layer | Aktuell | Neu |
-|-------|---------|-----|
-| Wolken | 30-50% Opazität | 50-70% Opazität |
-| Himmel-Kern | hsl(195 85% 75%) | hsl(195 90% 70%) |
-| Horizont | hsl(210 30% 97%) | hsl(200 40% 95%) |
-| NEU: Sonnen-Glow | — | Warmer Akzent oben |
+**Neuer Collapsed State in `ArmstrongContainer.tsx`:**
 
-### Dark Mode: "Tiefer Kosmos"
+| Eigenschaft | Aktuell | Neu (Planet) |
+|-------------|---------|--------------|
+| Form | Rechteck (w-64) | Kreis (w-16 h-16) |
+| Inhalt | Header + Text + Input | Nur Planet-Grafik |
+| Interaktion | Komplettes Panel | Klick expandiert |
+| Drag | Grip-Handle | Gesamte Fläche |
 
-**Neue Strategie:**
-- Galaxie-Glow größer und heller (sichtbarer Kontrast)
-- Nebel-Violett intensiver
-- Zusätzlicher blauer Nebel-Akzent
-- Noch tieferes Schwarz als Basis (1% Lightness)
-- Subtile "Sternenfeld"-Andeutung durch mehrere kleine Glows
+### CSS Planet-Gradient
 
-| Layer | Aktuell | Neu |
-|-------|---------|-----|
-| Galaxie-Glow | 15% Lightness | 18-20% Lightness, größer |
-| Nebula | hsl(270 30% 10%) | hsl(275 40% 12%) |
-| Basis-Schwarz | 2% Lightness | 1% Lightness |
-| NEU: Blauer Nebel | — | Gegenüber zur Galaxie |
-| NEU: Sternenpunkte | — | Kleine helle Akzente |
+Ein CSS-only Planet mit atmosphärischen Layern, passend zum CI (Cyan/Blau für Light, Violett/Dunkelblau für Dark):
+
+```css
+/* Light Mode Planet (Armstrong) */
+.armstrong-planet {
+  background:
+    /* Atmosphärische Schicht */
+    radial-gradient(circle at 30% 25%, 
+      hsla(195 90% 85% / 0.9) 0%, 
+      hsla(200 80% 70% / 0.6) 25%, 
+      transparent 50%
+    ),
+    /* Kern-Glow */
+    radial-gradient(circle at 70% 70%, 
+      hsla(210 60% 65% / 0.7) 0%, 
+      transparent 40%
+    ),
+    /* Basis-Farbe */
+    radial-gradient(circle, 
+      hsl(200 75% 60%) 0%, 
+      hsl(215 70% 45%) 100%
+    );
+  box-shadow: 
+    inset -8px -8px 20px hsla(210 60% 30% / 0.4),
+    inset 4px 4px 15px hsla(195 80% 90% / 0.5),
+    0 0 30px hsla(200 90% 60% / 0.3);
+}
+
+/* Dark Mode Planet */
+.dark .armstrong-planet {
+  background:
+    radial-gradient(circle at 25% 20%, 
+      hsla(275 45% 35% / 0.8) 0%, 
+      hsla(250 40% 25% / 0.5) 30%, 
+      transparent 50%
+    ),
+    radial-gradient(circle at 75% 75%, 
+      hsla(210 50% 30% / 0.6) 0%, 
+      transparent 45%
+    ),
+    radial-gradient(circle, 
+      hsl(250 40% 25%) 0%, 
+      hsl(275 35% 15%) 100%
+    );
+  box-shadow: 
+    inset -6px -6px 18px hsla(275 30% 10% / 0.6),
+    inset 3px 3px 12px hsla(275 50% 50% / 0.3),
+    0 0 40px hsla(275 45% 40% / 0.25);
+}
+```
+
+### UI-Struktur (Collapsed)
+
+```text
+┌─────────────────────────────────┐
+│  ●  (60px Planet, zentriert)    │
+│                                  │
+│     Armstrong                    │
+│     (Text darunter optional)    │
+└─────────────────────────────────┘
+```
+
+Beim Klick oder Tap expandiert zu vollem Chat-Panel.
 
 ---
 
-## Konkrete CSS-Änderungen
+## 2. iOS Glass-Buttons
 
-### Datei: `src/index.css`
+Apple-typische Buttons mit:
+- **Hoher Transparenz** (50-70%)
+- **Backdrop-blur** (10-16px)
+- **Inset-Schatten** (leicht eingedrückt)
+- **Subtiler Border** (1px weiß/dunkel mit geringer Opazität)
 
-**Light Mode (Zeilen 224-248) — Komplett ersetzen:**
+### Neue Button-Varianten
 
+**Datei:** `src/components/ui/button.tsx`
+
+Neue Variant `glass` hinzufügen:
+
+```tsx
+glass: cn(
+  "bg-white/50 dark:bg-white/10",
+  "backdrop-blur-md",
+  "border border-white/30 dark:border-white/10",
+  "shadow-[inset_0_1px_0_hsla(0,0%,100%,0.2),0_1px_3px_hsla(0,0%,0%,0.1)]",
+  "hover:bg-white/60 dark:hover:bg-white/15",
+  "text-foreground"
+)
+```
+
+### Icon-Button (Kreisförmig)
+
+Für Navigation-Icons im iOS-Stil:
+
+```tsx
+// Neue Size-Variante
+"icon-round": "h-12 w-12 rounded-full"
+```
+
+---
+
+## 3. Eingabefelder als Kacheln
+
+iOS-typische Eingabefelder:
+- **Größerer Radius** (16-20px → 1rem-1.25rem)
+- **Weicher Hintergrund** (leicht getönt)
+- **Subtiler innerer Schatten**
+- **Kein harter Border-Focus**, sondern sanfter Glow
+
+### Input-Komponente Update
+
+**Datei:** `src/components/ui/input.tsx`
+
+```tsx
+// Aktuell
+"rounded-md border border-input bg-background"
+
+// Neu (iOS-Style)
+"rounded-2xl border-0 bg-muted/60 dark:bg-muted/40"
+"backdrop-blur-sm"
+"shadow-[inset_0_2px_4px_hsla(0,0%,0%,0.05)]"
+"focus-visible:ring-2 focus-visible:ring-primary/30"
+"placeholder:text-muted-foreground/60"
+```
+
+---
+
+## 4. Icon-Konzept für Navigation
+
+Die aktuellen Icons (Home, Layers, Target, Settings, Grid) sind funktional, aber nicht konsistent im ORBITAL-Theme.
+
+### Vorschlag: Monochrome, gerundete Icons
+
+| Bereich | Aktuell | Neu (Vorschlag) |
+|---------|---------|-----------------|
+| Home | `Home` | `CircleDot` (Zentrum/Ursprung) |
+| Base | `Layers` | `Database` oder `Hexagon` |
+| Missions | `Target` | `Rocket` oder `Compass` |
+| Operations | `Settings` | `Cog` oder `Wrench` |
+| Services | `Grid` | `Grid3x3` oder `LayoutGrid` |
+
+### iOS-Style Tab-Bar
+
+Icons mit Punkt-Indikator statt Unterstreichung:
+
+```text
+   ◉        ○        ○        ○        ○
+  Home    Base   Missions  Ops   Services
+```
+
+---
+
+## 5. Radius-System Überarbeitung
+
+iOS nutzt konsequent größere Radien.
+
+### Aktuell vs. Neu
+
+| Token | Aktuell | Neu |
+|-------|---------|-----|
+| `--radius-sm` | 0.5rem (8px) | 0.75rem (12px) |
+| `--radius` | 0.75rem (12px) | 1rem (16px) |
+| `--radius-lg` | 1rem (16px) | 1.25rem (20px) |
+| NEU: `--radius-xl` | — | 1.5rem (24px) |
+| NEU: `--radius-full` | — | 9999px |
+
+### Anwendung
+
+| Element | Radius |
+|---------|--------|
+| Cards | `--radius-lg` (20px) |
+| Buttons (normal) | `--radius` (16px) |
+| Buttons (icon) | `--radius-full` |
+| Inputs | `--radius-lg` (20px) |
+| Bottom Nav | `--radius-xl` oben |
+
+---
+
+## 6. Mobile Bottom Nav: iOS Tab-Bar-Style
+
+### Aktuelle Struktur
+
+```text
+┌──────────────────────────────────┐
+│  Home │ Base │ Miss │ Ops │ Serv │
+└──────────────────────────────────┘
+```
+
+### Neuer iOS-Style
+
+- **Pillenförmige Aktiv-Anzeige** statt Farbwechsel
+- **Größere Touch-Targets** (48x48px)
+- **Glassmorphism-Hintergrund**
+- **Schwebende Optik** (Abstand vom Rand)
+
+```text
+     ┌──────────────────────────┐
+     │ ○   ●   ○   ○   ○      │
+     │ Hm  Bs  Ms  Op  Sv      │
+     └──────────────────────────┘
+        (floating, rounded corners)
+```
+
+---
+
+## Konkrete Datei-Änderungen
+
+### Datei 1: `src/index.css`
+
+**Zeilen 72-75 (Radius-System):**
 ```css
-:root {
-  --bg-atmosphere: 
-    /* Layer 1: Dichte Hauptwolke links-oben */
-    radial-gradient(
-      ellipse 100% 50% at 20% 20%,
-      hsla(0 0% 100% / 0.7) 0%,
-      hsla(0 0% 100% / 0.3) 30%,
-      transparent 60%
-    ),
-    /* Layer 2: Zweite Wolkenformation rechts */
-    radial-gradient(
-      ellipse 70% 45% at 75% 25%,
-      hsla(0 0% 100% / 0.6) 0%,
-      hsla(0 0% 100% / 0.2) 35%,
-      transparent 55%
-    ),
-    /* Layer 3: Weiche Wolkenschicht Mitte-unten */
-    radial-gradient(
-      ellipse 120% 40% at 50% 60%,
-      hsla(0 0% 100% / 0.4) 0%,
+--radius: 1rem;       /* 16px */
+--radius-sm: 0.75rem; /* 12px */
+--radius-lg: 1.25rem; /* 20px */
+--radius-xl: 1.5rem;  /* 24px */
+--radius-full: 9999px;
+```
+
+**Neue Utility-Klassen (nach Zeile 505):**
+```css
+/* iOS Glass Button Style */
+.btn-glass {
+  background: hsla(0 0% 100% / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsla(0 0% 100% / 0.3);
+  box-shadow: 
+    inset 0 1px 0 hsla(0 0% 100% / 0.2),
+    0 1px 3px hsla(0 0% 0% / 0.1);
+}
+
+.dark .btn-glass {
+  background: hsla(0 0% 100% / 0.1);
+  border-color: hsla(0 0% 100% / 0.1);
+}
+
+/* Armstrong Planet */
+.armstrong-planet {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, 
+      hsla(195 90% 85% / 0.9) 0%, 
+      hsla(200 80% 70% / 0.6) 25%, 
       transparent 50%
     ),
-    /* Layer 4: Sonnenschein-Glow von oben (warm) */
-    radial-gradient(
-      ellipse 80% 60% at 50% -10%,
-      hsla(40 70% 90% / 0.3) 0%,
-      transparent 50%
+    radial-gradient(circle at 70% 70%, 
+      hsla(210 60% 65% / 0.7) 0%, 
+      transparent 40%
     ),
-    /* Layer 5: Intensiver Himmelsblau-Gradient */
-    radial-gradient(
-      ellipse 160% 120% at 50% -40%,
-      hsl(195 90% 68%) 0%,
-      hsl(200 85% 75%) 25%,
-      hsl(205 70% 85%) 50%,
-      hsl(210 45% 94%) 80%,
-      hsl(210 30% 98%) 100%
+    radial-gradient(circle, 
+      hsl(200 75% 60%) 0%, 
+      hsl(215 70% 45%) 100%
     );
+  box-shadow: 
+    inset -8px -8px 20px hsla(210 60% 30% / 0.4),
+    inset 4px 4px 15px hsla(195 80% 90% / 0.5),
+    0 0 30px hsla(200 90% 60% / 0.3);
+}
+
+.dark .armstrong-planet {
+  background:
+    radial-gradient(circle at 25% 20%, 
+      hsla(275 45% 35% / 0.8) 0%, 
+      hsla(250 40% 25% / 0.5) 30%, 
+      transparent 50%
+    ),
+    radial-gradient(circle at 75% 75%, 
+      hsla(210 50% 30% / 0.6) 0%, 
+      transparent 45%
+    ),
+    radial-gradient(circle, 
+      hsl(250 40% 25%) 0%, 
+      hsl(275 35% 15%) 100%
+    );
+  box-shadow: 
+    inset -6px -6px 18px hsla(275 30% 10% / 0.6),
+    inset 3px 3px 12px hsla(275 50% 50% / 0.3),
+    0 0 40px hsla(275 45% 40% / 0.25);
+}
+
+/* iOS Input Style */
+.input-ios {
+  background: hsl(var(--muted) / 0.6);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 2px 4px hsla(0 0% 0% / 0.05);
 }
 ```
 
-**Dark Mode (Zeilen 251-280) — Komplett ersetzen:**
+### Datei 2: `src/components/ui/button.tsx`
 
-```css
-.dark {
-  --bg-atmosphere: 
-    /* Layer 1: Große Galaxie-Glow oben-rechts (intensiver) */
-    radial-gradient(
-      ellipse 80% 70% at 90% 0%,
-      hsl(220 60% 18%) 0%,
-      hsl(225 50% 12%) 25%,
-      hsl(225 40% 6%) 50%,
-      transparent 70%
-    ),
-    /* Layer 2: Blauer Nebel-Akzent oben-links */
-    radial-gradient(
-      ellipse 50% 40% at 10% 15%,
-      hsl(210 50% 14%) 0%,
-      hsl(215 40% 8%) 30%,
-      transparent 55%
-    ),
-    /* Layer 3: Violetter Nebel unten-links (kräftiger) */
-    radial-gradient(
-      ellipse 60% 50% at 5% 100%,
-      hsl(275 45% 14%) 0%,
-      hsl(270 35% 8%) 30%,
-      transparent 60%
-    ),
-    /* Layer 4: Sekundärer Nebel unten-rechts */
-    radial-gradient(
-      ellipse 45% 35% at 85% 90%,
-      hsl(250 35% 12%) 0%,
-      hsl(245 30% 6%) 25%,
-      transparent 50%
-    ),
-    /* Layer 5: Zentraler Sternenstaub-Schimmer */
-    radial-gradient(
-      ellipse 100% 80% at 50% 40%,
-      hsla(220 40% 15% / 0.25) 0%,
-      transparent 60%
-    ),
-    /* Layer 6: Tiefes Weltraum-Schwarz */
-    linear-gradient(
-      180deg,
-      hsl(222 70% 3%) 0%,
-      hsl(222 75% 2%) 50%,
-      hsl(222 80% 1%) 100%
-    );
-}
-```
+Neue `glass` Variante hinzufügen und Default-Radius erhöhen.
+
+### Datei 3: `src/components/ui/input.tsx`
+
+iOS-Style mit größerem Radius und weicherem Hintergrund.
+
+### Datei 4: `src/components/portal/ArmstrongContainer.tsx`
+
+Collapsed State als Planet-Kreis.
+
+### Datei 5: `src/components/portal/MobileBottomNav.tsx`
+
+iOS Tab-Bar-Style mit schwebender Optik und Pillen-Indikator.
+
+### Datei 6: `src/components/portal/ArmstrongPod.tsx`
+
+Planet-Design für Mobile (kleinere Version).
+
+### Datei 7: `src/components/ui/card.tsx`
+
+Radius auf `rounded-2xl` erhöhen.
+
+---
+
+## Zusammenfassung der Änderungen
+
+| Datei | Änderung |
+|-------|----------|
+| `src/index.css` | Radius-System, `.armstrong-planet`, `.btn-glass`, `.input-ios` |
+| `button.tsx` | Neue Variante `glass`, größere Radien |
+| `input.tsx` | iOS-Style: `rounded-2xl`, kein Border, Muted-Background |
+| `card.tsx` | `rounded-2xl` statt `rounded-lg` |
+| `ArmstrongContainer.tsx` | Collapsed = Planet-Kreis mit CSS-Gradient |
+| `ArmstrongPod.tsx` | Planet-Design für Mobile |
+| `MobileBottomNav.tsx` | Floating Pill-Style, größere Touch-Targets |
 
 ---
 
 ## Erwartetes Ergebnis
 
 ### Light Mode
-- **Sichtbare Wolkenformationen** — 3 separate Wolkencluster
-- **Lebendiges Himmelblau** — Sättigung 90%, Lightness 68% im Kern
-- **Warmer Sonnenschein-Akzent** — Subtiles Gelb von oben
-- **Tieferer Farbverlauf** — Von intensivem Cyan zu weißem Horizont
+- **Armstrong Planet**: Cyan-blaue Atmosphäre mit 3D-Tiefe
+- **Buttons**: Glasig-transparent mit hellem Schimmer
+- **Cards**: Stark abgerundete Ecken (20px)
+- **Inputs**: Weiche Kacheln ohne harte Borders
 
 ### Dark Mode
-- **Dramatische Galaxie-Effekte** — Größere, hellere Nebel
-- **4 separate Nebel-Zonen** — Mehr räumliche Tiefe
-- **Noch tieferes Schwarz** — Bis 1% Lightness für echten Weltraum-Look
-- **Violett + Blau Kontrast** — Zwei Farbfamilien für mehr Struktur
+- **Armstrong Planet**: Violett-blaue Nebel-Atmosphäre
+- **Buttons**: Dunkles Glas mit subtiler Reflexion
+- **Navigation**: Schwebende Tab-Bar mit Blur-Effekt
 
----
-
-## Änderungsübersicht
-
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `src/index.css` | 224-248 | Light Mode mit 5 Layern (Wolken + Sonne + Himmel) |
-| `src/index.css` | 251-280 | Dark Mode mit 6 Layern (Nebel + Sterne + Schwarz) |
+### Mobile (iOS-Feel)
+- Große, runde Touch-Targets
+- Fließende Übergänge
+- Konsistente Radien
+- Pillenförmige Aktiv-Indikatoren
