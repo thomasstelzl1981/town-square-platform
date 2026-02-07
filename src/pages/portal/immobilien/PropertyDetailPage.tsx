@@ -355,7 +355,8 @@ export default function PropertyDetailPage() {
             <ExposeTab 
               property={property} 
               financing={financing} 
-              unit={unit} 
+              unit={unit}
+              dossierData={dossierData}
             />
           </TabsContent>
 
