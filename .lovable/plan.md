@@ -1,251 +1,215 @@
 
-# Investment Engine UX Fix — Einheitliche Exposé-Seite
+# Akquise-Manager: Doppelte Navigation Fix + Testdaten
 
-## Problemanalyse
+## 1. Problem: Doppelte Menüstruktur
 
-### Identifizierte Fehler (Screenshots vs. aktueller Stand)
+Die Navigation erscheint zweimal:
+- **Sidebar (PortalNav):** Dashboard, Mandate, Objekteingang, Tools
+- **WorkflowSubbar (AkquiseManagerPage Zeile 48-53 + 470):** Identisch horizontal
 
-| # | Problem | Root Cause | Auswirkung |
-|---|---------|------------|------------|
-| 1 | **Fehlende Exposé-Seite** | MOD-08 hat keine `objekt/:publicId` Route | Klick auf "Details" führt zu `/kaufy/expose` (Zone 3) |
-| 2 | **Falscher Link-Prefix** | `InvestmentSearchCard` verlinkt auf `/kaufy/expose` statt Portal-Route | User verlässt Portal |
-| 3 | **Provision überall sichtbar** | `showProvision` nicht kontextabhängig gesteuert | Soll nur in MOD-09 Katalog angezeigt werden |
-| 4 | **Modal statt Seite** | `PartnerExposeModal` ist überladen | Zu viele Kacheln, nicht "clean" |
-| 5 | **Inkonsistente Mini-EÜR** | Unterschiedliche Berechnungsdarstellung | Keine einheitliche "Geldmaschinen"-UX |
-
-### Referenz: Was gut funktioniert (Screenshots)
-
-**Zone 3 KaufyExpose** (Screenshot 6-8) zeigt das richtige Layout:
-- **Header:** Breadcrumb, Titel, Preis, Key Facts (m², Einheiten, Baujahr)
-- **"Ihre monatliche Übersicht":** 5-Zeilen-Box (Mieteinnahme, Darlehensrate, Bewirtschaftung, Steuereffekt, Netto)
-- **Kalkulation-Tab:** Slider für zVE, EK, Tilgung + 4 Kennzahlen-Blöcke
-- **5-Box Cashflow-Darstellung:** Miete (grün), Rate (rot), Verw. (rot), Steuer (grün), Netto (rot/grün)
-- **10-Jahres-Projektion:** Restschuld, Objektwert, Wertzuwachs, Eigenkapitalaufbau
+**Lösung:** `WorkflowSubbar` komplett entfernen.
 
 ---
 
-## Lösung: Einheitliche Portal-Exposé-Seite
+## 2. Technische Änderungen
 
-### Phase 1: Neue Exposé-Seite für MOD-08 (P0)
+### Schritt 1: WorkflowSubbar aus AkquiseManagerPage entfernen
 
-**Neue Datei:** `src/pages/portal/investments/InvestmentExposePage.tsx`
-
-Diese Seite ist eine **Vollbild-Seite** (kein Modal!) und nutzt das bewährte Zone-3-Layout:
+**Datei:** `src/pages/portal/AkquiseManagerPage.tsx`
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ ← Zurück zur Suche                                    [Favorit ♡] [Finanzierung]│
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌──────────────────────────────────┐  ┌───────────────────────────────────────┐│
-│  │ [Bildergalerie / Platzhalter]    │  │ 📍 Leipzig · 04103                    ││
-│  │                                  │  │ Leipziger Straße 42                   ││
-│  │                                  │  │ 145.000 €                             ││
-│  │                                  │  │                                       ││
-│  └──────────────────────────────────┘  │ ┌─────────┐ ┌─────────┐ ┌─────────┐  ││
-│                                        │ │ 62 m²   │ │ 1       │ │ 1970    │  ││
-│                                        │ │Wohnfläche│ │Einheiten│ │ Baujahr │  ││
-│                                        │ └─────────┘ └─────────┘ └─────────┘  ││
-│                                        │                                       ││
-│                                        │ ┌───────────────────────────────────┐ ││
-│                                        │ │ Ihre monatliche Übersicht         │ ││
-│                                        │ ├───────────────────────────────────┤ ││
-│                                        │ │ Mieteinnahme           +500 €     │ ││
-│                                        │ │ Darlehensrate          −565 €     │ ││
-│                                        │ │ Bewirtschaftung        −179 €     │ ││
-│                                        │ │ Steuereffekt           +112 €     │ ││
-│                                        │ ├───────────────────────────────────┤ ││
-│                                        │ │ Netto nach Steuer      −132 €     │ ││
-│                                        │ └───────────────────────────────────┘ ││
-│                                        │                                       ││
-│                                        │ [Beratung anfragen]    [✉]            ││
-│                                        └───────────────────────────────────────┘│
-│                                                                                  │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  [Kalkulation]   [Exposé]   [Dokumente]                                          │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐│
-│  │ Ihre Finanzdaten                                                            ││
-│  │ ┌──────────────┐ ┌──────────────┐ ┌────────────────┐ ┌────────────────────┐ ││
-│  │ │ zVE: 80.000€ │ │ EK: 50.000€  │ │ Steuertabelle  │ │ Tilgung: 2%  [══●] │ ││
-│  │ └──────────────┘ └──────────────┘ └────────────────┘ └────────────────────┘ ││
-│  └─────────────────────────────────────────────────────────────────────────────┘│
-│                                                                                  │
-│  ┌────────────────────────────────┐  ┌────────────────────────────────────────┐ │
-│  │ € Transaktion                  │  │ ∿ Mieteinnahmen                        │ │
-│  │ Kaufpreis         150.000 €    │  │ Jahresnettokaltmiete   6.000 €         │ │
-│  │ Kaufpreis/m²        1.043 €    │  │ Monatsmiete              500 €         │ │
-│  │ Erwerbsnebenkosten 15.000 €    │  │ Miete/m²               3.48 €/m²       │ │
-│  │ Kaufpreis inkl. NK 165.000 €   │  │                                        │ │
-│  └────────────────────────────────┘  └────────────────────────────────────────┘ │
-│                                                                                  │
-│  ┌────────────────────────────────┐  ┌────────────────────────────────────────┐ │
-│  │ % Rendite-Kennzahlen           │  │ 🏦 Finanzierung                        │ │
-│  │ Brutto-Mietrendite    4.00%    │  │ Darlehen          115.000 €            │ │
-│  │ Netto-Ankaufsrendite  3.64%    │  │ Eigenkapital       50.000 €            │ │
-│  │ Brutto-Faktor        25.0-fach │  │ LTV                  76.7%             │ │
-│  │ Netto-Faktor         27.5-fach │  │ Zinssatz             3.90%             │ │
-│  │                                │  │ Tilgung              2.0%              │ │
-│  │                                │  │ Rate/Monat          565 €              │ │
-│  └────────────────────────────────┘  └────────────────────────────────────────┘ │
-│                                                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐│
-│  │ □ Monatlicher Cashflow nach Steuern                                         ││
-│  │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────────────┐ ││
-│  │ │ +500 €  │ │ −565 €  │ │ −179 €  │ │ +112 €  │ │       −132 €           │ ││
-│  │ │ Miete   │ │  Rate   │ │  Verw.  │ │ Steuer  │ │    Netto/Monat         │ ││
-│  │ │ (grün)  │ │  (rot)  │ │  (rot)  │ │ (grün)  │ │      (rot)             │ ││
-│  │ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────────────────────┘ ││
-│  └─────────────────────────────────────────────────────────────────────────────┘│
-│                                                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐│
-│  │ Entwicklung nach 10 Jahren            Wertsteigerung p.a.: [2 ▼] %          ││
-│  │ Restschuld: 92.000 €  Objektwert: 182.849 €  Wertzuwachs: +32.849 €         ││
-│  │ Eigenkapitalaufbau: +55.849 €                                               ││
-│  └─────────────────────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────────────────────┘
+- Zeile 11: Import "WorkflowSubbar" entfernen
+- Zeilen 48-53: AKQUISE_MANAGER_WORKFLOW_STEPS Definition entfernen
+- Zeile ~470: <WorkflowSubbar .../> Aufruf entfernen
+- Layout vereinfachen: Direktes Rendering der <Routes> ohne Wrapper
+```
+
+### Schritt 2: Testmandat in Datenbank einfügen
+
+**Tabelle:** `acq_mandates`
+
+| Feld | Wert |
+|------|------|
+| code | ACQ-2026-00001 |
+| client_display_name | Familie Investorius |
+| search_area | Schleswig-Holstein (Rendsburg, Kiel, Neumünster) |
+| asset_focus | MFH, Wohnanlage |
+| price_min | 2.000.000 € |
+| price_max | 5.000.000 € |
+| yield_target | 6,0% |
+| status | active |
+
+### Schritt 3: Rendsburg-Exposé als Offer (E-Mail-Eingang)
+
+**Tabelle:** `acq_offers`
+
+| Feld | Wert |
+|------|------|
+| mandate_id | → Testmandat |
+| source_type | email |
+| title | Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten |
+| address | Breslauer Straße 73-81 |
+| postal_code | 24768 |
+| city | Rendsburg |
+| price_asking | 3.200.000 € |
+| units_count | 40 |
+| area_sqm | 2.550 |
+| yield_indicated | 6,8% |
+| status | new |
+| extracted_data | { source: "Dr. Hofeditz Real Estate GmbH", contact_email: "marcel@dr-hofeditz.de", commission: "6.25% inkl. MwSt." } |
+| notes | Eingang per E-Mail von Dr. Hofeditz Real Estate GmbH |
+
+---
+
+## 3. Erwartetes Ergebnis
+
+Nach Umsetzung:
+
+| Was | Vorher | Nachher |
+|-----|--------|---------|
+| Navigation | Doppelt (Sidebar + Subbar) | Einfach (nur Sidebar) |
+| /portal/akquise-manager/mandate | Leer | 1 aktives Testmandat |
+| /portal/akquise-manager/objekteingang | Leer | 1 Offer (Rendsburg) |
+| Kalkulation-Tab | Keine Daten | 3,2M € Kaufpreis, 40 Einheiten, 2.550 m² |
+
+### Klickpfad zum Testen:
+
+```
+1. /portal/akquise-manager
+   → Dashboard zeigt 1 aktives Mandat
+
+2. Klick "Mandate" (Sidebar)
+   → Liste mit ACQ-2026-00001 "Familie Investorius"
+
+3. Klick auf Mandat → Detail-Workbench
+   → 5 Tabs (Sourcing, Outreach, Inbound, Analysis, Delivery)
+
+4. Alternative: Klick "Objekteingang" (Sidebar)
+   → Liste mit Rendsburg-Exposé (Badge: "E-Mail")
+
+5. Klick auf Offer → ObjekteingangDetail
+   → 6 Tabs inkl. "Kalkulation"
+
+6. Tab "Kalkulation" → Toggle "Bestand (Hold)"
+   → 30-Jahres-Chart mit echten Daten
+   → EK-Slider, Zins, Tilgung etc.
+
+7. Toggle auf "Aufteiler (Flip)"
+   → Gewinnanalyse, Sensitivität
 ```
 
 ---
 
-### Phase 2: Route-Registrierung (P0)
+## 4. Technische Details
 
-**Datei:** `src/manifests/routesManifest.ts`
-
-```typescript
-// MOD-08: Investment-Suche
-"MOD-08": {
-  // ... existing
-  dynamic_routes: [
-    { path: "mandat/neu", component: "MandatCreateWizard", title: "Neues Mandat" },
-    { path: "mandat/:mandateId", component: "MandatDetail", title: "Mandat-Details", dynamic: true },
-    // NEU:
-    { path: "objekt/:publicId", component: "InvestmentExposePage", title: "Investment-Exposé", dynamic: true },
-  ],
-},
-```
-
-**Datei:** `src/pages/portal/InvestmentsPage.tsx`
-
-```typescript
-import InvestmentExposePage from './investments/InvestmentExposePage';
-
-<Routes>
-  // ... existing routes
-  <Route path="objekt/:publicId" element={<InvestmentExposePage />} />
-</Routes>
-```
-
----
-
-### Phase 3: InvestmentSearchCard Link-Fix (P0)
-
-**Datei:** `src/components/investment/InvestmentSearchCard.tsx`
-
-**Änderungen:**
-1. Standardmäßig `linkPrefix="/portal/investments/objekt"` statt `/kaufy/expose`
-2. `showProvision={false}` als Default (wird nur in MOD-09 Katalog explizit aktiviert)
-
-```typescript
-// Zeile 47-48
-export function InvestmentSearchCard({
-  // ...
-  showProvision = false,  // Default: keine Provision anzeigen
-  linkPrefix = '/portal/investments/objekt'  // Default: Portal-Route
-}: InvestmentSearchCardProps) {
-```
-
----
-
-### Phase 4: Kontextabhängige Nutzung (P1)
-
-| Modul | Route | `linkPrefix` | `showProvision` |
-|-------|-------|--------------|-----------------|
-| **MOD-08 Suche** | `/portal/investments/suche` | `/portal/investments/objekt` | `false` |
-| **MOD-09 Katalog** | `/portal/vertriebspartner/katalog` | `/portal/investments/objekt` | `true` |
-| **MOD-09 Beratung** | `/portal/vertriebspartner/beratung` | Modal (PartnerExposeModal) | `true` (im Modal) |
-| **Zone 3 Kaufy** | `/kaufy/immobilien` | `/kaufy/objekt` | `false` |
-
----
-
-### Phase 5: BeratungTab Modal-Vereinfachung (P2)
-
-Das `PartnerExposeModal` bleibt für die schnelle Beratung, aber:
-- Entfernung überflüssiger Tabs
-- Fokus auf Slider + Haushaltsrechnung + Monatsbelastung
-- Option: "Vollbild öffnen" → Navigiert zu `/portal/investments/objekt/:id`
-
----
-
-## Datei-Änderungen Übersicht
-
-| Datei | Aktion | Priorität |
-|-------|--------|-----------|
-| `src/pages/portal/investments/InvestmentExposePage.tsx` | **NEU** erstellen | **P0** |
-| `src/pages/portal/InvestmentsPage.tsx` | Route hinzufügen | **P0** |
-| `src/manifests/routesManifest.ts` | dynamic_route hinzufügen | **P0** |
-| `src/components/investment/InvestmentSearchCard.tsx` | Default linkPrefix + showProvision ändern | **P0** |
-| `src/pages/portal/investments/SucheTab.tsx` | Explizit `linkPrefix` setzen | P1 |
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | `showProvision={true}` | P1 |
-| `src/components/vertriebspartner/PartnerExposeModal.tsx` | Vereinfachung (optional) | P2 |
-
----
-
-## Erwartetes Ergebnis
-
-| Test | Route | Erwartetes Ergebnis |
-|------|-------|---------------------|
-| 1 | `/portal/investments/suche` → Klick "Details" | Navigiert zu `/portal/investments/objekt/:id` (Vollbild-Exposé) |
-| 2 | Investment-Exposé-Seite | Layout wie Screenshot 6-8: Header, Key Facts, Monatliche Übersicht, Tabs |
-| 3 | Provision in MOD-08 | **Nicht sichtbar** |
-| 4 | Provision in MOD-09 Katalog | **Sichtbar** (Badge) |
-| 5 | Provision in MOD-09 Beratung | Sichtbar im Modal |
-| 6 | MOD-09 Beratung Modal | Funktioniert weiterhin, aber cleaner |
-
----
-
-## Technische Details
-
-### Warum Vollbild-Seite statt Modal?
-
-1. **Bessere UX:** Screenshots zeigen klares, ruhiges Layout
-2. **Keine Überlagerung:** Modal in Modal = "zu viele Kacheln"
-3. **Tiefe Verlinkung:** User kann URL teilen/bookmarken
-4. **Konsistenz:** Zone 3 nutzt auch Vollbild-Seite
-
-### Komponenten-Wiederverwendung
-
-Die neue `InvestmentExposePage` nutzt existierende Komponenten:
-- `MasterGraph` — 40-Jahres-Chart
-- `Haushaltsrechnung` — 5-Zeilen EÜR
-- `InvestmentSliderPanel` — Parameter-Regler
-- `DetailTable40Jahre` — Excel-ähnliche Tabelle
-- `CashflowBoxes` (neu) — 5-Box-Darstellung
-
-### Datenfluss
+### Bestandskalkulation-Datenfluss
 
 ```text
-SucheTab → InvestmentSearchCard → Link
-              ↓
-    /portal/investments/objekt/:publicId
-              ↓
-    InvestmentExposePage
-              ↓
-    useQuery(listings.public_id)
-              ↓
-    useInvestmentEngine(params)
-              ↓
-    Render: Header + Tabs + Chart + EÜR + Table
+ObjekteingangDetail.tsx
+    └── Zeilen 336-345: <BestandCalculation 
+            initialData={{
+              purchasePrice: offer.price_asking || 0,    → 3.200.000
+              monthlyRent: offer.noi_indicated / 12,     → Jahresmiete/12
+              units: offer.units_count || 1,             → 40
+              areaSqm: offer.area_sqm || 0,              → 2.550
+            }}
+        />
+
+BestandCalculation.tsx
+    └── React.useMemo() berechnet:
+        - Gesamtinvestition (Kaufpreis + 10% NK)
+        - 30-Jahres-Projektion (Debt, Value, Equity)
+        - ROI auf Eigenkapital
+```
+
+### Aufteilerkalkulation-Datenfluss
+
+```text
+ObjekteingangDetail.tsx
+    └── Zeilen 347-355: <AufteilerCalculation
+            initialData={{
+              purchasePrice: offer.price_asking || 0,    → 3.200.000
+              yearlyRent: offer.noi_indicated || 0,      → Jahresmiete
+              units: offer.units_count || 1,             → 40
+              areaSqm: offer.area_sqm || 0,              → 2.550
+            }}
+        />
+
+AufteilerCalculation.tsx
+    └── React.useMemo() berechnet:
+        - Netto-Kosten (Ankauf + Zinsen - Mieteinnahmen)
+        - Verkaufserlös (Jahresmiete / Zielrendite)
+        - Gewinn = Erlös - Kosten
+        - Sensitivitätsanalyse (±0,5% Rendite)
 ```
 
 ---
 
-## Reihenfolge der Umsetzung
+## 5. Datenbank-Migration (SQL)
 
-1. **Schritt 1 (20 min):** `InvestmentExposePage.tsx` erstellen (Kopie von KaufyExpose mit Portal-Anpassungen)
-2. **Schritt 2 (5 min):** Route in Manifest + Page registrieren
-3. **Schritt 3 (5 min):** `InvestmentSearchCard` Defaults korrigieren
-4. **Schritt 4 (5 min):** `SucheTab` explizit `linkPrefix` setzen
-5. **Schritt 5 (5 min):** `KatalogTab` explizit `showProvision={true}` setzen
-6. **Test:** Klick-Flow in MOD-08 und MOD-09 durchgehen
+```sql
+-- Testmandat für Akquise-Manager Demo
+INSERT INTO acq_mandates (
+  id, code, tenant_id, created_by_user_id,
+  client_display_name, search_area, asset_focus,
+  price_min, price_max, yield_target,
+  status, notes
+) VALUES (
+  gen_random_uuid(),
+  'ACQ-2026-00001',
+  (SELECT id FROM organizations LIMIT 1),
+  auth.uid(),
+  'Familie Investorius (Demo)',
+  '{"region": "Schleswig-Holstein", "cities": ["Rendsburg", "Kiel", "Neumünster"]}',
+  ARRAY['MFH', 'Wohnanlage'],
+  2000000, 5000000, 6.0,
+  'active',
+  'Testmandat für Demonstration der Akquise-Funktionen'
+);
+
+-- Rendsburg-Exposé als E-Mail-Eingang
+INSERT INTO acq_offers (
+  id, mandate_id, source_type,
+  title, address, postal_code, city,
+  price_asking, yield_indicated, units_count, area_sqm,
+  status, notes, extracted_data
+) VALUES (
+  gen_random_uuid(),
+  (SELECT id FROM acq_mandates WHERE code = 'ACQ-2026-00001'),
+  'email',
+  'Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten',
+  'Breslauer Straße 73-81',
+  '24768',
+  'Rendsburg',
+  3200000,
+  6.8,
+  40,
+  2550,
+  'new',
+  'Eingang per E-Mail von Dr. Hofeditz Real Estate GmbH. Provision: 6,25% inkl. MwSt. Heizung 2023.',
+  '{
+    "source": "Dr. Hofeditz Real Estate GmbH",
+    "contact_email": "marcel@dr-hofeditz.de",
+    "contact_phone": "+49 151 50467537",
+    "object_type": "Wohnanlage",
+    "factor": 14.7,
+    "commission": "6.25% inkl. MwSt.",
+    "heating_year": 2023
+  }'::jsonb
+);
+```
+
+---
+
+## 6. Fehlende Daten-Anmerkung
+
+Das PDF enthält keine explizite **Jahresmiete (NOI)**. Für die Kalkulation wird berechnet:
+
+```
+Faktor 14,7 → Rendite = 100 / 14,7 = 6,8%
+Rendite = Jahresmiete / Kaufpreis
+Jahresmiete = 3.200.000 × 6,8% = 217.687 €
+Monatsmiete = 18.141 € (gesamt) → 454 €/Einheit
+```
+
+Diese Werte werden als `noi_indicated` (Jahres-IST-Miete) im Offer gespeichert.
