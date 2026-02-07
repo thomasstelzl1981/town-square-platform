@@ -30,15 +30,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Development mode detection - enables bypass for Lovable preview
+// DEV-BYPASS DEAKTIVIERT — Login wird immer erzwungen
+// Damit ist garantiert: Alle Geräte müssen sich einloggen = identischer Auth-State
 const isDevelopmentEnvironment = () => {
-  const hostname = window.location.hostname;
-  return hostname.includes('lovable.app') || 
-         hostname.includes('lovableproject.com') ||
-         hostname.includes('localhost') || 
-         hostname.includes('127.0.0.1') ||
-         hostname.includes('preview') ||
-         hostname.includes('id-preview');
+  return false;
 };
 
 // P0-FIX: Define mock objects as STABLE CONSTANTS outside component
