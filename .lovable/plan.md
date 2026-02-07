@@ -36,9 +36,9 @@ Implementierte Änderungen:
 
 ---
 
-## Phase 2: Spracheingabe/-ausgabe (OpenAI Realtime)
+## Phase 2: Spracheingabe/-ausgabe (OpenAI Realtime) ✅ ERLEDIGT
 
-### 2.1 Architektur
+### 2.1 Architektur ✅
 
 ```text
 ┌─────────────────┐     WebSocket     ┌──────────────────────┐
@@ -53,26 +53,28 @@ Implementierte Änderungen:
                                       └──────────────────────┘
 ```
 
-### 2.2 Neue Edge Function: `sot-armstrong-voice`
+### 2.2 Edge Function: `sot-armstrong-voice` ✅
 
 **Standort**: `supabase/functions/sot-armstrong-voice/index.ts`
 
-**Funktionen**:
-- WebSocket-Proxy zum OpenAI Realtime API
-- Server-VAD (Voice Activity Detection)
-- Session-Management mit Armstrong-Kontext
-- Audio-Format: PCM16 @ 24kHz
+Implementierte Funktionen:
+- ✅ WebSocket-Proxy zum OpenAI Realtime API
+- ✅ Server-VAD (Voice Activity Detection)
+- ✅ Session-Management mit Armstrong-Kontext
+- ✅ Audio-Format: PCM16 @ 24kHz
+- ✅ Armstrong-spezifische System-Instructions
 
-### 2.3 Frontend Voice-Integration
+### 2.3 Frontend Voice-Integration ✅
 
-**Neue Komponenten**:
-- `src/components/armstrong/VoiceButton.tsx` — Mikrofon-Toggle mit Puls-Animation
-- `src/hooks/useArmstrongVoice.ts` — WebSocket-Management, Audio-Recording/Playback
+**Implementierte Komponenten**:
+- ✅ `src/components/armstrong/VoiceButton.tsx` — Mikrofon-Toggle mit Puls-Animation
+- ✅ `src/hooks/useArmstrongVoice.ts` — WebSocket-Management, Audio-Recording/Playback
 
 **Integration**:
-- Mikrofon-Symbol prominent in der Eingabezeile (ChatPanel und ArmstrongContainer)
-- Visuelle Feedback während Spracherkennung (Wellen-Animation)
-- Audio-Playback für Armstrong-Antworten (optional aktivierbar)
+- ✅ Mikrofon-Symbol prominent links in der Eingabezeile (ChatPanel)
+- ✅ Visuelle Feedback während Spracherkennung (Pulse-Animation)
+- ✅ Audio-Playback für Armstrong-Antworten
+- ✅ Transkript-Anzeige während Gespräch
 
 ---
 

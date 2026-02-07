@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.sot-renovation-inbound-webhook]
 verify_jwt = false
+
+[functions.sot-armstrong-voice]
+verify_jwt = false
