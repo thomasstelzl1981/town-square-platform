@@ -8,14 +8,13 @@
  */
 
 import { useParams, Navigate } from 'react-router-dom';
-import { useMemo, useEffect } from 'react';
-import { areaConfig, AreaKey, getModuleDisplayLabel } from '@/manifests/areaConfig';
+import { useMemo } from 'react';
+import { areaConfig, AreaKey } from '@/manifests/areaConfig';
 import { zone2Portal } from '@/manifests/routesManifest';
 import { moduleContents } from '@/components/portal/HowItWorks/moduleContents';
 import { areaPromoContent } from '@/config/areaPromoContent';
 import { AreaPromoCard } from '@/components/portal/AreaPromoCard';
 import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
-import { usePortalLayout } from '@/hooks/usePortalLayout';
 
 // Area descriptions for header
 const areaDescriptions: Record<AreaKey, string> = {
@@ -27,18 +26,12 @@ const areaDescriptions: Record<AreaKey, string> = {
 
 export default function AreaOverviewPage() {
   const { areaKey } = useParams<{ areaKey: string }>();
-  const { setActiveArea } = usePortalLayout();
   
   // Validate area key
   const validAreaKey = areaKey as AreaKey;
   const area = areaConfig.find(a => a.key === validAreaKey);
   
-  // Sync area state with URL
-  useEffect(() => {
-    if (area) {
-      setActiveArea(area.key);
-    }
-  }, [area, setActiveArea]);
+  // Note: Area state sync now handled by deriveAreaFromPath in usePortalLayout
   
   // Build module data
   const moduleData = useMemo(() => {

@@ -7,7 +7,6 @@
 
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { ModuleDefinition, getTileFullPath } from '@/manifests/routesManifest';
 
 interface SubTabsProps {
@@ -17,10 +16,12 @@ interface SubTabsProps {
 
 export function SubTabs({ module, moduleBase }: SubTabsProps) {
   const location = useLocation();
-  const { subTabsVisible } = usePortalLayout();
 
-  // Hide if subTabsVisible is false OR no tiles exist
-  if (!subTabsVisible || !module.tiles || module.tiles.length === 0) {
+  // URL-driven visibility: show only when on a module page (not Area-Overview)
+  const isOnModulePage = location.pathname.startsWith(`/portal/${moduleBase}`);
+  
+  // Hide if not on module page OR no tiles exist
+  if (!isOnModulePage || !module.tiles || module.tiles.length === 0) {
     return null;
   }
 
