@@ -1,99 +1,237 @@
 
-# Google Maps 3D Globus: Vollständige API-Integration
+# Armstrong AI-Assistent Überarbeitung
 
-## Problem-Analyse
+## Übersicht
 
-Die aktuelle `EarthGlobeCard.tsx` verwendet **nur CSS-Animationen** - Google Maps API wird gar nicht geladen. Der API-Key (`VITE_GOOGLE_MAPS_API_KEY`) existiert als Secret, wird aber nirgendwo im Frontend genutzt.
+Diese Überarbeitung transformiert Armstrong in einen professionelleren KI-Co-Piloten mit:
+- Neuem visuellen Design (Erde statt abstrakte Planeten-Ästhetik, cleanes Pergament-Panel)
+- Vollständiger Spracheingabe/Ausgabe (OpenAI Realtime API)
+- **Task-Kacheln auf dem Dashboard** (nicht im Chatbot) für Freigabe-Workflows
+- Erweitertem Aktions-Manifest für alle Kommunikationskanäle
 
 ---
 
-## Lösung: Google Maps JavaScript API mit Map3DElement
+## Phase 1: Visuelles Redesign Armstrong
 
-### Datei: `src/components/dashboard/EarthGlobeCard.tsx`
+### 1.1 Collapsed State — Planet Erde
 
-**Komplette Überarbeitung:**
+**Aktuell**: Abstrakte Gold-Blau-Purple Planeten-Textur
+**Neu**: Stilisierte Erde mit Blau/Grün-Tönen und Kontinenten-Andeutung
 
 ```text
-Aktuelle Implementierung:
-├── Nur CSS-Animation
-├── Kein API-Aufruf
-└── Zoom-Button öffnet google.com/maps (extern)
-
-Neue Implementierung:
-├── Google Maps JS API laden
-├── Map3DElement für echten 3D-Globus
-├── Automatische Rotation vom Weltraum
-├── Zoom-In mit flyCameraTo Animation
-└── CSS-Fallback bei Fehler
+CSS-Änderungen:
+├── Neue Variable: --armstrong-earth-ocean (Blau)
+├── Neue Variable: --armstrong-earth-land (Grün)
+├── Neuer Gradient: --armstrong-earth-gradient
+└── Atmosphären-Glow in Blautönen (Ozon-Effekt)
 ```
 
-### Technische Umsetzung
+### 1.2 Expanded State — Pergament/Clean Design
 
-**1. API-Key aus Environment laden:**
-```
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-```
+**Aktuell**: Glassmorphism mit Gold→Blue Header-Gradient
+**Neu**: Cleanes weißes Design im Light Mode, dezenter Header
 
-**2. Google Maps Script dynamisch laden:**
-```
-Script-URL: https://maps.googleapis.com/maps/api/js?key={API_KEY}&v=alpha&libraries=maps3d
-```
-
-**3. Map3DElement erstellen:**
 ```text
-Initialisierung:
-├── center: { lat: 0, lng: 0, altitude: 0 }
-├── range: 25.000.000 m (Weltraum-Ansicht)
-├── mode: SATELLITE
-└── tilt: 0 (senkrecht von oben)
-
-Rotation:
-├── flyCameraAround()
-├── rounds: Infinity
-└── durationMillis: 120.000 (2 Min/Umdrehung)
-
-Zoom-In (Button-Klick):
-├── flyCameraTo()
-├── endCamera: User-Koordinaten
-├── altitude: 500 m
-├── tilt: 55°
-└── durationMillis: 5.000 (5 Sek Flug)
-```
-
-**4. Glasbutton im Eck:**
-```text
-Position: absolute bottom-3 right-3
-Style: rounded-full bg-white/20 backdrop-blur-md
-Icon: ZoomIn (Lucide)
-```
-
-**5. Fallback-Logik:**
-```text
-Falls API fehlschlägt (z.B. Billing, Network):
-├── Zeige CSS-animierten Globus
-├── Console-Log des Fehlers
-└── Button öffnet externe Google Maps URL
+Änderungen:
+├── armstrong-glass-light: Weißer Hintergrund (Pergament-Stil)
+├── Header: Schlichter ohne bunten Gradient
+└── Typography: Bessere Lesbarkeit, dunkle Texte
 ```
 
 ---
 
-## Dateien
+## Phase 2: Spracheingabe/-ausgabe (OpenAI Realtime)
 
-| Datei | Änderung |
-|-------|----------|
-| `src/components/dashboard/EarthGlobeCard.tsx` | Komplette Neuimplementierung mit Google Maps 3D API |
+### 2.1 Architektur
+
+```text
+┌─────────────────┐     WebSocket     ┌──────────────────────┐
+│  Browser        │◄─────────────────►│  sot-armstrong-voice │
+│  (Mic/Speaker)  │                   │  Edge Function       │
+└─────────────────┘                   └──────────┬───────────┘
+                                                 │
+                                                 ▼ WebSocket
+                                      ┌──────────────────────┐
+                                      │  OpenAI Realtime API │
+                                      │  (gpt-4o-realtime)   │
+                                      └──────────────────────┘
+```
+
+### 2.2 Neue Edge Function: `sot-armstrong-voice`
+
+**Standort**: `supabase/functions/sot-armstrong-voice/index.ts`
+
+**Funktionen**:
+- WebSocket-Proxy zum OpenAI Realtime API
+- Server-VAD (Voice Activity Detection)
+- Session-Management mit Armstrong-Kontext
+- Audio-Format: PCM16 @ 24kHz
+
+### 2.3 Frontend Voice-Integration
+
+**Neue Komponenten**:
+- `src/components/armstrong/VoiceButton.tsx` — Mikrofon-Toggle mit Puls-Animation
+- `src/hooks/useArmstrongVoice.ts` — WebSocket-Management, Audio-Recording/Playback
+
+**Integration**:
+- Mikrofon-Symbol prominent in der Eingabezeile (ChatPanel und ArmstrongContainer)
+- Visuelle Feedback während Spracherkennung (Wellen-Animation)
+- Audio-Playback für Armstrong-Antworten (optional aktivierbar)
 
 ---
 
-## Voraussetzungen (bereits erfüllt laut deiner Aussage)
+## Phase 3: Task-Kacheln auf dem Dashboard
 
-- Maps JavaScript API ✓
-- Map Tiles API ✓
-- Billing aktiviert ✓
-- `VITE_GOOGLE_MAPS_API_KEY` als Secret ✓
+### 3.1 Konzept
+
+Wenn Armstrong Aufgaben plant, die:
+- **Credits verbrauchen** (metered actions)
+- **Nach außen kommunizieren** (Briefe, E-Mails, Faxe, Tickets)
+- **Schreibende Aktionen** ausführen
+
+...dann erscheinen diese als **Kacheln auf dem Portal Dashboard** (nicht im Chatbot).
+Diese Kacheln sind im gleichen Grid wie Begrüßung, Wetter und Globus.
+
+### 3.2 Dashboard Layout mit Pending Tasks
+
+```text
++--------------------------------+--------------------------------+--------------------------------+
+|     🤖 ARMSTRONG GREETING      |    ☀️ WEATHER WIDGET           |     🌍 EARTH GLOBE             |
++--------------------------------+--------------------------------+--------------------------------+
+|     📨 PENDING TASK 1          |     📄 PENDING TASK 2          |     📧 PENDING TASK 3          |
+|     Brief an Mustermann        |     Exposé generieren          |     E-Mail an Bank             |
+|     [Vorschau] [Freigeben]     |     [Vorschau] [Freigeben]     |     [Vorschau] [Freigeben]     |
++--------------------------------+--------------------------------+--------------------------------+
+```
+
+### 3.3 Neue Dashboard-Komponente: `PendingTaskCard`
+
+**Standort**: `src/components/dashboard/PendingTaskCard.tsx`
+
+```text
+Kachel-Design:
+├── Icon basierend auf Aktion (Brief, E-Mail, Fax, Ticket)
+├── Titel und kurze Beschreibung
+├── Kostenanzeige (falls metered)
+├── Buttons: [Vorschau] [Abbrechen] [Freigeben]
+└── Gleiches Card-Design wie andere Dashboard-Kacheln
+```
+
+### 3.4 State Management für Tasks
+
+**Neuer Hook**: `src/hooks/usePendingTasks.ts`
+
+```text
+Funktionen:
+├── fetchPendingTasks() — Lädt Tasks aus DB/localStorage
+├── approveTask(id) — Führt Aktion aus
+├── rejectTask(id) — Löscht Task
+├── previewTask(id) — Öffnet Vorschau-Modal
+└── Realtime-Updates wenn Armstrong neue Tasks erstellt
+```
+
+**Datenbank-Tabelle** (optional für Persistenz):
+```text
+pending_tasks:
+├── id (UUID)
+├── tenant_id
+├── user_id
+├── action_code (z.B. ARM.COMM.SEND_LETTER)
+├── title
+├── parameters (JSONB)
+├── cost_estimate_cents
+├── status (pending/approved/rejected)
+├── created_at
+└── expires_at
+```
+
+### 3.5 Integration in PortalDashboard
+
+Das `PortalDashboard.tsx` wird erweitert um:
+1. Abruf der Pending Tasks via `usePendingTasks()`
+2. Dynamisches Grid das wächst wenn Tasks vorhanden
+3. Tasks erscheinen als zusätzliche Kacheln unter den Hauptwidgets
 
 ---
 
-## Zusammenfassung
+## Phase 4: Manifest-Erweiterung für Kommunikation
 
-Die Komponente wird den API-Key aus den Environment-Variablen laden, das Google Maps Script dynamisch einbinden, und den echten 3D-Globus mit Rotation und Zoom-Animation anzeigen. Bei jedem Fehler wird automatisch auf den CSS-Globus zurückgefallen.
+### 4.1 Neue Aktions-Kategorie: COMM
+
+```text
+ARM.COMM.SEND_LETTER    — Brief versenden (Porto + Druck)
+ARM.COMM.SEND_EMAIL     — E-Mail versenden
+ARM.COMM.SEND_FAX       — Fax versenden
+ARM.COMM.CREATE_TICKET  — Ticket erstellen
+```
+
+### 4.2 Manifest-Struktur für Tasks
+
+Alle Aktionen mit `requires_confirmation: true` und/oder `cost_model: 'metered'` erzeugen automatisch einen Pending Task auf dem Dashboard, anstatt sofort ausgeführt zu werden.
+
+---
+
+## Technische Übersicht
+
+### Neue Dateien
+
+| Datei | Zweck |
+|-------|-------|
+| `supabase/functions/sot-armstrong-voice/index.ts` | OpenAI Realtime WebSocket Proxy |
+| `src/components/armstrong/VoiceButton.tsx` | Mikrofon-UI mit Puls-Animation |
+| `src/components/dashboard/PendingTaskCard.tsx` | Task-Kachel für Dashboard |
+| `src/hooks/useArmstrongVoice.ts` | Voice-Session Management |
+| `src/hooks/usePendingTasks.ts` | Pending Tasks State + CRUD |
+
+### Geänderte Dateien
+
+| Datei | Änderungen |
+|-------|------------|
+| `src/index.css` | Neue Earth-Gradients, Pergament-Styles für Armstrong |
+| `src/components/portal/ArmstrongContainer.tsx` | Erde statt Planet, Pergament-Panel, Voice-Button |
+| `src/components/chat/ChatPanel.tsx` | Mikrofon-Button prominent links |
+| `src/pages/portal/PortalDashboard.tsx` | Integration der PendingTaskCard-Kacheln |
+| `src/manifests/armstrongManifest.ts` | COMM-Aktionen hinzufügen |
+
+### Secrets (bereits vorhanden)
+
+- `OPENAI_API_KEY` — Für Realtime Voice API
+- `LOVABLE_API_KEY` — Für Text-Chat (bleibt primär)
+
+---
+
+## Implementierungs-Reihenfolge
+
+```text
+1. Design-Overhaul Armstrong
+   ├── CSS: Earth-Gradient + Pergament-Styles
+   ├── ArmstrongContainer: Erde-Visual, cleaner Header
+   └── ChatPanel: Dezenteres Design
+
+2. Dashboard Task-System
+   ├── PendingTaskCard Component
+   ├── usePendingTasks Hook
+   ├── DB-Tabelle pending_tasks (optional)
+   └── Integration in PortalDashboard.tsx
+
+3. Manifest-Erweiterung
+   ├── COMM-Aktionen hinzufügen
+   └── Task-Logik in sot-armstrong-advisor
+
+4. Voice-System
+   ├── sot-armstrong-voice Edge Function
+   ├── VoiceButton Component
+   ├── useArmstrongVoice Hook
+   └── Audio Playback Integration
+```
+
+---
+
+## Erwartetes Ergebnis
+
+Nach Implementierung:
+
+1. **Visuell**: Armstrong zeigt eine stilisierte Erde im Collapsed State und ein cleanes Pergament-Design im geöffneten Zustand
+2. **Voice**: User können per Sprache mit Armstrong kommunizieren (Mikrofon prominent sichtbar)
+3. **Dashboard-Tasks**: Alle kostenpflichtigen/externen Aktionen erscheinen als Kacheln auf dem Dashboard zur Freigabe
+4. **Aktionen**: Vollständiges Manifest für Briefe, E-Mails, Faxe, Tickets
