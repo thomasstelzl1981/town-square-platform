@@ -22,7 +22,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none bg-background/50">
+    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
       {module.tiles.map((tile) => {
         const route = getTileFullPath(moduleBase, tile.path);
         const isActive = location.pathname === route;
@@ -32,7 +32,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             key={tile.path}
             to={route}
             className={cn(
-              'px-3 py-1.5 rounded-md text-sm transition-all whitespace-nowrap',
+              'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
               isActive
                 ? 'bg-primary text-primary-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent',
