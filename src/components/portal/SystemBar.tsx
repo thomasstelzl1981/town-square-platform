@@ -45,10 +45,12 @@ export function SystemBar() {
   } | null>(null);
   const [locationError, setLocationError] = useState(false);
 
-  // Home button click handler - reset state and navigate
+  // Home button click handler - reset state and navigate, show Armstrong expanded
   const handleHomeClick = () => {
     setActiveArea(null);
     navigate('/portal');
+    // Show Armstrong expanded when navigating home
+    showArmstrong({ expanded: true });
   };
 
   // Update clock every minute

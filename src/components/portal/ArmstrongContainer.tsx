@@ -1,8 +1,8 @@
 /**
- * ARMSTRONG CONTAINER — Desktop Fixed Round Mini-Chat
+ * ARMSTRONG CONTAINER — Desktop Fixed Planetary Mini-Chat
  * 
- * Collapsed State: Round widget (150px) with input, upload, send - FIXED bottom-right
- * Expanded State: Chat panel (320x500px) - FIXED bottom-right
+ * Collapsed State: Planetary widget (192px) with input, upload, send - FIXED bottom-right
+ * Expanded State: Chat panel (320x500px) with gradient header - FIXED bottom-right
  * 
  * Acts as drop target for drag-and-drop files
  * Desktop only: Fixed position, toggle via SystemBar Rocket button
@@ -92,13 +92,16 @@ export function ArmstrongContainer() {
     return null;
   }
 
-  // EXPANDED: Full chat panel - FIXED bottom-right
+  // EXPANDED: Full chat panel with gradient header - FIXED bottom-right
   if (armstrongExpanded) {
     return (
       <div 
         ref={containerRef}
         className={cn(
-          'fixed right-5 bottom-5 w-80 border bg-card rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
+          'fixed right-5 bottom-5 w-80 rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
+          // Outer ring for consistency with planet
+          'ring-2 ring-primary/20',
+          'bg-card',
           isDragOver && 'ring-2 ring-primary ring-inset'
         )}
         style={{ height: 500 }}
@@ -106,19 +109,19 @@ export function ArmstrongContainer() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+        {/* Header with SAME gradient as collapsed planet */}
+        <div className="flex items-center justify-between p-3 bg-gradient-to-br from-primary via-primary/80 to-purple-900/70">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+            <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
               <Bot className="h-3 w-3 text-primary-foreground" />
             </div>
-            <span className="font-medium text-sm">Armstrong</span>
+            <span className="font-medium text-sm text-primary-foreground">Armstrong</span>
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-full"
+              className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
               onClick={toggleArmstrongExpanded}
               title="Minimieren"
             >
@@ -127,7 +130,7 @@ export function ArmstrongContainer() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-full"
+              className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
               onClick={hideArmstrong}
               title="Schließen"
             >
@@ -136,7 +139,7 @@ export function ArmstrongContainer() {
           </div>
         </div>
 
-        {/* Chat Panel */}
+        {/* Chat Panel (neutral background for readability) */}
         <div className="flex-1 overflow-hidden">
           <ChatPanel 
             context={getContext()}
@@ -147,22 +150,44 @@ export function ArmstrongContainer() {
     );
   }
 
-  // COLLAPSED: Round Mini-Chat Widget - FIXED bottom-right
+  // COLLAPSED: Planetary Widget - 192px (30% larger), with atmospheric design
   return (
     <div 
       ref={containerRef}
       className={cn(
-        'fixed right-5 bottom-5 z-[60] h-[150px] w-[150px] rounded-full',
-        'bg-gradient-to-br from-primary to-primary/80',
-        'shadow-xl hover:shadow-2xl hover:scale-105',
-        'transition-all duration-200 ease-out',
-        'flex flex-col items-center justify-center gap-2 p-4',
-        isDragOver && 'ring-2 ring-white/50 scale-110'
+        // Position & Size (30% larger: 150 → 192px = h-48 w-48)
+        'fixed right-5 bottom-5 z-[60] h-48 w-48 rounded-full',
+        
+        // Planetary Gradient (from Primary to deep purple)
+        'bg-gradient-to-br from-primary via-primary/80 to-purple-900/70',
+        
+        // Atmospheric Ring
+        'ring-4 ring-primary/20',
+        
+        // Planetary Shadow with glow
+        'shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),_0_0_48px_-12px_hsl(217_91%_60%/0.4)]',
+        
+        // Hover Effects
+        'hover:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.5),_0_0_64px_-8px_hsl(217_91%_60%/0.5)]',
+        'hover:scale-105 transition-all duration-300',
+        
+        // Layout
+        'flex flex-col items-center justify-center gap-3 p-5',
+        'relative overflow-hidden',
+        
+        // Drag-Over state
+        isDragOver && 'ring-4 ring-white/50 scale-110'
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Light reflection (planetary highlight top-left) */}
+      <div className="absolute top-5 left-5 h-10 w-10 rounded-full bg-white/15 blur-md pointer-events-none" />
+      
+      {/* Atmospheric shimmer (bottom-right) */}
+      <div className="absolute bottom-4 right-4 h-8 w-8 rounded-full bg-purple-400/10 blur-sm pointer-events-none" />
+      
       {/* Hidden file input */}
       <input 
         type="file" 
@@ -171,13 +196,13 @@ export function ArmstrongContainer() {
         onChange={handleFileChange}
       />
       
-      {/* Bot Icon + Label */}
-      <div className="flex items-center gap-1.5">
-        <Bot className="h-4 w-4 text-primary-foreground/80" />
-        <span className="text-[11px] font-medium text-primary-foreground/70">Armstrong</span>
+      {/* Bot Icon + Label (larger) */}
+      <div className="flex items-center gap-2 relative z-10">
+        <Bot className="h-5 w-5 text-primary-foreground/90" />
+        <span className="text-xs font-medium text-primary-foreground/80">Armstrong</span>
       </div>
       
-      {/* Compact Input Field */}
+      {/* Input Field (larger) */}
       <input
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
@@ -185,37 +210,37 @@ export function ArmstrongContainer() {
         onClick={(e) => e.stopPropagation()}
         placeholder="Fragen..."
         className={cn(
-          'w-full h-8 rounded-full bg-white/20 border-0',
-          'text-xs text-primary-foreground placeholder:text-primary-foreground/50',
-          'px-3 text-center',
+          'w-full h-10 rounded-full bg-white/20 border-0 relative z-10',
+          'text-sm text-primary-foreground placeholder:text-primary-foreground/50',
+          'px-4 text-center',
           'focus:outline-none focus:bg-white/30',
           'transition-colors'
         )}
       />
       
-      {/* Upload + Send Buttons */}
-      <div className="flex items-center gap-2">
+      {/* Upload + Send Buttons (larger) */}
+      <div className="flex items-center gap-3 relative z-10">
         <button 
           onClick={handleUploadClick}
           className={cn(
-            'h-7 w-7 rounded-full bg-white/20 hover:bg-white/30',
+            'h-8 w-8 rounded-full bg-white/20 hover:bg-white/30',
             'flex items-center justify-center',
             'transition-colors'
           )}
           title="Datei anhängen"
         >
-          <Paperclip className="h-3.5 w-3.5 text-primary-foreground/70" />
+          <Paperclip className="h-4 w-4 text-primary-foreground/80" />
         </button>
         <button 
           onClick={handleSendClick}
           className={cn(
-            'h-7 w-7 rounded-full bg-white/30 hover:bg-white/40',
+            'h-8 w-8 rounded-full bg-white/30 hover:bg-white/40',
             'flex items-center justify-center',
             'transition-colors'
           )}
           title="Senden"
         >
-          <Send className="h-3.5 w-3.5 text-primary-foreground" />
+          <Send className="h-4 w-4 text-primary-foreground" />
         </button>
       </div>
     </div>
