@@ -38,8 +38,11 @@
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 100%;
+    /* Glass-enabled surfaces with alpha channel */
+    --card: 0 0% 100% / 0.8;
     --card-foreground: 222.2 84% 4.9%;
+    --card-glass: 0 0% 100% / 0.7;
+    --surface-glass: 0 0% 98% / 0.6;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -110,8 +113,11 @@
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222 30% 10%;
+    /* Glass-enabled surfaces with alpha channel */
+    --card: 222 30% 10% / 0.85;
     --card-foreground: 210 40% 98%;
+    --card-glass: 222 47% 6% / 0.7;
+    --surface-glass: 222 47% 5% / 0.6;
 
     --popover: 222 35% 9%;
     --popover-foreground: 210 40% 98%;
@@ -451,5 +457,24 @@
   /* Atmospheric Background Utility */
   .bg-atmosphere {
     background: var(--bg-atmosphere);
+  }
+
+  /* Glassmorphism Utility Classes */
+  .glass-card {
+    background: hsl(var(--card));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-surface {
+    background: hsl(var(--surface-glass));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-nav {
+    background: hsl(var(--card-glass));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 }

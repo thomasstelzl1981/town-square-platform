@@ -17,7 +17,7 @@ export function ArmstrongInputBar({ onOpenSheet, className }: ArmstrongInputBarP
   return (
     <div 
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border',
+        'fixed bottom-0 left-0 right-0 z-40 bg-card/80 backdrop-blur-md border-t border-border',
         className
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}

@@ -59,7 +59,7 @@ export function TopNavigation() {
   }
 
   return (
-    <nav className="border-b bg-card/50">
+    <nav className="border-b bg-card/60 backdrop-blur-md">
       {/* Level 1: Area Tabs */}
       <div className="border-b">
         <AreaTabs />
