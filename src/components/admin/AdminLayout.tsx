@@ -76,7 +76,7 @@ export function AdminLayout() {
           <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="mr-2" />
-              <h1 className="text-lg font-semibold">Admin Portal</h1>
+              <h1 className="text-lg font-semibold uppercase tracking-wide">Admin Portal</h1>
               {/* P0-ID-CTX-INTERNAL-DEFAULT: Context Badge (always visible) */}
               <Badge 
                 variant="secondary"

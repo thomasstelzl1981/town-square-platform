@@ -314,4 +314,9 @@
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* Uppercase Headlines mit leichtem Letter-Spacing */
+  .text-headline {
+    @apply uppercase tracking-wide;
+  }
 }

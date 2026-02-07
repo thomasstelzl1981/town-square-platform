@@ -151,7 +151,7 @@ export default function LeadPool() {
   return (
     <div className="space-y-6" ref={contentRef}>
       <div>
-        <h1 className="text-2xl font-bold">Lead Pool (Zone 1)</h1>
+        <h1 className="text-2xl font-bold uppercase">Lead Pool (Zone 1)</h1>
         <p className="text-muted-foreground">
           Zentrale Lead-Verwaltung und Partner-Zuweisung
         </p>

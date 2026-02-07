@@ -111,7 +111,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6" ref={contentRef}>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Dashboard</h2>
         <p className="text-muted-foreground">Welcome to the System of a Town Admin Portal</p>
       </div>
 

@@ -37,7 +37,7 @@ export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) 
           <Sparkles className="h-5 w-5" />
           <span className="text-sm font-medium">{content.moduleCode}</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold">{content.title}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold uppercase">{content.title}</h1>
         <p className="text-lg text-muted-foreground">{content.oneLiner}</p>
       </div>
 
@@ -77,7 +77,7 @@ export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) 
 
       {/* Flows */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Typische Abläufe</h2>
+        <h2 className="text-lg font-semibold uppercase">Typische Abläufe</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {content.flows.map((flow, i) => (
             <Card key={i} className="bg-muted/50">

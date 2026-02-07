@@ -31,7 +31,7 @@ export function AreaTabs() {
             key={area.key}
             onClick={() => setActiveArea(area.key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
+              'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
               isActive
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'

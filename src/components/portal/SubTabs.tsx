@@ -35,7 +35,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             key={tile.path}
             to={route}
             className={cn(
-              'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
+              'px-3 py-1 rounded-md text-sm uppercase tracking-wide transition-all whitespace-nowrap',
               isActive
                 ? 'bg-primary text-primary-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent',

@@ -75,7 +75,7 @@ export function ModuleTilePage({
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{title}</h1>
+            <h1 className="text-2xl font-bold uppercase">{title}</h1>
             {description && <p className="text-muted-foreground mt-1">{description}</p>}
           </div>
         </div>
@@ -90,7 +90,7 @@ export function ModuleTilePage({
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{title}</h1>
+            <h1 className="text-2xl font-bold uppercase">{title}</h1>
             {description && <p className="text-muted-foreground mt-1">{description}</p>}
           </div>
         </div>
@@ -116,7 +116,7 @@ export function ModuleTilePage({
             )}
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{title}</h1>
+                <h1 className="text-2xl font-bold uppercase">{title}</h1>
                 {badge && <Badge variant={badgeVariant}>{badge}</Badge>}
               </div>
               {description && <p className="text-muted-foreground mt-1">{description}</p>}
@@ -186,7 +186,7 @@ export function ModuleTilePage({
           )}
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{title}</h1>
+              <h1 className="text-2xl font-bold uppercase">{title}</h1>
               {badge && <Badge variant={badgeVariant}>{badge}</Badge>}
             </div>
             {description && <p className="text-muted-foreground mt-1">{description}</p>}
