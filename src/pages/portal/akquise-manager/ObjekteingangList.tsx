@@ -32,10 +32,38 @@ const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' 
 
 export function ObjekteingangList() {
   const navigate = useNavigate();
-  const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesActive();
+  const { data: mandatesForManager = [], isLoading: loadingMandates } = useAcqMandatesActive();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [mandateFilter, setMandateFilter] = React.useState<string>('all');
+
+  // Also fetch mandates from the demo tenant for testing
+  const { data: demoMandates = [] } = useQuery({
+    queryKey: ['acq-mandates-demo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('acq_mandates')
+        .select('*')
+        .eq('tenant_id', 'a0000000-0000-4000-a000-000000000001')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Combine manager mandates with demo mandates (deduplicated)
+  const mandates = React.useMemo(() => {
+    const seen = new Set<string>();
+    const combined = [];
+    for (const m of [...mandatesForManager, ...demoMandates]) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        combined.push(m);
+      }
+    }
+    return combined;
+  }, [mandatesForManager, demoMandates]);
 
   // Fetch all offers for active mandates
   const mandateIds = mandates.map(m => m.id);
@@ -119,21 +147,21 @@ export function ObjekteingangList() {
             <div className="text-sm text-muted-foreground">Gesamt</div>
           </CardContent>
         </Card>
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">{stats.new}</div>
+            <div className="text-2xl font-bold text-primary">{stats.new}</div>
             <div className="text-sm text-muted-foreground">Neu eingegangen</div>
           </CardContent>
         </Card>
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-secondary/40 bg-secondary/10">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-amber-600">{stats.analyzing}</div>
+            <div className="text-2xl font-bold text-secondary-foreground">{stats.analyzing}</div>
             <div className="text-sm text-muted-foreground">In Analyse</div>
           </CardContent>
         </Card>
-        <Card className="border-green-200 bg-green-50/50">
+        <Card className="border-accent/40 bg-accent/10">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">{stats.analyzed}</div>
+            <div className="text-2xl font-bold text-accent-foreground">{stats.analyzed}</div>
             <div className="text-sm text-muted-foreground">Analysiert</div>
           </CardContent>
         </Card>
