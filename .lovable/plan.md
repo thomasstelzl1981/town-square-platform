@@ -1,84 +1,86 @@
 
 
-# Plan: SystemBar Geo-Erweiterung + SubTabs Zentrierung
+# Bugfix-Plan: SystemBar Location + Navigation Zentrierung
 
-## Übersicht
+## Problem-Analyse
 
-Zwei UI-Verbesserungen für die Desktop-Ansicht:
+### 1. Standort wird nicht angezeigt
+**Console-Log gefunden:**
+```
+Geolocation error: {}
+```
 
-1. **SystemBar erweitern**: Neben der Uhrzeit auch Standort (Stadt) und Höhenmeter anzeigen
-2. **SubTabs zentrieren**: Level-3-Navigation horizontal mittig ausrichten
+Der Browser verweigert die Geolocation-Berechtigung im Preview-Iframe. Das ist ein bekanntes Problem bei eingebetteten iframes (Sicherheitseinschränkung).
+
+**Lösungsoptionen:**
+- A) Fallback-Anzeige mit "Standort anfordern"-Button
+- B) IP-basierte Geolocation als Fallback (weniger genau, aber funktioniert)
+
+### 2. Zentrierung fehlt bei Level 1 und Level 2
+**Aktuelle Situation:**
+
+| Level | Komponente | Aktuelle Klassen | Problem |
+|-------|------------|------------------|---------|
+| Level 1 | `AreaTabs.tsx` Zeile 24 | `flex items-center gap-1` | Kein `justify-center` |
+| Level 2 | `ModuleTabs.tsx` Zeile 81 | `flex items-center gap-1` | Kein `justify-center` |
+| Level 3 | `SubTabs.tsx` Zeile 25 | `flex items-center justify-center gap-1` | OK |
 
 ---
 
-## Teil 1: Geo-Location im SystemBar
+## Implementierungsplan
 
-### Technische Umsetzung
+### Fix 1: AreaTabs.tsx — Level 1 zentrieren
 
-**Browser Geolocation API** → **Reverse Geocoding** → Anzeige
+**Datei:** `src/components/portal/AreaTabs.tsx`
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│ [Home]  System of a Town    📍 Berlin · 34m · 14:32        │
-└────────────────────────────────────────────────────────────┘
+**Zeile 24 andern von:**
+```tsx
+<div className="flex items-center gap-1 px-4 py-2">
 ```
 
-### Implementierung
+**Zu:**
+```tsx
+<div className="flex items-center justify-center gap-1 px-4 py-2">
+```
+
+### Fix 2: ModuleTabs.tsx — Level 2 zentrieren
+
+**Datei:** `src/components/portal/ModuleTabs.tsx`
+
+**Zeile 81 andern von:**
+```tsx
+<div className="flex items-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none">
+```
+
+**Zu:**
+```tsx
+<div className="flex items-center justify-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none">
+```
+
+### Fix 3: SystemBar.tsx — Geolocation Fallback
+
+Da der Preview-Iframe Geolocation blockiert, zeigen wir einen klickbaren Fallback an:
 
 **Datei:** `src/components/portal/SystemBar.tsx`
 
-**Neue States:**
-```typescript
-const [location, setLocation] = useState<{
-  city: string;
-  altitude: number | null;
-} | null>(null);
-const [locationLoading, setLocationLoading] = useState(true);
+**Neue State-Variable:**
+```tsx
+const [locationError, setLocationError] = useState(false);
 ```
 
-**Neuer useEffect für Geolocation:**
-```typescript
-useEffect(() => {
-  if (!navigator.geolocation) {
-    setLocationLoading(false);
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const { latitude, longitude, altitude } = position.coords;
-      
-      // Reverse Geocoding mit kostenlosem OpenStreetMap Nominatim API
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-        );
-        const data = await response.json();
-        const city = data.address?.city || data.address?.town || data.address?.village || 'Unbekannt';
-        
-        setLocation({
-          city,
-          altitude: altitude ? Math.round(altitude) : null
-        });
-      } catch (error) {
-        console.error('Geocoding failed:', error);
-      }
-      setLocationLoading(false);
-    },
-    (error) => {
-      console.error('Geolocation error:', error);
-      setLocationLoading(false);
-    },
-    { enableHighAccuracy: true }
-  );
-}, []);
+**Fehler-Handling erweitern (Zeile 78-80):**
+```tsx
+(error) => {
+  console.error('Geolocation error:', error);
+  setLocationError(true);  // NEU
+},
 ```
 
-**Anzeige im Center-Section:**
+**Anzeige mit Fallback-Button (Zeile 122-136):**
 ```tsx
 {/* Center section: Location + Time */}
 <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
-  {location && (
+  {location ? (
     <>
       <div className="flex items-center gap-1.5">
         <MapPin className="h-4 w-4" />
@@ -92,7 +94,22 @@ useEffect(() => {
       )}
       <span className="text-muted-foreground/50">·</span>
     </>
-  )}
+  ) : locationError ? (
+    <>
+      <button
+        onClick={() => {
+          // Retry geolocation request
+          navigator.geolocation?.getCurrentPosition(/* ... */);
+        }}
+        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+        title="Standort aktivieren"
+      >
+        <MapPin className="h-4 w-4" />
+        <span className="text-sm">Standort?</span>
+      </button>
+      <span className="text-muted-foreground/50">·</span>
+    </>
+  ) : null}
   <div className="flex items-center gap-1.5">
     <Clock className="h-4 w-4" />
     <span className="text-sm font-mono">{formattedTime}</span>
@@ -100,92 +117,53 @@ useEffect(() => {
 </div>
 ```
 
-### Hinweise
+---
 
-- **Benutzer-Erlaubnis erforderlich**: Browser fragt nach Standort-Berechtigung
-- **Fallback**: Wenn abgelehnt oder nicht verfügbar → nur Uhrzeit anzeigen
-- **Höhenmeter-Genauigkeit**: GPS-Höhe ist oft ungenau (±10-50m), wird aber angezeigt wenn verfügbar
-- **Kostenloser API**: Nominatim (OpenStreetMap) hat ein Rate-Limit, aber für einzelne Anfragen ausreichend
+## Dateiänderungen Zusammenfassung
+
+| Datei | Aktion | Änderung |
+|-------|--------|----------|
+| `src/components/portal/AreaTabs.tsx` | MODIFY | `justify-center` hinzufugen |
+| `src/components/portal/ModuleTabs.tsx` | MODIFY | `justify-center` hinzufugen |
+| `src/components/portal/SystemBar.tsx` | MODIFY | `locationError` State + Fallback-Button |
 
 ---
 
-## Teil 2: SubTabs Zentrierung
+## Erwartetes Ergebnis
 
-### Aktuelle Situation
-
-```tsx
-// Zeile 25 in SubTabs.tsx
-<div className="flex items-center gap-1 px-4 py-2 overflow-x-auto ...">
-```
-
-Die Tabs sind **linksbündig** (`flex` ohne `justify-center`).
-
-### Lösung
-
-**Datei:** `src/components/portal/SubTabs.tsx`
-
-**Änderung:**
-```tsx
-<div className="flex items-center justify-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none bg-background/50">
-```
-
-Hinzufügen von `justify-center` zur Flex-Container-Klasse.
-
----
-
-## Dateiänderungen
-
-| Datei | Aktion | Beschreibung |
-|-------|--------|-------------|
-| `src/components/portal/SystemBar.tsx` | MODIFY | Geolocation hinzufügen, Standort + Höhe anzeigen |
-| `src/components/portal/SubTabs.tsx` | MODIFY | `justify-center` hinzufügen |
-
----
-
-## Neue Icons benötigt
-
-```typescript
-import { MapPin, Mountain } from 'lucide-react';
-```
-
-Beide sind in lucide-react verfügbar.
-
----
-
-## Visuelle Darstellung
-
-### SystemBar (nach Änderung)
-
+### SystemBar (nach Fix)
 ```text
-Desktop:
 ┌──────────────────────────────────────────────────────────────────┐
-│ [🏠 Portal]  [S] System of a Town    📍 Berlin · ⛰ 34m · 🕐 14:32 │
+│ [Portal] [S] System of a Town   📍 Standort? · 🕐 10:44    [👤]  │
 └──────────────────────────────────────────────────────────────────┘
+                                  ↑ Klickbar zum Aktivieren
 
-Mobile (kompakter):
-┌─────────────────────────────────┐
-│ [🏠]           🕐 14:32    [👤] │
-└─────────────────────────────────┘
-(Standort nur auf Desktop, da Platz begrenzt)
+Nach Berechtigung:
+┌──────────────────────────────────────────────────────────────────┐
+│ [Portal] [S] System of a Town   📍 Berlin · ⛰ 34m · 🕐 10:44  [👤] │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### SubTabs (nach Änderung)
-
+### Navigation (nach Fix)
 ```text
-Vorher (linksbündig):
-│ [Profil] [Organisation] [Abrechnung] [Sicherheit]               │
+Level 1 (zentriert):
+│           [Base] [Missions] [Operations] [Services]            │
 
-Nachher (zentriert):
-│          [Profil] [Organisation] [Abrechnung] [Sicherheit]      │
+Level 2 (zentriert):
+│        [Stammdaten] [KI Office] [Dokumente] [Services] [Miety] │
+
+Level 3 (bereits zentriert):
+│              [Profil] [Organisation] [Abrechnung]               │
 ```
 
 ---
 
-## Privacy-Hinweis
+## Hinweis zur Geolocation
 
-Der Standort wird:
-- **Nur lokal im Browser** verwendet
-- **Nicht an Backend** gesendet
-- **Einmalig** beim Laden abgefragt (nicht kontinuierlich getrackt)
-- **Optional** — funktioniert auch ohne Berechtigung
+Die Geolocation funktioniert moglicherweise nur:
+- In der publizierten Version (nicht im Preview-Iframe)
+- Wenn der User aktiv die Berechtigung erteilt
+- Auf HTTPS-Seiten
+
+Der Fallback-Button ermöglicht dem User, die Berechtigung erneut anzufordern.
 
