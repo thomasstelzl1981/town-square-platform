@@ -1,162 +1,179 @@
 
-# Armstrong Rundes Mini-Chat — Mit Drag-and-Drop
+# Armstrong Positionierung und Drag-and-Drop Fix
 
-## Konzept
+## Identifizierte Probleme
 
-Ein rundes Chat-Widget (150px Durchmesser ≈ 4cm) mit Input, Upload und Send — **vollständig draggable**. Der `useDraggable` Hook bleibt erhalten, nur die komplexen Planet-CSS-Styles werden durch einfache Tailwind-Klassen ersetzt.
+### 1. Position links oben
+Die gespeicherte Position aus `localStorage` ist veraltet oder ungültig. Der Hook verwendet diese statt der Default-Position "rechts unten".
 
-```text
-MINIMIERT — Rundes Mini-Chat (150px ⌀, DRAGGABLE):
-┌────────────────────────────────────────────────────────────────────┐
-│                                                                    │
-│                                                  ┌───────────┐     │
-│                                                  │    🤖     │     │
-│                                                  │ ┌───────┐ │     │
-│                                         ↔        │ │Fragen │ │     │
-│                                        Drag      │ └───────┘ │     │
-│                                                  │  📎   ➤  │     │
-│                                                  └───────────┘     │
-│                                                  150px rund        │
-│                                                  Position: frei    │
-└────────────────────────────────────────────────────────────────────┘
+### 2. Drag-and-Drop funktioniert nicht
+Der `handleMouseDown` verwendet eine veraltete Position aus dem Closure. Bei jedem Render wird eine neue Funktion erstellt, aber mit veralteten Werten.
 
-EXPANDIERT — Chat-Panel (320x500px, DRAGGABLE):
-┌────────────────────────────────────────────────────────────────────┐
-│                                              ┌─────────────────┐   │
-│                                              │ Armstrong ↔ ─ ✕ │   │
-│                                              ├─────────────────┤   │
-│                                              │                 │   │
-│                                              │   Chat Panel    │   │
-│                                              │   (voll)        │   │
-│                                              │                 │   │
-│                                              ├─────────────────┤   │
-│                                              │ Nachricht... ➤  │   │
-│                                              └─────────────────┘   │
-└────────────────────────────────────────────────────────────────────┘
+### 3. containerSize-Wechsel
+Beim Wechsel zwischen collapsed (150x150) und expanded (320x500) wird die gleiche Position verwendet, was zu Sprüngen führt.
+
+---
+
+## Lösung
+
+### 1. useDraggable.ts — Position-Referenz korrigieren
+
+**Problem:** `handleMouseDown` erfasst `position` im Closure-Scope, der veraltet sein kann.
+
+**Lösung:** Verwende `useRef` für die aktuelle Position und synchronisiere sie mit dem State:
+
+```typescript
+// Aktuelle Position in Ref für Event-Handler
+const positionRef = useRef<Position>(position);
+useEffect(() => {
+  positionRef.current = position;
+}, [position]);
+
+// In handleMouseDown:
+dragOffset.current = {
+  x: e.clientX - positionRef.current.x,
+  y: e.clientY - positionRef.current.y,
+};
+```
+
+### 2. useDraggable.ts — Initialisierung verbessern
+
+**Problem:** Gespeicherte Position überschreibt immer den Standard.
+
+**Lösung:** Validiere die gespeicherte Position strenger und lösche ungültige Werte:
+
+```typescript
+const stored = loadStoredPosition(storageKey);
+if (stored) {
+  // Prüfe ob Position im sichtbaren Bereich ist
+  const constrained = constrainPosition(...);
+  
+  // Wenn Position stark abweicht, verwende Default
+  if (Math.abs(constrained.x - stored.x) > 50 || 
+      Math.abs(constrained.y - stored.y) > 50) {
+    // Gespeicherte Position war ungültig
+    localStorage.removeItem(storageKey);
+    return getDefaultPosition(...);
+  }
+  return constrained;
+}
+```
+
+### 3. ArmstrongContainer.tsx — Separater Storage-Key für Expanded
+
+**Problem:** Collapsed und Expanded teilen den gleichen Storage-Key, obwohl sie unterschiedliche Größen haben.
+
+**Lösung:** Verwende separaten Key oder lösche die Position beim Wechsel:
+
+```typescript
+// Beim Toggle die alte Position löschen
+useEffect(() => {
+  // Position bei sichtbar werden zurücksetzen
+  if (armstrongVisible) {
+    resetPosition();
+  }
+}, [armstrongVisible]);
+```
+
+### 4. Einmalige localStorage-Bereinigung
+
+Füge eine Migration hinzu, die den alten `armstrong-position` Key löscht:
+
+```typescript
+// In usePortalLayout.tsx oder ArmstrongContainer.tsx
+useEffect(() => {
+  localStorage.removeItem('armstrong-position');
+}, []);
 ```
 
 ---
 
-## Technische Änderungen
-
-### 1. ArmstrongContainer.tsx — Rundes Mini-Chat mit Drag
-
-**Minimierter Zustand (neu):**
-- Container: 150x150px, `rounded-full`
-- Hintergrund: Einfacher Gradient (`bg-gradient-to-br from-primary to-primary/80`)
-- Inhalt: Bot-Icon, Input-Feld (rund), Upload + Send Buttons
-- **Drag-Handle**: Gesamter Container ist draggbar
-- **Klick auf Input/Buttons** → Expandiert zum vollen ChatPanel
-
-**Expandierter Zustand (bleibt ähnlich):**
-- Container: 320x500px, `rounded-2xl`
-- Header als Drag-Handle (wie bisher)
-- ChatPanel im Body
-
-```text
-Code-Struktur:
-
-// MINIMIERT: Rundes Widget
-<div 
-  style={{ left: position.x, top: position.y }}
-  {...dragHandleProps}
-  className="fixed z-[60] h-[150px] w-[150px] rounded-full 
-             bg-gradient-to-br from-primary to-primary/80
-             shadow-xl flex flex-col items-center justify-center p-3"
->
-  <Bot icon />
-  <input placeholder="Fragen..." onFocus={expand} />
-  <div className="flex gap-2">
-    <button upload />
-    <button send />
-  </div>
-</div>
-
-// EXPANDIERT: Chat-Panel
-<div 
-  style={{ left: position.x, top: position.y }}
-  className="fixed z-[60] w-80 h-[500px] rounded-2xl ..."
->
-  <header {...dragHandleProps}>Drag-Handle</header>
-  <ChatPanel />
-</div>
-```
-
-### 2. CSS bereinigen — Planet-Styles entfernen
-
-**Datei:** `src/index.css` (Zeilen 536-602)
-
-Die komplexen 3D-Gradient-Styles werden vollständig entfernt:
-- `.armstrong-planet`
-- `.armstrong-planet:hover`
-- `.dark .armstrong-planet`
-- `.dark .armstrong-planet:hover`
-
-Diese ca. 67 Zeilen CSS werden gelöscht und durch einfache Tailwind-Klassen im TSX ersetzt.
-
-### 3. ArmstrongPod.tsx — Löschen
-
-Diese Komponente wird nirgends mehr importiert (nur Kommentare verweisen darauf) und ist ein Artefakt.
-
-### 4. usePortalLayout.tsx — Aufräumen
-
-- Debug-Log entfernen (Zeile 80-87 in ArmstrongContainer)
-- `console.error` entfernen (Zeile 270)
-- Kein weiterer Umbau nötig — der Hook funktioniert
-
----
-
-## Betroffene Dateien
+## Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/portal/ArmstrongContainer.tsx` | Rewrite: Rundes Mini-Chat mit Input/Upload/Send |
-| `src/components/portal/ArmstrongPod.tsx` | **Löschen** — unbenutzt |
-| `src/index.css` | Zeilen 536-602 entfernen (`.armstrong-planet`) |
-| `src/hooks/usePortalLayout.tsx` | Debug-Log entfernen |
+| `src/hooks/useDraggable.ts` | Position-Ref hinzufügen, Validierung verbessern |
+| `src/components/portal/ArmstrongContainer.tsx` | Position beim Einblenden zurücksetzen |
 
 ---
 
-## Design-Spezifikation
+## Technische Details
 
-### Rundes Mini-Chat (Minimiert)
+### useDraggable.ts — Neue Implementierung
 
-| Element | Spezifikation |
-|---------|---------------|
-| **Container** | 150x150px, `rounded-full`, draggable |
-| **Hintergrund** | `bg-gradient-to-br from-primary to-primary/80` |
-| **Shadow** | `shadow-xl` (einfach, zuverlässig) |
-| **Bot-Icon** | `Bot` oder `MessageCircle`, 20x20px, weiß |
-| **Input** | `h-8`, `rounded-full`, halbtransparent weiß, zentriert |
-| **Buttons** | 28x28px, `rounded-full`, halbtransparent |
-| **Schrift** | `text-white`, 11-12px |
+```typescript
+export function useDraggable(options: DraggableOptions = {}): DraggableResult {
+  // ... bestehende Optionen
+  
+  // Ref für aktuelle Position (für Event-Handler)
+  const positionRef = useRef<Position | null>(null);
+  
+  const [position, setPosition] = useState<Position>(() => {
+    const stored = loadStoredPosition(storageKey);
+    const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
+    
+    if (stored) {
+      const constrained = constrainPosition(stored.x, stored.y, ...);
+      // Nur verwenden wenn nicht zu stark abweichend
+      const isValid = 
+        constrained.x >= boundaryPadding && 
+        constrained.y >= boundaryPadding;
+      
+      if (isValid) {
+        positionRef.current = constrained;
+        return constrained;
+      }
+    }
+    
+    positionRef.current = defaultPos;
+    return defaultPos;
+  });
+  
+  // Sync Position-Ref
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+  
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    
+    // Verwende Ref statt State
+    const currentPos = positionRef.current || position;
+    dragOffset.current = {
+      x: e.clientX - currentPos.x,
+      y: e.clientY - currentPos.y,
+    };
+    // ... rest
+  }, [disabled, containerSize, boundaryPadding, storageKey]);
+  
+  // ...
+}
+```
 
-### Hover/Drag-Feedback
+### ArmstrongContainer.tsx — Reset bei Visibility
 
-| Zustand | Effekt |
-|---------|--------|
-| **Hover** | `hover:scale-105`, `hover:shadow-2xl` |
-| **Dragging** | `cursor-grabbing`, `opacity-90` |
-| **File-Drop** | `ring-2 ring-white/50` |
+```typescript
+// Position beim ersten Erscheinen zurücksetzen
+const hasInitialized = useRef(false);
 
----
-
-## Was bleibt erhalten
-
-- **useDraggable Hook** — Vollständig, mit Position-Persistenz
-- **ChatPanel** — Unverändert (alle Funktionen)
-- **File Drag-and-Drop** — Weiterhin im Widget möglich
-- **ArmstrongSheet** — Mobile Bottom-Sheet unverändert
-- **ArmstrongInputBar** — Mobile Input-Bar unverändert
-- **SystemBar Toggle** — Rocket-Button funktioniert weiter
-- **Self-Healing** — Off-Screen-Detection bleibt
+useEffect(() => {
+  if (armstrongVisible && !hasInitialized.current) {
+    hasInitialized.current = true;
+    // Alte Position löschen
+    localStorage.removeItem('armstrong-position');
+    resetPosition();
+  }
+}, [armstrongVisible, resetPosition]);
+```
 
 ---
 
 ## Erwartetes Ergebnis
 
-1. **Sofort sichtbar** — Rundes Widget rechts unten
-2. **Draggable** — Frei positionierbar per Maus
-3. **Funktional** — Input + Upload + Send direkt sichtbar
-4. **Zuverlässig** — Einfaches CSS, keine komplexen Animationen
-5. **Responsive** — Auf Mobile weiterhin InputBar + Sheet
+1. Armstrong erscheint beim ersten Aktivieren rechts unten
+2. Drag-and-Drop funktioniert flüssig
+3. Position wird korrekt gespeichert und wiederhergestellt
+4. Kein Springen beim Wechsel zwischen collapsed/expanded
