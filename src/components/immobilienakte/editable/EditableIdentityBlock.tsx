@@ -2,21 +2,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Building2 } from 'lucide-react';
-import type { PropertyCategory, PropertyStatus, ReportingRegime } from '@/types/immobilienakte';
+import { Building2, ExternalLink } from 'lucide-react';
+import { StatusIndicator, type ModuleStatus } from './StatusIndicator';
+import type { PropertyStatus, ReportingRegime } from '@/types/immobilienakte';
 
 interface EditableIdentityBlockProps {
   unitCode: string;
   propertyType?: string;
-  category: PropertyCategory;
   status: PropertyStatus;
   saleEnabled: boolean;
   rentalManaged: boolean;
   reportingRegime: ReportingRegime;
   buildYear?: number;
   wegFlag?: boolean;
-  meaOrTeNo?: string;
   onFieldChange: (field: string, value: any) => void;
 }
 
@@ -28,11 +26,6 @@ const PROPERTY_TYPES = [
   { value: 'RH', label: 'Reihenhaus' },
   { value: 'Gewerbe', label: 'Gewerbeobjekt' },
   { value: 'Grundstueck', label: 'Grundstück' },
-];
-
-const CATEGORIES: { value: PropertyCategory; label: string }[] = [
-  { value: 'einzelobjekt', label: 'Einzelobjekt' },
-  { value: 'globalobjekt', label: 'Globalobjekt (Mehrere Einheiten)' },
 ];
 
 const STATUSES: { value: PropertyStatus; label: string }[] = [
@@ -47,17 +40,20 @@ const REGIMES: { value: ReportingRegime; label: string }[] = [
   { value: 'SuSa_BWA', label: 'SuSa/BWA (Gewerblich)' },
 ];
 
+// Helper to derive module status from boolean flags
+function getModuleStatus(isEnabled: boolean): ModuleStatus {
+  return isEnabled ? 'active' : 'inactive';
+}
+
 export function EditableIdentityBlock({
   unitCode,
   propertyType,
-  category,
   status,
   saleEnabled,
   rentalManaged,
   reportingRegime,
   buildYear,
   wegFlag,
-  meaOrTeNo,
   onFieldChange,
 }: EditableIdentityBlockProps) {
   return (
@@ -101,22 +97,6 @@ export function EditableIdentityBlock({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Kategorie</Label>
-            <Select value={category} onValueChange={(v) => onFieldChange('category', v as PropertyCategory)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={status} onValueChange={(v) => onFieldChange('propertyStatus', v as PropertyStatus)}>
               <SelectTrigger>
@@ -129,6 +109,9 @@ export function EditableIdentityBlock({
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Reporting</Label>
             <Select value={reportingRegime} onValueChange={(v) => onFieldChange('reportingRegime', v as ReportingRegime)}>
@@ -142,46 +125,41 @@ export function EditableIdentityBlock({
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        {/* Flags */}
-        <div className="flex flex-wrap gap-6 pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <Switch 
-              id="sale-enabled"
-              checked={saleEnabled} 
-              onCheckedChange={(v) => onFieldChange('saleEnabled', v)} 
-            />
-            <Label htmlFor="sale-enabled" className="text-sm">Verkauf aktiv</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch 
-              id="rental-managed"
-              checked={rentalManaged} 
-              onCheckedChange={(v) => onFieldChange('rentalManaged', v)} 
-            />
-            <Label htmlFor="rental-managed" className="text-sm">Vermietung verwaltet</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch 
-              id="weg-flag"
-              checked={wegFlag || false} 
-              onCheckedChange={(v) => onFieldChange('wegFlag', v)} 
-            />
-            <Label htmlFor="weg-flag" className="text-sm">WEG</Label>
-          </div>
-        </div>
-
-        {wegFlag && (
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">MEA/TE-Nr.</Label>
-            <Input 
-              value={meaOrTeNo || ''} 
-              onChange={(e) => onFieldChange('teNumber', e.target.value)}
-              placeholder="z.B. 42/1000"
+            <Label className="text-xs text-muted-foreground">Wohnungseigentum (WEG)</Label>
+            <Select 
+              value={wegFlag ? 'ja' : 'nein'} 
+              onValueChange={(v) => onFieldChange('wegFlag', v === 'ja')}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ja">Ja</SelectItem>
+                <SelectItem value="nein">Nein</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Module Status (Read-only Indicators) */}
+        <div className="pt-3 border-t">
+          <Label className="text-xs text-muted-foreground mb-2 block">Modul-Status</Label>
+          <div className="flex flex-wrap gap-6">
+            <StatusIndicator 
+              label="Verkauf" 
+              status={getModuleStatus(saleEnabled)} 
+            />
+            <StatusIndicator 
+              label="Vermietung" 
+              status={getModuleStatus(rentalManaged)} 
             />
           </div>
-        )}
+          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+            <ExternalLink className="h-3 w-3" />
+            Aktivierung erfolgt im Tab "Features"
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
