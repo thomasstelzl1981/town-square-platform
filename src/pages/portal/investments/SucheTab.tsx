@@ -94,7 +94,8 @@ export default function SucheTab() {
             city,
             postal_code,
             property_type,
-            total_area_sqm
+            total_area_sqm,
+            annual_income
           )
         `)
         .eq('status', 'active')
@@ -127,7 +128,9 @@ export default function SucheTab() {
         postal_code: item.properties?.postal_code,
         total_area_sqm: item.properties?.total_area_sqm,
         unit_count: 1,
-        monthly_rent_total: 0, // Would need units/leases query
+        monthly_rent_total: item.properties?.annual_income 
+          ? item.properties.annual_income / 12 
+          : 0,
         hero_image_path: null,
       })) as PublicListing[];
     },

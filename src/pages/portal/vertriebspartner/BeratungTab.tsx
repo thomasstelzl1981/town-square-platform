@@ -72,7 +72,7 @@ const BeratungTab = () => {
         .select(`
           id, public_id, title, asking_price, commission_rate, status,
           properties!inner (
-            address, city, property_type, total_area_sqm, annual_rent_income
+            address, city, property_type, total_area_sqm, annual_income
           )
         `)
         .in('id', listingIds)
@@ -82,7 +82,7 @@ const BeratungTab = () => {
 
       return (listingsData || []).map((l: any) => {
         const props = l.properties;
-        const annualRent = props?.annual_rent_income || 0;
+        const annualRent = props?.annual_income || 0;
         const price = l.asking_price || 0;
         const grossYield = price > 0 ? (annualRent / price) * 100 : null;
         
