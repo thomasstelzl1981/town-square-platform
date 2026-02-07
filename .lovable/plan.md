@@ -1,269 +1,251 @@
 
-# Investment Engine — Zentraler Fix-Plan (Revidiert)
+# Investment Engine UX Fix — Einheitliche Exposé-Seite
 
-## Analyse: Was ist das Problem?
+## Problemanalyse
 
-### 3 Stellen, 3 verschiedene Implementierungen
+### Identifizierte Fehler (Screenshots vs. aktueller Stand)
 
-| Kontext | Datei | Query-Problem | Card-Komponente |
-|---------|-------|---------------|-----------------|
-| **Zone 3 Kaufy** | `KaufyHome.tsx` | ❌ MOCK_PROPERTIES statt DB | `KaufyPropertyCard` |
-| **MOD-08 Suche** | `SucheTab.tsx` | ⚠️ Kein `annual_income` in Query | `InvestmentSearchCard` |
-| **MOD-09 Beratung** | `BeratungTab.tsx` | ❌ `annual_rent_income` (falsch!) | `PartnerPropertyGrid` |
+| # | Problem | Root Cause | Auswirkung |
+|---|---------|------------|------------|
+| 1 | **Fehlende Exposé-Seite** | MOD-08 hat keine `objekt/:publicId` Route | Klick auf "Details" führt zu `/kaufy/expose` (Zone 3) |
+| 2 | **Falscher Link-Prefix** | `InvestmentSearchCard` verlinkt auf `/kaufy/expose` statt Portal-Route | User verlässt Portal |
+| 3 | **Provision überall sichtbar** | `showProvision` nicht kontextabhängig gesteuert | Soll nur in MOD-09 Katalog angezeigt werden |
+| 4 | **Modal statt Seite** | `PartnerExposeModal` ist überladen | Zu viele Kacheln, nicht "clean" |
+| 5 | **Inkonsistente Mini-EÜR** | Unterschiedliche Berechnungsdarstellung | Keine einheitliche "Geldmaschinen"-UX |
 
-### Was funktioniert (Screenshots vs. Jetzt)
+### Referenz: Was gut funktioniert (Screenshots)
 
-| Element | Screenshot (Alt) | Jetzt | Problem |
-|---------|------------------|-------|---------|
-| Hero-Suche | ✅ zVE + EK + Toggle | ✅ Vorhanden | Funktioniert |
-| Property Cards | ✅ Mini-EÜR | ⚠️ Teilweise | Query liefert keine Mietdaten |
-| Detail-Modal | ✅ 5-Zeilen + Slider | ⚠️ Unterschiedlich | Verschiedene Modals |
-| Daten aus DB | ✅ Echte Listings | ❌ MOCK / Query-Fehler | Kernproblem! |
-
-### Root Cause (Warum alte Kaufy funktionierte, jetzt nicht)
-
-1. **Alte Kaufy:** Direkte DB-Anbindung mit korrektem Feldnamen
-2. **Jetzt:** 
-   - Zone 3: `MOCK_PROPERTIES` Array (keine DB!)
-   - MOD-08: Query ohne `annual_income`
-   - MOD-09: Query mit falschem Feldnamen `annual_rent_income`
+**Zone 3 KaufyExpose** (Screenshot 6-8) zeigt das richtige Layout:
+- **Header:** Breadcrumb, Titel, Preis, Key Facts (m², Einheiten, Baujahr)
+- **"Ihre monatliche Übersicht":** 5-Zeilen-Box (Mieteinnahme, Darlehensrate, Bewirtschaftung, Steuereffekt, Netto)
+- **Kalkulation-Tab:** Slider für zVE, EK, Tilgung + 4 Kennzahlen-Blöcke
+- **5-Box Cashflow-Darstellung:** Miete (grün), Rate (rot), Verw. (rot), Steuer (grün), Netto (rot/grün)
+- **10-Jahres-Projektion:** Restschuld, Objektwert, Wertzuwachs, Eigenkapitalaufbau
 
 ---
 
-## Lösung: 3 Ebenen
+## Lösung: Einheitliche Portal-Exposé-Seite
 
-### Ebene 1: Daten-Fixes (KRITISCH — P0)
+### Phase 1: Neue Exposé-Seite für MOD-08 (P0)
 
-#### 1.1 BeratungTab.tsx — Query-Fix
+**Neue Datei:** `src/pages/portal/investments/InvestmentExposePage.tsx`
 
-**Zeile 75:** `annual_rent_income` → `annual_income`
-
-```typescript
-// VORHER:
-properties!inner (
-  address, city, property_type, total_area_sqm, annual_rent_income
-)
-
-// NACHHER:
-properties!inner (
-  address, city, property_type, total_area_sqm, annual_income
-)
-```
-
-**Zeile 85:** Variable anpassen
-
-```typescript
-// VORHER:
-const annualRent = props?.annual_rent_income || 0;
-
-// NACHHER:
-const annualRent = props?.annual_income || 0;
-```
-
-#### 1.2 SucheTab.tsx — Query erweitern
-
-**Zeilen 86-98:** `annual_income` hinzufügen
-
-```typescript
-// VORHER:
-properties!inner (
-  id, address, city, postal_code, property_type, total_area_sqm
-)
-
-// NACHHER:
-properties!inner (
-  id, address, city, postal_code, property_type, total_area_sqm, annual_income
-)
-```
-
-**Zeile 130:** Echte Mietdaten verwenden
-
-```typescript
-// VORHER:
-monthly_rent_total: 0
-
-// NACHHER:
-monthly_rent_total: item.properties?.annual_income 
-  ? item.properties.annual_income / 12 
-  : 0
-```
-
-#### 1.3 KaufyHome.tsx — Echte DB-Daten statt Mock
-
-**Zeilen 28-77:** `MOCK_PROPERTIES` ersetzen durch DB-Query
-
-```typescript
-// Neuer useQuery Hook:
-const { data: listings = [], isLoading: isLoadingListings } = useQuery({
-  queryKey: ['kaufy-public-listings'],
-  queryFn: async () => {
-    // 1. Hole Kaufy-Publikationen
-    const { data: publications } = await supabase
-      .from('listing_publications')
-      .select('listing_id')
-      .eq('channel', 'kaufy')
-      .eq('status', 'active');
-
-    if (!publications?.length) return [];
-
-    // 2. Hole Listing-Details mit Property-Daten
-    const { data: listingsData } = await supabase
-      .from('listings')
-      .select(`
-        id, public_id, title, asking_price,
-        properties!inner (
-          property_type, address, city, postal_code, 
-          total_area_sqm, construction_year, annual_income
-        )
-      `)
-      .in('id', publications.map(p => p.listing_id))
-      .eq('status', 'active');
-
-    // 3. Transformieren
-    return (listingsData || []).map(l => ({
-      public_id: l.public_id,
-      title: l.title || `${l.properties.property_type} ${l.properties.city}`,
-      asking_price: l.asking_price || 0,
-      monthly_rent: l.properties.annual_income ? l.properties.annual_income / 12 : 0,
-      property_type: l.properties.property_type,
-      city: l.properties.city,
-      postal_code: l.properties.postal_code,
-      total_area_sqm: l.properties.total_area_sqm,
-      year_built: l.properties.construction_year,
-      gross_yield: l.asking_price > 0 
-        ? ((l.properties.annual_income || 0) / l.asking_price) * 100 
-        : 0,
-    }));
-  },
-});
-
-// State anpassen:
-const [properties, setProperties] = useState<PropertyData[]>([]);
-
-useEffect(() => {
-  if (listings.length > 0) {
-    setProperties(listings);
-  }
-}, [listings]);
-```
-
-**handleSearch anpassen:** Verwendet `properties` aus DB statt `MOCK_PROPERTIES`
-
----
-
-### Ebene 2: Einheitliche Komponenten (P1)
-
-Die drei Card-Komponenten haben **ähnliches Design**, aber leichte Unterschiede. Für Konsistenz:
-
-#### 2.1 Gemeinsame Property-Card Features
-
-| Feature | KaufyPropertyCard | InvestmentSearchCard | PartnerPropertyGrid |
-|---------|------------------|---------------------|---------------------|
-| Typ-Badge | ✅ | ✅ | ✅ |
-| Rendite-Badge | ✅ | ✅ | ✅ |
-| Herz-Button | ✅ | ✅ | ✅ |
-| Mini-EÜR | ✅ 3 Zeilen | ⚠️ 2 Zeilen | ✅ 3 Zeilen |
-| Netto-Highlight | ✅ Box | ⚠️ Inline | ✅ Border |
-
-**Empfehlung:** Alle auf das 3-Zeilen-Format angleichen:
+Diese Seite ist eine **Vollbild-Seite** (kein Modal!) und nutzt das bewährte Zone-3-Layout:
 
 ```text
-+ Cashflow vor Steuer    +XXX €/Mo  (grün/rot)
-+ Steuervorteil          +XXX €/Mo  (grün)
-─────────────────────────────────────
-Netto-Belastung          +XXX €/Mo  (highlight)
-```
-
-#### 2.2 Unified Property Card (Optional, Phase 2)
-
-Eine neue `UnifiedPropertyCard.tsx` könnte alle drei ersetzen:
-
-```typescript
-interface UnifiedPropertyCardProps {
-  property: PropertyData;
-  metrics?: CalculatedMetrics;
-  variant: 'zone2' | 'zone3';  // Styling-Variante
-  onFavorite?: () => void;
-  linkTo: string;
-}
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ ← Zurück zur Suche                                    [Favorit ♡] [Finanzierung]│
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌──────────────────────────────────┐  ┌───────────────────────────────────────┐│
+│  │ [Bildergalerie / Platzhalter]    │  │ 📍 Leipzig · 04103                    ││
+│  │                                  │  │ Leipziger Straße 42                   ││
+│  │                                  │  │ 145.000 €                             ││
+│  │                                  │  │                                       ││
+│  └──────────────────────────────────┘  │ ┌─────────┐ ┌─────────┐ ┌─────────┐  ││
+│                                        │ │ 62 m²   │ │ 1       │ │ 1970    │  ││
+│                                        │ │Wohnfläche│ │Einheiten│ │ Baujahr │  ││
+│                                        │ └─────────┘ └─────────┘ └─────────┘  ││
+│                                        │                                       ││
+│                                        │ ┌───────────────────────────────────┐ ││
+│                                        │ │ Ihre monatliche Übersicht         │ ││
+│                                        │ ├───────────────────────────────────┤ ││
+│                                        │ │ Mieteinnahme           +500 €     │ ││
+│                                        │ │ Darlehensrate          −565 €     │ ││
+│                                        │ │ Bewirtschaftung        −179 €     │ ││
+│                                        │ │ Steuereffekt           +112 €     │ ││
+│                                        │ ├───────────────────────────────────┤ ││
+│                                        │ │ Netto nach Steuer      −132 €     │ ││
+│                                        │ └───────────────────────────────────┘ ││
+│                                        │                                       ││
+│                                        │ [Beratung anfragen]    [✉]            ││
+│                                        └───────────────────────────────────────┘│
+│                                                                                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  [Kalkulation]   [Exposé]   [Dokumente]                                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ Ihre Finanzdaten                                                            ││
+│  │ ┌──────────────┐ ┌──────────────┐ ┌────────────────┐ ┌────────────────────┐ ││
+│  │ │ zVE: 80.000€ │ │ EK: 50.000€  │ │ Steuertabelle  │ │ Tilgung: 2%  [══●] │ ││
+│  │ └──────────────┘ └──────────────┘ └────────────────┘ └────────────────────┘ ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  ┌────────────────────────────────┐  ┌────────────────────────────────────────┐ │
+│  │ € Transaktion                  │  │ ∿ Mieteinnahmen                        │ │
+│  │ Kaufpreis         150.000 €    │  │ Jahresnettokaltmiete   6.000 €         │ │
+│  │ Kaufpreis/m²        1.043 €    │  │ Monatsmiete              500 €         │ │
+│  │ Erwerbsnebenkosten 15.000 €    │  │ Miete/m²               3.48 €/m²       │ │
+│  │ Kaufpreis inkl. NK 165.000 €   │  │                                        │ │
+│  └────────────────────────────────┘  └────────────────────────────────────────┘ │
+│                                                                                  │
+│  ┌────────────────────────────────┐  ┌────────────────────────────────────────┐ │
+│  │ % Rendite-Kennzahlen           │  │ 🏦 Finanzierung                        │ │
+│  │ Brutto-Mietrendite    4.00%    │  │ Darlehen          115.000 €            │ │
+│  │ Netto-Ankaufsrendite  3.64%    │  │ Eigenkapital       50.000 €            │ │
+│  │ Brutto-Faktor        25.0-fach │  │ LTV                  76.7%             │ │
+│  │ Netto-Faktor         27.5-fach │  │ Zinssatz             3.90%             │ │
+│  │                                │  │ Tilgung              2.0%              │ │
+│  │                                │  │ Rate/Monat          565 €              │ │
+│  └────────────────────────────────┘  └────────────────────────────────────────┘ │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ □ Monatlicher Cashflow nach Steuern                                         ││
+│  │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────────────┐ ││
+│  │ │ +500 €  │ │ −565 €  │ │ −179 €  │ │ +112 €  │ │       −132 €           │ ││
+│  │ │ Miete   │ │  Rate   │ │  Verw.  │ │ Steuer  │ │    Netto/Monat         │ ││
+│  │ │ (grün)  │ │  (rot)  │ │  (rot)  │ │ (grün)  │ │      (rot)             │ ││
+│  │ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────────────────────┘ ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ Entwicklung nach 10 Jahren            Wertsteigerung p.a.: [2 ▼] %          ││
+│  │ Restschuld: 92.000 €  Objektwert: 182.849 €  Wertzuwachs: +32.849 €         ││
+│  │ Eigenkapitalaufbau: +55.849 €                                               ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Ebene 3: Konsistentes Detail-Modal (P2)
+### Phase 2: Route-Registrierung (P0)
 
-Alle drei Kontexte sollten dasselbe Modal-Layout nutzen:
+**Datei:** `src/manifests/routesManifest.ts`
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ [X] Investment-Kalkulation — Objekt-Titel                   │
-├─────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────────┐  ┌────────────────────────────┐ │
-│ │ 40-JAHRES-CHART         │  │ PARAMETER (Slider)         │ │
-│ │ • Objektwert (blau)     │  │ zVE: [══════●══] 60.000 €  │ │
-│ │ • Restschuld (rot)      │  │ EK:  [══════●══] 50.000 €  │ │
-│ │ • Netto-Vermögen (grün) │  │ Zins: [══●═════] 3,5%      │ │
-│ └─────────────────────────┘  │ Tilg: [═══●════] 2,0%      │ │
-│                              │ Wert: [════●═══] 2,0%      │ │
-│ ┌─────────────────────────┐  │                            │ │
-│ │ MONATSÜBERSICHT         │  │ ════════════════════════   │ │
-│ │ Mieteinnahme    +500 €  │  │ Monatliche Belastung:      │ │
-│ │ Darlehensrate   -565 €  │  │ 108 € / Monat              │ │
-│ │ Bewirtschaftung -179 €  │  │                            │ │
-│ │ Steuereffekt    +112 €  │  │ [PDF] [Favorit] [Anfrage]  │ │
-│ │ ─────────────────────   │  └────────────────────────────┘ │
-│ │ Netto          -132 €   │                                 │
-│ └─────────────────────────┘                                 │
-└─────────────────────────────────────────────────────────────┘
+```typescript
+// MOD-08: Investment-Suche
+"MOD-08": {
+  // ... existing
+  dynamic_routes: [
+    { path: "mandat/neu", component: "MandatCreateWizard", title: "Neues Mandat" },
+    { path: "mandat/:mandateId", component: "MandatDetail", title: "Mandat-Details", dynamic: true },
+    // NEU:
+    { path: "objekt/:publicId", component: "InvestmentExposePage", title: "Investment-Exposé", dynamic: true },
+  ],
+},
 ```
+
+**Datei:** `src/pages/portal/InvestmentsPage.tsx`
+
+```typescript
+import InvestmentExposePage from './investments/InvestmentExposePage';
+
+<Routes>
+  // ... existing routes
+  <Route path="objekt/:publicId" element={<InvestmentExposePage />} />
+</Routes>
+```
+
+---
+
+### Phase 3: InvestmentSearchCard Link-Fix (P0)
+
+**Datei:** `src/components/investment/InvestmentSearchCard.tsx`
+
+**Änderungen:**
+1. Standardmäßig `linkPrefix="/portal/investments/objekt"` statt `/kaufy/expose`
+2. `showProvision={false}` als Default (wird nur in MOD-09 Katalog explizit aktiviert)
+
+```typescript
+// Zeile 47-48
+export function InvestmentSearchCard({
+  // ...
+  showProvision = false,  // Default: keine Provision anzeigen
+  linkPrefix = '/portal/investments/objekt'  // Default: Portal-Route
+}: InvestmentSearchCardProps) {
+```
+
+---
+
+### Phase 4: Kontextabhängige Nutzung (P1)
+
+| Modul | Route | `linkPrefix` | `showProvision` |
+|-------|-------|--------------|-----------------|
+| **MOD-08 Suche** | `/portal/investments/suche` | `/portal/investments/objekt` | `false` |
+| **MOD-09 Katalog** | `/portal/vertriebspartner/katalog` | `/portal/investments/objekt` | `true` |
+| **MOD-09 Beratung** | `/portal/vertriebspartner/beratung` | Modal (PartnerExposeModal) | `true` (im Modal) |
+| **Zone 3 Kaufy** | `/kaufy/immobilien` | `/kaufy/objekt` | `false` |
+
+---
+
+### Phase 5: BeratungTab Modal-Vereinfachung (P2)
+
+Das `PartnerExposeModal` bleibt für die schnelle Beratung, aber:
+- Entfernung überflüssiger Tabs
+- Fokus auf Slider + Haushaltsrechnung + Monatsbelastung
+- Option: "Vollbild öffnen" → Navigiert zu `/portal/investments/objekt/:id`
 
 ---
 
 ## Datei-Änderungen Übersicht
 
-| Datei | Änderung | Priorität |
-|-------|----------|-----------|
-| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | `annual_rent_income` → `annual_income` | **P0** |
-| `src/pages/portal/investments/SucheTab.tsx` | Query um `annual_income` erweitern | **P0** |
-| `src/pages/zone3/kaufy/KaufyHome.tsx` | MOCK durch DB-Query ersetzen | **P0** |
-| `src/components/investment/InvestmentSearchCard.tsx` | Mini-EÜR 3-Zeilen-Format | P1 |
-| `src/components/zone3/kaufy/KaufyPropertyCard.tsx` | (bereits korrekt) | — |
-| `src/components/vertriebspartner/PartnerPropertyGrid.tsx` | (bereits korrekt) | — |
+| Datei | Aktion | Priorität |
+|-------|--------|-----------|
+| `src/pages/portal/investments/InvestmentExposePage.tsx` | **NEU** erstellen | **P0** |
+| `src/pages/portal/InvestmentsPage.tsx` | Route hinzufügen | **P0** |
+| `src/manifests/routesManifest.ts` | dynamic_route hinzufügen | **P0** |
+| `src/components/investment/InvestmentSearchCard.tsx` | Default linkPrefix + showProvision ändern | **P0** |
+| `src/pages/portal/investments/SucheTab.tsx` | Explizit `linkPrefix` setzen | P1 |
+| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | `showProvision={true}` | P1 |
+| `src/components/vertriebspartner/PartnerExposeModal.tsx` | Vereinfachung (optional) | P2 |
 
 ---
 
-## Erwartetes Ergebnis nach Fix
+## Erwartetes Ergebnis
 
-| Test | Route | Erwartung |
-|------|-------|-----------|
-| 1 | `/portal/vertriebspartner/beratung` | Musterimmobilie "Leipziger Straße 42" erscheint mit Metrics |
-| 2 | `/portal/investments/suche` | Objekte zeigen echte Rendite + Belastung |
-| 3 | `/kaufy` | Echte Listings aus DB (keine Mock-Daten) |
-| 4 | Alle Cards | Identisches 3-Zeilen EÜR-Format |
+| Test | Route | Erwartetes Ergebnis |
+|------|-------|---------------------|
+| 1 | `/portal/investments/suche` → Klick "Details" | Navigiert zu `/portal/investments/objekt/:id` (Vollbild-Exposé) |
+| 2 | Investment-Exposé-Seite | Layout wie Screenshot 6-8: Header, Key Facts, Monatliche Übersicht, Tabs |
+| 3 | Provision in MOD-08 | **Nicht sichtbar** |
+| 4 | Provision in MOD-09 Katalog | **Sichtbar** (Badge) |
+| 5 | Provision in MOD-09 Beratung | Sichtbar im Modal |
+| 6 | MOD-09 Beratung Modal | Funktioniert weiterhin, aber cleaner |
 
 ---
 
 ## Technische Details
 
-### Warum 3 Fixes genügen
+### Warum Vollbild-Seite statt Modal?
 
-1. **Investment Engine funktioniert** — Der `sot-investment-engine` Edge Function ist korrekt
-2. **Card-Komponenten funktionieren** — Sie zeigen Daten korrekt an, wenn sie welche bekommen
-3. **Problem ist die Datenquelle** — Falsche Queries und Mock-Daten
+1. **Bessere UX:** Screenshots zeigen klares, ruhiges Layout
+2. **Keine Überlagerung:** Modal in Modal = "zu viele Kacheln"
+3. **Tiefe Verlinkung:** User kann URL teilen/bookmarken
+4. **Konsistenz:** Zone 3 nutzt auch Vollbild-Seite
 
-### Reihenfolge der Umsetzung
+### Komponenten-Wiederverwendung
 
-1. **Schritt 1 (5 min):** BeratungTab.tsx Query-Fix
-2. **Schritt 2 (5 min):** SucheTab.tsx Query-Erweiterung  
-3. **Schritt 3 (15 min):** KaufyHome.tsx DB-Integration
-4. **Schritt 4 (Optional):** Card-Angleichung
+Die neue `InvestmentExposePage` nutzt existierende Komponenten:
+- `MasterGraph` — 40-Jahres-Chart
+- `Haushaltsrechnung` — 5-Zeilen EÜR
+- `InvestmentSliderPanel` — Parameter-Regler
+- `DetailTable40Jahre` — Excel-ähnliche Tabelle
+- `CashflowBoxes` (neu) — 5-Box-Darstellung
 
-### Ist der Plan ausreichend?
+### Datenfluss
 
-**Ja**, der Plan ist ausreichend für die **Kernfunktion**:
-- ✅ Behebt alle Query-Fehler
-- ✅ Ersetzt Mock-Daten durch echte DB
-- ✅ Nutzt vorhandene, funktionierende Investment Engine
-- ✅ Card-Komponenten sind bereits ähnlich genug
+```text
+SucheTab → InvestmentSearchCard → Link
+              ↓
+    /portal/investments/objekt/:publicId
+              ↓
+    InvestmentExposePage
+              ↓
+    useQuery(listings.public_id)
+              ↓
+    useInvestmentEngine(params)
+              ↓
+    Render: Header + Tabs + Chart + EÜR + Table
+```
 
-Die optionale Vereinheitlichung (Unified Components) kann in einer späteren Phase erfolgen, wenn die Kernfunktion steht.
+---
+
+## Reihenfolge der Umsetzung
+
+1. **Schritt 1 (20 min):** `InvestmentExposePage.tsx` erstellen (Kopie von KaufyExpose mit Portal-Anpassungen)
+2. **Schritt 2 (5 min):** Route in Manifest + Page registrieren
+3. **Schritt 3 (5 min):** `InvestmentSearchCard` Defaults korrigieren
+4. **Schritt 4 (5 min):** `SucheTab` explizit `linkPrefix` setzen
+5. **Schritt 5 (5 min):** `KatalogTab` explizit `showProvision={true}` setzen
+6. **Test:** Klick-Flow in MOD-08 und MOD-09 durchgehen
