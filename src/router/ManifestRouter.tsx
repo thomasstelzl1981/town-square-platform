@@ -14,6 +14,7 @@
 
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { PathNormalizer } from './PathNormalizer';
 
 // =============================================================================
 // LEGACY REDIRECT COMPONENT — Preserves dynamic parameters
@@ -75,7 +76,7 @@ import CommissionApproval from '@/pages/admin/CommissionApproval';
 import MasterTemplates from '@/pages/admin/MasterTemplates';
 import MasterTemplatesImmobilienakte from '@/pages/admin/MasterTemplatesImmobilienakte';
 import MasterTemplatesSelbstauskunft from '@/pages/admin/MasterTemplatesSelbstauskunft';
-import FutureRoom from '@/pages/admin/FutureRoom';
+import AdminFutureRoomLayout from '@/pages/admin/futureroom/FutureRoomLayout';
 import { AdminStubPage } from '@/pages/admin/stub';
 import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
 
@@ -196,20 +197,26 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   LeadPool,
   PartnerVerification,
   CommissionApproval,
-  FutureRoom,
+  AdminFutureRoomLayout,
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
   FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
   Support,
 };
 
-// Zone 1 Desk Components with internal routing
+// Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
 const adminDeskMap: Record<string, React.ComponentType> = {
-  futureroom: FutureRoom,
   'sales-desk': SalesDesk,
   'finance-desk': FinanceDesk,
   acquiary: Acquiary,
   agents: Agents,
 };
+
+// Zone 1 FutureRoom Sub-Pages (lazy loaded for explicit nested routes)
+const FutureRoomInbox = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomInbox'));
+const FutureRoomZuweisung = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomZuweisung'));
+const FutureRoomManagers = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers'));
+const FutureRoomBanks = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks'));
+const FutureRoomMonitoring = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomMonitoring'));
 
 // =============================================================================
 // Component Map for Zone 2 Module Pages (with internal routing)
@@ -337,6 +344,7 @@ function getDefaultTilePath(module: ModuleDefinition): string {
 // =============================================================================
 export function ManifestRouter() {
   return (
+    <PathNormalizer>
     <Routes>
       {/* ================================================================== */}
       {/* LEGACY REDIRECTS — Parameters preserved via LegacyRedirect component */}
@@ -353,7 +361,42 @@ export function ManifestRouter() {
       {/* ZONE 1: ADMIN PORTAL */}
       {/* ================================================================== */}
       <Route path={zone1Admin.base} element={<AdminLayout />}>
-        {/* Admin Desk Routes with internal sub-routing */}
+        {/* ============================================================== */}
+        {/* FUTUREROOM — Explicit Nested Routes (not desk pattern) */}
+        {/* This prevents the flash→redirect→404 issue with mixed-case URLs */}
+        {/* ============================================================== */}
+        <Route path="futureroom" element={<AdminFutureRoomLayout />}>
+          <Route index element={<Navigate to="inbox" replace />} />
+          <Route path="inbox" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomInbox />
+            </React.Suspense>
+          } />
+          <Route path="zuweisung" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomZuweisung />
+            </React.Suspense>
+          } />
+          <Route path="finanzierungsmanager" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomManagers />
+            </React.Suspense>
+          } />
+          <Route path="bankkontakte" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomBanks />
+            </React.Suspense>
+          } />
+          <Route path="monitoring" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomMonitoring />
+            </React.Suspense>
+          } />
+          {/* Catch-all for FutureRoom — redirect to inbox */}
+          <Route path="*" element={<Navigate to="inbox" replace />} />
+        </Route>
+
+        {/* Admin Desk Routes with internal sub-routing (except FutureRoom) */}
         {Object.entries(adminDeskMap).map(([deskPath, DeskComponent]) => (
           <Route
             key={deskPath}
@@ -461,6 +504,7 @@ export function ManifestRouter() {
       {/* ================================================================== */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </PathNormalizer>
   );
 }
 
