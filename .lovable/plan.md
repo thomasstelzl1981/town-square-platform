@@ -1,149 +1,185 @@
 
-# Armstrong Orb — Copper/Bronze Metallic Redesign
+Zielbild (UX) und aktuelle Architektur (Analyse)
+- Armstrong wird auf Desktop in `PortalLayout` immer gerendert (`<ArmstrongContainer />`) und in `ArmstrongContainer.tsx` via `createPortal(..., document.body)` direkt in den `body` geportalt.
+- Es gibt 2 Zustände:
+  1) Collapsed Orb (frei schwebend, soll rechts unten starten, klickbar, draggable, file-drop)
+  2) Expanded Panel (unten rechts „angedockt“, nicht draggable)
 
-## Design-Referenz
+UI/UX-Flow (wie es aktuell gedacht ist)
+- Klick auf Orb → `toggleArmstrongExpanded()` (öffnet Panel)
+- Klick auf Mic → `voice.toggleVoice()` ohne Expand (durch `e.stopPropagation()`)
+- Drag am Orb → `useDraggable` verschiebt Position (persistiert in localStorage unter `armstrong-orb-position`)
+- Datei auf Orb droppen → Expand + (später) Datei als Kontext
 
-Basierend auf dem hochgeladenen Bild:
-- Glänzender metallischer Orb mit **Kupfer/Bronze-Tönen**
-- Charakteristisches "Lächeln": Eine geschwungene Highlight-Linie in der unteren Hälfte
-- Kleiner Glanz-Punkt oben für 3D-Tiefe
-- Weicher Halo-Glow um den Orb
+Hauptfehler gefunden: Warum Orb links oben erscheint & „Drag“ scheinbar nicht geht
+- In `ArmstrongContainer.tsx` wird beim Collapsed Orb folgendes gemacht:
 
-## CSS-Änderungen (`src/index.css`)
+  - Es gibt ein `style={{ position:'fixed', left: position.x, top: position.y }}` am Orb.
+  - Danach wird `{...dragHandleProps}` gespreadet (Zeile ~210).
+  - `dragHandleProps` enthält ebenfalls ein `style` (Cursor + userSelect).
 
-### Neue Farbpalette — Kupfer/Bronze Metallisch
+  Ergebnis: Das spätere Spread überschreibt den vorherigen `style` komplett.
+  Dadurch gehen `left` und `top` verloren → der Orb landet im Standardfluss bei (quasi) links oben, und Positionsupdates aus `useDraggable` sind nicht sichtbar. Das erklärt exakt beide Symptome:
+  - „erscheint links oben“
+  - „man kann ihn nicht bewegen“ (Position ändert sich intern, aber wird nicht gerendert)
 
-```text
-Farben:
-├── armstrong-orb-copper: Warmer Kupferton (25 75% 45%)
-├── armstrong-orb-bronze: Tieferer Bronze (20 65% 35%)  
-├── armstrong-orb-gold-accent: Goldener Highlight (40 80% 60%)
-├── armstrong-orb-shadow: Dunkler Schatten (15 50% 20%)
-├── armstrong-orb-glow: Warmer Kupfer-Glow (25 60% 50%)
-```
+Sekundärer UX-Bug (nach Fix sichtbar): Drag vs Click
+- `useDraggable` setzt `isDragging` beim `mousedown` und wieder `false` beim `mouseup`.
+- Ein `click` feuert nach `mouseup` → zu diesem Zeitpunkt ist `isDragging` bereits wieder `false`.
+- Folge: Nach einem Drag kann trotzdem ein Click passieren und der Orb expandiert „aus Versehen“.
+- Das ist nicht der Root Cause, aber ein wichtiger UX-Fix, damit „Drag fühlt sich wie Drag an“.
 
-### Orb-Gradient mit "Lächeln"-Effekt
+Bild-Referenz (Smile / Friendly Face) – was wir übernehmen
+Das hochgeladene Icon hat charakteristische Elemente:
+- Außenring / „Glasrim“ (glänzende Ringkante)
+- Inneres dunkleres „Visor“-Fenster (oben größer, unten eine klare Kurve)
+- Ein freundliches „Smile“-Gefühl entsteht durch:
+  - eine weiche, dunklere Bogenfläche (wie ein Visor/Mundbereich)
+  - eine sehr subtile helle Kante/Reflexion entlang dieses Bogens
+- Oben links ein kleiner, heller Glint für 3D-Tiefe
+- Insgesamt: edel, technisch, sympathisch – nicht kindisch
 
-```text
-Aufbau:
-1. Oberer Glanz-Punkt (kleiner weißer Kreis oben-links)
-2. "Lächeln"-Highlight (geschwungene helle Linie unten-mitte)
-3. Haupt-Kupfer-Gradient (hell oben → dunkel unten)
-4. Tiefenschatten (dunkler am Rand)
-```
+Gewünschtes Redesign
+- Weg vom Kupfer/Rot hin zu „Frozen Dark Grey“:
+  - Graphit/Steel-Basis
+  - kühle, frostige Highlights (leicht bläulich)
+  - Halo-Glow sehr subtil, „frostig“, nicht neon
 
-### Glow-Effekt
+Umsetzung (geänderte Planung) — Schritte & Dateien
 
-```text
-box-shadow:
-├── Innerer Ring: Kupfer-Glow 
-├── Mittlerer Halo: Warmer Schein
-├── Äußerer Schatten: Tiefe
-```
+1) Funktions-Fix: Style-Override reparieren (Position + Drag wieder sichtbar)
+Datei: `src/components/portal/ArmstrongContainer.tsx`
 
-## ArmstrongContainer.tsx — Komplettes Refactoring
+Änderung:
+- `dragHandleProps.style` darf den Orb-Style nicht überschreiben.
+- Wir mergen Styles explizit:
 
-### Entfernen
+  - Variante A (empfohlen, sauber):
+    - `const { onMouseDown, style: dragStyle } = dragHandleProps;`
+    - `onMouseDown={onMouseDown}`
+    - `style={{ position:'fixed', left: position.x, top: position.y, ...dragStyle }}`
 
-- Input-Feld
-- Send-Button, Attach-Button
-- Komplexes Multi-Bereich Layout
-- Wolken/Earth Overlays
+  - Zusätzlich: `cursor-pointer` Klasse entfernen/relativieren, damit Cursor aus Inline-Style konsistent ist.
 
-### Neue Collapsed State Struktur
+Erwartetes Ergebnis:
+- Orb erscheint wieder an berechneter Startposition (rechts unten)
+- Drag bewegt sichtbar den Orb
 
-```tsx
-<div 
-  ref={containerRef}
-  className="armstrong-orb armstrong-orb-glow"
-  style={{ left: position.x, top: position.y, position: 'fixed' }}
-  onMouseDown={handleDragStart}
-  onDragOver={handleFileDragOver}
-  onDrop={handleFileDrop}
-  onClick={handleOrbClick}
->
-  {/* "Lächeln" Highlight via CSS */}
-  
-  {/* Oberer Glanz */}
-  <div className="absolute top-3 left-4 w-6 h-6 rounded-full bg-white/50 blur-sm" />
-  
-  {/* Zentraler Mikrofon-Button */}
-  <button 
-    onClick={handleMicClick}
-    className="h-14 w-14 rounded-full ..."
-  >
-    <Mic />
-  </button>
-  
-  {/* File Drop Indicator */}
-  {isFileDragOver && <Upload icon overlay />}
-</div>
-```
+2) UX-Fix: Drag darf nicht automatisch Expand auslösen
+Dateien: 
+- `src/hooks/useDraggable.ts`
+- `src/components/portal/ArmstrongContainer.tsx`
 
-### 4 Interaktions-Funktionen
+Option 1 (empfohlen, robust): `useDraggable` erweitert um „didDrag“ / „click suppression“
+- In `useDraggable`:
+  - Tracke Bewegung ab Threshold (z.B. 4–6px).
+  - Setze `didDragRef = true`, sobald der Threshold überschritten ist.
+  - Exponiere `didDrag` (oder `consumeDidDrag()`), damit Consumer einen unmittelbar folgenden Click ignorieren kann.
+- In `ArmstrongContainer`:
+  - `handleOrbClick` ignoriert Expand, wenn `didDrag` gerade passiert ist.
 
-| Aktion | Handler | Ergebnis |
-|--------|---------|----------|
-| Klick Mikrofon | `onClick` + `stopPropagation` | Voice-Session starten |
-| Klick auf Orb | `onClick` | `toggleArmstrongExpanded()` |
-| Drag auf Orb | `useDraggable` Hook | Position im Browser verschieben |
-| Datei auf Orb | `onDrop` | Expand + "Was soll ich damit tun?" |
+Option 2 (minimal, weniger sauber): Click-Unterdrückung im Container per Zeit/Distance-Heuristik
+- Nicht ideal, weil `mousemove` in Hook hängt.
 
-### Drag-Integration
+Erwartetes Ergebnis:
+- „Festhalten und ziehen“ fühlt sich stabil an
+- Kein „Oops expand“ nach Drag
 
-```typescript
-const { 
-  position, 
-  isDragging, 
-  dragHandleProps 
-} = useDraggable({
-  storageKey: 'armstrong-orb-position',
-  containerSize: { width: 160, height: 160 },
-  boundaryPadding: 20,
-  disabled: isMobile || voice.isListening,
-});
-```
+3) Mic-Button darf niemals Drag starten
+Datei: `src/components/portal/ArmstrongContainer.tsx`
 
-### File-Drop Handling
+Änderung:
+- Am Mic-Button zusätzlich `onMouseDown={(e) => e.stopPropagation()}` (und optional `onPointerDown`), damit der Parent-Drag nicht anspringt, wenn man nur Voice starten will.
 
-```typescript
-const [droppedFile, setDroppedFile] = useState<File | null>(null);
-const [isFileDragOver, setIsFileDragOver] = useState(false);
+Erwartetes Ergebnis:
+- Voice-Klick bleibt „präzise“
+- Drag startet nur, wenn man den Orb selbst greift
 
-const handleFileDrop = (e: React.DragEvent) => {
-  e.preventDefault();
-  setIsFileDragOver(false);
-  
-  const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    setDroppedFile(files[0]);
-    toggleArmstrongExpanded();
-    // ChatPanel erhält Datei als Kontext
-  }
-};
-```
+4) Startposition wirklich rechts unten (und Recovery, falls localStorage Müll enthält)
+Dateien:
+- `src/hooks/useDraggable.ts` (optional)
+- `src/components/portal/ArmstrongContainer.tsx`
+- optional: `src/hooks/usePortalLayout.tsx` (Migration)
 
-## Dateien
+Maßnahmen:
+- Entferne für den Orb den harten `-100` Offset aus der Default-Position (oder mache ihn konfigurierbar), weil das „nicht wirklich bottom-right“ wirkt.
+- Für Armstrong Orb:
+  - Entweder: `useDraggable` bekommt eine Option `bottomOffset` (für andere Widgets weiterhin nutzbar).
+  - Oder: In `ArmstrongContainer` wird eine `initialPosition` berechnet, die wirklich `bottom-right` ist.
+- Zusätzlich: Validierung beim Mount:
+  - Wenn `position` sehr nah an (padding,padding) ist und kein gültiger Storage existiert → `resetPosition()` ausführen.
+- Optional (sauber): Storage-Key versionieren:
+  - von `armstrong-orb-position` → `armstrong-orb-position-v2` (damit alte Werte nicht stören)
+  - oder Migration in `usePortalLayout` erweitern und den neuen Key auch einmalig löschen.
 
-### Geänderte Dateien
+Erwartetes Ergebnis:
+- Standard: Orb startet rechts unten
+- Wenn User ihn verschiebt, bleibt Position erhalten
+- Keine „left-top“ Überraschungen durch alte Werte
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/index.css` | Kupfer/Bronze Orb-Design statt Earth, "Lächeln"-Highlight |
-| `src/components/portal/ArmstrongContainer.tsx` | Minimalistischer Orb + Drag + File-Drop |
+5) File-Drop UX stabilisieren (ohne Feature-Overkill)
+Datei: `src/components/portal/ArmstrongContainer.tsx`
 
-## Erwartetes Ergebnis
+Verbesserungen:
+- Drag-over Visual bleibt, aber wir ergänzen:
+  - kleines Label im Overlay: „Datei loslassen“
+  - optional: `onDragEnter`/`onDragLeave` sauberer handhaben (DragLeave feuert oft beim Überfahren von Kindern)
+- Beim Drop:
+  - `setDroppedFile(file)` (State)
+  - Expand öffnen
+  - Im Expanded Panel Header optional eine kleine „Pending File“-Pill anzeigen (Name + X zum verwerfen)
+  - (Das eigentliche „auslesen“ kann als nächster Schritt kommen: FileReader für txt/md/csv, xlsx für Excel ist bereits installiert, Bilder als Preview; komplexere Dokumente via Backend-Funktion.)
 
-Ein eleganter Armstrong-Orb:
+Erwartetes Ergebnis:
+- Drop fühlt sich zuverlässig an
+- User versteht sofort, dass Upload erkannt wurde
 
-**Visuell:**
-- Kupfer/Bronze metallischer Glanz
-- Charakteristisches "Lächeln" (geschwungene Highlight-Linie)
-- Kleiner Glanz-Punkt oben-links
-- Warmer Halo-Glow
+6) Frozen Dark Grey Orb + Smile (Design neu, nah am hochgeladenen Referenz-Feeling)
+Datei: `src/index.css` (Armstrong Orb Design System Block)
 
-**Funktionen:**
-1. Mikrofon (Mitte) → Spracheingabe ohne Expand
-2. Klick → Expand für Textchat
-3. Drag → Positionierung im Browser
-4. File-Drop → Expand + Datei-Kontext
+Änderungen an Tokens (Beispielpalette, final nach Feintuning):
+- `--armstrong-orb-graphite` (Basis, dunkel)
+- `--armstrong-orb-steel` (Mid)
+- `--armstrong-orb-frost` (kühler Highlight)
+- `--armstrong-orb-visor` (sehr dunkel, für Face/Smile Bereich)
+- `--armstrong-orb-glow` (sehr subtil, frostig)
+
+Neuer Aufbau der Orb-Optik (orientiert am Bild):
+- Layer A: Outer rim / ring highlight (radial gradient, „glasige Kante“)
+- Layer B: Main body (radial gradient mit top-left glint)
+- Layer C: Inner visor / smile bowl
+  - als inneres Overlay (Pseudo-Element oder innere absolute Div)
+  - elliptische Form, die oben groß beginnt und unten einen weichen Bogen bildet
+- Layer D: Sehr subtile Smile-Kante (thin highlight), damit es „freundlich“ wirkt, ohne Comic zu werden
+- Glow: kühler Halo, stark reduziert, damit es „frozen“ und edel bleibt
+
+Markup-Entscheidung (für stabile Kontrolle):
+- Statt mehrere inline-Divs in `ArmstrongContainer` für glints/smile:
+  - möglichst in CSS (Pseudo-Elemente) abbilden
+  - im React-Markup nur noch: Orb-Container + Mic-Button + optional Drop-Overlay
+Das macht das Design konsistenter und leichter iterierbar.
+
+7) Fallback, falls Drag auf bestimmten Geräten nicht zuverlässig ist
+- Wenn nach den Fixes (Style-Merge + didDrag suppression + Mic stopPropagation) Drag trotzdem auf einem Gerät nicht funktioniert:
+  - Option „Drag deaktivieren“ (Feature-Flag / simple Condition)
+  - Orb dauerhaft rechts unten fixieren (ohne useDraggable), aber Click/Mic/Drop bleiben.
+
+Testplan (E2E manuell, wichtig für UX)
+1) Desktop /portal laden: Orb startet rechts unten.
+2) Orb klicken: expandiert.
+3) Minimize: collapses zurück, Position bleibt.
+4) Drag: Orb lässt sich bewegen, ohne danach zu expandieren.
+5) Mic klicken: Voice startet/stopt, Orb expandiert nicht, Drag startet nicht.
+6) Datei über Orb ziehen: Drop-State + Hinweis erscheint; Drop öffnet Panel.
+7) Refresh: Orb bleibt an letzter Position (oder sauber rechts unten, wenn Storage invalid).
+8) Mobile (breite <768): Orb wird nicht gerendert (bestehendes Verhalten), mobile bottom sheet weiterhin ok.
+
+Betroffene Dateien (nach heutigem Stand)
+- `src/components/portal/ArmstrongContainer.tsx` (Fix style merge, didDrag handling, mic mousedown stop, drop UX)
+- `src/hooks/useDraggable.ts` (didDrag/threshold + optional bottomOffset)
+- `src/index.css` (Frozen Dark Grey Orb Design + Smile/Visor neu)
+- optional: `src/hooks/usePortalLayout.tsx` (Migration/Key-reset für neue Position-Keys)
+
+Warum das die aktuelle Blockade löst
+- Der Kernbug ist deterministisch: `dragHandleProps.style` überschreibt `left/top`. Sobald wir das mergen statt überschreiben, sind Position und Drag visuell wieder korrekt.
+- Danach glätten wir die UX (kein Expand nach Drag, Mic nicht dragbar) und bringen den Look Richtung Referenzbild (frozen dark grey + visor-smile).
