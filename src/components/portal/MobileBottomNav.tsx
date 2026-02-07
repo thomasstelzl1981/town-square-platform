@@ -39,25 +39,30 @@ export function MobileBottomNav() {
     setSelectedMobileModule(null);
   };
 
+  // Check if home is active (no area selected)
+  const isHomeActive = activeArea === null;
+
   return (
     <nav 
-      className="fixed left-4 right-4 z-50 nav-ios-floating rounded-2xl"
+      className="fixed left-4 right-4 z-50"
       style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="flex items-center justify-around h-16">
-        {/* Home button */}
+      <div className="flex items-center justify-around h-20 px-2">
+        {/* Home button - Glass circle */}
         <button
           onClick={handleHomeClick}
           className={cn(
-            'relative flex flex-col items-center justify-center w-12 h-12 gap-0.5 transition-all',
-            'text-muted-foreground hover:text-foreground active:scale-95'
+            'relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all active:scale-95',
+            isHomeActive
+              ? 'bg-primary/90 text-primary-foreground shadow-lg'
+              : 'nav-tab-glass text-muted-foreground hover:text-foreground'
           )}
         >
           <CircleDot className="h-6 w-6" />
-          <span className="text-[10px] font-medium">Home</span>
+          <span className="text-[9px] font-medium mt-0.5">Home</span>
         </button>
 
-        {/* Area buttons */}
+        {/* Area buttons - Glass circles */}
         {areaConfig.map((area) => {
           const Icon = areaIcons[area.key];
           const isActive = activeArea === area.key;
@@ -67,18 +72,14 @@ export function MobileBottomNav() {
               key={area.key}
               onClick={() => handleAreaClick(area.key)}
               className={cn(
-                'relative flex flex-col items-center justify-center w-12 h-12 gap-0.5 transition-all active:scale-95',
+                'relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all active:scale-95',
                 isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary/90 text-primary-foreground shadow-lg'
+                  : 'nav-tab-glass text-muted-foreground hover:text-foreground'
               )}
             >
-              {/* Glass glow background for active state */}
-              {isActive && (
-                <span className="absolute inset-1 rounded-xl bg-primary/10 backdrop-blur-sm -z-10" />
-              )}
               <Icon className="h-6 w-6" />
-              <span className="text-[10px] font-medium">{area.labelShort}</span>
+              <span className="text-[9px] font-medium mt-0.5">{area.labelShort}</span>
             </button>
           );
         })}
