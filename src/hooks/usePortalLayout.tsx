@@ -269,6 +269,7 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
 export function usePortalLayout(): PortalLayoutState {
   const context = useContext(PortalLayoutContext);
   if (!context) {
+    console.error('[usePortalLayout] Context is null - this component must be inside PortalLayoutProvider');
     throw new Error('usePortalLayout must be used within PortalLayoutProvider');
   }
   return context;
