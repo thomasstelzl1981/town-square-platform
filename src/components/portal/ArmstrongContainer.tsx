@@ -1,16 +1,15 @@
 /**
- * ARMSTRONG CONTAINER — Desktop Draggable Round Mini-Chat
+ * ARMSTRONG CONTAINER — Desktop Fixed Round Mini-Chat
  * 
- * Collapsed State: Round widget (150px) with input, upload, send - DRAGGABLE
- * Expanded State: Chat panel (320x500px) - DRAGGABLE via header
+ * Collapsed State: Round widget (150px) with input, upload, send - FIXED bottom-right
+ * Expanded State: Chat panel (320x500px) - FIXED bottom-right
  * 
  * Acts as drop target for drag-and-drop files
- * Desktop only: Freely positionable via drag
+ * Desktop only: Fixed position, toggle via SystemBar Rocket button
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
-import { useDraggable } from '@/hooks/useDraggable';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Button } from '@/components/ui/button';
 import { 
@@ -23,10 +22,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 
-// Container dimensions for boundary calculation
-const EXPANDED_SIZE = { width: 320, height: 500 };
-const COLLAPSED_SIZE = { width: 150, height: 150 };
-
 export function ArmstrongContainer() {
   const location = useLocation();
   const { armstrongVisible, armstrongExpanded, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
@@ -34,59 +29,6 @@ export function ArmstrongContainer() {
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Draggable positioning (different size for expanded vs collapsed)
-  const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
-  
-  const { position, isDragging, dragHandleProps, resetPosition } = useDraggable({
-    storageKey: 'armstrong-position',
-    containerSize: currentSize,
-    boundaryPadding: 20,
-    disabled: isMobile,
-  });
-
-  // If Armstrong is being shown and the position key was cleared (e.g. via SystemBar reset),
-  // we must actively reset the in-memory position state too.
-  useEffect(() => {
-    if (!armstrongVisible || isMobile) return;
-
-    let hasStoredPosition = false;
-    try {
-      hasStoredPosition = !!localStorage.getItem('armstrong-position');
-    } catch {
-      // If storage is unavailable, don't force resets.
-      hasStoredPosition = true;
-    }
-
-    if (!hasStoredPosition) {
-      resetPosition();
-    }
-  }, [armstrongVisible, isMobile, resetPosition]);
-
-  // Self-healing: Check if container is off-screen and reset if needed
-  useEffect(() => {
-    if (!armstrongVisible || isMobile || !containerRef.current) return;
-    
-    const timeout = setTimeout(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      
-      const rect = el.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      const visibleWidth = Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0);
-      const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
-      const visibleArea = Math.max(0, visibleWidth) * Math.max(0, visibleHeight);
-      const totalArea = rect.width * rect.height;
-      
-      if (totalArea > 0 && visibleArea / totalArea < 0.2) {
-        resetPosition();
-      }
-    }, 100);
-    
-    return () => clearTimeout(timeout);
-  }, [armstrongVisible, armstrongExpanded, isMobile, resetPosition]);
 
   // Derive context from current route
   const getContext = () => {
@@ -150,33 +92,22 @@ export function ArmstrongContainer() {
     return null;
   }
 
-  // EXPANDED: Full chat panel - DRAGGABLE via header
+  // EXPANDED: Full chat panel - FIXED bottom-right
   if (armstrongExpanded) {
     return (
       <div 
         ref={containerRef}
         className={cn(
-          'fixed w-80 border bg-card rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
-          isDragOver && 'ring-2 ring-primary ring-inset',
-          isDragging && 'shadow-2xl'
+          'fixed right-5 bottom-5 w-80 border bg-card rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
+          isDragOver && 'ring-2 ring-primary ring-inset'
         )}
-        style={{
-          left: position.x,
-          top: position.y,
-          height: EXPANDED_SIZE.height,
-        }}
+        style={{ height: 500 }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Draggable Header */}
-        <div 
-          {...dragHandleProps}
-          className={cn(
-            'flex items-center justify-between p-3 border-b bg-muted/30 cursor-grab active:cursor-grabbing',
-            'select-none'
-          )}
-        >
+        {/* Header */}
+        <div className="flex items-center justify-between p-3 border-b bg-muted/30">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
               <Bot className="h-3 w-3 text-primary-foreground" />
@@ -188,10 +119,7 @@ export function ArmstrongContainer() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleArmstrongExpanded();
-              }}
+              onClick={toggleArmstrongExpanded}
               title="Minimieren"
             >
               <Minimize2 className="h-4 w-4" />
@@ -200,10 +128,7 @@ export function ArmstrongContainer() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                hideArmstrong();
-              }}
+              onClick={hideArmstrong}
               title="Schließen"
             >
               <X className="h-4 w-4" />
@@ -222,26 +147,18 @@ export function ArmstrongContainer() {
     );
   }
 
-  // COLLAPSED: Round Mini-Chat Widget - DRAGGABLE
+  // COLLAPSED: Round Mini-Chat Widget - FIXED bottom-right
   return (
     <div 
       ref={containerRef}
       className={cn(
-        'fixed z-[60] h-[150px] w-[150px] rounded-full',
+        'fixed right-5 bottom-5 z-[60] h-[150px] w-[150px] rounded-full',
         'bg-gradient-to-br from-primary to-primary/80',
         'shadow-xl hover:shadow-2xl hover:scale-105',
         'transition-all duration-200 ease-out',
         'flex flex-col items-center justify-center gap-2 p-4',
-        'cursor-grab active:cursor-grabbing',
-        isDragOver && 'ring-2 ring-white/50 scale-110',
-        isDragging && 'opacity-90'
+        isDragOver && 'ring-2 ring-white/50 scale-110'
       )}
-      style={{
-        left: position.x,
-        top: position.y,
-        ...dragHandleProps.style,
-      }}
-      onMouseDown={dragHandleProps.onMouseDown}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
