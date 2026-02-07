@@ -1,119 +1,108 @@
 
-# Armstrong Reparatur-Plan
+# Armstrong Rundes Mini-Chat — Mit Drag-and-Drop
 
-## Problem-Zusammenfassung
+## Konzept
 
-Armstrong zeigt inkonsistentes Verhalten mit State-Synchronisationsproblemen zwischen den Toggle-Buttons und der tatsächlichen Sichtbarkeit.
+Ein rundes Chat-Widget (150px Durchmesser ≈ 4cm) mit Input, Upload und Send — **vollständig draggable**. Der `useDraggable` Hook bleibt erhalten, nur die komplexen Planet-CSS-Styles werden durch einfache Tailwind-Klassen ersetzt.
+
+```text
+MINIMIERT — Rundes Mini-Chat (150px ⌀, DRAGGABLE):
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│                                                  ┌───────────┐     │
+│                                                  │    🤖     │     │
+│                                                  │ ┌───────┐ │     │
+│                                         ↔        │ │Fragen │ │     │
+│                                        Drag      │ └───────┘ │     │
+│                                                  │  📎   ➤  │     │
+│                                                  └───────────┘     │
+│                                                  150px rund        │
+│                                                  Position: frei    │
+└────────────────────────────────────────────────────────────────────┘
+
+EXPANDIERT — Chat-Panel (320x500px, DRAGGABLE):
+┌────────────────────────────────────────────────────────────────────┐
+│                                              ┌─────────────────┐   │
+│                                              │ Armstrong ↔ ─ ✕ │   │
+│                                              ├─────────────────┤   │
+│                                              │                 │   │
+│                                              │   Chat Panel    │   │
+│                                              │   (voll)        │   │
+│                                              │                 │   │
+│                                              ├─────────────────┤   │
+│                                              │ Nachricht... ➤  │   │
+│                                              └─────────────────┘   │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Identifizierte Fehler
+## Technische Änderungen
 
-### 1. TypeScript-Fehler: `setActiveArea(null)`
+### 1. ArmstrongContainer.tsx — Rundes Mini-Chat mit Drag
 
-**Datei:** `src/components/portal/SystemBar.tsx` Zeile 50
+**Minimierter Zustand (neu):**
+- Container: 150x150px, `rounded-full`
+- Hintergrund: Einfacher Gradient (`bg-gradient-to-br from-primary to-primary/80`)
+- Inhalt: Bot-Icon, Input-Feld (rund), Upload + Send Buttons
+- **Drag-Handle**: Gesamter Container ist draggbar
+- **Klick auf Input/Buttons** → Expandiert zum vollen ChatPanel
 
-```typescript
-// FEHLER: null ist kein gültiger AreaKey
-setActiveArea(null);
+**Expandierter Zustand (bleibt ähnlich):**
+- Container: 320x500px, `rounded-2xl`
+- Header als Drag-Handle (wie bisher)
+- ChatPanel im Body
+
+```text
+Code-Struktur:
+
+// MINIMIERT: Rundes Widget
+<div 
+  style={{ left: position.x, top: position.y }}
+  {...dragHandleProps}
+  className="fixed z-[60] h-[150px] w-[150px] rounded-full 
+             bg-gradient-to-br from-primary to-primary/80
+             shadow-xl flex flex-col items-center justify-center p-3"
+>
+  <Bot icon />
+  <input placeholder="Fragen..." onFocus={expand} />
+  <div className="flex gap-2">
+    <button upload />
+    <button send />
+  </div>
+</div>
+
+// EXPANDIERT: Chat-Panel
+<div 
+  style={{ left: position.x, top: position.y }}
+  className="fixed z-[60] w-80 h-[500px] rounded-2xl ..."
+>
+  <header {...dragHandleProps}>Drag-Handle</header>
+  <ChatPanel />
+</div>
 ```
 
-Der `setActiveArea` erwartet `AreaKey` ('base' | 'missions' | 'operations' | 'services'), nicht `null`. Dies verursacht Type-Inkonsistenzen.
+### 2. CSS bereinigen — Planet-Styles entfernen
 
-### 2. Logik-Fehler in `showArmstrong`
+**Datei:** `src/index.css` (Zeilen 536-602)
 
-**Datei:** `src/hooks/usePortalLayout.tsx` Zeile 196
+Die komplexen 3D-Gradient-Styles werden vollständig entfernt:
+- `.armstrong-planet`
+- `.armstrong-planet:hover`
+- `.dark .armstrong-planet`
+- `.dark .armstrong-planet:hover`
 
-```typescript
-if (expanded !== undefined) {  // IMMER true, da default = false
-  setArmstrongExpandedState(expanded);
-```
+Diese ca. 67 Zeilen CSS werden gelöscht und durch einfache Tailwind-Klassen im TSX ersetzt.
 
-Die Bedingung ist immer true, was zu unbeabsichtigtem State-Override führt.
+### 3. ArmstrongPod.tsx — Löschen
 
-### 3. Fehlende Migration-Bereinigung bei State-Wechsel
+Diese Komponente wird nirgends mehr importiert (nur Kommentare verweisen darauf) und ist ein Artefakt.
 
-Die Migration v3 (Zeile 84-91) löscht gespeicherte Werte, aber danach werden sie sofort wieder gesetzt, was zu Race-Conditions führen kann.
+### 4. usePortalLayout.tsx — Aufräumen
 
----
-
-## Reparatur-Schritte
-
-### Schritt 1: `setActiveArea` Type-Fix
-
-**Datei:** `src/hooks/usePortalLayout.tsx`
-
-- Option A: State-Typ auf `AreaKey | null` erweitern
-- Option B: In SystemBar `'base'` statt `null` verwenden
-
-**Empfehlung:** Option A — ermöglicht explizites "kein Bereich ausgewählt" für Dashboard
-
-```typescript
-// hooks/usePortalLayout.tsx
-const [activeArea, setActiveAreaState] = useState<AreaKey | null>(() => {
-  // ...
-});
-```
-
-### Schritt 2: `showArmstrong` Logik korrigieren
-
-```typescript
-const showArmstrong = useCallback((options?: { resetPosition?: boolean; expanded?: boolean }) => {
-  const { resetPosition = false, expanded } = options || {};
-  
-  if (resetPosition) {
-    localStorage.removeItem(ARMSTRONG_POSITION_KEY);
-    console.log('[Armstrong] Position reset');
-  }
-  
-  setArmstrongVisibleState(true);
-  localStorage.setItem(ARMSTRONG_KEY, 'true');
-  
-  // NUR setzen wenn explizit übergeben
-  if (expanded !== undefined) {
-    setArmstrongExpandedState(expanded);
-    localStorage.setItem(ARMSTRONG_EXPANDED_KEY, String(expanded));
-  }
-}, []);
-```
-
-Hier war der Fehler: `const { expanded = false }` setzt immer einen Default, sodass die Bedingung `if (expanded !== undefined)` immer true ist.
-
-**Fix:** Keinen Default für `expanded` setzen.
-
-### Schritt 3: Robustere Sichtbarkeits-Initialisierung
-
-Sicherstellen, dass Armstrong nach Migration SICHTBAR startet:
-
-```typescript
-// Nach Migration: Explizit visible setzen
-if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
-  localStorage.removeItem(ARMSTRONG_KEY);
-  localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
-  localStorage.removeItem(ARMSTRONG_POSITION_KEY);
-  localStorage.removeItem('sot-armstrong-migrated-v2');
-  
-  // WICHTIG: Nach Löschen sofort den Default setzen
-  localStorage.setItem(ARMSTRONG_KEY, 'true');
-  localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-  console.log('[Armstrong] Migration v3: Reset to visible');
-}
-```
-
-### Schritt 4: Debugging-Log hinzufügen (temporär)
-
-In `ArmstrongContainer.tsx` erweiterte Logs für Diagnose:
-
-```typescript
-useEffect(() => {
-  console.log('[Armstrong] Render state:', { 
-    armstrongVisible, 
-    armstrongExpanded, 
-    isMobile,
-    position 
-  });
-}, [armstrongVisible, armstrongExpanded, isMobile, position]);
-```
+- Debug-Log entfernen (Zeile 80-87 in ArmstrongContainer)
+- `console.error` entfernen (Zeile 270)
+- Kein weiterer Umbau nötig — der Hook funktioniert
 
 ---
 
@@ -121,28 +110,53 @@ useEffect(() => {
 
 | Datei | Änderung |
 |-------|----------|
-| `src/hooks/usePortalLayout.tsx` | Type-Fix für `activeArea`, `showArmstrong` Logik-Fix |
-| `src/components/portal/SystemBar.tsx` | Anpassung an neuen Type (oder `'base'` statt `null`) |
-| `src/manifests/areaConfig.ts` | `AreaKey` Type ggf. erweitern |
+| `src/components/portal/ArmstrongContainer.tsx` | Rewrite: Rundes Mini-Chat mit Input/Upload/Send |
+| `src/components/portal/ArmstrongPod.tsx` | **Löschen** — unbenutzt |
+| `src/index.css` | Zeilen 536-602 entfernen (`.armstrong-planet`) |
+| `src/hooks/usePortalLayout.tsx` | Debug-Log entfernen |
 
 ---
 
-## Alternative: Komplett-Reset
+## Design-Spezifikation
 
-Falls die Reparatur zu komplex wird, können wir Armstrong auf eine **einfachere Variante** zurücksetzen:
+### Rundes Mini-Chat (Minimiert)
 
-- Planet-Sphere entfernen
-- Fester Button in SystemBar der immer funktioniert
-- Kein Dragging, keine komplexe Position-Persistenz
+| Element | Spezifikation |
+|---------|---------------|
+| **Container** | 150x150px, `rounded-full`, draggable |
+| **Hintergrund** | `bg-gradient-to-br from-primary to-primary/80` |
+| **Shadow** | `shadow-xl` (einfach, zuverlässig) |
+| **Bot-Icon** | `Bot` oder `MessageCircle`, 20x20px, weiß |
+| **Input** | `h-8`, `rounded-full`, halbtransparent weiß, zentriert |
+| **Buttons** | 28x28px, `rounded-full`, halbtransparent |
+| **Schrift** | `text-white`, 11-12px |
 
-Dies würde die Komplexität drastisch reduzieren und die Zuverlässigkeit erhöhen.
+### Hover/Drag-Feedback
+
+| Zustand | Effekt |
+|---------|--------|
+| **Hover** | `hover:scale-105`, `hover:shadow-2xl` |
+| **Dragging** | `cursor-grabbing`, `opacity-90` |
+| **File-Drop** | `ring-2 ring-white/50` |
 
 ---
 
-## Empfehlung
+## Was bleibt erhalten
 
-**Option 1 (Reparatur):** Die 3 identifizierten Bugs fixen — geschätzte Dauer: 15-20 Minuten
+- **useDraggable Hook** — Vollständig, mit Position-Persistenz
+- **ChatPanel** — Unverändert (alle Funktionen)
+- **File Drag-and-Drop** — Weiterhin im Widget möglich
+- **ArmstrongSheet** — Mobile Bottom-Sheet unverändert
+- **ArmstrongInputBar** — Mobile Input-Bar unverändert
+- **SystemBar Toggle** — Rocket-Button funktioniert weiter
+- **Self-Healing** — Off-Screen-Detection bleibt
 
-**Option 2 (Vereinfachung):** Armstrong als festes Panel rechts unten ohne Drag-Logik — einfacher, stabiler
+---
 
-Welche Variante bevorzugen Sie?
+## Erwartetes Ergebnis
+
+1. **Sofort sichtbar** — Rundes Widget rechts unten
+2. **Draggable** — Frei positionierbar per Maus
+3. **Funktional** — Input + Upload + Send direkt sichtbar
+4. **Zuverlässig** — Einfaches CSS, keine komplexen Animationen
+5. **Responsive** — Auf Mobile weiterhin InputBar + Sheet
