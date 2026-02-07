@@ -1,13 +1,11 @@
 /**
- * ARMSTRONG CONTAINER — Desktop Chat Container
+ * ARMSTRONG CONTAINER — Desktop Draggable Round Mini-Chat
  * 
- * Collapsed State: Planet sphere (60px) - DRAGGABLE
- * Expanded State: Right-side stripe (320px width, full height) - DRAGGABLE
+ * Collapsed State: Round widget (150px) with input, upload, send - DRAGGABLE
+ * Expanded State: Chat panel (320x500px) - DRAGGABLE via header
  * 
  * Acts as drop target for drag-and-drop files
- * Desktop only: Freely positionable via drag handle
- * 
- * RECOVERY: Self-healing position if off-screen
+ * Desktop only: Freely positionable via drag
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -15,9 +13,8 @@ import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useDraggable } from '@/hooks/useDraggable';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { 
-  MessageCircle, 
+  Bot, 
   Minimize2, 
   X,
   Paperclip,
@@ -28,15 +25,15 @@ import { useLocation } from 'react-router-dom';
 
 // Container dimensions for boundary calculation
 const EXPANDED_SIZE = { width: 320, height: 500 };
-const COLLAPSED_SIZE = { width: 80, height: 100 };
+const COLLAPSED_SIZE = { width: 150, height: 150 };
 
 export function ArmstrongContainer() {
   const location = useLocation();
-  const { armstrongVisible, armstrongExpanded, toggleArmstrong, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
+  const { armstrongVisible, armstrongExpanded, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
   const [isDragOver, setIsDragOver] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Draggable positioning (different size for expanded vs collapsed)
   const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
@@ -45,14 +42,13 @@ export function ArmstrongContainer() {
     storageKey: 'armstrong-position',
     containerSize: currentSize,
     boundaryPadding: 20,
-    disabled: isMobile, // Disable on mobile
+    disabled: isMobile,
   });
 
-  // SELF-HEALING: Check if container is off-screen and reset if needed
+  // Self-healing: Check if container is off-screen and reset if needed
   useEffect(() => {
     if (!armstrongVisible || isMobile || !containerRef.current) return;
     
-    // Small delay to allow DOM to render
     const timeout = setTimeout(() => {
       const el = containerRef.current;
       if (!el) return;
@@ -61,30 +57,18 @@ export function ArmstrongContainer() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      // Check if element is mostly off-screen (more than 80% hidden)
       const visibleWidth = Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0);
       const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
       const visibleArea = Math.max(0, visibleWidth) * Math.max(0, visibleHeight);
       const totalArea = rect.width * rect.height;
       
       if (totalArea > 0 && visibleArea / totalArea < 0.2) {
-        console.log('[Armstrong] Off-screen detected, resetting position');
         resetPosition();
       }
     }, 100);
     
     return () => clearTimeout(timeout);
   }, [armstrongVisible, armstrongExpanded, isMobile, resetPosition]);
-
-  // DEBUG: Log render state
-  useEffect(() => {
-    console.log('[Armstrong] Render state:', { 
-      armstrongVisible, 
-      armstrongExpanded, 
-      isMobile,
-      position 
-    });
-  }, [armstrongVisible, armstrongExpanded, isMobile, position]);
 
   // Derive context from current route
   const getContext = () => {
@@ -112,29 +96,49 @@ export function ArmstrongContainer() {
     e.preventDefault();
     setIsDragOver(false);
     
-    // Get file name for display (no actual processing)
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      setAttachedFile(files[0].name);
+      // Expand and pass file to chat
+      toggleArmstrongExpanded();
     }
+  }, [toggleArmstrongExpanded]);
+
+  // Handle input focus -> expand
+  const handleInputFocus = useCallback(() => {
+    toggleArmstrongExpanded();
+  }, [toggleArmstrongExpanded]);
+
+  // Handle upload button click
+  const handleUploadClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
   }, []);
 
-  const removeAttachment = useCallback(() => {
-    setAttachedFile(null);
-  }, []);
+  // Handle file selection
+  const handleFileChange = useCallback(() => {
+    toggleArmstrongExpanded();
+  }, [toggleArmstrongExpanded]);
 
-  // Don't render if not visible
-  if (!armstrongVisible) {
+  // Handle send button click
+  const handleSendClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inputValue.trim()) {
+      toggleArmstrongExpanded();
+    }
+  }, [inputValue, toggleArmstrongExpanded]);
+
+  // Don't render if not visible or on mobile
+  if (!armstrongVisible || isMobile) {
     return null;
   }
 
-  // Expanded State: Full chat panel - DRAGGABLE
+  // EXPANDED: Full chat panel - DRAGGABLE via header
   if (armstrongExpanded) {
     return (
       <div 
         ref={containerRef}
         className={cn(
-          'fixed w-80 border bg-card rounded-2xl shadow-lg z-[60] flex flex-col overflow-hidden',
+          'fixed w-80 border bg-card rounded-2xl shadow-xl z-[60] flex flex-col overflow-hidden',
           isDragOver && 'ring-2 ring-primary ring-inset',
           isDragging && 'shadow-2xl'
         )}
@@ -156,8 +160,9 @@ export function ArmstrongContainer() {
           )}
         >
           <div className="flex items-center gap-2">
-            {/* Mini planet indicator */}
-            <div className="armstrong-planet w-6 h-6" />
+            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <Bot className="h-3 w-3 text-primary-foreground" />
+            </div>
             <span className="font-medium text-sm">Armstrong</span>
           </div>
           <div className="flex items-center gap-1">
@@ -199,13 +204,18 @@ export function ArmstrongContainer() {
     );
   }
 
-  // Collapsed State: Planet Sphere - DRAGGABLE
+  // COLLAPSED: Round Mini-Chat Widget - DRAGGABLE
   return (
     <div 
       ref={containerRef}
       className={cn(
-        'fixed z-[60] flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing',
-        isDragOver && 'scale-110',
+        'fixed z-[60] h-[150px] w-[150px] rounded-full',
+        'bg-gradient-to-br from-primary to-primary/80',
+        'shadow-xl hover:shadow-2xl hover:scale-105',
+        'transition-all duration-200 ease-out',
+        'flex flex-col items-center justify-center gap-2 p-4',
+        'cursor-grab active:cursor-grabbing',
+        isDragOver && 'ring-2 ring-white/50 scale-110',
         isDragging && 'opacity-90'
       )}
       style={{
@@ -213,29 +223,65 @@ export function ArmstrongContainer() {
         top: position.y,
       }}
       {...dragHandleProps}
-      onClick={(e) => {
-        // Only expand if not dragging
-        if (!isDragging) {
-          toggleArmstrongExpanded();
-        }
-      }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Planet Sphere */}
-      <div 
-        className={cn(
-          'armstrong-planet w-14 h-14 flex items-center justify-center',
-          isDragOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-        )}
-        title="Armstrong öffnen"
-      >
-        <MessageCircle className="h-5 w-5 text-white/80" />
+      {/* Hidden file input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={handleFileChange}
+      />
+      
+      {/* Bot Icon + Label */}
+      <div className="flex items-center gap-1.5">
+        <Bot className="h-4 w-4 text-primary-foreground/80" />
+        <span className="text-[11px] font-medium text-primary-foreground/70">Armstrong</span>
       </div>
       
-      {/* Label */}
-      <span className="text-[10px] font-medium text-muted-foreground">Armstrong</span>
+      {/* Compact Input Field */}
+      <input
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onFocus={handleInputFocus}
+        onClick={(e) => e.stopPropagation()}
+        placeholder="Fragen..."
+        className={cn(
+          'w-full h-8 rounded-full bg-white/20 border-0',
+          'text-xs text-primary-foreground placeholder:text-primary-foreground/50',
+          'px-3 text-center',
+          'focus:outline-none focus:bg-white/30',
+          'transition-colors'
+        )}
+      />
+      
+      {/* Upload + Send Buttons */}
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={handleUploadClick}
+          className={cn(
+            'h-7 w-7 rounded-full bg-white/20 hover:bg-white/30',
+            'flex items-center justify-center',
+            'transition-colors'
+          )}
+          title="Datei anhängen"
+        >
+          <Paperclip className="h-3.5 w-3.5 text-primary-foreground/70" />
+        </button>
+        <button 
+          onClick={handleSendClick}
+          className={cn(
+            'h-7 w-7 rounded-full bg-white/30 hover:bg-white/40',
+            'flex items-center justify-center',
+            'transition-colors'
+          )}
+          title="Senden"
+        >
+          <Send className="h-3.5 w-3.5 text-primary-foreground" />
+        </button>
+      </div>
     </div>
   );
 }
