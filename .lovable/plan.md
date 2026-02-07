@@ -1,161 +1,341 @@
 
-# Synchronisierungs-Plan: KI-Office Widgets & MOD-00 Dashboard
+# Mobile UI/UX Optimierung — Vollständiger Implementierungsplan
 
-## Analyse-Ergebnis
+## Zusammenfassung der identifizierten Probleme
 
-Ich habe eine vollständige Codebase-Analyse durchgeführt und folgende Inkonsistenzen gefunden:
-
-### ❌ Probleme gefunden
-
-| # | Datei | Problem | Priorität |
-|---|-------|---------|-----------|
-| 1 | `src/manifests/routesManifest.ts` | MOD-02 hat nur 4 Tiles, "Widgets" fehlt | **KRITISCH** |
-| 2 | `src/components/portal/HowItWorks/moduleContents.ts` | MOD-02 subTiles hat nur 4 Einträge | **KRITISCH** |
-| 3 | `src/pages/portal/office/index.ts` | `WidgetsTab` wird nicht exportiert | MITTEL |
-| 4 | Datenbank `tile_catalog` | MOD-02 sub_tiles Array hat nur 4 Einträge | **KRITISCH** |
-| 5 | `src/manifests/routesManifest.ts` | MOD-00 Dashboard ist nicht als Modul definiert | NIEDRIG |
-
-### ✅ Bereits korrekt
-
-| Datei | Status |
-|-------|--------|
-| `manifests/tile_catalog.yaml` | ✅ 5 Sub-Tiles inkl. Widgets |
-| `spec/current/02_modules/mod-02_ki-office.md` | ✅ 5 Tabs dokumentiert |
-| `spec/current/02_modules/mod-00_dashboard.md` | ✅ Spec vorhanden |
-| `src/pages/portal/OfficePage.tsx` | ✅ Route `/widgets` vorhanden |
-| `src/pages/portal/office/WidgetsTab.tsx` | ✅ Komponente existiert |
-| `src/manifests/armstrongManifest.ts` | ✅ MOD-00 Actions vorhanden |
+Nach umfassender Analyse aller mobilen Ansichten wurden folgende kritische Punkte identifiziert:
 
 ---
 
-## Umsetzungsplan
+## Problem 1: Drag & Drop auf Mobile Dashboard AKTIV
 
-### Phase 1: Code-Synchronisation (Navigation sichtbar machen)
+**Aktueller Zustand:**
+Die `SortableWidget`-Komponente und `DashboardGrid` haben Drag & Drop auf **allen Geräten aktiv**, einschließlich Mobile. Der TouchSensor erlaubt Long-Press zum Sortieren — das ist auf Mobile **nicht gewünscht**.
 
-#### 1.1 routesManifest.ts — MOD-02 Widgets Tile hinzufügen
+**Lösung:**
+Drag & Drop auf Mobile komplett deaktivieren. Auf Mobile werden Widgets in fester Reihenfolge angezeigt (kein Sortieren).
 
-**Datei:** `src/manifests/routesManifest.ts`
-
-```typescript
-// Zeile 168-180 ändern:
-"MOD-02": {
-  name: "KI Office",
-  base: "office",
-  icon: "Sparkles",
-  display_order: 2,
-  visibility: { default: true, org_types: ["client", "partner"] },
-  tiles: [
-    { path: "email", component: "EmailTab", title: "E-Mail" },
-    { path: "brief", component: "BriefTab", title: "Brief" },
-    { path: "kontakte", component: "KontakteTab", title: "Kontakte" },
-    { path: "kalender", component: "KalenderTab", title: "Kalender" },
-    { path: "widgets", component: "WidgetsTab", title: "Widgets" },  // NEU
-  ],
-},
-```
-
-#### 1.2 moduleContents.ts — MOD-02 subTiles erweitern
-
-**Datei:** `src/components/portal/HowItWorks/moduleContents.ts`
-
-```typescript
-// Bei MOD-02 (ca. Zeile 89-94) ändern:
-subTiles: [
-  { title: 'E-Mail', route: '/portal/office/email', icon: Mail },
-  { title: 'Brief', route: '/portal/office/brief', icon: FileText },
-  { title: 'Kontakte', route: '/portal/office/kontakte', icon: Users },
-  { title: 'Kalender', route: '/portal/office/kalender', icon: Calendar },
-  { title: 'Widgets', route: '/portal/office/widgets', icon: Layers },  // NEU
-],
-```
-
-Import `Layers` aus lucide-react hinzufügen.
-
-#### 1.3 office/index.ts — Export hinzufügen
-
-**Datei:** `src/pages/portal/office/index.ts`
-
-```typescript
-export { EmailTab } from './EmailTab';
-export { BriefTab } from './BriefTab';
-export { KontakteTab } from './KontakteTab';
-export { KalenderTab } from './KalenderTab';
-export { WidgetsTab } from './WidgetsTab';  // NEU
-```
-
----
-
-### Phase 2: Datenbank-Synchronisation
-
-#### 2.1 tile_catalog UPDATE für MOD-02
-
-```sql
-UPDATE tile_catalog 
-SET sub_tiles = '[
-  {"route": "/portal/office/email", "title": "E-Mail"},
-  {"route": "/portal/office/brief", "title": "Brief"},
-  {"route": "/portal/office/kontakte", "title": "Kontakte"},
-  {"route": "/portal/office/kalender", "title": "Kalender"},
-  {"route": "/portal/office/widgets", "title": "Widgets"}
-]'::jsonb
-WHERE tile_code = 'MOD-02';
-```
-
-#### 2.2 MOD-00 Dashboard in tile_catalog (optional)
-
-```sql
-INSERT INTO tile_catalog (
-  tile_code, title, description, icon_key, zone, 
-  display_order, is_active, main_tile_route, main_tile_title, sub_tiles
-) VALUES (
-  'MOD-00', 
-  'Dashboard', 
-  'Widget-basierte Startseite mit Drag & Drop',
-  'layout-dashboard',
-  2,
-  0,
-  true,
-  '/portal',
-  'Dashboard',
-  '[]'::jsonb
-);
-```
-
----
-
-### Phase 3: Konsistenz-Checks
-
-#### 3.1 Prüfung aller SSOT-Quellen
-
-Nach der Implementierung müssen folgende Dateien synchron sein:
-
-| Quelle | MOD-02 Tiles | MOD-00 |
-|--------|--------------|--------|
-| `routesManifest.ts` | 5 Tiles | Dashboard-Route |
-| `moduleContents.ts` | 5 subTiles | — |
-| `tile_catalog.yaml` | 5 sub_tiles | MOD-00 Eintrag |
-| `tile_catalog` (DB) | 5 sub_tiles | MOD-00 Row |
-| `mod-02_ki-office.md` | 5 Tabs | — |
-
----
-
-## Zusammenfassung: Betroffene Dateien
+### Betroffene Dateien:
 
 | Datei | Änderung |
 |-------|----------|
-| `src/manifests/routesManifest.ts` | MOD-02 Widgets Tile hinzufügen |
-| `src/components/portal/HowItWorks/moduleContents.ts` | Widgets zu subTiles, Layers Import |
-| `src/pages/portal/office/index.ts` | WidgetsTab Export |
-| Datenbank `tile_catalog` | MOD-02 sub_tiles UPDATE |
-| Datenbank `tile_catalog` | MOD-00 INSERT (optional) |
+| `src/components/dashboard/DashboardGrid.tsx` | Sensor-Konfiguration nur für Desktop aktivieren |
+| `src/components/dashboard/SortableWidget.tsx` | Auf Mobile keine Drag-Listener anwenden |
+| `src/pages/portal/PortalDashboard.tsx` | Alternative Rendering-Logik für Mobile |
+
+### Code-Änderung DashboardGrid.tsx:
+
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+
+export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridProps) {
+  const isMobile = useIsMobile();
+  
+  // Desktop only: Configure sensors for pointer and touch
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+    // TouchSensor REMOVED — no mobile drag
+  );
+
+  // On mobile: Render simple grid without DnD
+  if (isMobile) {
+    return (
+      <div 
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+          justifyContent: 'center',
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  // Desktop: Full DnD functionality
+  return (
+    <DndContext sensors={sensors} ...>
+      ...
+    </DndContext>
+  );
+}
+```
+
+### Code-Änderung SortableWidget.tsx:
+
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+
+export function SortableWidget({ id, children, className }: SortableWidgetProps) {
+  const isMobile = useIsMobile();
+  
+  // On mobile: Render without drag functionality
+  if (isMobile) {
+    return <div className={className}>{children}</div>;
+  }
+  
+  // Desktop: Full sortable functionality
+  const { attributes, listeners, ... } = useSortable({ id });
+  ...
+}
+```
 
 ---
 
-## Nach Umsetzung: Erwartetes Ergebnis
+## Problem 2: "How It Works" auf Mobile ZU LANG
 
-Navigation in KI-Office zeigt 5 Tabs:
-```
-[E-Mail] [Brief] [Kontakte] [Kalender] [Widgets]
+**Aktueller Zustand:**
+Wenn man auf einen Modul-Button klickt, erscheint die `ModuleHowItWorks`-Seite mit:
+- Hero-Bereich mit Titel + One-Liner
+- "Nutzen"-Karte mit Benefits
+- "Was Sie hier tun"-Karte
+- "Typische Abläufe"-Karten
+- Hint-Text
+- CTA-Karte
+- SubTile-Buttons
+
+Das ist auf Mobile **viel zu viel Content** und erfordert viel Scrollen, bevor man zu den eigentlichen Funktionen kommt.
+
+**Lösung:**
+Mobile-optimierte Variante der HowItWorks-Seite:
+1. Kompakter Header ohne Modul-Code
+2. **Keine** "Nutzen", "Was Sie tun", "Typische Abläufe" Karten — diese sind für Desktop
+3. **Nur** SubTile-Buttons als primäre Navigation (große Touch-Targets)
+4. Optionaler "Mehr erfahren" Expandable für Details
+
+### Betroffene Dateien:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/components/portal/HowItWorks/ModuleHowItWorks.tsx` | Mobile-Variante mit kompaktem Layout |
+
+### Code-Änderung ModuleHowItWorks.tsx:
+
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) {
+  const isMobile = useIsMobile();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // === MOBILE: Kompakte Ansicht ===
+  if (isMobile) {
+    return (
+      <div className={cn('space-y-4 p-4', className)}>
+        {/* Kompakter Header */}
+        <div className="space-y-2">
+          <h1 className="text-xl font-bold uppercase">{content.title}</h1>
+          <p className="text-sm text-muted-foreground">{content.oneLiner}</p>
+        </div>
+
+        {/* SubTile Buttons — PRIMÄRE NAVIGATION */}
+        {content.subTiles.length > 0 && (
+          <div className="grid gap-2">
+            {content.subTiles.map((tile) => (
+              <Button
+                key={tile.route}
+                variant="outline"
+                className="justify-start h-14 text-left"
+                asChild
+              >
+                <Link to={tile.route}>
+                  {tile.icon && <tile.icon className="h-5 w-5 mr-3" />}
+                  <span className="font-medium">{tile.title}</span>
+                  <ArrowRight className="ml-auto h-4 w-4" />
+                </Link>
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Optional: Details aufklappbar */}
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full text-xs">
+              {detailsOpen ? 'Weniger anzeigen' : 'Mehr erfahren'}
+              <ChevronDown className={cn("ml-1 h-3 w-3 transition", detailsOpen && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-4">
+            {/* Benefits kompakt */}
+            <div className="space-y-1">
+              {content.benefits.slice(0, 3).map((benefit, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  }
+
+  // === DESKTOP: Bestehende Vollansicht ===
+  return (
+    <div className={cn('space-y-8 p-4 md:p-6 max-w-4xl mx-auto', className)}>
+      ... // Existing desktop code
+    </div>
+  );
+}
 ```
 
-Der "Widgets"-Tab öffnet `/portal/office/widgets` und zeigt das Archiv erledigter Armstrong-Widgets.
+---
+
+## Problem 3: Area-Übersicht KEIN direkter Modul-Zugriff
+
+**Aktueller Zustand:**
+Wenn man auf "Base" tippt, erscheint die Area-Übersichtsseite mit 6 Karten. Man muss dann nochmal auf "Modul öffnen" tippen, um zum Modul zu gelangen.
+
+Das sind **2 Klicks** statt **1 Klick** auf Desktop.
+
+**Lösung für Mobile:**
+Die Modul-Karten auf Mobile sollten **direkt klickbar** sein (die ganze Karte als Link), nicht nur der Button unten.
+
+### Betroffene Dateien:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/components/portal/AreaModuleCard.tsx` | Karte auf Mobile komplett klickbar machen |
+
+### Code-Änderung AreaModuleCard.tsx:
+
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+
+export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModuleCardProps) {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  
+  // Mobile: Gesamte Karte klickbar
+  if (isMobile) {
+    return (
+      <Card 
+        className="hover:border-primary/40 transition-colors cursor-pointer active:scale-[0.98]"
+        onClick={() => navigate(defaultRoute)}
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base leading-tight">{displayLabel}</CardTitle>
+          <CardDescription className="text-xs line-clamp-2">
+            {content.oneLiner}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {/* Kompakte Sub-Tiles */}
+          <div className="flex flex-wrap gap-1">
+            {displayTiles.slice(0, 4).map((tile) => (
+              <span
+                key={tile.route}
+                className="text-[10px] bg-muted px-1.5 py-0.5 rounded"
+              >
+                {tile.title}
+              </span>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Desktop: Bestehende Variante mit Button
+  return ( ... );
+}
+```
+
+---
+
+## Problem 4: AreaOverviewPage Mobile Layout
+
+**Aktueller Zustand:**
+Die Area-Übersichtsseite zeigt 6 Karten in einem Grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`). Das ist okay, aber der Header könnte kompakter sein.
+
+**Lösung:**
+Kompakterer Header auf Mobile, weniger Padding.
+
+### Betroffene Dateien:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/AreaOverviewPage.tsx` | Kompakterer Header auf Mobile |
+
+---
+
+## Problem 5: Widgets-Tab auf Mobile
+
+**Aktueller Zustand:**
+Der "Widgets"-Tab in KI-Office funktioniert und zeigt die Liste. Das Layout ist grundsätzlich okay, aber die Filter-Selects sind eng beieinander.
+
+**Lösung:**
+Filter auf Mobile **vertikal** stapeln (stacked), nicht horizontal.
+
+### Betroffene Dateien:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/office/WidgetsTab.tsx` | Responsive Filter-Layout |
+
+---
+
+## Zusammenfassung: Alle Änderungen
+
+### Kritisch (MUSS)
+
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `DashboardGrid.tsx` | Drag & Drop auf Mobile deaktivieren |
+| 2 | `SortableWidget.tsx` | Auf Mobile keine Drag-Listener |
+| 3 | `ModuleHowItWorks.tsx` | Mobile-Variante: Kompakt + SubTiles prominent |
+| 4 | `AreaModuleCard.tsx` | Gesamte Karte klickbar auf Mobile |
+
+### Wichtig (SOLLTE)
+
+| # | Datei | Änderung |
+|---|-------|----------|
+| 5 | `AreaOverviewPage.tsx` | Kompakterer Header auf Mobile |
+| 6 | `WidgetsTab.tsx` | Filter vertikal stapeln auf Mobile |
+
+---
+
+## Technische Details
+
+### Import für alle Komponenten:
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+```
+
+### Pattern für Mobile-First:
+```typescript
+const isMobile = useIsMobile();
+
+if (isMobile) {
+  return <MobileVariante />;
+}
+
+return <DesktopVariante />;
+```
+
+---
+
+## Erwartetes Ergebnis nach Implementierung
+
+### Dashboard:
+- Widgets erscheinen in fester Reihenfolge auf Mobile
+- Kein versehentliches Verschieben durch Long-Press
+- Grid passt sich automatisch an Bildschirmbreite an
+
+### Modul-Navigation:
+- Tippe auf "Base" → Area-Übersicht erscheint
+- Tippe auf Modul-Karte → Modul öffnet sich DIREKT
+- Kompakte "How It Works" mit prominenten Sub-Tile-Buttons
+- 1-2 Taps zum Ziel, nicht 3-4
+
+### Visuell:
+- Cleanes, aufgeräumtes Mobile-Layout
+- Große Touch-Targets (min. 44px)
+- Weniger Text, mehr Aktion
