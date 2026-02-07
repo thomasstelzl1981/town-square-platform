@@ -32,9 +32,7 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(({
             </p>
             
             {/* Value */}
-            <p className={cn("font-semibold tabular-nums text-foreground mt-1", isCompact ? "text-xl" : "text-kpi")}>
-              {value}
-            </p>
+            
             
             {/* Subtitle & Trend */}
             <div className="flex items-center gap-2 mt-1">
