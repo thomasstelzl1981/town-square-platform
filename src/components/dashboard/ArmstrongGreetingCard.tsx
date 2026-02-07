@@ -9,6 +9,7 @@ import { Calendar, ArrowRight, Clock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { getWeatherTextForGreeting } from '@/lib/weatherCodes';
 import { cn } from '@/lib/utils';
 import type { WeatherData } from '@/hooks/useWeather';
@@ -73,6 +74,7 @@ export function ArmstrongGreetingCard({
   isLoading 
 }: ArmstrongGreetingCardProps) {
   const { showArmstrong } = usePortalLayout();
+  const isMobile = useIsMobile();
   const [greeting, setGreeting] = useState('');
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -96,10 +98,13 @@ export function ArmstrongGreetingCard({
     
     contextParts.push(getShortEventSummary(todayEvents));
     
-    const fullMessage = `${greetingText}\n\n${contextParts.join(' ')}\n\nWie kann ich dir heute helfen?`;
+    // On mobile, skip "Wie kann ich helfen?" since input bar is always visible
+    const fullMessage = isMobile
+      ? `${greetingText}\n\n${contextParts.join(' ')}`
+      : `${greetingText}\n\n${contextParts.join(' ')}\n\nWie kann ich dir heute helfen?`;
     
     setGreeting(fullMessage);
-  }, [displayName, city, weather, todayEvents]);
+  }, [displayName, city, weather, todayEvents, isMobile]);
 
   // Typing animation effect
   useEffect(() => {
@@ -202,8 +207,8 @@ export function ArmstrongGreetingCard({
           </div>
         )}
 
-        {/* Action Button */}
-        {!isTyping && (
+        {/* Action Button - Hidden on mobile since input bar exists */}
+        {!isTyping && !isMobile && (
           <div className="mt-2">
             <Button 
               variant="outline" 
