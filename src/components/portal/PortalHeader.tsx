@@ -57,7 +57,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
           {/* Mobile: Hamburger for drawer */}
           {isMobile && (
             <Button 
-              variant="ghost" 
+              variant="glass" 
               size="icon" 
               onClick={onMenuClick}
               className="md:hidden"
@@ -69,7 +69,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
           {/* Desktop: Sidebar toggle */}
           {!isMobile && (
             <Button 
-              variant="ghost" 
+              variant="glass" 
               size="icon" 
               onClick={toggleSidebar}
               className="hidden md:flex"
@@ -106,10 +106,13 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
           {/* Armstrong toggle - Desktop only */}
           {!isMobile && (
             <Button
-              variant={armstrongVisible ? 'secondary' : 'ghost'}
+              variant="glass"
               size="icon"
               onClick={toggleArmstrong}
-              className="hidden lg:flex"
+              className={cn(
+                'hidden lg:flex',
+                armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
+              )}
               title={armstrongVisible ? 'Armstrong schließen' : 'Armstrong öffnen'}
             >
               <MessageCircle className="h-5 w-5" />
@@ -120,7 +123,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
-                variant="outline" 
+                variant="glass" 
                 size="sm" 
                 className="gap-2"
                 disabled={orgSwitching}
@@ -130,7 +133,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
                   {activeOrgName}
                 </span>
                 <Badge 
-                  variant="secondary" 
+                  variant="glass" 
                   className={cn('hidden md:inline-flex text-xs px-1.5 py-0', getOrgTypeBadgeColor(activeOrgType))}
                 >
                   {getOrgTypeLabel(activeOrgType)}

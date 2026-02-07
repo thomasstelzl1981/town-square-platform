@@ -104,8 +104,10 @@ export function SystemBar() {
           <Link 
             to="/portal" 
             className={cn(
-              'flex items-center justify-center p-2 rounded-lg transition-colors',
-              'text-muted-foreground hover:text-foreground hover:bg-accent'
+              'flex items-center justify-center p-2 rounded-xl transition-all',
+              'text-muted-foreground hover:text-foreground',
+              'hover:bg-white/20 dark:hover:bg-white/10',
+              'hover:shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)]'
             )}
             title="Zur Portal-Startseite"
           >
@@ -173,10 +175,13 @@ export function SystemBar() {
           {/* Armstrong toggle - Desktop only: ONLY toggles visibility */}
           {!isMobile && (
             <Button
-              variant={armstrongVisible ? 'secondary' : 'ghost'}
+              variant="glass"
               size="icon"
               onClick={toggleArmstrong}
-              className="h-9 w-9"
+              className={cn(
+                'h-9 w-9',
+                armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
+              )}
               title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
             >
               <Rocket className="h-5 w-5" />
