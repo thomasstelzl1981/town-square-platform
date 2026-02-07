@@ -5,6 +5,8 @@ import { de } from 'date-fns/locale';
 import { PropertyMap } from './PropertyMap';
 import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
 import ExposeHeadlineCard from '@/components/verkauf/ExposeHeadlineCard';
+import ExposeDescriptionCard from '@/components/verkauf/ExposeDescriptionCard';
+import type { UnitDossierData } from '@/types/immobilienakte';
 
 interface Property {
   id: string;
@@ -56,9 +58,11 @@ interface ExposeTabProps {
   property: Property & { id: string };
   financing: PropertyFinancing[];
   unit: Unit | null;
+  /** SSOT Dossier-Daten mit korrekten Mietwerten aus Leases */
+  dossierData?: UnitDossierData | null;
 }
 
-export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
+export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabProps) {
   const formatCurrency = (value: number | null | undefined) => {
     if (value == null) return '–';
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -113,20 +117,23 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
       {/* Bildergalerie - immer sichtbar */}
       <ExposeImageGallery propertyId={property.id} />
 
-      {/* Objektbeschreibung - prominent nach Header */}
-      {property.description && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Objektbeschreibung</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{property.description}</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Objektbeschreibung + Karte - 2-Spalten-Layout */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <ExposeDescriptionCard
+          propertyId={property.id}
+          description={property.description}
+        />
+        <PropertyMap
+          address={property.address}
+          city={property.city}
+          postalCode={property.postal_code}
+          country={property.country}
+          height="280px"
+        />
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Lage & Mikrolage - nur wenn vorhanden (ersetzt "Lage & Adresse" Duplikat) */}
+        {/* Lage & Mikrolage - nur wenn vorhanden */}
         {property.location_notes && (
           <Card>
             <CardHeader>
@@ -202,16 +209,28 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
           </CardContent>
         </Card>
 
-        {/* Miete */}
+        {/* Miete - SSOT aus dossierData (Leases) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Miete</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {unit ? (
+            {dossierData ? (
               <>
-                <InfoRow label="Warmmiete" value={formatCurrency(unit.current_monthly_rent)} />
+                <InfoRow label="Kaltmiete" value={formatCurrency(dossierData.rentColdEur)} />
+                <InfoRow label="NK-Vorauszahlung" value={formatCurrency(dossierData.nkAdvanceEur)} />
+                {dossierData.heatingAdvanceEur && dossierData.heatingAdvanceEur > 0 && (
+                  <InfoRow label="Heizkosten-VZ" value={formatCurrency(dossierData.heatingAdvanceEur)} />
+                )}
+                <Separator className="my-2" />
+                <InfoRow label="Warmmiete" value={formatCurrency(dossierData.rentWarmEur)} />
+              </>
+            ) : unit ? (
+              <>
+                <InfoRow label="Kaltmiete" value={formatCurrency(unit.current_monthly_rent)} />
                 <InfoRow label="NK-Vorauszahlung" value={formatCurrency(unit.ancillary_costs)} />
+                <Separator className="my-2" />
+                <InfoRow label="Warmmiete" value={formatCurrency((unit.current_monthly_rent || 0) + (unit.ancillary_costs || 0))} />
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Keine Mietdaten verfügbar</p>
@@ -219,14 +238,6 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Google Maps Kartenansicht */}
-      <PropertyMap
-        address={property.address}
-        city={property.city}
-        postalCode={property.postal_code}
-        country={property.country}
-      />
     </div>
   );
 }

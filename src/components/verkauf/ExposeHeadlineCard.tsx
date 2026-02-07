@@ -48,12 +48,19 @@ const ExposeHeadlineCard = ({
         .eq('id', unitId);
 
       if (error) throw error;
+      return { newHeadline, newSubline };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['property'] });
-      queryClient.invalidateQueries({ queryKey: ['unit'] });
+    onSuccess: (data) => {
+      // Optimistisches Update - kein vollständiger Reload
+      setEditHeadline(data.newHeadline);
+      setEditSubline(data.newSubline);
       toast.success('Exposé-Überschrift gespeichert');
       setIsEditing(false);
+      // Delayed invalidation to sync with server
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['property'] });
+        queryClient.invalidateQueries({ queryKey: ['unit'] });
+      }, 500);
     },
     onError: () => {
       toast.error('Fehler beim Speichern');
@@ -144,10 +151,10 @@ const ExposeHeadlineCard = ({
           <Pencil className="h-4 w-4" />
         </Button>
         
-        <h1 className={`text-xl font-semibold ${!hasContent ? 'text-muted-foreground' : ''}`}>
+        <h1 className={`text-2xl font-bold ${!hasContent ? 'text-muted-foreground' : ''}`}>
           {displayHeadline}
         </h1>
-        <p className={`text-sm mt-1 ${!hasContent ? 'text-muted-foreground/70 italic' : 'text-muted-foreground'}`}>
+        <p className={`text-sm mt-2 ${!hasContent ? 'text-muted-foreground/70 italic' : 'text-muted-foreground'}`}>
           {displaySubline}
         </p>
         
