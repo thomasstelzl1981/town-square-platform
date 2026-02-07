@@ -1,16 +1,16 @@
 /**
  * KI Office Page (MOD-02) - Routes Pattern with How It Works
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
+ * 
+ * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  */
-import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
-// Lazy load sub-page components
-const EmailTab = lazy(() => import('./office/EmailTab').then(m => ({ default: m.EmailTab })));
-const BriefTab = lazy(() => import('./office/BriefTab').then(m => ({ default: m.BriefTab })));
-const KontakteTab = lazy(() => import('./office/KontakteTab').then(m => ({ default: m.KontakteTab })));
-const KalenderTab = lazy(() => import('./office/KalenderTab').then(m => ({ default: m.KalenderTab })));
+// Direct imports for instant sub-tab navigation
+import { EmailTab } from './office/EmailTab';
+import { BriefTab } from './office/BriefTab';
+import { KontakteTab } from './office/KontakteTab';
+import { KalenderTab } from './office/KalenderTab';
 
 const OfficePage = () => {
   const content = moduleContents['MOD-02'];

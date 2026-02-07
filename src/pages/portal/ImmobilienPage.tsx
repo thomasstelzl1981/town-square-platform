@@ -1,34 +1,32 @@
 /**
  * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases
  * 
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock.
+ * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  * ErrorBoundary retained for error handling.
  * 
  * Routes:
- * - /portal/immobilien → Redirect to /portfolio (via index)
+ * - /portal/immobilien → How It Works landing
  * - /portal/immobilien/portfolio → Portfolio Dashboard + List
- * - /portal/immobilien/neu → Create Property (NON-LAZY, shows visible UI)
+ * - /portal/immobilien/neu → Create Property (shows visible UI)
  * - /portal/immobilien/kontexte → Context Management
  * - /portal/immobilien/sanierung → Renovation (global)
  * - /portal/immobilien/bewertung → Valuation (global)
  * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
  */
-import React, { lazy, Component, ReactNode } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Component, ReactNode, lazy } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
-// NON-LAZY: Create redirect must always work without Suspense
+// Direct imports for instant sub-tab navigation
 import { CreatePropertyRedirect } from './immobilien/CreatePropertyRedirect';
+import { PortfolioTab } from './immobilien/PortfolioTab';
+import { KontexteTab } from './immobilien/KontexteTab';
+import { SanierungTab } from './immobilien/SanierungTab';
+import { BewertungTab } from './immobilien/BewertungTab';
 
-// Lazy load other sub-page components
-const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({ default: m.PortfolioTab })));
-const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ default: m.KontexteTab })));
-const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
-const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
-
-// Property detail page (Immobilienakte SSOT) - now canonical location
+// Property detail page (Immobilienakte SSOT) - lazy for dynamic ID routes
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
 
 // =============================================================================
@@ -83,7 +81,7 @@ const ImmobilienPage = () => {
   return (
     <ImmobilienErrorBoundary>
       <Routes>
-        {/* CREATE: NON-LAZY - P0 requirement to prevent infinite loader */}
+        {/* CREATE: Direct import for immediate feedback */}
         <Route path="neu" element={<CreatePropertyRedirect />} />
         
         {/* PRIMARY: How It Works landing page */}
