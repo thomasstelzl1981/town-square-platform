@@ -15,6 +15,14 @@ export interface Position {
   y: number;
 }
 
+/** Result of consuming drag state - tracks if a drag occurred to prevent click */
+export interface DragState {
+  /** Whether a meaningful drag occurred (movement > threshold) */
+  didDrag: boolean;
+  /** Consume and reset the didDrag flag */
+  consumeDidDrag: () => boolean;
+}
+
 interface DraggableOptions {
   /** localStorage key for position persistence */
   storageKey?: string;
@@ -26,6 +34,10 @@ interface DraggableOptions {
   containerSize?: { width: number; height: number };
   /** Disable dragging (e.g., on mobile) */
   disabled?: boolean;
+  /** Extra offset from bottom edge (default 20) */
+  bottomOffset?: number;
+  /** Movement threshold in px before counting as drag (default 5) */
+  dragThreshold?: number;
 }
 
 interface DraggableResult {
@@ -33,22 +45,25 @@ interface DraggableResult {
   position: Position;
   /** Whether currently being dragged */
   isDragging: boolean;
-  /** Props to spread on the drag handle element */
+  /** Props to spread on the drag handle element - only onMouseDown, style must be merged manually */
   dragHandleProps: {
     onMouseDown: (e: React.MouseEvent) => void;
-    style: React.CSSProperties;
   };
+  /** Cursor style to merge with your element's style */
+  dragStyle: React.CSSProperties;
   /** Reset position to default */
   resetPosition: () => void;
+  /** Drag state for click suppression */
+  dragState: DragState;
 }
 
-function getDefaultPosition(containerWidth: number, containerHeight: number, padding: number): Position {
+function getDefaultPosition(containerWidth: number, containerHeight: number, padding: number, bottomOffset: number = 20): Position {
   if (typeof window === 'undefined') {
     return { x: 100, y: 100 };
   }
   return {
     x: window.innerWidth - containerWidth - padding,
-    y: window.innerHeight - containerHeight - padding - 100, // Some space from bottom
+    y: window.innerHeight - containerHeight - padding - bottomOffset,
   };
 }
 
@@ -106,16 +121,22 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     boundaryPadding = 20,
     containerSize = { width: 320, height: 400 },
     disabled = false,
+    bottomOffset = 20,
+    dragThreshold = 5,
   } = options;
 
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Track if a meaningful drag occurred (for click suppression)
+  const didDragRef = useRef(false);
+  const [, forceUpdate] = useState(0);
   
   // Ref for current position (for event handlers to avoid stale closures)
   const positionRef = useRef<Position | null>(null);
   
   // Initialize position with improved validation
   const [position, setPosition] = useState<Position>(() => {
-    const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
+    const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding, bottomOffset);
     
     // Try to load from storage
     const stored = loadStoredPosition(storageKey);
@@ -193,6 +214,13 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     return () => window.removeEventListener('resize', handleResize);
   }, [containerSize.width, containerSize.height, boundaryPadding]);
 
+  // Consume didDrag flag - returns true if drag occurred, then resets it
+  const consumeDidDrag = useCallback(() => {
+    const result = didDragRef.current;
+    didDragRef.current = false;
+    return result;
+  }, []);
+
   // Mouse down handler for drag handle
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled) return;
@@ -200,9 +228,12 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
+    didDragRef.current = false;
     
     // Use ref for current position to avoid stale closure
     const currentPos = positionRef.current || position;
+    const startX = e.clientX;
+    const startY = e.clientY;
     
     // Calculate offset from mouse to element position
     dragOffset.current = {
@@ -213,6 +244,13 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const newX = moveEvent.clientX - dragOffset.current.x;
       const newY = moveEvent.clientY - dragOffset.current.y;
+      
+      // Check if movement exceeds threshold - mark as actual drag
+      const dx = Math.abs(moveEvent.clientX - startX);
+      const dy = Math.abs(moveEvent.clientY - startY);
+      if (dx > dragThreshold || dy > dragThreshold) {
+        didDragRef.current = true;
+      }
       
       const constrained = constrainPosition(
         newX,
@@ -236,11 +274,14 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
       
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Force update so consumer can see didDrag state
+      forceUpdate(n => n + 1);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [disabled, position, containerSize.width, containerSize.height, boundaryPadding, storageKey]);
+  }, [disabled, position, containerSize.width, containerSize.height, boundaryPadding, storageKey, dragThreshold]);
 
   // Reset position to default
   const resetPosition = useCallback(() => {
@@ -255,11 +296,15 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
     isDragging,
     dragHandleProps: {
       onMouseDown: handleMouseDown,
-      style: {
-        cursor: disabled ? 'default' : (isDragging ? 'grabbing' : 'grab'),
-        userSelect: 'none' as const,
-      },
+    },
+    dragStyle: {
+      cursor: disabled ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+      userSelect: 'none' as const,
     },
     resetPosition,
+    dragState: {
+      didDrag: didDragRef.current,
+      consumeDidDrag,
+    },
   };
 }

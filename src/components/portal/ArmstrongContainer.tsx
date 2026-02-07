@@ -1,7 +1,7 @@
 /**
- * ARMSTRONG CONTAINER — Flying Copper/Bronze Orb Design
+ * ARMSTRONG CONTAINER — Frozen Dark Grey Orb Design
  * 
- * Collapsed State: Minimalist metallic orb (160px) with 4 interaction functions:
+ * Collapsed State: Minimalist steel orb (160px) with 4 interaction functions:
  *                  1. Microphone (center) → Direct voice input without expand
  *                  2. Click on orb → Expand for text chat
  *                  3. Drag → Reposition in browser
@@ -9,7 +9,7 @@
  * 
  * Expanded State: Clean professional panel (320x500px)
  * 
- * Design: Copper/bronze metallic orb with characteristic "smile" highlight
+ * Design: Frozen dark grey metallic orb with characteristic "smile" visor
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -48,10 +48,14 @@ export function ArmstrongContainer() {
     position, 
     isDragging, 
     dragHandleProps,
+    dragStyle,
+    dragState,
   } = useDraggable({
-    storageKey: 'armstrong-orb-position',
+    storageKey: 'armstrong-orb-position-v2', // New key to clear old invalid values
     containerSize: { width: 160, height: 160 },
     boundaryPadding: 20,
+    bottomOffset: 20,
+    dragThreshold: 5,
     disabled: isMobile || voice.isListening || armstrongExpanded,
   });
 
@@ -94,15 +98,15 @@ export function ArmstrongContainer() {
     }
   }, [toggleArmstrongExpanded]);
 
-  // Orb click handler - expands the panel
+  // Orb click handler - expands the panel (only if not dragging)
   const handleOrbClick = useCallback((e: React.MouseEvent) => {
-    // Don't expand if we're dragging
-    if (isDragging) {
+    // Consume didDrag - if a drag just occurred, don't expand
+    if (dragState.consumeDidDrag() || isDragging) {
       e.preventDefault();
       return;
     }
     toggleArmstrongExpanded();
-  }, [isDragging, toggleArmstrongExpanded]);
+  }, [dragState, isDragging, toggleArmstrongExpanded]);
 
   // Microphone click handler - starts voice without expanding
   const handleMicClick = useCallback((e: React.MouseEvent) => {
@@ -111,6 +115,11 @@ export function ArmstrongContainer() {
       voice.toggleVoice();
     }
   }, [voice]);
+
+  // Prevent mic button from triggering drag
+  const handleMicMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
 
   if (!armstrongVisible || isMobile || !mounted) {
     return null;
@@ -186,7 +195,7 @@ export function ArmstrongContainer() {
           </div>
         </div>
       ) : (
-        /* COLLAPSED: Flying Copper/Bronze Orb */
+        /* COLLAPSED: Frozen Dark Grey Orb */
         <div 
           ref={containerRef}
           className={cn(
@@ -195,60 +204,97 @@ export function ArmstrongContainer() {
             isFileDragOver ? 'armstrong-orb-dragover' : 'armstrong-orb-glow',
             'hover:scale-105 transition-all duration-300 ease-out',
             'flex items-center justify-center',
-            'cursor-pointer relative',
-            isDragging && 'scale-110 cursor-grabbing'
+            'relative',
+            isDragging && 'scale-110'
           )}
           style={{
             position: 'fixed',
             left: position.x,
             top: position.y,
+            ...dragStyle,
           }}
           onDragOver={handleFileDragOver}
           onDragLeave={handleFileDragLeave}
           onDrop={handleFileDrop}
           onClick={handleOrbClick}
-          {...dragHandleProps}
+          onMouseDown={dragHandleProps.onMouseDown}
         >
-          {/* Top-left glint highlight */}
+          {/* Visor / Face area - dark inner bowl */}
+          <div 
+            className="absolute inset-6 rounded-full pointer-events-none armstrong-orb-visor"
+            style={{
+              background: `
+                radial-gradient(
+                  ellipse 100% 80% at 50% 30%,
+                  hsl(var(--armstrong-orb-visor-deep)) 0%,
+                  hsl(var(--armstrong-orb-visor)) 40%,
+                  hsl(var(--armstrong-orb-visor-deep)) 100%
+                )
+              `,
+              boxShadow: 'inset 0 4px 16px -4px hsla(0, 0%, 0%, 0.5)',
+            }}
+          />
+          
+          {/* Top-left frost glint highlight */}
           <div 
             className="absolute top-4 left-5 h-8 w-8 rounded-full pointer-events-none"
             style={{
-              background: 'radial-gradient(circle at 40% 40%, hsla(45, 90%, 85%, 0.7) 0%, transparent 70%)',
+              background: 'radial-gradient(circle at 40% 40%, hsla(210, 30%, 90%, 0.7) 0%, transparent 70%)',
               filter: 'blur(3px)',
             }}
           />
           
-          {/* Secondary glint */}
+          {/* Secondary glint - smaller, sharper */}
           <div 
             className="absolute top-6 left-8 h-3 w-3 rounded-full pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.9) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.8) 0%, transparent 70%)',
               filter: 'blur(1px)',
             }}
           />
           
-          {/* Smile highlight - curved reflection in lower half */}
+          {/* Smile highlight - curved reflection in lower half of visor */}
           <div 
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-none"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none"
             style={{
-              width: '70%',
-              height: '20px',
-              background: 'radial-gradient(ellipse 100% 100% at 50% 0%, hsla(45, 85%, 75%, 0.35) 0%, transparent 70%)',
+              width: '55%',
+              height: '12px',
+              background: `
+                radial-gradient(
+                  ellipse 100% 100% at 50% 0%,
+                  hsla(210, 25%, 75%, 0.4) 0%,
+                  hsla(220, 20%, 60%, 0.2) 50%,
+                  transparent 100%
+                )
+              `,
               borderRadius: '0 0 50% 50%',
               filter: 'blur(2px)',
+            }}
+          />
+          
+          {/* Secondary smile edge - thin bright line */}
+          <div 
+            className="absolute bottom-9 left-1/2 -translate-x-1/2 pointer-events-none"
+            style={{
+              width: '45%',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent 0%, hsla(210, 30%, 80%, 0.4) 30%, hsla(210, 30%, 80%, 0.4) 70%, transparent 100%)',
+              borderRadius: '50%',
+              filter: 'blur(1px)',
             }}
           />
           
           {/* Central Microphone Button */}
           <button 
             onClick={handleMicClick}
+            onMouseDown={handleMicMouseDown}
             disabled={voice.isProcessing || voice.isSpeaking}
             className={cn(
               'h-14 w-14 rounded-full flex items-center justify-center relative z-10',
               'transition-all duration-300',
               voice.isListening 
                 ? 'armstrong-mic-active' 
-                : 'armstrong-btn-glass hover:bg-white/35',
+                : 'armstrong-btn-glass hover:bg-white/25',
               (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
             )}
             title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
@@ -290,12 +336,13 @@ export function ArmstrongContainer() {
             </span>
           </button>
           
-          {/* File Drop Indicator */}
+          {/* File Drop Indicator with label */}
           {isFileDragOver && (
-            <div className="absolute inset-0 rounded-full bg-white/20 flex items-center justify-center pointer-events-none z-20">
-              <div className="h-16 w-16 rounded-full bg-white/30 flex items-center justify-center animate-pulse">
-                <Upload className="h-8 w-8 text-white" />
+            <div className="absolute inset-0 rounded-full bg-white/20 flex flex-col items-center justify-center pointer-events-none z-20 gap-2">
+              <div className="h-14 w-14 rounded-full bg-white/30 flex items-center justify-center animate-pulse">
+                <Upload className="h-7 w-7 text-white" />
               </div>
+              <span className="text-xs font-medium text-white/90">Datei loslassen</span>
             </div>
           )}
           

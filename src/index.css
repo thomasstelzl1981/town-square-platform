@@ -605,62 +605,60 @@
 }
 
 /* ===========================================================================
-   ARMSTRONG AI WIDGET — Copper/Bronze Metallic Orb Design System
-   Collapsed: Flying metallic orb with characteristic "smile" highlight
+   ARMSTRONG AI WIDGET — Frozen Dark Grey Steel Orb Design System
+   Collapsed: Metallic steel orb with visor "smile" (inspired by helmet/space suit)
    Expanded: Clean professional panel design
    =========================================================================== */
 :root {
-  /* Armstrong Orb Colors - Copper/Bronze Metallic */
-  --armstrong-orb-copper: 25 75% 45%;
-  --armstrong-orb-copper-light: 30 70% 55%;
-  --armstrong-orb-bronze: 20 65% 35%;
-  --armstrong-orb-bronze-deep: 15 60% 25%;
-  --armstrong-orb-gold-accent: 40 80% 60%;
-  --armstrong-orb-gold-highlight: 45 85% 75%;
-  --armstrong-orb-shadow: 15 50% 20%;
-  --armstrong-orb-glow: 25 60% 50%;
+  /* Armstrong Orb Colors - Frozen Dark Grey / Steel */
+  --armstrong-orb-steel: 220 18% 42%;
+  --armstrong-orb-steel-light: 215 15% 52%;
+  --armstrong-orb-graphite: 220 22% 32%;
+  --armstrong-orb-graphite-deep: 220 25% 22%;
+  --armstrong-orb-frost: 210 30% 78%;
+  --armstrong-orb-frost-highlight: 200 35% 88%;
+  --armstrong-orb-shadow: 220 25% 15%;
+  --armstrong-orb-glow-color: 210 25% 55%;
+  
+  /* Visor colors - darker inner face */
+  --armstrong-orb-visor: 220 30% 20%;
+  --armstrong-orb-visor-deep: 220 35% 12%;
   
   /* Legacy colors for message bubbles */
   --armstrong-blue: 217 70% 45%;
   --armstrong-blue-deep: 230 60% 25%;
   
-  /* Orb Multi-Layer Gradient - Metallic copper with "smile" highlight */
+  /* Orb Multi-Layer Gradient - Metallic steel with frost highlights */
   --armstrong-orb-gradient: 
-    /* Top-left glint/shine */
+    /* Top-left frost glint/shine */
     radial-gradient(
-      circle at 30% 25%,
-      hsl(var(--armstrong-orb-gold-highlight) / 0.7) 0%,
-      hsl(var(--armstrong-orb-gold-accent) / 0.3) 20%,
+      circle at 28% 22%,
+      hsl(var(--armstrong-orb-frost-highlight) / 0.7) 0%,
+      hsl(var(--armstrong-orb-frost) / 0.3) 20%,
       transparent 40%
     ),
-    /* Smile highlight - curved line in lower half */
+    /* Outer rim highlight */
     radial-gradient(
-      ellipse 60% 20% at 50% 75%,
-      hsl(var(--armstrong-orb-gold-highlight) / 0.5) 0%,
-      hsl(var(--armstrong-orb-copper-light) / 0.3) 50%,
-      transparent 80%
+      circle at 50% 50%,
+      transparent 44%,
+      hsl(var(--armstrong-orb-frost) / 0.15) 48%,
+      transparent 52%
     ),
-    /* Secondary smile glow */
-    radial-gradient(
-      ellipse 40% 12% at 50% 72%,
-      hsl(var(--armstrong-orb-gold-accent) / 0.4) 0%,
-      transparent 70%
-    ),
-    /* Main copper body gradient */
+    /* Main steel body gradient */
     radial-gradient(
       ellipse 100% 100% at 40% 35%,
-      hsl(var(--armstrong-orb-copper-light)) 0%,
-      hsl(var(--armstrong-orb-copper)) 30%,
-      hsl(var(--armstrong-orb-bronze)) 60%,
-      hsl(var(--armstrong-orb-bronze-deep)) 100%
+      hsl(var(--armstrong-orb-steel-light)) 0%,
+      hsl(var(--armstrong-orb-steel)) 30%,
+      hsl(var(--armstrong-orb-graphite)) 60%,
+      hsl(var(--armstrong-orb-graphite-deep)) 100%
     );
   
-  /* Atmospheric Glow - Warm copper halo */
+  /* Atmospheric Glow - Cool frost halo */
   --armstrong-glow-gradient:
     radial-gradient(
       circle at 50% 50%,
-      hsl(var(--armstrong-orb-glow) / 0.3) 0%,
-      hsl(var(--armstrong-orb-copper) / 0.15) 50%,
+      hsl(var(--armstrong-orb-glow-color) / 0.25) 0%,
+      hsl(var(--armstrong-orb-steel) / 0.12) 50%,
       transparent 70%
     );
   
@@ -671,12 +669,14 @@
 }
 
 .dark {
-  /* Orb colors - slightly adjusted for dark mode */
-  --armstrong-orb-copper: 25 70% 50%;
-  --armstrong-orb-copper-light: 30 65% 60%;
-  --armstrong-orb-bronze: 20 60% 40%;
-  --armstrong-orb-bronze-deep: 15 55% 28%;
-  --armstrong-orb-gold-highlight: 45 80% 70%;
+  /* Orb colors - slightly brighter for dark mode visibility */
+  --armstrong-orb-steel: 220 16% 48%;
+  --armstrong-orb-steel-light: 215 14% 58%;
+  --armstrong-orb-graphite: 220 20% 38%;
+  --armstrong-orb-graphite-deep: 220 24% 28%;
+  --armstrong-orb-frost-highlight: 200 30% 82%;
+  --armstrong-orb-visor: 220 28% 18%;
+  --armstrong-orb-visor-deep: 220 32% 10%;
   
   --armstrong-parchment: 222 30% 12%;
   --armstrong-parchment-border: 222 25% 20%;
@@ -708,7 +708,7 @@
     border-bottom: 1px solid hsl(var(--armstrong-parchment-border));
   }
 
-  /* Armstrong Orb Surface with metallic sheen */
+  /* Armstrong Orb Surface with metallic steel sheen */
   .armstrong-orb {
     background: var(--armstrong-orb-gradient);
     position: relative;
@@ -721,57 +721,57 @@
     border-radius: inherit;
     /* Subtle noise texture for metallic feel */
     background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.06;
+    opacity: 0.04;
     mix-blend-mode: overlay;
     pointer-events: none;
   }
 
-  /* Metallic sheen overlay */
+  /* Metallic sheen overlay - rim highlight */
   .armstrong-orb::after {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     background: 
-      /* Rim highlight */
+      /* Rim highlight ring */
       radial-gradient(
         circle at 50% 50%,
-        transparent 42%,
-        hsl(var(--armstrong-orb-gold-accent) / 0.15) 47%,
-        transparent 52%
+        transparent 44%,
+        hsl(var(--armstrong-orb-frost) / 0.12) 47%,
+        transparent 50%
       ),
       /* Top edge shine */
       linear-gradient(
         180deg,
-        hsl(var(--armstrong-orb-gold-highlight) / 0.2) 0%,
-        transparent 30%
+        hsl(var(--armstrong-orb-frost-highlight) / 0.15) 0%,
+        transparent 25%
       );
     pointer-events: none;
   }
 
-  /* Warm copper glow ring */
+  /* Cool frost glow ring */
   .armstrong-orb-glow {
     box-shadow: 
-      0 0 0 3px hsl(var(--armstrong-orb-glow) / 0.25),
-      0 0 30px 6px hsl(var(--armstrong-orb-glow) / 0.3),
-      0 0 60px 12px hsl(var(--armstrong-orb-copper) / 0.2),
-      0 8px 32px -8px rgba(0, 0, 0, 0.4);
+      0 0 0 3px hsl(var(--armstrong-orb-glow-color) / 0.2),
+      0 0 25px 5px hsl(var(--armstrong-orb-glow-color) / 0.25),
+      0 0 50px 10px hsl(var(--armstrong-orb-graphite) / 0.15),
+      0 8px 32px -8px rgba(0, 0, 0, 0.45);
   }
 
   .armstrong-orb-glow:hover {
     box-shadow: 
-      0 0 0 5px hsl(var(--armstrong-orb-glow) / 0.35),
-      0 0 40px 10px hsl(var(--armstrong-orb-glow) / 0.4),
-      0 0 80px 20px hsl(var(--armstrong-orb-copper) / 0.25),
+      0 0 0 4px hsl(var(--armstrong-orb-glow-color) / 0.3),
+      0 0 35px 8px hsl(var(--armstrong-orb-glow-color) / 0.35),
+      0 0 70px 15px hsl(var(--armstrong-orb-graphite) / 0.2),
       0 12px 40px -8px rgba(0, 0, 0, 0.5);
   }
 
-  /* File drag-over state */
+  /* File drag-over state - brighter frost */
   .armstrong-orb-dragover {
     box-shadow: 
-      0 0 0 6px hsl(var(--armstrong-orb-gold-accent) / 0.5),
-      0 0 50px 15px hsl(var(--armstrong-orb-gold-accent) / 0.4),
-      0 0 100px 25px hsl(var(--armstrong-orb-copper) / 0.3),
+      0 0 0 6px hsl(var(--armstrong-orb-frost) / 0.5),
+      0 0 50px 15px hsl(var(--armstrong-orb-frost) / 0.4),
+      0 0 100px 25px hsl(var(--armstrong-orb-glow-color) / 0.25),
       0 16px 50px -8px rgba(0, 0, 0, 0.5);
   }
 
@@ -790,15 +790,15 @@
 
   /* Glass button for Armstrong orb */
   .armstrong-btn-glass {
-    background: hsla(0, 0%, 100%, 0.2);
-    border: 1px solid hsla(0, 0%, 100%, 0.15);
+    background: hsla(0, 0%, 100%, 0.15);
+    border: 1px solid hsla(0, 0%, 100%, 0.12);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     transition: background 0.2s ease, transform 0.15s ease;
   }
 
   .armstrong-btn-glass:hover {
-    background: hsla(0, 0%, 100%, 0.35);
+    background: hsla(0, 0%, 100%, 0.25);
     transform: scale(1.05);
   }
 
@@ -806,20 +806,20 @@
     transform: scale(0.98);
   }
 
-  /* Mic button active state */
+  /* Mic button active state - frost accent */
   .armstrong-mic-active {
-    background: hsl(var(--armstrong-orb-gold-accent)) !important;
+    background: hsl(var(--armstrong-orb-frost)) !important;
     box-shadow: 
-      0 0 20px 4px hsl(var(--armstrong-orb-gold-accent) / 0.5),
-      inset 0 1px 0 hsl(var(--armstrong-orb-gold-highlight) / 0.3);
+      0 0 20px 4px hsl(var(--armstrong-orb-frost) / 0.5),
+      inset 0 1px 0 hsl(var(--armstrong-orb-frost-highlight) / 0.4);
   }
 
-  /* Message bubbles - using copper accent */
+  /* Message bubbles - using steel accent */
   .armstrong-message-user {
     background: linear-gradient(
       135deg,
-      hsl(var(--armstrong-orb-copper)) 0%,
-      hsl(var(--armstrong-orb-bronze)) 100%
+      hsl(var(--armstrong-orb-steel)) 0%,
+      hsl(var(--armstrong-orb-graphite)) 100%
     );
     color: white;
   }
