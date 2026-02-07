@@ -204,6 +204,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
 
 // Zone 1 Desk Components with internal routing
 const adminDeskMap: Record<string, React.ComponentType> = {
+  futureroom: FutureRoom,
   'sales-desk': SalesDesk,
   'finance-desk': FinanceDesk,
   acquiary: Acquiary,
@@ -368,7 +369,7 @@ export function ManifestRouter() {
         {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
           // Skip desk routes (handled above)
-          if (['sales-desk', 'finance-desk', 'acquiary', 'agents'].some(desk => route.path.startsWith(desk))) {
+          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'agents'].some(desk => route.path.startsWith(desk))) {
             return null;
           }
           
