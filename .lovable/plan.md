@@ -1,100 +1,141 @@
 
-# Fix: Home-Button führt direkt zum cleanen Dashboard
+# Navigations-Performance-Analyse & Optimierungsplan
 
-## Problem
+## Analyse-Ergebnis
 
-Beim Klick auf den Home-Button wird kurz `activeArea = null` gesetzt, aber der `useEffect` in `usePortalLayout.tsx` synchronisiert die Route `/portal` sofort wieder auf `activeArea = 'base'`, weil `deriveAreaFromPath()` für nicht-gematchte Pfade `'base'` als Default zurückgibt.
+Nach Prüfung der relevanten Dateien habe ich die **Ursachen für das intermittierende Laderad** identifiziert:
 
-**Resultat**: 
-- Erster Klick → "Base" wird angezeigt mit Level-2-Navigation (Module)
-- Zweiter Klick → Dashboard ohne Module (weil kein State-Change mehr triggert)
+### Warum erscheint manchmal ein Laderad?
 
-## Lösung
+**Ursache: React Lazy Loading (erwartetes Verhalten)**
 
-Die Funktion `deriveAreaFromPath` muss `null` zurückgeben, wenn der Pfad `/portal` ist (Dashboard). Dadurch bleibt `activeArea = null` nach dem Home-Klick erhalten und die ModuleTabs werden nicht angezeigt.
+Die Module werden per `React.lazy()` geladen, um die initiale Bundle-Größe klein zu halten. Das bedeutet:
 
-## Änderungen
+| Szenario | Verhalten |
+|----------|-----------|
+| **Erster Klick** auf ein Modul | JavaScript wird vom Server geladen → Laderad erscheint (0,5-2 Sekunden) |
+| **Zweiter Klick** auf dasselbe Modul | Bundle ist im Browser-Cache → Sofortige Anzeige |
+| **Nach Browser-Refresh** | Alle Bundles werden erneut geladen → Laderad erscheint wieder |
 
-### 1. `src/manifests/areaConfig.ts` — `deriveAreaFromPath` erweitern
+Dies ist **kein Bug**, sondern das erwartete Verhalten von Code-Splitting.
 
-Vor der Prüfung auf Area-Pfade und Module-Routen muss explizit geprüft werden, ob wir auf dem Dashboard sind:
+### Gefundene Optimierungspotentiale
+
+1. **Doppelte Suspense-Boundaries**: Module werden lazy geladen, und innerhalb der Module werden Tabs erneut lazy geladen → Potentiell 2× Laderad
+2. **Auth-Loading-Overlay**: Bei Route-Wechseln kann kurzzeitig ein Auth-Loading getriggert werden
+3. **Kein Preloading**: Häufig genutzte Module könnten vorgeladen werden
+
+---
+
+## Optimierungsplan (3 Schritte)
+
+### Schritt 1: Preloading für häufige Module
+
+Die 5 meistgenutzten Module werden beim ersten Portal-Besuch im Hintergrund vorgeladen:
+
+**Datei:** `src/components/portal/PortalLayout.tsx`
 
 ```typescript
-export function deriveAreaFromPath(
-  pathname: string, 
-  moduleRouteMap: Record<string, string>
-): AreaKey | null {  // <-- Return-Typ ändern auf AreaKey | null
+// Preload common modules on portal mount
+useEffect(() => {
+  const preloadModules = async () => {
+    await Promise.all([
+      import('@/pages/portal/StammdatenPage'),
+      import('@/pages/portal/ImmobilienPage'),
+      import('@/pages/portal/FinanzierungPage'),
+      import('@/pages/portal/OfficePage'),
+      import('@/pages/portal/DMSPage'),
+    ]);
+  };
   
-  // Dashboard-Pfad = keine Area aktiv
-  if (pathname === '/portal' || pathname === '/portal/') {
-    return null;
-  }
-  
-  // Area-Overview paths
-  const areaMatch = pathname.match(/^\/portal\/area\/([a-z]+)/);
-  if (areaMatch) { ... }
-  
-  // Module-Routes
-  for (...) { ... }
-  
-  // Default: null statt 'base' (kein Fallback auf Area)
-  return null;
-}
+  // Start preloading after initial render
+  const timer = setTimeout(preloadModules, 1000);
+  return () => clearTimeout(timer);
+}, []);
 ```
 
-### 2. `src/hooks/usePortalLayout.tsx` — Type-Kompatibilität
+**Effekt:** Nach 1 Sekunde auf dem Portal sind die Kern-Module geladen → Kein Laderad mehr beim ersten Klick.
 
-Der `useEffect` muss den `null`-Return akzeptieren (bereits korrekt typisiert als `AreaKey | null`).
+### Schritt 2: Einheitliche Suspense-Strategie
 
-Der Initial-State-Block (Zeilen 124-132) ist bereits korrekt:
+Module-interne Tabs werden **nicht** mehr lazy geladen. Das reduziert die doppelte Wartezeit.
+
+**Datei:** `src/pages/portal/StammdatenPage.tsx` (und andere Module)
+
+Vorher:
 ```typescript
-const [activeArea, setActiveAreaState] = useState<AreaKey | null>(() => {
-  if (location.pathname === '/portal' || location.pathname === '/portal/') {
-    return null;
-  }
-  ...
-});
+const ProfilTab = lazy(() => import('./stammdaten/ProfilTab'));
 ```
 
-### 3. `src/components/portal/TopNavigation.tsx` — ModuleTabs ausblenden
+Nachher:
+```typescript
+// Direct import for sub-tabs (parent is already lazy-loaded)
+import { ProfilTab } from './stammdaten/ProfilTab';
+```
 
-Die `ModuleTabs`-Komponente muss überprüfen, ob `activeArea` existiert:
+**Effekt:** Nur 1× Laderad (beim Modul-Load), nicht 2× (Modul + Tab).
 
+### Schritt 3: Loading-Overlay nur bei Initial Load
+
+Das Auth-Loading-Overlay wird nur beim ersten Laden angezeigt, nicht bei internen Navigationen.
+
+**Datei:** `src/components/portal/PortalLayout.tsx`
+
+Vorher:
 ```tsx
-{/* Level 2: Module Tabs - nur wenn eine Area aktiv ist */}
-{activeArea && (
-  <div className="border-b">
-    <ModuleTabs modules={areaModules} activeModule={activeModule} />
+{isLoading && (
+  <div className="absolute inset-0 bg-background/80 ...">
+    <Loader2 className="animate-spin" />
   </div>
 )}
 ```
 
-Aktuell wird `ModuleTabs` immer gerendert, auch wenn `areaModules` leer ist.
+Nachher:
+```tsx
+{isLoading && !hasInitializedRef.current && (
+  <div className="absolute inset-0 bg-background/80 ...">
+    <Loader2 className="animate-spin" />
+  </div>
+)}
+```
+
+**Effekt:** Kein flackerndes Overlay während der Navigation.
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `src/manifests/areaConfig.ts` | Return-Typ auf `AreaKey \| null` ändern, Dashboard-Check hinzufügen, Default auf `null` |
-| `src/components/portal/TopNavigation.tsx` | Conditional Rendering für Level 2 wenn `activeArea !== null` |
+| `src/components/portal/PortalLayout.tsx` | Preloading + Loading-Overlay-Fix |
+| `src/pages/portal/StammdatenPage.tsx` | Direct imports statt lazy |
+| `src/pages/portal/OfficePage.tsx` | Direct imports statt lazy |
+| `src/pages/portal/DMSPage.tsx` | Direct imports statt lazy |
+| `src/pages/portal/ImmobilienPage.tsx` | Direct imports statt lazy |
+| `src/pages/portal/FinanzierungPage.tsx` | Direct imports statt lazy |
+| (weitere Module nach Bedarf) | Optional: Gleiche Anpassung |
 
-## Erwartetes Verhalten nach Fix
+---
 
-1. **Ein Klick auf Home**: 
-   - `setActiveArea(null)` wird aufgerufen
-   - Navigation zu `/portal`
-   - `deriveAreaFromPath('/portal')` gibt `null` zurück
-   - `activeArea` bleibt `null`
-   - Nur Level 1 (AreaTabs) wird angezeigt, keine Area ist hervorgehoben
-   - Level 2 (ModuleTabs) ist ausgeblendet
-   - Dashboard "Willkommen" erscheint
+## Erwartetes Ergebnis
 
-2. **Kein zweiter Klick nötig** für cleanes Dashboard
+| Szenario | Vorher | Nachher |
+|----------|--------|---------|
+| Erster Klick auf Modul | Laderad 0,5-2s | Kein Laderad (Preload) |
+| Klick auf Sub-Tab | Eventuell nochmal Laderad | Sofort (kein Lazy) |
+| Route-Wechsel innerhalb Portal | Kurzes Overlay-Flackern | Sofortige Navigation |
+
+---
+
+## Hinweis zu "normalen" Ladezeiten
+
+Falls nach diesen Optimierungen immer noch ein kurzes Laderad erscheint (z.B. bei erstmaligem Besuch eines seltenen Moduls), ist das **normal und akzeptabel**. Es handelt sich dann um echte Netzwerk-Latenz, die nicht vermeidbar ist.
+
+---
 
 ## Testplan
 
-1. Von beliebiger Modul-Seite (z.B. `/portal/stammdaten`) auf Home klicken
-2. Prüfen: Nur AreaTabs sichtbar, kein Tab hervorgehoben, keine ModuleTabs
-3. Prüfen: "WILLKOMMEN, THOMAS.STELZL" und Dashboard-Card werden angezeigt
-4. Auf eine Area (z.B. "BASE") klicken → ModuleTabs erscheinen
-5. Erneut Home klicken → sofort cleanes Dashboard
+1. **Vor den Änderungen**: Durch alle Level 1→2→3 Tabs klicken, Ladezeit dokumentieren
+2. **Nach den Änderungen**: Gleichen Test wiederholen
+3. **Browser-Cache leeren**: Prüfen ob Preloading funktioniert
+4. **Netzwerk-Tab beobachten**: Prüfen wann JS-Bundles geladen werden
