@@ -40,6 +40,7 @@ export function SystemBar() {
     city: string;
     altitude: number | null;
   } | null>(null);
+  const [locationError, setLocationError] = useState(false);
 
   // Update clock every minute
   useEffect(() => {
@@ -77,6 +78,7 @@ export function SystemBar() {
       },
       (error) => {
         console.error('Geolocation error:', error);
+        setLocationError(true);
       },
       { enableHighAccuracy: true }
     );
@@ -119,7 +121,7 @@ export function SystemBar() {
 
         {/* Center section: Location + Time */}
         <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
-          {location && (
+          {location ? (
             <>
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4" />
@@ -133,7 +135,40 @@ export function SystemBar() {
               )}
               <span className="text-muted-foreground/50">·</span>
             </>
-          )}
+          ) : locationError ? (
+            <>
+              <button
+                onClick={() => {
+                  setLocationError(false);
+                  navigator.geolocation?.getCurrentPosition(
+                    async (position) => {
+                      const { latitude, longitude, altitude } = position.coords;
+                      try {
+                        const response = await fetch(
+                          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+                          { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
+                        );
+                        const data = await response.json();
+                        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
+                        setLocation({ city, altitude: altitude ? Math.round(altitude) : null });
+                      } catch (error) {
+                        console.error('Geocoding failed:', error);
+                        setLocationError(true);
+                      }
+                    },
+                    () => setLocationError(true),
+                    { enableHighAccuracy: true }
+                  );
+                }}
+                className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                title="Standort aktivieren"
+              >
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">Standort?</span>
+              </button>
+              <span className="text-muted-foreground/50">·</span>
+            </>
+          ) : null}
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4" />
             <span className="text-sm font-mono">{formattedTime}</span>
