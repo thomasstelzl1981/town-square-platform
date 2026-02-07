@@ -2914,8 +2914,10 @@ export type Database = {
       document_links: {
         Row: {
           created_at: string | null
+          display_order: number | null
           document_id: string
           id: string
+          is_title_image: boolean | null
           link_status: string | null
           node_id: string | null
           object_id: string | null
@@ -2926,8 +2928,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          display_order?: number | null
           document_id: string
           id?: string
+          is_title_image?: boolean | null
           link_status?: string | null
           node_id?: string | null
           object_id?: string | null
@@ -2938,8 +2942,10 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          display_order?: number | null
           document_id?: string
           id?: string
+          is_title_image?: boolean | null
           link_status?: string | null
           node_id?: string | null
           object_id?: string | null
