@@ -230,8 +230,8 @@ export function useUnitDossier(unitId: string | undefined) {
 
       // Build the dossier data
       const dossierData: UnitDossierData = {
-        // Header
-        unitCode: unitData.code || unitData.unit_number || property.code || 'MAIN',
+        // Header - Property code (Akten-ID) takes priority over unit code
+        unitCode: property.code || unitData.code || unitData.unit_number || 'MAIN',
         address: `${property.address}, ${property.postal_code || ''} ${property.city}`.trim(),
         locationLabel: property.city,
         status: tenancyStatus === 'ACTIVE' ? 'VERMIETET' : tenancyStatus === 'VACANT' ? 'LEERSTAND' : 'IN_NEUVERMIETUNG',
