@@ -38,10 +38,10 @@ export function AreaTabs() {
             key={area.key}
             onClick={() => handleAreaClick(area.key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
+              'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide',
               isActive
                 ? 'bg-primary/90 backdrop-blur-md text-primary-foreground shadow-lg'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm'
+                : 'nav-tab-glass text-muted-foreground hover:text-foreground'
             )}
           >
             <Icon className="h-4 w-4" />
