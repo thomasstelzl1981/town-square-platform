@@ -1,10 +1,10 @@
 /**
- * ARMSTRONG CONTAINER — Orbital Glass Design
+ * ARMSTRONG CONTAINER — Earth & Parchment Design
  * 
- * Collapsed State: Textured planetary widget (160px) with gold-blue gradient
- * Expanded State: Glass panel (320x500px) with theme-adaptive styling
+ * Collapsed State: Stylized Earth globe (160px) with blue/green gradient
+ * Expanded State: Clean parchment panel (320x500px) with professional styling
  * 
- * Design: Mode-independent planet + theme-adaptive glass panels
+ * Design: Earth globe collapsed + clean white/parchment expanded
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -17,7 +17,8 @@ import {
   Minimize2, 
   X,
   Paperclip,
-  Send
+  Send,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
@@ -101,36 +102,42 @@ export function ArmstrongContainer() {
         }}
       >
         {armstrongExpanded ? (
-          /* EXPANDED: Glass Chat Panel - Theme Adaptive */
+          /* EXPANDED: Clean Parchment Panel */
           <div 
             ref={containerRef}
             className={cn(
               'w-80 rounded-[20px] flex flex-col overflow-hidden',
               'armstrong-panel-shadow',
               isDarkMode ? 'armstrong-glass-dark' : 'armstrong-glass-light',
-              isDragOver && 'ring-2 ring-[hsl(42_76%_52%)]'
+              isDragOver && 'ring-2 ring-primary'
             )}
             style={{ height: 500 }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Header with Gold→Blue Gradient */}
-            <div className="flex items-center justify-between p-3 armstrong-header-gradient">
+            {/* Header - Clean Professional */}
+            <div className="flex items-center justify-between p-3 armstrong-header-clean">
               <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <Bot className="h-3.5 w-3.5 text-white" />
+                <div className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center",
+                  isDarkMode ? "bg-primary/20" : "bg-primary/10"
+                )}>
+                  <Globe className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-semibold text-sm text-white leading-tight">Armstrong</span>
-                  <span className="text-[10px] text-white/60 leading-tight">AI Co-Pilot</span>
+                  <span className={cn(
+                    "font-semibold text-sm leading-tight",
+                    isDarkMode ? "text-foreground" : "text-foreground"
+                  )}>Armstrong</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">AI Co-Pilot</span>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition-colors"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   onClick={toggleArmstrongExpanded}
                   title="Minimieren"
                 >
@@ -139,7 +146,7 @@ export function ArmstrongContainer() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition-colors"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   onClick={hideArmstrong}
                   title="Schließen"
                 >
@@ -158,12 +165,12 @@ export function ArmstrongContainer() {
             </div>
           </div>
         ) : (
-          /* COLLAPSED: Orbital Planet Widget - Mode Independent */
+          /* COLLAPSED: Earth Globe Widget */
           <div 
             ref={containerRef}
             className={cn(
               'h-40 w-40 rounded-full',
-              'armstrong-planet armstrong-glow-ring',
+              'armstrong-earth armstrong-earth-glow',
               'hover:scale-105 transition-all duration-300 ease-out',
               'flex flex-col items-center justify-center gap-2.5 p-4',
               'cursor-pointer',
@@ -173,30 +180,21 @@ export function ArmstrongContainer() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Light reflection - top left highlight */}
+            {/* Light reflection - atmospheric highlight top */}
             <div 
-              className="absolute top-4 left-4 h-12 w-12 rounded-full pointer-events-none"
+              className="absolute top-3 left-6 h-14 w-14 rounded-full pointer-events-none"
               style={{
-                background: 'radial-gradient(circle at 30% 30%, hsla(48, 85%, 78%, 0.5) 0%, transparent 60%)',
+                background: 'radial-gradient(circle at 30% 30%, hsla(200, 90%, 85%, 0.5) 0%, transparent 60%)',
                 filter: 'blur(6px)',
               }}
             />
             
-            {/* Secondary highlight - creates depth */}
+            {/* Secondary highlight - sun glint */}
             <div 
-              className="absolute top-8 left-8 h-6 w-6 rounded-full pointer-events-none"
+              className="absolute top-6 left-10 h-5 w-5 rounded-full pointer-events-none"
               style={{
-                background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.6) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.7) 0%, transparent 70%)',
                 filter: 'blur(2px)',
-              }}
-            />
-            
-            {/* Atmospheric rim glow - bottom right */}
-            <div 
-              className="absolute bottom-3 right-3 h-10 w-10 rounded-full pointer-events-none"
-              style={{
-                background: 'radial-gradient(circle, hsl(280 50% 50% / 0.3) 0%, transparent 70%)',
-                filter: 'blur(8px)',
               }}
             />
             
@@ -210,10 +208,10 @@ export function ArmstrongContainer() {
             
             {/* Bot Icon + Label */}
             <div className="flex items-center gap-2 relative z-10">
-              <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Bot className="h-3 w-3 text-white" />
+              <div className="h-6 w-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
+                <Globe className="h-3 w-3 text-white" />
               </div>
-              <span className="text-xs font-medium text-white/90 tracking-wide">Armstrong</span>
+              <span className="text-xs font-medium text-white/95 tracking-wide drop-shadow-sm">Armstrong</span>
             </div>
             
             {/* Glass Input Field */}
@@ -238,14 +236,14 @@ export function ArmstrongContainer() {
                 className="h-8 w-8 rounded-full armstrong-btn-glass flex items-center justify-center"
                 title="Datei anhängen"
               >
-                <Paperclip className="h-3.5 w-3.5 text-white/80" />
+                <Paperclip className="h-3.5 w-3.5 text-white/85" />
               </button>
               <button 
                 onClick={handleSendClick}
                 className={cn(
                   'h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200',
                   inputValue.trim() 
-                    ? 'bg-white/30 hover:bg-white/40' 
+                    ? 'bg-white/35 hover:bg-white/45' 
                     : 'armstrong-btn-glass'
                 )}
                 title="Senden"
