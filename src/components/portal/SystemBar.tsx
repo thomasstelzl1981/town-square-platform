@@ -26,7 +26,9 @@ import {
   User,
   MessageCircle,
   KeyRound,
-  Clock
+  Clock,
+  MapPin,
+  Mountain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +36,10 @@ export function SystemBar() {
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
   const { armstrongVisible, toggleArmstrong, isMobile, armstrongExpanded, toggleArmstrongExpanded } = usePortalLayout();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [location, setLocation] = useState<{
+    city: string;
+    altitude: number | null;
+  } | null>(null);
 
   // Update clock every minute
   useEffect(() => {
@@ -41,6 +47,39 @@ export function SystemBar() {
       setCurrentTime(new Date());
     }, 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Fetch user location on mount
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, altitude } = position.coords;
+        
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
+          );
+          const data = await response.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
+          
+          setLocation({
+            city,
+            altitude: altitude ? Math.round(altitude) : null
+          });
+        } catch (error) {
+          console.error('Geocoding failed:', error);
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+      },
+      { enableHighAccuracy: true }
+    );
   }, []);
 
   const initials = profile?.display_name
@@ -78,10 +117,27 @@ export function SystemBar() {
           </div>
         </div>
 
-        {/* Center section: Local time */}
-        <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span className="text-sm font-mono">{formattedTime}</span>
+        {/* Center section: Location + Time */}
+        <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
+          {location && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">{location.city}</span>
+              </div>
+              {location.altitude !== null && (
+                <div className="flex items-center gap-1">
+                  <Mountain className="h-3.5 w-3.5" />
+                  <span className="text-sm">{location.altitude}m</span>
+                </div>
+              )}
+              <span className="text-muted-foreground/50">·</span>
+            </>
+          )}
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm font-mono">{formattedTime}</span>
+          </div>
         </div>
 
         {/* Right section: Armstrong toggle + User avatar */}
