@@ -605,136 +605,190 @@
 }
 
 /* ===========================================================================
-   ARMSTRONG AI WIDGET — Orbital Glass Design System
-   Mode-independent planetary colors with theme-adaptive glass panels
+   ARMSTRONG AI WIDGET — Earth & Parchment Design System
+   Collapsed: Stylized Earth with blue/green tones
+   Expanded: Clean parchment (white) design
    =========================================================================== */
 :root {
-  /* Armstrong Planet Colors - Mode-Independent for consistent space feel */
-  --armstrong-gold: 42 76% 52%;
-  --armstrong-gold-light: 45 80% 70%;
-  --armstrong-gold-bright: 48 85% 78%;
+  /* Armstrong Earth Colors - Stylized Blue Planet */
+  --armstrong-earth-ocean: 200 85% 45%;
+  --armstrong-earth-ocean-deep: 210 90% 30%;
+  --armstrong-earth-land: 140 45% 40%;
+  --armstrong-earth-land-light: 130 40% 55%;
+  --armstrong-earth-atmosphere: 200 80% 70%;
+  --armstrong-earth-atmosphere-glow: 195 85% 80%;
+  
+  /* Legacy colors for message bubbles */
   --armstrong-blue: 217 70% 45%;
   --armstrong-blue-deep: 230 60% 25%;
-  --armstrong-purple: 275 45% 35%;
-  --armstrong-purple-glow: 280 50% 50%;
   
-  /* Planet Multi-Layer Gradient */
-  --armstrong-planet-gradient: 
+  /* Earth Multi-Layer Gradient - Stylized planet with continents */
+  --armstrong-earth-gradient: 
+    /* Atmosphere rim glow */
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 45%,
+      hsl(var(--armstrong-earth-atmosphere-glow) / 0.4) 48%,
+      hsl(var(--armstrong-earth-atmosphere) / 0.2) 52%,
+      transparent 55%
+    ),
+    /* Landmass hints */
+    radial-gradient(
+      ellipse 35% 45% at 35% 40%,
+      hsl(var(--armstrong-earth-land-light) / 0.5) 0%,
+      hsl(var(--armstrong-earth-land) / 0.3) 40%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 25% 35% at 65% 55%,
+      hsl(var(--armstrong-earth-land) / 0.4) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 20% 25% at 45% 70%,
+      hsl(var(--armstrong-earth-land-light) / 0.35) 0%,
+      transparent 55%
+    ),
+    /* Ocean base with depth */
     radial-gradient(
       ellipse 120% 100% at 25% 15%,
-      hsl(var(--armstrong-gold-bright)) 0%,
-      hsl(var(--armstrong-gold-light)) 15%,
-      hsl(var(--armstrong-gold)) 30%,
-      hsl(var(--armstrong-blue)) 55%,
-      hsl(var(--armstrong-blue-deep)) 75%,
-      hsl(var(--armstrong-purple)) 100%
+      hsl(var(--armstrong-earth-atmosphere)) 0%,
+      hsl(var(--armstrong-earth-ocean)) 25%,
+      hsl(var(--armstrong-earth-ocean-deep)) 60%,
+      hsl(210 95% 20%) 100%
     );
   
-  /* Atmospheric Glow Gradient */
+  /* Atmospheric Glow - Ozone effect */
   --armstrong-glow-gradient:
     radial-gradient(
       circle at 50% 50%,
-      hsl(var(--armstrong-gold-light) / 0.4) 0%,
-      hsl(var(--armstrong-blue) / 0.2) 50%,
+      hsl(var(--armstrong-earth-atmosphere) / 0.3) 0%,
+      hsl(var(--armstrong-earth-ocean) / 0.15) 50%,
       transparent 70%
     );
+  
+  /* Parchment colors for expanded panel */
+  --armstrong-parchment: 40 30% 97%;
+  --armstrong-parchment-border: 40 20% 85%;
+  --armstrong-header-text: 222 47% 20%;
+}
+
+.dark {
+  --armstrong-parchment: 222 30% 12%;
+  --armstrong-parchment-border: 222 25% 20%;
+  --armstrong-header-text: 210 30% 90%;
 }
 
 /* Armstrong Glass Panels */
 @layer utilities {
   /* Dark mode glass - deep space feel */
   .armstrong-glass-dark {
-    background: hsla(222, 47%, 8%, 0.92);
+    background: hsl(var(--armstrong-parchment));
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsla(217, 91%, 60%, 0.12);
+    border: 1px solid hsl(var(--armstrong-parchment-border));
   }
 
-  /* Light mode glass - frosted space window */
+  /* Light mode glass - clean parchment/white */
   .armstrong-glass-light {
-    background: hsla(0, 0%, 100%, 0.88);
+    background: hsl(var(--armstrong-parchment));
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsla(222, 47%, 11%, 0.08);
+    border: 1px solid hsl(var(--armstrong-parchment-border));
+    box-shadow: 0 4px 24px -4px hsla(222, 47%, 11%, 0.1);
   }
 
-  /* Armstrong Header Gradient - Gold to Blue transition */
-  .armstrong-header-gradient {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--armstrong-gold)) 0%,
-      hsl(var(--armstrong-blue)) 60%,
-      hsl(var(--armstrong-purple) / 0.8) 100%
-    );
+  /* Armstrong Header - Clean, professional */
+  .armstrong-header-clean {
+    background: hsl(var(--armstrong-parchment));
+    border-bottom: 1px solid hsl(var(--armstrong-parchment-border));
   }
 
-  /* Armstrong Planet Surface with grain texture */
-  .armstrong-planet {
-    background: var(--armstrong-planet-gradient);
+  /* Armstrong Earth Surface with subtle texture */
+  .armstrong-earth {
+    background: var(--armstrong-earth-gradient);
     position: relative;
   }
 
-  .armstrong-planet::before {
+  .armstrong-earth::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.06;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.04;
     mix-blend-mode: overlay;
     pointer-events: none;
   }
 
-  /* Atmospheric glow ring */
-  .armstrong-glow-ring {
-    box-shadow: 
-      0 0 0 4px hsl(var(--armstrong-gold-light) / 0.15),
-      0 0 40px 8px hsl(var(--armstrong-gold) / 0.2),
-      0 0 80px 16px hsl(var(--armstrong-blue) / 0.15),
-      0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  /* Cloud layer overlay for Earth */
+  .armstrong-earth::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: 
+      radial-gradient(ellipse 30% 15% at 30% 30%, hsla(0, 0%, 100%, 0.4) 0%, transparent 50%),
+      radial-gradient(ellipse 25% 12% at 60% 45%, hsla(0, 0%, 100%, 0.3) 0%, transparent 45%),
+      radial-gradient(ellipse 35% 18% at 45% 65%, hsla(0, 0%, 100%, 0.25) 0%, transparent 50%);
+    pointer-events: none;
   }
 
-  .armstrong-glow-ring:hover {
+  /* Atmospheric glow ring - Blue ozone effect */
+  .armstrong-earth-glow {
     box-shadow: 
-      0 0 0 6px hsl(var(--armstrong-gold-light) / 0.25),
-      0 0 50px 12px hsl(var(--armstrong-gold) / 0.3),
-      0 0 100px 24px hsl(var(--armstrong-blue) / 0.2),
-      0 12px 40px -8px rgba(0, 0, 0, 0.5);
+      0 0 0 3px hsl(var(--armstrong-earth-atmosphere) / 0.2),
+      0 0 30px 6px hsl(var(--armstrong-earth-atmosphere) / 0.25),
+      0 0 60px 12px hsl(var(--armstrong-earth-ocean) / 0.15),
+      0 8px 32px -8px rgba(0, 0, 0, 0.35);
   }
 
-  /* Expanded panel shadow */
+  .armstrong-earth-glow:hover {
+    box-shadow: 
+      0 0 0 5px hsl(var(--armstrong-earth-atmosphere) / 0.3),
+      0 0 40px 10px hsl(var(--armstrong-earth-atmosphere) / 0.35),
+      0 0 80px 20px hsl(var(--armstrong-earth-ocean) / 0.2),
+      0 12px 40px -8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Expanded panel shadow - softer */
   .armstrong-panel-shadow {
     box-shadow: 
-      0 8px 40px -8px rgba(0, 0, 0, 0.5),
-      0 0 60px -12px hsl(var(--armstrong-gold) / 0.2),
-      0 0 80px -20px hsl(var(--armstrong-blue) / 0.15);
+      0 8px 32px -8px rgba(0, 0, 0, 0.15),
+      0 4px 16px -4px rgba(0, 0, 0, 0.1);
   }
 
-  /* Glass input field for Armstrong */
+  .dark .armstrong-panel-shadow {
+    box-shadow: 
+      0 8px 40px -8px rgba(0, 0, 0, 0.5),
+      0 4px 24px -4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glass input field for Earth Armstrong */
   .armstrong-input {
-    background: hsla(0, 0%, 100%, 0.15);
-    border: 1px solid hsla(0, 0%, 100%, 0.1);
+    background: hsla(0, 0%, 100%, 0.2);
+    border: 1px solid hsla(0, 0%, 100%, 0.15);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
 
   .armstrong-input:focus {
-    background: hsla(0, 0%, 100%, 0.25);
-    border-color: hsla(0, 0%, 100%, 0.2);
+    background: hsla(0, 0%, 100%, 0.3);
+    border-color: hsla(0, 0%, 100%, 0.25);
     outline: none;
   }
 
   /* Glass button for Armstrong */
   .armstrong-btn-glass {
-    background: hsla(0, 0%, 100%, 0.15);
-    border: 1px solid hsla(0, 0%, 100%, 0.08);
+    background: hsla(0, 0%, 100%, 0.18);
+    border: 1px solid hsla(0, 0%, 100%, 0.1);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     transition: background 0.2s ease, transform 0.15s ease;
   }
 
   .armstrong-btn-glass:hover {
-    background: hsla(0, 0%, 100%, 0.25);
+    background: hsla(0, 0%, 100%, 0.28);
     transform: scale(1.05);
   }
 
@@ -742,27 +796,21 @@
     transform: scale(0.98);
   }
 
-  /* Message bubbles with glass effect */
+  /* Message bubbles */
   .armstrong-message-user {
     background: linear-gradient(
       135deg,
-      hsl(var(--armstrong-blue)) 0%,
-      hsl(var(--armstrong-blue-deep)) 100%
+      hsl(var(--armstrong-earth-ocean)) 0%,
+      hsl(var(--armstrong-earth-ocean-deep)) 100%
     );
     color: white;
   }
 
   .armstrong-message-assistant {
-    background: hsla(0, 0%, 100%, 0.08);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: hsl(var(--muted) / 0.5);
   }
 
   .dark .armstrong-message-assistant {
-    background: hsla(0, 0%, 100%, 0.06);
-  }
-
-  :not(.dark) .armstrong-message-assistant {
-    background: hsla(222, 47%, 11%, 0.06);
+    background: hsl(var(--muted) / 0.4);
   }
 }
