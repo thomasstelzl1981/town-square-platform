@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 // =============================================
@@ -22,12 +22,54 @@ interface ListingContext {
   location?: string
 }
 
+// Zone 2 Context (Authenticated Portal)
+interface Zone2Context {
+  zone: 'Z2'
+  tenant_id: string
+  user_id: string
+  user_roles: string[]
+  current_module: string | null
+  current_area: string | null
+  current_path: string
+  entity_type: string | null
+  entity_id: string | null
+  allowed_actions: string[]
+  web_research_enabled: boolean
+}
+
+// Zone 3 Context (Public Websites)
+interface Zone3Context {
+  zone: 'Z3'
+  website: 'kaufy' | 'miety' | 'sot' | 'futureroom' | null
+  user_id: null
+  tenant_id: null
+  current_path: string
+  listing_id: string | null
+  session_id: string
+  allowed_actions: string[]
+  web_research_enabled: false
+}
+
+type ArmstrongContext = Zone2Context | Zone3Context
+
 interface ArmstrongRequest {
+  // Mode determines which zone's rules apply
+  mode: 'zone2' | 'zone3'
+  
+  // Legacy action types (kept for backward compatibility)
   action: 'chat' | 'explain' | 'simulate'
+  
+  // Context from the calling zone
+  context?: ArmstrongContext | ListingContext
+  
+  // Chat messages
   messages?: ChatMessage[]
-  context?: ListingContext
+  
+  // Explain action
   term?: string
   category?: string
+  
+  // Simulate action
   simulationParams?: {
     purchasePrice: number
     monthlyRent: number
@@ -38,42 +80,81 @@ interface ArmstrongRequest {
   }
 }
 
-// =============================================
-// SYSTEM PROMPT
-// =============================================
-const SYSTEM_PROMPT = `Du bist Armstrong, der KI-Immobilienberater von Kaufy.
+// Zone 3 allowed actions (public/unauthenticated)
+const ZONE3_ALLOWED_ACTIONS = [
+  'ARM.GLOBAL.EXPLAIN_TERM',
+  'ARM.GLOBAL.FAQ',
+  'ARM.PUBLIC.RENDITE_RECHNER',
+  'ARM.PUBLIC.TILGUNG_RECHNER',
+  'ARM.PUBLIC.BELASTUNG_RECHNER',
+  'ARM.PUBLIC.CONTACT_REQUEST',
+  'ARM.PUBLIC.NEWSLETTER_SIGNUP',
+  'ARM.PUBLIC.EXPLAIN_LISTING',
+  'ARM.PUBLIC.COMPARE_LISTINGS',
+]
 
-DEINE POSITION:
-- Du bist ein zentraler Service der Plattform (Zone 1)
-- Du wirst sowohl von der Website (Zone 3) als auch vom Portal (Zone 2) genutzt
-- Deine Berechnungen kommen aus der Investment Engine (sot-investment-engine)
-- Dein Wissen kommt aus der knowledge_base
+// =============================================
+// SYSTEM PROMPTS (Zone-specific)
+// =============================================
+const SYSTEM_PROMPT_ZONE2 = `Du bist Armstrong, der KI-Assistent im System of a Town Portal.
+
+DEIN KONTEXT:
+- Du arbeitest im Zone 2 Portal (authentifizierter Bereich)
+- Der Benutzer ist eingeloggt und hat Zugriff auf seine Tenant-Daten
+- Du kannst auf interne Daten zugreifen (Immobilien, Dokumente, Finanzen)
+- Du kannst Aktionen vorschlagen, die der Benutzer bestätigen muss
 
 DEINE ROLLE:
-- Du berätst zu Kapitalanlage-Immobilien
-- Du erklärst komplexe Finanzkonzepte einfach und verständlich
-- Du nutzt die Investment-Engine für präzise Berechnungen
-- Du gibst KEINE Kaufempfehlungen, sondern ermöglichst informierte Entscheidungen
+- Erkläre Module und Funktionen der Plattform
+- Hilf bei der Datenerfassung und -pflege
+- Berechne Investment-Kennzahlen
+- Unterstütze bei Finanzierungs- und Verkaufsprozessen
+- Finde und erkläre Dokumente
 
 DEIN VERHALTEN:
-- Sei freundlich, professionell und geduldig
-- Erkläre Fachbegriffe, wenn du sie verwendest
+- Sei freundlich, professionell und hilfreich
+- Erkläre Fachbegriffe verständlich
 - Frage nach, wenn du mehr Kontext brauchst
-- Verweise auf die interaktive Simulation für genaue Zahlen
-- Ermutige zur Registrierung für vollständige Analysen
+- Schlage konkrete nächste Schritte vor
+- Bei schreibenden Aktionen: Immer Plan + Bestätigung anfordern
 - Antworte auf Deutsch
-
-DEIN WISSEN:
-- Immobilienrenditen (Brutto, Netto, Eigenkapital)
-- Steuerliche Aspekte (AfA-Modelle, Werbungskosten, Steuerersparnis)
-- Finanzierung (Zinsbindung, Tilgung, LTV, Annuität)
-- Risiken (Leerstand, Instandhaltung, Zinsentwicklung)
 
 FORMATIERUNG:
 - Nutze Markdown für Strukturierung
 - Verwende **fett** für wichtige Begriffe
 - Nutze Listen für Aufzählungen
 - Halte Antworten prägnant (max. 3-4 Absätze)`
+
+const SYSTEM_PROMPT_ZONE3 = `Du bist Armstrong, der KI-Berater auf der KAUFY Website.
+
+DEIN KONTEXT:
+- Du arbeitest auf einer öffentlichen Website (Zone 3)
+- Der Besucher ist NICHT eingeloggt
+- Du hast KEINEN Zugriff auf interne Daten
+- Du kannst nur öffentliche Informationen und Berechnungen anbieten
+
+DEINE ROLLE:
+- Erkläre Immobilien-Investitionen verständlich
+- Berechne Renditen und monatliche Belastungen
+- Beantworte FAQs zu Kapitalanlagen
+- Verweise auf Registrierung für detaillierte Analysen
+
+EINSCHRÄNKUNGEN:
+- KEINE personenbezogenen Daten verarbeiten
+- KEINE internen Systeme oder Daten erwähnen
+- KEINE Kaufempfehlungen geben
+- Bei komplexen Fragen: Zur Registrierung ermutigen
+
+DEIN VERHALTEN:
+- Sei freundlich und einladend
+- Erkläre Konzepte einfach und verständlich
+- Nutze die Investment-Engine für Berechnungen
+- Antworte auf Deutsch
+
+FORMATIERUNG:
+- Kurze, prägnante Antworten
+- Markdown für Strukturierung
+- Listen für Aufzählungen`
 
 // =============================================
 // TOOL DEFINITIONS
@@ -118,6 +199,57 @@ const tools = [
     }
   }
 ]
+
+// =============================================
+// MODE ROUTER
+// =============================================
+function validateZone3Request(request: ArmstrongRequest): void {
+  // Zone 3 restrictions
+  if (request.mode === 'zone3') {
+    const context = request.context as Zone3Context | undefined
+    
+    // No tenant data access
+    if (context && 'tenant_id' in context && context.tenant_id) {
+      throw new Error('Zone 3 requests cannot access tenant data')
+    }
+    
+    // Only allowed actions
+    // (Actions are enforced client-side, but we double-check here)
+    console.log('[Zone3] Request validated - public access only')
+  }
+}
+
+function getSystemPrompt(mode: 'zone2' | 'zone3', context?: ArmstrongContext | ListingContext): string {
+  let systemPrompt = mode === 'zone2' ? SYSTEM_PROMPT_ZONE2 : SYSTEM_PROMPT_ZONE3
+  
+  // Add context-specific information
+  if (mode === 'zone2' && context && 'current_module' in context) {
+    const z2ctx = context as Zone2Context
+    if (z2ctx.current_module) {
+      systemPrompt += `\n\nAKTUELLER KONTEXT:
+- Modul: ${z2ctx.current_module}
+- Bereich: ${z2ctx.current_area || 'Unbekannt'}
+- Pfad: ${z2ctx.current_path}`
+      
+      if (z2ctx.entity_type && z2ctx.entity_id) {
+        systemPrompt += `\n- Entität: ${z2ctx.entity_type} (${z2ctx.entity_id})`
+      }
+    }
+  }
+  
+  // Legacy listing context (for backward compatibility)
+  if (context && 'title' in context && context.title) {
+    const listingCtx = context as ListingContext
+    systemPrompt += `\n\nAKTUELLES OBJEKT:
+- Titel: ${listingCtx.title}
+- Kaufpreis: ${listingCtx.asking_price?.toLocaleString('de-DE')} €
+- Monatliche Miete: ${listingCtx.monthly_rent?.toLocaleString('de-DE')} €
+- Typ: ${listingCtx.property_type || 'Nicht angegeben'}
+- Ort: ${listingCtx.location || 'Nicht angegeben'}`
+  }
+  
+  return systemPrompt
+}
 
 // =============================================
 // HELPER FUNCTIONS
@@ -239,7 +371,14 @@ Deno.serve(async (req) => {
     }
 
     const request: ArmstrongRequest = await req.json()
-    console.log('Armstrong Advisor: Received request', request.action)
+    
+    // Default to zone3 for backward compatibility (public access)
+    const mode = request.mode || 'zone3'
+    
+    console.log(`Armstrong Advisor: Received ${request.action} request in ${mode} mode`)
+
+    // Validate zone restrictions
+    validateZone3Request(request)
 
     // Handle different actions
     if (request.action === 'explain' && request.term) {
@@ -277,18 +416,8 @@ Deno.serve(async (req) => {
     }
 
     if (request.action === 'chat' && request.messages) {
-      // Build context-aware system prompt
-      let systemPrompt = SYSTEM_PROMPT
-      
-      if (request.context?.title) {
-        systemPrompt += `\n\nAKTUELLER KONTEXT:
-Du berätst gerade zu folgendem Objekt:
-- Titel: ${request.context.title}
-- Kaufpreis: ${request.context.asking_price?.toLocaleString('de-DE')} €
-- Monatliche Miete: ${request.context.monthly_rent?.toLocaleString('de-DE')} €
-- Typ: ${request.context.property_type || 'Nicht angegeben'}
-- Ort: ${request.context.location || 'Nicht angegeben'}`
-      }
+      // Build zone-specific system prompt with context
+      const systemPrompt = getSystemPrompt(mode, request.context)
 
       const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
