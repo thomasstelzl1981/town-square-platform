@@ -12,7 +12,6 @@ export default function PortalDashboard() {
         <h1 className="text-2xl font-bold uppercase">
           Willkommen{profile?.display_name ? `, ${profile.display_name}` : ''}
         </h1>
-        <p className="text-muted-foreground">{activeOrganization?.name}</p>
         {isDevelopmentMode && (
           <p className="text-xs text-amber-600 mt-1">
             Entwicklungsmodus aktiv
