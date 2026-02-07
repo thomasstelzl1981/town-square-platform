@@ -9214,6 +9214,9 @@ export type Database = {
         | "analysis_completed"
         | "delivery_sent"
         | "closed"
+        | "activated"
+        | "paused"
+        | "resumed"
       acq_mandate_status:
         | "draft"
         | "submitted_to_zone1"
@@ -9563,6 +9566,9 @@ export const Constants = {
         "analysis_completed",
         "delivery_sent",
         "closed",
+        "activated",
+        "paused",
+        "resumed",
       ],
       acq_mandate_status: [
         "draft",

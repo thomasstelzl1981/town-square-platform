@@ -8,7 +8,6 @@
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { WorkflowSubbar } from '@/components/shared/WorkflowSubbar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,13 +43,7 @@ import {
 import { ObjekteingangList } from './akquise-manager/ObjekteingangList';
 import { ObjekteingangDetail } from './akquise-manager/ObjekteingangDetail';
 
-// Workflow steps for mandate detail
-export const AKQUISE_MANAGER_WORKFLOW_STEPS = [
-  { id: 'dashboard', label: 'Dashboard', path: 'dashboard' },
-  { id: 'mandate', label: 'Mandate', path: 'mandate' },
-  { id: 'objekteingang', label: 'Objekteingang', path: 'objekteingang' },
-  { id: 'tools', label: 'Tools', path: 'tools' },
-];
+// Navigation via sidebar only (WorkflowSubbar removed to avoid duplication)
 
 // Dashboard with Pending + Active + Self-created Mandates
 function AkquiseDashboard() {
@@ -466,21 +459,18 @@ export default function AkquiseManagerPage() {
   const content = moduleContents['MOD-12'];
 
   return (
-    <div className="flex flex-col h-full">
-      <WorkflowSubbar steps={AKQUISE_MANAGER_WORKFLOW_STEPS} moduleBase="akquise-manager" />
-      <div className="flex-1 overflow-auto">
-        <Routes>
-          <Route index element={<ModuleHowItWorks content={content} />} />
-          <Route path="dashboard" element={<AkquiseDashboard />} />
-          <Route path="mandate" element={<AkquiseMandate />} />
-          <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
-          <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
-          <Route path="objekteingang" element={<ObjekteingangList />} />
-          <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
-          <Route path="tools" element={<AkquiseTools />} />
-          <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
-        </Routes>
-      </div>
+    <div className="h-full overflow-auto">
+      <Routes>
+        <Route index element={<ModuleHowItWorks content={content} />} />
+        <Route path="dashboard" element={<AkquiseDashboard />} />
+        <Route path="mandate" element={<AkquiseMandate />} />
+        <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
+        <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
+        <Route path="objekteingang" element={<ObjekteingangList />} />
+        <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
+        <Route path="tools" element={<AkquiseTools />} />
+        <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
+      </Routes>
     </div>
   );
 }
