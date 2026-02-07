@@ -1,3 +1,4 @@
+// Portal Layout Context — provides navigation & responsive state
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AreaKey, deriveAreaFromPath, areaConfig } from '@/manifests/areaConfig';
