@@ -34,7 +34,6 @@ export function ArmstrongContainer() {
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const hasInitialized = useRef(false);
 
   // Draggable positioning (different size for expanded vs collapsed)
   const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
@@ -46,12 +45,20 @@ export function ArmstrongContainer() {
     disabled: isMobile,
   });
 
-  // One-time initialization: Clear old position and reset to default (bottom-right)
+  // If Armstrong is being shown and the position key was cleared (e.g. via SystemBar reset),
+  // we must actively reset the in-memory position state too.
   useEffect(() => {
-    if (armstrongVisible && !hasInitialized.current && !isMobile) {
-      hasInitialized.current = true;
-      // Clear any stale position data and reset to bottom-right
-      localStorage.removeItem('armstrong-position');
+    if (!armstrongVisible || isMobile) return;
+
+    let hasStoredPosition = false;
+    try {
+      hasStoredPosition = !!localStorage.getItem('armstrong-position');
+    } catch {
+      // If storage is unavailable, don't force resets.
+      hasStoredPosition = true;
+    }
+
+    if (!hasStoredPosition) {
       resetPosition();
     }
   }, [armstrongVisible, isMobile, resetPosition]);
@@ -232,8 +239,9 @@ export function ArmstrongContainer() {
       style={{
         left: position.x,
         top: position.y,
+        ...dragHandleProps.style,
       }}
-      {...dragHandleProps}
+      onMouseDown={dragHandleProps.onMouseDown}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
