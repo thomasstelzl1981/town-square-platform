@@ -9,13 +9,91 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
+  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  DialogHeader, DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from '@/components/ui/select';
+import { 
   Link2, Loader2, User, Building2, Clock, 
   CheckCircle2, XCircle, RefreshCw
 } from 'lucide-react';
-import { useAcqMandates, useAkquiseManagers } from '@/hooks/useAcqMandate';
+import { useAcqMandates, useAkquiseManagers, useAssignAcqManager } from '@/hooks/useAcqMandate';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { MANDATE_STATUS_CONFIG } from '@/types/acquisition';
+
+// Re-assignment button component
+function ReassignButton({ 
+  mandateId, 
+  currentManagerId 
+}: { 
+  mandateId: string; 
+  currentManagerId: string | null;
+}) {
+  const { data: managers } = useAkquiseManagers();
+  const assignManager = useAssignAcqManager();
+  const [open, setOpen] = React.useState(false);
+  const [selectedManagerId, setSelectedManagerId] = React.useState('');
+
+  const handleReassign = async () => {
+    if (!selectedManagerId) return;
+    await assignManager.mutateAsync({
+      mandateId,
+      managerId: selectedManagerId,
+    });
+    setOpen(false);
+    setSelectedManagerId('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Neu zuweisen
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Manager neu zuweisen</DialogTitle>
+          <DialogDescription>
+            Wählen Sie einen anderen AkquiseManager für dieses Mandat.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="py-4">
+          <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Manager auswählen..." />
+            </SelectTrigger>
+            <SelectContent>
+              {managers?.filter(m => m.id !== currentManagerId).map((manager) => (
+                <SelectItem key={manager.id} value={manager.id}>
+                  {manager.display_name || manager.email || manager.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleReassign}
+            disabled={!selectedManagerId || assignManager.isPending}
+          >
+            {assignManager.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Neu zuweisen
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function AcquiaryAssignments() {
   const { data: mandates, isLoading } = useAcqMandates();
@@ -108,10 +186,7 @@ export default function AcquiaryAssignments() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Neu zuweisen
-                    </Button>
+                    <ReassignButton mandateId={mandate.id} currentManagerId={mandate.assigned_manager_user_id} />
                   </div>
                 </div>
               </CardContent>
