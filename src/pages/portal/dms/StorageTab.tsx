@@ -1,21 +1,18 @@
 /**
  * DMS Storage Tab — MOD-03
  * Tree-based folder navigation with system nodes
+ * Displays full recursive hierarchy including property subfolders
  */
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DataTable, FileUploader, DetailDrawer, EmptyState, type Column } from '@/components/shared';
+import { StorageFolderTree } from '@/components/dms/StorageFolderTree';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Folder, FolderOpen, File, Plus, Download, Trash2, Eye, 
-  Link2, ChevronRight, ChevronDown, Home, Inbox, Archive, 
-  Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal
-} from 'lucide-react';
+import { File, Plus, Download, Eye, Link2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -31,6 +28,12 @@ interface StorageNode {
   property_id: string | null;
   unit_id: string | null;
   created_at: string;
+}
+
+interface PropertyInfo {
+  id: string;
+  code: string | null;
+  address: string;
 }
 
 interface Document {
@@ -52,27 +55,16 @@ interface DocumentLink {
   object_id: string | null;
 }
 
-// System folder definitions
+// System folder definitions for seeding
 const SYSTEM_FOLDERS = [
-  { key: 'inbox', name: 'Posteingang', icon: Inbox },
-  { key: 'immobilien', name: 'Immobilien', icon: Building2 },
-  { key: 'finanzierung', name: 'Finanzierung', icon: Landmark },
-  { key: 'bonitaetsunterlagen', name: 'Bonitätsunterlagen', icon: FileQuestion },
-  { key: 'needs_review', name: 'Zur Prüfung', icon: AlertCircle },
-  { key: 'archive', name: 'Archiv', icon: Archive },
-  { key: 'sonstiges', name: 'Sonstiges', icon: MoreHorizontal },
+  { key: 'inbox', name: 'Posteingang' },
+  { key: 'immobilien', name: 'Immobilien' },
+  { key: 'finanzierung', name: 'Finanzierung' },
+  { key: 'bonitaetsunterlagen', name: 'Bonitätsunterlagen' },
+  { key: 'needs_review', name: 'Zur Prüfung' },
+  { key: 'archive', name: 'Archiv' },
+  { key: 'sonstiges', name: 'Sonstiges' },
 ];
-
-function getNodeIcon(node: StorageNode, isOpen: boolean) {
-  if (node.node_type === 'system') {
-    const systemFolder = SYSTEM_FOLDERS.find(f => f.key === node.template_id);
-    if (systemFolder) {
-      const Icon = systemFolder.icon;
-      return <Icon className="h-4 w-4" />;
-    }
-  }
-  return isOpen ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />;
-}
 
 export function StorageTab() {
   const { activeTenantId } = useAuth();
@@ -80,9 +72,8 @@ export function StorageTab() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
-  // Fetch storage nodes (folders)
+  // Fetch storage nodes (ALL folders, not just root)
   const { data: nodes = [], isLoading: nodesLoading, refetch: refetchNodes } = useQuery({
     queryKey: ['storage-nodes', activeTenantId],
     queryFn: async (): Promise<StorageNode[]> => {
@@ -92,11 +83,27 @@ export function StorageTab() {
         .from('storage_nodes')
         .select('*')
         .eq('tenant_id', activeTenantId)
-        .order('node_type', { ascending: false })
         .order('name');
       
       if (error) throw error;
       return (data || []) as unknown as StorageNode[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch properties for display labels
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties-for-tree', activeTenantId],
+    queryFn: async (): Promise<PropertyInfo[]> => {
+      if (!activeTenantId) return [];
+      
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, code, address')
+        .eq('tenant_id', activeTenantId);
+      
+      if (error) throw error;
+      return data as PropertyInfo[];
     },
     enabled: !!activeTenantId,
   });
@@ -276,15 +283,6 @@ export function StorageTab() {
     files.forEach(file => uploadMutation.mutate(file));
   };
 
-  const toggleNode = (nodeId: string) => {
-    setExpandedNodes(prev => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) next.delete(nodeId);
-      else next.add(nodeId);
-      return next;
-    });
-  };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -295,9 +293,6 @@ export function StorageTab() {
 
   // Get links for a document
   const getDocumentLinks = (docId: string) => documentLinks.filter(l => l.document_id === docId);
-
-  // Build tree structure
-  const rootNodes = nodes.filter(n => n.parent_id === null);
 
   const columns: Column<Document>[] = [
     {
@@ -353,70 +348,14 @@ export function StorageTab() {
 
   return (
     <div className="grid grid-cols-12 gap-4 h-[calc(100vh-16rem)]">
-      {/* Left: Folder Tree */}
-      <div className="col-span-3 border rounded-lg bg-card">
-        <div className="p-3 border-b flex items-center justify-between">
-          <span className="font-medium text-sm">Ordner</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <ScrollArea className="h-[calc(100%-3rem)]">
-          <div className="p-2 space-y-1">
-            {/* All Documents */}
-            <button
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent ${
-                selectedNodeId === null ? 'bg-accent' : ''
-              }`}
-              onClick={() => setSelectedNodeId(null)}
-            >
-              <Home className="h-4 w-4 text-primary" />
-              <span>Alle Dokumente</span>
-            </button>
-
-            {/* Folder Tree */}
-            {rootNodes.map(node => {
-              const isSelected = selectedNodeId === node.id;
-              const isExpanded = expandedNodes.has(node.id);
-              const childNodes = nodes.filter(n => n.parent_id === node.id);
-              const hasChildren = childNodes.length > 0;
-
-              return (
-                <div key={node.id}>
-                  <button
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent ${
-                      isSelected ? 'bg-accent' : ''
-                    }`}
-                    onClick={() => setSelectedNodeId(node.id)}
-                  >
-                    {hasChildren ? (
-                      <span onClick={(e) => { e.stopPropagation(); toggleNode(node.id); }} className="cursor-pointer">
-                        {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      </span>
-                    ) : (
-                      <span className="w-3" />
-                    )}
-                    {getNodeIcon(node, isExpanded)}
-                    <span className="flex-1 text-left">{node.name}</span>
-                  </button>
-                  
-                  {isExpanded && childNodes.map(child => (
-                    <button
-                      key={child.id}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 pl-8 rounded text-sm hover:bg-accent ${
-                        selectedNodeId === child.id ? 'bg-accent' : ''
-                      }`}
-                      onClick={() => setSelectedNodeId(child.id)}
-                    >
-                      <Folder className="h-4 w-4" />
-                      <span>{child.name}</span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
+      {/* Left: Folder Tree - Using new recursive component */}
+      <div className="col-span-3">
+        <StorageFolderTree
+          nodes={nodes}
+          properties={properties}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={setSelectedNodeId}
+        />
       </div>
 
       {/* Center: Document List */}
