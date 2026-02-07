@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 
 export function SystemBar() {
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
-  const { armstrongVisible, toggleArmstrong, isMobile } = usePortalLayout();
+  const { armstrongVisible, showArmstrong, hideArmstrong, resetArmstrong, isMobile } = usePortalLayout();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState<{
     city: string;
@@ -171,13 +171,19 @@ export function SystemBar() {
 
 {/* Right section: Armstrong + User avatar */}
         <div className="flex items-center gap-1">
-          {/* Armstrong toggle - Desktop only */}
-          {/* Armstrong toggle - Desktop only: ONLY toggles visibility */}
+          {/* Armstrong toggle - Desktop only: Show + Reset when turning on */}
           {!isMobile && (
             <Button
               variant="glass"
               size="icon"
-              onClick={toggleArmstrong}
+              onClick={() => {
+                if (armstrongVisible) {
+                  hideArmstrong();
+                } else {
+                  // When showing, always reset position to ensure visibility
+                  showArmstrong({ resetPosition: true, expanded: false });
+                }
+              }}
               className={cn(
                 'h-9 w-9',
                 armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
@@ -219,6 +225,13 @@ export function SystemBar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {/* Armstrong reset option */}
+              {!isMobile && (
+                <DropdownMenuItem onClick={resetArmstrong}>
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Armstrong zurücksetzen
+                </DropdownMenuItem>
+              )}
               {/* Show real login link in dev mode when using bypass */}
               {isDevelopmentMode && !user && (
                 <DropdownMenuItem asChild>
