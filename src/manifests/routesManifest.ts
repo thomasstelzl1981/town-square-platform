@@ -176,6 +176,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "brief", component: "BriefTab", title: "Brief" },
         { path: "kontakte", component: "KontakteTab", title: "Kontakte" },
         { path: "kalender", component: "KalenderTab", title: "Kalender" },
+        { path: "widgets", component: "WidgetsTab", title: "Widgets" },
       ],
     },
     "MOD-03": {
