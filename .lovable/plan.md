@@ -1,167 +1,157 @@
 
-# ZONE 1 AUDIT — FUTUREROOM & MASTERVORLAGEN
-
-## 1) Screenshot-Problem analysiert: `/admin/futureroom/inb...`
-
-**Ihr Screenshot zeigt einen 404-Fehler auf `/admin/futureroom/inb...`**
-
-Nach meiner Analyse mit Live-Screenshots ist **FutureRoom vollständig funktional**:
-
-| Route | Live-Test Status |
-|-------|-----------------|
-| `/admin/futureroom` | ✅ OK (5-Tab Navigation) |
-| `/admin/futureroom/inbox` | ✅ OK |
-| `/admin/futureroom/zuweisung` | ✅ OK |
-| `/admin/futureroom/finanzierungsmanager` | ✅ OK |
-| `/admin/futureroom/bankkontakte` | ✅ OK |
-| `/admin/futureroom/monitoring` | ✅ OK |
-
-**Mögliche Ursachen für Ihren 404:**
-1. **Cache/Deployment-Timing:** Der Build war evtl. nicht synchron
-2. **Falsche Route:** Falls `/admin/futureroom/inbound` versucht wurde (existiert nicht)
-3. **Manifest-Sync:** Der ManifestRouter behandelt FutureRoom als Parent mit internem Routing via `FutureRoom.tsx`
-
-**Empfehlung:** Hard-Refresh (Cmd+Shift+R) oder neuen Preview-Tab öffnen.
+## Ziel
+Das Routing für **/admin/futureroom** so stabilisieren, dass:
+- der Einstieg **/admin/futureroom** deterministisch auf **/admin/futureroom/inbox** führt
+- **/admin/futureroom/inbox** nie mehr in einen 404 läuft
+- Mixed-Case-URLs (**/Admin/FutureRoom/...**) keine Verwirrung/Fehlzustände erzeugen
+- die Lösung manifest-konform bleibt (keine “Schattenrouten”, kein Drift)
 
 ---
 
-## 2) Mastervorlage Selbstauskunft (v2) — Abgleich Zone 1 ↔ Zone 2
+## Was ich bisher sicher weiß (aus Code-Analyse)
+### Aktuelle Architektur
+- `ManifestRouter` generiert Zone‑1 Routes aus `routesManifest.ts`.
+- FutureRoom ist als **“Desk mit internal routing”** implementiert:
+  - Outer route: `/admin/futureroom/*` → rendert `src/pages/admin/FutureRoom.tsx`
+  - Inner routing in `FutureRoom.tsx` via `<Routes>`:
+    - index → `<Navigate to="inbox" replace />`
+    - `inbox`, `zuweisung`, `finanzierungsmanager`, `bankkontakte`, `monitoring`
 
-### Zone 1: `/admin/master-templates/selbstauskunft`
-- **Komponente:** `MasterTemplatesSelbstauskunft.tsx` (460 Zeilen)
-- **Status:** ✅ Read-Only Viewer
-- **Struktur:** 9 Sektionen mit 67 Feldern
-- **Datenquelle:** Abgeleitet aus `src/types/finance.ts` (ApplicantProfile)
+### Wichtiges Indiz (passt exakt zu deinem Symptom)
+Dein Symptom ist typisch für “zweistufiges Routing” mit Mini-Router im Page-Component:
+- Du gehst auf `/Admin/FutureRoom` → Seite erscheint kurz (FutureRoom wrapper rendert)
+- dann Redirect → `/Admin/FutureRoom/inbox`
+- dann 404 (Route-Match kippt irgendwo zwischen Outer/Inner Router oder es greift eine NotFound-Fallback-Route)
 
-### Zone 2: `SelbstauskunftFormV2.tsx` (1.552 Zeilen)
-- **Status:** ✅ Voll funktionales Formular
-- **Struktur:** 9 durchscrollbare Sektionen
-- **DB-Integration:** CRUD auf `applicant_profiles`
-
-### Abgleich-Ergebnis
-
-| Sektion | Zone 1 Master | Zone 2 Form | Sync |
-|---------|---------------|-------------|------|
-| 1. Person | 19 Felder | ✅ identisch | ✅ |
-| 2. Haushalt | 4 Felder | ✅ identisch | ✅ |
-| 3. Beschäftigung | 11 Felder | ✅ identisch | ✅ |
-| 4. Bankverbindung | 2 Felder | ✅ identisch | ✅ |
-| 5. Einnahmen | 9 Felder | ✅ identisch | ✅ |
-| 6. Ausgaben | 5 Felder | ✅ identisch | ✅ |
-| 7. Vermögen | 6 Felder | ✅ identisch | ✅ |
-| 8. Verbindlichkeiten | 7 Felder (1:N) | ✅ identisch | ✅ |
-| 9. Erklärungen | 4 Felder | ✅ identisch | ✅ |
-
-**Fazit:** ✅ Zone 1 und Zone 2 sind synchron. Die Mastervorlage basiert auf dem aktuellen `SelbstauskunftFormV2.tsx`.
+Ich konnte im Tool-Browser `/Admin/FutureRoom/inbox` erfolgreich laden. Das bedeutet: Der Bug ist sehr wahrscheinlich **ein spezieller Pfad-/Casing-/Navigation-Edgecase** oder ein **Konflikt zwischen Desk-Routing und Manifest-Routing**, der bei dir zuverlässig triggert.
 
 ---
 
-## 3) Mastervorlage Immobilienakte (v1) — Abgleich Zone 1 ↔ Zone 2
+## Hypothesen (priorisiert) + warum sie plausibel sind
+### H1 — Mixed-Case URL + inkonsistente Normalisierung (hoch)
+- React Router matcht zwar standardmäßig case-insensitive, aber:
+  - Es gibt in Apps oft eigene String-Checks (`includes`, `startsWith`) oder NavLink-Wrapper, die case-sensitiv sind.
+  - Außerdem können Redirects aus relativen Pfaden in Kombination mit Parent-Wildcards unerwartete Targets erzeugen.
+- Ergebnis: `/Admin/FutureRoom` → Redirect erzeugt Pfad, der beim Outer Router nicht mehr in der gleichen Route landet → NotFound.
 
-### Zone 1: `/admin/master-templates/immobilienakte`
-- **Komponente:** `MasterTemplatesImmobilienakte.tsx` (443 Zeilen)
-- **Status:** ✅ Read-Only Viewer
-- **Struktur:** 10 Blöcke (A–J) mit 106 Feldern
-- **Datenquelle:** Abgeleitet aus `src/types/immobilienakte.ts`
+### H2 — Desk-Wildcard + inner `<Routes>` (“Mini-Router”) erzeugt fragile Route-Base (hoch)
+- `FutureRoom.tsx` nutzt `<Routes>` innerhalb eines Route-Elements.
+- Das ist möglich, aber anfälliger als das Standardpattern `<Outlet>` mit echten Nested Routes.
+- Bei bestimmten Konstellationen (Parent `*`, Mixed-Case, Redirects) kann die Route-Base nicht so stabil sein, wie man erwartet.
 
-### Zone 2: MOD-04 (Immobilien)
-- **Komponenten:** `PropertyDetailPage.tsx`, `PortfolioTab.tsx`, etc.
-- **DB-Tabellen:** `properties`, `units`, `leases`, `loans`
-
-### Abgleich-Ergebnis
-
-| Block | Zone 1 Master | Zone 2 Types | Sync |
-|-------|---------------|--------------|------|
-| A: Identität | 12 Felder | `IdentityData` | ✅ |
-| B: Adresse | 8 Felder | `AddressData` | ✅ |
-| C: Gebäude | 14 Felder | `BuildingData` | ✅ |
-| D: Recht/Erwerb | 11 Felder | `LegalData` | ✅ |
-| E: Investment | 5 Felder | `InvestmentKPIs` | ✅ |
-| F: Mietverhältnisse | 15 Felder | `TenancyData` | ✅ |
-| G: WEG/NK | 13 Felder | `WEGData` | ✅ |
-| H: Finanzierung | 12 Felder | `FinancingData` | ✅ |
-| I: Accounting | 12 Felder | `AccountingData` | ⚠️ UI pending |
-| J: Dokumente | 18 Kategorien | DMS-Integration | ✅ |
-
-**Fazit:** ✅ Weitgehend synchron. Block I (Accounting) ist in Zone 1 dokumentiert, aber UI in Zone 2 noch nicht implementiert.
+### H3 — Es existiert irgendwo ein Full-Page navigation trigger (mittel)
+- Wenn irgendein Link/Navigation (z.B. in Tabs oder Sidebar) nicht über react-router navigiert, sondern einen echten Page-Load auslöst, kann der Host bei bestimmten Pfaden 404 liefern oder die App in NotFound laufen.
+- Das wäre konsistent mit “kurz sichtbar, dann 404”.
 
 ---
 
-## 4) Master-Templates Hauptseite
+## Lösungsvorschlag (sicher & drift-präventiv)
+Ich würde FutureRoom auf ein **robustes Nested-Routes-Pattern** umbauen und gleichzeitig eine **kanonische Pfad-Normalisierung (lowercase)** einziehen.
 
-**Diskrepanz gefunden:**
+### Kernprinzip
+- Kein “Mini-Router” in `FutureRoom.tsx` mehr.
+- Stattdessen:
+  - `ManifestRouter` definiert FutureRoom als Parent-Route mit Children (in einem Block, explizit).
+  - `FutureRoom.tsx` wird zu einem **Layout** (Header + Tabs) und rendert die aktive Subpage via `<Outlet />`.
+- Zusätzlich: eine kleine “NormalizePath”-Logik, die `/Admin/FutureRoom/...` sauber nach `/admin/futureroom/...` umschreibt (ohne Query/Hash zu verlieren).
 
-In `/admin/master-templates` zeigt die Selbstauskunft-Karte:
-```typescript
-<CardDescription>MOD-07 • 8 Sektionen • Coming Soon</CardDescription>
-<Badge variant="secondary">Phase 2</Badge>
-```
-
-**PROBLEM:** Das ist veraltet! Die Selbstauskunft hat jetzt **9 Sektionen** und ist **vollständig implementiert** (v2).
-
-### Fix erforderlich:
-
-| Zeile | Aktuell | Soll |
-|-------|---------|------|
-| 109 | `8 Sektionen • Coming Soon` | `9 Sektionen • 67 Felder` |
-| 114 | `<Badge variant="secondary">Phase 2</Badge>` | **Entfernen** |
-| 101 | `border-dashed` | Entfernen (solid wie Immobilienakte) |
+Das senkt das Verwirrpotenzial massiv und macht das Routing deterministisch.
 
 ---
 
-## 5) Datenfluss-Regel bestätigt
+## Konkreter Implementierungsplan (Change Sets)
 
-**Kritische Regel eingehalten:**
+### Change Set 1 — Reproduktion & Diagnose absichern (ohne funktionale Änderung)
+**Ziel:** Beweisen, ob der 404 ein Router-Match-Problem oder ein Hard-Reload/Host-404 ist.
 
-| Richtung | Erlaubt | Status |
-|----------|---------|--------|
-| Zone 2 → Zone 1 (Types lesen) | ✅ JA | ✅ Implementiert |
-| Zone 1 → Zone 2 (Daten schreiben) | ❌ NEIN | ✅ Korrekt |
+**Änderungen (klein, dev-safe):**
+- In `FutureRoom.tsx` temporär ein sehr leichtes Debug-Logging (nur in dev) hinzufügen:
+  - `location.pathname`, `location.key`
+  - “rendered FutureRoom wrapper”
+- In NotFound (falls vorhanden) optional: `location.pathname` anzeigen (dev only)
 
-Die Mastervorlagen sind **Read-Only Viewer** ohne CRUD-Operationen.
+**Akzeptanzkriterium:**
+- Wir sehen eindeutig, ob die 404-Seite aus unserem App-NotFound kommt (SPA) oder ob es ein serverseitiger 404 wäre.
 
----
-
-## 6) Umsetzungsplan
-
-### Change Set 1: MasterTemplates.tsx korrigieren
-
-**Datei:** `src/pages/admin/MasterTemplates.tsx`
-
-**Änderungen:**
-1. Zeile 100-117: Selbstauskunft-Card aktualisieren
-   - Solid border statt dashed
-   - "9 Sektionen • 67 Felder" statt "8 Sektionen • Coming Soon"
-   - Phase-2-Badge entfernen
-   - Icon von `text-muted-foreground` zu `text-primary`
-
-### Change Set 2: Keine Änderungen erforderlich
-
-| Komponente | Status |
-|------------|--------|
-| `MasterTemplatesSelbstauskunft.tsx` | ✅ Aktuell (v2, 9 Sektionen) |
-| `MasterTemplatesImmobilienakte.tsx` | ✅ Aktuell (10 Blöcke) |
-| FutureRoom.tsx + Sub-Pages | ✅ Vollständig funktional |
+**Smoke Test:**
+1. `/Admin/FutureRoom` öffnen
+2. Konsole prüfen: Pfadverlauf dokumentiert
+3. Prüfen ob 404 in-App oder serverseitig
 
 ---
 
-## 7) Smoke-Test Empfehlung
+### Change Set 2 — FutureRoom Routing auf Nested Routes umstellen (Hauptfix)
+**Ziel:** Keine fragile doppelte Routing-Logik mehr, kein “Flash → Redirect → 404”.
 
-Nach Fix von Change Set 1:
+**Scope (Code):**
+1. `src/router/ManifestRouter.tsx`
+   - `futureroom` aus `adminDeskMap` entfernen (damit nicht mehr als Desk-Wildcard läuft)
+   - Stattdessen einen expliziten Route-Block definieren:
+     - `/admin/futureroom` als Parent-Route
+     - Children:
+       - index → redirect auf `inbox`
+       - `inbox`, `zuweisung`, `finanzierungsmanager`, `bankkontakte`, `monitoring`
+   - Wichtig: Die “standard routes”-Schleife muss futureroom-* weiterhin skippen, damit keine doppelten Routen entstehen.
 
-1. `/admin/master-templates` → Beide Karten mit gleichem Styling
-2. Klick auf Immobilienakte → 10-Block-Accordion
-3. Klick auf Selbstauskunft → 9-Sektionen-Tabs
-4. `/admin/futureroom` → 5-Tab-Navigation, Inbox zeigt Mandate
+2. `src/pages/admin/FutureRoom.tsx`
+   - Inneres `<Routes>` entfernen
+   - `<Outlet />` einsetzen
+   - Tabs bleiben, aber `handleTabChange` navigiert auf relative Child-Pfade (oder absolut, aber konsistent lowercase)
+   - `getActiveTab()` robust machen: `location.pathname.toLowerCase()`
+
+**Akzeptanzkriterien:**
+- `/admin/futureroom` lädt ohne “Flash” und landet zuverlässig auf `/admin/futureroom/inbox`
+- `/admin/futureroom/inbox` ist immer erreichbar
+- Alle 5 Tabs funktionieren (Inbox/Zuweisung/Manager/Bankkontakte/Monitoring)
+- Keine 404 mehr bei Inbox
+
+**Smoke Test Checkliste:**
+1. Direktnavigation:
+   - `/admin/futureroom` → Inbox
+   - `/admin/futureroom/inbox` → OK
+   - `/admin/futureroom/finanzierungsmanager` → OK
+2. Tabs klicken: alle 5 Tabs wechseln korrekt
+3. Back/Forward im Browser: Tabs bleiben korrekt aktiv
 
 ---
 
-## Zusammenfassung
+### Change Set 3 — Pfad-Normalisierung (Lowercase Canonical) (Stabilitäts-Addon)
+**Ziel:** Mixed-Case URLs erzeugen keine Sonderzustände mehr (dein konkreter Einstieg /Admin/FutureRoom).
 
-| Bereich | Status | Aktion |
-|---------|--------|--------|
-| FutureRoom | ✅ 100% funktional | Keine |
-| Mastervorlage Selbstauskunft | ✅ Aktuell (v2) | Keine |
-| Mastervorlage Immobilienakte | ✅ Aktuell | Keine |
-| MasterTemplates-Übersicht | ⚠️ Selbstauskunft-Card veraltet | **Fix: 3 Zeilen** |
-| Zone 1 ↔ Zone 2 Sync | ✅ Korrekt | Keine |
+**Scope (Code):**
+- An einer zentralen Stelle (am besten im Router-Level, z.B. in `ManifestRouter` oder einem kleinen Wrapper-Component) prüfen:
+  - Wenn `location.pathname` nicht exakt lowercase ist:
+    - redirect to `pathname.toLowerCase()` + preserve `search` + `hash`
+- Dadurch wird aus `/Admin/FutureRoom/inbox` automatisch `/admin/futureroom/inbox`
+
+**Akzeptanzkriterien:**
+- `/Admin/FutureRoom` und `/Admin/FutureRoom/inbox` funktionieren (werden kanonisiert)
+- Keine Endlosschleifen (nur redirect wenn path != lower)
+
+**Smoke Test:**
+1. `/Admin/FutureRoom` → landet auf `/admin/futureroom/inbox`
+2. `/Admin/FutureRoom/finanzierungsmanager` → landet auf `/admin/futureroom/finanzierungsmanager`
+
+---
+
+## Risiken & Mitigation
+- **Risiko:** Router-Änderungen können Zone‑1 Navigation beeinflussen.
+  - **Mitigation:** FutureRoom ist klar isoliert unter `/admin/futureroom/*`. Keine Manifest-Änderungen nötig, nur Router-Implementierung.
+- **Risiko:** Doppelte Routes (Wildcard + explizite) könnten konfligieren.
+  - **Mitigation:** Nur ein Pattern aktiv lassen (Nested routes), desk route entfernen.
+
+---
+
+## Minimaler “Jetzt sofort” Workaround (bis Fix live ist)
+- Bitte teste einmal explizit (alles lowercase):
+  - `/admin/futureroom/inbox`
+Wenn das funktioniert, ist sehr wahrscheinlich Mixed-Case/Normalisierung der Trigger.
+
+---
+
+## Offene Info, die ich von dir brauche (damit wir 100% zielgenau sind)
+1) Passiert der 404 auch bei komplett lowercase `/admin/futureroom/inbox`?
+2) Ist der 404 eine “App-404 Seite” (unser NotFound mit UI) oder ein nackter Browser-404?
+3) Kannst du einmal die Browser-Konsole direkt beim Fehler kopieren (1–3 Zeilen reichen)?
+
+Wenn du das bestätigst, setze ich Change Set 2 + 3 in einem Rutsch um, weil das die robusteste, drift-freie Lösung ist.
