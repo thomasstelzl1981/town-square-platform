@@ -640,11 +640,7 @@ export function PortfolioTab() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Neue Immobilie anlegen
-        </Button>
+      </div>
       </div>
 
       {/* KPI Cards - IMMER sichtbar, ANNUAL values */}
