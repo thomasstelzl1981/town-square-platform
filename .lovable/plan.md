@@ -1,220 +1,94 @@
 
-# Analyse der fehlenden iOS-Glass Design-Änderungen
+Ziel: Armstrong muss auf Desktop immer zuverlässig sichtbar/öffnbar sein (Planet), auch wenn lokale Zustände/Positionen kaputt sind. Aktuell ist der Rocket-Button da (Tooltip „Armstrong ein-/ausblenden“ erscheint), aber der Planet erscheint nicht. Das deutet stark auf einen „Recovery“-Fehler hin: entweder (a) Sichtbarkeit toggelt, aber der Container ist off-screen / unter einem Layer oder (b) lokale Werte verhindern Render/Position.
 
-## Zusammenfassung der Befunde
+Was ich aus dem Code bereits sicher weiß
+- Desktop rendert immer `<ArmstrongContainer />` (PortalLayout.tsx, Desktop-Branch).
+- ArmstrongContainer rendert `null`, wenn `armstrongVisible === false`.
+- Der Rocket-Button ist nur sichtbar, wenn `isMobile === false`. Du siehst ihn also im Desktop-Layout.
+- Migration löscht aktuell nur:
+  - `sot-portal-armstrong-visible`
+  - `sot-portal-armstrong-expanded`
+  Nicht aber die Drag-Position `armstrong-position`.
 
-Nach eingehender Code- und Screenshot-Analyse habe ich identifiziert, **warum die Änderungen nicht sichtbar sind**:
+Wahrscheinlichste Ursachen (in Priorität)
+1) Drag-Position / Position-Logik: Armstrong ist „sichtbar“, aber an einer Position, wo du ihn nicht siehst (z.B. nach Screen-Resize, Zoom, Multi-Monitor, gespeicherte Werte).
+2) Z-Index/Layering: Armstrong liegt hinter einem anderen Overlay/Stacking-Context (ArmstrongContainer hat nur `z-40`, SystemBar `z-50`, verschiedene UI-Overlays existieren).
+3) Zustand bleibt „hidden“ trotz Klick (seltener, aber möglich bei Fast Refresh/State-Preservation): Titel wechselt, aber UI nicht, oder Zustand wird sofort wieder überschrieben.
 
----
+Implementierung: „Armstrong Recovery“ (robust, ohne dass Nutzer LocalStorage löschen müssen)
 
-## Problem 1: Button-Komponente nutzt `glass` Variante nicht automatisch
+Phase A — Recovery-Mechanik in der State-Schicht (usePortalLayout)
+1) Migration erweitern:
+   - Zusätzlich zu `ARMSTRONG_KEY` und `ARMSTRONG_EXPANDED_KEY` auch `localStorage.removeItem('armstrong-position')`.
+   - Dadurch wird eine potenziell „kaputte“ Position einmalig bereinigt.
+2) Neue Helper im Context ergänzen (saubere Semantik statt nur Toggle):
+   - `showArmstrong({ resetPosition?: boolean; expanded?: boolean })`
+   - `hideArmstrong()`
+   - `resetArmstrong()` (setzt: visible=true, expanded=false, löscht Position, optional setzt Default-Werte)
+   Motivation: Der Rocket-Klick kann dann „Show + Reset“ machen (statt nur togglen), damit es garantiert sichtbar wird.
 
-**Aktueller Zustand in `button.tsx`:**
-Die `glass` Variante existiert (Zeile 18-25), wird aber **nirgendwo im Code verwendet**.
+Phase B — SystemBar: Rocket wird „verlässlicher Launcher“
+3) Rocket-Button Click-Logik ändern:
+   - Wenn Armstrong gerade unsichtbar ist: `showArmstrong({ resetPosition: true, expanded: false })`
+   - Wenn Armstrong sichtbar ist: weiterhin „ausblenden“ (oder optional: kurzer Klick = expand/collapse; langer Klick = hide — aber das würde ich erst nach Stabilisierung anfassen).
+4) Direktes Nutzer-Feedback:
+   - Beim Einblenden ein Toast/Hint „Armstrong eingeblendet“ + Action „Position zurücksetzen“ (falls du ihn trotzdem nicht siehst).
+   - Alternativ: im User-Dropdown zusätzlich ein Menüpunkt „Armstrong zurücksetzen“.
 
-```tsx
-// Zeile 18-25 in button.tsx — existiert, aber ungenutzt
-glass: cn(
-  "bg-white/50 dark:bg-white/10",
-  "backdrop-blur-md",
-  "border border-white/30 dark:border-white/10",
-  ...
-),
-```
+Phase C — ArmstrongContainer: On-Screen Failsafe + höherer Z-Index
+5) Z-Index erhöhen:
+   - ArmstrongContainer von `z-40` auf z.B. `z-[60]` (unter Toast `z-[100]`, aber über SystemBar/Navigation).
+6) „Self-healing“ wenn sichtbar:
+   - In ArmstrongContainer eine kleine On-Mount/On-Visible Prüfung:
+     - `ref` auf den Root (Planet oder Expanded Panel)
+     - `getBoundingClientRect()` prüfen
+     - Wenn Element komplett außerhalb Viewport: `resetPosition()` aus `useDraggable` aufrufen
+   Vorteil: Auch wenn die Position aus irgendeinem Grund wieder off-screen landet, holt er sich selbst zurück.
+7) Optional (falls nötig): Klickfläche/Pointer Events absichern:
+   - Sicherstellen, dass ArmstrongContainer nicht durch ungewollte `pointer-events`/Overlay blockiert wird.
 
-**Das Problem:** Alle Buttons in der Anwendung nutzen `variant="default"`, `variant="outline"`, oder `variant="ghost"` — keiner nutzt `variant="glass"`.
+Phase D — Diagnose-Hebel für dich (damit wir nicht im Kreis drehen)
+8) „Armstrong Debug“-Option (nur im Entwicklungsmodus):
+   - Ein kleiner Menüpunkt im User-Menü: „Armstrong Debug“
+   - Zeigt Dialog: `armstrongVisible`, `armstrongExpanded`, gespeicherte LocalStorage-Keys (sichtbar/expanded/position), plus Buttons:
+     - „Einblenden“
+     - „Minimieren“
+     - „Position zurücksetzen“
+     - „Alles zurücksetzen“
+   Dadurch können wir jeden Zustand sofort wiederherstellen, ohne manuell Browser-Storage zu löschen.
 
----
+Testplan (End-to-End)
+- Desktop:
+  1) `/portal` laden → Planet ist sichtbar (unten/rechts, oder an Default-Position).
+  2) Rocket: „Ausblenden“ → Planet weg.
+  3) Rocket: „Einblenden“ → Planet wieder da (garantiert, Position reset wenn nötig).
+  4) Planet klicken → Expanded Chat erscheint.
+  5) Minimize im Header → zurück zum Planet.
+  6) X im Header → hidden; Rocket bringt ihn wieder.
+- Mobile:
+  1) Prüfen, dass „Ask Armstrong…“ Bar unten weiterhin sichtbar ist und nicht von Desktop-Visibility beeinflusst wird.
 
-## Problem 2: Outline-Buttons bleiben ohne Glass-Effekt
+Welche Dateien ich dafür anfassen werde
+- `src/hooks/usePortalLayout.tsx`
+  - Migration erweitert (inkl. `armstrong-position`)
+  - neue API: show/hide/reset (statt nur toggle)
+- `src/components/portal/SystemBar.tsx`
+  - Rocket Click: „Show + Reset“ beim Einblenden
+  - optional Toast/Dropdown Action „Reset“
+- `src/components/portal/ArmstrongContainer.tsx`
+  - z-index erhöhen
+  - ref + boundingClientRect Failsafe
+  - Nutzung von `resetPosition` aus `useDraggable`
+- (optional) `src/hooks/useDraggable.ts`
+  - Default-Position zusätzlich mit `constrainPosition(...)` absichern (kleine Defensive-Verbesserung)
 
-**Suchergebnis:** 1.944 Treffer für `variant="outline"` in 161 Dateien!
+Erwartetes Ergebnis
+- Du bekommst Armstrong immer wieder sichtbar, ohne Browser-Storage manuell zu löschen.
+- Selbst wenn die Planet-Position „kaputt gespeichert“ wurde, holt sich Armstrong automatisch zurück.
+- Der Rocket-Button wird vom simplen Toggle zu einem verlässlichen „Launcher“ (mindestens beim Einblenden).
 
-Diese Buttons haben **keine Glass-Effekte**, da die `outline`-Variante in `button.tsx` definiert ist als:
-```tsx
-outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-```
+Risiken / Trade-offs
+- Wenn wir beim Einblenden immer resetten, verlieren Nutzer ggf. ihre gespeicherte Planet-Position. Deshalb: Reset nur beim Übergang von hidden → visible (und/oder nur wenn off-screen erkannt wird).
 
-Keine Transparenz, kein `backdrop-blur`.
-
----
-
-## Problem 3: Navigation-Level 1 & 2 bereits aktualisiert, aber...
-
-Die Änderungen in `AreaTabs.tsx` und `ModuleTabs.tsx` wurden korrekt implementiert:
-
-| Datei | Änderung | Status |
-|-------|----------|--------|
-| `AreaTabs.tsx` | Glass-Hover + neue Icons | ✅ Implementiert |
-| `ModuleTabs.tsx` | `rounded-xl` + Glass | ✅ Implementiert |
-| `SubTabs.tsx` | `rounded-xl` + Glass | ✅ Implementiert |
-
-**ABER:** Die SystemBar und PortalHeader nutzen immer noch Standard-Button-Varianten.
-
----
-
-## Problem 4: SystemBar & PortalHeader nutzen alte Button-Styles
-
-**SystemBar.tsx Zeile 175-183:**
-```tsx
-<Button
-  variant={armstrongVisible ? 'secondary' : 'ghost'}  // ← Nicht glass!
-  size="icon"
-  onClick={toggleArmstrong}
->
-```
-
-**PortalHeader.tsx Zeile 122-139:**
-```tsx
-<Button 
-  variant="outline"  // ← Harte Borders, kein Glass
-  size="sm" 
->
-```
-
----
-
-## Problem 5: Modul-Inhalte (Cards, Buttons) bleiben unverändert
-
-In `ProfilTab.tsx` und anderen Modul-Inhalten:
-- `<Button type="submit">` nutzt `variant="default"` (kein Glass)
-- `<Card>` hat bereits `backdrop-blur-sm` (korrekt)
-- Aber FormInput, FormSection nutzen keine Glass-Styles
-
----
-
-## Lösung: 3-Phasen-Plan
-
-### Phase 1: Button `outline`-Variante in Glass umwandeln
-
-**Datei:** `src/components/ui/button.tsx`
-
-```tsx
-// Zeile 14-15: Bestehende outline Variante ändern
-outline: cn(
-  "bg-white/30 dark:bg-white/10",
-  "backdrop-blur-md",
-  "border border-white/30 dark:border-white/10",
-  "hover:bg-white/50 dark:hover:bg-white/15",
-  "text-foreground"
-),
-```
-
-**Auswirkung:** Alle 1.944 Buttons mit `variant="outline"` bekommen automatisch Glass-Look.
-
-### Phase 2: SystemBar Button-Styles anpassen
-
-**Datei:** `src/components/portal/SystemBar.tsx`
-
-Zeile 104-113 (Home-Button):
-```tsx
-<Link 
-  to="/portal" 
-  className={cn(
-    'flex items-center justify-center p-2 rounded-xl transition-colors',
-    'text-muted-foreground hover:text-foreground',
-    'hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm'
-  )}
->
-```
-
-Zeile 175-183 (Armstrong-Button):
-```tsx
-<Button
-  variant="glass"
-  size="icon"
-  onClick={toggleArmstrong}
-  className={cn('h-9 w-9', armstrongVisible && 'ring-2 ring-primary/30')}
->
-```
-
-### Phase 3: PortalHeader anpassen (wird aber durch SystemBar ersetzt?)
-
-In der aktuellen Architektur scheint `PortalHeader.tsx` **parallel** zur `SystemBar.tsx` zu existieren. Es muss geklärt werden, welche verwendet wird.
-
-**Falls PortalHeader aktiv:**
-- Zeile 122-139: `variant="outline"` → `variant="glass"`
-
----
-
-## Erwartete Änderungen nach Fix
-
-| Komponente | Vorher | Nachher |
-|------------|--------|---------|
-| Outline-Buttons | Harte Borders, opak | Glasmorphism, transluzent |
-| SystemBar Links | Kein Glass | `rounded-xl` + Glass-Hover |
-| Armstrong Button | `secondary`/`ghost` | `glass` Variante |
-| Modul-Buttons | Standard primary | (bleiben primary, aber Outline-Dialoge bekommen Glass) |
-
----
-
-## Dateien zu ändern
-
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `button.tsx` | 14-15 | `outline` Variante mit Glass-Effekt |
-| `SystemBar.tsx` | 104-113, 175-183 | Glass-Styles für Links und Buttons |
-| `PortalHeader.tsx` | 59-66, 71-84, 108-117, 122-139 | Glass-Buttons statt Outline |
-
----
-
-## Technische Details
-
-### Neue `outline` Variante (button.tsx Zeile 14)
-
-```tsx
-outline: cn(
-  "bg-white/30 dark:bg-white/10",
-  "backdrop-blur-md",
-  "border border-white/20 dark:border-white/10",
-  "shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]",
-  "hover:bg-white/45 dark:hover:bg-white/15",
-  "text-foreground"
-),
-```
-
-### SystemBar Home-Button Glass
-
-```tsx
-<Link 
-  to="/portal" 
-  className={cn(
-    'flex items-center justify-center p-2 rounded-xl transition-all',
-    'text-muted-foreground hover:text-foreground',
-    'hover:bg-white/20 dark:hover:bg-white/10',
-    'hover:shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)]'
-  )}
->
-```
-
-### Armstrong Button mit Glass
-
-```tsx
-<Button
-  variant="glass"
-  size="icon"
-  onClick={toggleArmstrong}
-  className={cn(
-    'h-9 w-9',
-    armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
-  )}
->
-```
-
----
-
-## Visuelles Ergebnis
-
-### Desktop Light Mode
-- Alle Outline-Buttons: Weiße semi-transparente Fläche mit Blur
-- SystemBar: Glass-Hover-Effekte auf Links
-- Navigation: Bereits korrekt mit Glass-Hover
-
-### Desktop Dark Mode
-- Alle Outline-Buttons: 10% weiße Transparenz mit Blur
-- Subtle Border-Glows
-- Tiefe Glasflächen
-
-### Mobile
-- MobileBottomNav: Bereits mit Glass-Effekt implementiert
-- ArmstrongInputBar: Nutzt `nav-ios-floating` (korrekt)
+Nächster Schritt nach Umsetzung
+- Wenn Armstrong dann sichtbar ist, können wir als UX-Upgrade den Rocket-Button wieder „smarter“ machen (z.B. Click = expand/collapse, Alt-Click = hide), aber erst nachdem die Basissichtbarkeit zu 100% stabil ist.
