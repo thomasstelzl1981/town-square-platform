@@ -1,450 +1,136 @@
 
 
-# Überarbeiteter Plan: Area-Übersichtsseiten mit News/Werbung-Platzhalter
+# Fix-Plan: Konsistentes Klickverhalten Level 1 & 2 Navigation
 
-## Konzeptänderung
+## Problem-Zusammenfassung
 
-Sie haben recht: 5 Module ergeben ein ungerades Grid (2+2+1 oder 3+2). Die Lösung: **Eine Platzhalter-Kachel für News/Werbung als erste Kachel** in jeder Area.
+Die Navigation flackert, weil **3-4 asynchrone State-Updates** bei einem einzigen Klick passieren:
+1. `AreaTabs.handleAreaClick` → `setActiveArea` + `navigate`
+2. `usePortalLayout.useEffect` → `deriveAreaFromPath` (gibt falschen Wert zurück für `/portal/area/...` Pfade)
+3. `AreaOverviewPage.useEffect` → `setActiveArea` (Korrektur)
 
-**Ergebnis: 6 Kacheln pro Area → sauberes 2×3 oder 3×2 Grid**
+Das führt zu mehreren Re-Renders und sichtbarem Flackern der Module-Tabs.
 
 ---
 
-## Neue Struktur: 6 Kacheln pro Area
+## Lösungsansatz
 
-### 📦 BASE (1 Promo + 5 Module = 6 Kacheln)
+### Fix 1: `deriveAreaFromPath` muss Area-Pfade erkennen
 
-```text
-/portal/area/base
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  BEREICH: BASE                                                                 │
-│  Stammdaten, KI Office, Dokumente und Services-Grundlagen                      │
-├───────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  🎯 NEWS / PROMO        │   │  MOD-01: STAMMDATEN     │                   │
-│  │  ═══════════════════    │   │  ───────────────────    │                   │
-│  │                         │   │  "Alles, was Ihr Konto  │                   │
-│  │  "Neu: KI-gestützte     │   │  fähig macht..."        │                   │
-│  │  Dokumentenerkennung!   │   │                         │                   │
-│  │  Jetzt testen →"        │   │  ▸ Profil               │                   │
-│  │                         │   │  ▸ Verträge             │                   │
-│  │  [MEHR ERFAHREN →]      │   │  ▸ Abrechnung           │                   │
-│  │                         │   │  ▸ Sicherheit           │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-02: KI OFFICE      │   │  MOD-03: DOKUMENTE      │                   │
-│  │  ───────────────────    │   │  ───────────────────    │                   │
-│  │  "Kommunikation,        │   │  "Ihr Dokumenten-Hub:   │                   │
-│  │  Kontakte und Termine"  │   │  sicher, durchsuchbar"  │                   │
-│  │                         │   │                         │                   │
-│  │  ▸ E-Mail               │   │  ▸ Storage              │                   │
-│  │  ▸ Brief                │   │  ▸ Posteingang          │                   │
-│  │  ▸ Kontakte             │   │  ▸ Sortieren            │                   │
-│  │  ▸ Kalender             │   │  ▸ Einstellungen        │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌──────────────────────────────────────────┐  │
-│  │  MOD-16: SERVICES       │   │  MOD-20: MIETY                            │  │
-│  │  ───────────────────    │   │  ─────────────────────────────────        │  │
-│  │  "Service-Katalog:      │   │  "Ihr Mieterportal: Dokumente,           │  │
-│  │  Beratung, Bewertung"   │   │  Kommunikation, Zählerstände"            │  │
-│  │                         │   │                                           │  │
-│  │  ▸ Katalog              │   │  ▸ Übersicht    ▸ Dokumente              │  │
-│  │  ▸ Anfragen             │   │  ▸ Kommunikation ▸ Zählerstände          │  │
-│  │  ▸ Aufträge             │   │  ▸ Versorgung   ▸ Versicherungen         │  │
-│  │  ▸ Einstellungen        │   │                                           │  │
-│  └─────────────────────────┘   └──────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────────────────────┘
+**Datei:** `src/manifests/areaConfig.ts`
 
-BASE = 1 Promo-Kachel + 5 Module = 6 Kacheln
-  🎯 NEWS/PROMO              → Platzhalter für Werbung
-  MOD-01: Stammdaten         → 4 Tiles
-  MOD-02: KI Office          → 4 Tiles
-  MOD-03: Dokumente          → 4 Tiles
-  MOD-16: Services           → 4 Tiles
-  MOD-20: Miety              → 6 Tiles
+Die Funktion `deriveAreaFromPath` muss `/portal/area/:areaKey` Pfade korrekt auflösen, bevor sie auf Modul-Pfade prüft.
+
+**Änderung:**
+```typescript
+export function deriveAreaFromPath(pathname: string, moduleRouteMap: Record<string, string>): AreaKey {
+  // NEU: Prüfe zuerst auf Area-Overview-Pfade
+  const areaMatch = pathname.match(/^\/portal\/area\/([a-z]+)/);
+  if (areaMatch) {
+    const areaKey = areaMatch[1] as AreaKey;
+    if (areaConfig.find(a => a.key === areaKey)) {
+      return areaKey;
+    }
+  }
+  
+  // Bestehende Logik: Prüfe Modul-Pfade
+  for (const [code, route] of Object.entries(moduleRouteMap)) {
+    if (pathname === route || pathname.startsWith(route + '/')) {
+      const area = getAreaForModule(code);
+      if (area) return area;
+    }
+  }
+  
+  return 'base';
+}
 ```
 
 ---
 
-### 🎯 MISSIONS (1 Promo + 5 Module = 6 Kacheln)
+### Fix 2: Redundanten useEffect in AreaOverviewPage entfernen
 
-```text
-/portal/area/missions
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  BEREICH: MISSIONS                                                             │
-│  Immobilien, Mietverwaltung, Verkauf, Finanzierung und Investment              │
-├───────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  🎯 NEWS / PROMO        │   │  MOD-04: IMMOBILIEN     │                   │
-│  │  ═══════════════════    │   │  ───────────────────    │                   │
-│  │                         │   │  "Die zentrale          │                   │
-│  │  "Webinar: Erfolgreich  │   │  Immobilienakte..."     │                   │
-│  │  verkaufen mit KI-      │   │                         │                   │
-│  │  Exposés – 15.02.2026"  │   │  ▸ Kontexte             │                   │
-│  │                         │   │  ▸ Portfolio            │                   │
-│  │  [ANMELDEN →]           │   │  ▸ Sanierung            │                   │
-│  │                         │   │  ▸ Bewertung            │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-05: MIETVERWALTUNG │   │  MOD-06: VERKAUF        │                   │
-│  │  ───────────────────    │   │  ───────────────────    │                   │
-│  │  "Die Workbench für     │   │  "Vom Exposé bis        │                   │
-│  │  operative Mietprozesse"│   │  zum Abschluss"         │                   │
-│  │                         │   │                         │                   │
-│  │  ▸ Objekte              │   │  ▸ Objekte              │                   │
-│  │  ▸ Mieteingang          │   │  ▸ Anfragen             │                   │
-│  │  ▸ Vermietung           │   │  ▸ Vorgänge             │                   │
-│  │  ▸ Einstellungen        │   │  ▸ Reporting            │                   │
-│  │                         │   │  ▸ Einstellungen        │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-07: FINANZIERUNG   │   │  MOD-08: INVESTMENT-    │                   │
-│  │  ───────────────────    │   │          SUCHE          │                   │
-│  │  "Bankfertig in wenigen │   │  ───────────────────    │                   │
-│  │  Schritten"             │   │  "Suchen, vergleichen,  │                   │
-│  │                         │   │  simulieren"            │                   │
-│  │  ▸ Selbstauskunft       │   │  ▸ Suche                │                   │
-│  │  ▸ Dokumente            │   │  ▸ Favoriten            │                   │
-│  │  ▸ Anfrage              │   │  ▸ Mandat               │                   │
-│  │  ▸ Status               │   │  ▸ Simulation           │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-└───────────────────────────────────────────────────────────────────────────────┘
+**Datei:** `src/pages/portal/AreaOverviewPage.tsx`
 
-MISSIONS = 1 Promo-Kachel + 5 Module = 6 Kacheln
-  🎯 NEWS/PROMO              → Platzhalter für Werbung
-  MOD-04: Immobilien         → 4 Tiles
-  MOD-05: Mietverwaltung     → 4 Tiles
-  MOD-06: Verkauf            → 5 Tiles
-  MOD-07: Finanzierung       → 4 Tiles
-  MOD-08: Investment-Suche   → 4 Tiles
-```
+Da `deriveAreaFromPath` jetzt korrekt funktioniert, wird der State automatisch synchronisiert. Der explizite `useEffect` in AreaOverviewPage ist redundant und verursacht ein zusätzliches Re-Render.
 
----
-
-### ⚙️ OPERATIONS (1 Promo + 5 Module = 6 Kacheln)
-
-```text
-/portal/area/operations
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  BEREICH: OPERATIONS                                                           │
-│  Akquise, Finanzierungsmanager, Projekte, Partner und Leads                    │
-├───────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  🎯 NEWS / PROMO        │   │  MOD-12: AKQUISE-       │                   │
-│  │  ═══════════════════    │   │          MANAGER        │                   │
-│  │                         │   │  ───────────────────    │                   │
-│  │  "Partner-Bonus:        │   │  "Vom Exposé zur        │                   │
-│  │  Doppelte Provision     │   │  Entscheidung"          │                   │
-│  │  im Februar!"           │   │                         │                   │
-│  │                         │   │  ▸ Dashboard            │                   │
-│  │  [DETAILS →]            │   │  ▸ Mandate              │                   │
-│  │                         │   │  ▸ Objekteingang        │                   │
-│  │                         │   │  ▸ Tools                │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-11: FINANZIERUNGS- │   │  MOD-13: PROJEKTE       │                   │
-│  │          MANAGER        │   │  ───────────────────    │                   │
-│  │  ───────────────────    │   │  "Projektübersicht:     │                   │
-│  │  "Ihre Workstation:     │   │  Status und Meilensteine│                   │
-│  │  Fälle bankfertig"      │   │                         │                   │
-│  │                         │   │  ▸ Übersicht            │                   │
-│  │  ▸ Dashboard            │   │  ▸ Timeline             │                   │
-│  │  ▸ Fälle                │   │  ▸ Dokumente            │                   │
-│  │  ▸ Kommunikation        │   │  ▸ Einstellungen        │                   │
-│  │  ▸ Status               │   │                         │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-09: VERTRIEBS-     │   │  MOD-10: LEADS          │                   │
-│  │          PARTNER        │   │  ───────────────────    │                   │
-│  │  ───────────────────    │   │  "Aus Interesse wird    │                   │
-│  │  "Beraten, dokumentieren│   │  Abschluss"             │                   │
-│  │  abschließen"           │   │                         │                   │
-│  │                         │   │  ▸ Inbox                │                   │
-│  │  ▸ Katalog              │   │  ▸ Meine Leads          │                   │
-│  │  ▸ Beratung             │   │  ▸ Pipeline             │                   │
-│  │  ▸ Kunden               │   │  ▸ Werbung              │                   │
-│  │  ▸ Netzwerk             │   │                         │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-└───────────────────────────────────────────────────────────────────────────────┘
-
-OPERATIONS = 1 Promo-Kachel + 5 Module = 6 Kacheln
-  🎯 NEWS/PROMO              → Platzhalter für Werbung
-  MOD-12: Akquise-Manager    → 4 Tiles
-  MOD-11: Finanzierungsmanager → 4 Tiles
-  MOD-13: Projekte           → 4 Tiles
-  MOD-09: Vertriebspartner   → 4 Tiles
-  MOD-10: Leads              → 4 Tiles
-```
-
----
-
-### 🔲 SERVICES (1 Promo + 5 Module = 6 Kacheln)
-
-```text
-/portal/area/services
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  BEREICH: SERVICES                                                             │
-│  Kommunikation, Fortbildung, Fahrzeuge, Analyse und Photovoltaik               │
-├───────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  🎯 NEWS / PROMO        │   │  MOD-14: KOMMUNIKATION  │                   │
-│  │  ═══════════════════    │   │          PRO            │                   │
-│  │                         │   │  ───────────────────    │                   │
-│  │  "PV-Offensive 2026:    │   │  "Professionelle        │                   │
-│  │  20% Rabatt auf Solar-  │   │  Outreach-Suite"        │                   │
-│  │  Beratungen!"           │   │                         │                   │
-│  │                         │   │  ▸ Serien-E-Mails       │                   │
-│  │  [JETZT SICHERN →]      │   │  ▸ Recherche            │                   │
-│  │                         │   │  ▸ Social               │                   │
-│  │                         │   │  ▸ Agenten              │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-15: FORTBILDUNG    │   │  MOD-17: FAHRZEUGE      │                   │
-│  │  ───────────────────    │   │  ───────────────────    │                   │
-│  │  "Kurse, Lernpfade und  │   │  "Ihr digitaler         │                   │
-│  │  Zertifikate"           │   │  Fuhrpark"              │                   │
-│  │                         │   │                         │                   │
-│  │  ▸ Katalog              │   │  ▸ Fahrzeuge            │                   │
-│  │  ▸ Meine Kurse          │   │  ▸ Versicherungen       │                   │
-│  │  ▸ Zertifikate          │   │  ▸ Fahrtenbuch          │                   │
-│  │  ▸ Einstellungen        │   │  ▸ Angebote             │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-│                                                                               │
-│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
-│  │  MOD-18: FINANZANALYSE  │   │  MOD-19: PHOTOVOLTAIK   │                   │
-│  │  ───────────────────    │   │  ───────────────────    │                   │
-│  │  "Kennzahlen, Reports   │   │  "Self-Service PV-      │                   │
-│  │  und Szenarien"         │   │  Journey"               │                   │
-│  │                         │   │                         │                   │
-│  │  ▸ Dashboard            │   │  ▸ Angebot              │                   │
-│  │  ▸ Reports              │   │  ▸ Checkliste           │                   │
-│  │  ▸ Szenarien            │   │  ▸ Projekt              │                   │
-│  │  ▸ Einstellungen        │   │  ▸ Einstellungen        │                   │
-│  └─────────────────────────┘   └─────────────────────────┘                   │
-└───────────────────────────────────────────────────────────────────────────────┘
-
-SERVICES = 1 Promo-Kachel + 5 Module = 6 Kacheln
-  🎯 NEWS/PROMO              → Platzhalter für Werbung
-  MOD-14: Kommunikation Pro  → 4 Tiles
-  MOD-15: Fortbildung        → 4 Tiles
-  MOD-17: Fahrzeuge          → 4 Tiles
-  MOD-18: Finanzanalyse      → 4 Tiles
-  MOD-19: Photovoltaik       → 4 Tiles
-```
-
----
-
-## Zusammenfassung: Korrekte Zahlen
-
-| Area | Promo | Module | Gesamt | Grid-Layout |
-|------|-------|--------|--------|-------------|
-| **BASE** | 1 | 5 | **6** | 2×3 oder 3×2 |
-| **MISSIONS** | 1 | 5 | **6** | 2×3 oder 3×2 |
-| **OPERATIONS** | 1 | 5 | **6** | 2×3 oder 3×2 |
-| **SERVICES** | 1 | 5 | **6** | 2×3 oder 3×2 |
-
-**Gesamt: 4 Areas × 6 Kacheln = 24 Kacheln (davon 4 Promo-Platzhalter)**
-
----
-
-## Promo-Kachel: Technische Umsetzung
-
-### Datenstruktur für Promo-Content
+**Änderung:** useEffect entfernen oder durch eine Prüfung ergänzen, die nur bei Diskrepanz aktualisiert:
 
 ```typescript
-// src/config/areaPromoContent.ts
-
-export interface AreaPromoContent {
-  areaKey: string;
-  headline: string;
-  description: string;
-  ctaLabel: string;
-  ctaRoute?: string;      // Interne Route
-  ctaUrl?: string;        // Externe URL
-  badge?: string;         // z.B. "NEU", "WEBINAR", "AKTION"
-  accentColor?: string;   // Optionale Akzentfarbe
-}
-
-export const areaPromoContent: Record<string, AreaPromoContent> = {
-  base: {
-    areaKey: 'base',
-    headline: 'Neu: KI-Dokumentenerkennung',
-    description: 'Dokumente werden automatisch erkannt und kategorisiert.',
-    ctaLabel: 'Mehr erfahren',
-    ctaRoute: '/portal/dms',
-    badge: 'NEU',
-  },
-  missions: {
-    areaKey: 'missions',
-    headline: 'Webinar: Erfolgreich verkaufen',
-    description: 'KI-gestützte Exposés für maximale Reichweite.',
-    ctaLabel: 'Anmelden',
-    ctaUrl: 'https://webinar.example.com',
-    badge: 'WEBINAR',
-  },
-  operations: {
-    areaKey: 'operations',
-    headline: 'Partner-Bonus Februar',
-    description: 'Doppelte Provision auf alle Abschlüsse.',
-    ctaLabel: 'Details ansehen',
-    ctaRoute: '/portal/vertriebspartner/network',
-    badge: 'AKTION',
-  },
-  services: {
-    areaKey: 'services',
-    headline: 'PV-Offensive 2026',
-    description: '20% Rabatt auf Solar-Beratungen.',
-    ctaLabel: 'Jetzt sichern',
-    ctaRoute: '/portal/photovoltaik',
-    badge: 'AKTION',
-  },
-};
+// ENTFERNEN oder so anpassen:
+useEffect(() => {
+  // Nur setzen, wenn der State noch nicht korrekt ist
+  // (Sollte durch Fix 1 nicht mehr nötig sein)
+}, [area?.key]);
 ```
 
-### Promo-Kachel Komponente
+---
+
+### Fix 3: SubTabs-Visibility-Logik vereinfachen
+
+**Datei:** `src/components/portal/SubTabs.tsx`
+
+Statt auf `subTabsVisible` State zu vertrauen, sollte SubTabs selbst entscheiden, ob es sich zeigt — basierend auf der URL:
 
 ```typescript
-// src/components/portal/AreaPromoCard.tsx
-
-interface AreaPromoCardProps {
-  promo: AreaPromoContent;
-}
-
-export function AreaPromoCard({ promo }: AreaPromoCardProps) {
-  return (
-    <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-      <CardHeader>
-        {promo.badge && (
-          <Badge variant="secondary" className="w-fit mb-2">
-            {promo.badge}
-          </Badge>
-        )}
-        <CardTitle className="uppercase">{promo.headline}</CardTitle>
-        <CardDescription>{promo.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button asChild>
-          {promo.ctaRoute ? (
-            <Link to={promo.ctaRoute}>{promo.ctaLabel} →</Link>
-          ) : (
-            <a href={promo.ctaUrl} target="_blank">{promo.ctaLabel} →</a>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  );
+export function SubTabs({ module, moduleBase }: SubTabsProps) {
+  const location = useLocation();
+  
+  // Zeige SubTabs nur, wenn wir auf einer Modul-Route sind (nicht auf Area-Overview)
+  const isOnModulePage = location.pathname.startsWith(`/portal/${moduleBase}`);
+  
+  if (!isOnModulePage || !module.tiles || module.tiles.length === 0) {
+    return null;
+  }
+  
+  // ... Rest bleibt gleich
 }
 ```
 
+Damit wird `subTabsVisible` State überflüssig für diese Komponente.
+
 ---
 
-## Responsive Grid-Layout
+### Fix 4: TopNavigation sollte Area-Overview-Routen berücksichtigen
 
-```text
-Mobile (< 640px):     1 Spalte
-┌─────────────────┐
-│   🎯 PROMO      │  ← Immer zuerst
-├─────────────────┤
-│     Modul 1     │
-├─────────────────┤
-│     Modul 2     │
-├─────────────────┤
-│     Modul 3     │
-├─────────────────┤
-│     Modul 4     │
-├─────────────────┤
-│     Modul 5     │
-└─────────────────┘
+**Datei:** `src/components/portal/TopNavigation.tsx`
 
-Tablet (640px - 1024px):  2 Spalten × 3 Reihen
-┌─────────────────┬─────────────────┐
-│   🎯 PROMO      │     Modul 1     │
-├─────────────────┼─────────────────┤
-│     Modul 2     │     Modul 3     │
-├─────────────────┼─────────────────┤
-│     Modul 4     │     Modul 5     │
-└─────────────────┴─────────────────┘
+Die SubTabs sollten nicht gerendert werden, wenn wir auf einer Area-Overview-Seite sind:
 
-Desktop (> 1024px):  3 Spalten × 2 Reihen
-┌─────────────────┬─────────────────┬─────────────────┐
-│   🎯 PROMO      │     Modul 1     │     Modul 2     │
-├─────────────────┼─────────────────┼─────────────────┤
-│     Modul 3     │     Modul 4     │     Modul 5     │
-└─────────────────┴─────────────────┴─────────────────┘
+```typescript
+// Erkennen, ob wir auf einer Area-Overview-Seite sind
+const isOnAreaOverview = location.pathname.startsWith('/portal/area/');
+
+// SubTabs nur rendern, wenn activeModule existiert UND wir nicht auf Area-Overview sind
+{activeModule && !isOnAreaOverview && (
+  <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+)}
 ```
 
 ---
 
-## Dateien für Implementierung
+## Zusammenfassung der Änderungen
 
-| Nr. | Datei | Aktion | Beschreibung |
-|-----|-------|--------|--------------|
-| 1 | `src/config/areaPromoContent.ts` | **NEU** | Promo-Inhalte pro Area (editierbar) |
-| 2 | `src/pages/portal/AreaOverviewPage.tsx` | **NEU** | Dynamische Area-Übersichtsseite |
-| 3 | `src/components/portal/AreaPromoCard.tsx` | **NEU** | Promo-Kachel mit Badge + CTA |
-| 4 | `src/components/portal/AreaModuleCard.tsx` | **NEU** | Modul-Kachel mit How-It-Works |
-| 5 | `src/router/ManifestRouter.tsx` | Modifikation | Route: `/portal/area/:areaKey` |
-| 6 | `src/components/portal/AreaTabs.tsx` | Modifikation | Navigation zu Area-Seiten |
+| Nr | Datei | Änderung | Zweck |
+|----|-------|----------|-------|
+| 1 | `areaConfig.ts` | `deriveAreaFromPath` erweitern | Area-Pfade korrekt erkennen |
+| 2 | `AreaOverviewPage.tsx` | `useEffect` entfernen | Redundantes Re-Render vermeiden |
+| 3 | `SubTabs.tsx` | URL-basierte Sichtbarkeit | State-Abhängigkeit eliminieren |
+| 4 | `TopNavigation.tsx` | Area-Overview-Prüfung | SubTabs auf Overview-Seiten verstecken |
 
 ---
 
-## Single Source of Truth
+## Erwartetes Ergebnis
 
-Die Architektur bleibt sauber:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                    moduleContents.ts                          │
-│         (Single Source of Truth für "How It Works")          │
-└──────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-     ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
-     │ ModuleHowItWorks│ │ AreaModuleCard │ │ MobileCardView │
-     │ (Modul-Detail) │ │ (NEU: Kacheln) │ │ (bestehend)    │
-     └────────────────┘ └────────────────┘ └────────────────┘
-
-┌──────────────────────────────────────────────────────────────┐
-│                    areaPromoContent.ts                        │
-│         (Editierbare Promo-Inhalte pro Area)                 │
-└──────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-                     ┌────────────────┐
-                     │ AreaPromoCard  │
-                     │ (NEU: Werbung) │
-                     └────────────────┘
-```
+- **1 Klick = 1 State-Update** (kein Flackern)
+- Level 1 (Area-Tabs) navigiert sauber zu `/portal/area/:areaKey`
+- Level 2 (Module-Tabs) bleibt stabil sichtbar
+- Level 3 (SubTabs) erscheint nur auf Modul-Seiten, nicht auf Area-Overviews
 
 ---
 
 ## Keine Änderungen an
 
-- ✅ `routesManifest.ts` — bleibt unberührt
-- ✅ `areaConfig.ts` — bleibt unberührt  
-- ✅ Bestehende Modul-Routen — alle Deep-Links funktionieren weiter
-- ✅ `moduleContents.ts` — wird nur gelesen, nicht kopiert
-- ✅ Mobile Navigation — bleibt separate Card-First-Logik
-
----
-
-## Vorteile dieser Lösung
-
-1. **Sauberes Grid**: 6 Kacheln = perfekte 2×3 oder 3×2 Aufteilung
-2. **Werbefläche gesichert**: Jede Area hat einen Promo-Platzhalter
-3. **Flexibel**: Promo-Content in separater Datei, jederzeit editierbar
-4. **Keine Kopien**: Module lesen weiterhin aus `moduleContents.ts`
-5. **Erweiterbar**: Promo kann später aus Datenbank kommen
+- Routing-Struktur in `ManifestRouter.tsx`
+- Business-Logik der Module
+- Mobile Navigation
 
