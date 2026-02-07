@@ -8800,6 +8800,8 @@ export type Database = {
           energy_certificate_type: string | null
           energy_certificate_valid_until: string | null
           energy_certificate_value: number | null
+          expose_headline: string | null
+          expose_subline: string | null
           features_tags: Json | null
           floor: number | null
           garden_flag: boolean | null
@@ -8834,6 +8836,8 @@ export type Database = {
           energy_certificate_type?: string | null
           energy_certificate_valid_until?: string | null
           energy_certificate_value?: number | null
+          expose_headline?: string | null
+          expose_subline?: string | null
           features_tags?: Json | null
           floor?: number | null
           garden_flag?: boolean | null
@@ -8868,6 +8872,8 @@ export type Database = {
           energy_certificate_type?: string | null
           energy_certificate_valid_until?: string | null
           energy_certificate_value?: number | null
+          expose_headline?: string | null
+          expose_subline?: string | null
           features_tags?: Json | null
           floor?: number | null
           garden_flag?: boolean | null

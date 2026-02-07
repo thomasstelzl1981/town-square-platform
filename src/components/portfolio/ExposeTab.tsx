@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PropertyMap } from './PropertyMap';
 import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
+import ExposeHeadlineCard from '@/components/verkauf/ExposeHeadlineCard';
 
 interface Property {
   id: string;
@@ -47,6 +48,8 @@ interface Unit {
   id: string;
   current_monthly_rent: number | null;
   ancillary_costs: number | null;
+  expose_headline: string | null;
+  expose_subline: string | null;
 }
 
 interface ExposeTabProps {
@@ -75,6 +78,17 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Exposé Überschrift - editierbar, ganz oben */}
+      {unit && (
+        <ExposeHeadlineCard
+          unitId={unit.id}
+          headline={unit.expose_headline}
+          subline={unit.expose_subline}
+          propertyAddress={property.address}
+          propertyCity={property.city}
+        />
+      )}
+
       {/* Header Section - Scout-Style */}
       <Card>
         <CardHeader className="pb-2">

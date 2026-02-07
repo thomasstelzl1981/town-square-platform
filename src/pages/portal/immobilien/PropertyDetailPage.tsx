@@ -79,6 +79,8 @@ interface Unit {
   area_sqm: number | null;
   current_monthly_rent: number | null;
   ancillary_costs: number | null;
+  expose_headline: string | null;
+  expose_subline: string | null;
 }
 
 export default function PropertyDetailPage() {
