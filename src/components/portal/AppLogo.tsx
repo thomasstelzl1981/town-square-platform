@@ -8,9 +8,9 @@
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
-// Logo imports
-import logoLight from '@/assets/logos/armstrong_logo_light.png';
-import logoDark from '@/assets/logos/armstrong_logo_dark.png';
+// Logo imports - SVG for native transparency
+import logoLight from '@/assets/logos/armstrong_logo_light.svg';
+import logoDark from '@/assets/logos/armstrong_logo_dark.svg';
 
 interface AppLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -23,7 +23,7 @@ export function AppLogo({ size = 'sm', className }: AppLogoProps) {
   const logo = resolvedTheme === 'dark' ? logoDark : logoLight;
   
   const sizeClasses = {
-    sm: 'h-6',    // SystemBar
+    sm: 'h-8',    // SystemBar (larger)
     md: 'h-10',   // Login page
     lg: 'h-16',   // Landing page
   };
