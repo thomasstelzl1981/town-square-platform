@@ -49,13 +49,11 @@ export function MobileBottomNav() {
         <button
           onClick={handleHomeClick}
           className={cn(
-            'flex flex-col items-center justify-center h-full px-3 gap-1 transition-all',
+            'relative flex flex-col items-center justify-center w-12 h-12 gap-0.5 transition-all',
             'text-muted-foreground hover:text-foreground active:scale-95'
           )}
         >
-          <div className="relative">
-            <CircleDot className="h-6 w-6" />
-          </div>
+          <CircleDot className="h-6 w-6" />
           <span className="text-[10px] font-medium">Home</span>
         </button>
 
@@ -69,19 +67,17 @@ export function MobileBottomNav() {
               key={area.key}
               onClick={() => handleAreaClick(area.key)}
               className={cn(
-                'flex flex-col items-center justify-center h-full px-3 gap-1 transition-all active:scale-95',
+                'relative flex flex-col items-center justify-center w-12 h-12 gap-0.5 transition-all active:scale-95',
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <div className="relative">
-                <Icon className="h-6 w-6" />
-                {/* Active indicator dot */}
-                {isActive && (
-                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                )}
-              </div>
+              {/* Glass glow background for active state */}
+              {isActive && (
+                <span className="absolute inset-1 rounded-xl bg-primary/10 backdrop-blur-sm -z-10" />
+              )}
+              <Icon className="h-6 w-6" />
               <span className="text-[10px] font-medium">{area.labelShort}</span>
             </button>
           );

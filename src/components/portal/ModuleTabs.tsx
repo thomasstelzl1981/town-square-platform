@@ -93,12 +93,12 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
           <NavLink
             key={code}
             to={route}
-            onClick={() => setSubTabsVisible(true)} // Show Level 3 when Level 2 is clicked
+            onClick={() => setSubTabsVisible(true)}
             className={cn(
-              'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
+              'flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
               isActive
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                ? 'bg-accent/80 backdrop-blur-sm text-accent-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/10 backdrop-blur-sm',
               requiresActivation && 'opacity-50'
             )}
           >

@@ -36,10 +36,10 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             key={tile.path}
             to={route}
             className={cn(
-              'px-3 py-1 rounded-md text-sm uppercase tracking-wide transition-all whitespace-nowrap',
+              'px-3 py-1.5 rounded-xl text-sm uppercase tracking-wide transition-all whitespace-nowrap',
               isActive
-                ? 'bg-primary text-primary-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                ? 'bg-primary/90 backdrop-blur-md text-primary-foreground font-medium shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/10 backdrop-blur-sm',
               tile.premium && 'border border-warning/30'
             )}
           >
