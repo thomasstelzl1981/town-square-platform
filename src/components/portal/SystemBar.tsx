@@ -96,7 +96,7 @@ export function SystemBar() {
   });
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
       <div className="flex h-12 items-center justify-between px-4">
         {/* Left section: Home + Theme Toggle + Logo placeholder */}
         <div className="flex items-center gap-1">
