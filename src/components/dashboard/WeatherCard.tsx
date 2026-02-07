@@ -1,11 +1,11 @@
 /**
- * WeatherCard — Real-time weather widget using Open-Meteo API
- * Displays current weather + 7-day forecast
+ * WeatherCard — Compact weather widget for square dashboard layout
+ * Displays current weather + 5-day forecast
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { useWeather, type WeatherData } from '@/hooks/useWeather';
-import { getWeatherInfo, getWeatherEmoji } from '@/lib/weatherCodes';
+import { useWeather } from '@/hooks/useWeather';
+import { getWeatherInfo } from '@/lib/weatherCodes';
 import { Droplets, Wind, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,16 +20,16 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
 
   if (isLoading) {
     return (
-      <Card className="glass-card border-border/50 h-full min-h-[280px] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <Card className="glass-card border-border/50 h-full aspect-square flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </Card>
     );
   }
 
   if (error || !weather) {
     return (
-      <Card className="glass-card border-border/50 h-full min-h-[280px] flex items-center justify-center">
-        <p className="text-muted-foreground text-sm">Wetterdaten nicht verfügbar</p>
+      <Card className="glass-card border-border/50 h-full aspect-square flex items-center justify-center">
+        <p className="text-muted-foreground text-xs">Wetterdaten nicht verfügbar</p>
       </Card>
     );
   }
@@ -38,50 +38,48 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
   const CurrentIcon = currentInfo.icon;
 
   return (
-    <Card className="glass-card border-border/50 h-full min-h-[280px] overflow-hidden">
-      <CardContent className="p-6 h-full flex flex-col">
+    <Card className="glass-card border-border/50 h-full aspect-square overflow-hidden">
+      <CardContent className="p-4 h-full flex flex-col">
         {/* Header with location */}
         {city && (
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
             {city}
           </div>
         )}
 
         {/* Current Weather */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between mb-3">
           <div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-5xl font-bold">{weather.current.temperature}</span>
-              <span className="text-2xl text-muted-foreground">°C</span>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-3xl font-bold">{weather.current.temperature}</span>
+              <span className="text-lg text-muted-foreground">°C</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {currentInfo.description}
             </p>
           </div>
-          <div className="flex flex-col items-center">
-            <CurrentIcon className="h-12 w-12 text-primary" />
-          </div>
+          <CurrentIcon className="h-10 w-10 text-primary" />
         </div>
 
         {/* Details Row */}
-        <div className="flex gap-6 mb-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Wind className="h-4 w-4" />
+        <div className="flex gap-4 mb-3">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Wind className="h-3.5 w-3.5" />
             <span>{weather.current.windSpeed} km/h</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Droplets className="h-4 w-4" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Droplets className="h-3.5 w-3.5" />
             <span>{weather.current.humidity}%</span>
           </div>
         </div>
 
-        {/* 7-Day Forecast */}
+        {/* 5-Day Forecast */}
         <div className="mt-auto">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-            7-Tage Vorschau
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+            5-Tage Vorschau
           </div>
-          <div className="grid grid-cols-7 gap-1">
-            {weather.daily.slice(0, 7).map((day, index) => {
+          <div className="grid grid-cols-5 gap-1">
+            {weather.daily.slice(0, 5).map((day, index) => {
               const dayInfo = getWeatherInfo(day.weatherCode);
               const DayIcon = dayInfo.icon;
               const date = new Date(day.date);
@@ -93,15 +91,15 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
                 <div 
                   key={day.date} 
                   className={cn(
-                    'flex flex-col items-center py-2 rounded-lg',
+                    'flex flex-col items-center py-1.5 rounded-lg',
                     index === 0 && 'bg-primary/10'
                   )}
                 >
-                  <span className="text-[10px] text-muted-foreground mb-1">
+                  <span className="text-[9px] text-muted-foreground mb-0.5">
                     {dayName}
                   </span>
-                  <DayIcon className="h-4 w-4 mb-1 text-foreground/80" />
-                  <div className="flex flex-col items-center text-[10px]">
+                  <DayIcon className="h-3.5 w-3.5 mb-0.5 text-foreground/80" />
+                  <div className="flex flex-col items-center text-[9px]">
                     <span className="font-medium">{day.tempMax}°</span>
                     <span className="text-muted-foreground">{day.tempMin}°</span>
                   </div>
