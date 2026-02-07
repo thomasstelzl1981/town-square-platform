@@ -1,218 +1,178 @@
 
-# Umsetzungsplan: Mietverhältnis Aktionen & Briefgenerator-Integration
+# Umsetzungsplan: Exposé-Tab Datenkonsistenz & Duplikat-Bereinigung
 
-## Aktueller Stand
+## Analyse der aktuellen Situation
 
-### Problem 1: Mietverhältnis-Status zurücksetzen
-Der Mietvertrag der Demo-Immobilie hat derzeit den Status `notice_given` (Gekündigt) - dieser muss auf `active` zurückgesetzt werden.
+### Datenquellen-Vergleich
 
-### Problem 2: Falsche Button-Struktur
-Der aktuelle "Kündigen"-Button setzt direkt den Status auf `notice_given`. Es fehlen wichtige Aktionen für die Mieterverwaltung.
+| Feld | Akte (dossierData) | Exposé (property) | Status |
+|------|-------------------|-------------------|--------|
+| Straße | ✅ street | ✅ address | OK |
+| PLZ | ✅ postalCode | ✅ postal_code | OK |
+| Ort | ✅ city | ✅ city | OK |
+| Land | ❌ (nicht editierbar) | ✅ country | Nur Exposé |
+| Lagebezeichnung | ✅ locationLabel | ❌ FEHLT | **Muss ergänzt werden** |
+| Objektbeschreibung | ✅ description | ✅ description | OK |
+| Koordinaten | ✅ latitude/longitude | ❌ FEHLT | Für Karte nutzen |
 
-### Soll-Zustand: Drei Aktions-Buttons mit Briefgenerator-Verlinkung
+### Duplikate im Exposé-Tab
 
 ```
-┌───────────────────────────────────────────────────────────────┐
-│ MIETVERHÄLTNIS-TAB: Aktive Verträge                          │
-├───────────────────────────────────────────────────────────────┤
-│ Bergmann, Thomas                                              │
-│ 837,00 EUR Warmmiete | Beginn: 01.06.2022 | Unbefristet       │
-│                                                               │
-│ ┌─────────────────────────────────────────────────────────┐   │
-│ │ [Bearbeiten] [Kündigung] [Mieterhöhung] [Abmahnung]     │   │
-│ │              [Einladen]                                  │   │
-│ └─────────────────────────────────────────────────────────┘   │
-└───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ HEADER-KARTE                                                │
+│ Eigentumswohnung                                            │
+│ Leipziger Straße 42                    ← ADRESSE #1         │
+│ 04109 Leipzig, Deutschland             ← PLZ/ORT/LAND #1    │
+│                              Objekt-Code: DEMO-001          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ LAGE & ADRESSE                                              │
+│ Straße: Leipziger Straße 42            ← ADRESSE #2 (DUPLIKAT)
+│ PLZ: 04109                             ← DUPLIKAT           │
+│ Ort: Leipzig                           ← DUPLIKAT           │
+│ Land: Deutschland                      ← DUPLIKAT           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Jeder Button öffnet den KI-Briefgenerator mit vorausgefüllten Daten:
-- **Empfänger**: Automatisch der Mieter (Kontakt aus Mietvertrag)
-- **Betreff**: Vorbefüllt je nach Aktion (z.B. "Kündigung Ihres Mietvertrages")
-- **Prompt**: Vorbefüllte Anweisung für den KI-Briefgenerator
+**Problem:** Die gleichen Adressdaten werden zweimal angezeigt.
+
+---
+
+## Lösung: Exposé-Tab Struktur optimieren
+
+### Neue Karten-Struktur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ HEADER (bleibt wie bisher)                                  │
+│ [Objekttyp] [Adresse] [PLZ Ort, Land] [Objekt-Code]         │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ LAGE & MIKROLAGE (NEU - ersetzt "Lage & Adresse")           │
+│ Lagebezeichnung: "Altbau am Waldstraßenviertel"   ← NEU     │
+│ (Freitext aus Akte locationNotes / location_notes)          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ OBJEKTBESCHREIBUNG (Vollbreite, prominent)                  │
+│ [Beschreibungstext aus property.description]                │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ OBJEKTDATEN (zusammengefasst)                               │
+│ Baujahr: 1920 | Sanierung: 2015 | Wohnfläche: 65 qm         │
+│ Heizung: Fernwärme | Energieträger: Fernwärme               │
+└─────────────────────────────────────────────────────────────┘
+
+... weitere Karten (Grundbuch, Finanzierung, Miete) ...
+```
 
 ---
 
 ## Technische Umsetzung
 
-### Schritt 1: Datenbank - Status zurücksetzen
+### Schritt 1: Datenbank-Schema erweitern
 
-Einmaliger SQL-Befehl zum Zurücksetzen des Mietvertrags:
+Die Spalte `location_notes` existiert möglicherweise nicht in `properties`. Prüfung erforderlich:
 
 ```sql
-UPDATE leases 
-SET status = 'active' 
-WHERE id = '00000000-0000-4000-a000-000000000120';
+-- Falls nicht vorhanden:
+ALTER TABLE properties 
+ADD COLUMN IF NOT EXISTS location_notes TEXT;
 ```
 
-### Schritt 2: TenancyTab.tsx - Aktions-Buttons umbauen
+### Schritt 2: ExposeTab.tsx - Interface erweitern
 
-**Datei:** `src/components/portfolio/TenancyTab.tsx`
+**Datei:** `src/components/portfolio/ExposeTab.tsx`
 
-**Zeile 530-572 (Actions-Bereich) ersetzen:**
+Property-Interface erweitern (Zeile 7-29):
+
+```typescript
+interface Property {
+  id: string;
+  code: string | null;
+  property_type: string;
+  city: string;
+  address: string;
+  postal_code: string | null;
+  country: string;
+  total_area_sqm: number | null;
+  year_built: number | null;
+  renovation_year: number | null;
+  // ... bestehende Felder ...
+  description: string | null;
+  location_notes: string | null;  // NEU: Lagebezeichnung
+}
+```
+
+### Schritt 3: ExposeTab.tsx - Karten-Struktur anpassen
+
+**Zeile 97-109 ersetzen** (alte "Lage & Adresse"-Karte):
 
 Von:
 ```typescript
-{/* Actions */}
-<div className="flex gap-2 pt-2 border-t">
-  <Button variant="outline" size="sm" onClick={() => openEditDialog(lease)}>
-    <Edit2 className="mr-1 h-3 w-3" />
-    Bearbeiten
-  </Button>
-  
-  {lease.status === 'draft' && (
-    <Button size="sm" onClick={() => handleActivateLease(lease.id)}>
-      Aktivieren
-    </Button>
-  )}
-  
-  {lease.status === 'active' && (
-    <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => handleTerminateLease(lease.id)}
-      >
-        Kündigen
-      </Button>
-      ...
-    </>
-  )}
-</div>
+{/* Lage & Adresse */}
+<Card>
+  <CardHeader>
+    <CardTitle className="text-base">Lage & Adresse</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    <InfoRow label="Straße" value={property.address} />
+    <InfoRow label="PLZ" value={property.postal_code} />
+    <InfoRow label="Ort" value={property.city} />
+    <InfoRow label="Land" value={property.country} />
+  </CardContent>
+</Card>
 ```
 
 Zu:
 ```typescript
-{/* Actions */}
-<div className="flex flex-wrap gap-2 pt-2 border-t">
-  <Button variant="outline" size="sm" onClick={() => openEditDialog(lease)}>
-    <Edit2 className="mr-1 h-3 w-3" />
-    Bearbeiten
-  </Button>
-  
-  {lease.status === 'draft' && (
-    <Button size="sm" onClick={() => handleActivateLease(lease.id)}>
-      Aktivieren
-    </Button>
-  )}
-  
-  {(lease.status === 'active' || lease.status === 'notice_given') && (
-    <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => handleOpenLetterGenerator(lease, 'kuendigung')}
-      >
-        <FileText className="mr-1 h-3 w-3" />
-        Kündigung
-      </Button>
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => handleOpenLetterGenerator(lease, 'mieterhoehung')}
-      >
-        <Euro className="mr-1 h-3 w-3" />
-        Mieterhöhung
-      </Button>
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => handleOpenLetterGenerator(lease, 'abmahnung')}
-      >
-        <AlertTriangle className="mr-1 h-3 w-3" />
-        Abmahnung
-      </Button>
-      
-      {!lease.renter_org_id && (
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => openInviteDialog(lease)}
-        >
-          <Mail className="mr-1 h-3 w-3" />
-          Einladen
-        </Button>
-      )}
-    </>
-  )}
-</div>
+{/* Lage & Mikrolage - nur wenn vorhanden */}
+{property.location_notes && (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-sm">{property.location_notes}</p>
+    </CardContent>
+  </Card>
+)}
 ```
 
-### Schritt 3: Neue Handler-Funktion für Briefgenerator
+### Schritt 4: Beschreibung prominenter platzieren
 
-**Datei:** `src/components/portfolio/TenancyTab.tsx`
-
-Neue Funktion hinzufügen (nach Zeile 352):
+**Zeile 193-203 verschieben** - Beschreibung nach oben, vor die Detail-Karten:
 
 ```typescript
-type LetterType = 'kuendigung' | 'mieterhoehung' | 'abmahnung';
+{/* Beschreibung - jetzt direkt nach Header */}
+{property.description && (
+  <Card className="md:col-span-2">
+    <CardHeader>
+      <CardTitle className="text-base">Objektbeschreibung</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-sm whitespace-pre-wrap">{property.description}</p>
+    </CardContent>
+  </Card>
+)}
+```
 
-function handleOpenLetterGenerator(lease: Lease & { tenant_contact?: Contact }, letterType: LetterType) {
-  if (!lease.tenant_contact) {
-    toast.error('Kein Kontakt für diesen Mietvertrag hinterlegt');
-    return;
-  }
+### Schritt 5: PropertyDetailPage.tsx - location_notes laden
 
-  const templates: Record<LetterType, { subject: string; prompt: string }> = {
-    kuendigung: {
-      subject: 'Kündigung Ihres Mietvertrages',
-      prompt: `Erstelle eine formelle Kündigung des Mietvertrages für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Der Mietvertrag begann am ${formatDate(lease.start_date)}. Die aktuelle Warmmiete beträgt ${formatCurrency(lease.monthly_rent)}.`,
-    },
-    mieterhoehung: {
-      subject: 'Mieterhöhungsverlangen',
-      prompt: `Erstelle ein Mieterhöhungsverlangen für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Die aktuelle Kaltmiete beträgt ${formatCurrency(lease.rent_cold_eur || 0)}. Bitte begründe die Erhöhung mit dem örtlichen Mietspiegel.`,
-    },
-    abmahnung: {
-      subject: 'Abmahnung wegen Vertragsverletzung',
-      prompt: `Erstelle eine Abmahnung für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Bitte frage mich nach dem konkreten Grund der Abmahnung.`,
-    },
-  };
+**Zeile 31-60** - Property-Interface erweitern und Abfrage anpassen:
 
-  const template = templates[letterType];
-
-  // Navigate to letter generator with pre-filled data
-  const params = new URLSearchParams({
-    contactId: lease.tenant_contact.id,
-    subject: template.subject,
-    prompt: template.prompt,
-    leaseId: lease.id,
-  });
-
-  window.location.href = `/portal/office/brief?${params.toString()}`;
+Interface ergänzen:
+```typescript
+interface Property {
+  // ... bestehende Felder ...
+  location_notes: string | null;  // NEU
 }
 ```
 
-### Schritt 4: BriefTab.tsx - URL-Parameter auslesen
-
-**Datei:** `src/pages/portal/office/BriefTab.tsx`
-
-Import hinzufügen (Zeile 1-2):
-```typescript
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-```
-
-Neuen Hook hinzufügen (nach Zeile 85):
-```typescript
-const [searchParams] = useSearchParams();
-
-// Pre-fill from URL parameters (from TenancyTab links)
-useEffect(() => {
-  const contactId = searchParams.get('contactId');
-  const subjectParam = searchParams.get('subject');
-  const promptParam = searchParams.get('prompt');
-
-  if (subjectParam) setSubject(subjectParam);
-  if (promptParam) setPrompt(promptParam);
-
-  // Auto-select contact if passed via URL
-  if (contactId && contacts) {
-    const contact = contacts.find(c => c.id === contactId);
-    if (contact) setSelectedContact(contact);
-  }
-}, [searchParams, contacts]);
-```
+Die Supabase-Query `select('*')` lädt bereits alle Spalten, also ist keine Query-Änderung nötig.
 
 ---
 
@@ -220,75 +180,58 @@ useEffect(() => {
 
 | Datei | Änderung |
 |-------|----------|
-| **Datenbank** | Status des Demo-Mietvertrags auf `active` zurücksetzen |
-| `src/components/portfolio/TenancyTab.tsx` | - Alten "Kündigen"-Button entfernen<br>- Drei neue Buttons: Kündigung, Mieterhöhung, Abmahnung<br>- `handleOpenLetterGenerator()` Funktion hinzufügen |
-| `src/pages/portal/office/BriefTab.tsx` | URL-Parameter auslesen und Formular vorbefüllen |
+| `properties` Tabelle | `location_notes` Spalte hinzufügen (falls nicht vorhanden) |
+| `src/components/portfolio/ExposeTab.tsx` | - "Lage & Adresse"-Karte entfernen (Duplikat)<br>- "Lage & Mikrolage"-Karte mit location_notes hinzufügen<br>- Beschreibung nach oben verschieben |
+| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Property-Interface um `location_notes` erweitern |
 
 ---
 
-## Kontakt-Synchronisation (Bestätigung)
-
-Die Kontakt-Erstellung funktioniert bereits korrekt:
-- Neue Mieter werden über den "+"-Button im Mietvertrag-Dialog erstellt
-- Der Kontakt wird in der `contacts`-Tabelle gespeichert
-- Dadurch ist der Mieter automatisch unter **Office → Kontakte** sichtbar
-
----
-
-## Workflow nach Implementierung
+## Neue Exposé-Struktur (nach Implementierung)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ MIETVERHÄLTNIS-TAB                                          │
-│                                                             │
-│ Bergmann, Thomas | 837,00 EUR | Aktiv                       │
-│                                                             │
-│ [Bearbeiten] [Kündigung] [Mieterhöhung] [Abmahnung] [Einladen]
+│ HEADER                                                      │
+│ Eigentumswohnung                                            │
+│ Leipziger Straße 42                                         │
+│ 04109 Leipzig, Deutschland              DEMO-001            │
 └─────────────────────────────────────────────────────────────┘
-              │                │                │
-              ▼                ▼                ▼
+
 ┌─────────────────────────────────────────────────────────────┐
-│ KI-BRIEFGENERATOR (/portal/office/brief)                    │
-│                                                             │
-│ Empfänger: Bergmann, Thomas (vorausgefüllt)                 │
-│ Betreff: "Kündigung Ihres Mietvertrages" (vorausgefüllt)    │
-│ Prompt: "Erstelle eine formelle Kündigung..." (vorausgefüllt)│
-│                                                             │
-│ [Brief generieren] → KI erstellt fertigen Brief             │
+│ OBJEKTBESCHREIBUNG (Vollbreite)                             │
+│ Die Eigentumswohnung befindet sich in einem gepflegten      │
+│ Altbau aus dem Jahr 1920...                                 │
 └─────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────┐  ┌───────────────────────────┐
+│ LAGE & MIKROLAGE          │  │ BAUJAHR & ZUSTAND         │
+│ Altbau am Waldstraßen-    │  │ Baujahr: 1920             │
+│ viertel, ruhige Seiten-   │  │ Sanierung: 2015           │
+│ straße mit guter ÖPNV-    │  │ Wohnfläche: 65 qm         │
+│ Anbindung                 │  │                           │
+└───────────────────────────┘  └───────────────────────────┘
+
+... weitere Karten ...
 ```
 
 ---
 
 ## Testplan
 
-### Test 1: Status zurückgesetzt
-1. Tab "Mietverhältnis" öffnen
-2. **Erwartung:** Status zeigt "Aktiv" (nicht mehr "Gekündigt")
+### Test 1: Keine Duplikate
+1. Immobilienakte öffnen → Tab "Exposé"
+2. **Prüfen:** Adresse erscheint NUR im Header, nicht mehr in separater Karte
 
-### Test 2: Neue Buttons sichtbar
-1. Tab "Mietverhältnis" öffnen
-2. **Erwartung:** Buttons "Kündigung", "Mieterhöhung", "Abmahnung" sind sichtbar
+### Test 2: Lagebezeichnung wird angezeigt
+1. In Akte → "Lage & Beschreibung" eine Lagebezeichnung eingeben
+2. Speichern
+3. Tab "Exposé" öffnen
+4. **Erwartung:** "Lage & Mikrolage"-Karte zeigt den eingegebenen Text
 
-### Test 3: Kündigung öffnet Briefgenerator
-1. Auf "Kündigung" klicken
-2. **Erwartung:** Weiterleitung zu `/portal/office/brief`
-3. **Prüfen:** Empfänger = "Bergmann, Thomas"
-4. **Prüfen:** Betreff = "Kündigung Ihres Mietvertrages"
-5. **Prüfen:** Prompt enthält Mietdaten
+### Test 3: Beschreibung prominent
+1. Tab "Exposé" öffnen
+2. **Prüfen:** Objektbeschreibung erscheint direkt nach dem Header (über den Detail-Karten)
 
-### Test 4: Mieterhöhung öffnet Briefgenerator
-1. Auf "Mieterhöhung" klicken
-2. **Erwartung:** Weiterleitung zu `/portal/office/brief`
-3. **Prüfen:** Betreff = "Mieterhöhungsverlangen"
-
-### Test 5: Abmahnung öffnet Briefgenerator
-1. Auf "Abmahnung" klicken
-2. **Erwartung:** Weiterleitung zu `/portal/office/brief`
-3. **Prüfen:** Betreff = "Abmahnung wegen Vertragsverletzung"
-
-### Test 6: Kontakte synchronisiert
-1. Im Mietvertrag-Dialog auf "+" klicken
-2. Neuen Kontakt "Test Mieter" anlegen
-3. Office → Kontakte öffnen
-4. **Erwartung:** "Test Mieter" erscheint in der Kontaktliste
+### Test 4: Leere Felder ausblenden
+1. Immobilie ohne Lagebezeichnung/Beschreibung
+2. Tab "Exposé" öffnen
+3. **Erwartung:** Leere Karten werden nicht angezeigt (kein "–" Platzhalter)
