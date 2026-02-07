@@ -1,99 +1,194 @@
 
-Ziel
-- Du sollst dich auf dem iPhone wieder in der Preview einloggen können, ohne dass es dauerhaft an „Ungültige Anmeldedaten“ hängt.
-- Zusätzlich soll der „Passwort vergessen?“-Weg verlässlich nachvollziehbar werden (mindestens mit klarer Diagnose/Feedback), weil aktuell keine Reset-E-Mail ankommt.
+# Armstrong Design Overhaul — Professionelles, Konsistentes AI-Widget
 
-Was wir inzwischen sicher wissen (aus Code + Daten)
-- Dein App-Account existiert und ist aktiv:
-  - Es gibt ein Profil für thomas.stelzl@systemofadown.com.
-  - In den letzten Network-Requests sieht man Requests mit einem gültigen Bearer Token für genau diese E-Mail (Desktop ist also wirklich eingeloggt).
-- Der Fehler am iPhone passiert auch, wenn du die Preview direkt im Tab öffnest (lovable.app/auth) → kein reines „Safari-Iframe/Cookie“-Problem.
-- Wenn Login „Ungültige Anmeldedaten“ sagt, ist es in der Praxis fast immer:
-  1) Passwort stimmt nicht (häufigster Fall), oder
-  2) Die Reset-/Recovery-Mail kommt nicht an, sodass man das Passwort nicht zurücksetzen kann.
+## Zielsetzung
 
-Sofort-Workaround (ohne Code, damit du heute weiterarbeiten kannst)
-1) Am MacBook (wo du bereits im /portal eingeloggt bist):
-   - Öffne im User-Menü oben rechts „Einstellungen“ → das führt zu:
-     /portal/stammdaten/sicherheit
-   - Setze dort ein neues Passwort (am besten etwas, das du auf dem iPhone sicher tippen kannst).
-   - Speichern.
-2) Danach am iPhone:
-   - Öffne: /auth
-   - Logge dich mit thomas.stelzl@systemofadown.com + dem gerade gesetzten neuen Passwort ein.
+Armstrong soll ein eigenständiges, hochwertiges Design erhalten, das:
+1. Im **Dark Mode UND Light Mode** professionell und konsistent aussieht
+2. Die Farbpalette beider Modi intelligent kombiniert (wie im Referenzbild)
+3. Sowohl **collapsed (Planet)** als auch **expanded (Chat)** visuell zusammenpasst
+4. Die "Planetary Sphere" Identität beibehält, aber mit Tiefe und Textur
 
-Warum das hilft:
-- Das Passwort-Ändern im Portal nutzt eine vorhandene, gültige Sitzung (du bist am Desktop eingeloggt) und setzt damit zuverlässig ein neues Passwort, ohne dass eine E-Mail-Zustellung funktionieren muss.
+---
 
-Warum wir trotzdem Code ändern sollten
-- Der „Passwort vergessen?“-Flow ist aktuell für dich nicht nutzbar, wenn keine E-Mails ankommen.
-- Die Auth-Seite sagt nur „Ungültige Anmeldedaten“, obwohl du in Wirklichkeit eine viel bessere Selbsthilfe-Option hast (Passwort im Portal ändern, wenn du noch irgendwo eingeloggt bist).
-- Außerdem fehlt uns Diagnose-Feedback, ob der Reset-Request wirklich beim Backend ankommt oder z. B. im Netzwerk fehlschlägt.
+## Design-Konzept: "Orbital Glass"
 
-Geplante Änderungen (Code)
-A) Auth-Seite (/auth) verständlicher und diagnosefähiger machen
-1) Besserer Hilfetext bei „Ungültige Anmeldedaten“
-   - Ergänzen: „Wenn du auf einem anderen Gerät noch eingeloggt bist, ändere dein Passwort im Portal unter Stammdaten → Sicherheit und versuche es erneut.“
-   - Dazu einen klickbaren Link/CTA anbieten (nur Hinweis; der Link selbst ist nicht geschützt, aber das Portal leitet dich ohne Session ohnehin wieder zur Anmeldung weiter).
+Inspiriert vom Referenzbild (texturierter Planet mit Gold-Blau-Tönen):
 
-2) „Passwort vergessen?“: robustes Error-Handling + sichtbares Ergebnis
-   - In handleForgotPassword zusätzlich try/catch um den API-Call.
-   - Falls ein Netzwerk-/CORS-Fehler passiert: klare Meldung („Netzwerkfehler – bitte erneut versuchen“).
-   - Nach erfolgreichem Request: nicht nur Toast „E-Mail gesendet“, sondern auch Hinweis:
-     - „Wenn keine E-Mail ankommt: Spam prüfen; alternativ Passwort im Portal (Stammdaten → Sicherheit) ändern, falls du noch eingeloggt bist.“
-   - Optional: Einen kleinen „Diagnose“-Abschnitt (nur in Dev/Preview) einblenden, der die Response-Art zusammenfasst (ohne sensible Inhalte).
+### Collapsed State: "Der Planet"
+- **Multi-Layer-Gradient** statt flachem 2-Farben-Verlauf
+- **Goldene Highlights** (aus Light Mode: warmtöne) + **Blaue Tiefen** (aus Dark Mode: Space-Blau)
+- **Subtile Noise-Textur** via CSS (pseudo-element mit grain)
+- **Atmospheric Glow-Ring** statt hartem Ring
+- **Größe**: 160px (etwas kompakter, eleganter)
 
-Datei: src/pages/Auth.tsx
+### Expanded State: "Das Cockpit"
+- **Glass-Morphism-Panel** statt hartem Farbwechsel
+- **Header**: Subtle gradient der Planet-Farben (Gold→Blau), nicht der grelle Blau-Gradient
+- **Body**: Halbtransparenter Glass-Hintergrund mit Blur
+- **Input-Area**: Floating-Style wie iOS
 
-B) Portal-Sicherheitstab verbessern (damit Passwort-Reset am Desktop noch zuverlässiger ist)
-1) Klarer Hinweis „Du bist eingeloggt als: <E-Mail>“
-   - Damit du sicher weißt, welches Konto du gerade änderst.
-   - (In der SystemBar wird zwar profile.email gezeigt, aber im Sicherheitstab ist es noch eindeutiger.)
+---
 
-2) Entfernen oder nutzen von currentPassword-State
-   - Aktuell existiert currentPassword im State, wird aber nicht genutzt.
-   - Entweder entfernen (Aufräumen) oder bewusst anzeigen (wenn du es möchtest).
-   - Für den schnellen Fix: eher entfernen/aufräumen, damit keine Verwirrung entsteht.
+## Technische Umsetzung
 
-Datei: src/pages/portal/stammdaten/SicherheitTab.tsx
+### Datei: `src/index.css`
+Neue CSS-Variablen und Klassen für Armstrong:
 
-C) Optional (wenn du maximale Mobile-Sicherheit willst): „Login-Hilfe“-Bereich
-- Auf /auth einen kleinen „Probleme beim Login?“ Akkordeon-Bereich:
-  - „Passwort im Portal ändern (wenn noch eingeloggt)“
-  - „E-Mail korrekt? (wird automatisch normalisiert)“
-  - „Passwort anzeigen (Toggle ist schon da)“
+```css
+/* Armstrong Planet Colors - Mode-Unabhängig */
+--armstrong-gold: 42 76% 52%;        /* Warmer Gold-Ton */
+--armstrong-gold-light: 45 80% 70%;  /* Highlight Gold */
+--armstrong-blue: 217 70% 45%;       /* Tiefes Space-Blau */
+--armstrong-blue-deep: 230 60% 25%;  /* Dunkler Akzent */
+--armstrong-purple: 275 45% 35%;     /* Nebel-Akzent */
 
-Datei: src/pages/Auth.tsx
+/* Armstrong Gradients */
+--armstrong-planet-gradient: radial-gradient(
+  ellipse 120% 90% at 30% 20%,
+  hsl(var(--armstrong-gold-light)) 0%,
+  hsl(var(--armstrong-gold)) 25%,
+  hsl(var(--armstrong-blue)) 55%,
+  hsl(var(--armstrong-blue-deep)) 80%,
+  hsl(var(--armstrong-purple)) 100%
+);
 
-Was wir nicht sofort machen (nur falls später nötig)
-- Ein komplett eigener Passwort-Reset per externem Maildienst (z. B. Resend) + Recovery-Link-Generierung ist deutlich aufwendiger und benötigt zusätzliche Secrets/Keys. Das lohnt sich erst, wenn klar ist, dass Auth-Reset-Mails in deinem Backend grundsätzlich nicht zugestellt werden können.
-- OAuth Login (Apple/Google) wäre eine Alternative für Mobile, ist aber ein eigener Setup-Block und ändert dein Login-Verständnis (Account-Verknüpfung etc.).
+/* Armstrong Glass Panel */
+.armstrong-glass {
+  background: hsla(222, 47%, 11%, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid hsla(217, 91%, 60%, 0.15);
+}
 
-Testplan (End-to-End)
-1) Desktop (MacBook)
-- Im Portal auf /portal/stammdaten/sicherheit neues Passwort setzen.
-- Danach im privaten Fenster (Inkognito) auf /auth mit E-Mail + neuem Passwort einloggen (verifiziert, dass du das Passwort wirklich kennst).
+.armstrong-glass-light {
+  background: hsla(0, 0%, 100%, 0.75);
+  backdrop-filter: blur(20px);
+  border: 1px solid hsla(222, 47%, 11%, 0.1);
+}
 
-2) iPhone
-- /auth öffnen, E-Mail + neues Passwort eingeben, Login prüfen.
-- Danach /portal laden und prüfen, dass du drin bleibst (Session persistiert).
+/* Noise Texture Overlay */
+.armstrong-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("data:image/svg+xml,...") repeat; /* Grain pattern */
+  opacity: 0.08;
+  pointer-events: none;
+}
+```
 
-3) Passwort vergessen?
-- /auth → „Passwort vergessen?“ auslösen
-- Prüfen: UI zeigt entweder
-  - „E-Mail gesendet“ inkl. Hinweis/Alternativen, oder
-  - eine konkrete Fehlermeldung (z. B. Netzwerkfehler), nicht nur „es passiert nichts“.
+### Datei: `src/components/portal/ArmstrongContainer.tsx`
+Komplette Überarbeitung des Widgets:
 
-Akzeptanzkriterien
-- Du kannst dich am iPhone in der Preview mit dem Account thomas.stelzl@systemofadown.com anmelden.
-- Wenn Reset-Mail nicht ankommt, wirst du in der UI so geführt, dass du trotzdem eine praktikable Lösung hast (Passwort über Portal ändern).
-- Fehlerfälle sind klar verständlich (keine stillen Fehlschläge).
+**Collapsed State (Planet):**
+- Größe: 160px
+- Multi-Layer-Gradient als Background
+- CSS-based Grain-Texture
+- Doppelter Glow-Ring (innerer subtil, äußerer atmosphärisch)
+- Smoother Hover-Effekt mit leichtem Pulsieren
 
-Umsetzungsschritte (Reihenfolge)
-1) Auth.tsx: verbessertes Messaging + try/catch + hilfreiche Hinweise bei invalid credentials.
-2) SicherheitTab.tsx: „eingeloggt als“-Hinweis + Aufräumen currentPassword State.
-3) End-to-end Tests wie oben.
+**Expanded State (Chat Panel):**
+- Glass-Hintergrund Theme-abhängig (`armstrong-glass` / `armstrong-glass-light`)
+- Header: Subtiler Gradient von Gold zu Blau (nicht grelles Blau)
+- Konsistente Border-Radien (20px)
+- Floating Input im iOS-Style
+- Schatten angepasst für beide Modi
 
-Technischer Anhang (kurz, zur Orientierung)
-- Login erfolgt über supabase.auth.signInWithPassword.
-- Passwort ändern im Portal erfolgt bereits über supabase.auth.updateUser({ password: ... }) und ist der schnellste Weg, ohne E-Mail-Zustellung das Passwort zu „synchronisieren“.
+### Datei: `src/components/chat/ChatPanel.tsx`
+Anpassungen für Armstrong-Integration:
+
+- Entfernen von `bg-sidebar` (stattdessen transparent, erbt von Container)
+- Hover-States Theme-agnostisch
+- Message-Bubbles mit Glass-Effekt
+- Empty-State mit dezenterem Icon
+
+---
+
+## Farbharmonie: Dark + Light Mode kombiniert
+
+Die Planet-Grafik im Referenzbild zeigt genau diese Kombination:
+- **Gold-Töne** (Light Mode Wärme): Highlights, Atmosphäre
+- **Blau-Töne** (Dark Mode Tiefe): Core, Schatten
+- **Lila-Akzente**: Nebel-Atmosphäre an Rändern
+
+Diese Palette bleibt in BEIDEN Modi identisch für Armstrong. Der Chat-Body passt sich dem aktuellen Mode an (Glass Hell / Glass Dunkel), aber der Planet selbst ist immer "Space mit goldenem Sonnenlicht".
+
+---
+
+## Visuelle Verbesserungen im Detail
+
+### 1. Planet-Widget (Collapsed)
+
+```text
+┌────────────────────────────────────┐
+│                                    │
+│   ┌──────────────────────────┐     │
+│   │    ╭─────────────────╮   │     │
+│   │   ╱   Gold Highlight   ╲  │     │  ← Radial Gradient
+│   │  │   ╲    ──────────   │  │     │     mit Grain-Textur
+│   │  │    ╲   Blue Core    │  │     │
+│   │   ╲     ╲─────────────╱  │     │
+│   │    ╰──────Purple Rim──╯   │     │
+│   └──────────────────────────┘     │
+│        ↑ Atmospheric Glow          │
+│                                    │
+│   [🤖 Armstrong]                   │
+│   [    Fragen...     ]             │  ← Glass-Style Input
+│   [ 📎 ]      [ ➤ ]                │  ← Glass Buttons
+│                                    │
+└────────────────────────────────────┘
+```
+
+### 2. Chat-Panel (Expanded)
+
+```text
+┌─────────────────────────────────────┐
+│ ┌─ Header: Gold→Blue Gradient ────┐ │
+│ │ 🤖 Armstrong             [−][×] │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ┌─ Glass Body (Theme-Adaptive) ───┐ │
+│ │                                 │ │
+│ │    🤖 Wie kann ich helfen?      │ │
+│ │                                 │ │
+│ │ ┌──────────────────────────────┐│ │
+│ │ │ Message History (ScrollArea) ││ │
+│ │ └──────────────────────────────┘│ │
+│ │                                 │ │
+│ │ ┌─────────────────────────────┐ │ │
+│ │ │  Nachricht eingeben... 🎤 ➤ │ │ │  ← Floating Input
+│ │ └─────────────────────────────┘ │ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Zusammenfassung der Änderungen
+
+| Datei | Änderung |
+|-------|----------|
+| `src/index.css` | Neue Armstrong CSS-Variablen + `.armstrong-glass`, `.armstrong-texture` Klassen |
+| `src/components/portal/ArmstrongContainer.tsx` | Neues Planet-Gradient, Texture-Layer, Glass-Panel für Expanded, 160px statt 192px |
+| `src/components/chat/ChatPanel.tsx` | Transparenter Hintergrund für Armstrong-Kontext, Glass-Message-Bubbles |
+
+---
+
+## Akzeptanzkriterien
+
+1. **Dark Mode**: Planet-Widget und Chat-Panel sehen professionell aus mit Gold-Blau-Planet und dunklem Glass-Panel
+2. **Light Mode**: Gleicher Planet, aber Chat-Body in hellem Glass-Panel (kein visueller Bruch)
+3. **Collapsed → Expanded**: Transition fühlt sich nahtlos an (gleiche Farbfamilie im Header)
+4. **Hover-Effekte**: Subtil, elegant, keine grellen Farbwechsel
+5. **Textur**: Der Planet hat eine leichte Grain-Textur für organischen Look (wie im Referenzbild)
+
+---
+
+## Testplan
+
+1. **Visueller Check Dark Mode**: Planet-Widget anzeigen, expandieren, Chat nutzen
+2. **Visueller Check Light Mode**: Gleiches Szenario, prüfen auf Inkonsistenzen
+3. **Mode-Toggle während Armstrong offen**: Transition smooth?
+4. **Hover-States**: Alle interaktiven Elemente haben sichtbares aber dezentes Feedback
+5. **Mobile**: Prüfen dass Mobile-Ansicht (BottomSheet) ebenfalls konsistent ist
