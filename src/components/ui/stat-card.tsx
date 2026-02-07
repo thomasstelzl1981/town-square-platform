@@ -38,17 +38,33 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(({
             
             {/* Subtitle & Trend */}
             <div className="flex items-center gap-2 mt-1">
-              {trend}
-              {subtitle && <span className="text-xs text-muted-foreground truncate">
+              {trend && (
+                <span className={cn(
+                  "flex items-center text-xs font-medium",
+                  trend.direction === "up" ? "text-green-600" : "text-red-600"
+                )}>
+                  {trend.direction === "up" ? (
+                    <TrendingUp className="h-3 w-3 mr-0.5" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 mr-0.5" />
+                  )}
+                  {trend.value}%
+                </span>
+              )}
+              {subtitle && (
+                <span className="text-xs text-muted-foreground truncate">
                   {subtitle}
-                </span>}
+                </span>
+              )}
             </div>
           </div>
           
           {/* Icon */}
-          {Icon && <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
-              
-            </div>}
+          {Icon && (
+            <div className={cn("flex items-center justify-center rounded-lg bg-primary/10", isCompact ? "h-8 w-8" : "h-10 w-10")}>
+              <Icon className={cn("text-primary", isCompact ? "h-4 w-4" : "h-5 w-5")} />
+            </div>
+          )}
         </div>
       </div>;
 });

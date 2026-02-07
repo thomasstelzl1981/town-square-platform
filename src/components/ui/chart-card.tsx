@@ -7,7 +7,7 @@ export interface ChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   description?: string;
   actions?: React.ReactNode;
   loading?: boolean;
-  aspectRatio?: "square" | "video" | "wide";
+  aspectRatio?: "square" | "video" | "wide" | "none";
 }
 
 const ChartCard = React.forwardRef<HTMLDivElement, ChartCardProps>(
@@ -16,6 +16,7 @@ const ChartCard = React.forwardRef<HTMLDivElement, ChartCardProps>(
       square: "aspect-square",
       video: "aspect-video",
       wide: "aspect-[21/9]",
+      none: "",
     };
 
     return (
