@@ -1,354 +1,450 @@
 
 
-# Plan: Uppercase-Transformation für alle Überschriften (Zone 1 & Zone 2)
+# Überarbeiteter Plan: Area-Übersichtsseiten mit News/Werbung-Platzhalter
 
-## Analyse-Ergebnis
+## Konzeptänderung
 
-### Schriftart-Status: ✅ D-DIN korrekt konfiguriert
+Sie haben recht: 5 Module ergeben ein ungerades Grid (2+2+1 oder 3+2). Die Lösung: **Eine Platzhalter-Kachel für News/Werbung als erste Kachel** in jeder Area.
 
-| Ort | Status |
-|-----|--------|
-| `src/index.css` - @font-face | ✅ D-DIN Regular + Bold definiert |
-| `src/index.css` - body | ✅ `font-family: 'D-DIN', system-ui...` |
-| Tailwind Config | ✅ `font-sans` und `font-display` konfiguriert |
-
-**D-DIN wird systemweit auf alle Texte angewendet.**
+**Ergebnis: 6 Kacheln pro Area → sauberes 2×3 oder 3×2 Grid**
 
 ---
 
-## Aktuelle Situation: Keine Uppercase-Transformation
+## Neue Struktur: 6 Kacheln pro Area
 
-Die Analyse zeigt: **Keine Navigation und keine Überschrift verwendet derzeit `uppercase`**.
+### 📦 BASE (1 Promo + 5 Module = 6 Kacheln)
 
-### Zone 2 Navigation (3 Ebenen)
+```text
+/portal/area/base
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  BEREICH: BASE                                                                 │
+│  Stammdaten, KI Office, Dokumente und Services-Grundlagen                      │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  🎯 NEWS / PROMO        │   │  MOD-01: STAMMDATEN     │                   │
+│  │  ═══════════════════    │   │  ───────────────────    │                   │
+│  │                         │   │  "Alles, was Ihr Konto  │                   │
+│  │  "Neu: KI-gestützte     │   │  fähig macht..."        │                   │
+│  │  Dokumentenerkennung!   │   │                         │                   │
+│  │  Jetzt testen →"        │   │  ▸ Profil               │                   │
+│  │                         │   │  ▸ Verträge             │                   │
+│  │  [MEHR ERFAHREN →]      │   │  ▸ Abrechnung           │                   │
+│  │                         │   │  ▸ Sicherheit           │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-02: KI OFFICE      │   │  MOD-03: DOKUMENTE      │                   │
+│  │  ───────────────────    │   │  ───────────────────    │                   │
+│  │  "Kommunikation,        │   │  "Ihr Dokumenten-Hub:   │                   │
+│  │  Kontakte und Termine"  │   │  sicher, durchsuchbar"  │                   │
+│  │                         │   │                         │                   │
+│  │  ▸ E-Mail               │   │  ▸ Storage              │                   │
+│  │  ▸ Brief                │   │  ▸ Posteingang          │                   │
+│  │  ▸ Kontakte             │   │  ▸ Sortieren            │                   │
+│  │  ▸ Kalender             │   │  ▸ Einstellungen        │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌──────────────────────────────────────────┐  │
+│  │  MOD-16: SERVICES       │   │  MOD-20: MIETY                            │  │
+│  │  ───────────────────    │   │  ─────────────────────────────────        │  │
+│  │  "Service-Katalog:      │   │  "Ihr Mieterportal: Dokumente,           │  │
+│  │  Beratung, Bewertung"   │   │  Kommunikation, Zählerstände"            │  │
+│  │                         │   │                                           │  │
+│  │  ▸ Katalog              │   │  ▸ Übersicht    ▸ Dokumente              │  │
+│  │  ▸ Anfragen             │   │  ▸ Kommunikation ▸ Zählerstände          │  │
+│  │  ▸ Aufträge             │   │  ▸ Versorgung   ▸ Versicherungen         │  │
+│  │  ▸ Einstellungen        │   │                                           │  │
+│  └─────────────────────────┘   └──────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────┘
 
-| Ebene | Komponente | Aktuelle Klassen | Status |
-|-------|------------|------------------|--------|
-| Level 1 | `AreaTabs.tsx` | `text-sm font-medium` | ❌ Kein uppercase |
-| Level 2 | `ModuleTabs.tsx` | `text-sm font-medium` | ❌ Kein uppercase |
-| Level 3 | `SubTabs.tsx` | `text-sm` | ❌ Kein uppercase |
-
-### Zone 1 Navigation
-
-| Komponente | Aktuelle Klassen | Status |
-|------------|------------------|--------|
-| `AdminLayout.tsx` Header | `text-lg font-semibold` | ❌ Kein uppercase |
-| `AdminSidebar.tsx` Menu Items | Standard Sidebar-Klassen | ❌ Kein uppercase |
-| `SidebarGroupLabel` (UI) | `text-xs font-medium` | ❌ Kein uppercase |
-
-### Zone 2 Seiten-Headlines (h1, h2, h3)
-
-| Datei | Element | Aktuelle Klassen |
-|-------|---------|------------------|
-| `PortalDashboard.tsx` | `<h1>` | `text-2xl font-bold` |
-| `ModuleTilePage.tsx` | 4x `<h1>` | `text-2xl font-bold` |
-| `ModuleHowItWorks.tsx` | `<h1>` | `text-2xl md:text-3xl font-bold` |
-| `ModuleHowItWorks.tsx` | `<h2>` | `text-lg font-semibold` |
-| Diverse Portal-Seiten | `<h2>`, `<h3>` | `text-xl font-semibold` / `text-lg font-semibold` |
-
-### Zone 1 Seiten-Headlines
-
-| Datei | Element | Aktuelle Klassen |
-|-------|---------|------------------|
-| `Dashboard.tsx` | `<h2>` | `text-2xl font-bold tracking-tight` |
-| `TileCatalog.tsx` | `<h1>` | `text-2xl font-bold` |
-| `MasterTemplates.tsx` | `<h1>` | `text-3xl font-bold` |
-| `AuditLog.tsx` | `<h1>` | `text-2xl font-bold` |
-| `CommissionApproval.tsx` | `<h1>` | `text-2xl font-bold` |
-| `LeadPool.tsx` | `<h1>` | `text-2xl font-bold` |
-| `FinanceDesk.tsx` | `<h1>`, `<h2>` | `text-2xl font-bold` / `text-xl font-semibold` |
-| `SalesDesk.tsx` | `<h1>`, `<h2>` | `text-2xl font-bold` / `text-xl font-semibold` |
-
-### UI-Komponenten (global)
-
-| Komponente | Datei | Aktuelle Klassen |
-|------------|-------|------------------|
-| `CardTitle` | `card.tsx` | `text-2xl font-semibold leading-none tracking-tight` |
-| `SidebarGroupLabel` | `sidebar.tsx` | `text-xs font-medium text-sidebar-foreground/70` |
+BASE = 1 Promo-Kachel + 5 Module = 6 Kacheln
+  🎯 NEWS/PROMO              → Platzhalter für Werbung
+  MOD-01: Stammdaten         → 4 Tiles
+  MOD-02: KI Office          → 4 Tiles
+  MOD-03: Dokumente          → 4 Tiles
+  MOD-16: Services           → 4 Tiles
+  MOD-20: Miety              → 6 Tiles
+```
 
 ---
 
-## Geplante Änderungen
+### 🎯 MISSIONS (1 Promo + 5 Module = 6 Kacheln)
 
-### 1. Globale Utility-Klasse hinzufügen
+```text
+/portal/area/missions
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  BEREICH: MISSIONS                                                             │
+│  Immobilien, Mietverwaltung, Verkauf, Finanzierung und Investment              │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  🎯 NEWS / PROMO        │   │  MOD-04: IMMOBILIEN     │                   │
+│  │  ═══════════════════    │   │  ───────────────────    │                   │
+│  │                         │   │  "Die zentrale          │                   │
+│  │  "Webinar: Erfolgreich  │   │  Immobilienakte..."     │                   │
+│  │  verkaufen mit KI-      │   │                         │                   │
+│  │  Exposés – 15.02.2026"  │   │  ▸ Kontexte             │                   │
+│  │                         │   │  ▸ Portfolio            │                   │
+│  │  [ANMELDEN →]           │   │  ▸ Sanierung            │                   │
+│  │                         │   │  ▸ Bewertung            │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-05: MIETVERWALTUNG │   │  MOD-06: VERKAUF        │                   │
+│  │  ───────────────────    │   │  ───────────────────    │                   │
+│  │  "Die Workbench für     │   │  "Vom Exposé bis        │                   │
+│  │  operative Mietprozesse"│   │  zum Abschluss"         │                   │
+│  │                         │   │                         │                   │
+│  │  ▸ Objekte              │   │  ▸ Objekte              │                   │
+│  │  ▸ Mieteingang          │   │  ▸ Anfragen             │                   │
+│  │  ▸ Vermietung           │   │  ▸ Vorgänge             │                   │
+│  │  ▸ Einstellungen        │   │  ▸ Reporting            │                   │
+│  │                         │   │  ▸ Einstellungen        │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-07: FINANZIERUNG   │   │  MOD-08: INVESTMENT-    │                   │
+│  │  ───────────────────    │   │          SUCHE          │                   │
+│  │  "Bankfertig in wenigen │   │  ───────────────────    │                   │
+│  │  Schritten"             │   │  "Suchen, vergleichen,  │                   │
+│  │                         │   │  simulieren"            │                   │
+│  │  ▸ Selbstauskunft       │   │  ▸ Suche                │                   │
+│  │  ▸ Dokumente            │   │  ▸ Favoriten            │                   │
+│  │  ▸ Anfrage              │   │  ▸ Mandat               │                   │
+│  │  ▸ Status               │   │  ▸ Simulation           │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+└───────────────────────────────────────────────────────────────────────────────┘
 
-**Datei: `src/index.css`**
+MISSIONS = 1 Promo-Kachel + 5 Module = 6 Kacheln
+  🎯 NEWS/PROMO              → Platzhalter für Werbung
+  MOD-04: Immobilien         → 4 Tiles
+  MOD-05: Mietverwaltung     → 4 Tiles
+  MOD-06: Verkauf            → 5 Tiles
+  MOD-07: Finanzierung       → 4 Tiles
+  MOD-08: Investment-Suche   → 4 Tiles
+```
 
-Eine neue Utility-Klasse für konsistente Headlines:
+---
 
-```css
-@layer utilities {
-  /* Uppercase Headlines mit leichtem Letter-Spacing */
-  .text-headline {
-    @apply uppercase tracking-wide;
-  }
+### ⚙️ OPERATIONS (1 Promo + 5 Module = 6 Kacheln)
+
+```text
+/portal/area/operations
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  BEREICH: OPERATIONS                                                           │
+│  Akquise, Finanzierungsmanager, Projekte, Partner und Leads                    │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  🎯 NEWS / PROMO        │   │  MOD-12: AKQUISE-       │                   │
+│  │  ═══════════════════    │   │          MANAGER        │                   │
+│  │                         │   │  ───────────────────    │                   │
+│  │  "Partner-Bonus:        │   │  "Vom Exposé zur        │                   │
+│  │  Doppelte Provision     │   │  Entscheidung"          │                   │
+│  │  im Februar!"           │   │                         │                   │
+│  │                         │   │  ▸ Dashboard            │                   │
+│  │  [DETAILS →]            │   │  ▸ Mandate              │                   │
+│  │                         │   │  ▸ Objekteingang        │                   │
+│  │                         │   │  ▸ Tools                │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-11: FINANZIERUNGS- │   │  MOD-13: PROJEKTE       │                   │
+│  │          MANAGER        │   │  ───────────────────    │                   │
+│  │  ───────────────────    │   │  "Projektübersicht:     │                   │
+│  │  "Ihre Workstation:     │   │  Status und Meilensteine│                   │
+│  │  Fälle bankfertig"      │   │                         │                   │
+│  │                         │   │  ▸ Übersicht            │                   │
+│  │  ▸ Dashboard            │   │  ▸ Timeline             │                   │
+│  │  ▸ Fälle                │   │  ▸ Dokumente            │                   │
+│  │  ▸ Kommunikation        │   │  ▸ Einstellungen        │                   │
+│  │  ▸ Status               │   │                         │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-09: VERTRIEBS-     │   │  MOD-10: LEADS          │                   │
+│  │          PARTNER        │   │  ───────────────────    │                   │
+│  │  ───────────────────    │   │  "Aus Interesse wird    │                   │
+│  │  "Beraten, dokumentieren│   │  Abschluss"             │                   │
+│  │  abschließen"           │   │                         │                   │
+│  │                         │   │  ▸ Inbox                │                   │
+│  │  ▸ Katalog              │   │  ▸ Meine Leads          │                   │
+│  │  ▸ Beratung             │   │  ▸ Pipeline             │                   │
+│  │  ▸ Kunden               │   │  ▸ Werbung              │                   │
+│  │  ▸ Netzwerk             │   │                         │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+OPERATIONS = 1 Promo-Kachel + 5 Module = 6 Kacheln
+  🎯 NEWS/PROMO              → Platzhalter für Werbung
+  MOD-12: Akquise-Manager    → 4 Tiles
+  MOD-11: Finanzierungsmanager → 4 Tiles
+  MOD-13: Projekte           → 4 Tiles
+  MOD-09: Vertriebspartner   → 4 Tiles
+  MOD-10: Leads              → 4 Tiles
+```
+
+---
+
+### 🔲 SERVICES (1 Promo + 5 Module = 6 Kacheln)
+
+```text
+/portal/area/services
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  BEREICH: SERVICES                                                             │
+│  Kommunikation, Fortbildung, Fahrzeuge, Analyse und Photovoltaik               │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  🎯 NEWS / PROMO        │   │  MOD-14: KOMMUNIKATION  │                   │
+│  │  ═══════════════════    │   │          PRO            │                   │
+│  │                         │   │  ───────────────────    │                   │
+│  │  "PV-Offensive 2026:    │   │  "Professionelle        │                   │
+│  │  20% Rabatt auf Solar-  │   │  Outreach-Suite"        │                   │
+│  │  Beratungen!"           │   │                         │                   │
+│  │                         │   │  ▸ Serien-E-Mails       │                   │
+│  │  [JETZT SICHERN →]      │   │  ▸ Recherche            │                   │
+│  │                         │   │  ▸ Social               │                   │
+│  │                         │   │  ▸ Agenten              │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-15: FORTBILDUNG    │   │  MOD-17: FAHRZEUGE      │                   │
+│  │  ───────────────────    │   │  ───────────────────    │                   │
+│  │  "Kurse, Lernpfade und  │   │  "Ihr digitaler         │                   │
+│  │  Zertifikate"           │   │  Fuhrpark"              │                   │
+│  │                         │   │                         │                   │
+│  │  ▸ Katalog              │   │  ▸ Fahrzeuge            │                   │
+│  │  ▸ Meine Kurse          │   │  ▸ Versicherungen       │                   │
+│  │  ▸ Zertifikate          │   │  ▸ Fahrtenbuch          │                   │
+│  │  ▸ Einstellungen        │   │  ▸ Angebote             │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+│                                                                               │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐                   │
+│  │  MOD-18: FINANZANALYSE  │   │  MOD-19: PHOTOVOLTAIK   │                   │
+│  │  ───────────────────    │   │  ───────────────────    │                   │
+│  │  "Kennzahlen, Reports   │   │  "Self-Service PV-      │                   │
+│  │  und Szenarien"         │   │  Journey"               │                   │
+│  │                         │   │                         │                   │
+│  │  ▸ Dashboard            │   │  ▸ Angebot              │                   │
+│  │  ▸ Reports              │   │  ▸ Checkliste           │                   │
+│  │  ▸ Szenarien            │   │  ▸ Projekt              │                   │
+│  │  ▸ Einstellungen        │   │  ▸ Einstellungen        │                   │
+│  └─────────────────────────┘   └─────────────────────────┘                   │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+SERVICES = 1 Promo-Kachel + 5 Module = 6 Kacheln
+  🎯 NEWS/PROMO              → Platzhalter für Werbung
+  MOD-14: Kommunikation Pro  → 4 Tiles
+  MOD-15: Fortbildung        → 4 Tiles
+  MOD-17: Fahrzeuge          → 4 Tiles
+  MOD-18: Finanzanalyse      → 4 Tiles
+  MOD-19: Photovoltaik       → 4 Tiles
+```
+
+---
+
+## Zusammenfassung: Korrekte Zahlen
+
+| Area | Promo | Module | Gesamt | Grid-Layout |
+|------|-------|--------|--------|-------------|
+| **BASE** | 1 | 5 | **6** | 2×3 oder 3×2 |
+| **MISSIONS** | 1 | 5 | **6** | 2×3 oder 3×2 |
+| **OPERATIONS** | 1 | 5 | **6** | 2×3 oder 3×2 |
+| **SERVICES** | 1 | 5 | **6** | 2×3 oder 3×2 |
+
+**Gesamt: 4 Areas × 6 Kacheln = 24 Kacheln (davon 4 Promo-Platzhalter)**
+
+---
+
+## Promo-Kachel: Technische Umsetzung
+
+### Datenstruktur für Promo-Content
+
+```typescript
+// src/config/areaPromoContent.ts
+
+export interface AreaPromoContent {
+  areaKey: string;
+  headline: string;
+  description: string;
+  ctaLabel: string;
+  ctaRoute?: string;      // Interne Route
+  ctaUrl?: string;        // Externe URL
+  badge?: string;         // z.B. "NEU", "WEBINAR", "AKTION"
+  accentColor?: string;   // Optionale Akzentfarbe
+}
+
+export const areaPromoContent: Record<string, AreaPromoContent> = {
+  base: {
+    areaKey: 'base',
+    headline: 'Neu: KI-Dokumentenerkennung',
+    description: 'Dokumente werden automatisch erkannt und kategorisiert.',
+    ctaLabel: 'Mehr erfahren',
+    ctaRoute: '/portal/dms',
+    badge: 'NEU',
+  },
+  missions: {
+    areaKey: 'missions',
+    headline: 'Webinar: Erfolgreich verkaufen',
+    description: 'KI-gestützte Exposés für maximale Reichweite.',
+    ctaLabel: 'Anmelden',
+    ctaUrl: 'https://webinar.example.com',
+    badge: 'WEBINAR',
+  },
+  operations: {
+    areaKey: 'operations',
+    headline: 'Partner-Bonus Februar',
+    description: 'Doppelte Provision auf alle Abschlüsse.',
+    ctaLabel: 'Details ansehen',
+    ctaRoute: '/portal/vertriebspartner/network',
+    badge: 'AKTION',
+  },
+  services: {
+    areaKey: 'services',
+    headline: 'PV-Offensive 2026',
+    description: '20% Rabatt auf Solar-Beratungen.',
+    ctaLabel: 'Jetzt sichern',
+    ctaRoute: '/portal/photovoltaik',
+    badge: 'AKTION',
+  },
+};
+```
+
+### Promo-Kachel Komponente
+
+```typescript
+// src/components/portal/AreaPromoCard.tsx
+
+interface AreaPromoCardProps {
+  promo: AreaPromoContent;
+}
+
+export function AreaPromoCard({ promo }: AreaPromoCardProps) {
+  return (
+    <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+      <CardHeader>
+        {promo.badge && (
+          <Badge variant="secondary" className="w-fit mb-2">
+            {promo.badge}
+          </Badge>
+        )}
+        <CardTitle className="uppercase">{promo.headline}</CardTitle>
+        <CardDescription>{promo.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild>
+          {promo.ctaRoute ? (
+            <Link to={promo.ctaRoute}>{promo.ctaLabel} →</Link>
+          ) : (
+            <a href={promo.ctaUrl} target="_blank">{promo.ctaLabel} →</a>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 ```
 
 ---
 
-### 2. Zone 2 Navigation — Drei Ebenen
-
-**Datei: `src/components/portal/AreaTabs.tsx` (Zeile 34)**
-
-```tsx
-// Vorher:
-'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
-
-// Nachher:
-'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-all',
-```
-
-**Datei: `src/components/portal/ModuleTabs.tsx` (Zeile 98)**
-
-```tsx
-// Vorher:
-'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-
-// Nachher:
-'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
-```
-
-**Datei: `src/components/portal/SubTabs.tsx` (Zeile 38)**
-
-```tsx
-// Vorher:
-'px-3 py-1 rounded-md text-sm transition-all whitespace-nowrap',
-
-// Nachher:
-'px-3 py-1 rounded-md text-sm uppercase tracking-wide transition-all whitespace-nowrap',
-```
-
----
-
-### 3. Zone 1 Navigation
-
-**Datei: `src/components/admin/AdminLayout.tsx` (Zeile 79)**
-
-```tsx
-// Vorher:
-<h1 className="text-lg font-semibold">Admin Portal</h1>
-
-// Nachher:
-<h1 className="text-lg font-semibold uppercase tracking-wide">Admin Portal</h1>
-```
-
-**Datei: `src/components/ui/sidebar.tsx` (Zeile 364)**
-
-```tsx
-// Vorher:
-"flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70...",
-
-// Nachher:
-"flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70...",
-```
-
----
-
-### 4. Zone 2 Seiten-Headlines
-
-**Datei: `src/pages/portal/PortalDashboard.tsx` (Zeile 12)**
-
-```tsx
-// Vorher:
-<h1 className="text-2xl font-bold">
-
-// Nachher:
-<h1 className="text-2xl font-bold uppercase">
-```
-
-**Datei: `src/components/shared/ModuleTilePage.tsx` (Zeilen 78, 93, 119, 189)**
-
-```tsx
-// Vorher:
-<h1 className="text-2xl font-bold">{title}</h1>
-
-// Nachher:
-<h1 className="text-2xl font-bold uppercase">{title}</h1>
-```
-
-**Datei: `src/components/portal/HowItWorks/ModuleHowItWorks.tsx`**
-
-```tsx
-// Zeile 40 - Vorher:
-<h1 className="text-2xl md:text-3xl font-bold">{content.title}</h1>
-
-// Zeile 40 - Nachher:
-<h1 className="text-2xl md:text-3xl font-bold uppercase">{content.title}</h1>
-
-// Zeile 80 - Vorher:
-<h2 className="text-lg font-semibold">Typische Abläufe</h2>
-
-// Zeile 80 - Nachher:
-<h2 className="text-lg font-semibold uppercase">Typische Abläufe</h2>
-```
-
----
-
-### 5. Zone 1 Seiten-Headlines
-
-**Datei: `src/pages/admin/Dashboard.tsx` (Zeile 114)**
-
-```tsx
-// Vorher:
-<h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-
-// Nachher:
-<h2 className="text-2xl font-bold tracking-tight uppercase">Dashboard</h2>
-```
-
-**Datei: `src/pages/admin/TileCatalog.tsx` (Zeile 221)**
-
-```tsx
-<h1 className="text-2xl font-bold uppercase">Tile Catalog & Testdaten</h1>
-```
-
-**Datei: `src/pages/admin/MasterTemplates.tsx` (Zeile 63)**
-
-```tsx
-<h1 className="text-3xl font-bold uppercase">Master-Vorlagen</h1>
-```
-
-**Datei: `src/pages/admin/AuditLog.tsx` (Zeile 149)**
-
-```tsx
-<h1 className="text-2xl font-bold uppercase">Audit Log</h1>
-```
-
-**Datei: `src/pages/admin/CommissionApproval.tsx` (Zeile 142)**
-
-```tsx
-<h1 className="text-2xl font-bold uppercase">Provisionen</h1>
-```
-
-**Datei: `src/pages/admin/LeadPool.tsx`**
-
-```tsx
-<h1 className="text-2xl font-bold uppercase">Lead Pool</h1>
-```
-
-**Datei: `src/pages/admin/desks/FinanceDesk.tsx`**
-
-```tsx
-// Zeile 15:
-<h1 className="text-2xl font-bold uppercase">Finance Desk</h1>
-
-// Zeilen 136, 145, 154, 163 (alle <h2>):
-<h2 className="text-xl font-semibold uppercase">...</h2>
-```
-
-**Datei: `src/pages/admin/desks/SalesDesk.tsx`**
-
-```tsx
-// Zeile 25:
-<h1 className="text-2xl font-bold uppercase">Sales Desk</h1>
-
-// Zeilen 172, 185, 283, 296, 309 (alle <h2>):
-<h2 className="text-xl font-semibold uppercase">...</h2>
-```
-
----
-
-### 6. UI-Komponente CardTitle (global)
-
-**Datei: `src/components/ui/card.tsx` (Zeile 19)**
-
-```tsx
-// Vorher:
-className={cn("text-2xl font-semibold leading-none tracking-tight", className)}
-
-// Nachher:
-className={cn("text-2xl font-semibold leading-none tracking-tight uppercase", className)}
-```
-
-> **Hinweis:** Dies betrifft alle CardTitle-Instanzen systemweit. Da CardTitle primär für Überschriften verwendet wird, ist dies gewünscht.
-
----
-
-## Übersicht aller Dateiänderungen
-
-| Nr. | Datei | Zone | Änderungstyp |
-|-----|-------|------|--------------|
-| 1 | `src/index.css` | Global | + `.text-headline` Utility |
-| 2 | `src/components/portal/AreaTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
-| 3 | `src/components/portal/ModuleTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
-| 4 | `src/components/portal/SubTabs.tsx` | Zone 2 | + `uppercase tracking-wide` |
-| 5 | `src/components/admin/AdminLayout.tsx` | Zone 1 | + `uppercase tracking-wide` |
-| 6 | `src/components/ui/sidebar.tsx` | Zone 1 | + `uppercase tracking-wide` |
-| 7 | `src/pages/portal/PortalDashboard.tsx` | Zone 2 | h1 + `uppercase` |
-| 8 | `src/components/shared/ModuleTilePage.tsx` | Zone 2 | 4x h1 + `uppercase` |
-| 9 | `src/components/portal/HowItWorks/ModuleHowItWorks.tsx` | Zone 2 | h1, h2 + `uppercase` |
-| 10 | `src/pages/admin/Dashboard.tsx` | Zone 1 | h2 + `uppercase` |
-| 11 | `src/pages/admin/TileCatalog.tsx` | Zone 1 | h1 + `uppercase` |
-| 12 | `src/pages/admin/MasterTemplates.tsx` | Zone 1 | h1 + `uppercase` |
-| 13 | `src/pages/admin/AuditLog.tsx` | Zone 1 | h1 + `uppercase` |
-| 14 | `src/pages/admin/CommissionApproval.tsx` | Zone 1 | h1 + `uppercase` |
-| 15 | `src/pages/admin/LeadPool.tsx` | Zone 1 | h1 + `uppercase` |
-| 16 | `src/pages/admin/desks/FinanceDesk.tsx` | Zone 1 | h1, 4x h2 + `uppercase` |
-| 17 | `src/pages/admin/desks/SalesDesk.tsx` | Zone 1 | h1, 5x h2 + `uppercase` |
-| 18 | `src/components/ui/card.tsx` | Global | CardTitle + `uppercase` |
-
----
-
-## Visuelles Ergebnis
-
-### Zone 2 Navigation (vorher / nachher)
+## Responsive Grid-Layout
 
 ```text
-Vorher:
-┌──────────────────────────────────────────────────┐
-│  Base   Missions   Operations   Services         │ ← Level 1
-├──────────────────────────────────────────────────┤
-│  Stammdaten  KI Office  Dokumente  Services      │ ← Level 2
-├──────────────────────────────────────────────────┤
-│  Übersicht  Kontakte  Dokumente  Finanzen        │ ← Level 3
-└──────────────────────────────────────────────────┘
+Mobile (< 640px):     1 Spalte
+┌─────────────────┐
+│   🎯 PROMO      │  ← Immer zuerst
+├─────────────────┤
+│     Modul 1     │
+├─────────────────┤
+│     Modul 2     │
+├─────────────────┤
+│     Modul 3     │
+├─────────────────┤
+│     Modul 4     │
+├─────────────────┤
+│     Modul 5     │
+└─────────────────┘
 
-Nachher:
-┌──────────────────────────────────────────────────┐
-│  BASE   MISSIONS   OPERATIONS   SERVICES         │ ← Level 1
-├──────────────────────────────────────────────────┤
-│  STAMMDATEN  KI OFFICE  DOKUMENTE  SERVICES      │ ← Level 2
-├──────────────────────────────────────────────────┤
-│  ÜBERSICHT  KONTAKTE  DOKUMENTE  FINANZEN        │ ← Level 3
-└──────────────────────────────────────────────────┘
-```
+Tablet (640px - 1024px):  2 Spalten × 3 Reihen
+┌─────────────────┬─────────────────┐
+│   🎯 PROMO      │     Modul 1     │
+├─────────────────┼─────────────────┤
+│     Modul 2     │     Modul 3     │
+├─────────────────┼─────────────────┤
+│     Modul 4     │     Modul 5     │
+└─────────────────┴─────────────────┘
 
-### Zone 1 Sidebar (vorher / nachher)
-
-```text
-Vorher:                        Nachher:
-┌───────────────────┐          ┌───────────────────┐
-│ Tenants & Access  │          │ TENANTS & ACCESS  │
-│   Dashboard       │          │   Dashboard       │
-│   Organizations   │          │   Organizations   │
-├───────────────────┤          ├───────────────────┤
-│ Master Data       │          │ MASTER DATA       │
-│   Master Contacts │          │   Master Contacts │
-└───────────────────┘          └───────────────────┘
-```
-
-### Seiten-Headlines (vorher / nachher)
-
-```text
-Vorher:                        Nachher:
-┌───────────────────────┐      ┌───────────────────────┐
-│ Dashboard             │      │ DASHBOARD             │
-│ Welcome to the...     │      │ Welcome to the...     │
-└───────────────────────┘      └───────────────────────┘
-
-┌───────────────────────┐      ┌───────────────────────┐
-│ Willkommen, Max       │      │ WILLKOMMEN, MAX       │
-│ Muster-Kunde GmbH     │      │ Muster-Kunde GmbH     │
-└───────────────────────┘      └───────────────────────┘
+Desktop (> 1024px):  3 Spalten × 2 Reihen
+┌─────────────────┬─────────────────┬─────────────────┐
+│   🎯 PROMO      │     Modul 1     │     Modul 2     │
+├─────────────────┼─────────────────┼─────────────────┤
+│     Modul 3     │     Modul 4     │     Modul 5     │
+└─────────────────┴─────────────────┴─────────────────┘
 ```
 
 ---
 
-## Wichtige Hinweise
+## Dateien für Implementierung
 
-1. **Nur Styling-Änderungen** — Keine Logik oder Funktionalität wird verändert
-2. **CSS `text-transform: uppercase`** — Die eigentlichen Daten bleiben unverändert (z.B. Profilnamen aus der Datenbank)
-3. **Zone 3 bleibt unberührt** — Wie gewünscht werden keine Website-Komponenten geändert
-4. **`tracking-wide`** — Erhöht den Buchstabenabstand für bessere Lesbarkeit bei Großbuchstaben
+| Nr. | Datei | Aktion | Beschreibung |
+|-----|-------|--------|--------------|
+| 1 | `src/config/areaPromoContent.ts` | **NEU** | Promo-Inhalte pro Area (editierbar) |
+| 2 | `src/pages/portal/AreaOverviewPage.tsx` | **NEU** | Dynamische Area-Übersichtsseite |
+| 3 | `src/components/portal/AreaPromoCard.tsx` | **NEU** | Promo-Kachel mit Badge + CTA |
+| 4 | `src/components/portal/AreaModuleCard.tsx` | **NEU** | Modul-Kachel mit How-It-Works |
+| 5 | `src/router/ManifestRouter.tsx` | Modifikation | Route: `/portal/area/:areaKey` |
+| 6 | `src/components/portal/AreaTabs.tsx` | Modifikation | Navigation zu Area-Seiten |
+
+---
+
+## Single Source of Truth
+
+Die Architektur bleibt sauber:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                    moduleContents.ts                          │
+│         (Single Source of Truth für "How It Works")          │
+└──────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+     ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+     │ ModuleHowItWorks│ │ AreaModuleCard │ │ MobileCardView │
+     │ (Modul-Detail) │ │ (NEU: Kacheln) │ │ (bestehend)    │
+     └────────────────┘ └────────────────┘ └────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│                    areaPromoContent.ts                        │
+│         (Editierbare Promo-Inhalte pro Area)                 │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                     ┌────────────────┐
+                     │ AreaPromoCard  │
+                     │ (NEU: Werbung) │
+                     └────────────────┘
+```
+
+---
+
+## Keine Änderungen an
+
+- ✅ `routesManifest.ts` — bleibt unberührt
+- ✅ `areaConfig.ts` — bleibt unberührt  
+- ✅ Bestehende Modul-Routen — alle Deep-Links funktionieren weiter
+- ✅ `moduleContents.ts` — wird nur gelesen, nicht kopiert
+- ✅ Mobile Navigation — bleibt separate Card-First-Logik
+
+---
+
+## Vorteile dieser Lösung
+
+1. **Sauberes Grid**: 6 Kacheln = perfekte 2×3 oder 3×2 Aufteilung
+2. **Werbefläche gesichert**: Jede Area hat einen Promo-Platzhalter
+3. **Flexibel**: Promo-Content in separater Datei, jederzeit editierbar
+4. **Keine Kopien**: Module lesen weiterhin aus `moduleContents.ts`
+5. **Erweiterbar**: Promo kann später aus Datenbank kommen
 
