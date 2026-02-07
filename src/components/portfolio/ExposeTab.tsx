@@ -3,6 +3,7 @@ import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PropertyMap } from './PropertyMap';
+import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
 
 interface Property {
   id: string;
@@ -49,7 +50,7 @@ interface Unit {
 }
 
 interface ExposeTabProps {
-  property: Property;
+  property: Property & { id: string };
   financing: PropertyFinancing[];
   unit: Unit | null;
 }
@@ -94,6 +95,9 @@ export function ExposeTab({ property, financing, unit }: ExposeTabProps) {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Bildergalerie - immer sichtbar */}
+      <ExposeImageGallery propertyId={property.id} />
 
       {/* Objektbeschreibung - prominent nach Header */}
       {property.description && (
