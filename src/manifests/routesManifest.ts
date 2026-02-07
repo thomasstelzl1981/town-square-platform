@@ -131,6 +131,16 @@ export const zone1Admin: ZoneDefinition = {
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
     // Finance Desk (legacy, redirects to FutureRoom)
     { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
+    // =========================================================================
+    // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
+    // =========================================================================
+    { path: "armstrong", component: "ArmstrongDashboard", title: "Armstrong Console" },
+    { path: "armstrong/actions", component: "ArmstrongActions", title: "Actions-Katalog" },
+    { path: "armstrong/logs", component: "ArmstrongLogs", title: "Action Logs" },
+    { path: "armstrong/billing", component: "ArmstrongBilling", title: "Billing" },
+    { path: "armstrong/knowledge", component: "ArmstrongKnowledge", title: "Knowledge Base" },
+    { path: "armstrong/policies", component: "ArmstrongPolicies", title: "Policies" },
+    { path: "armstrong/test", component: "ArmstrongTestHarness", title: "Test Harness" },
   ],
 };
 
