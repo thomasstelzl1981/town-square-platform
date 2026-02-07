@@ -34,7 +34,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
-import { usePartnerSelections, useToggleSelection } from '@/hooks/usePartnerListingSelections';
+import { usePartnerSelections, useToggleExclusion } from '@/hooks/usePartnerListingSelections';
 import { cn } from '@/lib/utils';
 
 interface PartnerListing {
@@ -73,10 +73,11 @@ const KatalogTab = () => {
   const [commissionRange, setCommissionRange] = useState<[number, number]>([0, 15]);
   const [yieldRange, setYieldRange] = useState<[number, number]>([0, 15]);
   
-  // Selections
+  // Exclusions (ausgeblendete Objekte)
+  // NEUE LOGIK: Alle Objekte sind standardmäßig sichtbar, ♥ blendet aus
   const { data: selections = [] } = usePartnerSelections();
-  const toggleSelection = useToggleSelection();
-  const selectedIds = new Set(selections.map(s => s.listing_id));
+  const toggleExclusion = useToggleExclusion();
+  const excludedIds = new Set(selections.filter(s => s.is_active).map(s => s.listing_id));
 
   // Fetch partner-released listings
   const { data: listings = [], isLoading } = useQuery({
@@ -206,8 +207,8 @@ const KatalogTab = () => {
       minWidth: '220px',
       render: (_, row) => (
         <div className="flex items-center gap-2">
-          {selectedIds.has(row.id) && (
-            <Heart className="h-4 w-4 fill-destructive text-destructive flex-shrink-0" />
+          {excludedIds.has(row.id) && (
+            <Heart className="h-4 w-4 fill-muted-foreground text-muted-foreground flex-shrink-0 line-through" />
           )}
           <PropertyAddressCell 
             address={row.title} 
@@ -289,7 +290,7 @@ const KatalogTab = () => {
   ];
 
   const renderRowActions = (row: PartnerListing) => {
-    const isSelected = selectedIds.has(row.id);
+    const isExcluded = excludedIds.has(row.id);
     
     return (
       <div className="flex gap-1">
@@ -304,14 +305,14 @@ const KatalogTab = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className={cn("h-8 w-8", isSelected && "text-destructive")}
-          title={isSelected ? "Vormerkung entfernen" : "Vormerken"}
+          className={cn("h-8 w-8", isExcluded && "text-muted-foreground")}
+          title={isExcluded ? "Wieder einblenden" : "Ausblenden"}
           onClick={(e) => {
             e.stopPropagation();
-            toggleSelection.mutate({ listingId: row.id, isSelected });
+            toggleExclusion.mutate({ listingId: row.id, isCurrentlyExcluded: isExcluded });
           }}
         >
-          <Heart className={cn("h-4 w-4", isSelected && "fill-current")} />
+          <Heart className={cn("h-4 w-4", isExcluded && "fill-current opacity-50")} />
         </Button>
         <Button 
           variant="outline" 
@@ -333,7 +334,7 @@ const KatalogTab = () => {
         <div>
           <p className="text-sm text-muted-foreground">
             {filteredListings.length} von {listings.length} Objekt{listings.length !== 1 ? 'en' : ''} 
-            {selectedIds.size > 0 && ` • ${selectedIds.size} vorgemerkt`}
+            {excludedIds.size > 0 && ` • ${excludedIds.size} ausgeblendet`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -474,7 +475,7 @@ const KatalogTab = () => {
         <CardHeader>
           <CardTitle className="text-lg">Objektkatalog</CardTitle>
           <CardDescription>
-            Für Partner freigegebene Objekte – merken Sie sich Objekte vor (♥) für die Beratung
+            Alle freigegebenen Objekte — Klicken Sie ♥ um ein Objekt aus Ihrer Beratung auszublenden
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,352 +1,222 @@
 /**
  * BeratungTab — MOD-09 Vertriebspartner Investment-Beratung
- * Dashboard-Modus mit Portfolio-Übersicht wie MOD-04
+ * 
+ * "Geldmaschinen-Flow" — Das Kerngeschäft:
+ * 1. Eingabe: zVE, Eigenkapital, Güterstand, Kirche
+ * 2. Grid: Property-Kacheln mit berechneten Metrics
+ * 3. Detail: Interaktives Exposé mit Slidern (Modal)
  */
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { 
-  FileDown, Handshake, Save, UserPlus, Play, TrendingUp, 
-  Wallet, Building2, Euro, ArrowUpRight, ArrowDownRight, 
-  Video, FileText, Shield, PlayCircle, Heart
-} from 'lucide-react';
-import { InvestmentCalculator } from '@/components/investment';
-import { CalculationResult } from '@/hooks/useInvestmentEngine';
-import { HowItWorks, QuickActions } from '@/components/vertriebspartner';
-import { useSelectedListings } from '@/hooks/usePartnerListingSelections';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Building2 } from 'lucide-react';
+
+import {
+  PartnerSearchForm,
+  PartnerPropertyGrid,
+  PartnerExposeModal,
+  type PartnerSearchParams,
+  type ListingWithMetrics,
+} from '@/components/vertriebspartner';
+
+import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
+import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 
 const BeratungTab = () => {
-  const [lastResult, setLastResult] = useState<CalculationResult | null>(null);
-  const [selectedProperty, setSelectedProperty] = useState<string>('');
-  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-
-  // Fetch selected listings (favorites from catalog)
-  const { data: selectedListings = [] } = useSelectedListings();
+  // Search parameters
+  const [searchParams, setSearchParams] = useState<PartnerSearchParams>({
+    zve: 60000,
+    equity: 50000,
+    maritalStatus: 'single',
+    hasChurchTax: false,
+  });
   
-  // Fetch customers (contacts with category 'kunde')
-  const { data: customers = [] } = useQuery({
-    queryKey: ['partner-customers'],
+  const [hasSearched, setHasSearched] = useState(false);
+  const [metricsCache, setMetricsCache] = useState<Record<string, {
+    cashFlowBeforeTax: number;
+    taxSavings: number;
+    netBurden: number;
+  }>>({});
+  
+  // Selected listing for modal
+  const [selectedListing, setSelectedListing] = useState<ListingWithMetrics | null>(null);
+  
+  // Excluded listings (from catalog)
+  const { data: selections = [] } = usePartnerSelections();
+  const excludedIds = useMemo(() => new Set(
+    selections.filter(s => !s.is_active).map(s => s.listing_id)
+  ), [selections]);
+
+  const { calculate, isLoading: isCalculating } = useInvestmentEngine();
+
+  // Fetch partner-released listings with property data
+  const { data: rawListings = [], isLoading: isLoadingListings, refetch } = useQuery({
+    queryKey: ['partner-beratung-listings'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) return [];
+      // Get listings with active partner_network publication
+      const { data: publications, error: pubError } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'partner_network')
+        .eq('status', 'active');
+
+      if (pubError) throw pubError;
       
-      // Get user's active tenant
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('active_tenant_id')
-        .eq('id', user.id)
-        .single();
+      const listingIds = publications?.map(p => p.listing_id) || [];
+      if (listingIds.length === 0) return [];
+
+      // Fetch listing details with property info
+      const { data: listingsData, error: listingsError } = await supabase
+        .from('listings')
+        .select(`
+          id, public_id, title, asking_price, commission_rate, status,
+          properties!inner (
+            address, city, property_type, total_area_sqm, annual_rent_income
+          )
+        `)
+        .in('id', listingIds)
+        .in('status', ['active', 'reserved']);
+
+      if (listingsError) throw listingsError;
+
+      return (listingsData || []).map((l: any) => {
+        const props = l.properties;
+        const annualRent = props?.annual_rent_income || 0;
+        const price = l.asking_price || 0;
+        const grossYield = price > 0 ? (annualRent / price) * 100 : null;
         
-      if (!profile?.active_tenant_id) return [];
-      
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, first_name, last_name, email, company')
-        .eq('tenant_id', profile.active_tenant_id)
-        .order('last_name', { ascending: true });
-        
-      if (error) throw error;
-      return (data || []) as Array<{
-        id: string;
-        first_name: string | null;
-        last_name: string | null;
-        email: string | null;
-        company: string | null;
-      }>;
-    }
+        return {
+          id: l.id,
+          public_id: l.public_id,
+          title: l.title || 'Objekt',
+          asking_price: price,
+          commission_rate: l.commission_rate,
+          property_address: props?.address || '',
+          property_city: props?.city || '',
+          property_type: props?.property_type,
+          total_area_sqm: props?.total_area_sqm,
+          annual_rent: annualRent,
+          hero_image_path: null,
+          grossYield,
+          cashFlowBeforeTax: null,
+          taxSavings: null,
+          netBurden: null,
+        } as ListingWithMetrics;
+      });
+    },
   });
 
-  // Get selected property details
-  const selectedPropertyData = useMemo(() => {
-    if (!selectedProperty) return null;
-    const found = selectedListings.find(s => s.listing_id === selectedProperty);
-    return found?.listing;
-  }, [selectedProperty, selectedListings]);
+  // Calculate metrics for all listings
+  const handleSearch = useCallback(async () => {
+    setHasSearched(true);
+    await refetch();
 
-  const handleResult = (result: CalculationResult) => {
-    setLastResult(result);
-  };
+    const newCache: Record<string, any> = {};
+    
+    for (const listing of rawListings) {
+      const monthlyRent = listing.annual_rent / 12;
+      if (monthlyRent <= 0 || listing.asking_price <= 0) continue;
+      
+      const input: CalculationInput = {
+        ...defaultInput,
+        purchasePrice: listing.asking_price,
+        monthlyRent,
+        equity: searchParams.equity,
+        taxableIncome: searchParams.zve,
+        maritalStatus: searchParams.maritalStatus,
+        hasChurchTax: searchParams.hasChurchTax,
+      };
 
-  const handleSave = () => {
-    if (!selectedProperty || !selectedCustomer) {
-      toast.warning('Bitte wählen Sie Objekt und Kunde aus');
-      return;
+      const result = await calculate(input);
+      if (result) {
+        // Calculate monthly values
+        const yearlyRent = listing.annual_rent;
+        const yearlyRate = result.summary.yearlyInterest + result.summary.yearlyRepayment;
+        const cashFlowBeforeTax = (yearlyRent - yearlyRate) / 12;
+        const taxSavings = result.summary.yearlyTaxSavings / 12;
+        const netBurden = result.summary.monthlyBurden;
+        
+        newCache[listing.id] = { cashFlowBeforeTax, taxSavings, netBurden };
+      }
     }
-    const customer = customers.find(c => c.id === selectedCustomer);
-    toast.success('Simulation gespeichert', {
-      description: `Für ${customer?.first_name} ${customer?.last_name}`,
-    });
-  };
 
-  const handleExportPdf = () => {
-    toast.info('PDF wird erstellt...', {
-      description: 'Der Download startet in Kürze',
-    });
-  };
+    setMetricsCache(newCache);
+  }, [rawListings, searchParams, calculate, refetch]);
 
-  const handleStartDeal = () => {
-    if (!selectedProperty || !selectedCustomer) {
-      toast.warning('Bitte wählen Sie Objekt und Kunde aus');
-      return;
-    }
-    toast.success('Deal gestartet', {
-      description: 'Der Vorgang wurde in der Pipeline angelegt',
-    });
-  };
+  // Merge cached metrics into listings
+  const listingsWithMetrics = useMemo(() => {
+    return rawListings.map(listing => ({
+      ...listing,
+      ...metricsCache[listing.id],
+    }));
+  }, [rawListings, metricsCache]);
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+  // Filter out excluded listings for display
+  const visibleListings = useMemo(() => {
+    return listingsWithMetrics.filter(l => !excludedIds.has(l.id));
+  }, [listingsWithMetrics, excludedIds]);
+
+  const isLoading = isLoadingListings || isCalculating;
 
   return (
     <div className="space-y-6">
-      {/* How It Works */}
-      <HowItWorks variant="beratung" />
-      
-      {/* Quick Actions */}
-      <QuickActions />
-
-      {/* Portfolio Overview Dashboard (wie MOD-04) */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Portfolio-Übersicht
-              </CardTitle>
-              <CardDescription>
-                Ausgewählte Objekte für Kundenberatung
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="gap-1">
-              <Heart className="h-3 w-3" />
-              {selectedListings.length} Objekte vorgemerkt
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Building2 className="h-4 w-4" />
-                Objekte
-              </div>
-              <div className="text-2xl font-bold">{selectedListings.length}</div>
-            </div>
-            
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Euro className="h-4 w-4" />
-                Gesamtvolumen
-              </div>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  selectedListings.reduce((sum, s) => sum + ((s.listing as any)?.asking_price || 0), 0)
-                )}
-              </div>
-            </div>
-            
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <ArrowUpRight className="h-4 w-4 text-primary" />
-                Ø Rendite
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                {selectedListings.length > 0 
-                  ? `${(selectedListings.reduce((sum, s) => {
-                      const listing = s.listing as any;
-                      const props = listing?.properties;
-                      if (!listing?.asking_price || !props?.annual_rent_income) return sum;
-                      return sum + (props.annual_rent_income / listing.asking_price * 100);
-                    }, 0) / selectedListings.length).toFixed(1)}%`
-                  : '–'}
-              </div>
-            </div>
-            
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Wallet className="h-4 w-4 text-accent-foreground" />
-                Ø Provision
-              </div>
-              <div className="text-2xl font-bold text-accent-foreground">
-                {selectedListings.length > 0 
-                  ? `${(selectedListings.reduce((sum, s) => sum + ((s.listing as any)?.commission_rate || 0), 0) / selectedListings.length).toFixed(1)}%`
-                  : '–'}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Selection Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Objekt auswählen
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Select value={selectedProperty} onValueChange={setSelectedProperty}>
-              <SelectTrigger>
-                <SelectValue placeholder="Aus Ihrer Auswahl wählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedListings.length === 0 ? (
-                  <SelectItem value="__no_objects__" disabled>
-                    Keine Objekte vorgemerkt
-                  </SelectItem>
-                ) : (
-                  selectedListings.map((selection) => {
-                    const listing = selection.listing as any;
-                    return (
-                      <SelectItem key={selection.listing_id} value={selection.listing_id}>
-                        {listing?.title || 'Objekt'} — {formatCurrency(listing?.asking_price || 0)}
-                      </SelectItem>
-                    );
-                  })
-                )}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Nur Objekte mit ♥ im Katalog werden hier angezeigt
-            </p>
-            {selectedPropertyData && (
-              <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                <div className="font-medium">{(selectedPropertyData as any)?.title}</div>
-                <div className="text-muted-foreground">
-                  {(selectedPropertyData as any)?.properties?.address}, {(selectedPropertyData as any)?.properties?.city}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              Kunde auswählen
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Kunde wählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.length === 0 ? (
-                    <SelectItem value="__no_customers__" disabled>
-                      Keine Kunden vorhanden
-                    </SelectItem>
-                  ) : (
-                    customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.first_name} {customer.last_name}
-                        {customer.company && ` (${customer.company})`}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" title="Neuen Kunden anlegen">
-                <UserPlus className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Verknüpfen Sie die Simulation mit einem Kunden
-            </p>
-          </CardContent>
-        </Card>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Kundenberatung
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Finden Sie das perfekte Investment für Ihren Kunden
+          </p>
+        </div>
+        {hasSearched && (
+          <Badge variant="secondary">
+            {visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}
+          </Badge>
+        )}
       </div>
 
-      {/* Beratungsmaterialien (Phase 2 Placeholder) */}
-      <Card className="border-dashed">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Beratungsmaterialien</CardTitle>
-          <CardDescription>
-            Werbe- und Informationsmaterialien für Ihre Beratung (in Entwicklung)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button variant="outline" className="h-auto flex-col py-4 gap-2" disabled>
-              <Video className="h-5 w-5" />
-              <span className="text-xs">Ablaufvideo</span>
-              <Badge variant="secondary" className="text-xs">Bald</Badge>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 gap-2" disabled>
-              <PlayCircle className="h-5 w-5" />
-              <span className="text-xs">Präsentation</span>
-              <Badge variant="secondary" className="text-xs">Bald</Badge>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 gap-2" disabled>
-              <Shield className="h-5 w-5" />
-              <span className="text-xs">Risikoaufklärung</span>
-              <Badge variant="secondary" className="text-xs">Bald</Badge>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 gap-2" disabled>
-              <Play className="h-5 w-5" />
-              <span className="text-xs">Imagevideo</span>
-              <Badge variant="secondary" className="text-xs">Bald</Badge>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Investment Calculator */}
-      <InvestmentCalculator 
-        onResult={handleResult}
-        initialData={selectedPropertyData ? {
-          purchasePrice: (selectedPropertyData as any)?.asking_price || 0,
-          monthlyRent: ((selectedPropertyData as any)?.properties?.annual_rent_income || 0) / 12
-        } : undefined}
+      {/* Compact Search Form */}
+      <PartnerSearchForm
+        value={searchParams}
+        onChange={setSearchParams}
+        onSearch={handleSearch}
+        isLoading={isLoading}
       />
 
-      {/* Action Bar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {lastResult && (
-                <span>
-                  Monatsbelastung: <strong className="text-foreground">
-                    {formatCurrency(lastResult.summary.monthlyBurden)}
-                  </strong> / Monat
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Speichern
-              </Button>
-              <Button variant="outline" onClick={handleExportPdf}>
-                <FileDown className="mr-2 h-4 w-4" />
-                PDF Export
-              </Button>
-              <Button onClick={handleStartDeal}>
-                <Handshake className="mr-2 h-4 w-4" />
-                Deal starten
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Property Grid */}
+      {hasSearched && (
+        <PartnerPropertyGrid
+          listings={visibleListings}
+          onSelect={(listing) => setSelectedListing(listing)}
+          isLoading={isLoading}
+          emptyMessage="Keine Objekte im Partner-Netzwerk verfügbar"
+        />
+      )}
+
+      {/* Initial State */}
+      {!hasSearched && (
+        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+          <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+          <p className="text-muted-foreground">
+            Geben Sie die Kundendaten ein und klicken Sie auf "Berechnen"
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Die Netto-Belastung wird für jedes Objekt individuell berechnet
+          </p>
+        </div>
+      )}
+
+      {/* Expose Modal */}
+      <PartnerExposeModal
+        listing={selectedListing}
+        isOpen={!!selectedListing}
+        onClose={() => setSelectedListing(null)}
+        initialParams={searchParams}
+      />
     </div>
   );
 };
