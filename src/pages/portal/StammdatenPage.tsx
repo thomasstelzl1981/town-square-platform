@@ -6,16 +6,17 @@
  * - Verträge: Alle Vereinbarungen (NEU)
  * - Abrechnung: Zahlungen + Credits
  * - Sicherheit: Passwort + 2FA
+ * 
+ * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  */
-import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
-// Lazy load sub-page components
-const ProfilTab = lazy(() => import('./stammdaten/ProfilTab').then(m => ({ default: m.ProfilTab })));
-const VertraegeTab = lazy(() => import('./stammdaten/VertraegeTab').then(m => ({ default: m.VertraegeTab })));
-const AbrechnungTab = lazy(() => import('./stammdaten/AbrechnungTab').then(m => ({ default: m.AbrechnungTab })));
-const SicherheitTab = lazy(() => import('./stammdaten/SicherheitTab').then(m => ({ default: m.SicherheitTab })));
+// Direct imports for instant sub-tab navigation (module is already lazy-loaded)
+import { ProfilTab } from './stammdaten/ProfilTab';
+import { VertraegeTab } from './stammdaten/VertraegeTab';
+import { AbrechnungTab } from './stammdaten/AbrechnungTab';
+import { SicherheitTab } from './stammdaten/SicherheitTab';
 
 const StammdatenPage = () => {
   const content = moduleContents['MOD-01'];

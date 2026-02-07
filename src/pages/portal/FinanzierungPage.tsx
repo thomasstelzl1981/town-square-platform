@@ -1,17 +1,20 @@
 /**
  * Finanzierung Page (MOD-07) - Routes Pattern with How It Works
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
+ * 
+ * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
-// Lazy load tab components
-const SelbstauskunftTab = lazy(() => import('./finanzierung/SelbstauskunftTab'));
-const DokumenteTab = lazy(() => import('./finanzierung/DokumenteTab'));
-const AnfrageTab = lazy(() => import('./finanzierung/AnfrageTab'));
+// Direct imports for instant sub-tab navigation
+import SelbstauskunftTab from './finanzierung/SelbstauskunftTab';
+import DokumenteTab from './finanzierung/DokumenteTab';
+import AnfrageTab from './finanzierung/AnfrageTab';
+import StatusTab from './finanzierung/StatusTab';
+
+// Detail page stays lazy (dynamic content)
 const AnfrageDetailPage = lazy(() => import('./finanzierung/AnfrageDetailPage'));
-const StatusTab = lazy(() => import('./finanzierung/StatusTab'));
 
 const FinanzierungPage = () => {
   const content = moduleContents['MOD-07'];

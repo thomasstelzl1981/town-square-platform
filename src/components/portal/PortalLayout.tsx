@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
+
+// Preload core modules for instant navigation
+const preloadModules = () => {
+  Promise.all([
+    import('@/pages/portal/StammdatenPage'),
+    import('@/pages/portal/ImmobilienPage'),
+    import('@/pages/portal/FinanzierungPage'),
+    import('@/pages/portal/OfficePage'),
+    import('@/pages/portal/DMSPage'),
+  ]);
+};
 import { useAuth } from '@/contexts/AuthContext';
 import { SystemBar } from './SystemBar';
 import { TopNavigation } from './TopNavigation';
@@ -43,6 +54,12 @@ function PortalLayoutInner() {
     }
   }, [isLoading]);
 
+  // Preload modules after initial render for instant navigation
+  useEffect(() => {
+    const timer = setTimeout(preloadModules, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // P0-FIX: Only show fullscreen loader on INITIAL load, never after
   if (isLoading && !hasInitializedRef.current) {
     return (
@@ -78,12 +95,6 @@ function PortalLayoutInner() {
         
         {/* Content Area - Always use Outlet for consistent routing (Dashboard or Module) */}
         <main className="flex-1 overflow-y-auto pb-28 relative">
-          {/* Loading overlay */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          )}
           
           {/* Mobile: Same as Desktop - Outlet renders PortalDashboard or Module content */}
           <Outlet />
@@ -115,12 +126,6 @@ function PortalLayoutInner() {
       
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative">
-        {/* Loading overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
         <Outlet />
       </main>
 

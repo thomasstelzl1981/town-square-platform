@@ -1,16 +1,16 @@
 /**
  * DMS Page (MOD-03) - Routes Pattern with How It Works
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
+ * 
+ * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  */
-import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 
-// Lazy load sub-page components
-const StorageTab = lazy(() => import('./dms/StorageTab').then(m => ({ default: m.StorageTab })));
-const PosteingangTab = lazy(() => import('./dms/PosteingangTab').then(m => ({ default: m.PosteingangTab })));
-const SortierenTab = lazy(() => import('./dms/SortierenTab').then(m => ({ default: m.SortierenTab })));
-const EinstellungenTab = lazy(() => import('./dms/EinstellungenTab').then(m => ({ default: m.EinstellungenTab })));
+// Direct imports for instant sub-tab navigation
+import { StorageTab } from './dms/StorageTab';
+import { PosteingangTab } from './dms/PosteingangTab';
+import { SortierenTab } from './dms/SortierenTab';
+import { EinstellungenTab } from './dms/EinstellungenTab';
 
 const DMSPage = () => {
   const content = moduleContents['MOD-03'];
