@@ -1,185 +1,99 @@
 
-# Mobile-Login Fix: Robuste Authentifizierung
+Ziel
+- Du sollst dich auf dem iPhone wieder in der Preview einloggen können, ohne dass es dauerhaft an „Ungültige Anmeldedaten“ hängt.
+- Zusätzlich soll der „Passwort vergessen?“-Weg verlässlich nachvollziehbar werden (mindestens mit klarer Diagnose/Feedback), weil aktuell keine Reset-E-Mail ankommt.
 
-## Ziel
-Mobile-Login am iPhone zuverlässig machen durch Input-Normalisierung, Passwort-Sichtbarkeit und Passwort-Recovery-Flow.
+Was wir inzwischen sicher wissen (aus Code + Daten)
+- Dein App-Account existiert und ist aktiv:
+  - Es gibt ein Profil für thomas.stelzl@systemofadown.com.
+  - In den letzten Network-Requests sieht man Requests mit einem gültigen Bearer Token für genau diese E-Mail (Desktop ist also wirklich eingeloggt).
+- Der Fehler am iPhone passiert auch, wenn du die Preview direkt im Tab öffnest (lovable.app/auth) → kein reines „Safari-Iframe/Cookie“-Problem.
+- Wenn Login „Ungültige Anmeldedaten“ sagt, ist es in der Praxis fast immer:
+  1) Passwort stimmt nicht (häufigster Fall), oder
+  2) Die Reset-/Recovery-Mail kommt nicht an, sodass man das Passwort nicht zurücksetzen kann.
 
----
+Sofort-Workaround (ohne Code, damit du heute weiterarbeiten kannst)
+1) Am MacBook (wo du bereits im /portal eingeloggt bist):
+   - Öffne im User-Menü oben rechts „Einstellungen“ → das führt zu:
+     /portal/stammdaten/sicherheit
+   - Setze dort ein neues Passwort (am besten etwas, das du auf dem iPhone sicher tippen kannst).
+   - Speichern.
+2) Danach am iPhone:
+   - Öffne: /auth
+   - Logge dich mit thomas.stelzl@systemofadown.com + dem gerade gesetzten neuen Passwort ein.
 
-## Änderungen
+Warum das hilft:
+- Das Passwort-Ändern im Portal nutzt eine vorhandene, gültige Sitzung (du bist am Desktop eingeloggt) und setzt damit zuverlässig ein neues Passwort, ohne dass eine E-Mail-Zustellung funktionieren muss.
 
-### 1. Auth.tsx - Mobile-sichere Eingabefelder
+Warum wir trotzdem Code ändern sollten
+- Der „Passwort vergessen?“-Flow ist aktuell für dich nicht nutzbar, wenn keine E-Mails ankommen.
+- Die Auth-Seite sagt nur „Ungültige Anmeldedaten“, obwohl du in Wirklichkeit eine viel bessere Selbsthilfe-Option hast (Passwort im Portal ändern, wenn du noch irgendwo eingeloggt bist).
+- Außerdem fehlt uns Diagnose-Feedback, ob der Reset-Request wirklich beim Backend ankommt oder z. B. im Netzwerk fehlschlägt.
 
-**Neue Features:**
-- E-Mail-Normalisierung: `email.trim().toLowerCase()` vor Login/Signup
-- Mobile Input-Attribute: `autoCapitalize="none"`, `autoCorrect="off"`, `spellCheck={false}`, `inputMode="email"`
-- Passwort-Sichtbarkeits-Toggle (Eye/EyeOff)
-- "Passwort vergessen?"-Link mit Dialog zur E-Mail-Eingabe
-- Bessere Fehlermeldung bei "Invalid login credentials"
+Geplante Änderungen (Code)
+A) Auth-Seite (/auth) verständlicher und diagnosefähiger machen
+1) Besserer Hilfetext bei „Ungültige Anmeldedaten“
+   - Ergänzen: „Wenn du auf einem anderen Gerät noch eingeloggt bist, ändere dein Passwort im Portal unter Stammdaten → Sicherheit und versuche es erneut.“
+   - Dazu einen klickbaren Link/CTA anbieten (nur Hinweis; der Link selbst ist nicht geschützt, aber das Portal leitet dich ohne Session ohnehin wieder zur Anmeldung weiter).
 
-**Neue Imports:**
-- `Eye`, `EyeOff` aus lucide-react
-- `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription` aus ui/dialog
-- `supabase` Client für Password-Reset
+2) „Passwort vergessen?“: robustes Error-Handling + sichtbares Ergebnis
+   - In handleForgotPassword zusätzlich try/catch um den API-Call.
+   - Falls ein Netzwerk-/CORS-Fehler passiert: klare Meldung („Netzwerkfehler – bitte erneut versuchen“).
+   - Nach erfolgreichem Request: nicht nur Toast „E-Mail gesendet“, sondern auch Hinweis:
+     - „Wenn keine E-Mail ankommt: Spam prüfen; alternativ Passwort im Portal (Stammdaten → Sicherheit) ändern, falls du noch eingeloggt bist.“
+   - Optional: Einen kleinen „Diagnose“-Abschnitt (nur in Dev/Preview) einblenden, der die Response-Art zusammenfasst (ohne sensible Inhalte).
 
-**Neue State-Variablen:**
-- `showPassword: boolean` - Toggle für Passwort-Sichtbarkeit
-- `forgotPasswordOpen: boolean` - Dialog-State
-- `resetEmail: string` - E-Mail für Reset
-- `resetLoading: boolean` - Loading-State
+Datei: src/pages/Auth.tsx
 
-**Neue Funktion:**
-```
-handleForgotPassword():
-1. Validiere E-Mail mit Zod
-2. Rufe supabase.auth.resetPasswordForEmail() auf
-3. Zeige Erfolgs-Toast
-4. Schließe Dialog
-```
+B) Portal-Sicherheitstab verbessern (damit Passwort-Reset am Desktop noch zuverlässiger ist)
+1) Klarer Hinweis „Du bist eingeloggt als: <E-Mail>“
+   - Damit du sicher weißt, welches Konto du gerade änderst.
+   - (In der SystemBar wird zwar profile.email gezeigt, aber im Sicherheitstab ist es noch eindeutiger.)
 
-### 2. AuthResetPassword.tsx - Neue Seite
+2) Entfernen oder nutzen von currentPassword-State
+   - Aktuell existiert currentPassword im State, wird aber nicht genutzt.
+   - Entweder entfernen (Aufräumen) oder bewusst anzeigen (wenn du es möchtest).
+   - Für den schnellen Fix: eher entfernen/aufräumen, damit keine Verwirrung entsteht.
 
-**Pfad:** `src/pages/AuthResetPassword.tsx`
+Datei: src/pages/portal/stammdaten/SicherheitTab.tsx
 
-**Funktion:**
-- User landet hier nach Klick auf Reset-Link in E-Mail
-- Supabase setzt automatisch eine temporäre Session
-- Formular: Neues Passwort + Bestätigung
-- Validierung: mind. 8 Zeichen, Passwörter müssen übereinstimmen
-- `supabase.auth.updateUser({ password })` zum Speichern
-- Redirect zu `/portal` nach Erfolg
+C) Optional (wenn du maximale Mobile-Sicherheit willst): „Login-Hilfe“-Bereich
+- Auf /auth einen kleinen „Probleme beim Login?“ Akkordeon-Bereich:
+  - „Passwort im Portal ändern (wenn noch eingeloggt)“
+  - „E-Mail korrekt? (wird automatisch normalisiert)“
+  - „Passwort anzeigen (Toggle ist schon da)“
 
-**UI:**
-- Gleiches Design wie Auth.tsx (Card, Shield-Icon)
-- Zwei Passwort-Felder mit Sichtbarkeits-Toggle
-- Klarer Erfolgs-/Fehler-Feedback
+Datei: src/pages/Auth.tsx
 
-### 3. App.tsx - Neue Route
+Was wir nicht sofort machen (nur falls später nötig)
+- Ein komplett eigener Passwort-Reset per externem Maildienst (z. B. Resend) + Recovery-Link-Generierung ist deutlich aufwendiger und benötigt zusätzliche Secrets/Keys. Das lohnt sich erst, wenn klar ist, dass Auth-Reset-Mails in deinem Backend grundsätzlich nicht zugestellt werden können.
+- OAuth Login (Apple/Google) wäre eine Alternative für Mobile, ist aber ein eigener Setup-Block und ändert dein Login-Verständnis (Account-Verknüpfung etc.).
 
-**Änderung:**
-```
-+ import AuthResetPassword from "./pages/AuthResetPassword";
+Testplan (End-to-End)
+1) Desktop (MacBook)
+- Im Portal auf /portal/stammdaten/sicherheit neues Passwort setzen.
+- Danach im privaten Fenster (Inkognito) auf /auth mit E-Mail + neuem Passwort einloggen (verifiziert, dass du das Passwort wirklich kennst).
 
-In Routes:
-+ <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-```
+2) iPhone
+- /auth öffnen, E-Mail + neues Passwort eingeben, Login prüfen.
+- Danach /portal laden und prüfen, dass du drin bleibst (Session persistiert).
 
----
+3) Passwort vergessen?
+- /auth → „Passwort vergessen?“ auslösen
+- Prüfen: UI zeigt entweder
+  - „E-Mail gesendet“ inkl. Hinweis/Alternativen, oder
+  - eine konkrete Fehlermeldung (z. B. Netzwerkfehler), nicht nur „es passiert nichts“.
 
-## Technische Details
+Akzeptanzkriterien
+- Du kannst dich am iPhone in der Preview mit dem Account thomas.stelzl@systemofadown.com anmelden.
+- Wenn Reset-Mail nicht ankommt, wirst du in der UI so geführt, dass du trotzdem eine praktikable Lösung hast (Passwort über Portal ändern).
+- Fehlerfälle sind klar verständlich (keine stillen Fehlschläge).
 
-### E-Mail-Normalisierung (Auth.tsx)
+Umsetzungsschritte (Reihenfolge)
+1) Auth.tsx: verbessertes Messaging + try/catch + hilfreiche Hinweise bei invalid credentials.
+2) SicherheitTab.tsx: „eingeloggt als“-Hinweis + Aufräumen currentPassword State.
+3) End-to-end Tests wie oben.
 
-Zeile 54 ändern:
-```typescript
-// Vorher:
-const { error } = await signIn(email, password);
-
-// Nachher:
-const normalizedEmail = email.trim().toLowerCase();
-const { error } = await signIn(normalizedEmail, password);
-```
-
-Analog für signUp.
-
-### Mobile Input-Attribute (Auth.tsx)
-
-```typescript
-<Input
-  id="signin-email"
-  type="email"
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-  placeholder="admin@example.com"
-  required
-  autoCapitalize="none"
-  autoCorrect="off"
-  spellCheck={false}
-  inputMode="email"
-/>
-```
-
-### Passwort-Toggle (Auth.tsx)
-
-```typescript
-<div className="relative">
-  <Input
-    id="signin-password"
-    type={showPassword ? "text" : "password"}
-    value={password}
-    onChange={(e) => setPassword(e.target.value)}
-    placeholder="••••••••"
-    required
-    autoCapitalize="none"
-    autoCorrect="off"
-    className="pr-10"
-  />
-  <Button
-    type="button"
-    variant="ghost"
-    size="sm"
-    className="absolute right-0 top-0 h-full px-3"
-    onClick={() => setShowPassword(!showPassword)}
-  >
-    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-  </Button>
-</div>
-```
-
-### Password-Reset Flow
-
-**Auth.tsx - Dialog:**
-```typescript
-<Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Passwort zurücksetzen</DialogTitle>
-      <DialogDescription>
-        Gib deine E-Mail-Adresse ein. Du erhältst einen Link zum Zurücksetzen.
-      </DialogDescription>
-    </DialogHeader>
-    <form onSubmit={handleForgotPassword}>
-      <Input
-        type="email"
-        value={resetEmail}
-        onChange={(e) => setResetEmail(e.target.value)}
-        placeholder="deine@email.de"
-        autoCapitalize="none"
-        autoCorrect="off"
-      />
-      <Button type="submit" disabled={resetLoading}>
-        {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Link senden
-      </Button>
-    </form>
-  </DialogContent>
-</Dialog>
-```
-
-**Redirect-URL für Reset:**
-```typescript
-const redirectUrl = `${window.location.origin}/auth/reset-password`;
-await supabase.auth.resetPasswordForEmail(resetEmail.trim().toLowerCase(), {
-  redirectTo: redirectUrl
-});
-```
-
----
-
-## Dateien-Übersicht
-
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/Auth.tsx` | Bearbeiten: Mobile-Attribute, Passwort-Toggle, Forgot-Password-Dialog, E-Mail-Normalisierung |
-| `src/pages/AuthResetPassword.tsx` | Neu erstellen: Reset-Seite |
-| `src/App.tsx` | Bearbeiten: Route für `/auth/reset-password` hinzufügen |
-
----
-
-## Erwartetes Ergebnis
-
-Nach der Implementierung:
-1. Auto-Korrektur/Auto-Caps am iPhone haben keinen Einfluss mehr auf Login
-2. Passwort beim Tippen sichtbar machbar (reduziert Tippfehler)
-3. Bei Login-Problemen: Selbsthilfe per Passwort-Reset-Mail
-4. Bessere Fehlermeldungen bei falschen Credentials
+Technischer Anhang (kurz, zur Orientierung)
+- Login erfolgt über supabase.auth.signInWithPassword.
+- Passwort ändern im Portal erfolgt bereits über supabase.auth.updateUser({ password: ... }) und ist der schnellste Weg, ohne E-Mail-Zustellung das Passwort zu „synchronisieren“.
