@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro, Plus } from 'lucide-react';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro, Plus, FileText, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -92,8 +93,11 @@ const RENT_MODELS = [
   { value: 'STAFFEL', label: 'Staffelmiete' },
 ];
 
+type LetterType = 'kuendigung' | 'mieterhoehung' | 'abmahnung';
+
 export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [allLeases, setAllLeases] = useState<(Lease & { tenant_contact?: Contact })[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [invites, setInvites] = useState<RenterInvite[]>([]);
@@ -336,19 +340,38 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     }
   }
 
-  async function handleTerminateLease(leaseId: string) {
-    try {
-      const { error: updateError } = await supabase
-        .from('leases')
-        .update({ status: 'notice_given' })
-        .eq('id', leaseId);
-
-      if (updateError) throw updateError;
-      toast.success('Kündigung eingetragen');
-      await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Kündigen');
+  function handleOpenLetterGenerator(lease: Lease & { tenant_contact?: Contact }, letterType: LetterType) {
+    if (!lease.tenant_contact) {
+      toast.error('Kein Kontakt für diesen Mietvertrag hinterlegt');
+      return;
     }
+
+    const templates: Record<LetterType, { subject: string; prompt: string }> = {
+      kuendigung: {
+        subject: 'Kündigung Ihres Mietvertrages',
+        prompt: `Erstelle eine formelle Kündigung des Mietvertrages für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Der Mietvertrag begann am ${formatDate(lease.start_date)}. Die aktuelle Warmmiete beträgt ${formatCurrency(lease.monthly_rent)}.`,
+      },
+      mieterhoehung: {
+        subject: 'Mieterhöhungsverlangen',
+        prompt: `Erstelle ein Mieterhöhungsverlangen für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Die aktuelle Kaltmiete beträgt ${formatCurrency(lease.rent_cold_eur || 0)}. Bitte begründe die Erhöhung mit dem örtlichen Mietspiegel.`,
+      },
+      abmahnung: {
+        subject: 'Abmahnung wegen Vertragsverletzung',
+        prompt: `Erstelle eine Abmahnung für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Bitte frage mich nach dem konkreten Grund der Abmahnung.`,
+      },
+    };
+
+    const template = templates[letterType];
+
+    // Navigate to letter generator with pre-filled data
+    const params = new URLSearchParams({
+      contactId: lease.tenant_contact.id,
+      subject: template.subject,
+      prompt: template.prompt,
+      leaseId: lease.id,
+    });
+
+    navigate(`/portal/office/brief?${params.toString()}`);
   }
 
   function openInviteDialog(lease: Lease & { tenant_contact?: Contact }) {
@@ -528,7 +551,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 pt-2 border-t">
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(lease)}>
                       <Edit2 className="mr-1 h-3 w-3" />
                       Bearbeiten
@@ -540,14 +563,33 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                       </Button>
                     )}
                     
-                    {lease.status === 'active' && (
+                    {(lease.status === 'active' || lease.status === 'notice_given') && (
                       <>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleTerminateLease(lease.id)}
+                          onClick={() => handleOpenLetterGenerator(lease, 'kuendigung')}
                         >
-                          Kündigen
+                          <FileText className="mr-1 h-3 w-3" />
+                          Kündigung
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleOpenLetterGenerator(lease, 'mieterhoehung')}
+                        >
+                          <TrendingUp className="mr-1 h-3 w-3" />
+                          Mieterhöhung
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleOpenLetterGenerator(lease, 'abmahnung')}
+                        >
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          Abmahnung
                         </Button>
                         
                         {!lease.renter_org_id && (
