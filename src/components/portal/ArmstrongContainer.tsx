@@ -1,17 +1,18 @@
 /**
  * ARMSTRONG CONTAINER — Desktop Chat Container
  * 
- * Collapsed State: Bottom-right compact card (~200x120px)
- * Expanded State: Right-side stripe (320px width, full height)
+ * Collapsed State: Bottom-right compact card (~200x120px) - DRAGGABLE
+ * Expanded State: Right-side stripe (320px width, full height) - DRAGGABLE
  * 
  * Acts as drop target for drag-and-drop files
+ * Desktop only: Freely positionable via drag handle
  */
 
 import { useState, useCallback } from 'react';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
+import { useDraggable } from '@/hooks/useDraggable';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { 
   MessageCircle, 
@@ -19,17 +20,32 @@ import {
   Minimize2, 
   X,
   Paperclip,
-  Send
+  Send,
+  GripVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 
+// Container dimensions for boundary calculation
+const EXPANDED_SIZE = { width: 320, height: 500 };
+const COLLAPSED_SIZE = { width: 256, height: 180 };
+
 export function ArmstrongContainer() {
   const location = useLocation();
-  const { armstrongVisible, armstrongExpanded, toggleArmstrong, toggleArmstrongExpanded } = usePortalLayout();
+  const { armstrongVisible, armstrongExpanded, toggleArmstrong, toggleArmstrongExpanded, isMobile } = usePortalLayout();
   const [isDragOver, setIsDragOver] = useState(false);
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
+
+  // Draggable positioning (different size for expanded vs collapsed)
+  const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
+  
+  const { position, isDragging, dragHandleProps } = useDraggable({
+    storageKey: 'armstrong-position',
+    containerSize: currentSize,
+    boundaryPadding: 20,
+    disabled: isMobile, // Disable on mobile
+  });
 
   // Derive context from current route
   const getContext = () => {
@@ -42,7 +58,7 @@ export function ArmstrongContainer() {
     };
   };
 
-  // Drag and drop handlers
+  // Drag and drop handlers for files
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -73,21 +89,35 @@ export function ArmstrongContainer() {
     return null;
   }
 
-  // Expanded State: Full right-side stripe
+  // Expanded State: Full chat panel - DRAGGABLE
   if (armstrongExpanded) {
     return (
       <div 
         className={cn(
-          'fixed right-0 top-12 bottom-0 w-80 border-l bg-card shadow-lg z-40 flex flex-col',
-          isDragOver && 'ring-2 ring-primary ring-inset'
+          'fixed w-80 border bg-card rounded-xl shadow-lg z-40 flex flex-col overflow-hidden',
+          isDragOver && 'ring-2 ring-primary ring-inset',
+          isDragging && 'shadow-2xl'
         )}
+        style={{
+          left: position.x,
+          top: position.y,
+          height: EXPANDED_SIZE.height,
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+        {/* Draggable Header */}
+        <div 
+          {...dragHandleProps}
+          className={cn(
+            'flex items-center justify-between p-3 border-b bg-muted/30',
+            'select-none'
+          )}
+        >
           <div className="flex items-center gap-2">
+            {/* Grip indicator */}
+            <GripVertical className="h-4 w-4 text-muted-foreground/50" />
             <MessageCircle className="h-4 w-4 text-primary" />
             <span className="font-medium text-sm">Armstrong</span>
           </div>
@@ -96,7 +126,10 @@ export function ArmstrongContainer() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={toggleArmstrongExpanded}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleArmstrongExpanded();
+              }}
               title="Minimieren"
             >
               <Minimize2 className="h-4 w-4" />
@@ -105,7 +138,10 @@ export function ArmstrongContainer() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={toggleArmstrong}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleArmstrong();
+              }}
               title="Schließen"
             >
               <X className="h-4 w-4" />
@@ -124,20 +160,33 @@ export function ArmstrongContainer() {
     );
   }
 
-  // Collapsed State: Compact card bottom-right
+  // Collapsed State: Compact card - DRAGGABLE
   return (
     <div 
       className={cn(
-        'fixed bottom-6 right-6 w-64 bg-card border rounded-xl shadow-lg z-40 overflow-hidden',
-        isDragOver && 'ring-2 ring-primary'
+        'fixed w-64 bg-card border rounded-xl shadow-lg z-40 overflow-hidden',
+        isDragOver && 'ring-2 ring-primary',
+        isDragging && 'shadow-2xl'
       )}
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b bg-muted/30">
+      {/* Draggable Header */}
+      <div 
+        {...dragHandleProps}
+        className={cn(
+          'flex items-center justify-between p-2 border-b bg-muted/30',
+          'select-none'
+        )}
+      >
         <div className="flex items-center gap-2">
+          {/* Grip indicator */}
+          <GripVertical className="h-3 w-3 text-muted-foreground/50" />
           <MessageCircle className="h-4 w-4 text-primary" />
           <span className="font-medium text-xs">Armstrong</span>
         </div>
@@ -146,7 +195,10 @@ export function ArmstrongContainer() {
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={toggleArmstrongExpanded}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleArmstrongExpanded();
+            }}
             title="Erweitern"
           >
             <Maximize2 className="h-3 w-3" />
@@ -155,7 +207,10 @@ export function ArmstrongContainer() {
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={toggleArmstrong}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleArmstrong();
+            }}
             title="Schließen"
           >
             <X className="h-3 w-3" />
