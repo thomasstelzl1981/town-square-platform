@@ -2,11 +2,11 @@
  * PortalDashboard — Redesigned with immersive welcome experience
  * 
  * Layout:
- * +--------------------------------+--------------------------------+
- * |     🌍 EARTH GLOBE             |    ☀️ WEATHER WIDGET           |
- * +--------------------------------+--------------------------------+
- * |     🤖 ARMSTRONG GREETING (full width)                          |
- * +-----------------------------------------------------------------+
+ * +--------------------------------+--------------------------------+--------------------------------+
+ * |  ARMSTRONG GREETING            |  WEATHER                       |  GOOGLE EARTH                  |
+ * +--------------------------------+--------------------------------+--------------------------------+
+ * |                    PENDING ACTIONS WIDGET (full width)                                          |
+ * +-------------------------------------------------------------------------------------------------+
  */
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ import { useTodayEvents } from '@/hooks/useTodayEvents';
 import { EarthGlobeCard } from '@/components/dashboard/EarthGlobeCard';
 import { WeatherCard } from '@/components/dashboard/WeatherCard';
 import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
+import { PendingActionsWidget } from '@/components/dashboard/PendingActionsWidget';
 
 export default function PortalDashboard() {
   const { profile, isDevelopmentMode } = useAuth();
@@ -71,6 +72,9 @@ export default function PortalDashboard() {
           />
         </div>
       </div>
+
+      {/* Pending Actions Widget - full width below */}
+      <PendingActionsWidget className="mt-4 md:mt-6" />
     </div>
   );
 }
