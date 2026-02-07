@@ -1,9 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Save, Loader2, CheckCircle2, AlertTriangle, Upload, FileUp, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Save, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DossierHeader } from './DossierHeader';
 import { InvestmentKPIBlock } from './InvestmentKPIBlock';
 import { DocumentChecklist } from './DocumentChecklist';
@@ -18,9 +17,7 @@ import {
 } from './editable';
 import { useDossierForm } from '@/hooks/useDossierForm';
 import { useSaveDossier } from '@/hooks/useDossierMutations';
-import { useSmartUpload } from '@/hooks/useSmartUpload';
 import type { UnitDossierData } from '@/types/immobilienakte';
-import { toast } from 'sonner';
 
 interface EditableUnitDossierViewProps {
   data: UnitDossierData;
@@ -28,7 +25,6 @@ interface EditableUnitDossierViewProps {
 
 export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) {
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   
   const {
     data: formData,
@@ -43,7 +39,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
   } = useDossierForm(data);
 
   const saveDossier = useSaveDossier();
-  const { upload, progress, reset: resetUpload } = useSmartUpload();
 
   const handleFieldChange = useCallback((field: string, value: any) => {
     updateField(field as keyof UnitDossierData, value);
@@ -81,71 +76,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
     }
   };
 
-  // Handle file upload with SSOT context
-  const handleFileUpload = async (files: FileList | File[]) => {
-    if (!formData) return;
-    
-    const fileArray = Array.from(files);
-    
-    for (const file of fileArray) {
-      try {
-        const result = await upload(file, {
-          // SSOT context for document_links
-          objectType: 'unit',
-          objectId: formData.unitId,
-          unitId: formData.unitId,
-          source: 'upload',
-          parseMode: 'general',
-        });
-
-        if (result.error) {
-          toast.error(`Upload fehlgeschlagen: ${result.error}`);
-        } else {
-          toast.success(`${file.name} hochgeladen und verknüpft`);
-        }
-      } catch (err) {
-        console.error('Upload error:', err);
-        toast.error(`Fehler beim Upload von ${file.name}`);
-      }
-    }
-
-    resetUpload();
-  };
-
-  // Drag & Drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files);
-    }
-  };
-
-  // File input handler
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileUpload(files);
-    }
-    // Reset input
-    e.target.value = '';
-  };
-
   if (!formData) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -153,8 +83,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
       </div>
     );
   }
-
-  const isUploading = progress.status === 'uploading' || progress.status === 'analyzing';
 
   return (
     <div className="space-y-6 relative pb-20">
@@ -327,61 +255,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
 
           {/* Block J: Documents */}
           <DocumentChecklist documents={formData.documents} />
-
-          {/* Upload Dropzone - FUNCTIONAL */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileUp className="h-4 w-4" />
-                Dokument hochladen
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-                  border-2 border-dashed rounded-lg p-6 text-center transition-colors
-                  ${isDragging 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-muted-foreground/25 hover:border-primary/50'
-                  }
-                  ${isUploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}
-                `}
-              >
-                {isUploading ? (
-                  <div className="space-y-2">
-                    <Loader2 className="h-8 w-8 mx-auto text-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground">{progress.message}</p>
-                    <Progress value={progress.progress} className="h-1" />
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Dokumente hier ablegen oder
-                    </p>
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        className="sr-only"
-                        multiple
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                        onChange={handleFileInputChange}
-                      />
-                      <span className="text-sm text-primary hover:underline">
-                        Dateien auswählen
-                      </span>
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      PDF, Bilder, Office-Dokumente
-                    </p>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Multi-Lease Info if applicable */}
           {(formData as any).leasesCount > 1 && (

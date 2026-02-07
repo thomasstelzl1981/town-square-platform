@@ -42,9 +42,10 @@ interface DocumentLink {
 interface DatenraumTabProps {
   propertyId: string;
   tenantId: string;
+  propertyCode?: string; // Akten-ID (e.g., IMM-2026-00001) for structured storage paths
 }
 
-export function DatenraumTab({ propertyId, tenantId }: DatenraumTabProps) {
+export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTabProps) {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -140,6 +141,10 @@ export function DatenraumTab({ propertyId, tenantId }: DatenraumTabProps) {
 
     for (const file of files) {
       try {
+        // Get selected folder name for subfolder path
+        const selectedNode = selectedNodeId ? nodes?.find(n => n.id === selectedNodeId) : null;
+        const subfolder = selectedNode?.name;
+
         // Get upload URL from edge function
         const { data: session } = await supabase.auth.getSession();
         const response = await fetch(
@@ -154,7 +159,13 @@ export function DatenraumTab({ propertyId, tenantId }: DatenraumTabProps) {
               filename: file.name,
               mime_type: file.type,
               size_bytes: file.size,
-              folder: `immobilien/${propertyId}`,
+              // Use new structured path if propertyCode available
+              ...(propertyCode ? {
+                property_code: propertyCode,
+                subfolder: subfolder,
+              } : {
+                folder: `immobilien/${propertyId}`,
+              }),
             }),
           }
         );

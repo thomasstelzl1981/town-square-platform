@@ -9,7 +9,9 @@ interface UploadRequest {
   filename: string;
   mime_type: string;
   size_bytes?: number;
-  folder?: string; // optional subfolder within tenant folder
+  folder?: string; // legacy: optional subfolder within tenant folder
+  property_code?: string; // Akten-ID (e.g., IMM-2026-00001)
+  subfolder?: string; // folder name from storage_nodes (e.g., 07_Kaufvertrag)
 }
 
 Deno.serve(async (req) => {
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
     const tenantId = profile.active_tenant_id;
 
     // Parse request body
-    const { filename, mime_type, size_bytes, folder }: UploadRequest = await req.json();
+    const { filename, mime_type, size_bytes, folder, property_code, subfolder }: UploadRequest = await req.json();
 
     if (!filename || !mime_type) {
       return new Response(
@@ -71,12 +73,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate unique file path: {tenant_id}/{folder?}/{timestamp}_{filename}
+    // Generate unique file path based on context
     const timestamp = Date.now();
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const filePath = folder 
-      ? `${tenantId}/${folder}/${timestamp}_${safeName}`
-      : `${tenantId}/${timestamp}_${safeName}`;
+    
+    let filePath: string;
+    if (property_code) {
+      // New structured path: {tenant_id}/Immobilien/{property_code}/{subfolder}/{timestamp}_{filename}
+      const safePropertyCode = property_code.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeSubfolder = subfolder ? subfolder.replace(/[^a-zA-Z0-9._-äöüÄÖÜß ]/g, "_") : "Allgemein";
+      filePath = `${tenantId}/Immobilien/${safePropertyCode}/${safeSubfolder}/${timestamp}_${safeName}`;
+    } else if (folder) {
+      // Legacy path with folder
+      filePath = `${tenantId}/${folder}/${timestamp}_${safeName}`;
+    } else {
+      // Fallback path
+      filePath = `${tenantId}/raw/${timestamp}_${safeName}`;
+    }
 
     // Use service role client for storage operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
