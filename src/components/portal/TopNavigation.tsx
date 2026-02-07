@@ -65,10 +65,12 @@ export function TopNavigation() {
         <AreaTabs />
       </div>
       
-      {/* Level 2: Module Tabs */}
-      <div className="border-b">
-        <ModuleTabs modules={areaModules} activeModule={activeModule} />
-      </div>
+      {/* Level 2: Module Tabs - only when an area is active */}
+      {activeArea && (
+        <div className="border-b">
+          <ModuleTabs modules={areaModules} activeModule={activeModule} />
+        </div>
+      )}
       
       {/* Level 3: Sub Tabs (only when a module is active and not on Area-Overview) */}
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
