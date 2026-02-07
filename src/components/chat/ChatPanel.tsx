@@ -107,43 +107,47 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col bg-sidebar",
+          "flex flex-col",
+          // Only apply bg-sidebar when NOT in docked mode (Armstrong uses transparent)
+          position !== "docked" && "bg-sidebar",
           positionClasses[position],
           className
         )}
         {...props}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
-              <Bot className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Armstrong</h3>
-              <div className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
-                <span className="text-xs text-muted-foreground">Online</span>
+        {/* Header - Only show when NOT docked (Armstrong has its own header) */}
+        {position !== "docked" && (
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Armstrong</h3>
+                <div className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
+                  <span className="text-xs text-muted-foreground">Online</span>
+                </div>
               </div>
             </div>
+            <div className="flex items-center gap-1">
+              {onToggleSize && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onToggleSize}>
+                  {isMinimized ? (
+                    <Maximize2 className="h-4 w-4" />
+                  ) : (
+                    <Minimize2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+              {onClose && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {onToggleSize && (
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onToggleSize}>
-                {isMinimized ? (
-                  <Maximize2 className="h-4 w-4" />
-                ) : (
-                  <Minimize2 className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {onClose && (
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Context Badge */}
         {contextPath && (
@@ -161,7 +165,9 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-center">
-                <Bot className="h-8 w-8 text-muted-foreground mb-2" />
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(42_76%_52%)] via-[hsl(217_70%_45%)] to-[hsl(275_45%_35%)] opacity-60 flex items-center justify-center mb-3">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Wie kann ich Ihnen helfen?
                 </p>
@@ -179,22 +185,22 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
                     className={cn(
                       "flex items-center justify-center h-7 w-7 rounded-full shrink-0",
                       message.role === "assistant"
-                        ? "bg-primary/10"
+                        ? "bg-gradient-to-br from-[hsl(42_76%_52%/0.2)] to-[hsl(217_70%_45%/0.2)]"
                         : "bg-muted"
                     )}
                   >
                     {message.role === "assistant" ? (
-                      <Bot className="h-3.5 w-3.5 text-primary" />
+                      <Bot className="h-3.5 w-3.5 text-[hsl(217_70%_45%)]" />
                     ) : (
                       <span className="text-xs font-medium">Du</span>
                     )}
                   </div>
                   <div
                     className={cn(
-                      "rounded-lg px-3 py-2 text-sm max-w-[85%]",
+                      "rounded-2xl px-3.5 py-2.5 text-sm max-w-[85%]",
                       message.role === "assistant"
-                        ? "bg-muted"
-                        : "bg-primary text-primary-foreground"
+                        ? "armstrong-message-assistant"
+                        : "armstrong-message-user"
                     )}
                   >
                     {message.content}
@@ -237,21 +243,21 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           )}
         </div>
 
-        {/* Input */}
-        <div className="p-4 border-t">
-          <div className="flex items-center gap-2">
+        {/* Input - Floating iOS Style */}
+        <div className="p-3">
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/50 backdrop-blur-sm">
             <div className="relative flex-1">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Nachricht eingeben..."
-                className="pr-10"
+                className="pr-10 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-full"
                 title="Spracheingabe (Whisperflow)"
               >
                 <Mic className="h-4 w-4" />
@@ -259,11 +265,16 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
             </div>
             <Button
               size="sm"
-              className="h-9 w-9 p-0"
+              className={cn(
+                "h-8 w-8 p-0 rounded-full transition-all",
+                input.trim() 
+                  ? "bg-gradient-to-br from-[hsl(42_76%_52%)] to-[hsl(217_70%_45%)] hover:opacity-90" 
+                  : "bg-muted"
+              )}
               onClick={handleSend}
               disabled={!input.trim()}
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 text-white" />
             </Button>
           </div>
         </div>

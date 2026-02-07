@@ -1,13 +1,10 @@
 /**
- * ARMSTRONG CONTAINER — Desktop Fixed Planetary Mini-Chat
+ * ARMSTRONG CONTAINER — Orbital Glass Design
  * 
- * Collapsed State: Planetary widget (192px) with input, upload, send - FIXED bottom-right
- * Expanded State: Chat panel (320x500px) with gradient header - FIXED bottom-right
+ * Collapsed State: Textured planetary widget (160px) with gold-blue gradient
+ * Expanded State: Glass panel (320x500px) with theme-adaptive styling
  * 
- * Uses createPortal to render directly into document.body to bypass any
- * transform/overflow issues from parent containers.
- * 
- * Desktop only: Fixed position, toggle via SystemBar Rocket button
+ * Design: Mode-independent planet + theme-adaptive glass panels
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -24,9 +21,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 
 export function ArmstrongContainer() {
   const location = useLocation();
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
   const { armstrongVisible, armstrongExpanded, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
   const [isDragOver, setIsDragOver] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -34,12 +34,10 @@ export function ArmstrongContainer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Ensure we only render portal after mount (SSR safety)
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Derive context from current route
   const getContext = () => {
     const path = location.pathname;
     const segments = path.split('/').filter(Boolean);
@@ -50,7 +48,6 @@ export function ArmstrongContainer() {
     };
   };
 
-  // Drag and drop handlers for files
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -64,31 +61,25 @@ export function ArmstrongContainer() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      // Expand and pass file to chat
       toggleArmstrongExpanded();
     }
   }, [toggleArmstrongExpanded]);
 
-  // Handle input focus -> expand
   const handleInputFocus = useCallback(() => {
     toggleArmstrongExpanded();
   }, [toggleArmstrongExpanded]);
 
-  // Handle upload button click
   const handleUploadClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     fileInputRef.current?.click();
   }, []);
 
-  // Handle file selection
   const handleFileChange = useCallback(() => {
     toggleArmstrongExpanded();
   }, [toggleArmstrongExpanded]);
 
-  // Handle send button click
   const handleSendClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (inputValue.trim()) {
@@ -96,15 +87,12 @@ export function ArmstrongContainer() {
     }
   }, [inputValue, toggleArmstrongExpanded]);
 
-  // Don't render if not visible, on mobile, or not mounted
   if (!armstrongVisible || isMobile || !mounted) {
     return null;
   }
 
-  // The Armstrong widget content
   const armstrongContent = (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
-      {/* Anchor wrapper - positions Armstrong bottom-right with safe-area support */}
       <div 
         className="absolute pointer-events-auto"
         style={{
@@ -113,36 +101,36 @@ export function ArmstrongContainer() {
         }}
       >
         {armstrongExpanded ? (
-          /* EXPANDED: Full chat panel with gradient header - ALWAYS dark space theme */
+          /* EXPANDED: Glass Chat Panel - Theme Adaptive */
           <div 
             ref={containerRef}
             className={cn(
-              'w-80 rounded-2xl shadow-xl flex flex-col overflow-hidden',
-              'ring-2 ring-[hsl(217_91%_60%/0.3)]',
-              'bg-[hsl(222_47%_11%)]', // Fixed dark background
-              isDragOver && 'ring-2 ring-[hsl(217_91%_60%)] ring-inset'
+              'w-80 rounded-[20px] flex flex-col overflow-hidden',
+              'armstrong-panel-shadow',
+              isDarkMode ? 'armstrong-glass-dark' : 'armstrong-glass-light',
+              isDragOver && 'ring-2 ring-[hsl(42_76%_52%)]'
             )}
-            style={{ 
-              height: 500,
-              boxShadow: '0 8px 32px -8px rgba(0,0,0,0.5), 0 0 48px -12px hsl(217 91% 60% / 0.4)'
-            }}
+            style={{ height: 500 }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Header with fixed space gradient */}
-            <div className="flex items-center justify-between p-3 bg-gradient-to-br from-[hsl(217_91%_60%)] via-[hsl(217_91%_50%/0.8)] to-[hsl(280_60%_20%/0.7)]">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <Bot className="h-3 w-3 text-white" />
+            {/* Header with Gold→Blue Gradient */}
+            <div className="flex items-center justify-between p-3 armstrong-header-gradient">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Bot className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="font-medium text-sm text-white">Armstrong</span>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm text-white leading-tight">Armstrong</span>
+                  <span className="text-[10px] text-white/60 leading-tight">AI Co-Pilot</span>
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-white/80 hover:text-white hover:bg-white/20"
+                  className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition-colors"
                   onClick={toggleArmstrongExpanded}
                   title="Minimieren"
                 >
@@ -151,7 +139,7 @@ export function ArmstrongContainer() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-full text-white/80 hover:text-white hover:bg-white/20"
+                  className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition-colors"
                   onClick={hideArmstrong}
                   title="Schließen"
                 >
@@ -160,39 +148,57 @@ export function ArmstrongContainer() {
               </div>
             </div>
 
-            {/* Chat Panel */}
+            {/* Chat Panel with transparent background */}
             <div className="flex-1 overflow-hidden">
               <ChatPanel 
                 context={getContext()}
                 position="docked"
+                className="bg-transparent"
               />
             </div>
           </div>
         ) : (
-          /* COLLAPSED: Planetary Widget - ALWAYS dark space theme */
+          /* COLLAPSED: Orbital Planet Widget - Mode Independent */
           <div 
             ref={containerRef}
             className={cn(
-              'h-48 w-48 rounded-full',
-              // Fixed space gradient - same in light & dark mode
-              'bg-gradient-to-br from-[hsl(217_91%_60%)] via-[hsl(217_91%_50%/0.8)] to-[hsl(280_60%_20%/0.7)]',
-              'ring-4 ring-[hsl(217_91%_60%/0.3)]',
-              'shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),_0_0_48px_-12px_hsl(217_91%_60%/0.4)]',
-              'hover:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.5),_0_0_64px_-8px_hsl(217_91%_60%/0.5)]',
-              'hover:scale-105 transition-all duration-300',
-              'flex flex-col items-center justify-center gap-3 p-5',
-              'relative overflow-hidden',
-              isDragOver && 'ring-4 ring-white/50 scale-110'
+              'h-40 w-40 rounded-full',
+              'armstrong-planet armstrong-glow-ring',
+              'hover:scale-105 transition-all duration-300 ease-out',
+              'flex flex-col items-center justify-center gap-2.5 p-4',
+              'cursor-pointer',
+              isDragOver && 'scale-110 ring-4 ring-white/40'
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Light reflection (planetary highlight top-left) */}
-            <div className="absolute top-5 left-5 h-10 w-10 rounded-full bg-white/15 blur-md pointer-events-none" />
+            {/* Light reflection - top left highlight */}
+            <div 
+              className="absolute top-4 left-4 h-12 w-12 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, hsla(48, 85%, 78%, 0.5) 0%, transparent 60%)',
+                filter: 'blur(6px)',
+              }}
+            />
             
-            {/* Atmospheric shimmer (bottom-right) */}
-            <div className="absolute bottom-4 right-4 h-8 w-8 rounded-full bg-purple-400/10 blur-sm pointer-events-none" />
+            {/* Secondary highlight - creates depth */}
+            <div 
+              className="absolute top-8 left-8 h-6 w-6 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.6) 0%, transparent 70%)',
+                filter: 'blur(2px)',
+              }}
+            />
+            
+            {/* Atmospheric rim glow - bottom right */}
+            <div 
+              className="absolute bottom-3 right-3 h-10 w-10 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, hsl(280 50% 50% / 0.3) 0%, transparent 70%)',
+                filter: 'blur(8px)',
+              }}
+            />
             
             {/* Hidden file input */}
             <input 
@@ -202,13 +208,15 @@ export function ArmstrongContainer() {
               onChange={handleFileChange}
             />
             
-            {/* Bot Icon + Label - fixed white text */}
+            {/* Bot Icon + Label */}
             <div className="flex items-center gap-2 relative z-10">
-              <Bot className="h-5 w-5 text-white/90" />
-              <span className="text-xs font-medium text-white/80">Armstrong</span>
+              <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Bot className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-xs font-medium text-white/90 tracking-wide">Armstrong</span>
             </div>
             
-            {/* Input Field - fixed white text */}
+            {/* Glass Input Field */}
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -216,37 +224,33 @@ export function ArmstrongContainer() {
               onClick={(e) => e.stopPropagation()}
               placeholder="Fragen..."
               className={cn(
-                'w-full h-10 rounded-full bg-white/20 border-0 relative z-10',
+                'w-full h-9 rounded-full armstrong-input relative z-10',
                 'text-sm text-white placeholder:text-white/50',
                 'px-4 text-center',
-                'focus:outline-none focus:bg-white/30',
-                'transition-colors'
+                'transition-all duration-200'
               )}
             />
             
-            {/* Upload + Send Buttons - fixed white icons */}
-            <div className="flex items-center gap-3 relative z-10">
+            {/* Glass Action Buttons */}
+            <div className="flex items-center gap-2.5 relative z-10">
               <button 
                 onClick={handleUploadClick}
-                className={cn(
-                  'h-8 w-8 rounded-full bg-white/20 hover:bg-white/30',
-                  'flex items-center justify-center',
-                  'transition-colors'
-                )}
+                className="h-8 w-8 rounded-full armstrong-btn-glass flex items-center justify-center"
                 title="Datei anhängen"
               >
-                <Paperclip className="h-4 w-4 text-white/80" />
+                <Paperclip className="h-3.5 w-3.5 text-white/80" />
               </button>
               <button 
                 onClick={handleSendClick}
                 className={cn(
-                  'h-8 w-8 rounded-full bg-white/30 hover:bg-white/40',
-                  'flex items-center justify-center',
-                'transition-colors'
+                  'h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200',
+                  inputValue.trim() 
+                    ? 'bg-white/30 hover:bg-white/40' 
+                    : 'armstrong-btn-glass'
                 )}
                 title="Senden"
               >
-                <Send className="h-4 w-4 text-white" />
+                <Send className="h-3.5 w-3.5 text-white" />
               </button>
             </div>
           </div>
@@ -255,6 +259,5 @@ export function ArmstrongContainer() {
     </div>
   );
 
-  // Render via portal directly into document.body
   return createPortal(armstrongContent, document.body);
 }
