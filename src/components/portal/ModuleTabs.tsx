@@ -10,28 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { ModuleDefinition } from '@/manifests/routesManifest';
-import { 
-  Users,
-  Sparkles,
-  FolderOpen,
-  Building2,
-  FileText,
-  Tag,
-  Landmark,
-  Search,
-  Handshake,
-  Target,
-  Home,
-  Briefcase,
-  FolderKanban,
-  Mail,
-  GraduationCap,
-  Wrench,
-  Car,
-  LineChart,
-  Sun,
-  LucideIcon
-} from 'lucide-react';
+import { Users, Sparkles, FolderOpen, Building2, FileText, Tag, Landmark, Search, Handshake, Target, Home, Briefcase, FolderKanban, Mail, GraduationCap, Wrench, Car, LineChart, Sun, LucideIcon } from 'lucide-react';
 
 // Icon mapping for modules
 const iconMap: Record<string, LucideIcon> = {
@@ -53,60 +32,47 @@ const iconMap: Record<string, LucideIcon> = {
   'Wrench': Wrench,
   'Car': Car,
   'LineChart': LineChart,
-  'Sun': Sun,
+  'Sun': Sun
 };
-
 interface ModuleWithMeta {
   code: string;
   module: ModuleDefinition;
   displayLabel: string;
 }
-
 interface ModuleTabsProps {
   modules: ModuleWithMeta[];
   activeModule?: ModuleWithMeta;
 }
-
-export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
-  const { isDevelopmentMode } = useAuth();
-  const { setSubTabsVisible } = usePortalLayout();
-
+export function ModuleTabs({
+  modules,
+  activeModule
+}: ModuleTabsProps) {
+  const {
+    isDevelopmentMode
+  } = useAuth();
+  const {
+    setSubTabsVisible
+  } = usePortalLayout();
   if (modules.length === 0) {
-    return (
-      <div className="px-4 py-3 text-sm text-muted-foreground">
-        Keine Module in diesem Bereich verfügbar
-      </div>
-    );
+    return <div className="px-4 py-3 text-sm text-muted-foreground">
+    </div>;
   }
+  return <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none">
+      {modules.map(({
+      code,
+      module,
+      displayLabel
+    }) => {
+      const Icon = iconMap[module.icon] || Briefcase;
+      const route = `/portal/${module.base}`;
+      const isActive = activeModule?.code === code;
 
-  return (
-    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none">
-      {modules.map(({ code, module, displayLabel }) => {
-        const Icon = iconMap[module.icon] || Briefcase;
-        const route = `/portal/${module.base}`;
-        const isActive = activeModule?.code === code;
-        
-        // Check if module requires activation (but allow in dev mode)
-        const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
-        
-        return (
-          <NavLink
-            key={code}
-            to={route}
-            onClick={() => setSubTabsVisible(true)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium uppercase tracking-wide whitespace-nowrap',
-              isActive
-                ? 'bg-accent/80 backdrop-blur-sm text-accent-foreground'
-                : 'nav-tab-glass text-muted-foreground hover:text-foreground',
-              requiresActivation && 'opacity-50'
-            )}
-          >
+      // Check if module requires activation (but allow in dev mode)
+      const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
+      return <NavLink key={code} to={route} onClick={() => setSubTabsVisible(true)} className={cn('flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap', isActive ? 'bg-accent/80 backdrop-blur-sm text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-white/10 backdrop-blur-sm', requiresActivation && 'opacity-50')}>
             <Icon className="h-4 w-4" />
             <span>{displayLabel}</span>
-          </NavLink>
-        );
-      })}
-    </div>
-  );
+          </NavLink>;
+    })}
+    </div>;
 }
