@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ interface Profile {
 export function BriefTab() {
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
+  const [searchParams] = useSearchParams();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [subject, setSubject] = useState('');
@@ -83,6 +85,7 @@ export function BriefTab() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
   const [showCreateContext, setShowCreateContext] = useState(false);
+  const [prefillApplied, setPrefillApplied] = useState(false);
 
   // Fetch profile for private sender
   const { data: profile } = useQuery({
@@ -159,6 +162,28 @@ export function BriefTab() {
       return data as Contact[];
     },
   });
+
+  // Pre-fill from URL parameters (from TenancyTab links)
+  useEffect(() => {
+    if (prefillApplied || contacts.length === 0) return;
+
+    const contactId = searchParams.get('contactId');
+    const subjectParam = searchParams.get('subject');
+    const promptParam = searchParams.get('prompt');
+
+    if (contactId || subjectParam || promptParam) {
+      if (subjectParam) setSubject(subjectParam);
+      if (promptParam) setPrompt(promptParam);
+
+      // Auto-select contact if passed via URL
+      if (contactId) {
+        const contact = contacts.find(c => c.id === contactId);
+        if (contact) setSelectedContact(contact);
+      }
+
+      setPrefillApplied(true);
+    }
+  }, [searchParams, contacts, prefillApplied]);
 
   // Fetch recent drafts
   const { data: recentDrafts = [] } = useQuery({
