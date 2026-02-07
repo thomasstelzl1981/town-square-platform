@@ -31,6 +31,7 @@ import {
   Mountain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppLogo } from './AppLogo';
 
 export function SystemBar() {
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
@@ -102,20 +103,17 @@ export function SystemBar() {
           <Link 
             to="/portal" 
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
+              'flex items-center justify-center p-2 rounded-lg transition-colors',
               'text-muted-foreground hover:text-foreground hover:bg-accent'
             )}
+            title="Zur Portal-Startseite"
           >
-            <Home className="h-4 w-4" />
-            <span className="text-sm font-medium hidden sm:inline">Portal</span>
+            <Home className="h-5 w-5" />
           </Link>
 
-          {/* Logo placeholder - neutral, no branding */}
-          <div className="hidden md:flex items-center gap-2 text-muted-foreground">
-            <div className="h-6 w-6 rounded bg-muted flex items-center justify-center text-xs font-bold">
-              S
-            </div>
-            <span className="text-sm font-medium">System of a Town</span>
+          {/* Logo - Theme-aware */}
+          <div className="hidden md:flex items-center">
+            <AppLogo size="sm" />
           </div>
         </div>
 
