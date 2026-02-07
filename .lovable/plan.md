@@ -1,148 +1,138 @@
 
-# Umbau der Immobilienakte: Header-Buttons entfernen & Beschreibungs-Block erweitern
+# Konsistente Akten-ID (property.code) über den gesamten Golden Path
 
-## Übersicht der Änderungen
+## Problemanalyse
 
-Diese Änderung verbessert die UX der Immobilienakte durch:
-1. Entfernung der redundanten Header-Buttons "Bearbeiten" und "Beschreibung generieren"
-2. Umstrukturierung des Adress-Blocks zu "Lage & Beschreibung"
-3. Integration der KI-Beschreibungsgenerierung direkt im Block
+### Aktueller Zustand
 
-**OHNE Google Maps** — diese Funktion existiert bereits im Tab "Exposé".
-
----
-
-## Änderung 1: Header-Buttons entfernen
-
-**Datei:** `src/pages/portal/immobilien/PropertyDetailPage.tsx`
-
-**Aktuell (Zeilen 337-357):**
-```tsx
-<div className="flex gap-2">
-  <Button variant="outline" asChild className="no-print">
-    <Link to={`/portal/immobilien/${id}/edit`}>
-      <Edit className="mr-2 h-4 w-4" />
-      Bearbeiten
-    </Link>
-  </Button>
-  <Button 
-    variant="outline" 
-    onClick={handleGenerateDescription}
-    disabled={isGeneratingDescription}
-    className="no-print"
-  >
-    Beschreibung generieren
-  </Button>
-</div>
-```
-
-**Nachher:**
-Das gesamte `<div className="flex gap-2">` mit beiden Buttons wird entfernt.
-
-**Begründung:**
-- "Bearbeiten" ist überflüssig — alle Felder sind bereits inline editierbar
-- "Beschreibung generieren" wird in den passenden Kontext-Block verschoben
-
----
-
-## Änderung 2: Block umbenennen und erweitern
-
-**Datei:** `src/components/immobilienakte/editable/EditableAddressBlock.tsx`
-
-| Vorher | Nachher |
-|--------|---------|
-| Titel: "Adresse & Lage" | Titel: "Lage & Beschreibung" |
-| Label: "Lage-Notizen" | Label: "Objektbeschreibung" |
-| Textarea: 2 Zeilen | Textarea: 5 Zeilen |
-| — | Neuer Button: "✨ KI-Generieren" |
-
-**Neue Block-Struktur:**
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 📍 LAGE & BESCHREIBUNG                                          │
-├─────────────────────────────────────────────────────────────────┤
-│ Straße: [_____________]  Hausnr.: [___]                         │
-│ PLZ: [_____]  Ort: [_______________]                            │
-├─────────────────────────────────────────────────────────────────┤
-│ Lagebezeichnung: [___________________________________]          │
-├─────────────────────────────────────────────────────────────────┤
-│ Objektbeschreibung:                           [✨ KI-Generieren]│
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Textarea mit 5 Zeilen für strukturierte Beschreibung       │ │
-│ │ (Lage, Mikrolage, Objekteigenschaften)                     │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│ Breitengrad: [_______]  Längengrad: [_______]                   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Änderung 3: Neue Props für KI-Generierung
-
-**Erweiterte Props für `EditableAddressBlock`:**
+Beim Anlegen einer neuen Immobilie über `CreatePropertyDialog`:
 
 ```typescript
-interface EditableAddressBlockProps {
-  // Adresse (bestehend)
-  street: string;
-  houseNumber?: string;
-  postalCode: string;
-  city: string;
-  locationLabel?: string;
-  latitude?: number;
-  longitude?: number;
-  
-  // NEU: Beschreibung (ersetzt locationNotes)
-  description?: string;
-  
-  // NEU: Property-Daten für KI-Generierung
-  propertyType?: string;
-  buildYear?: number;
-  totalAreaSqm?: number;
-  heatingType?: string;
-  energySource?: string;
-  
-  onFieldChange: (field: string, value: any) => void;
-}
+// src/components/portfolio/CreatePropertyDialog.tsx (Zeile 64-72)
+const { data, error } = await supabase
+  .from('properties')
+  .insert({
+    tenant_id: activeOrganization.id,
+    city: formData.city,
+    address: formData.address,
+    property_type: formData.property_type,
+  })
+```
+
+**PROBLEM:** Es wird KEIN `code` übergeben!
+
+### Datenbank-Status
+
+| Feld | Default-Wert | Trigger | Ergebnis |
+|------|--------------|---------|----------|
+| `id` | `gen_random_uuid()` | — | ✅ Automatisch |
+| `public_id` | — | `trg_set_property_public_id` → `SOT-I-XXXXXXXX` | ✅ Automatisch |
+| **`code`** | **KEINER** | **KEINER** | ❌ **NULL** |
+
+### Auswirkungen auf den Golden Path
+
+```text
+1. CreatePropertyDialog
+   └── INSERT properties → code = NULL ❌
+
+2. Trigger: create_property_folder_structure()
+   └── prop_label := COALESCE(NEW.code, '') || ' - ' || NEW.address
+   └── Ergebnis: " - Musterstraße 42" (fehlerhaft!)
+
+3. ExposeTab
+   └── {property.code && ...} → Zeigt nichts an ❌
+
+4. Listings (Verkaufs-/Miet-Exposé)
+   └── Kein code-Bezug in der ID ❌
+
+5. Storage-Pfad (geplant)
+   └── /Immobilien/{code}/... → /Immobilien/null/... ❌
 ```
 
 ---
 
-## Änderung 4: KI-Button im Block
+## Lösungsplan
 
-**Neue Sektion im EditableAddressBlock:**
+### Schritt 1: Automatische Code-Generierung (Datenbank-Trigger)
 
-```tsx
-<div className="space-y-1.5">
-  <div className="flex items-center justify-between">
-    <Label className="text-xs text-muted-foreground">Objektbeschreibung</Label>
-    <Button 
-      variant="ghost" 
-      size="sm" 
-      onClick={handleGenerateDescription}
-      disabled={isGenerating}
-      className="h-6 px-2 text-xs"
-    >
-      {isGenerating ? (
-        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-      ) : (
-        <Sparkles className="h-3 w-3 mr-1" />
-      )}
-      KI-Generieren
-    </Button>
-  </div>
-  <Textarea 
-    value={description || ''} 
-    onChange={(e) => onFieldChange('description', e.target.value)}
-    placeholder="Strukturierte Beschreibung zu Lage, Mikrolage und Objekteigenschaften..."
-    rows={5}
-  />
-</div>
+Neuer Trigger für `properties.code` mit Format: `IMM-{YYYY}-{SEQUENCE}`
+
+```sql
+-- Beispiel-Ergebnis: IMM-2026-00001
+CREATE OR REPLACE FUNCTION public.generate_property_code()
+RETURNS TRIGGER AS $$
+DECLARE
+  year_str TEXT;
+  seq_num INTEGER;
+  new_code TEXT;
+BEGIN
+  -- Nur wenn code NULL oder leer ist
+  IF NEW.code IS NULL OR NEW.code = '' THEN
+    year_str := EXTRACT(YEAR FROM CURRENT_DATE)::TEXT;
+    
+    -- Nächste Sequenznummer für dieses Jahr und diesen Tenant
+    SELECT COALESCE(MAX(
+      NULLIF(REGEXP_REPLACE(code, '^IMM-' || year_str || '-', ''), code)::INTEGER
+    ), 0) + 1
+    INTO seq_num
+    FROM properties 
+    WHERE tenant_id = NEW.tenant_id 
+      AND code LIKE 'IMM-' || year_str || '-%';
+    
+    new_code := 'IMM-' || year_str || '-' || LPAD(seq_num::TEXT, 5, '0');
+    NEW.code := new_code;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_generate_property_code
+  BEFORE INSERT ON properties
+  FOR EACH ROW
+  EXECUTE FUNCTION generate_property_code();
 ```
 
-Die KI-Funktion ruft die bestehende Edge Function `sot-expose-description` auf.
+**Format-Ergebnis:**
+- Erste Immobilie 2026: `IMM-2026-00001`
+- Zweite Immobilie 2026: `IMM-2026-00002`
+- Erste Immobilie 2027: `IMM-2027-00001`
+
+### Schritt 2: Storage-Ordner-Trigger aktualisieren
+
+Der `create_property_folder_structure()` Trigger nutzt bereits `NEW.code`, aber der läuft **NACH** dem Insert. Da der Code-Trigger BEFORE INSERT läuft, ist `NEW.code` bereits gesetzt.
+
+**Keine Änderung nötig** — der Trigger verwendet bereits:
+```sql
+prop_label := COALESCE(NEW.code, '') || CASE WHEN NEW.code IS NOT NULL THEN ' - ' ELSE '' END || NEW.address;
+```
+
+### Schritt 3: Listings mit Property-Code verknüpfen
+
+Bei Erstellung eines Listings den `code` als Referenz speichern:
+
+**Datei:** `src/pages/portal/verkauf/ExposeDetail.tsx` (Zeile 216-227)
+
+```typescript
+// Vorher:
+title: `${property.address || 'Immobilie'}, ${property.city || ''} ...`
+
+// Nachher (optional, für Konsistenz):
+title: `${property.code ? property.code + ' – ' : ''}${property.address || 'Immobilie'}, ${property.city || ''} ...`
+```
+
+### Schritt 4: Upload-Pfad mit Code
+
+**Datei:** `supabase/functions/sot-dms-upload-url/index.ts`
+
+Der Storage-Pfad soll den `code` nutzen:
+```typescript
+// Neuer Pfad:
+tenant-documents/{tenant_id}/Immobilien/{property_code}/{subfolder}/{timestamp}_{filename}
+
+// Beispiel:
+tenant-documents/abc123/Immobilien/IMM-2026-00001/07_Kaufvertrag/1738949123_Kaufvertrag.pdf
+```
 
 ---
 
@@ -150,44 +140,91 @@ Die KI-Funktion ruft die bestehende Edge Function `sot-expose-description` auf.
 
 | Datei | Änderung |
 |-------|----------|
-| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Header-Buttons entfernen (Zeilen 337-357) |
-| `src/components/immobilienakte/editable/EditableAddressBlock.tsx` | Block umbenennen, Props erweitern, KI-Button hinzufügen |
-| `src/components/immobilienakte/EditableUnitDossierView.tsx` | Neue Props an Block übergeben |
+| **Neue Migration** | Trigger `trg_generate_property_code` erstellen |
+| `supabase/functions/sot-dms-upload-url/index.ts` | `property_code` Parameter akzeptieren |
+| `src/components/portfolio/DatenraumTab.tsx` | `property.code` an Upload übergeben |
+| `src/components/immobilienakte/EditableUnitDossierView.tsx` | Upload-Zone entfernen |
+| `src/pages/portal/verkauf/ExposeDetail.tsx` | Code in Listing-Titel (optional) |
 
 ---
 
-## Visuelles Ergebnis
+## Golden Path nach Implementierung
 
-**Vorher (Header):**
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ 1. ANLAGE (CreatePropertyDialog)                                    │
+│    INSERT properties (city, address, property_type)                 │
+│    ↓                                                                │
+│    TRIGGER: trg_generate_property_code                             │
+│    └── code = "IMM-2026-00001" ✅                                   │
+│    ↓                                                                │
+│    TRIGGER: trg_set_property_public_id                             │
+│    └── public_id = "SOT-I-ABC12345" ✅                              │
+│    ↓                                                                │
+│    TRIGGER: create_property_folder_structure                        │
+│    └── storage_node.name = "IMM-2026-00001 - Musterstraße 42" ✅    │
+├─────────────────────────────────────────────────────────────────────┤
+│ 2. IMMOBILIENAKTE                                                   │
+│    property.code = "IMM-2026-00001" → Anzeige im Header ✅          │
+├─────────────────────────────────────────────────────────────────────┤
+│ 3. DATENRAUM                                                        │
+│    Upload → Storage-Pfad:                                           │
+│    /Immobilien/IMM-2026-00001/07_Kaufvertrag/123_Vertrag.pdf ✅     │
+├─────────────────────────────────────────────────────────────────────┤
+│ 4. EXPOSÉ (Verkauf/Vermietung)                                      │
+│    listing.title inkl. code                                         │
+│    "IMM-2026-00001 – Musterstraße 42, Berlin" ✅                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ 5. PORTFOLIO-LISTE                                                  │
+│    Spalte "Akten-ID" zeigt property.code ✅                         │
+└─────────────────────────────────────────────────────────────────────┘
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ ← DEMO-001 – Leipziger Str 42   [Bearbeiten] [✨ Beschreibung generieren] │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Nachher (Header):**
-```
-┌──────────────────────────────────────────────────────────────┐
-│ ← DEMO-001 – Leipziger Str 42                                │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Der KI-Button ist jetzt **kontextnah** im Block "Lage & Beschreibung" platziert.
 
 ---
 
-## Risikominimierung
+## ID-Struktur Übersicht
 
-1. **Keine Datenbank-Änderung nötig** — `description` existiert bereits
-2. **Bestehende Edge Function wird wiederverwendet** — keine Backend-Änderung
-3. **Speichern-Logik bleibt unverändert** — der Sticky Footer speichert alle Änderungen
+| Entität | Interne ID (UUID) | Lesbare ID (code) | System-ID (public_id) |
+|---------|-------------------|-------------------|----------------------|
+| Property | `00000000-...` | `IMM-2026-00001` | `SOT-I-ABC12345` |
+| Unit | `00000000-...` | `WE 42` (manuell) | `SOT-E-XYZ67890` |
+| Contact | `00000000-...` | — | `SOT-K-DEF11111` |
+| Document | `00000000-...` | — | `SOT-D-GHI22222` |
 
 ---
 
 ## Testplan
 
-1. PropertyDetailPage öffnen → Prüfen: Keine Header-Buttons mehr sichtbar
-2. Zum "Lage & Beschreibung" Block scrollen → Prüfen: Neuer Titel
-3. KI-Button klicken → Prüfen: Beschreibung wird generiert und im Textarea angezeigt
-4. Beschreibung manuell bearbeiten → Prüfen: "Ungespeicherte Änderungen" erscheint
-5. Speichern klicken → Prüfen: Beschreibung wird persistiert
+### Test 1: Neue Immobilie anlegen
+1. `/portal/immobilien/portfolio` öffnen
+2. "Neu" klicken → Dialog ausfüllen (Berlin, Teststraße 1, ETW)
+3. **Prüfen:** Nach Weiterleitung zur Akte:
+   - Header zeigt `IMM-2026-XXXXX – Teststraße 1`
+   - Code ist **nicht NULL**
+
+### Test 2: Storage-Ordner prüfen
+1. Datenraum-Tab öffnen
+2. **Prüfen:** Root-Ordner heißt `IMM-2026-XXXXX - Teststraße 1`
+
+### Test 3: Dokument hochladen
+1. Im Datenraum einen Ordner wählen (z.B. `07_Kaufvertrag`)
+2. Datei hochladen
+3. **Prüfen:** Storage-Pfad enthält `/Immobilien/IMM-2026-XXXXX/07_Kaufvertrag/...`
+
+### Test 4: Exposé erstellen
+1. Exposé-Tab öffnen
+2. Wechseln zu "Verkauf" → Objekte → Exposé erstellen
+3. **Prüfen:** Listing-Titel enthält den Code
+
+### Test 5: Portfolio-Liste
+1. `/portal/immobilien/portfolio` öffnen
+2. **Prüfen:** Neue Spalte oder bestehende Anzeige zeigt `IMM-2026-XXXXX`
+
+---
+
+## Risikominimierung
+
+1. **Bestehende Daten:** DEMO-001 bleibt erhalten (Trigger nur bei NULL)
+2. **Keine Breaking Changes:** Format ist abwärtskompatibel
+3. **Schrittweise:** Migration → Frontend → Edge Function
+4. **Rollback:** Trigger kann entfernt werden ohne Datenverlust
