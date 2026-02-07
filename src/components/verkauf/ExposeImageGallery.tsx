@@ -198,9 +198,9 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
           <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="w-20 h-20 rounded-lg" />
+              <Skeleton key={i} className="w-40 h-40 rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -234,7 +234,7 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
       </CardHeader>
       <CardContent>
         <TooltipProvider delayDuration={300}>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {/* Image Thumbnails */}
             {images.map((img, index) => {
               const url = signedUrls[img.id];
@@ -246,7 +246,7 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
                 >
                   <button
                     onClick={() => openLightbox(index)}
-                    className="w-20 h-20 bg-muted rounded-lg overflow-hidden transition-all hover:ring-2 hover:ring-primary/50 focus:ring-2 focus:ring-primary"
+                    className="w-40 h-40 bg-muted rounded-lg overflow-hidden transition-all hover:ring-2 hover:ring-primary/50 focus:ring-2 focus:ring-primary"
                   >
                     {url ? (
                       <img 
@@ -294,7 +294,7 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
                 <TooltipTrigger asChild>
                   <Link
                     to={`/portal/immobilien/${propertyId}`}
-                    className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/80 transition-colors"
+                    className="w-40 h-40 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/80 transition-colors"
                   >
                     <Plus className="h-6 w-6 text-muted-foreground" />
                   </Link>
@@ -311,7 +311,7 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
                 {[1, 2, 3].map((i) => (
                   <div 
                     key={i}
-                    className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/25"
+                    className="w-40 h-40 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/25"
                   >
                     <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                   </div>
