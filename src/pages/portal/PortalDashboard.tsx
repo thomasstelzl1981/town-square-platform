@@ -39,14 +39,14 @@ export default function PortalDashboard() {
 
       {/* All three cards in one row on desktop, only Armstrong on mobile */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {/* Google Earth 3D Globe Card - hidden on mobile */}
-        <div className="hidden md:block">
-          <EarthGlobeCard
-            latitude={location?.latitude ?? null}
-            longitude={location?.longitude ?? null}
-            city={location?.city}
-          />
-        </div>
+        {/* Armstrong Greeting - always visible, first position */}
+        <ArmstrongGreetingCard
+          displayName={profile?.display_name || ''}
+          city={location?.city || ''}
+          weather={weather ?? null}
+          todayEvents={todayEvents}
+          isLoading={isLoading}
+        />
 
         {/* Weather Widget - hidden on mobile */}
         <div className="hidden md:block">
@@ -57,14 +57,14 @@ export default function PortalDashboard() {
           />
         </div>
 
-        {/* Armstrong Greeting - always visible */}
-        <ArmstrongGreetingCard
-          displayName={profile?.display_name || ''}
-          city={location?.city || ''}
-          weather={weather ?? null}
-          todayEvents={todayEvents}
-          isLoading={isLoading}
-        />
+        {/* Google Earth 3D Globe Card - hidden on mobile, last position */}
+        <div className="hidden md:block">
+          <EarthGlobeCard
+            latitude={location?.latitude ?? null}
+            longitude={location?.longitude ?? null}
+            city={location?.city}
+          />
+        </div>
       </div>
     </div>
   );
