@@ -1,176 +1,532 @@
 
 
-# Pending Actions Widget — Demo-Implementierung
+# MOD-00 Dashboard + Widget-System — Vollständiger Implementierungsplan
 
-## Überblick
+## 1. Projektstruktur & Dokumentation
 
-Wir erstellen ein **PendingActionsWidget** als Demo auf dem Portal-Dashboard. Es zeigt eine Beispiel-Aktion ("Brief absenden an Max Müller"), die auf Freigabe wartet — ohne echte Datenbankanbindung vorerst, nur als visuelles Widget.
+### 1.1 Neuer Spec-Ordner: MOD-00 Dashboard
 
-## Konzept
+**Neue Datei:** `spec/current/02_modules/mod-00_dashboard.md`
 
-```text
-DASHBOARD LAYOUT (nach Änderung):
-+----------------------------------+----------------------------------+----------------------------------+
-|  ARMSTRONG GREETING              |  WETTER                          |  GOOGLE EARTH                    |
-+----------------------------------+----------------------------------+----------------------------------+
-|                     PENDING ACTIONS WIDGET (volle Breite, darunter)                                 |
-|  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐ |
-|  │  📬 Brief an Max Müller              ⚠️ Mittleres Risiko        [Freigeben] [Abbrechen]        │ |
-|  │  Betreff: Mieterhöhung zum 01.04     Kosten: Kostenlos          Via: E-Mail                    │ |
-|  └────────────────────────────────────────────────────────────────────────────────────────────────┘ |
-+-----------------------------------------------------------------------------------------------------+
+Dieser Spec dokumentiert das Dashboard als eigenständiges Modul mit Armstrong-Integration und Widget-System:
+
+```markdown
+# MOD-00 — DASHBOARD (Widget-Basierte Startseite)
+
+> **Version**: 1.0.0  
+> **Status**: ACTIVE  
+> **Datum**: 2026-02-07  
+> **Zone**: 2 (User Portal)  
+> **Route-Prefix**: `/portal`  
+> **SSOT-Rolle**: Source of Truth für Widget-Anordnung und Dashboard-Konfiguration
+
+## 1. Executive Summary
+
+MOD-00 "Dashboard" ist die zentrale Startseite des Portals. Es zeigt personalisierte Widgets 
+in einem flexiblen, per Drag & Drop sortierbaren Grid. Widgets werden ausschließlich durch 
+Armstrong erstellt und verwaltet.
+
+## 2. FROZEN RULES (Non-Negotiable)
+
+| ID | Regel |
+|----|-------|
+| **R1** | Alle Widgets sind quadratisch (aspect-square) und gleich groß |
+| **R2** | Widgets werden NUR durch Armstrong erstellt (kein manueller Add-Button) |
+| **R3** | Widget-Reihenfolge ist per Drag & Drop frei konfigurierbar |
+| **R4** | System-Widgets (Armstrong, Wetter, Globe) sind nicht löschbar |
+| **R5** | Task-Widgets (Brief, Erinnerung, etc.) entstehen durch Armstrong-Aktionen |
+
+## 3. Widget-Typen
+
+### 3.1 System-Widgets (fest)
+- **armstrong**: KI-Begrüßung mit Kontext (Wetter, Termine)
+- **weather**: Aktuelles Wetter am Standort
+- **globe**: 3D-Erdkugel mit Standort-Anzeige
+
+### 3.2 Task-Widgets (dynamisch via Armstrong)
+- **letter**: Brief zur Freigabe
+- **email**: E-Mail-Entwurf
+- **reminder**: Erinnerung
+- **task**: Aufgabe/To-Do
+- **research**: Web-Recherche Ergebnis
+- **note**: Schnelle Notiz
+- **project**: Projekt-Tracker
+- **idea**: Kreative Idee
+
+## 4. Drag & Drop Spezifikation
+
+- Bibliothek: @dnd-kit/core, @dnd-kit/sortable
+- Strategie: rectSortingStrategy (Grid-basiert)
+- Touch: Long-Press 250ms zum Aktivieren
+- Persistenz: localStorage (Phase 1), später DB
+
+## 5. Armstrong-Integration
+
+Jede Aktion mit `requires_confirmation: true` erzeugt ein Widget im Dashboard.
+User gibt frei oder bricht ab. Nach Ausführung wandert Widget in "Erledigt"-Liste.
 ```
 
-## Neue Komponenten
+### 1.2 KI-Office Spec erweitern
 
-### 1. PendingActionsWidget
-**Datei:** `src/components/dashboard/PendingActionsWidget.tsx`
+**Neue Datei:** `spec/current/02_modules/mod-02_ki-office.md`
 
-Hauptcontainer, der ausstehende Aktionen anzeigt:
-- Glass-Card Design (wie die anderen Dashboard-Kacheln)
-- Header mit "Ausstehende Aktionen" Titel + Badge mit Anzahl
-- Liste der einzelnen PendingActionCard-Komponenten
-- Demo-Daten hart kodiert (später: React Query Hook)
+Ergänzung um den Menüpunkt "Widgets":
 
-### 2. PendingActionCard
-**Datei:** `src/components/dashboard/PendingActionCard.tsx`
+```markdown
+# MOD-02 — KI OFFICE
 
-Kompakte, horizontale Karte für eine einzelne Aktion:
-- Icon links (basierend auf Aktionstyp)
-- Titel + Beschreibung in der Mitte
-- Risiko-Badge + Kosten rechts
-- Freigeben/Abbrechen Buttons
-- Hover-Effekt für Details
+## Sub-Tiles (5 statt 4 — Sonderregelung)
 
-## Design-Stil (konsistent mit bestehenden Kacheln)
+| # | Titel | Route | Icon |
+|---|-------|-------|------|
+| 1 | E-Mail | /portal/office/email | Mail |
+| 2 | Brief | /portal/office/brief | FileText |
+| 3 | Kontakte | /portal/office/kontakte | Users |
+| 4 | Kalender | /portal/office/kalender | Calendar |
+| 5 | **Widgets** | /portal/office/widgets | Layers |
 
-- `glass-card` Klasse mit `border-primary/20`
-- Gradient-Overlay wie bei `ArmstrongGreetingCard`
-- Kompakte Form mit horizontaler Anordnung
-- Responsive: Volle Breite, unter den 3-Spalten-Grid
+### Widgets Tab Spezifikation
 
-## Demo-Daten (Beispiel-Brief)
+Zeigt alle erledigten/archivierten Widgets in kompakter Listenform:
+- Filter nach Widget-Typ
+- Filter nach Status (completed, cancelled)
+- Zeitstempel der Erledigung
+- Option zur Wiederholung (falls anwendbar)
+```
+
+---
+
+## 2. Manifest & Katalog Updates
+
+### 2.1 tile_catalog.yaml — MOD-00 hinzufügen
+
+**Datei:** `manifests/tile_catalog.yaml`
+
+Neuer Eintrag für MOD-00 (vor MOD-01):
+
+```yaml
+# ============================================================================
+# MOD-00: DASHBOARD (NEU)
+# ============================================================================
+MOD-00:
+  code: "MOD-00"
+  title: "Dashboard"
+  icon: "LayoutDashboard"
+  main_route: "/portal"
+  display_order: 0
+  is_active: true
+  
+  visibility:
+    default: true
+    org_types:
+      - client
+      - partner
+      - subpartner
+  
+  sub_tiles: []  # Dashboard hat keine Sub-Tiles, es IST die Startseite
+  
+  features:
+    - widget_grid
+    - drag_drop
+    - armstrong_integration
+```
+
+### 2.2 tile_catalog.yaml — MOD-02 erweitern
+
+5. Sub-Tile "Widgets" hinzufügen:
+
+```yaml
+MOD-02:
+  # ... existing config ...
+  sub_tiles:
+    - title: "E-Mail"
+      route: "/portal/office/email"
+      icon: "Mail"
+      
+    - title: "Brief"
+      route: "/portal/office/brief"
+      icon: "FileText"
+      
+    - title: "Kontakte"
+      route: "/portal/office/kontakte"
+      icon: "Users"
+      
+    - title: "Kalender"
+      route: "/portal/office/kalender"
+      icon: "Calendar"
+    
+    # NEU:
+    - title: "Widgets"
+      route: "/portal/office/widgets"
+      icon: "Layers"
+      description: "Erledigte Widgets & Aufgaben-Archiv"
+```
+
+### 2.3 armstrongManifest.ts — Widget-Aktionen erweitern
+
+**Datei:** `src/manifests/armstrongManifest.ts`
+
+Neue Aktionen für alle Widget-Typen:
 
 ```typescript
-const demoActions = [
+// MOD-00: DASHBOARD WIDGET ACTIONS
+{
+  action_code: 'ARM.MOD00.CREATE_REMINDER',
+  title_de: 'Erinnerung erstellen',
+  description_de: 'Erstellt eine zeitbasierte Erinnerung als Widget',
+  zones: ['Z2'],
+  module: 'MOD-00',
+  risk_level: 'low',
+  requires_confirmation: true,
+  data_scopes_read: [],
+  data_scopes_write: ['widgets'],
+  cost_model: 'free',
+  api_contract: { type: 'internal', endpoint: null },
+  ui_entrypoints: ['/portal'],
+  status: 'active',
+},
+{
+  action_code: 'ARM.MOD00.CREATE_NOTE',
+  title_de: 'Notiz erstellen',
+  description_de: 'Erstellt eine schnelle Notiz als Widget',
+  // ...
+},
+{
+  action_code: 'ARM.MOD00.CREATE_IDEA',
+  title_de: 'Idee festhalten',
+  description_de: 'Speichert eine kreative Idee als Widget',
+  // ...
+},
+{
+  action_code: 'ARM.MOD00.CREATE_PROJECT',
+  title_de: 'Projekt anlegen',
+  description_de: 'Erstellt einen Projekt-Tracker als Widget',
+  // ...
+},
+{
+  action_code: 'ARM.MOD00.CREATE_TASK',
+  title_de: 'Aufgabe erstellen',
+  description_de: 'Erstellt eine To-Do-Aufgabe als Widget',
+  // ...
+},
+```
+
+---
+
+## 3. Technische Implementierung
+
+### 3.1 Neue Abhängigkeiten
+
+```bash
+npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+```
+
+### 3.2 Neue Dateien
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/types/widget.ts` | TypeScript Definitionen für Widget-System |
+| `src/components/dashboard/DashboardGrid.tsx` | DnD Context + Grid Container |
+| `src/components/dashboard/SortableWidget.tsx` | Wrapper für drag-fähige Widgets |
+| `src/components/dashboard/TaskWidget.tsx` | Quadratische Task-Widget-Kachel |
+| `src/hooks/useWidgetOrder.ts` | Persistenz der Widget-Reihenfolge |
+| `src/pages/portal/office/WidgetsTab.tsx` | Erledigte Widgets Archiv-Liste |
+| `spec/current/02_modules/mod-00_dashboard.md` | Modul-Spezifikation |
+| `spec/current/02_modules/mod-02_ki-office.md` | Erweiterte Spezifikation |
+
+### 3.3 Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `src/components/dashboard/ArmstrongGreetingCard.tsx` | Icon entfernen, `aspect-square` hinzufügen |
+| `src/components/dashboard/PendingActionsWidget.tsx` | **Entfernen** — ersetzt durch TaskWidget |
+| `src/components/dashboard/PendingActionCard.tsx` | **Entfernen** — ersetzt durch TaskWidget |
+| `src/pages/portal/PortalDashboard.tsx` | DashboardGrid integrieren, flexibles Layout |
+| `src/pages/portal/OfficePage.tsx` | Route für `/widgets` hinzufügen |
+| `manifests/tile_catalog.yaml` | MOD-00 + MOD-02 Widgets Sub-Tile |
+| `src/manifests/armstrongManifest.ts` | Widget-Aktionen für MOD-00 |
+
+---
+
+## 4. Komponenten-Details
+
+### 4.1 Widget-Typen Definition
+
+**`src/types/widget.ts`**
+
+```typescript
+export type WidgetType = 
+  | 'system_armstrong' 
+  | 'system_weather' 
+  | 'system_globe'
+  | 'letter' 
+  | 'email' 
+  | 'reminder' 
+  | 'task' 
+  | 'research' 
+  | 'note' 
+  | 'project' 
+  | 'idea';
+
+export type WidgetStatus = 
+  | 'pending' 
+  | 'executing' 
+  | 'completed' 
+  | 'cancelled';
+
+export interface Widget {
+  id: string;
+  type: WidgetType;
+  title: string;
+  description?: string;
+  status: WidgetStatus;
+  risk_level: 'low' | 'medium' | 'high';
+  cost_model: 'free' | 'metered' | 'premium';
+  parameters?: Record<string, unknown>;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface WidgetConfig {
+  type: WidgetType;
+  icon: string;
+  label_de: string;
+  gradient: string;
+  deletable: boolean;
+}
+
+export const WIDGET_CONFIGS: Record<WidgetType, WidgetConfig> = {
+  system_armstrong: { icon: 'Rocket', label_de: 'Armstrong', gradient: 'from-primary/10', deletable: false },
+  system_weather: { icon: 'Cloud', label_de: 'Wetter', gradient: 'from-blue-500/10', deletable: false },
+  system_globe: { icon: 'Globe', label_de: 'Globus', gradient: 'from-green-500/10', deletable: false },
+  letter: { icon: 'Mail', label_de: 'Brief', gradient: 'from-blue-500/10', deletable: true },
+  email: { icon: 'MailOpen', label_de: 'E-Mail', gradient: 'from-purple-500/10', deletable: true },
+  reminder: { icon: 'Bell', label_de: 'Erinnerung', gradient: 'from-amber-500/10', deletable: true },
+  task: { icon: 'CheckSquare', label_de: 'Aufgabe', gradient: 'from-green-500/10', deletable: true },
+  research: { icon: 'Search', label_de: 'Recherche', gradient: 'from-cyan-500/10', deletable: true },
+  note: { icon: 'StickyNote', label_de: 'Notiz', gradient: 'from-yellow-500/10', deletable: true },
+  project: { icon: 'FolderKanban', label_de: 'Projekt', gradient: 'from-indigo-500/10', deletable: true },
+  idea: { icon: 'Lightbulb', label_de: 'Idee', gradient: 'from-pink-500/10', deletable: true },
+};
+```
+
+### 4.2 DashboardGrid mit Drag & Drop
+
+**`src/components/dashboard/DashboardGrid.tsx`**
+
+- `DndContext` als Wrapper für alle Widgets
+- `SortableContext` mit `rectSortingStrategy` für Grid-Layout
+- `onDragEnd` Handler speichert neue Reihenfolge
+- Sensoren: PointerSensor (8px Aktivierung) + TouchSensor (250ms Delay)
+
+### 4.3 SortableWidget Wrapper
+
+**`src/components/dashboard/SortableWidget.tsx`**
+
+- `useSortable` Hook von @dnd-kit
+- CSS Transform für smooth Drag-Animation
+- Opacity 0.5 beim Ziehen
+- Cursor: grab / grabbing
+
+### 4.4 TaskWidget (quadratisch)
+
+**`src/components/dashboard/TaskWidget.tsx`**
+
+Ersetzt PendingActionsWidget + PendingActionCard:
+- `aspect-square` für quadratische Form
+- Icon + Typ-Label oben
+- Titel + Beschreibung mittig
+- Risiko-Badge + Kosten
+- Freigeben/Abbrechen Buttons vertikal
+- Typ-spezifischer Farbgradient
+
+### 4.5 ArmstrongGreetingCard Update
+
+**Änderungen:**
+- **Entfernt:** Avatar-Block (Zeilen 162-173) mit Raketen-Icon
+- **Hinzugefügt:** `aspect-square` Klasse an Card
+- **Angepasst:** Layout für quadratische Form
+- Text bekommt volle Breite für cleaneren Look
+
+### 4.6 useWidgetOrder Hook
+
+**`src/hooks/useWidgetOrder.ts`**
+
+```typescript
+export function useWidgetOrder(defaultOrder: string[]) {
+  const [order, setOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboard-widget-order');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge: Bestehende behalten, neue ans Ende
+      const merged = parsed.filter((id: string) => defaultOrder.includes(id));
+      const newIds = defaultOrder.filter(id => !parsed.includes(id));
+      return [...merged, ...newIds];
+    }
+    return defaultOrder;
+  });
+
+  const updateOrder = useCallback((newOrder: string[]) => {
+    setOrder(newOrder);
+    localStorage.setItem('dashboard-widget-order', JSON.stringify(newOrder));
+  }, []);
+
+  return { order, updateOrder };
+}
+```
+
+### 4.7 WidgetsTab (Archiv)
+
+**`src/pages/portal/office/WidgetsTab.tsx`**
+
+Kompakte Listenansicht aller erledigten Widgets:
+- Filter nach Typ (Dropdown)
+- Filter nach Status (completed/cancelled)
+- Zeitstempel der Erledigung
+- Widget-Icon + Titel + Status-Badge
+- "Wiederholen"-Button für wiederkehrende Aktionen
+
+---
+
+## 5. Dashboard Layout
+
+### 5.1 Responsives Grid
+
+**`src/pages/portal/PortalDashboard.tsx`**
+
+```tsx
+<DashboardGrid widgetIds={order} onReorder={updateOrder}>
+  <div 
+    className="grid gap-4 md:gap-6"
+    style={{
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))',
+      justifyContent: 'center'
+    }}
+  >
+    {order.map(widgetId => (
+      <SortableWidget key={widgetId} id={widgetId}>
+        {renderWidget(widgetId)}
+      </SortableWidget>
+    ))}
+  </div>
+</DashboardGrid>
+```
+
+### 5.2 Responsive Verhalten
+
+| Viewport | Spalten | Widget-Größe |
+|----------|---------|--------------|
+| Mobile (< 640px) | 1 | 100% Breite |
+| Tablet (640-1024px) | 2-3 | 280-320px |
+| Desktop (1024-1536px) | 3-4 | 280-320px |
+| Wide (> 1536px) | 5-6+ | 280-320px |
+
+---
+
+## 6. OfficePage Route-Erweiterung
+
+**`src/pages/portal/OfficePage.tsx`**
+
+```tsx
+import { WidgetsTab } from './office/WidgetsTab';
+
+// In Routes:
+<Route path="widgets" element={<WidgetsTab />} />
+```
+
+---
+
+## 7. Visuelles Design
+
+### 7.1 Widget-Farben nach Typ
+
+| Typ | Gradient | Icon |
+|-----|----------|------|
+| Armstrong | `from-primary/10` | Rocket |
+| Wetter | `from-blue-500/10` | Cloud |
+| Globe | `from-green-500/10` | Globe |
+| Brief | `from-blue-500/10` | Mail |
+| E-Mail | `from-purple-500/10` | MailOpen |
+| Erinnerung | `from-amber-500/10` | Bell |
+| Aufgabe | `from-green-500/10` | CheckSquare |
+| Recherche | `from-cyan-500/10` | Search |
+| Notiz | `from-yellow-500/10` | StickyNote |
+| Projekt | `from-indigo-500/10` | FolderKanban |
+| Idee | `from-pink-500/10` | Lightbulb |
+
+### 7.2 Drag & Drop Feedback
+
+- **Hover:** Cursor `grab`
+- **Dragging:** Cursor `grabbing`, Opacity 0.5, Shadow
+- **Drop-Zone:** Andere Widgets weichen sanft zur Seite
+- **Touch:** Vibration bei Aktivierung (optional)
+
+---
+
+## 8. Demo-Daten (für Entwicklung)
+
+```typescript
+const demoWidgets: Widget[] = [
   {
-    id: 'demo-1',
-    action_code: 'ARM.MOD02.SEND_LETTER',
+    id: 'demo-letter-1',
+    type: 'letter',
     title: 'Brief an Max Müller',
     description: 'Mieterhöhung zum 01.04.2026',
-    parameters: {
-      recipient: 'Max Müller',
-      subject: 'Mieterhöhung',
-      channel: 'email',
-    },
-    risk_level: 'medium' as const,
-    cost_model: 'free' as const,
     status: 'pending',
+    risk_level: 'medium',
+    cost_model: 'free',
+    parameters: { recipient: 'Max Müller', channel: 'email' },
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-reminder-1',
+    type: 'reminder',
+    title: 'Vertrag prüfen',
+    description: 'Mietvertrag Hauptstr. 5 endet am 31.03',
+    status: 'pending',
+    risk_level: 'low',
+    cost_model: 'free',
     created_at: new Date().toISOString(),
   },
 ];
 ```
 
-## Integration im Dashboard
+---
 
-**Datei:** `src/pages/portal/PortalDashboard.tsx`
+## 9. Zusammenfassung: Alle Änderungen
 
-```tsx
-{/* Existing 3-column grid */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-  {/* ... Armstrong, Weather, Globe ... */}
-</div>
+### 9.1 Neue Dateien (8)
 
-{/* NEW: Pending Actions Widget - full width below */}
-<PendingActionsWidget className="mt-4 md:mt-6" />
-```
+1. `spec/current/02_modules/mod-00_dashboard.md`
+2. `spec/current/02_modules/mod-02_ki-office.md`
+3. `src/types/widget.ts`
+4. `src/components/dashboard/DashboardGrid.tsx`
+5. `src/components/dashboard/SortableWidget.tsx`
+6. `src/components/dashboard/TaskWidget.tsx`
+7. `src/hooks/useWidgetOrder.ts`
+8. `src/pages/portal/office/WidgetsTab.tsx`
 
-## Manifest-Erweiterung
+### 9.2 Geänderte Dateien (6)
 
-**Datei:** `src/manifests/armstrongManifest.ts`
+1. `src/components/dashboard/ArmstrongGreetingCard.tsx` — Icon entfernen, aspect-square
+2. `src/pages/portal/PortalDashboard.tsx` — DashboardGrid, flexibles Layout
+3. `src/pages/portal/OfficePage.tsx` — Widgets Route
+4. `manifests/tile_catalog.yaml` — MOD-00 + MOD-02 Widgets
+5. `src/manifests/armstrongManifest.ts` — Widget-Aktionen
+6. `package.json` — @dnd-kit Dependencies
 
-Neue Aktion hinzufügen (für die Demo und zukünftige Nutzung):
+### 9.3 Gelöschte Dateien (2)
 
-```typescript
-{
-  action_code: 'ARM.MOD02.SEND_LETTER',
-  title_de: 'Brief absenden',
-  description_de: 'Sendet einen vorbereiteten Brief per E-Mail, Fax oder Post',
-  zones: ['Z2'],
-  module: 'MOD-02',
-  risk_level: 'medium',
-  requires_confirmation: true,
-  requires_consent_code: null,
-  roles_allowed: [],
-  data_scopes_read: ['letter_drafts', 'contacts'],
-  data_scopes_write: ['letter_sent'],
-  cost_model: 'free',
-  cost_unit: null,
-  cost_hint_cents: null,
-  api_contract: { type: 'edge_function', endpoint: 'sot-letter-send' },
-  ui_entrypoints: ['/portal/office/brief'],
-  audit_event_type: 'ARM_LETTER_SEND',
-  status: 'active',
-}
-```
+1. `src/components/dashboard/PendingActionsWidget.tsx`
+2. `src/components/dashboard/PendingActionCard.tsx`
 
-## Betroffene Dateien
+---
 
-| Datei | Änderung |
-|-------|----------|
-| `src/components/dashboard/PendingActionsWidget.tsx` | **Neu** — Hauptcontainer mit Demo-Daten |
-| `src/components/dashboard/PendingActionCard.tsx` | **Neu** — Einzelne Aktionskarte |
-| `src/pages/portal/PortalDashboard.tsx` | Widget unter dem 3-Spalten-Grid einfügen |
-| `src/manifests/armstrongManifest.ts` | `ARM.MOD02.SEND_LETTER` Aktion hinzufügen |
+## 10. Nächste Schritte (nach Implementierung)
 
-## Interaktivität (Demo)
-
-**Freigeben-Button:**
-- Zeigt Toast "Aktion freigegeben" (Demo)
-- Entfernt Aktion aus der Liste (lokaler State)
-- Später: DB-Update + Edge Function Call
-
-**Abbrechen-Button:**
-- Zeigt Toast "Aktion abgebrochen"
-- Entfernt Aktion aus der Liste
-
-## Technische Details
-
-### PendingActionCard Props
-
-```typescript
-interface PendingActionCardProps {
-  id: string;
-  action_code: string;
-  title: string;
-  description?: string;
-  parameters?: Record<string, unknown>;
-  risk_level: 'low' | 'medium' | 'high';
-  cost_model: 'free' | 'metered' | 'premium';
-  created_at: string;
-  onConfirm: (id: string) => void;
-  onCancel: (id: string) => void;
-  isExecuting?: boolean;
-}
-```
-
-### Visuelle Elemente
-
-- **Icon:** Mail-Icon für Briefe (dynamisch basierend auf `action_code`)
-- **Risiko-Badge:** Farbcodiert (grün/gelb/rot)
-- **Zeitstempel:** "vor X Minuten" relativ
-- **Channel-Chip:** E-Mail / Fax / Post
-
-## Mobile Ansicht
-
-- Widget erscheint auch auf Mobile (wichtig für unterwegs)
-- Kompakte vertikale Anordnung
-- Buttons untereinander statt nebeneinander
-
-## Nächste Schritte (nach dieser Implementierung)
-
-1. **Datenbank-Tabelle** `armstrong_pending_actions` erstellen
-2. **usePendingActions Hook** für React Query
-3. **Integration mit Armstrong Chat** — Aktionen aus dem Chat erstellen
-4. **Edge Function** `sot-letter-send` für echten Versand
+1. **Datenbank-Tabelle** `widgets` erstellen (ersetzt Demo-Daten)
+2. **useWidgets Hook** mit React Query für Echtzeit-Synchronisation
+3. **Armstrong Chat Integration** — Widgets direkt aus Chat erstellen
+4. **Widget-Reihenfolge in DB** — Geräte-übergreifende Synchronisation
+5. **Push-Benachrichtigungen** — Für neue Widgets von Armstrong
 
