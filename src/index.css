@@ -423,4 +423,9 @@
   .text-headline {
     @apply uppercase tracking-wide;
   }
+
+  /* Atmospheric Background Utility */
+  .bg-atmosphere {
+    background: var(--bg-atmosphere);
+  }
 }
