@@ -600,7 +600,7 @@ export function PortfolioTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-6">
       {/* Header with Context Dropdown + New Property Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -649,7 +649,6 @@ export function PortfolioTab() {
           title="Einheiten"
           value={hasData ? (totals?.unitCount.toString() || '0') : '0'}
           icon={Building2}
-          subtitle={hasData ? `${totals?.propertyCount} Objekte` : undefined}
         />
         <StatCard
           title="Verkehrswert"
@@ -676,7 +675,7 @@ export function PortfolioTab() {
       {/* Charts: Tilgungsverlauf & Monatliche EÜR */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Tilgungsverlauf über 30 Jahre — korrigiert mit objektwert/vermoegen */}
-        <ChartCard title="Vermögensentwicklung (30 Jahre)">
+        <ChartCard title="Vermögensentwicklung (30 Jahre)" aspectRatio="none">
           {hasData && amortizationData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart data={amortizationData}>
