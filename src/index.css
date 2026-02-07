@@ -211,24 +211,41 @@
 
 /* ===========================================================================
    ORBITAL ATMOSPHERIC BACKGROUNDS
+   Light Mode: "Atmospheric Sky" — Inspiriert von Revolut
+   Dark Mode: "Deep Space" — Inspiriert von SpaceX
    =========================================================================== */
 :root {
   --bg-atmosphere: 
+    /* Radiales Sonnenlicht von oben — lebendiger Himmel */
     radial-gradient(
-      ellipse 150% 100% at 50% 0%,
-      hsl(210 40% 98%) 0%,
-      hsl(210 30% 96%) 50%,
-      hsl(210 25% 94%) 100%
+      ellipse 120% 80% at 50% -20%,
+      hsl(200 70% 88%) 0%,
+      hsl(205 55% 92%) 40%,
+      hsl(210 35% 96%) 70%,
+      hsl(210 25% 98%) 100%
     );
 }
 
 .dark {
   --bg-atmosphere: 
+    /* Kosmisches Leuchten oben rechts (ferne Galaxie) */
     radial-gradient(
-      ellipse 100% 80% at 50% 0%,
-      hsl(222 45% 9%) 0%,
-      hsl(222 47% 6%) 60%,
-      hsl(222 50% 4%) 100%
+      ellipse 60% 50% at 80% 10%,
+      hsl(225 35% 12%) 0%,
+      transparent 60%
+    ),
+    /* Sekundärer Nebel-Effekt unten links */
+    radial-gradient(
+      ellipse 50% 40% at 20% 90%,
+      hsl(260 25% 8%) 0%,
+      transparent 50%
+    ),
+    /* Basis: Tiefes Weltraum-Schwarz mit Gradient */
+    linear-gradient(
+      180deg,
+      hsl(222 50% 5%) 0%,
+      hsl(222 55% 4%) 50%,
+      hsl(222 60% 3%) 100%
     );
 }
 
