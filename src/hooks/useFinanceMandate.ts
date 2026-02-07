@@ -20,6 +20,8 @@ export function useFinanceMandates() {
             public_id,
             status,
             created_at,
+            object_address,
+            property_id,
             applicant_profiles (
               id,
               first_name,

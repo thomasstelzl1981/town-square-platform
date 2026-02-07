@@ -104,12 +104,14 @@ export default function FutureRoomZuweisung() {
                       })}
                     </TableCell>
                     <TableCell>
-                      {/* TODO: Show customer name from finance_request */}
-                      Kunde
+                      {mandate.finance_requests?.applicant_profiles?.[0]?.first_name 
+                        ? `${mandate.finance_requests.applicant_profiles[0].first_name} ${mandate.finance_requests.applicant_profiles[0].last_name || ''}`
+                        : '—'}
                     </TableCell>
                     <TableCell>
-                      {/* TODO: Show property reference */}
-                      <Badge variant="outline">Objekt</Badge>
+                      <Badge variant="outline">
+                        {mandate.finance_requests?.object_address?.slice(0, 25) || 'Kein Objekt'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Select
