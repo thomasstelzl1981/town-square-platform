@@ -441,8 +441,8 @@ export function ManifestRouter() {
       {/* ZONE 2: USER PORTAL */}
       {/* ================================================================== */}
       <Route path={zone2Portal.base} element={<PortalLayout />}>
-        {/* Portal Index redirects to Area Overview */}
-        <Route index element={<Navigate to="/portal/area/base" replace />} />
+        {/* Portal Index shows Dashboard */}
+        <Route index element={<PortalDashboard />} />
 
         {/* Area Overview Pages */}
         <Route path="area/:areaKey" element={
