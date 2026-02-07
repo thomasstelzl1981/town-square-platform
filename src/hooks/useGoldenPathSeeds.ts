@@ -77,6 +77,10 @@ export interface SeedCounts {
   // Acquiary
   acq_mandates: number;
   acq_offers: number;
+  // Car Management (MOD-17)
+  cars_vehicles: number;
+  cars_financing: number;
+  cars_insurances: number;
 }
 
 export interface SeedResult {
@@ -104,11 +108,14 @@ function emptyCounts(): SeedCounts {
     tile_activations: 0,
     acq_mandates: 0,
     acq_offers: 0,
+    cars_vehicles: 0,
+    cars_financing: 0,
+    cars_insurances: 0,
   };
 }
 
 export async function getCounts(tenantId: string): Promise<SeedCounts> {
-  const [props, units, loans, leases, finReqs, appProfiles, contacts, docs, nodes, links, contexts, members, tiles, acqMandates, acqOffers] = await Promise.all([
+  const [props, units, loans, leases, finReqs, appProfiles, contacts, docs, nodes, links, contexts, members, tiles, acqMandates, acqOffers, carsVehicles, carsFinancing, carsInsurances] = await Promise.all([
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('units').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     supabase.from('loans').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
@@ -125,6 +132,10 @@ export async function getCounts(tenantId: string): Promise<SeedCounts> {
     supabase.from('acq_mandates').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     // For acq_offers, we need to count via mandates
     supabase.from('acq_offers').select('id, mandate:acq_mandates!inner(tenant_id)', { count: 'exact', head: true }).eq('acq_mandates.tenant_id', tenantId),
+    // Car Management (MOD-17)
+    supabase.from('cars_vehicles').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+    supabase.from('cars_financing').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+    supabase.from('cars_insurances').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
   ]);
 
   return {
@@ -143,6 +154,9 @@ export async function getCounts(tenantId: string): Promise<SeedCounts> {
     tile_activations: tiles.count ?? 0,
     acq_mandates: acqMandates.count ?? 0,
     acq_offers: acqOffers.count ?? 0,
+    cars_vehicles: carsVehicles.count ?? 0,
+    cars_financing: carsFinancing.count ?? 0,
+    cars_insurances: carsInsurances.count ?? 0,
   };
 }
 
