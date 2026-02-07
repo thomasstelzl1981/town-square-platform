@@ -1,157 +1,134 @@
 
-# Umsetzungsplan: Bildergalerie im Exposé-Tab + Demo-Bilder
+# Überarbeitetes Konzept: Bildergalerie im Exposé-Tab
 
-## 1. Analyse der Probleme
+## Analyse des aktuellen Problems
 
-### Problem 1: ExposeImageGallery nicht eingebunden
-Die Komponente `ExposeImageGallery` existiert bereits unter `src/components/verkauf/ExposeImageGallery.tsx`, wurde aber **nie in `ExposeTab.tsx` importiert und integriert**.
+Die aktuelle `ExposeImageGallery`-Komponente hat folgende Probleme:
 
-### Problem 2: Keine Demo-Bilder vorhanden
-Das Golden-Path-Seed enthält nur 12 PDF-Dokumente. Der Ordner `11_Fotos` (ID: `5708b5bb-f3ac-4e19-bfc6-bb65fff26963`) ist leer.
+1. **Zu große Darstellung**: Das Hauptbild nimmt 2/3 der Breite ein (2 Spalten von 3) - für die Bearbeitungsansicht überdimensioniert
+2. **Keine Titelbild-Funktion**: Es gibt keine Möglichkeit, ein Bild als Titelbild zu markieren
+3. **Keine Begrenzung**: Unbegrenzte Anzahl von Bildern möglich
+4. **Keine Sortierung**: Fehlende `display_order` für benutzerdefinierte Reihenfolge
 
-### Problem 3: Empty-State wird nicht angezeigt
-Die ExposeImageGallery-Komponente hat zwar einen Empty-State, aber ohne Einbindung sieht man nichts.
+## Geplante Lösung
+
+### 1. Datenbank-Erweiterung
+
+Neue Spalten in der `document_links`-Tabelle:
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `display_order` | INTEGER | Sortierreihenfolge (0-9, max. 10 Bilder) |
+| `is_title_image` | BOOLEAN | Markiert das Titelbild (nur 1 pro Objekt) |
+
+### 2. Kompaktere Galerie-Darstellung
+
+Neues Layout-Konzept für die Bearbeitungsansicht:
+
+```text
++------------------------------------------+
+| Bildergalerie (3 von max. 10)     [Edit] |
++------------------------------------------+
+| [T] [2] [3] [4] [5] [+]                  |
++------------------------------------------+
+```
+
+- **Thumbnail-Grid**: Alle Bilder als gleich große Thumbnails (max. 10)
+- **Titelbild-Markierung**: Stern-Icon auf dem Titelbild
+- **Kompakte Höhe**: ca. 80-100px Thumbnails statt riesigem Hauptbild
+- **"+"-Button**: Upload-Link zum Datenraum (falls < 10 Bilder)
+- **Lightbox**: Klick auf Thumbnail öffnet vergrößerte Ansicht
+
+### 3. Titelbild-Logik
+
+- Ein Bild kann per Klick als Titelbild markiert werden
+- Nur 1 Titelbild pro Property/Unit erlaubt
+- Titelbild wird immer als erstes angezeigt
+- Visuell durch goldenes Stern-Icon markiert
+
+### 4. 10-Bilder-Limit
+
+- Maximal 10 Bilder pro Exposé zulässig
+- Bei Erreichen des Limits verschwindet der "+"-Button
+- Klares Feedback: "3 von 10 Bildern"
 
 ---
 
-## 2. Technische Umsetzung
+## Technische Umsetzung
 
-### Schritt 1: ExposeTab.tsx - Galerie einbinden
+### Phase 1: Datenbank-Migration
 
-**Datei:** `src/components/portfolio/ExposeTab.tsx`
-
-```typescript
-// Import hinzufügen (Zeile 6)
-import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
-
-// Nach Header-Card (Zeile 96), vor Objektbeschreibung einfügen:
-{/* Bildergalerie - immer sichtbar */}
-<ExposeImageGallery propertyId={property.id} />
-```
-
-Die Galerie zeigt automatisch einen Platzhalter-State, wenn keine Bilder vorhanden sind.
-
-### Schritt 2: Demo-Bilder generieren und einspielen
-
-Da es sich um Demo-Daten handelt, verwende ich den KI-Bildgenerator, um 4-5 typische Immobilienfotos zu erstellen:
-
-| Nr | Motiv | Dateiname |
-|----|-------|-----------|
-| 1 | Außenansicht Altbau Leipzig | demo_aussen_1.jpg |
-| 2 | Wohnzimmer mit Parkettboden | demo_wohnzimmer_1.jpg |
-| 3 | Moderne Küche | demo_kueche_1.jpg |
-| 4 | Balkon mit Stadtblick | demo_balkon_1.jpg |
-| 5 | Treppenhaus historisch | demo_treppenhaus_1.jpg |
-
-### Schritt 3: Seed-Funktion erweitern (Zone 1)
-
-**Datei:** Neue Migration für `seed_golden_path_data()`
-
-Die Bilder werden über eine Edge-Function in den Storage hochgeladen und mit dem Property verknüpft:
+SQL-Migration für neue Spalten:
 
 ```sql
--- Ergänzung in seed_golden_path_data()
--- 5 Demo-Bilder für 11_Fotos Ordner
-INSERT INTO documents (id, tenant_id, public_id, name, file_path, mime_type, size_bytes, doc_type, scope, source) VALUES 
-  ('00000000-0000-4000-a000-000000000301'::uuid, t_id, 'SOT-D-IMG001', 'Außenansicht.jpg', 'demo/fotos/aussen_1.jpg', 'image/jpeg', 250000, 'photo', 'property', 'import'),
-  ('00000000-0000-4000-a000-000000000302'::uuid, t_id, 'SOT-D-IMG002', 'Wohnzimmer.jpg', 'demo/fotos/wohnzimmer_1.jpg', 'image/jpeg', 280000, 'photo', 'property', 'import'),
-  ('00000000-0000-4000-a000-000000000303'::uuid, t_id, 'SOT-D-IMG003', 'Küche.jpg', 'demo/fotos/kueche_1.jpg', 'image/jpeg', 220000, 'photo', 'property', 'import'),
-  ('00000000-0000-4000-a000-000000000304'::uuid, t_id, 'SOT-D-IMG004', 'Balkon.jpg', 'demo/fotos/balkon_1.jpg', 'image/jpeg', 190000, 'photo', 'property', 'import'),
-  ('00000000-0000-4000-a000-000000000305'::uuid, t_id, 'SOT-D-IMG005', 'Treppenhaus.jpg', 'demo/fotos/treppenhaus_1.jpg', 'image/jpeg', 210000, 'photo', 'property', 'import');
+ALTER TABLE document_links 
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 
--- Verknüpfung mit 11_Fotos-Ordner und Property
-INSERT INTO document_links (id, tenant_id, document_id, node_id, object_type, object_id, link_status) VALUES
-  ('00000000-0000-4000-a000-000000000401'::uuid, t_id, '00000000-0000-4000-a000-000000000301'::uuid, 
-   (SELECT id FROM storage_nodes WHERE property_id = prop_id AND name = '11_Fotos'), 
-   'property', prop_id, 'linked'),
-  -- ... (analog für alle 5 Bilder)
+ALTER TABLE document_links 
+ADD COLUMN IF NOT EXISTS is_title_image BOOLEAN DEFAULT false;
+
+-- Index für Sortierung
+CREATE INDEX IF NOT EXISTS idx_document_links_display_order 
+ON document_links(object_id, display_order);
+
+-- Constraint: Nur ein Titelbild pro Objekt
+CREATE UNIQUE INDEX IF NOT EXISTS idx_document_links_title_image 
+ON document_links(object_id, object_type) 
+WHERE is_title_image = true;
 ```
 
-### Schritt 4: Statische Platzhalter-Bilder hinterlegen
+### Phase 2: Komponenten-Refactoring
 
-Als Alternative zu KI-generierten Bildern können lizenzfreie Bilder verwendet werden:
+**ExposeImageGallery.tsx** (komplett überarbeitet):
 
-**Option A:** Public-Domain-Bilder von Unsplash/Pexels in `public/demo/fotos/` hinterlegen
+1. Query mit `display_order` Sortierung und `is_title_image` Priorität
+2. Kompaktes Grid-Layout (6 Spalten)
+3. Titelbild-Toggle per Klick auf Stern-Icon
+4. Drag-and-Drop für Reihenfolge (optional, spätere Phase)
+5. 10-Bilder-Limit mit visuellem Feedback
 
-**Option B:** KI-generierte Bilder mit dem Nano Banana Model erstellen
+### Phase 3: Erweiterte Funktionen
 
-Die Bilder werden dann über eine Admin-Funktion oder manuell in den Storage-Bucket hochgeladen.
+- **Titelbild setzen**: Klick auf Stern-Icon → Mutation → Refresh
+- **Bild entfernen**: Klick auf X-Icon → Bestätigungsdialog → Unlink
+- **Sortierung**: Per Drag-and-Drop oder Pfeile (optional)
 
 ---
 
-## 3. Datei-Änderungen
+## UI-Vorschau
+
+### Kompakte Galerie (Standard)
+
+```text
++------------------------------------------------------------+
+| Bildergalerie                          3/10  [Im Datenraum] |
++------------------------------------------------------------+
+|  +--------+  +--------+  +--------+  +--------+             |
+|  | [Star] |  |   2    |  |   3    |  |   +    |             |
+|  | Außen  |  | Wohn-  |  | Küche  |  | Hinzu- |             |
+|  |        |  | zimmer |  |        |  | fügen  |             |
+|  +--------+  +--------+  +--------+  +--------+             |
++------------------------------------------------------------+
+```
+
+### Titelbild-Markierung
+
+- Goldener Stern-Icon oben links auf dem Titelbild
+- Hover-Tooltip: "Als Titelbild markiert"
+- Klick auf anderen Stern → neues Titelbild wählen
+
+---
+
+## Betroffene Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/portfolio/ExposeTab.tsx` | Import + Integration von ExposeImageGallery |
-| `supabase/migrations/...` | Seed-Funktion um 5 Demo-Bilder erweitern |
-| `public/demo/fotos/` | 5 Platzhalter-Bilder (falls statisch) |
-| `src/hooks/useGoldenPathSeeds.ts` | SEED_IDS um Bild-IDs erweitern |
+| `supabase/migrations/XXXXXX.sql` | Neue Spalten für document_links |
+| `src/components/verkauf/ExposeImageGallery.tsx` | Komplettes Refactoring |
+| `src/integrations/supabase/types.ts` | Auto-generiert nach Migration |
 
----
+## Risikobewertung
 
-## 4. Neue Exposé-Struktur nach Umsetzung
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ HEADER                                                      │
-│ Eigentumswohnung                                            │
-│ Leipziger Straße 42                                         │
-│ 04109 Leipzig, Deutschland              DEMO-001            │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ BILDERGALERIE (NEU - immer sichtbar)                        │
-│ ┌────────────────────────┐  ┌─────┐  ┌─────┐                │
-│ │                        │  │     │  │     │                │
-│ │    Hauptbild          │  │ Th1 │  │ Th2 │                │
-│ │    (Außenansicht)     │  │     │  │     │                │
-│ │                        │  ├─────┤  ├─────┤                │
-│ │                        │  │ Th3 │  │ Th4 │                │
-│ └────────────────────────┘  └─────┘  └─────┘                │
-│ 5 Bilder aus dem Datenraum          → Im Datenraum bearbeiten│
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ OBJEKTBESCHREIBUNG                                          │
-│ ...                                                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Falls keine Bilder vorhanden:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ BILDERGALERIE                                               │
-│ Wählen Sie Bilder aus dem Datenraum für Ihr Exposé          │
-│ ┌─────────────────────────────┐  ┌───┐┌───┐                 │
-│ │  [Upload-Icon]              │  │   ││   │                 │
-│ │  Bilder im Datenraum        │  │   ││   │                 │
-│ │  hochladen                  │  │   ││   │                 │
-│ │  → Immobilienakte öffnen    │  └───┘└───┘                 │
-│ └─────────────────────────────┘                             │
-│ Bilder werden aus dem Datenraum der Immobilie verknüpft     │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 5. Testplan
-
-### Test 1: Galerie-Karte sichtbar (auch ohne Bilder)
-1. Immobilienakte öffnen → Tab "Exposé"
-2. **Erwartung:** Bildergalerie-Karte erscheint direkt nach Header
-3. Empty-State mit Upload-Hinweis sichtbar
-
-### Test 2: Demo-Bilder nach Seed
-1. Zone 1 → Testdaten → Golden Path Seeds ausführen
-2. Immobilienakte DEMO-001 öffnen → Tab "Exposé"
-3. **Erwartung:** 5 Bilder in Galerie sichtbar
-
-### Test 3: Lightbox funktioniert
-1. Auf Hauptbild klicken
-2. **Erwartung:** Vollbild-Ansicht mit Navigation
-
-### Test 4: Konsistenz in Verkaufsmodulen
-1. MOD-06 Verkauf → Exposé für DEMO-001
-2. **Erwartung:** Dieselben 5 Bilder erscheinen
+- **Gering**: Keine Breaking Changes für bestehende Daten
+- **Migration rückwärtskompatibel**: Neue Spalten haben sinnvolle Defaults
+- **Bestehende Bilder**: Behalten `display_order = 0` und `is_title_image = false`
