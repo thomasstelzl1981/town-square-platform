@@ -10,6 +10,7 @@
 import { useParams, Navigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { areaConfig, AreaKey } from '@/manifests/areaConfig';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { zone2Portal } from '@/manifests/routesManifest';
 import { moduleContents } from '@/components/portal/HowItWorks/moduleContents';
 import { areaPromoContent } from '@/config/areaPromoContent';
@@ -58,21 +59,28 @@ export default function AreaOverviewPage() {
     return <Navigate to="/portal" replace />;
   }
 
+  const isMobile = useIsMobile();
+
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight uppercase mb-2">
+    <div className={isMobile ? "px-4 py-4" : "container max-w-7xl mx-auto px-4 py-6"}>
+      {/* Header — kompakter auf Mobile */}
+      <div className={isMobile ? "mb-4" : "mb-8"}>
+        <h1 className={isMobile 
+          ? "text-lg font-bold tracking-tight uppercase mb-1" 
+          : "text-2xl font-bold tracking-tight uppercase mb-2"
+        }>
           {area.label}
         </h1>
-        <p className="text-muted-foreground">
-          {areaDescriptions[area.key]}
-        </p>
+        {!isMobile && (
+          <p className="text-muted-foreground">
+            {areaDescriptions[area.key]}
+          </p>
+        )}
       </div>
 
       {/* Grid: 1 Promo + 5 Modules = 6 cards */}
       {/* Responsive: 1 col mobile, 2 cols tablet, 3 cols desktop */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {/* Promo Card (always first) */}
         {promo && <AreaPromoCard promo={promo} />}
         

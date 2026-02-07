@@ -2,12 +2,14 @@
  * SortableWidget — Wrapper for drag-sortable widgets
  * 
  * Uses @dnd-kit/sortable for smooth drag animations.
+ * Drag functionality is DISABLED on mobile for better UX.
  */
 
 import { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SortableWidgetProps {
   id: string;
@@ -16,6 +18,14 @@ interface SortableWidgetProps {
 }
 
 export function SortableWidget({ id, children, className }: SortableWidgetProps) {
+  const isMobile = useIsMobile();
+  
+  // On mobile: Render without drag functionality
+  if (isMobile) {
+    return <div className={className}>{children}</div>;
+  }
+  
+  // Desktop: Full sortable functionality
   const {
     attributes,
     listeners,

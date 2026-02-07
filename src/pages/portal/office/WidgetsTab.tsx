@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Icon mapping
 const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
@@ -85,6 +86,7 @@ const DEMO_COMPLETED_WIDGETS: Widget[] = [
 ];
 
 export function WidgetsTab() {
+  const isMobile = useIsMobile();
   const [widgets] = useState<Widget[]>(DEMO_COMPLETED_WIDGETS);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -101,18 +103,24 @@ export function WidgetsTab() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className={isMobile ? "p-4" : "p-4 md:p-6 lg:p-8"}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-primary" />
-          <h2 className="text-h2">Erledigte Widgets</h2>
+          <h2 className={isMobile ? "text-lg font-semibold" : "text-h2"}>Erledigte Widgets</h2>
         </div>
         
-        {/* Filters */}
-        <div className="flex items-center gap-2">
+        {/* Filters — vertikal auf Mobile */}
+        <div className={cn(
+          "flex gap-2",
+          isMobile ? "flex-col" : "flex-row items-center"
+        )}>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectTrigger className={cn(
+              "h-9 text-xs",
+              isMobile ? "w-full" : "w-[140px]"
+            )}>
               <SelectValue placeholder="Typ" />
             </SelectTrigger>
             <SelectContent>
@@ -129,7 +137,10 @@ export function WidgetsTab() {
           </Select>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectTrigger className={cn(
+              "h-9 text-xs",
+              isMobile ? "w-full" : "w-[130px]"
+            )}>
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>

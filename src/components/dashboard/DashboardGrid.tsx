@@ -2,6 +2,7 @@
  * DashboardGrid — Drag & Drop Context for Widget Grid
  * 
  * Uses @dnd-kit for sortable grid with touch support.
+ * Drag & Drop is DISABLED on mobile for better UX.
  */
 
 import { ReactNode } from 'react';
@@ -9,7 +10,6 @@ import {
   DndContext,
   DragEndEvent,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   closestCenter,
@@ -19,6 +19,7 @@ import {
   rectSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardGridProps {
   widgetIds: string[];
@@ -27,17 +28,13 @@ interface DashboardGridProps {
 }
 
 export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridProps) {
-  // Configure sensors for pointer and touch
+  const isMobile = useIsMobile();
+  
+  // Desktop only: Configure sensors for pointer (no TouchSensor for mobile)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // 8px movement before drag starts
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250, // 250ms long-press to activate on touch
-        tolerance: 5, // 5px tolerance for movement during delay
       },
     })
   );
@@ -56,6 +53,22 @@ export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridP
     }
   };
 
+  // On mobile: Render simple grid without DnD
+  if (isMobile) {
+    return (
+      <div 
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+          justifyContent: 'center',
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  // Desktop: Full DnD functionality
   return (
     <DndContext
       sensors={sensors}
