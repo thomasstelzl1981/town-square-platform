@@ -95,7 +95,7 @@ export function ModuleTabs({ modules, activeModule }: ModuleTabsProps) {
             to={route}
             onClick={() => setSubTabsVisible(true)} // Show Level 3 when Level 2 is clicked
             className={cn(
-              'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+              'flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium uppercase tracking-wide transition-all whitespace-nowrap',
               isActive
                 ? 'bg-accent text-accent-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',

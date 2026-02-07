@@ -12,7 +12,7 @@ function FinanceDeskDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Finance Desk</h1>
+        <h1 className="text-2xl font-bold uppercase">Finance Desk</h1>
         <p className="text-muted-foreground">
           Zentrale Steuerung für Finanzierungsanfragen und Berater-Zuweisung
         </p>
@@ -133,7 +133,7 @@ function FinanceDeskDashboard() {
 function InboxTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Finance Desk Inbox</h2>
+      <h2 className="text-xl font-semibold uppercase">Finance Desk Inbox</h2>
       <EmptyState icon={Inbox} title="Keine neuen Anfragen" description="Neue Finanzierungsanfragen erscheinen hier" />
     </div>
   );
@@ -142,7 +142,7 @@ function InboxTab() {
 function BeraterTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Berater-Verwaltung</h2>
+      <h2 className="text-xl font-semibold uppercase">Berater-Verwaltung</h2>
       <EmptyState icon={UserCog} title="Keine Berater konfiguriert" description="Finanzierungsberater hinzufügen und verwalten" />
     </div>
   );
@@ -151,7 +151,7 @@ function BeraterTab() {
 function ZuweisungTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Fall-Zuweisung</h2>
+      <h2 className="text-xl font-semibold uppercase">Fall-Zuweisung</h2>
       <EmptyState icon={Link2} title="Keine offenen Zuweisungen" description="Fälle an Berater zuweisen" />
     </div>
   );
@@ -160,7 +160,7 @@ function ZuweisungTab() {
 function MonitoringTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Monitoring</h2>
+      <h2 className="text-xl font-semibold uppercase">Monitoring</h2>
       <EmptyState icon={Eye} title="Keine Daten" description="Berater-Performance und Fall-Statistiken" />
     </div>
   );

@@ -60,7 +60,7 @@ export default function MasterTemplates() {
     <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Master-Vorlagen</h1>
+          <h1 className="text-3xl font-bold uppercase">Master-Vorlagen</h1>
           <p className="text-muted-foreground">
             Zentrale Konfiguration für die Investment Engine
           </p>

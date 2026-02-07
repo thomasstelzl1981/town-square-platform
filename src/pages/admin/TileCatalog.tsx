@@ -218,7 +218,7 @@ export default function TileCatalogPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tile Catalog & Testdaten</h1>
+          <h1 className="text-2xl font-bold uppercase">Tile Catalog & Testdaten</h1>
           <p className="text-muted-foreground">
             Zone 2 Module verwalten und Testdaten importieren
           </p>

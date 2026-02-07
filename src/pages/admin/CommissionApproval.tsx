@@ -139,7 +139,7 @@ export default function CommissionApproval() {
   return (
     <div className="space-y-6" ref={contentRef}>
       <div>
-        <h1 className="text-2xl font-bold">Provisionen</h1>
+        <h1 className="text-2xl font-bold uppercase">Provisionen</h1>
         <p className="text-muted-foreground">
           Provisionsfreigaben und Zahlungsübersicht
         </p>

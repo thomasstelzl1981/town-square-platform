@@ -22,7 +22,7 @@ function SalesDeskDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Sales Desk</h1>
+        <h1 className="text-2xl font-bold uppercase">Sales Desk</h1>
         <p className="text-muted-foreground">
           Zentrale Übersicht für Verkaufsoperationen und Partner-Freigaben
         </p>
@@ -169,7 +169,7 @@ function VeroeffentlichungenTab() {
   if (!listings || listings.length === 0) {
     return (
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Veröffentlichungen</h2>
+        <h2 className="text-xl font-semibold uppercase">Veröffentlichungen</h2>
         <EmptyState
           icon={ShoppingBag}
           title="Keine aktiven Listings"
@@ -182,7 +182,7 @@ function VeroeffentlichungenTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Veröffentlichungen</h2>
+        <h2 className="text-xl font-semibold uppercase">Veröffentlichungen</h2>
         <Badge variant="secondary">{listings.length} Listings</Badge>
       </div>
 
@@ -280,7 +280,7 @@ function VeroeffentlichungenTab() {
 function InboxTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Sales Desk Inbox</h2>
+      <h2 className="text-xl font-semibold uppercase">Sales Desk Inbox</h2>
       <EmptyState
         icon={Inbox}
         title="Posteingang leer"
@@ -293,7 +293,7 @@ function InboxTab() {
 function PartnerTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Partner-Verwaltung</h2>
+      <h2 className="text-xl font-semibold uppercase">Partner-Verwaltung</h2>
       <EmptyState
         icon={Users2}
         title="Keine Partner-Anfragen"
@@ -306,7 +306,7 @@ function PartnerTab() {
 function AuditTab() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Audit Log</h2>
+      <h2 className="text-xl font-semibold uppercase">Audit Log</h2>
       <EmptyState
         icon={FileText}
         title="Keine Audit-Einträge"
