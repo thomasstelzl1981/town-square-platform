@@ -1,179 +1,187 @@
 
-# Armstrong Positionierung und Drag-and-Drop Fix
+# Armstrong Vereinfachen — Fixe Position ohne Drag-and-Drop
 
-## Identifizierte Probleme
+## Konzept
 
-### 1. Position links oben
-Die gespeicherte Position aus `localStorage` ist veraltet oder ungültig. Der Hook verwendet diese statt der Default-Position "rechts unten".
+Armstrong bekommt eine **feste Position** rechts unten mit ca. 16-20px Abstand (≈1cm). Kein Drag-and-Drop mehr — der Rocket-Button in der SystemBar schaltet Armstrong einfach ein und aus.
 
-### 2. Drag-and-Drop funktioniert nicht
-Der `handleMouseDown` verwendet eine veraltete Position aus dem Closure. Bei jedem Render wird eine neue Funktion erstellt, aber mit veralteten Werten.
-
-### 3. containerSize-Wechsel
-Beim Wechsel zwischen collapsed (150x150) und expanded (320x500) wird die gleiche Position verwendet, was zu Sprüngen führt.
-
----
-
-## Lösung
-
-### 1. useDraggable.ts — Position-Referenz korrigieren
-
-**Problem:** `handleMouseDown` erfasst `position` im Closure-Scope, der veraltet sein kann.
-
-**Lösung:** Verwende `useRef` für die aktuelle Position und synchronisiere sie mit dem State:
-
-```typescript
-// Aktuelle Position in Ref für Event-Handler
-const positionRef = useRef<Position>(position);
-useEffect(() => {
-  positionRef.current = position;
-}, [position]);
-
-// In handleMouseDown:
-dragOffset.current = {
-  x: e.clientX - positionRef.current.x,
-  y: e.clientY - positionRef.current.y,
-};
-```
-
-### 2. useDraggable.ts — Initialisierung verbessern
-
-**Problem:** Gespeicherte Position überschreibt immer den Standard.
-
-**Lösung:** Validiere die gespeicherte Position strenger und lösche ungültige Werte:
-
-```typescript
-const stored = loadStoredPosition(storageKey);
-if (stored) {
-  // Prüfe ob Position im sichtbaren Bereich ist
-  const constrained = constrainPosition(...);
-  
-  // Wenn Position stark abweicht, verwende Default
-  if (Math.abs(constrained.x - stored.x) > 50 || 
-      Math.abs(constrained.y - stored.y) > 50) {
-    // Gespeicherte Position war ungültig
-    localStorage.removeItem(storageKey);
-    return getDefaultPosition(...);
-  }
-  return constrained;
-}
-```
-
-### 3. ArmstrongContainer.tsx — Separater Storage-Key für Expanded
-
-**Problem:** Collapsed und Expanded teilen den gleichen Storage-Key, obwohl sie unterschiedliche Größen haben.
-
-**Lösung:** Verwende separaten Key oder lösche die Position beim Wechsel:
-
-```typescript
-// Beim Toggle die alte Position löschen
-useEffect(() => {
-  // Position bei sichtbar werden zurücksetzen
-  if (armstrongVisible) {
-    resetPosition();
-  }
-}, [armstrongVisible]);
-```
-
-### 4. Einmalige localStorage-Bereinigung
-
-Füge eine Migration hinzu, die den alten `armstrong-position` Key löscht:
-
-```typescript
-// In usePortalLayout.tsx oder ArmstrongContainer.tsx
-useEffect(() => {
-  localStorage.removeItem('armstrong-position');
-}, []);
+```text
+Desktop-Ansicht — Armstrong fixiert:
+┌────────────────────────────────────────────────────────────────────┐
+│ [Home] [Theme] ............ [🚀] [Avatar]     ← SystemBar (48px)  │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│                         Portal Content                             │
+│                                                                    │
+│                                                                    │
+│                                                  ┌──────────────┐  │
+│                                                  │   Armstrong  │  │
+│                                                  │   (fixiert)  │  │
+│                                                  └──────────────┘  │
+│                                              ← 20px →         ↑    │
+│                                                              20px  │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Änderungen
 
-| Datei | Änderung |
-|-------|----------|
-| `src/hooks/useDraggable.ts` | Position-Ref hinzufügen, Validierung verbessern |
-| `src/components/portal/ArmstrongContainer.tsx` | Position beim Einblenden zurücksetzen |
+### 1. ArmstrongContainer.tsx — Drag-and-Drop entfernen, fixe Position
+
+**Was wird entfernt:**
+- `useDraggable` Hook Import und Verwendung
+- Alle `position` und `dragHandleProps` Logik
+- Self-Healing Effekte für Off-Screen Detection
+- `cursor-grab` / `cursor-grabbing` Styles
+
+**Was wird hinzugefügt:**
+- Feste Position mit CSS: `right: 20px` und `bottom: 20px`
+- Im Expanded-Zustand auch fixiert
+
+```typescript
+// COLLAPSED: Feste Position rechts unten
+<div 
+  className={cn(
+    'fixed z-[60] h-[150px] w-[150px] rounded-full',
+    'right-5 bottom-5',  // ← Feste Position: 20px (≈1cm) Abstand
+    'bg-gradient-to-br from-primary to-primary/80',
+    // ... rest
+  )}
+>
+  ...
+</div>
+
+// EXPANDED: Auch feste Position
+<div 
+  className={cn(
+    'fixed w-80 border bg-card rounded-2xl shadow-xl z-[60]',
+    'right-5 bottom-5',  // ← Gleiche feste Position
+    // ... rest
+  )}
+  style={{ height: 500 }}
+>
+  ...
+</div>
+```
+
+### 2. Expanded Header vereinfachen
+
+Im expanded Zustand wird der Header-Bereich kein Drag-Handle mehr sein — nur noch Minimieren und Schließen-Buttons:
+
+```typescript
+// Header ohne Drag-Handle
+<div className="flex items-center justify-between p-3 border-b bg-muted/30">
+  <div className="flex items-center gap-2">
+    <Bot icon />
+    <span>Armstrong</span>
+  </div>
+  <div className="flex gap-1">
+    <Button onClick={toggleArmstrongExpanded}>Minimieren</Button>
+    <Button onClick={hideArmstrong}>Schließen</Button>
+  </div>
+</div>
+```
+
+### 3. useDraggable.ts — Optional: Aufräumen
+
+Der Hook kann beibehalten werden (falls woanders genutzt), aber wird aus ArmstrongContainer nicht mehr importiert.
+
+### 4. usePortalLayout.tsx — Position-Key entfernen
+
+Der `ARMSTRONG_POSITION_KEY` wird nicht mehr gebraucht:
+- Entferne Position-Reset-Logik aus `showArmstrong`, `resetArmstrong`
+- Migrations-Code für Position kann bleiben (schadet nicht)
 
 ---
 
-## Technische Details
+## Betroffene Dateien
 
-### useDraggable.ts — Neue Implementierung
+| Datei | Änderung |
+|-------|----------|
+| `src/components/portal/ArmstrongContainer.tsx` | Rewrite: Feste Position, kein Drag-and-Drop |
+| `src/hooks/usePortalLayout.tsx` | Position-Key-Logik entfernen (optional) |
+
+---
+
+## Code-Struktur nach Änderung
+
+### ArmstrongContainer.tsx (vereinfacht)
 
 ```typescript
-export function useDraggable(options: DraggableOptions = {}): DraggableResult {
-  // ... bestehende Optionen
-  
-  // Ref für aktuelle Position (für Event-Handler)
-  const positionRef = useRef<Position | null>(null);
-  
-  const [position, setPosition] = useState<Position>(() => {
-    const stored = loadStoredPosition(storageKey);
-    const defaultPos = getDefaultPosition(containerSize.width, containerSize.height, boundaryPadding);
-    
-    if (stored) {
-      const constrained = constrainPosition(stored.x, stored.y, ...);
-      // Nur verwenden wenn nicht zu stark abweichend
-      const isValid = 
-        constrained.x >= boundaryPadding && 
-        constrained.y >= boundaryPadding;
-      
-      if (isValid) {
-        positionRef.current = constrained;
-        return constrained;
-      }
-    }
-    
-    positionRef.current = defaultPos;
-    return defaultPos;
-  });
-  
-  // Sync Position-Ref
-  useEffect(() => {
-    positionRef.current = position;
-  }, [position]);
-  
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (disabled) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    
-    // Verwende Ref statt State
-    const currentPos = positionRef.current || position;
-    dragOffset.current = {
-      x: e.clientX - currentPos.x,
-      y: e.clientY - currentPos.y,
-    };
-    // ... rest
-  }, [disabled, containerSize, boundaryPadding, storageKey]);
-  
-  // ...
+export function ArmstrongContainer() {
+  const { armstrongVisible, armstrongExpanded, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Kein useDraggable mehr!
+
+  // Drag and drop für FILES bleibt (nicht für Position)
+  const handleDragOver = useCallback(...);
+  const handleDrop = useCallback(...);
+
+  if (!armstrongVisible || isMobile) return null;
+
+  // EXPANDED
+  if (armstrongExpanded) {
+    return (
+      <div 
+        className="fixed right-5 bottom-5 w-80 h-[500px] z-[60] ..."
+      >
+        ...
+      </div>
+    );
+  }
+
+  // COLLAPSED
+  return (
+    <div 
+      className="fixed right-5 bottom-5 z-[60] h-[150px] w-[150px] rounded-full ..."
+    >
+      ...
+    </div>
+  );
 }
 ```
 
-### ArmstrongContainer.tsx — Reset bei Visibility
+---
 
-```typescript
-// Position beim ersten Erscheinen zurücksetzen
-const hasInitialized = useRef(false);
+## Toggle-Verhalten (bleibt gleich)
 
-useEffect(() => {
-  if (armstrongVisible && !hasInitialized.current) {
-    hasInitialized.current = true;
-    // Alte Position löschen
-    localStorage.removeItem('armstrong-position');
-    resetPosition();
-  }
-}, [armstrongVisible, resetPosition]);
-```
+Der Rocket-Button in der SystemBar funktioniert weiterhin:
+- **Klick wenn sichtbar** → `hideArmstrong()` — Armstrong verschwindet
+- **Klick wenn versteckt** → `showArmstrong()` — Armstrong erscheint rechts unten
+
+---
+
+## Was wird entfernt
+
+- `useDraggable` Import in ArmstrongContainer
+- `position`, `isDragging`, `dragHandleProps`, `resetPosition` Variablen
+- Self-Healing `useEffect` für Off-Screen Detection
+- localStorage Position-Speicherung
+- `cursor-grab` / `cursor-grabbing` Cursor-Styles
+- Drag-Handle im expanded Header
+
+---
+
+## Was bleibt erhalten
+
+- File Drag-and-Drop auf das Widget (Drop-Target für Dateien)
+- Rocket-Button Toggle in SystemBar
+- Minimieren/Maximieren Funktionalität
+- X-Button zum Schließen
+- Mobile InputBar + Sheet (unverändert)
+- ChatPanel Funktionalität
 
 ---
 
 ## Erwartetes Ergebnis
 
-1. Armstrong erscheint beim ersten Aktivieren rechts unten
-2. Drag-and-Drop funktioniert flüssig
-3. Position wird korrekt gespeichert und wiederhergestellt
-4. Kein Springen beim Wechsel zwischen collapsed/expanded
+1. Armstrong erscheint immer rechts unten (ca. 20px Abstand)
+2. Kein Drag-and-Drop — Position ist fix
+3. Rocket-Button schaltet Armstrong ein/aus
+4. Einfacher Code, weniger Fehlerquellen
+5. Zuverlässige Positionierung
