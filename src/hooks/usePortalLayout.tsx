@@ -25,7 +25,7 @@ interface PortalLayoutState {
   setArmstrongExpanded: (expanded: boolean) => void;
   toggleArmstrongExpanded: () => void;
   
-  // NEW: Armstrong recovery helpers
+  // Armstrong recovery helpers
   showArmstrong: (options?: { resetPosition?: boolean; expanded?: boolean }) => void;
   hideArmstrong: () => void;
   resetArmstrong: () => void;
@@ -77,20 +77,24 @@ function buildModuleRouteMap(): Record<string, string> {
   return map;
 }
 
-// Migration key for localStorage cleanup — now v3 to also clear position
-const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v3';
+// Migration key for localStorage cleanup — v4 for complete position/expanded reset
+const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v4';
 
 // Run migration BEFORE React renders (synchronous, outside component)
 if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
+  // Remove ALL legacy Armstrong keys
   localStorage.removeItem(ARMSTRONG_KEY);
   localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
   localStorage.removeItem(ARMSTRONG_POSITION_KEY);
   localStorage.removeItem('sot-armstrong-migrated-v2');
+  localStorage.removeItem('sot-armstrong-migrated-v3');
+  localStorage.removeItem('draggable-position'); // Old draggable key
   
-  // WICHTIG: Nach Löschen sofort den Default setzen
+  // Set clean defaults: visible=true, expanded=false (circle)
   localStorage.setItem(ARMSTRONG_KEY, 'true');
+  localStorage.setItem(ARMSTRONG_EXPANDED_KEY, 'false');
   localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-  console.log('[Armstrong] Migration v3: Reset to visible');
+  console.log('[Armstrong] Migration v4: Complete reset to visible circle');
 }
 
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
@@ -112,11 +116,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     return getStoredValue(ARMSTRONG_KEY, true);
   });
   
-  // Armstrong expanded state (collapsed = compact card, expanded = full stripe)
-  // Default FALSE: Armstrong always starts as collapsed circle (planet)
-  const [armstrongExpanded, setArmstrongExpandedState] = useState(() => {
-    return getStoredValue(ARMSTRONG_EXPANDED_KEY, false);
-  });
+  // Armstrong expanded state — ALWAYS start as false (collapsed circle)
+  // We do NOT read from localStorage for expanded state anymore to prevent legacy issues
+  const [armstrongExpanded, setArmstrongExpandedState] = useState(false);
   
   // Active area (derived from route initially) - null for Dashboard
   const [activeArea, setActiveAreaState] = useState<AreaKey | null>(() => {
@@ -179,19 +181,19 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongVisible(!armstrongVisible);
   }, [armstrongVisible, setArmstrongVisible]);
 
-  // Armstrong expanded controls
+  // Armstrong expanded controls — do NOT persist to localStorage
   const setArmstrongExpanded = useCallback((expanded: boolean) => {
     setArmstrongExpandedState(expanded);
-    localStorage.setItem(ARMSTRONG_EXPANDED_KEY, String(expanded));
+    // Removed localStorage persistence for expanded state
   }, []);
 
   const toggleArmstrongExpanded = useCallback(() => {
     setArmstrongExpanded(!armstrongExpanded);
   }, [armstrongExpanded, setArmstrongExpanded]);
 
-  // NEW: Armstrong recovery helpers
+  // Armstrong recovery helpers
   const showArmstrong = useCallback((options?: { resetPosition?: boolean; expanded?: boolean }) => {
-    const { resetPosition = false, expanded } = options || {};
+    const { resetPosition = false, expanded = false } = options || {};
     
     if (resetPosition) {
       localStorage.removeItem(ARMSTRONG_POSITION_KEY);
@@ -201,16 +203,15 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongVisibleState(true);
     localStorage.setItem(ARMSTRONG_KEY, 'true');
     
-    // NUR setzen wenn explizit übergeben (nicht undefined)
-    if (expanded !== undefined) {
-      setArmstrongExpandedState(expanded);
-      localStorage.setItem(ARMSTRONG_EXPANDED_KEY, String(expanded));
-    }
+    // Always set expanded state (default: false = circle)
+    setArmstrongExpandedState(expanded);
   }, []);
 
   const hideArmstrong = useCallback(() => {
     setArmstrongVisibleState(false);
     localStorage.setItem(ARMSTRONG_KEY, 'false');
+    // Reset expanded to false so next show starts as circle
+    setArmstrongExpandedState(false);
   }, []);
 
   const resetArmstrong = useCallback(() => {
