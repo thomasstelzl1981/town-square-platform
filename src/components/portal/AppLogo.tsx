@@ -8,9 +8,9 @@
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
-// Logo imports - SVG for native transparency
-import logoLight from '@/assets/logos/armstrong_logo_light.svg';
-import logoDark from '@/assets/logos/armstrong_logo_dark.svg';
+// Logo imports - PNG with transparency
+import logoLight from '@/assets/logos/armstrong_logo_light.png';
+import logoDark from '@/assets/logos/armstrong_logo_dark.png';
 
 interface AppLogoProps {
   size?: 'sm' | 'md' | 'lg';
