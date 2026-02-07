@@ -1,200 +1,165 @@
 
-# Plan: SystemBar Home-Button + Logo-Container
+# Plan: SystemBar Optimierung - Logo, Armstrong-Icon und Uhr
 
-## Ubersicht
+## Analyse
 
-Zwei Anderungen an der SystemBar:
+### Problem 1: Logo mit weißem Hintergrund
+Das hochgeladene PNG-Logo hat wahrscheinlich einen weißen Hintergrund statt Transparenz. Im Screenshot ist ein kleines Rechteck mit weißem Hintergrund sichtbar.
 
-1. **Home-Button vereinfachen**: Text "Portal" entfernen, nur das Haus-Icon anzeigen
-2. **Logo-Container einrichten**: Flexibler Container mit Theme-Erkennung fur automatischen Logo-Wechsel
+**Empfehlung fur Logo-Uberarbeitung:**
+- PNG mit transparentem Hintergrund erstellen (Alpha-Kanal)
+- Alternativ: SVG-Format verwenden (bereits vorhanden: `armstrong_logo_dark.svg`, `armstrong_logo_light.svg`)
+- Logo ohne Text-Element, nur das grafische Symbol
+- Empfohlene Exportgrosse: min. 200px Hohe fur scharfe Darstellung
+
+### Problem 2: Armstrong kann nicht wieder geoffnet werden
+Der aktuelle Armstrong-Toggle-Button (Zeile 179-196) ist nur auf grossen Bildschirmen (`lg:flex`) sichtbar und zeigt Text "Armstrong". Wenn Armstrong geschlossen wird, gibt es keinen einfachen Weg, ihn wieder zu offnen.
+
+**Losung:** Ein separates Icon-Button (Rocket) in der rechten Headersektion hinzufugen.
+
+### Problem 3: Uhr entfernen
+Die analoge Uhr (Clock-Icon + Zeit) soll aus der Headline entfernt werden.
 
 ---
 
-## Teil 1: Home-Button vereinfachen
+## Implementierung
+
+### Teil 1: Logo optimieren
+
+**Datei:** `src/components/portal/AppLogo.tsx`
+
+- SVG-Logos statt PNG verwenden (bessere Skalierung, native Transparenz)
+- Logo grosser machen (`h-8` statt `h-6`)
+
+**Anderung:**
+```tsx
+// Logo imports - SVG statt PNG
+import logoLight from '@/assets/logos/armstrong_logo_light.svg';
+import logoDark from '@/assets/logos/armstrong_logo_dark.svg';
+
+const sizeClasses = {
+  sm: 'h-8',    // SystemBar (grosser)
+  md: 'h-10',   // Login page
+  lg: 'h-16',   // Landing page
+};
+```
+
+**Hinweis:** Falls die SVG-Dateien nicht existieren oder auch Hintergrund-Probleme haben, mussen die Logos extern uberarbeitet werden. Ich werde die vorhandenen SVGs prufen.
+
+### Teil 2: Armstrong-Icon hinzufugen
 
 **Datei:** `src/components/portal/SystemBar.tsx`
 
-**Zeilen 102-111 andern von:**
+**Neues Icon importieren:**
 ```tsx
-<Link 
-  to="/portal" 
-  className={cn(
-    'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
-    'text-muted-foreground hover:text-foreground hover:bg-accent'
+import { 
+  Home,
+  LogOut, 
+  Settings, 
+  User,
+  Rocket,      // NEU: Armstrong-Icon
+  KeyRound,
+  MapPin,
+  Mountain
+} from 'lucide-react';
+```
+
+**Neuer Button vor dem User-Menu (Zeile 177-196 ersetzen):**
+```tsx
+{/* Right section: Settings + Armstrong + User avatar */}
+<div className="flex items-center gap-1">
+  {/* Settings button */}
+  <Button
+    variant="ghost"
+    size="icon"
+    asChild
+    className="h-9 w-9"
+  >
+    <Link to="/portal/stammdaten/sicherheit" title="Einstellungen">
+      <Settings className="h-5 w-5" />
+    </Link>
+  </Button>
+
+  {/* Armstrong toggle - Desktop only */}
+  {!isMobile && (
+    <Button
+      variant={armstrongVisible ? 'secondary' : 'ghost'}
+      size="icon"
+      onClick={toggleArmstrong}
+      className="h-9 w-9"
+      title={armstrongVisible ? 'Armstrong schliessen' : 'Armstrong offnen'}
+    >
+      <Rocket className="h-5 w-5" />
+    </Button>
   )}
->
-  <Home className="h-4 w-4" />
-  <span className="text-sm font-medium hidden sm:inline">Portal</span>
-</Link>
+
+  {/* User Menu */}
+  <DropdownMenu>
+    ...
+  </DropdownMenu>
+</div>
 ```
 
-**Zu:**
-```tsx
-<Link 
-  to="/portal" 
-  className={cn(
-    'flex items-center justify-center p-2 rounded-lg transition-colors',
-    'text-muted-foreground hover:text-foreground hover:bg-accent'
-  )}
-  title="Zur Portal-Startseite"
->
-  <Home className="h-5 w-5" />
-</Link>
-```
-
-**Anderungen:**
-- Text "Portal" entfernt
-- Icon etwas grosser (h-5 w-5 statt h-4 w-4) fur bessere Sichtbarkeit
-- Padding angepasst (p-2 statt px-3 py-1.5)
-- Tooltip hinzugefugt fur Barrierefreiheit
-
----
-
-## Teil 2: Logo-Container mit Theme-Support
-
-### Neue Komponente: AppLogo
-
-**Neue Datei:** `src/components/portal/AppLogo.tsx`
-
-```tsx
-/**
- * APP LOGO - Theme-aware logo container
- * 
- * Automatically switches between light/dark logo variants
- * based on current theme. Supports different size presets.
- */
-
-import { useTheme } from 'next-themes';
-
-// Logo imports
-import logoLight from '@/assets/logos/armstrong_logo_light.png';
-import logoDark from '@/assets/logos/armstrong_logo_dark.png';
-
-interface AppLogoProps {
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
-  showText?: boolean;
-}
-
-export function AppLogo({ size = 'sm', className, showText = true }: AppLogoProps) {
-  const { resolvedTheme } = useTheme();
-  
-  const logo = resolvedTheme === 'dark' ? logoDark : logoLight;
-  
-  const sizeClasses = {
-    sm: 'h-6',    // SystemBar
-    md: 'h-10',   // Login page
-    lg: 'h-16',   // Landing page
-  };
-
-  return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <img 
-        src={logo} 
-        alt="Armstrong - System of a Town" 
-        className={cn(sizeClasses[size], "w-auto object-contain")}
-      />
-    </div>
-  );
-}
-```
-
-### Logo-Dateien kopieren
-
-Die hochgeladenen Logos werden in `src/assets/logos/` gespeichert:
-
-| Datei | Verwendung |
-|-------|------------|
-| `armstrong_logo_light.png` | Fur Light Mode |
-| `armstrong_logo_dark.png` | Fur Dark Mode |
-| `armstrong_logo_mono_white.png` | Fur dunkle Hintergrunde (optional) |
-| `armstrong_logo_mono_black.png` | Fur helle Hintergrunde (optional) |
-
-### SystemBar aktualisieren
+### Teil 3: Uhr entfernen
 
 **Datei:** `src/components/portal/SystemBar.tsx`
 
-**Zeilen 113-119 andern von:**
+**Zeilen 170-173 entfernen:**
 ```tsx
-{/* Logo placeholder - neutral, no branding */}
-<div className="hidden md:flex items-center gap-2 text-muted-foreground">
-  <div className="h-6 w-6 rounded bg-muted flex items-center justify-center text-xs font-bold">
-    S
-  </div>
-  <span className="text-sm font-medium">System of a Town</span>
+// ENTFERNEN:
+<div className="flex items-center gap-1.5">
+  <Clock className="h-4 w-4" />
+  <span className="text-sm font-mono">{formattedTime}</span>
 </div>
 ```
 
-**Zu:**
-```tsx
-{/* Logo - Theme-aware */}
-<div className="hidden md:flex items-center">
-  <AppLogo size="sm" />
-</div>
-```
+**Clock-Import und Zeit-State entfernen:**
+- `Clock` aus Imports entfernen
+- `currentTime` State und Timer-Effect konnen bleiben (evtl. fur zukunftige Nutzung) oder ebenfalls entfernt werden
 
 ---
 
-## Dateistruktur nach Anderung
+## Visuelle Darstellung (nach Anderung)
 
-```
-src/
-├── assets/
-│   └── logos/
-│       ├── armstrong_logo_light.png
-│       ├── armstrong_logo_dark.png
-│       ├── armstrong_logo_mono_white.png
-│       └── armstrong_logo_mono_black.png
-├── components/
-│   └── portal/
-│       ├── AppLogo.tsx          (NEU)
-│       └── SystemBar.tsx        (MODIFY)
-```
-
----
-
-## Visuelle Darstellung
-
-### Vorher
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│ [🏠 Portal]  [S] System of a Town    📍 ... · 🕐 10:44    [👤] │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### Nachher (Light Mode)
-```text
-┌────────────────────────────────────────────────────────────────┐
-│ [🏠]  [ARMSTRONG LOGO - LIGHT]     📍 ... · 🕐 10:44     [👤] │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### Nachher (Dark Mode)
-```text
-┌────────────────────────────────────────────────────────────────┐
-│ [🏠]  [ARMSTRONG LOGO - DARK]      📍 ... · 🕐 10:44     [👤] │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ [🏠]  [ARMSTRONG LOGO - GROSSER]    📍 Berlin · ⛰ 34m    [⚙️] [🚀] [👤] │
+└─────────────────────────────────────────────────────────────────┘
+       ↑ Transparenter Hintergrund                        ↑ Neu: Settings + Rocket-Icon
 ```
 
 ---
 
-## Vorteile des Logo-Containers
+## Logo-Vorbereitung (extern notwendig)
 
-1. **Theme-Awareness**: Automatischer Wechsel zwischen Light/Dark Logo
-2. **Wiederverwendbar**: Kann auf Login-Seite, Landing Page, etc. verwendet werden
-3. **Grossenanpassung**: Vordefinierte Grossen (sm/md/lg) fur konsistentes Erscheinungsbild
-4. **Erweiterbar**: Einfach weitere Logo-Varianten hinzufugen (z.B. Mono-Versionen)
-5. **Optimiert**: Logos werden uber ES6-Import eingebunden (Bundler-optimiert)
+Falls die SVG-Logos auch Probleme haben, hier die Anleitung zur Logo-Uberarbeitung:
+
+| Anforderung | Beschreibung |
+|-------------|--------------|
+| Format | PNG mit Alpha-Kanal ODER SVG |
+| Hintergrund | Transparent (kein Weiss) |
+| Inhalt | Nur grafisches Symbol, ohne Text |
+| Grosse | min. 200px Hohe |
+| Varianten | Light (fur hellen Hintergrund), Dark (fur dunklen Hintergrund) |
+
+**Tools:**
+- Adobe Illustrator/Photoshop
+- Figma (Export als SVG)
+- GIMP (PNG mit Transparenz)
+- Online: remove.bg fur Hintergrund entfernen
 
 ---
 
-## Zusammenfassung der Anderungen
+## Dateiänderungen
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/assets/logos/armstrong_logo_light.png` | COPY | Light-Mode Logo |
-| `src/assets/logos/armstrong_logo_dark.png` | COPY | Dark-Mode Logo |
-| `src/assets/logos/armstrong_logo_mono_white.png` | COPY | Mono-Logo weiss |
-| `src/assets/logos/armstrong_logo_mono_black.png` | COPY | Mono-Logo schwarz |
-| `src/components/portal/AppLogo.tsx` | CREATE | Neue Logo-Komponente |
-| `src/components/portal/SystemBar.tsx` | MODIFY | Home-Button + Logo-Container |
+| `src/components/portal/AppLogo.tsx` | MODIFY | SVG-Import, grossere Darstellung |
+| `src/components/portal/SystemBar.tsx` | MODIFY | Rocket-Icon, Settings-Icon, Uhr entfernen |
+
+---
+
+## Abhangigkeiten
+
+- `Rocket` Icon ist in lucide-react verfugbar
+- SVG-Logos sind im Asset-Ordner vorhanden (mussen aber gepruft werden)
