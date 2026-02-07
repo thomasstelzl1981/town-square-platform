@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Building2, Users, Briefcase } from 'lucide-react';
 import HeroBackground from '@/assets/kaufy/Hero_Background.png';
 import { InvestmentSearchCard } from '@/components/zone3/kaufy/InvestmentSearchCard';
@@ -24,70 +25,85 @@ interface PropertyData {
   netBurden?: number;
 }
 
-// Mock data for demo (würde von v_public_listings kommen)
-const MOCK_PROPERTIES: PropertyData[] = [
-  {
-    public_id: 'LST-001',
-    title: 'Gepflegtes MFH in Toplage',
-    asking_price: 890000,
-    monthly_rent: 4200,
-    property_type: 'multi_family',
-    city: 'München',
-    postal_code: '80331',
-    total_area_sqm: 620,
-    year_built: 1925,
-    gross_yield: 5.7,
-  },
-  {
-    public_id: 'LST-002',
-    title: 'Sanierte Altbauwohnung',
-    asking_price: 385000,
-    monthly_rent: 1450,
-    property_type: 'apartment',
-    city: 'Berlin',
-    postal_code: '10115',
-    total_area_sqm: 95,
-    year_built: 1910,
-    gross_yield: 4.5,
-  },
-  {
-    public_id: 'LST-003',
-    title: 'Neubau-ETW mit Balkon',
-    asking_price: 295000,
-    monthly_rent: 980,
-    property_type: 'apartment',
-    city: 'Leipzig',
-    postal_code: '04109',
-    total_area_sqm: 68,
-    year_built: 2022,
-    gross_yield: 4.0,
-  },
-  {
-    public_id: 'LST-004',
-    title: 'Doppelhaushälfte vermietet',
-    asking_price: 520000,
-    monthly_rent: 2100,
-    property_type: 'house',
-    city: 'Hamburg',
-    postal_code: '22087',
-    total_area_sqm: 145,
-    year_built: 1985,
-    gross_yield: 4.8,
-  },
-];
-
 export default function KaufyHome() {
-  const [properties, setProperties] = useState<PropertyData[]>(MOCK_PROPERTIES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [calculatedProperties, setCalculatedProperties] = useState<PropertyData[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [searchParams, setSearchParams] = useState<{ zvE: number; equity: number } | null>(null);
 
+  // Fetch real listings from database
+  const { data: dbListings = [], isLoading: isLoadingListings } = useQuery({
+    queryKey: ['kaufy-public-listings'],
+    queryFn: async () => {
+      // 1. Get Kaufy-published listings
+      const { data: publications, error: pubError } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'kaufy')
+        .eq('status', 'active');
+
+      if (pubError) {
+        console.error('Publications query error:', pubError);
+        return [];
+      }
+
+      if (!publications?.length) {
+        console.log('No Kaufy publications found');
+        return [];
+      }
+
+      // 2. Fetch listing details with property data
+      const { data: listingsData, error: listingsError } = await supabase
+        .from('listings')
+        .select(`
+          id, public_id, title, asking_price,
+          properties!inner (
+            property_type, address, city, postal_code, 
+            total_area_sqm, construction_year, annual_income
+          )
+        `)
+        .in('id', publications.map(p => p.listing_id))
+        .eq('status', 'active');
+
+      if (listingsError) {
+        console.error('Listings query error:', listingsError);
+        return [];
+      }
+
+      // 3. Transform to PropertyData format
+      return (listingsData || []).map((l: any) => ({
+        public_id: l.public_id,
+        title: l.title || `${l.properties.property_type} ${l.properties.city}`,
+        asking_price: l.asking_price || 0,
+        monthly_rent: l.properties.annual_income ? l.properties.annual_income / 12 : 0,
+        property_type: l.properties.property_type,
+        city: l.properties.city || '',
+        postal_code: l.properties.postal_code || '',
+        total_area_sqm: l.properties.total_area_sqm || 0,
+        year_built: l.properties.construction_year || 0,
+        gross_yield: l.asking_price > 0 
+          ? ((l.properties.annual_income || 0) / l.asking_price) * 100 
+          : 0,
+      })) as PropertyData[];
+    },
+  });
+
+  // Properties to display: calculated results if search was done, otherwise raw DB listings
+  const properties = useMemo(() => {
+    if (searchParams && calculatedProperties.length > 0) {
+      return calculatedProperties;
+    }
+    return dbListings;
+  }, [searchParams, calculatedProperties, dbListings]);
+
+  const isLoading = isLoadingListings || isCalculating;
+
   const handleSearch = async (params: { zvE: number; equity: number }) => {
-    setIsLoading(true);
+    setIsCalculating(true);
     setSearchParams(params);
 
-    // Calculate investment metrics for each property
+    // Calculate investment metrics for each property from DB
     const updatedProperties = await Promise.all(
-      MOCK_PROPERTIES.map(async (prop) => {
+      dbListings.map(async (prop) => {
         try {
           const { data } = await supabase.functions.invoke('sot-investment-engine', {
             body: {
@@ -122,8 +138,8 @@ export default function KaufyHome() {
       })
     );
 
-    setProperties(updatedProperties);
-    setIsLoading(false);
+    setCalculatedProperties(updatedProperties);
+    setIsCalculating(false);
   };
 
   return (
