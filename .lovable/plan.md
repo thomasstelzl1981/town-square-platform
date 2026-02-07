@@ -1,169 +1,200 @@
 
+# Plan: SystemBar Home-Button + Logo-Container
 
-# Bugfix-Plan: SystemBar Location + Navigation Zentrierung
+## Ubersicht
 
-## Problem-Analyse
+Zwei Anderungen an der SystemBar:
 
-### 1. Standort wird nicht angezeigt
-**Console-Log gefunden:**
-```
-Geolocation error: {}
-```
-
-Der Browser verweigert die Geolocation-Berechtigung im Preview-Iframe. Das ist ein bekanntes Problem bei eingebetteten iframes (Sicherheitseinschränkung).
-
-**Lösungsoptionen:**
-- A) Fallback-Anzeige mit "Standort anfordern"-Button
-- B) IP-basierte Geolocation als Fallback (weniger genau, aber funktioniert)
-
-### 2. Zentrierung fehlt bei Level 1 und Level 2
-**Aktuelle Situation:**
-
-| Level | Komponente | Aktuelle Klassen | Problem |
-|-------|------------|------------------|---------|
-| Level 1 | `AreaTabs.tsx` Zeile 24 | `flex items-center gap-1` | Kein `justify-center` |
-| Level 2 | `ModuleTabs.tsx` Zeile 81 | `flex items-center gap-1` | Kein `justify-center` |
-| Level 3 | `SubTabs.tsx` Zeile 25 | `flex items-center justify-center gap-1` | OK |
+1. **Home-Button vereinfachen**: Text "Portal" entfernen, nur das Haus-Icon anzeigen
+2. **Logo-Container einrichten**: Flexibler Container mit Theme-Erkennung fur automatischen Logo-Wechsel
 
 ---
 
-## Implementierungsplan
-
-### Fix 1: AreaTabs.tsx — Level 1 zentrieren
-
-**Datei:** `src/components/portal/AreaTabs.tsx`
-
-**Zeile 24 andern von:**
-```tsx
-<div className="flex items-center gap-1 px-4 py-2">
-```
-
-**Zu:**
-```tsx
-<div className="flex items-center justify-center gap-1 px-4 py-2">
-```
-
-### Fix 2: ModuleTabs.tsx — Level 2 zentrieren
-
-**Datei:** `src/components/portal/ModuleTabs.tsx`
-
-**Zeile 81 andern von:**
-```tsx
-<div className="flex items-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none">
-```
-
-**Zu:**
-```tsx
-<div className="flex items-center justify-center gap-1 px-4 py-2 overflow-x-auto scrollbar-none">
-```
-
-### Fix 3: SystemBar.tsx — Geolocation Fallback
-
-Da der Preview-Iframe Geolocation blockiert, zeigen wir einen klickbaren Fallback an:
+## Teil 1: Home-Button vereinfachen
 
 **Datei:** `src/components/portal/SystemBar.tsx`
 
-**Neue State-Variable:**
+**Zeilen 102-111 andern von:**
 ```tsx
-const [locationError, setLocationError] = useState(false);
+<Link 
+  to="/portal" 
+  className={cn(
+    'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
+    'text-muted-foreground hover:text-foreground hover:bg-accent'
+  )}
+>
+  <Home className="h-4 w-4" />
+  <span className="text-sm font-medium hidden sm:inline">Portal</span>
+</Link>
 ```
 
-**Fehler-Handling erweitern (Zeile 78-80):**
+**Zu:**
 ```tsx
-(error) => {
-  console.error('Geolocation error:', error);
-  setLocationError(true);  // NEU
-},
+<Link 
+  to="/portal" 
+  className={cn(
+    'flex items-center justify-center p-2 rounded-lg transition-colors',
+    'text-muted-foreground hover:text-foreground hover:bg-accent'
+  )}
+  title="Zur Portal-Startseite"
+>
+  <Home className="h-5 w-5" />
+</Link>
 ```
 
-**Anzeige mit Fallback-Button (Zeile 122-136):**
+**Anderungen:**
+- Text "Portal" entfernt
+- Icon etwas grosser (h-5 w-5 statt h-4 w-4) fur bessere Sichtbarkeit
+- Padding angepasst (p-2 statt px-3 py-1.5)
+- Tooltip hinzugefugt fur Barrierefreiheit
+
+---
+
+## Teil 2: Logo-Container mit Theme-Support
+
+### Neue Komponente: AppLogo
+
+**Neue Datei:** `src/components/portal/AppLogo.tsx`
+
 ```tsx
-{/* Center section: Location + Time */}
-<div className="hidden sm:flex items-center gap-3 text-muted-foreground">
-  {location ? (
-    <>
-      <div className="flex items-center gap-1.5">
-        <MapPin className="h-4 w-4" />
-        <span className="text-sm">{location.city}</span>
-      </div>
-      {location.altitude !== null && (
-        <div className="flex items-center gap-1">
-          <Mountain className="h-3.5 w-3.5" />
-          <span className="text-sm">{location.altitude}m</span>
-        </div>
-      )}
-      <span className="text-muted-foreground/50">·</span>
-    </>
-  ) : locationError ? (
-    <>
-      <button
-        onClick={() => {
-          // Retry geolocation request
-          navigator.geolocation?.getCurrentPosition(/* ... */);
-        }}
-        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-        title="Standort aktivieren"
-      >
-        <MapPin className="h-4 w-4" />
-        <span className="text-sm">Standort?</span>
-      </button>
-      <span className="text-muted-foreground/50">·</span>
-    </>
-  ) : null}
-  <div className="flex items-center gap-1.5">
-    <Clock className="h-4 w-4" />
-    <span className="text-sm font-mono">{formattedTime}</span>
+/**
+ * APP LOGO - Theme-aware logo container
+ * 
+ * Automatically switches between light/dark logo variants
+ * based on current theme. Supports different size presets.
+ */
+
+import { useTheme } from 'next-themes';
+
+// Logo imports
+import logoLight from '@/assets/logos/armstrong_logo_light.png';
+import logoDark from '@/assets/logos/armstrong_logo_dark.png';
+
+interface AppLogoProps {
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+  showText?: boolean;
+}
+
+export function AppLogo({ size = 'sm', className, showText = true }: AppLogoProps) {
+  const { resolvedTheme } = useTheme();
+  
+  const logo = resolvedTheme === 'dark' ? logoDark : logoLight;
+  
+  const sizeClasses = {
+    sm: 'h-6',    // SystemBar
+    md: 'h-10',   // Login page
+    lg: 'h-16',   // Landing page
+  };
+
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <img 
+        src={logo} 
+        alt="Armstrong - System of a Town" 
+        className={cn(sizeClasses[size], "w-auto object-contain")}
+      />
+    </div>
+  );
+}
+```
+
+### Logo-Dateien kopieren
+
+Die hochgeladenen Logos werden in `src/assets/logos/` gespeichert:
+
+| Datei | Verwendung |
+|-------|------------|
+| `armstrong_logo_light.png` | Fur Light Mode |
+| `armstrong_logo_dark.png` | Fur Dark Mode |
+| `armstrong_logo_mono_white.png` | Fur dunkle Hintergrunde (optional) |
+| `armstrong_logo_mono_black.png` | Fur helle Hintergrunde (optional) |
+
+### SystemBar aktualisieren
+
+**Datei:** `src/components/portal/SystemBar.tsx`
+
+**Zeilen 113-119 andern von:**
+```tsx
+{/* Logo placeholder - neutral, no branding */}
+<div className="hidden md:flex items-center gap-2 text-muted-foreground">
+  <div className="h-6 w-6 rounded bg-muted flex items-center justify-center text-xs font-bold">
+    S
   </div>
+  <span className="text-sm font-medium">System of a Town</span>
+</div>
+```
+
+**Zu:**
+```tsx
+{/* Logo - Theme-aware */}
+<div className="hidden md:flex items-center">
+  <AppLogo size="sm" />
 </div>
 ```
 
 ---
 
-## Dateiänderungen Zusammenfassung
+## Dateistruktur nach Anderung
 
-| Datei | Aktion | Änderung |
-|-------|--------|----------|
-| `src/components/portal/AreaTabs.tsx` | MODIFY | `justify-center` hinzufugen |
-| `src/components/portal/ModuleTabs.tsx` | MODIFY | `justify-center` hinzufugen |
-| `src/components/portal/SystemBar.tsx` | MODIFY | `locationError` State + Fallback-Button |
-
----
-
-## Erwartetes Ergebnis
-
-### SystemBar (nach Fix)
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│ [Portal] [S] System of a Town   📍 Standort? · 🕐 10:44    [👤]  │
-└──────────────────────────────────────────────────────────────────┘
-                                  ↑ Klickbar zum Aktivieren
-
-Nach Berechtigung:
-┌──────────────────────────────────────────────────────────────────┐
-│ [Portal] [S] System of a Town   📍 Berlin · ⛰ 34m · 🕐 10:44  [👤] │
-└──────────────────────────────────────────────────────────────────┘
 ```
-
-### Navigation (nach Fix)
-```text
-Level 1 (zentriert):
-│           [Base] [Missions] [Operations] [Services]            │
-
-Level 2 (zentriert):
-│        [Stammdaten] [KI Office] [Dokumente] [Services] [Miety] │
-
-Level 3 (bereits zentriert):
-│              [Profil] [Organisation] [Abrechnung]               │
+src/
+├── assets/
+│   └── logos/
+│       ├── armstrong_logo_light.png
+│       ├── armstrong_logo_dark.png
+│       ├── armstrong_logo_mono_white.png
+│       └── armstrong_logo_mono_black.png
+├── components/
+│   └── portal/
+│       ├── AppLogo.tsx          (NEU)
+│       └── SystemBar.tsx        (MODIFY)
 ```
 
 ---
 
-## Hinweis zur Geolocation
+## Visuelle Darstellung
 
-Die Geolocation funktioniert moglicherweise nur:
-- In der publizierten Version (nicht im Preview-Iframe)
-- Wenn der User aktiv die Berechtigung erteilt
-- Auf HTTPS-Seiten
+### Vorher
+```text
+┌────────────────────────────────────────────────────────────────┐
+│ [🏠 Portal]  [S] System of a Town    📍 ... · 🕐 10:44    [👤] │
+└────────────────────────────────────────────────────────────────┘
+```
 
-Der Fallback-Button ermöglicht dem User, die Berechtigung erneut anzufordern.
+### Nachher (Light Mode)
+```text
+┌────────────────────────────────────────────────────────────────┐
+│ [🏠]  [ARMSTRONG LOGO - LIGHT]     📍 ... · 🕐 10:44     [👤] │
+└────────────────────────────────────────────────────────────────┘
+```
 
+### Nachher (Dark Mode)
+```text
+┌────────────────────────────────────────────────────────────────┐
+│ [🏠]  [ARMSTRONG LOGO - DARK]      📍 ... · 🕐 10:44     [👤] │
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Vorteile des Logo-Containers
+
+1. **Theme-Awareness**: Automatischer Wechsel zwischen Light/Dark Logo
+2. **Wiederverwendbar**: Kann auf Login-Seite, Landing Page, etc. verwendet werden
+3. **Grossenanpassung**: Vordefinierte Grossen (sm/md/lg) fur konsistentes Erscheinungsbild
+4. **Erweiterbar**: Einfach weitere Logo-Varianten hinzufugen (z.B. Mono-Versionen)
+5. **Optimiert**: Logos werden uber ES6-Import eingebunden (Bundler-optimiert)
+
+---
+
+## Zusammenfassung der Anderungen
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/assets/logos/armstrong_logo_light.png` | COPY | Light-Mode Logo |
+| `src/assets/logos/armstrong_logo_dark.png` | COPY | Dark-Mode Logo |
+| `src/assets/logos/armstrong_logo_mono_white.png` | COPY | Mono-Logo weiss |
+| `src/assets/logos/armstrong_logo_mono_black.png` | COPY | Mono-Logo schwarz |
+| `src/components/portal/AppLogo.tsx` | CREATE | Neue Logo-Komponente |
+| `src/components/portal/SystemBar.tsx` | MODIFY | Home-Button + Logo-Container |
