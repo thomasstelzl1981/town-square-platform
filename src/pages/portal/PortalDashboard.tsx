@@ -29,39 +29,43 @@ export default function PortalDashboard() {
   const isLoading = locationLoading || weatherLoading || eventsLoading;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="p-4 md:p-6 lg:p-8">
       {/* Development Mode Indicator */}
       {isDevelopmentMode && (
-        <p className="text-xs text-status-warn">
+        <p className="text-xs text-status-warn mb-4">
           Entwicklungsmodus aktiv
         </p>
       )}
 
-      {/* Top Row: Earth Globe + Weather (side by side on desktop) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Google Earth 3D Globe Card */}
-        <EarthGlobeCard
-          latitude={location?.latitude ?? null}
-          longitude={location?.longitude ?? null}
-          city={location?.city}
-        />
+      {/* All three cards in one row on desktop, only Armstrong on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        {/* Google Earth 3D Globe Card - hidden on mobile */}
+        <div className="hidden md:block">
+          <EarthGlobeCard
+            latitude={location?.latitude ?? null}
+            longitude={location?.longitude ?? null}
+            city={location?.city}
+          />
+        </div>
 
-        {/* Weather Widget */}
-        <WeatherCard
-          latitude={location?.latitude ?? null}
-          longitude={location?.longitude ?? null}
-          city={location?.city}
+        {/* Weather Widget - hidden on mobile */}
+        <div className="hidden md:block">
+          <WeatherCard
+            latitude={location?.latitude ?? null}
+            longitude={location?.longitude ?? null}
+            city={location?.city}
+          />
+        </div>
+
+        {/* Armstrong Greeting - always visible */}
+        <ArmstrongGreetingCard
+          displayName={profile?.display_name || ''}
+          city={location?.city || ''}
+          weather={weather ?? null}
+          todayEvents={todayEvents}
+          isLoading={isLoading}
         />
       </div>
-
-      {/* Bottom Row: Armstrong Greeting (full width) */}
-      <ArmstrongGreetingCard
-        displayName={profile?.display_name || ''}
-        city={location?.city || ''}
-        weather={weather ?? null}
-        todayEvents={todayEvents}
-        isLoading={isLoading}
-      />
     </div>
   );
 }
