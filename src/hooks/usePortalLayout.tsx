@@ -7,6 +7,7 @@ import { getModulesSorted } from '@/manifests/routesManifest';
 const SIDEBAR_KEY = 'sot-portal-sidebar-collapsed';
 const ARMSTRONG_KEY = 'sot-portal-armstrong-visible';
 const ARMSTRONG_EXPANDED_KEY = 'sot-portal-armstrong-expanded';
+const ARMSTRONG_POSITION_KEY = 'armstrong-position';
 
 interface PortalLayoutState {
   // Legacy sidebar (kept for backward compatibility during transition)
@@ -23,6 +24,11 @@ interface PortalLayoutState {
   armstrongExpanded: boolean;
   setArmstrongExpanded: (expanded: boolean) => void;
   toggleArmstrongExpanded: () => void;
+  
+  // NEW: Armstrong recovery helpers
+  showArmstrong: (options?: { resetPosition?: boolean; expanded?: boolean }) => void;
+  hideArmstrong: () => void;
+  resetArmstrong: () => void;
   
   // Area navigation (new 3-level nav)
   activeArea: AreaKey;
@@ -71,20 +77,23 @@ function buildModuleRouteMap(): Record<string, string> {
   return map;
 }
 
-// Migration key for localStorage cleanup
-const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v2';
+// Migration key for localStorage cleanup — now v3 to also clear position
+const ARMSTRONG_MIGRATION_KEY = 'sot-armstrong-migrated-v3';
 
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   
-  // === MIGRATION: Reset old Armstrong localStorage values to ensure Planet is visible ===
+  // === MIGRATION: Reset ALL old Armstrong localStorage values to ensure Planet is visible ===
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_KEY)) {
+      // Clear all Armstrong-related storage keys
       localStorage.removeItem(ARMSTRONG_KEY);
       localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
+      localStorage.removeItem(ARMSTRONG_POSITION_KEY);
+      // Also clear old migration keys
+      localStorage.removeItem('sot-armstrong-migrated-v2');
       localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-      // Force reload to apply new defaults
-      window.location.reload();
+      console.log('[Armstrong] Migration v3: Cleared all stored state');
     }
   }, []);
   
@@ -176,6 +185,44 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     setArmstrongExpanded(!armstrongExpanded);
   }, [armstrongExpanded, setArmstrongExpanded]);
 
+  // NEW: Armstrong recovery helpers
+  const showArmstrong = useCallback((options?: { resetPosition?: boolean; expanded?: boolean }) => {
+    const { resetPosition = false, expanded = false } = options || {};
+    
+    if (resetPosition) {
+      localStorage.removeItem(ARMSTRONG_POSITION_KEY);
+      console.log('[Armstrong] Position reset');
+    }
+    
+    setArmstrongVisibleState(true);
+    localStorage.setItem(ARMSTRONG_KEY, 'true');
+    
+    if (expanded !== undefined) {
+      setArmstrongExpandedState(expanded);
+      localStorage.setItem(ARMSTRONG_EXPANDED_KEY, String(expanded));
+    }
+  }, []);
+
+  const hideArmstrong = useCallback(() => {
+    setArmstrongVisibleState(false);
+    localStorage.setItem(ARMSTRONG_KEY, 'false');
+  }, []);
+
+  const resetArmstrong = useCallback(() => {
+    // Clear all Armstrong state and reset to defaults
+    localStorage.removeItem(ARMSTRONG_POSITION_KEY);
+    localStorage.removeItem(ARMSTRONG_KEY);
+    localStorage.removeItem(ARMSTRONG_EXPANDED_KEY);
+    
+    setArmstrongVisibleState(true);
+    setArmstrongExpandedState(false);
+    
+    localStorage.setItem(ARMSTRONG_KEY, 'true');
+    localStorage.setItem(ARMSTRONG_EXPANDED_KEY, 'false');
+    
+    console.log('[Armstrong] Full reset completed');
+  }, []);
+
   // Area controls - hide SubTabs when area changes
   const setActiveArea = useCallback((area: AreaKey) => {
     setActiveAreaState(area);
@@ -192,6 +239,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     armstrongExpanded,
     setArmstrongExpanded,
     toggleArmstrongExpanded,
+    showArmstrong,
+    hideArmstrong,
+    resetArmstrong,
     activeArea,
     setActiveArea,
     subTabsVisible,

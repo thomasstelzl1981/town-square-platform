@@ -6,9 +6,11 @@
  * 
  * Acts as drop target for drag-and-drop files
  * Desktop only: Freely positionable via drag handle
+ * 
+ * RECOVERY: Self-healing position if off-screen
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useDraggable } from '@/hooks/useDraggable';
 import { ChatPanel } from '@/components/chat/ChatPanel';
@@ -30,20 +32,49 @@ const COLLAPSED_SIZE = { width: 80, height: 100 };
 
 export function ArmstrongContainer() {
   const location = useLocation();
-  const { armstrongVisible, armstrongExpanded, toggleArmstrong, toggleArmstrongExpanded, isMobile } = usePortalLayout();
+  const { armstrongVisible, armstrongExpanded, toggleArmstrong, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
   const [isDragOver, setIsDragOver] = useState(false);
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Draggable positioning (different size for expanded vs collapsed)
   const currentSize = armstrongExpanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
   
-  const { position, isDragging, dragHandleProps } = useDraggable({
+  const { position, isDragging, dragHandleProps, resetPosition } = useDraggable({
     storageKey: 'armstrong-position',
     containerSize: currentSize,
     boundaryPadding: 20,
     disabled: isMobile, // Disable on mobile
   });
+
+  // SELF-HEALING: Check if container is off-screen and reset if needed
+  useEffect(() => {
+    if (!armstrongVisible || isMobile || !containerRef.current) return;
+    
+    // Small delay to allow DOM to render
+    const timeout = setTimeout(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      
+      const rect = el.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Check if element is mostly off-screen (more than 80% hidden)
+      const visibleWidth = Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0);
+      const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+      const visibleArea = Math.max(0, visibleWidth) * Math.max(0, visibleHeight);
+      const totalArea = rect.width * rect.height;
+      
+      if (totalArea > 0 && visibleArea / totalArea < 0.2) {
+        console.log('[Armstrong] Off-screen detected, resetting position');
+        resetPosition();
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [armstrongVisible, armstrongExpanded, isMobile, resetPosition]);
 
   // Derive context from current route
   const getContext = () => {
@@ -91,8 +122,9 @@ export function ArmstrongContainer() {
   if (armstrongExpanded) {
     return (
       <div 
+        ref={containerRef}
         className={cn(
-          'fixed w-80 border bg-card rounded-2xl shadow-lg z-40 flex flex-col overflow-hidden',
+          'fixed w-80 border bg-card rounded-2xl shadow-lg z-[60] flex flex-col overflow-hidden',
           isDragOver && 'ring-2 ring-primary ring-inset',
           isDragging && 'shadow-2xl'
         )}
@@ -137,7 +169,7 @@ export function ArmstrongContainer() {
               className="h-7 w-7 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
-                toggleArmstrong();
+                hideArmstrong();
               }}
               title="Schließen"
             >
@@ -160,8 +192,9 @@ export function ArmstrongContainer() {
   // Collapsed State: Planet Sphere - DRAGGABLE
   return (
     <div 
+      ref={containerRef}
       className={cn(
-        'fixed z-40 flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing',
+        'fixed z-[60] flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing',
         isDragOver && 'scale-110',
         isDragging && 'opacity-90'
       )}
