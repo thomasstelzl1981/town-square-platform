@@ -19,7 +19,7 @@ import {
 import { 
   Upload, Download, Trash2, Loader2, FileSpreadsheet, 
   Building2, Users, FileText, Home, CheckCircle2, AlertCircle, Sparkles, X,
-  Database, RefreshCw
+  Database, RefreshCw, Car, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -649,6 +649,19 @@ export function TestDataManager() {
                     <div className="p-2 bg-primary/5 rounded border border-primary/20 flex items-center gap-2">
                       <Building2 className="h-3 w-3 text-primary" />
                       <span>Offers: <strong>{displayCounts?.acq_offers ?? 0}</strong></span>
+                    </div>
+                    {/* Car Management (MOD-17) */}
+                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
+                      <Car className="h-3 w-3 text-amber-600" />
+                      <span>Fahrzeuge: <strong>{displayCounts?.cars_vehicles ?? 0}</strong>/2</span>
+                    </div>
+                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
+                      <FileText className="h-3 w-3 text-amber-600" />
+                      <span>Finanzierungen: <strong>{displayCounts?.cars_financing ?? 0}</strong>/2</span>
+                    </div>
+                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
+                      <ShieldCheck className="h-3 w-3 text-amber-600" />
+                      <span>KFZ-Versicherungen: <strong>{displayCounts?.cars_insurances ?? 0}</strong>/2</span>
                     </div>
                   </>
                 );
