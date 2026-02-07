@@ -25,6 +25,7 @@ export function MobileBottomNav() {
 
   const handleHomeClick = () => {
     navigate('/portal');
+    setActiveArea('base'); // Reset to base area
     setMobileNavView('areas');
     setSelectedMobileModule(null);
   };
@@ -37,8 +38,8 @@ export function MobileBottomNav() {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="fixed left-0 right-0 z-50 bg-background border-t"
+      style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom))' }}
     >
       <div className="flex items-center justify-around h-14">
         {/* Home button */}

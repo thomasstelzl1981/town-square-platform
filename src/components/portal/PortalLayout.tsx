@@ -6,7 +6,7 @@ import { TopNavigation } from './TopNavigation';
 import { ArmstrongContainer } from './ArmstrongContainer';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileCardView } from './MobileCardView';
-import { ArmstrongPod } from './ArmstrongPod';
+import { ArmstrongInputBar } from './ArmstrongInputBar';
 import { ArmstrongSheet } from './ArmstrongSheet';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { Loader2 } from 'lucide-react';
@@ -82,7 +82,7 @@ function PortalLayoutInner() {
         <SystemBar />
         
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto pb-32 relative">
+        <main className="flex-1 overflow-y-auto pb-28 relative">
           {/* Loading overlay */}
           {isLoading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
@@ -91,18 +91,18 @@ function PortalLayoutInner() {
           )}
           
           {/* Show card navigation when on /portal root, otherwise show module content */}
-          {!isOnModulePage && mobileNavView !== 'tiles' ? (
+          {!isOnModulePage ? (
             <MobileCardView />
           ) : (
             <Outlet />
           )}
         </main>
         
-        {/* Armstrong Pod - Above bottom nav */}
-        <ArmstrongPod onOpenSheet={() => setArmstrongSheetOpen(true)} />
-        
-        {/* Bottom Navigation */}
+        {/* Bottom Navigation - Above Armstrong bar */}
         <MobileBottomNav />
+        
+        {/* Armstrong Input Bar - At very bottom */}
+        <ArmstrongInputBar onOpenSheet={() => setArmstrongSheetOpen(true)} />
         
         {/* Armstrong Sheet */}
         <ArmstrongSheet 
