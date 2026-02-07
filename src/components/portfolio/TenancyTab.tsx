@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro } from 'lucide-react';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -124,6 +124,16 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const [inviting, setInviting] = useState(false);
   const [inviteLeaseId, setInviteLeaseId] = useState<string | null>(null);
   const [inviteContact, setInviteContact] = useState<Contact | null>(null);
+  
+  // Quick contact creation dialog
+  const [quickContactDialogOpen, setQuickContactDialogOpen] = useState(false);
+  const [creatingContact, setCreatingContact] = useState(false);
+  const [newContactForm, setNewContactForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+  });
 
   async function fetchData() {
     if (!unitId) {
@@ -139,7 +149,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .from('leases')
         .select(`
           *,
-          tenant_contact:contacts!tenant_contact_id(id, first_name, last_name, email)
+          tenant_contact:contacts!leases_contact_fk(id, first_name, last_name, email)
         `)
         .eq('unit_id', unitId)
         .eq('tenant_id', tenantId)
@@ -381,6 +391,47 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     setInviting(false);
   }
 
+  async function handleCreateQuickContact() {
+    if (!newContactForm.first_name || !newContactForm.last_name) {
+      toast.error('Bitte Vor- und Nachname eingeben');
+      return;
+    }
+
+    setCreatingContact(true);
+    try {
+      // Generate a public_id for the contact
+      const publicId = `KNT-${Date.now().toString(36).toUpperCase()}`;
+      
+      const { data: newContact, error: insertError } = await supabase
+        .from('contacts')
+        .insert([{
+          tenant_id: tenantId,
+          first_name: newContactForm.first_name,
+          last_name: newContactForm.last_name,
+          email: newContactForm.email || null,
+          phone: newContactForm.phone || null,
+          public_id: publicId,
+        }])
+        .select('id, first_name, last_name, email')
+        .single();
+
+      if (insertError) throw insertError;
+
+      toast.success('Kontakt erstellt');
+      
+      // Reload contacts and auto-select the new one
+      await fetchData();
+      setLeaseForm(prev => ({ ...prev, tenant_contact_id: newContact.id }));
+      
+      // Reset form and close dialog
+      setNewContactForm({ first_name: '', last_name: '', email: '', phone: '' });
+      setQuickContactDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Erstellen');
+    }
+    setCreatingContact(false);
+  }
+
   const calculateWarmRent = () => {
     const cold = parseFloat(leaseForm.rent_cold_eur) || 0;
     const nk = parseFloat(leaseForm.nk_advance_eur) || 0;
@@ -605,27 +656,40 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Mieter Auswahl */}
+            {/* Mieter Auswahl mit Schnellanlage-Button */}
             <div className="space-y-2">
               <Label>Mieter (Kontakt) *</Label>
-              <Select
-                value={leaseForm.tenant_contact_id}
-                onValueChange={(v) => setLeaseForm(prev => ({ ...prev, tenant_contact_id: v }))}
-                disabled={!!editingLease}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Kontakt auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.last_name}, {c.first_name} {c.email && `(${c.email})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={leaseForm.tenant_contact_id}
+                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, tenant_contact_id: v }))}
+                  disabled={!!editingLease}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Kontakt auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.last_name}, {c.first_name} {c.email && `(${c.email})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!editingLease && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setQuickContactDialogOpen(true)}
+                    title="Neuen Mieter anlegen"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Kontakte werden über Office → Kontakte angelegt
+                Wählen Sie einen bestehenden Kontakt oder legen Sie einen neuen Mieter an
               </p>
             </div>
 
@@ -810,6 +874,65 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
             <Button onClick={handleSendInvite} disabled={inviting}>
               {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Einladung senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Contact Creation Dialog */}
+      <Dialog open={quickContactDialogOpen} onOpenChange={setQuickContactDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neuen Mieter anlegen</DialogTitle>
+            <DialogDescription>
+              Erstellen Sie schnell einen neuen Kontakt als Mieter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Vorname *</Label>
+                <Input
+                  value={newContactForm.first_name}
+                  onChange={(e) => setNewContactForm(prev => ({ ...prev, first_name: e.target.value }))}
+                  placeholder="Max"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nachname *</Label>
+                <Input
+                  value={newContactForm.last_name}
+                  onChange={(e) => setNewContactForm(prev => ({ ...prev, last_name: e.target.value }))}
+                  placeholder="Mustermann"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>E-Mail</Label>
+              <Input
+                type="email"
+                value={newContactForm.email}
+                onChange={(e) => setNewContactForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="max@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefon</Label>
+              <Input
+                type="tel"
+                value={newContactForm.phone}
+                onChange={(e) => setNewContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+49 123 456789"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickContactDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleCreateQuickContact} disabled={creatingContact}>
+              {creatingContact && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Anlegen & Auswählen
             </Button>
           </DialogFooter>
         </DialogContent>
