@@ -40,6 +40,7 @@ export function useUpdateProperty() {
       if (data.city !== undefined) updateData.city = data.city;
       if (data.locationLabel !== undefined) updateData.location_label = data.locationLabel;
       if (data.locationNotes !== undefined) updateData.location_notes = data.locationNotes;
+      if ((data as any).description !== undefined) updateData.description = (data as any).description;
       if (data.latitude !== undefined) updateData.latitude = data.latitude;
       if (data.longitude !== undefined) updateData.longitude = data.longitude;
       if (data.yearBuilt !== undefined) updateData.year_built = data.yearBuilt;

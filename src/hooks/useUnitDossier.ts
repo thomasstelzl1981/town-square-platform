@@ -59,7 +59,8 @@ export function useUnitDossier(unitId: string | undefined) {
             manager_contact,
             total_area_sqm,
             energy_source,
-            heating_type
+            heating_type,
+            description
           )
         `)
         .eq('id', unitId)
@@ -250,12 +251,13 @@ export function useUnitDossier(unitId: string | undefined) {
         vermieterKontextId: (property as any).landlord_context_id,
         reportingRegime: ((property as any).reporting_regime as 'VuV' | 'SuSa_BWA') || 'VuV',
 
-        // Block B: Address
+        // Block B: Address & Beschreibung
         street: property.address,
         houseNumber: (property as any).address_house_no,
         postalCode: property.postal_code || '',
         city: property.city,
         locationNotes: (property as any).location_notes,
+        description: property.description,
         latitude: (property as any).latitude,
         longitude: (property as any).longitude,
 

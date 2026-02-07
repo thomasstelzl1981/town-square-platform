@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles, FileText, Building2, Calculator } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
@@ -90,7 +90,6 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('akte');
-  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const contentRef = usePdfContentRef();
 
   // Load the new Immobilienakte data
@@ -223,52 +222,7 @@ export default function PropertyDetailPage() {
     }
   };
 
-  const handleGenerateDescription = async () => {
-    if (!property) return;
-    
-    setIsGeneratingDescription(true);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('sot-expose-description', {
-        body: { 
-          property: {
-            address: property.address,
-            city: property.city,
-            postal_code: property.postal_code,
-            property_type: property.property_type,
-            year_built: property.year_built,
-            total_area_sqm: property.total_area_sqm,
-            heating_type: property.heating_type,
-            energy_source: property.energy_source,
-            renovation_year: property.renovation_year,
-            description: property.description
-          }
-        }
-      });
-      
-      if (fnError) throw fnError;
-      
-      if (data?.description) {
-        const { error: updateError } = await supabase
-          .from('properties')
-          .update({ description: data.description })
-          .eq('id', property.id);
-        
-        if (updateError) throw updateError;
-        
-        setProperty({ ...property, description: data.description });
-        toast({ title: 'Beschreibung generiert und gespeichert' });
-      }
-    } catch (err: any) {
-      console.error('Error generating description:', err);
-      toast({
-        title: 'Fehler bei KI-Generierung',
-        description: err.message || 'Unbekannter Fehler',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsGeneratingDescription(false);
-    }
-  };
+  // handleGenerateDescription entfernt — KI-Generierung erfolgt jetzt im EditableAddressBlock
 
   // Loading state
   if (loading || dossierLoading) {
@@ -334,27 +288,7 @@ export default function PropertyDetailPage() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild className="no-print">
-              <Link to={`/portal/immobilien/${id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Bearbeiten
-              </Link>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleGenerateDescription}
-              disabled={isGeneratingDescription}
-              className="no-print"
-            >
-              {isGeneratingDescription ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              Beschreibung generieren
-            </Button>
-          </div>
+{/* Buttons entfernt — Bearbeiten inline, KI in EditableAddressBlock */}
         </div>
 
         {/* Tabs - Akte is now the default/first tab */}
