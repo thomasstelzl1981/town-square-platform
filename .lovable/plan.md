@@ -1,243 +1,333 @@
 
+# Dashboard Redesign: Interaktive Willkommensseite mit Google Earth, Wetter & Armstrong
 
-# Erweiterter Plan: Display-Name Sync, Geolocation Fallback & Google APIs
+## Konzeptübersicht
 
-## Zusammenfassung der Anforderungen
+Nach dem Login wird der Benutzer mit einem immersiven, dreistufigen Dashboard begrüßt:
 
-### 1. Display-Name wird nicht aktualisiert
-**Problem:** Nach dem Speichern in `ProfilTab.tsx` wird nur die Query-Cache invalidiert, aber der AuthContext nicht aktualisiert.
-
-**Lösung:** Nach erfolgreichem Update `refreshAuth()` aufrufen.
-
-### 2. Geolocation funktioniert nicht (Chrome-Hinweis)
-**Browser-Berechtigung in Chrome aktivieren:**
-1. Klick auf das Schloss-Symbol links neben der URL
-2. "Website-Einstellungen" → "Standort" → "Zulassen"
-3. Seite neu laden
-
-**Alternativ:** Chrome-Einstellungen → Datenschutz und Sicherheit → Website-Einstellungen → Standort
-
-**Hinweis zur Lovable-Preview:** Im iFrame der Vorschau kann Geolocation eingeschränkt sein. In der veröffentlichten Version sollte es funktionieren.
-
-### 3. Fallback: Standort aus Nutzerprofil
-Wenn Browser-Geolocation fehlschlägt → Stadt aus `profile.city` (Stammdaten) anzeigen.
-
-### 4. Google APIs aktivieren (Zone 1)
-Die Integration Registry hat bereits Einträge für:
-- `GOOGLE_MAPS` (Status: `pending_setup`)
-- `GOOGLE_PLACES` (Status: `pending_setup`)
-
-Für die Aktivierung wird ein Google Cloud API-Key benötigt.
+```
++--------------------------------+--------------------------------+
+|                                |                                |
+|     🌍 GOOGLE EARTH            |    ☀️ WETTER-WIDGET            |
+|     (Rotierender Globus        |    (Open-Meteo API)            |
+|      mit Zoom auf Standort)    |                                |
+|                                |    Temperatur, Wetter, Icon    |
+|     Maps 3D / Photorealistic   |    Wind, Luftfeuchtigkeit      |
+|                                |    7-Tage Vorschau             |
++--------------------------------+--------------------------------+
+|                                                                 |
+|     🤖 ARMSTRONG BEGRÜSSUNG                                     |
+|                                                                 |
+|     "Guten Morgen, Mr. Thomas! Ich hoffe, du hast einen        |
+|      schönen Tag. Du bist heute in Oberhaching, das Wetter     |
+|      wird heute schön (18°C, sonnig). Wie ich an deinem        |
+|      Terminkalender sehe, hast du heute 2 Termine..."          |
+|                                                                 |
++-----------------------------------------------------------------+
+```
 
 ---
 
-## Technische Änderungen
+## Erforderliche APIs
 
-### Datei 1: `src/pages/portal/stammdaten/ProfilTab.tsx`
+### 1. Google Maps 3D (Photorealistic 3D Tiles)
+**API-Name:** Maps JavaScript API + Photorealistic 3D Tiles
 
-**Zeile 35:** `refreshAuth` aus useAuth importieren
-```tsx
-const { user, isDevelopmentMode, refreshAuth } = useAuth();
+Google Earth ist keine eigenständige API mehr. Stattdessen bietet Google "Photorealistic 3D Tiles" innerhalb der Maps JavaScript API, die Google Earth-ähnliche 3D-Ansichten ermöglicht:
+
+- `flyCameraTo()` - Fliegt von Weltraumansicht zum Standort
+- `flyCameraAround()` - Rotiert um einen Punkt
+- Tilt & Rotation für 3D-Effekte
+
+**In Google Cloud Console aktivieren:**
+- Maps JavaScript API
+- Map Tiles API (für Photorealistic 3D)
+
+**Hinweis:** Diese 3D-Funktionalität ist Teil des Maps JavaScript API und nutzt denselben API-Key.
+
+### 2. Open-Meteo API (Kostenlos, kein API-Key!)
+**URL:** https://api.open-meteo.com/v1/forecast
+
+Vorteile:
+- Keine Registrierung erforderlich
+- Keine Kosten
+- CORS-freundlich
+- Stundengenaue Vorhersagen
+
+Beispiel-Request:
+```
+https://api.open-meteo.com/v1/forecast?latitude=48.0167&longitude=11.5843
+  &current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m
+  &daily=temperature_2m_max,temperature_2m_min,weathercode
+  &timezone=Europe/Berlin
 ```
 
-**Zeilen 139-142:** `onSuccess` erweitern
+### 3. Bestehende APIs (Integration Registry aktualisieren)
+
+| Code | Neu/Bestehend | Aktivieren in Google Cloud |
+|------|---------------|----------------------------|
+| `GOOGLE_MAPS` | Bestehend | Maps JavaScript API |
+| `GOOGLE_PLACES` | Bestehend | Places API (New) |
+| `GOOGLE_EARTH_3D` | **NEU** | Map Tiles API |
+| `GOOGLE_ELEVATION` | **NEU** | Elevation API |
+| `OPEN_METEO` | **NEU** | Keine Aktivierung nötig! |
+
+---
+
+## Technische Implementierung
+
+### Datei 1: `src/components/dashboard/EarthGlobeCard.tsx` (NEU)
+
 ```tsx
-onSuccess: async () => {
-  queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
-  await refreshAuth(); // ← NEU: AuthContext synchronisieren
-  toast.success('Profil gespeichert');
-},
+// Google Maps 3D mit Photorealistic Tiles
+// Nutzt flyCameraTo() für Zoom-Animation von Weltraum zu Standort
+
+interface EarthGlobeCardProps {
+  latitude: number;
+  longitude: number;
+  city: string;
+}
+
+export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProps) {
+  // 1. Google Maps 3D Element laden
+  // 2. Kamera von Weltraum-Position (altitude: 10000000) starten
+  // 3. flyCameraTo() zum Standort animieren
+  // 4. flyCameraAround() für langsame Rotation
+}
 ```
 
-### Datei 2: `src/components/portal/SystemBar.tsx`
-
-**Neue Fallback-Logik:**
+### Datei 2: `src/components/dashboard/WeatherCard.tsx` (NEU)
 
 ```tsx
-// Import erweitern
-import { useAuth } from '@/contexts/AuthContext';
+// Wetter-Widget mit Open-Meteo API (kostenlos, kein API-Key!)
 
-export function SystemBar() {
-  const { profile, signOut, isDevelopmentMode, user } = useAuth();
-  // ... bestehender Code ...
+interface WeatherData {
+  temperature: number;
+  weatherCode: number;
+  windSpeed: number;
+  humidity: number;
+  forecast: DailyForecast[];
+}
 
-  // Geolocation mit Fallback auf Profil-Stadt
-  useEffect(() => {
-    // Fallback-Funktion für Profil-Standort
-    const useProfileFallback = () => {
-      if (profile?.city) {
-        setLocation({
-          city: profile.city,
-          altitude: null  // Aus Profil keine Höhe verfügbar
-        });
-        console.log('Geolocation Fallback: Using profile city', profile.city);
-      } else {
-        setLocationError(true);
-      }
-    };
-
-    if (!navigator.geolocation) {
-      useProfileFallback();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude, altitude } = position.coords;
-        console.log('Geolocation success:', { latitude, longitude, altitude });
-        
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
-          );
-          const data = await response.json();
-          const city = data.address?.city || data.address?.town || 
-                       data.address?.village || data.address?.municipality || 'Unbekannt';
-          
-          setLocation({
-            city,
-            altitude: altitude ? Math.round(altitude) : null
-          });
-        } catch (error) {
-          console.error('Geocoding failed, using fallback:', error);
-          useProfileFallback();
-        }
-      },
-      (error) => {
-        // Detailliertes Logging
-        const errorMessages: Record<number, string> = {
-          1: 'Berechtigung verweigert',
-          2: 'Position nicht verfügbar',
-          3: 'Zeitüberschreitung',
-        };
-        console.warn('Geolocation error:', errorMessages[error.code] || error.message);
-        // Fallback auf Profil-Stadt
-        useProfileFallback();
-      },
-      { 
-        enableHighAccuracy: true,
-        timeout: 10000,      // 10 Sekunden Timeout
-        maximumAge: 300000   // Cache für 5 Minuten
-      }
-    );
-  }, [profile?.city]);  // Re-run wenn Profil-Stadt sich ändert
+export function WeatherCard({ latitude, longitude }: { latitude: number; longitude: number }) {
+  // 1. Fetch von Open-Meteo API
+  // 2. Wettercode zu Icon/Text mappen (WMO Standard)
+  // 3. Aktuelle Werte + 7-Tage Vorschau anzeigen
+}
 ```
 
-**UI-Anpassung für Fallback-Anzeige:**
+**WMO Wettercodes (Open-Meteo):**
+- 0: Klar ☀️
+- 1-3: Bewölkt ⛅
+- 45-48: Nebel 🌫️
+- 51-57: Nieselregen 🌧️
+- 61-67: Regen 🌧️
+- 71-77: Schnee ❄️
+- 80-82: Schauer 🌦️
+- 95-99: Gewitter ⛈️
+
+### Datei 3: `src/components/dashboard/ArmstrongGreetingCard.tsx` (NEU)
+
 ```tsx
-{location ? (
-  <>
-    <div className="flex items-center gap-1.5">
-      <MapPin className="h-4 w-4" />
-      <span className="text-sm">{location.city}</span>
-    </div>
-    {location.altitude !== null && (
-      <div className="flex items-center gap-1">
-        <Mountain className="h-3.5 w-3.5" />
-        <span className="text-sm">{location.altitude}m</span>
+// Personalisierte Begrüßung von Armstrong
+
+interface ArmstrongGreetingCardProps {
+  displayName: string;
+  city: string;
+  weather: WeatherData;
+  todayEvents: CalendarEvent[];
+}
+
+export function ArmstrongGreetingCard(props: ArmstrongGreetingCardProps) {
+  // 1. Tageszeit-basierte Begrüßung
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Guten Morgen";
+    if (hour < 18) return "Guten Tag";
+    return "Guten Abend";
+  };
+
+  // 2. Wettertext generieren
+  const weatherText = getWeatherDescription(props.weather);
+
+  // 3. Termin-Info aus calendar_events laden
+  const eventInfo = props.todayEvents.length > 0
+    ? `Wie ich an deinem Terminkalender sehe, hast du heute ${props.todayEvents.length} Termine.`
+    : "Du hast heute keine Termine eingetragen.";
+
+  // 4. Armstrong-Style Nachricht zusammenbauen
+}
+```
+
+**Begrüßungsvarianten:**
+- "Guten Morgen, Mr. Thomas!"
+- "Hallo Thomas, schön dich zu sehen!"
+- "Guten Abend, Mr. Thomas. Ich hoffe, du hattest einen produktiven Tag."
+
+### Datei 4: `src/hooks/useWeather.ts` (NEU)
+
+```tsx
+// Custom Hook für Open-Meteo API
+
+export function useWeather(latitude: number, longitude: number) {
+  return useQuery({
+    queryKey: ['weather', latitude, longitude],
+    queryFn: async () => {
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?` +
+        `latitude=${latitude}&longitude=${longitude}` +
+        `&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m` +
+        `&daily=temperature_2m_max,temperature_2m_min,weathercode` +
+        `&timezone=Europe/Berlin`
+      );
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 30, // 30 Minuten Cache
+  });
+}
+```
+
+### Datei 5: `src/hooks/useTodayEvents.ts` (NEU)
+
+```tsx
+// Hook für heutige Kalendertermine
+
+export function useTodayEvents(userId: string) {
+  return useQuery({
+    queryKey: ['calendar-events-today', userId],
+    queryFn: async () => {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+      const { data } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .gte('start_at', startOfDay.toISOString())
+        .lte('start_at', endOfDay.toISOString())
+        .order('start_at');
+
+      return data;
+    },
+  });
+}
+```
+
+### Datei 6: `src/pages/portal/PortalDashboard.tsx` (ÜBERARBEITEN)
+
+```tsx
+export default function PortalDashboard() {
+  const { profile } = useAuth();
+  const { location } = useGeolocation(); // Aus SystemBar-Logik extrahiert
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
+      {/* Obere Reihe: 2 Kacheln nebeneinander */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Google Earth 3D Globe */}
+        <EarthGlobeCard
+          latitude={location?.latitude || 48.0167}
+          longitude={location?.longitude || 11.5843}
+          city={location?.city || profile?.city || "Unbekannt"}
+        />
+
+        {/* Wetter Widget */}
+        <WeatherCard
+          latitude={location?.latitude || 48.0167}
+          longitude={location?.longitude || 11.5843}
+        />
       </div>
-    )}
-  </>
-) : locationError ? (
-  <span className="text-sm text-muted-foreground">Kein Standort</span>
-) : null}
+
+      {/* Untere Reihe: Armstrong Begrüßung (volle Breite) */}
+      <ArmstrongGreetingCard
+        displayName={profile?.display_name || ""}
+        city={location?.city || ""}
+        weather={weatherData}
+        todayEvents={todayEvents}
+      />
+    </div>
+  );
+}
 ```
 
 ---
 
-## Google APIs (Zone 1)
+## Integration Registry Updates
 
-### Bereits registriert in `integration_registry`:
+Neue Einträge hinzufügen:
 
-| Code | Name | Status |
-|------|------|--------|
-| `GOOGLE_MAPS` | Google Maps | pending_setup |
-| `GOOGLE_PLACES` | Google Places | pending_setup |
-
-### Für Aktivierung benötigt:
-1. **Google Cloud Console** → Neues Projekt erstellen
-2. **APIs aktivieren:**
-   - Maps JavaScript API
-   - Places API
-   - Geocoding API
-   - Elevation API (für Höhe über Meeresspiegel)
-3. **API-Key erstellen** mit Einschränkungen (HTTP-Referrer)
-4. **In Lovable Cloud** als Secret speichern: `GOOGLE_MAPS_API_KEY`
-
-### Vorteile von Google APIs:
-- **Maps:** Interaktive Karten statt statischer Embed
-- **Places:** Handwerkersuche, Autocomplete für Adressen
-- **Geocoding:** Präzisere Standortauflösung
-- **Elevation:** Echte Höhendaten (Meeresspiegel)
-- **Earth:** 3D-Ansichten für Immobilien
-
-### Nächste Schritte für Google Integration:
-1. API-Key bereitstellen
-2. Secret in Cloud speichern
-3. Integration Registry auf `active` setzen
-4. Komponenten umstellen (Maps, Geocoding, etc.)
-
----
-
-## Betroffene Dateien
-
-| Datei | Änderung |
-|-------|----------|
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | `refreshAuth()` nach Speichern |
-| `src/components/portal/SystemBar.tsx` | Geolocation-Fallback auf Profil-Stadt |
-
----
-
-## Datenfluss nach Implementierung
-
-```
-Browser Geolocation
-        │
-        ▼
-   ┌────────────────┐
-   │ getCurrentPosition │
-   └────────────────┘
-        │
-   ┌────┴────┐
-   │         │
-Erfolg    Fehler/Timeout
-   │         │
-   ▼         ▼
-Reverse   Profil-Fallback
-Geocoding    │
-   │         ▼
-   ▼    profile.city
-location.city   │
-   │         │
-   └────┬────┘
-        │
-        ▼
-   SystemBar zeigt:
-   📍 München  🏔 520m
+```sql
+INSERT INTO integration_registry (code, name, status, description) VALUES
+  ('GOOGLE_EARTH_3D', 'Google Earth 3D (Photorealistic)', 'pending_setup', 
+   'Photorealistic 3D Tiles für immersive Globus-Ansicht'),
+  ('GOOGLE_ELEVATION', 'Google Elevation API', 'pending_setup',
+   'Höhendaten über Meeresspiegel'),
+  ('OPEN_METEO', 'Open-Meteo Weather', 'active',
+   'Kostenlose Wetter-API, kein API-Key erforderlich');
 ```
 
 ---
 
-## Chrome Standortberechtigung (Schnellanleitung)
+## Google Cloud Console: Vollständige API-Liste
 
-1. **URL-Leiste:** Klick auf Schloss/Info-Icon links
-2. **"Berechtigungen"** oder **"Website-Einstellungen"**
-3. **"Standort"** → auf **"Zulassen"** ändern
-4. **Seite neu laden** (F5 oder ⌘R)
+Aktiviere diese APIs für den gemeinsamen API-Key:
 
-Falls das nicht funktioniert:
-- `chrome://settings/content/location` in Adressleiste eingeben
-- Die Seite zur "Zulassen"-Liste hinzufügen
+| API | Zweck | Kosten |
+|-----|-------|--------|
+| **Maps JavaScript API** | 3D Globus, Karten | $200 Guthaben/Monat |
+| **Map Tiles API** | Photorealistic 3D | Inkl. in JavaScript API |
+| **Places API (New)** | Handwerkersuche | $200 Guthaben/Monat |
+| **Geocoding API** | Adressauflösung | $200 Guthaben/Monat |
+| **Elevation API** | Höhe ü. Meeresspiegel | $200 Guthaben/Monat |
+
+**Gesamtes Guthaben:** $200/Monat (wird auf alle APIs angerechnet)
 
 ---
 
-## Erwartetes Ergebnis
+## Dateien-Übersicht
 
-| Szenario | Anzeige |
-|----------|---------|
-| Geolocation erfolgreich | 📍 München  🏔 520m |
-| Geolocation verweigert, aber Profil hat Stadt | 📍 München (ohne Höhe) |
-| Geolocation verweigert, kein Profil-Stadt | "Kein Standort" |
-| Display-Name geändert | Dashboard zeigt sofort neuen Namen |
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/components/dashboard/EarthGlobeCard.tsx` | NEU | Google Maps 3D Globus |
+| `src/components/dashboard/WeatherCard.tsx` | NEU | Wetter-Widget |
+| `src/components/dashboard/ArmstrongGreetingCard.tsx` | NEU | Personalisierte Begrüßung |
+| `src/hooks/useWeather.ts` | NEU | Open-Meteo API Hook |
+| `src/hooks/useTodayEvents.ts` | NEU | Kalender-Events Hook |
+| `src/hooks/useGeolocation.ts` | NEU | Extrahierte Standort-Logik |
+| `src/pages/portal/PortalDashboard.tsx` | ÄNDERN | Neues Layout |
+| `src/lib/weatherCodes.ts` | NEU | WMO Code → Icon/Text Mapping |
 
+---
+
+## Design-Konzept
+
+### EarthGlobeCard
+- Dunkler Hintergrund (Space-Theme)
+- Goldener Rand (ORBITAL Design)
+- Animation: Kamera fliegt von Weltraum zum Standort
+- Langsame Rotation um den Standort
+
+### WeatherCard
+- Glasmorphismus-Stil
+- Dynamisches Icon basierend auf Wetter
+- Temperatur groß, Details kleiner
+- Kompakte 7-Tage-Vorschau
+
+### ArmstrongGreetingCard
+- Bot-Icon links
+- Fließtext wie Chat-Nachricht
+- Gradient-Hintergrund (Gold → Blau, wie Armstrong-Header)
+- Typing-Animation beim ersten Laden
+
+---
+
+## Zusammenfassung: API-Keys benötigt
+
+| API | Key erforderlich | Status |
+|-----|------------------|--------|
+| Open-Meteo | **NEIN** (kostenlos!) | Sofort nutzbar |
+| Google Maps 3D | **JA** (GOOGLE_MAPS_API_KEY) | Wartet auf Setup |
+| Google Elevation | **JA** (gleicher Key) | Wartet auf Setup |
+| Google Places | **JA** (gleicher Key) | Wartet auf Setup |
+
+**Ein Google API-Key reicht für alles!**
