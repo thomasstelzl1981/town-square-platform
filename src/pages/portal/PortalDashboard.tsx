@@ -37,6 +37,11 @@ export default function PortalDashboard() {
         </p>
       )}
 
+      {/* Welcome Headline */}
+      <h1 className="text-h1 text-center mb-6 md:mb-8 text-foreground tracking-widest">
+        WELCOME ON BOARD
+      </h1>
+
       {/* All three cards in one row on desktop, only Armstrong on mobile */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Armstrong Greeting - always visible, first position */}
