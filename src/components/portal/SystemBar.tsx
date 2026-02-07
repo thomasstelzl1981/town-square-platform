@@ -30,7 +30,6 @@ import {
   Mountain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AppLogo } from './AppLogo';
 
 export function SystemBar() {
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
@@ -110,10 +109,6 @@ export function SystemBar() {
             <Home className="h-5 w-5" />
           </Link>
 
-          {/* Logo - Theme-aware */}
-          <div className="hidden md:flex items-center">
-            <AppLogo size="sm" />
-          </div>
         </div>
 
 {/* Center section: Location + Time (digital only, no icon) */}
