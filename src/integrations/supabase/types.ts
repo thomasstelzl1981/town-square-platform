@@ -10286,6 +10286,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_sequence_stats: {
+        Args: { p_field: string; p_sequence_id: string }
+        Returns: undefined
+      }
+      increment_thread_message_count: {
+        Args: { p_thread_id: string }
+        Returns: undefined
+      }
       is_akquise_manager: { Args: { _user_id: string }; Returns: boolean }
       is_parent_access_blocked: {
         Args: { target_org_id: string }

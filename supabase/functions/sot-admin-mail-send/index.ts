@@ -17,6 +17,7 @@ interface EmailRequest {
   subject: string;
   body_text: string;
   body_html?: string;
+  thread_id?: string;
 }
 
 serve(async (req) => {
@@ -83,9 +84,24 @@ serve(async (req) => {
         routing_token: routingToken,
         status: "queued",
         created_by: user.id,
+        thread_id: payload.thread_id || null,
       })
       .select()
       .single();
+
+    // Update thread message count and last activity if thread_id provided
+    if (payload.thread_id) {
+      await supabase
+        .from("admin_email_threads")
+        .update({
+          message_count: supabase.rpc ? undefined : 1, // Will use raw update below
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq("id", payload.thread_id);
+      
+      // Increment message count
+      await supabase.rpc("increment_thread_message_count", { p_thread_id: payload.thread_id });
+    }
 
     if (insertError) {
       console.error("Failed to create email record:", insertError);
