@@ -2,30 +2,26 @@
  * InventoryInvestmentSimulation — Bestandsimmobilien-Simulation
  * 
  * Für existierende Immobilien mit bestehendem Darlehen.
+ * Farbschema und Chart-Stil sind an MasterGraph angeglichen.
  * 
  * Einstellbare Parameter (Slider):
- * - Wertzuwachs p.a.: 0% – 3%
- * - Mietsteigerung p.a.: 0% – 3%
- * 
- * Feste Parameter (aus DB):
- * - Kaufpreis, Verkehrswert, Restschuld, Zinssatz, Annuität
- * - AfA-Werte, Steuersatz aus Kontext
+ * - Wertzuwachs p.a.: 0% – 5%
+ * - Mietsteigerung p.a.: 0% – 5%
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Separator } from '@/components/ui/separator';
 import {
-  AreaChart,
+  ComposedChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
   Legend,
-  Line,
 } from 'recharts';
 import {
   Table,
@@ -35,7 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { TrendingUp, Calculator, Percent, Building2 } from 'lucide-react';
+import { TrendingUp, Calculator } from 'lucide-react';
+import { formatCurrency } from '@/lib/formatters';
 
 interface SimulationData {
   // Property data
@@ -59,25 +56,28 @@ interface InventoryInvestmentSimulationProps {
   data: SimulationData;
 }
 
+interface ProjectionRow {
+  year: number;
+  verkehrswert: number;
+  restschuld: number;
+  nettoVermoegen: number;
+  miete: number;
+  zins: number;
+  tilgung: number;
+  annuitaet: number;
+  monatsbelastung: number;
+}
+
 export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimulationProps) {
   // Slider state
   const [valueGrowth, setValueGrowth] = useState(2.0); // 2% default
   const [rentGrowth, setRentGrowth] = useState(1.5); // 1.5% default
 
-  // Format helpers
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
   const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
   // 40-year projection calculation
-  const projectionData = useMemo(() => {
-    const years = [];
+  const projectionData = useMemo<ProjectionRow[]>(() => {
+    const years: ProjectionRow[] = [];
     let currentValue = data.marketValue;
     let currentRent = data.annualRent;
     let debt = data.outstandingBalance;
@@ -90,6 +90,7 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
       const interest = debt * interestRate;
       const amortization = Math.min(annualAnnuity - interest, debt);
       const netWealth = currentValue - debt;
+      const totalAnnuity = interest + amortization;
 
       years.push({
         year: 2026 + year,
@@ -99,6 +100,8 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
         miete: Math.round(currentRent),
         zins: Math.round(interest),
         tilgung: Math.round(amortization),
+        annuitaet: Math.round(totalAnnuity),
+        monatsbelastung: Math.round(totalAnnuity / 12),
       });
 
       // Next year calculations
@@ -110,31 +113,14 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
     return years;
   }, [data, valueGrowth, rentGrowth]);
 
-  // Tax benefit calculation (Year 1)
-  const taxBenefit = useMemo(() => {
-    const buildingValue = data.purchasePrice * (data.buildingSharePercent / 100);
-    const afaAmount = buildingValue * (data.afaRatePercent / 100);
-    const interestCosts = data.outstandingBalance * (data.interestRatePercent / 100);
-    const totalDeductions = afaAmount + interestCosts;
-    const taxableResult = data.annualRent - totalDeductions;
-
-    // If negative (loss), we get a tax benefit
-    const benefit = taxableResult < 0 ? Math.abs(taxableResult) * data.marginalTaxRate : 0;
-
-    return {
-      afaAmount,
-      interestCosts,
-      totalDeductions,
-      taxableResult,
-      benefit,
-    };
-  }, [data]);
-
   // 10-year table (every 5 years + first few)
   const tableYears = [0, 1, 5, 10, 15, 20, 25, 30, 35, 40];
   const tableData = tableYears
     .map(idx => projectionData[idx])
     .filter(Boolean);
+
+  // Check if property has financing
+  const hasFinancing = data.outstandingBalance > 0;
 
   return (
     <div className="space-y-6">
@@ -147,9 +133,6 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
             <Badge variant="secondary">{data.contextName}</Badge>
           )}
         </div>
-        <Badge variant="outline">
-          Steuersatz: {(data.marginalTaxRate * 100).toFixed(0)}%
-        </Badge>
       </div>
 
       {/* Sliders */}
@@ -192,96 +175,108 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
         </CardContent>
       </Card>
 
-      {/* Fixed Parameters Info - hide debt-related boxes if property is debt-free */}
+      {/* Fixed Parameters Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <InfoBox label="Verkehrswert" value={formatCurrency(data.marketValue)} />
-        {data.outstandingBalance > 0 && (
-          <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
-        )}
-        {data.interestRatePercent > 0 && (
-          <InfoBox label="Zinssatz" value={formatPercent(data.interestRatePercent)} />
+        {hasFinancing && (
+          <>
+            <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
+            <InfoBox label="Zinssatz" value={formatPercent(data.interestRatePercent)} />
+          </>
         )}
         <InfoBox label="AfA-Satz" value={`${data.afaRatePercent}% (${data.afaMethod})`} />
       </div>
 
-      {/* Tax Benefit Box */}
-      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Steuervorteil Jahr 1</p>
-              <p className="text-xs text-muted-foreground">
-                AfA: {formatCurrency(taxBenefit.afaAmount)} + Zinsen: {formatCurrency(taxBenefit.interestCosts)}
-                {' '}− Miete: {formatCurrency(data.annualRent)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-blue-600">
-                {taxBenefit.benefit > 0 ? formatCurrency(taxBenefit.benefit) : '–'}
-              </p>
-              {taxBenefit.taxableResult < 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Verlust: {formatCurrency(Math.abs(taxBenefit.taxableResult))}
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 40-Year Chart */}
+      {/* 40-Year Chart - Matching MasterGraph styling */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Vermögensentwicklung (40 Jahre)</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={projectionData}>
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={projectionData}>
+              <defs>
+                <linearGradient id="invValueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="invWealthGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="year"
                 tick={{ fontSize: 11 }}
-                tickFormatter={(v) => v.toString().slice(2)}
+                tickFormatter={(v) => `${v}`}
               />
               <YAxis
                 tick={{ fontSize: 11 }}
                 tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                width={50}
               />
               <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
+                formatter={(value: number, name: string) => [formatCurrency(value), name]}
                 labelFormatter={(label) => `Jahr ${label}`}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                }}
               />
               <Legend />
-              <Area
-                type="monotone"
-                dataKey="verkehrswert"
-                name="Verkehrswert"
-                stroke="hsl(var(--chart-1))"
-                fill="hsl(var(--chart-1))"
-                fillOpacity={0.2}
-              />
-              <Area
-                type="monotone"
-                dataKey="nettoVermoegen"
-                name="Netto-Vermögen"
-                stroke="hsl(var(--chart-2))"
-                fill="hsl(var(--chart-2))"
-                fillOpacity={0.3}
-              />
-              <Line
-                type="monotone"
-                dataKey="restschuld"
-                name="Restschuld"
-                stroke="hsl(var(--destructive))"
+              
+              {/* Immobilienwert */}
+              <Area 
+                type="monotone" 
+                dataKey="verkehrswert" 
+                name="Immobilienwert" 
+                stroke="hsl(var(--primary))" 
+                fill="url(#invValueGradient)"
                 strokeWidth={2}
-                dot={false}
               />
-            </AreaChart>
+              
+              {/* Nettovermögen */}
+              <Area 
+                type="monotone" 
+                dataKey="nettoVermoegen" 
+                name="Nettovermögen" 
+                stroke="hsl(142, 76%, 36%)" 
+                fill="url(#invWealthGradient)"
+                strokeWidth={2}
+              />
+              
+              {/* Restschuld - gestrichelte Linie */}
+              {hasFinancing && (
+                <Line 
+                  type="monotone" 
+                  dataKey="restschuld" 
+                  name="Restschuld" 
+                  stroke="hsl(var(--destructive))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              )}
+              
+              {/* Tilgung (kumulativ wäre sinnvoller, zeigen wir aber jährlich als Linie) */}
+              {hasFinancing && (
+                <Line 
+                  type="monotone" 
+                  dataKey="tilgung" 
+                  name="Tilgung (p.a.)" 
+                  stroke="hsl(221, 83%, 53%)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Data Table */}
+      {/* Data Table with extended columns */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Projektionstabelle</CardTitle>
@@ -292,24 +287,40 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
               <TableHeader>
                 <TableRow>
                   <TableHead>Jahr</TableHead>
+                  <TableHead className="text-right">Miete</TableHead>
+                  {hasFinancing && (
+                    <>
+                      <TableHead className="text-right">Annuität</TableHead>
+                      <TableHead className="text-right">Zinsen</TableHead>
+                      <TableHead className="text-right">Tilgung</TableHead>
+                      <TableHead className="text-right">Mtl. Rate</TableHead>
+                      <TableHead className="text-right">Restschuld</TableHead>
+                    </>
+                  )}
                   <TableHead className="text-right">Verkehrswert</TableHead>
-                  <TableHead className="text-right">Restschuld</TableHead>
-                  <TableHead className="text-right">Netto-Vermögen</TableHead>
-                  <TableHead className="text-right">Miete p.a.</TableHead>
+                  <TableHead className="text-right">Nettovermögen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tableData.map((row) => (
                   <TableRow key={row.year}>
                     <TableCell className="font-medium">{row.year}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(row.miete)}</TableCell>
+                    {hasFinancing && (
+                      <>
+                        <TableCell className="text-right">{formatCurrency(row.annuitaet)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(row.zins)}</TableCell>
+                        <TableCell className="text-right text-blue-600">{formatCurrency(row.tilgung)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(row.monatsbelastung)}</TableCell>
+                        <TableCell className="text-right text-destructive">
+                          {row.restschuld > 0 ? formatCurrency(row.restschuld) : '–'}
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell className="text-right">{formatCurrency(row.verkehrswert)}</TableCell>
-                    <TableCell className="text-right text-destructive">
-                      {row.restschuld > 0 ? formatCurrency(row.restschuld) : '–'}
-                    </TableCell>
                     <TableCell className="text-right font-medium text-green-600">
                       {formatCurrency(row.nettoVermoegen)}
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.miete)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
