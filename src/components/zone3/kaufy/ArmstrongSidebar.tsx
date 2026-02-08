@@ -2,12 +2,15 @@
  * ArmstrongSidebar — Phase 3 Update
  * Fix: lg:top-16 (64px Header-Offset) und lg:h-[calc(100vh-64px)]
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, Bot, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Send, Bot, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useArmstrongContext } from '@/hooks/useArmstrongContext';
+import { cn } from '@/lib/utils';
 
 interface ListingContext {
   public_id?: string;
@@ -39,6 +42,18 @@ const QUICK_QUESTIONS = [
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstrong-advisor`;
 
 export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebarProps) {
+  const isMobile = useIsMobile();
+  const armstrongContext = useArmstrongContext();
+  const zone3Context = armstrongContext.zone === 'Z3' ? armstrongContext : null;
+
+  const persona = useMemo(() => {
+    const path = zone3Context?.current_path ?? '';
+    if (path.startsWith('/kaufy/verkaeufer')) return 'seller';
+    if (path.startsWith('/kaufy/vermieter')) return 'landlord';
+    if (path.startsWith('/kaufy/vertrieb')) return 'partner';
+    return 'investor';
+  }, [zone3Context?.current_path]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -71,8 +86,13 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
         },
         body: JSON.stringify({
           action: 'chat',
+          mode: 'zone3',
           messages: [...messages, userMsg],
-          context,
+          context: {
+            ...(zone3Context ?? {}),
+            persona,
+            listing: context ?? null,
+          },
         }),
       });
 
@@ -170,15 +190,13 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
 
       {/* Sidebar / Bottom Sheet */}
       <aside
-        className={`
-          fixed z-40 transition-transform duration-300 ease-in-out
-          lg:right-0 lg:top-16 lg:h-[calc(100vh-64px)] lg:w-[320px] lg:translate-x-0
-          ${isOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
-          bottom-0 left-0 right-0 h-[70vh] lg:h-[calc(100vh-64px)]
-          rounded-t-2xl lg:rounded-none
-          shadow-2xl lg:shadow-none
-          border-t lg:border-l lg:border-t-0
-        `}
+        className={cn(
+          'fixed z-40 transition-transform duration-300 ease-in-out',
+          isMobile
+            ? 'bottom-0 left-0 right-0 h-[70vh] rounded-t-2xl shadow-2xl border-t'
+            : 'top-16 bottom-0 right-0 left-auto h-[calc(100vh-64px)] w-[320px] rounded-none shadow-none border-l border-t-0',
+          isMobile ? (isOpen ? 'translate-y-0' : 'translate-y-full') : 'translate-y-0'
+        )}
         style={{
           backgroundColor: 'hsl(var(--z3-foreground))',
           borderColor: 'hsl(var(--z3-border))',

@@ -935,9 +935,56 @@ async function handleLegacyRequest(
       });
     }
     
-    const systemPrompt = request.mode === "zone2" 
-      ? "Du bist Armstrong, der KI-Assistent im System of a Town Portal. Antworte auf Deutsch."
-      : "Du bist Armstrong, der KI-Berater auf KAUFY. Antworte auf Deutsch, erkläre Immobilien-Investments.";
+    const ctx = (request.context ?? {}) as Record<string, unknown>;
+    const website = (ctx["website"] as string | undefined) ?? "kaufy";
+    const persona = (ctx["persona"] as string | undefined) ?? "investor";
+
+    const lastUserMessage =
+      [...request.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+
+    const safeTerm = lastUserMessage
+      .replaceAll("%", " ")
+      .replaceAll("_", " ")
+      .slice(0, 120)
+      .trim();
+
+    const kbCategories =
+      persona === "seller" || persona === "partner"
+        ? ["sales", "real_estate"]
+        : persona === "landlord"
+          ? ["real_estate", "tax_legal"]
+          : ["real_estate", "finance", "tax_legal"];
+
+    const { data: kbItems } = await supabase
+      .from("armstrong_knowledge_items")
+      .select("title_de, summary_de, category")
+      .eq("scope", "global")
+      .eq("status", "published")
+      .in("category", kbCategories)
+      .or(
+        `title_de.ilike.%${safeTerm}%,summary_de.ilike.%${safeTerm}%,content.ilike.%${safeTerm}%`
+      )
+      .limit(4);
+
+    const kbBlock = (kbItems ?? [])
+      .map((i: any) =>
+        `- [${i.category}] ${i.title_de}${i.summary_de ? `: ${i.summary_de}` : ""}`
+      )
+      .join("\n");
+
+    const zone3PersonaPrompt =
+      persona === "seller"
+        ? "Du bist Armstrong, der KI-Verkaufsberater auf KAUFY für Eigentümer/Verkäufer. Hilf beim Verkaufsprozess, Unterlagen, Vermarktung, Preislogik und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
+        : persona === "landlord"
+          ? "Du bist Armstrong, der KI-Vermieterberater auf KAUFY. Hilf bei Vermietung, Unterlagen, Mietrecht-Basics und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
+          : persona === "partner"
+            ? "Du bist Armstrong, der KI-Coach für Vertriebspartner auf KAUFY. Hilf bei Einwandbehandlung, Prozess, Compliance (z.B. §34c/VSH) und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
+            : "Du bist Armstrong, der KI-Immobilienberater auf KAUFY für Investoren. Erkläre Kapitalanlage, Rendite, Finanzierung und Risiken. Keine internen Portal-Funktionen erwähnen.";
+
+    const systemPrompt =
+      request.mode === "zone2"
+        ? "Du bist Armstrong, der KI-Assistent im System of a Town Portal. Antworte auf Deutsch."
+        : `${zone3PersonaPrompt}\n\nNutze vorrangig diese Wissensbibliothek (wenn passend) und erfinde keine Fakten:\n${kbBlock || "- (keine passenden Einträge gefunden)"}`;
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
