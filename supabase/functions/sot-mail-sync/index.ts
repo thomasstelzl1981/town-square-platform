@@ -184,11 +184,13 @@ async function syncImapMail(
     
     console.log(`Fetching messages ${range}`);
 
-    // Fetch messages with envelope and flags
+    // Fetch messages with envelope, flags, and BODY
     const messages = await client.fetch(range, {
       envelope: true,
       flags: true,
       uid: true,
+      bodyStructure: true,
+      body: true, // Fetch full body content
     });
 
     console.log(`Fetched ${messages.length} messages`);
@@ -226,7 +228,43 @@ async function syncImapMail(
           receivedAt = new Date().toISOString();
         }
 
-        // Upsert message
+        // Extract body content
+        let bodyText = '';
+        let bodyHtml = '';
+        let snippet = '';
+        
+        // Try to get body from various possible locations
+        if (msg.body) {
+          // Direct body content
+          if (typeof msg.body === 'string') {
+            bodyText = msg.body;
+          } else if (msg.body.text) {
+            bodyText = msg.body.text;
+          } else if (msg.body.html) {
+            bodyHtml = msg.body.html;
+          }
+        }
+        
+        // Check for parts in bodyStructure (multipart messages)
+        if (msg.bodyParts) {
+          for (const part of msg.bodyParts) {
+            if (part.type === 'text/plain' && part.content) {
+              bodyText = part.content;
+            } else if (part.type === 'text/html' && part.content) {
+              bodyHtml = part.content;
+            }
+          }
+        }
+        
+        // Generate snippet from body content
+        if (bodyText) {
+          snippet = bodyText.substring(0, 200).replace(/\s+/g, ' ').trim();
+        } else if (bodyHtml) {
+          // Strip HTML tags for snippet
+          snippet = bodyHtml.replace(/<[^>]*>/g, '').substring(0, 200).replace(/\s+/g, ' ').trim();
+        }
+
+        // Upsert message with body content
         const { error } = await supabase
           .from('mail_messages')
           .upsert({
@@ -238,7 +276,9 @@ async function syncImapMail(
             from_address: fromEmail,
             from_name: fromName,
             to_addresses: toAddrs,
-            snippet: '', // Would need body fetch for snippet
+            body_text: bodyText || null,
+            body_html: bodyHtml || null,
+            snippet: snippet,
             is_read: isRead,
             is_starred: isStarred,
             has_attachments: false,
