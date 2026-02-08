@@ -28,8 +28,10 @@
    SYSTEM OF A TOWN THEME — SpaceX-Inspired Dark-First
    =========================================================================== */
 
-/* Default: Light Mode (for toggle) */
-.theme-sot {
+/* Default: Light Mode (for toggle) - applied to html or container */
+.theme-sot,
+:root[data-sot-theme="light"],
+html.theme-sot {
   --z3-background: 210 40% 98%;
   --z3-foreground: 222 47% 11%;
   --z3-card: 0 0% 100%;
@@ -48,7 +50,9 @@
 
 /* Dark Mode — Primary Experience (SpaceX-Inspired) */
 .theme-sot-dark,
-.theme-sot.dark {
+.theme-sot.dark,
+:root[data-sot-theme="dark"],
+html.theme-sot-dark {
   --z3-background: 222 47% 6%;
   --z3-foreground: 210 40% 98%;
   --z3-card: 222 30% 10%;
