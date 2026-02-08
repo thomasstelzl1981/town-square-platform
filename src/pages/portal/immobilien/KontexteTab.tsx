@@ -144,47 +144,29 @@ export function KontexteTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header - nur Titel, kein Button */}
+      <div>
         <h2 className="text-lg font-semibold">Vermietereinheiten</h2>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Vermietereinheit anlegen
-        </Button>
+        <p className="text-sm text-muted-foreground mt-1">
+          Verwalten Sie Ihre steuerlichen Kontexte für die Immobilienbewertung
+        </p>
       </div>
 
-      {/* Context Cards Grid */}
+      {/* Context Cards Grid - horizontal flexbox with wrap */}
       {isLoading ? (
         <Card className="border-dashed">
           <CardContent className="py-8 text-center text-muted-foreground">
             Lade Vermietereinheiten...
           </CardContent>
         </Card>
-      ) : contexts.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="p-3 rounded-full bg-muted mb-4">
-              <ClipboardList className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="font-medium mb-2">Keine Vermietereinheiten angelegt</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">
-              Erstellen Sie Vermietereinheiten, um Ihre Immobilien nach steuerlichen 
-              oder organisatorischen Kriterien zu gruppieren (z.B. Ehepaar, GmbH).
-            </p>
-            <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Vermietereinheit anlegen
-            </Button>
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-wrap gap-4">
           {contexts.map((ctx) => {
             const members = membersByContext.get(ctx.id) || [];
             const isPrivate = ctx.context_type === 'PRIVATE';
             
             return (
-              <Card key={ctx.id}>
+              <Card key={ctx.id} className="w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)]">
                 {/* Header: Name + Badge kompakt */}
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
@@ -313,6 +295,20 @@ export function KontexteTab() {
               </Card>
             );
           })}
+
+          {/* Add New Context Card */}
+          <Card 
+            className="w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] border-dashed cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <CardContent className="flex flex-col items-center justify-center py-12 h-full min-h-[200px]">
+              <div className="p-3 rounded-full bg-muted mb-3">
+                <Plus className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-muted-foreground">Neue Vermietereinheit</p>
+              <p className="text-xs text-muted-foreground mt-1">anlegen</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 

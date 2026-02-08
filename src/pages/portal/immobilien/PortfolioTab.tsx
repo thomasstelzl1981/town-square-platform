@@ -673,14 +673,6 @@ export function PortfolioTab() {
               );
             })}
 
-            {/* Add New Context Card */}
-            <button
-              onClick={() => navigate('/portal/immobilien/kontexte')}
-              className="flex flex-col items-center justify-center gap-1 p-4 rounded-xl border border-dashed border-muted-foreground/30 min-w-[100px] text-center transition-all shrink-0 hover:border-primary/50 hover:bg-muted/20"
-            >
-              <Plus className="h-5 w-5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Neue</span>
-            </button>
           </div>
         </div>
       )}
