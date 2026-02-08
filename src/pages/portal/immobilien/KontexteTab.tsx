@@ -180,7 +180,7 @@ export function KontexteTab() {
           childrenCount: editFormData.children_count,
           churchTax: editFormData.church_tax,
         });
-        calculatedTaxRate = Math.round(taxResult.marginalTaxRate * 100);
+        calculatedTaxRate = Math.round(taxResult.marginalTaxRate);
       }
 
       // Build managing_director from structured fields for backward compatibility
