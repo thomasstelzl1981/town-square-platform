@@ -1,341 +1,318 @@
 
-# Mobile UI/UX Optimierung — Vollständiger Implementierungsplan
+# E-Mail-System Analyse & Reparaturplan
 
-## Zusammenfassung der identifizierten Probleme
+## Identifizierte Probleme
 
-Nach umfassender Analyse aller mobilen Ansichten wurden folgende kritische Punkte identifiziert:
+### Problem 1: IMAP-Synchronisation — NICHT IMPLEMENTIERT
+
+**Log-Beweis:**
+```
+ERROR Sync error: Error: IMAP sync requires external worker service - coming soon
+```
+
+**Code-Stelle:** `supabase/functions/sot-mail-sync/index.ts` Zeile 305
+```typescript
+throw new Error('IMAP sync requires external worker service - coming soon');
+```
+
+Die `syncImapMail()` Funktion ist nur ein Platzhalter, der einen Fehler wirft. Es gibt keine echte IMAP-Verbindung.
+
+**Status in Datenbank:**
+| Feld | Wert |
+|------|------|
+| email_address | thomas.stelzl@systemofatown.com |
+| provider | imap |
+| sync_status | **error** |
+| sync_error | IMAP sync requires external worker service - coming soon |
 
 ---
 
-## Problem 1: Drag & Drop auf Mobile Dashboard AKTIV
+### Problem 2: SMTP-Versand — NICHT IMPLEMENTIERT
 
-**Aktueller Zustand:**
-Die `SortableWidget`-Komponente und `DashboardGrid` haben Drag & Drop auf **allen Geräten aktiv**, einschließlich Mobile. Der TouchSensor erlaubt Long-Press zum Sortieren — das ist auf Mobile **nicht gewünscht**.
+**Code-Stelle:** `supabase/functions/sot-mail-send/index.ts` Zeile 266
+```typescript
+return { 
+  success: false, 
+  error: 'SMTP sending requires external relay service - coming soon' 
+};
+```
 
-**Lösung:**
-Drag & Drop auf Mobile komplett deaktivieren. Auf Mobile werden Widgets in fester Reihenfolge angezeigt (kein Sortieren).
+Die `sendImapMail()` Funktion für SMTP ist ebenfalls nur ein Platzhalter.
 
-### Betroffene Dateien:
+---
 
-| Datei | Änderung |
-|-------|----------|
-| `src/components/dashboard/DashboardGrid.tsx` | Sensor-Konfiguration nur für Desktop aktivieren |
-| `src/components/dashboard/SortableWidget.tsx` | Auf Mobile keine Drag-Listener anwenden |
-| `src/pages/portal/PortalDashboard.tsx` | Alternative Rendering-Logik für Mobile |
+### Problem 3: "Neue E-Mail" Button — KEINE COMPOSE-UI
 
-### Code-Änderung DashboardGrid.tsx:
+**Code-Stelle:** `EmailTab.tsx` Zeile 480-482
+```typescript
+<Button className="w-full gap-2" size="sm" disabled={!hasConnectedAccount}>
+  <Plus className="h-4 w-4" />
+  Neue E-Mail
+</Button>
+```
+
+Der Button ist vorhanden, aber es gibt **keine onClick-Handler** und **keine Compose-Dialog-Komponente**. Der Button macht nichts.
+
+---
+
+## Lösung: Deno-IMAP Library
+
+Es existiert eine produktionsreife IMAP-Library für Deno:
+
+**`jsr:@workingdevshero/deno-imap`**
+
+- ✅ Funktioniert mit Cloudflare Workers und Deno
+- ✅ TLS/SSL Support
+- ✅ PLAIN/LOGIN Authentication
+- ✅ Message operations (search, fetch, move, copy, delete)
+- ✅ Promise-based API
+- ✅ TypeScript Types
+
+---
+
+## Reparaturplan
+
+### Phase 1: IMAP-Synchronisation implementieren
+
+**Datei:** `supabase/functions/sot-mail-sync/index.ts`
+
+Ersetze den Platzhalter `syncImapMail()` mit echter IMAP-Verbindung:
 
 ```typescript
-import { useIsMobile } from '@/hooks/use-mobile';
+import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
 
-export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridProps) {
-  const isMobile = useIsMobile();
+async function syncImapMail(
+  supabase: any, 
+  account: any, 
+  folder: string, 
+  limit: number
+): Promise<number> {
+  // Passwort aus Base64-encoded credentials_vault_key dekodieren
+  const credentials = JSON.parse(atob(account.credentials_vault_key));
   
-  // Desktop only: Configure sensors for pointer and touch
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-    // TouchSensor REMOVED — no mobile drag
-  );
+  const client = new ImapClient({
+    host: account.imap_host,
+    port: account.imap_port,
+    tls: true,
+    username: account.email_address,
+    password: credentials.password,
+  });
 
-  // On mobile: Render simple grid without DnD
-  if (isMobile) {
-    return (
-      <div 
-        className="grid gap-4"
-        style={{
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-          justifyContent: 'center',
-        }}
-      >
-        {children}
-      </div>
-    );
+  await client.connect();
+  await client.selectMailbox(folder);
+  
+  // Letzte N Nachrichten abrufen
+  const messages = await client.fetch(`1:${limit}`, {
+    envelope: true,
+    bodyStructure: true,
+    flags: true,
+  });
+
+  let synced = 0;
+  for (const msg of messages) {
+    await supabase.from('mail_messages').upsert({
+      account_id: account.id,
+      message_id: msg.uid.toString(),
+      folder: folder.toUpperCase(),
+      subject: msg.envelope?.subject || '(Kein Betreff)',
+      from_address: msg.envelope?.from?.[0]?.address || '',
+      from_name: msg.envelope?.from?.[0]?.name || '',
+      to_addresses: msg.envelope?.to?.map(t => t.address) || [],
+      is_read: msg.flags?.includes('\\Seen'),
+      is_starred: msg.flags?.includes('\\Flagged'),
+      received_at: msg.envelope?.date,
+    }, { onConflict: 'account_id,message_id' });
+    synced++;
   }
 
-  // Desktop: Full DnD functionality
+  client.disconnect();
+  return synced;
+}
+```
+
+---
+
+### Phase 2: SMTP-Versand via Resend
+
+Da SMTP über TCP in Edge Functions komplex ist, nutzen wir Resend als Relay:
+
+**Datei:** `supabase/functions/sot-mail-send/index.ts`
+
+```typescript
+import { Resend } from 'npm:resend@4.0.0';
+
+async function sendImapMail(account, email) {
+  // Option A: Resend als SMTP-Relay
+  const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+  
+  const { data, error } = await resend.emails.send({
+    from: `${account.display_name} <${account.email_address}>`,
+    to: email.to,
+    cc: email.cc,
+    bcc: email.bcc,
+    subject: email.subject,
+    html: email.bodyHtml || email.bodyText,
+    reply_to: account.email_address,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, messageId: data.id };
+}
+```
+
+**Hinweis:** Für Resend muss die Domain verifiziert werden (systemofatown.com).
+
+---
+
+### Phase 3: Compose-Dialog erstellen
+
+**Datei:** `EmailTab.tsx` — Neue Komponente
+
+```typescript
+// ComposeEmailDialog Component
+function ComposeEmailDialog({ 
+  open, 
+  onOpenChange, 
+  accountId,
+  onSent 
+}: { 
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  accountId: string;
+  onSent: () => void;
+}) {
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSend = async () => {
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-mail-send', {
+        body: {
+          accountId,
+          to: to.split(',').map(e => e.trim()),
+          subject,
+          bodyText: body,
+        },
+      });
+      
+      if (error || data?.error) throw new Error(data?.error || error.message);
+      
+      toast.success('E-Mail gesendet');
+      onSent();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error('Senden fehlgeschlagen: ' + error.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
-    <DndContext sensors={sensors} ...>
-      ...
-    </DndContext>
-  );
-}
-```
-
-### Code-Änderung SortableWidget.tsx:
-
-```typescript
-import { useIsMobile } from '@/hooks/use-mobile';
-
-export function SortableWidget({ id, children, className }: SortableWidgetProps) {
-  const isMobile = useIsMobile();
-  
-  // On mobile: Render without drag functionality
-  if (isMobile) {
-    return <div className={className}>{children}</div>;
-  }
-  
-  // Desktop: Full sortable functionality
-  const { attributes, listeners, ... } = useSortable({ id });
-  ...
-}
-```
-
----
-
-## Problem 2: "How It Works" auf Mobile ZU LANG
-
-**Aktueller Zustand:**
-Wenn man auf einen Modul-Button klickt, erscheint die `ModuleHowItWorks`-Seite mit:
-- Hero-Bereich mit Titel + One-Liner
-- "Nutzen"-Karte mit Benefits
-- "Was Sie hier tun"-Karte
-- "Typische Abläufe"-Karten
-- Hint-Text
-- CTA-Karte
-- SubTile-Buttons
-
-Das ist auf Mobile **viel zu viel Content** und erfordert viel Scrollen, bevor man zu den eigentlichen Funktionen kommt.
-
-**Lösung:**
-Mobile-optimierte Variante der HowItWorks-Seite:
-1. Kompakter Header ohne Modul-Code
-2. **Keine** "Nutzen", "Was Sie tun", "Typische Abläufe" Karten — diese sind für Desktop
-3. **Nur** SubTile-Buttons als primäre Navigation (große Touch-Targets)
-4. Optionaler "Mehr erfahren" Expandable für Details
-
-### Betroffene Dateien:
-
-| Datei | Änderung |
-|-------|----------|
-| `src/components/portal/HowItWorks/ModuleHowItWorks.tsx` | Mobile-Variante mit kompaktem Layout |
-
-### Code-Änderung ModuleHowItWorks.tsx:
-
-```typescript
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
-export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) {
-  const isMobile = useIsMobile();
-  const [detailsOpen, setDetailsOpen] = useState(false);
-
-  // === MOBILE: Kompakte Ansicht ===
-  if (isMobile) {
-    return (
-      <div className={cn('space-y-4 p-4', className)}>
-        {/* Kompakter Header */}
-        <div className="space-y-2">
-          <h1 className="text-xl font-bold uppercase">{content.title}</h1>
-          <p className="text-sm text-muted-foreground">{content.oneLiner}</p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Neue E-Mail</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input 
+            placeholder="An: empfaenger@domain.de" 
+            value={to} 
+            onChange={e => setTo(e.target.value)} 
+          />
+          <Input 
+            placeholder="Betreff" 
+            value={subject} 
+            onChange={e => setSubject(e.target.value)} 
+          />
+          <Textarea 
+            placeholder="Nachricht..." 
+            value={body} 
+            onChange={e => setBody(e.target.value)}
+            rows={10}
+          />
         </div>
-
-        {/* SubTile Buttons — PRIMÄRE NAVIGATION */}
-        {content.subTiles.length > 0 && (
-          <div className="grid gap-2">
-            {content.subTiles.map((tile) => (
-              <Button
-                key={tile.route}
-                variant="outline"
-                className="justify-start h-14 text-left"
-                asChild
-              >
-                <Link to={tile.route}>
-                  {tile.icon && <tile.icon className="h-5 w-5 mr-3" />}
-                  <span className="font-medium">{tile.title}</span>
-                  <ArrowRight className="ml-auto h-4 w-4" />
-                </Link>
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {/* Optional: Details aufklappbar */}
-        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full text-xs">
-              {detailsOpen ? 'Weniger anzeigen' : 'Mehr erfahren'}
-              <ChevronDown className={cn("ml-1 h-3 w-3 transition", detailsOpen && "rotate-180")} />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-4 mt-4">
-            {/* Benefits kompakt */}
-            <div className="space-y-1">
-              {content.benefits.slice(0, 3).map((benefit, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">{benefit}</span>
-                </div>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-    );
-  }
-
-  // === DESKTOP: Bestehende Vollansicht ===
-  return (
-    <div className={cn('space-y-8 p-4 md:p-6 max-w-4xl mx-auto', className)}>
-      ... // Existing desktop code
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleSend} disabled={isSending || !to || !subject}>
+            {isSending ? <Loader2 className="animate-spin" /> : <Send />}
+            Senden
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 ```
 
 ---
 
-## Problem 3: Area-Übersicht KEIN direkter Modul-Zugriff
-
-**Aktueller Zustand:**
-Wenn man auf "Base" tippt, erscheint die Area-Übersichtsseite mit 6 Karten. Man muss dann nochmal auf "Modul öffnen" tippen, um zum Modul zu gelangen.
-
-Das sind **2 Klicks** statt **1 Klick** auf Desktop.
-
-**Lösung für Mobile:**
-Die Modul-Karten auf Mobile sollten **direkt klickbar** sein (die ganze Karte als Link), nicht nur der Button unten.
-
-### Betroffene Dateien:
-
-| Datei | Änderung |
-|-------|----------|
-| `src/components/portal/AreaModuleCard.tsx` | Karte auf Mobile komplett klickbar machen |
-
-### Code-Änderung AreaModuleCard.tsx:
+### Phase 4: Button mit Dialog verbinden
 
 ```typescript
-import { useIsMobile } from '@/hooks/use-mobile';
+// In EmailTab:
+const [showComposeDialog, setShowComposeDialog] = useState(false);
 
-export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModuleCardProps) {
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
-  
-  // Mobile: Gesamte Karte klickbar
-  if (isMobile) {
-    return (
-      <Card 
-        className="hover:border-primary/40 transition-colors cursor-pointer active:scale-[0.98]"
-        onClick={() => navigate(defaultRoute)}
-      >
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base leading-tight">{displayLabel}</CardTitle>
-          <CardDescription className="text-xs line-clamp-2">
-            {content.oneLiner}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {/* Kompakte Sub-Tiles */}
-          <div className="flex flex-wrap gap-1">
-            {displayTiles.slice(0, 4).map((tile) => (
-              <span
-                key={tile.route}
-                className="text-[10px] bg-muted px-1.5 py-0.5 rounded"
-              >
-                {tile.title}
-              </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  // Desktop: Bestehende Variante mit Button
-  return ( ... );
-}
+// Button aktualisieren:
+<Button 
+  className="w-full gap-2" 
+  size="sm" 
+  disabled={!hasConnectedAccount}
+  onClick={() => setShowComposeDialog(true)}
+>
+  <Plus className="h-4 w-4" />
+  Neue E-Mail
+</Button>
+
+// Dialog einbinden:
+<ComposeEmailDialog
+  open={showComposeDialog}
+  onOpenChange={setShowComposeDialog}
+  accountId={activeAccount?.id || ''}
+  onSent={() => refetchMessages()}
+/>
 ```
 
 ---
 
-## Problem 4: AreaOverviewPage Mobile Layout
-
-**Aktueller Zustand:**
-Die Area-Übersichtsseite zeigt 6 Karten in einem Grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`). Das ist okay, aber der Header könnte kompakter sein.
-
-**Lösung:**
-Kompakterer Header auf Mobile, weniger Padding.
-
-### Betroffene Dateien:
+## Zusammenfassung der Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `src/pages/portal/AreaOverviewPage.tsx` | Kompakterer Header auf Mobile |
+| `supabase/functions/sot-mail-sync/index.ts` | IMAP-Sync mit `deno-imap` Library |
+| `supabase/functions/sot-mail-send/index.ts` | SMTP via Resend-Relay |
+| `src/pages/portal/office/EmailTab.tsx` | ComposeEmailDialog + Button-Handler |
 
 ---
 
-## Problem 5: Widgets-Tab auf Mobile
+## Voraussetzungen
 
-**Aktueller Zustand:**
-Der "Widgets"-Tab in KI-Office funktioniert und zeigt die Liste. Das Layout ist grundsätzlich okay, aber die Filter-Selects sind eng beieinander.
-
-**Lösung:**
-Filter auf Mobile **vertikal** stapeln (stacked), nicht horizontal.
-
-### Betroffene Dateien:
-
-| Datei | Änderung |
-|-------|----------|
-| `src/pages/portal/office/WidgetsTab.tsx` | Responsive Filter-Layout |
+| Requirement | Status |
+|-------------|--------|
+| IONOS IMAP-Account | ✅ Vorhanden in DB |
+| RESEND_API_KEY | ⚠️ Muss hinzugefügt werden (für SMTP-Relay) |
+| Domain-Verifizierung | ⚠️ systemofatown.com bei Resend verifizieren |
 
 ---
 
-## Zusammenfassung: Alle Änderungen
+## Erwartetes Ergebnis
 
-### Kritisch (MUSS)
+Nach Implementierung:
 
-| # | Datei | Änderung |
-|---|-------|----------|
-| 1 | `DashboardGrid.tsx` | Drag & Drop auf Mobile deaktivieren |
-| 2 | `SortableWidget.tsx` | Auf Mobile keine Drag-Listener |
-| 3 | `ModuleHowItWorks.tsx` | Mobile-Variante: Kompakt + SubTiles prominent |
-| 4 | `AreaModuleCard.tsx` | Gesamte Karte klickbar auf Mobile |
-
-### Wichtig (SOLLTE)
-
-| # | Datei | Änderung |
-|---|-------|----------|
-| 5 | `AreaOverviewPage.tsx` | Kompakterer Header auf Mobile |
-| 6 | `WidgetsTab.tsx` | Filter vertikal stapeln auf Mobile |
+1. **Synchronisation:** E-Mails werden aus IONOS-Postfach abgerufen und in `mail_messages` gespeichert
+2. **Compose:** Klick auf "Neue E-Mail" öffnet Dialog
+3. **Senden:** E-Mails werden über Resend-Relay versendet (erscheint als `ihre@systemofatown.com`)
+4. **Sync-Status:** `connected` statt `error`
 
 ---
 
-## Technische Details
+## Technischer Hinweis
 
-### Import für alle Komponenten:
-```typescript
-import { useIsMobile } from '@/hooks/use-mobile';
-```
-
-### Pattern für Mobile-First:
-```typescript
-const isMobile = useIsMobile();
-
-if (isMobile) {
-  return <MobileVariante />;
-}
-
-return <DesktopVariante />;
-```
-
----
-
-## Erwartetes Ergebnis nach Implementierung
-
-### Dashboard:
-- Widgets erscheinen in fester Reihenfolge auf Mobile
-- Kein versehentliches Verschieben durch Long-Press
-- Grid passt sich automatisch an Bildschirmbreite an
-
-### Modul-Navigation:
-- Tippe auf "Base" → Area-Übersicht erscheint
-- Tippe auf Modul-Karte → Modul öffnet sich DIREKT
-- Kompakte "How It Works" mit prominenten Sub-Tile-Buttons
-- 1-2 Taps zum Ziel, nicht 3-4
-
-### Visuell:
-- Cleanes, aufgeräumtes Mobile-Layout
-- Große Touch-Targets (min. 44px)
-- Weniger Text, mehr Aktion
+Die `deno-imap` Library öffnet TCP-Verbindungen. Dies funktioniert in Supabase Edge Functions, kann aber bei hoher Last zu Timeouts führen. Für Production-Scale wäre ein dedizierter IMAP-Sync-Worker (z.B. via Cron) empfehlenswert.
