@@ -467,14 +467,6 @@ const ExposeDetail = () => {
           {/* Image Gallery - DMS Integration */}
           <ExposeImageGallery propertyId={property.id} unitId={unitId} />
 
-          {/* Location Map */}
-          <ExposeLocationMap 
-            address={property.address || ''}
-            city={property.city || ''}
-            postalCode={property.postal_code || ''}
-            showExactLocation={isActive} // Show exact location only for active listings
-          />
-
           {/* Key Facts Bar - Scout24 Style */}
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-4">
@@ -760,7 +752,7 @@ const ExposeDetail = () => {
             </TabsContent>
 
             {/* Tab: Energie */}
-            <TabsContent value="rendite" className="mt-4">
+            <TabsContent value="energie" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -795,6 +787,14 @@ const ExposeDetail = () => {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Location Map — GANZ UNTEN */}
+          <ExposeLocationMap 
+            address={property.address || ''}
+            city={property.city || ''}
+            postalCode={property.postal_code || ''}
+            showExactLocation={isActive}
+          />
         </div>
 
         {/* Sidebar - Freigabe & Veröffentlichung */}
