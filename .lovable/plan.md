@@ -1,333 +1,189 @@
 
-# Implementierungsplan: KI-Office Systemwidgets (ON/OFF)
+# Implementierungsplan: Investment-Engine Bilder-Fix für MOD-09 & Zone 3
 
-## Übersicht
+## Problemanalyse
 
-Dieses Feature ermöglicht Nutzern, ihre Dashboard-Systemwidgets über KI-Office → Widgets zentral zu verwalten (aktivieren/deaktivieren, sortieren). MOD-00 Dashboard rendert dann nur die aktivierten Widgets.
+Die Investment-Suche funktioniert in **MOD-08** perfekt, weil dort:
+1. Bilder über `document_links` geladen werden
+2. Signed URLs mit `createSignedUrl()` generiert werden
+3. Die korrekte Bucket-Referenz (`tenant-documents`) verwendet wird
 
----
+In **MOD-09 (Beratung)** und **Zone 3 (KAUFY)** fehlt diese Logik oder ist fehlerhaft:
 
-## A) Architektur-Überblick
-
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│                     KI-OFFICE (MOD-02)                          │
-│  ┌─────────────────┐    ┌─────────────────────────────────────┐ │
-│  │  Tab 1:         │    │  Tab 2:                             │ │
-│  │  Systemwidgets  │    │  Aufgabenwidgets (bestehend)        │ │
-│  │  ─────────────  │    │                                     │ │
-│  │  [✓] Globe      │    │  Erledigte Armstrong-Widgets        │ │
-│  │  [✓] Wetter     │    │                                     │ │
-│  │  [ ] Finanzen   │    │                                     │ │
-│  │  [✓] News       │    │                                     │ │
-│  │  ...            │    │                                     │ │
-│  └─────────────────┘    └─────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                   DATENBANK (widget_preferences)                 │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ user_id │ widget_code    │ enabled │ sort_order │ config  │ │
-│  │─────────│────────────────│─────────│────────────│─────────│ │
-│  │ u1      │ SYS.GLOBE      │ true    │ 1          │ {}      │ │
-│  │ u1      │ SYS.WEATHER    │ true    │ 2          │ {}      │ │
-│  │ u1      │ SYS.FIN.MARKET │ false   │ 3          │ {}      │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                     MOD-00 DASHBOARD                             │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ SYSTEMWIDGETS (enabled=true, nach sort_order)               ││
-│  │ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                        ││
-│  │ │Globe │ │Wetter│ │News  │ │Space │                        ││
-│  │ └──────┘ └──────┘ └──────┘ └──────┘                        ││
-│  └─────────────────────────────────────────────────────────────┘│
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ AUFGABENWIDGETS (Armstrong Tasks)                           ││
-│  │ ┌──────┐ ┌──────┐                                          ││
-│  │ │Brief │ │Remind│                                          ││
-│  │ └──────┘ └──────┘                                          ││
-│  └─────────────────────────────────────────────────────────────┘│
-└──────────────────────────────────────────────────────────────────┘
-```
+| Bereich | Ursache |
+|---------|---------|
+| MOD-09 BeratungTab | `hero_image_path: null` wird fest gesetzt, keine Image-Query |
+| Zone 3 KaufyHome | Verwendet `getPublicUrl()` statt `createSignedUrl()` für privaten Bucket |
 
 ---
 
-## B) Systemwidget-Katalog (7 Widgets)
+## Lösung: Gemeinsamer Image-Loading-Helper
 
-| Code | Name | Status | Quelle | Cache |
-|------|------|--------|--------|-------|
-| `SYS.GLOBE.EARTH` | Google Earth | LIVE | Google Maps 3D | - |
-| `SYS.WEATHER.SUMMARY` | Wetter | LIVE | Open-Meteo | 30min |
-| `SYS.FIN.MARKETS` | Finanzüberblick | STUB | Finnhub (geplant) | 30min |
-| `SYS.NEWS.BRIEFING` | News | STUB | RSS/NewsAPI | 60min |
-| `SYS.SPACE.DAILY` | Space/Weltall | STUB | NASA APOD / ISS | 24h/15min |
-| `SYS.MINDSET.QUOTE` | Zitat/Fokus | STUB | ZenQuotes | 24h |
-| `SYS.AUDIO.RADIO` | Radio/Musik | STUB | Radio Browser | - |
+### Phase 1: Shared Helper erstellen
 
----
+**Neue Datei: `src/lib/fetchPropertyImages.ts`**
 
-## C) Datenbank-Schema
-
-### Neue Tabelle: `widget_preferences`
-
-```sql
-CREATE TABLE public.widget_preferences (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  widget_code TEXT NOT NULL,
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  config_json JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  CONSTRAINT unique_user_widget UNIQUE (user_id, widget_code)
-);
-
--- RLS Policies
-ALTER TABLE widget_preferences ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can read own preferences"
-  ON widget_preferences FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own preferences"
-  ON widget_preferences FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own preferences"
-  ON widget_preferences FOR UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own preferences"
-  ON widget_preferences FOR DELETE
-  USING (auth.uid() = user_id);
-```
-
----
-
-## D) Implementierungsschritte
-
-### Phase 1: Datenmodell & Hook
-
-**1.1 Datenbank-Migration**
-- Tabelle `widget_preferences` anlegen mit RLS-Policies
-
-**1.2 Systemwidget-Registry (`src/config/systemWidgets.ts`)**
-```typescript
-export interface SystemWidgetDefinition {
-  code: string;
-  name_de: string;
-  description_de: string;
-  icon: string;
-  gradient: string;
-  data_source: string;
-  cache_interval_min: number;
-  cost_model: 'free' | 'metered';
-  status: 'live' | 'stub';
-  has_autoplay: boolean;
-  privacy_note?: string;
-}
-
-export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
-  {
-    code: 'SYS.GLOBE.EARTH',
-    name_de: 'Google Earth',
-    description_de: '3D-Globus mit Ihrem Standort',
-    icon: 'Globe',
-    gradient: 'from-green-500/10 to-green-600/5',
-    data_source: 'Google Maps 3D API',
-    cache_interval_min: 0,
-    cost_model: 'free',
-    status: 'live',
-    has_autoplay: false,
-  },
-  // ... weitere 6 Widgets
-];
-```
-
-**1.3 Hook: `useWidgetPreferences`**
-```typescript
-export function useWidgetPreferences() {
-  // Lädt Preferences aus DB
-  // Fallback: localStorage wenn nicht eingeloggt
-  // CRUD-Operationen mit Optimistic Updates
-  return {
-    preferences: SystemWidgetPreference[],
-    enabledWidgets: string[],
-    isLoading: boolean,
-    toggleWidget: (code: string, enabled: boolean) => Promise<void>,
-    updateOrder: (newOrder: string[]) => Promise<void>,
-    resetToDefaults: () => Promise<void>,
-  };
-}
-```
-
-### Phase 2: KI-Office Widgets-Tab Refactoring
-
-**2.1 WidgetsTab mit Tabs-Component**
-- Tab 1: **Systemwidgets** (NEU)
-- Tab 2: **Aufgabenwidgets** (bestehender Code)
-
-**2.2 SystemWidgetsTab-Component**
-- Liste aller 7 Systemwidgets mit:
-  - Toggle ON/OFF (Switch)
-  - Drag-Handle für Sortierung
-  - Info-Button → öffnet Detail-Drawer
-- Sortierung via @dnd-kit (bereits installiert)
-
-**2.3 SystemWidgetDetailDrawer**
-- Zeigt: Beschreibung, Datenquelle, Cache-Hinweis, Kostenmodell, Status
-- Read-only für Nutzer
-
-### Phase 3: MOD-00 Dashboard Integration
-
-**3.1 PortalDashboard.tsx anpassen**
-```typescript
-// Statt hardcoded SYSTEM_WIDGET_IDS:
-const { enabledWidgets, preferences } = useWidgetPreferences();
-
-// Systemwidgets nach sort_order sortieren
-const systemWidgetIds = preferences
-  .filter(p => p.enabled)
-  .sort((a, b) => a.sort_order - b.sort_order)
-  .map(p => p.widget_code);
-
-// Dann Task-Widgets hinten anhängen
-const allWidgetIds = [...systemWidgetIds, ...taskWidgetIds];
-```
-
-**3.2 Widget-Rendering Map erweitern**
-- Mapping von `widget_code` → React-Component
-- Neue Stub-Components für C3-C7
-
-### Phase 4: Stub-Widgets (UI-Platzhalter)
-
-Für die noch nicht angebundenen APIs (Finanzen, News, Space, Quote, Radio):
+Dieser Helper übernimmt die bewährte Logik aus `SucheTab.tsx`:
+- Query `document_links` mit `is_title_image` und `display_order`
+- Filtert nach `mime_type.startsWith('image/')`
+- Generiert Signed URLs mit `createSignedUrl()`
+- Gibt ein Map zurück: `propertyId → signedUrl`
 
 ```typescript
-// src/components/dashboard/widgets/FinanceWidget.tsx (Stub)
-export function FinanceWidget() {
-  return (
-    <Card className="aspect-square bg-gradient-to-br from-amber-500/10 to-amber-600/5">
-      <CardContent className="h-full flex flex-col items-center justify-center">
-        <TrendingUp className="h-10 w-10 text-amber-500/50 mb-4" />
-        <p className="text-sm text-muted-foreground text-center">
-          Finanzüberblick
-        </p>
-        <Badge variant="outline" className="mt-2">Coming Soon</Badge>
-      </CardContent>
-    </Card>
-  );
-}
+export async function fetchPropertyImages(
+  propertyIds: string[]
+): Promise<Map<string, string>>
 ```
 
-### Phase 5: Zone 1 — Widget-Registry Viewer
+### Phase 2: BeratungTab.tsx anpassen
 
-**5.1 Neue Page: `/admin/armstrong/integrations`**
-- Read-only Übersicht aller Systemwidgets
-- Zeigt: Code, Name, Datenquelle, Status, Kostenmodell
-- Quelle: Static JSON (SYSTEM_WIDGETS Registry)
+Aktuelle Query (Zeilen 56-107):
+- Holt nur Listing-Daten ohne Bilder
+- Setzt `hero_image_path: null` fest
 
-**5.2 Navigation in ArmstrongDashboard.tsx erweitern**
-- Quick-Link "Integrations/Widgets"
+Änderungen:
+1. Import des neuen Helpers
+2. Nach der Listings-Query: Bilder laden
+3. `hero_image_path` aus der Image-Map setzen
+
+### Phase 3: KaufyHome.tsx anpassen
+
+Aktuelle Logik (Zeilen 84-125):
+- Verwendet `getPublicUrl()` → funktioniert nicht für private Buckets
+
+Änderungen:
+1. Import des neuen Helpers
+2. Ersetze die manuelle Image-Logik durch den Helper
+3. Bilder werden jetzt mit Signed URLs geladen
 
 ---
 
-## E) Dateien-Übersicht
+## Dateien-Änderungen
 
 ### Neue Dateien
 
-| Pfad | Beschreibung |
-|------|--------------|
-| `src/config/systemWidgets.ts` | Widget-Registry (alle 7 Widgets) |
-| `src/hooks/useWidgetPreferences.ts` | DB-Hook für Preferences |
-| `src/pages/portal/office/SystemWidgetsTab.tsx` | Tab für Systemwidget-Verwaltung |
-| `src/components/office/SystemWidgetCard.tsx` | Widget-Karte mit Toggle |
-| `src/components/office/SystemWidgetDetailDrawer.tsx` | Detail-Drawer |
-| `src/components/dashboard/widgets/FinanceWidget.tsx` | Stub |
-| `src/components/dashboard/widgets/NewsWidget.tsx` | Stub |
-| `src/components/dashboard/widgets/SpaceWidget.tsx` | Stub |
-| `src/components/dashboard/widgets/QuoteWidget.tsx` | Stub |
-| `src/components/dashboard/widgets/RadioWidget.tsx` | Stub |
-| `src/pages/admin/armstrong/ArmstrongIntegrations.tsx` | Zone 1 Registry Viewer |
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/lib/fetchPropertyImages.ts` | Shared Helper für Image-Loading |
 
 ### Zu modifizierende Dateien
 
-| Pfad | Änderungen |
-|------|------------|
-| `src/pages/portal/office/WidgetsTab.tsx` | Tabs-Struktur mit 2 Tabs |
-| `src/pages/portal/PortalDashboard.tsx` | Integration von useWidgetPreferences |
-| `src/types/widget.ts` | SystemWidgetType erweitern |
-| `src/router/ManifestRouter.tsx` | Route für Integrations-Page |
-| `src/pages/admin/armstrong/ArmstrongDashboard.tsx` | Quick-Link hinzufügen |
+| Datei | Änderungen |
+|-------|------------|
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | Image-Loading integrieren |
+| `src/pages/zone3/kaufy/KaufyHome.tsx` | `getPublicUrl` → Helper mit Signed URLs |
 
 ---
 
-## F) API-Adapter Blueprint (Zukunft)
+## Technische Details
 
-Für Phase 2 (echte API-Anbindung) werden Edge Functions benötigt:
+### fetchPropertyImages Helper
 
-```text
-supabase/functions/
-├── widget-finance/      # Finnhub/Alpha Vantage Proxy
-├── widget-news/         # RSS/NewsAPI Aggregator
-├── widget-space/        # NASA APOD / ISS Location
-├── widget-quote/        # ZenQuotes Proxy
-└── widget-radio/        # Radio Browser API Proxy
+```typescript
+import { supabase } from '@/integrations/supabase/client';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
+
+export async function fetchPropertyImages(
+  propertyIds: string[]
+): Promise<Map<string, string>> {
+  const imageMap = new Map<string, string>();
+  
+  if (propertyIds.length === 0) return imageMap;
+
+  // 1. Query document_links mit documents join
+  const { data: imageLinks, error } = await supabase
+    .from('document_links')
+    .select(`
+      object_id,
+      is_title_image,
+      display_order,
+      documents!inner (file_path, mime_type)
+    `)
+    .in('object_id', propertyIds)
+    .eq('object_type', 'property')
+    .order('is_title_image', { ascending: false })
+    .order('display_order', { ascending: true });
+
+  if (error || !imageLinks?.length) return imageMap;
+
+  // 2. Best image per property
+  const bestByProperty = new Map<string, { file_path: string; ... }>();
+  
+  for (const link of imageLinks) {
+    const doc = link.documents;
+    if (!doc?.file_path) continue;
+    if (!String(doc.mime_type || '').startsWith('image/')) continue;
+    
+    // Prefer is_title_image, then lowest display_order
+    // ... (gleiche Logik wie SucheTab)
+  }
+
+  // 3. Generate signed URLs
+  await Promise.all(
+    Array.from(bestByProperty.entries()).map(async ([propId, best]) => {
+      const { data } = await supabase.storage
+        .from('tenant-documents')
+        .createSignedUrl(best.file_path, 3600);
+      
+      if (data?.signedUrl) {
+        imageMap.set(propId, resolveStorageSignedUrl(data.signedUrl));
+      }
+    })
+  );
+
+  return imageMap;
+}
 ```
 
-**Wichtig:** Keine API-Keys im Client. Alle Requests über Edge Functions.
+### BeratungTab.tsx Anpassung
+
+```typescript
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
+
+// In queryFn (nach dem Listings-Fetch):
+const propertyIds = listingsData.map(l => l.properties.id).filter(Boolean);
+const imageMap = await fetchPropertyImages(propertyIds);
+
+// Transform:
+return listingsData.map(l => ({
+  ...existing,
+  hero_image_path: imageMap.get(l.properties.id) || null,  // ← Jetzt dynamisch
+}));
+```
+
+### KaufyHome.tsx Anpassung
+
+```typescript
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
+
+// Statt manueller getPublicUrl-Logik:
+const propertyIds = listingsData.map(l => l.properties.id);
+const imageMap = await fetchPropertyImages(propertyIds);
+
+return listingsData.map(l => ({
+  ...existing,
+  image_url: imageMap.get(l.properties.id) || undefined,
+}));
+```
 
 ---
 
-## G) Akzeptanzkriterien
+## Akzeptanzkriterien
 
-| # | Kriterium | Test |
-|---|-----------|------|
-| 1 | KI-Office → Widgets zeigt 2 Tabs | Klick auf Menüpunkt |
-| 2 | Systemwidgets-Tab listet alle 7 Widgets | Visuelle Prüfung |
-| 3 | Toggle speichert in DB | Toggle → Page Reload → Zustand bleibt |
-| 4 | Sortierung per Drag & Drop funktioniert | Widgets umsortieren |
-| 5 | MOD-00 zeigt nur aktivierte Widgets | Widget deaktivieren → verschwindet |
-| 6 | Reihenfolge in MOD-00 entspricht sort_order | Umsortieren → Dashboard prüfen |
-| 7 | Stub-Widgets zeigen "Coming Soon" | Prüfung der Platzhalter |
-| 8 | Zone 1 Registry Viewer zeigt alle Widgets | /admin/armstrong/integrations |
-| 9 | Kein Autoplay bei Radio-Widget | Widget aktivieren, prüfen |
-| 10 | Empty State wenn alle deaktiviert | Alle Toggles aus → Hinweis |
+| # | Test | Erwartung |
+|---|------|-----------|
+| 1 | MOD-08 Suche → Berechnen | Bilder erscheinen (unverändert) |
+| 2 | MOD-09 Beratung → Berechnen | Bilder erscheinen in Property-Grid |
+| 3 | KAUFY Homepage laden | Bilder in Property-Cards sichtbar |
+| 4 | Keine Konsolen-Fehler | Keine 403/404 für Bild-URLs |
 
 ---
 
-## H) Governance-Regeln (Eingehalten)
+## Zusammenfassung
 
-- Keine Write-Aktionen in SSOT durch Systemwidgets
-- Keine Autoplay-Funktionen
-- Externe API-Calls nur über Edge Functions (Blueprints angelegt)
-- Kostenmodell dokumentiert (aktuell alle "free" im MVP)
-- Datenschutz-Hinweise in Registry
+Das Problem ist eine **inkonsistente Image-Loading-Implementierung**:
+- MOD-08 macht es richtig (Signed URLs)
+- MOD-09 lädt gar keine Bilder
+- KAUFY verwendet falsche URL-Methode
 
----
-
-## I) Zusammenfassung: Was ist Live vs Stub?
-
-| Widget | Status |
-|--------|--------|
-| Globe (Earth) | LIVE |
-| Wetter | LIVE |
-| Finanzen | STUB (UI-Platzhalter) |
-| News | STUB (UI-Platzhalter) |
-| Space | STUB (UI-Platzhalter) |
-| Zitat | STUB (UI-Platzhalter) |
-| Radio | STUB (UI-Platzhalter) |
-
-Die Stub-Widgets zeigen einen eleganten "Coming Soon" Platzhalter und können aktiviert/deaktiviert werden, um die Sortierung vorzubereiten.
-
----
-
-## J) Technischer Hinweis
-
-Die bestehende `useWidgetOrder` Hook wird für die **Aufgabenwidgets** (Armstrong Tasks) weiterverwendet. Die neue `useWidgetPreferences` Hook ist nur für **Systemwidgets** zuständig. Beide werden in `PortalDashboard.tsx` kombiniert.
+Die Lösung: Ein **gemeinsamer Helper** (`fetchPropertyImages`) mit der bewährten Logik aus MOD-08, der in allen drei Bereichen verwendet wird. Dies verhindert zukünftigen Drift und stellt sicher, dass alle Bereiche konsistent funktionieren.
