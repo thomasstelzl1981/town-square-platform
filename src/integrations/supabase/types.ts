@@ -2463,6 +2463,8 @@ export type Database = {
       }
       contacts: {
         Row: {
+          category: string | null
+          city: string | null
           company: string | null
           created_at: string
           email: string | null
@@ -2473,13 +2475,19 @@ export type Database = {
           microsoft_contact_id: string | null
           notes: string | null
           phone: string | null
+          phone_mobile: string | null
+          postal_code: string | null
           public_id: string
+          salutation: string | null
+          street: string | null
           synced_at: string | null
           synced_from: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          category?: string | null
+          city?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -2490,13 +2498,19 @@ export type Database = {
           microsoft_contact_id?: string | null
           notes?: string | null
           phone?: string | null
+          phone_mobile?: string | null
+          postal_code?: string | null
           public_id: string
+          salutation?: string | null
+          street?: string | null
           synced_at?: string | null
           synced_from?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          category?: string | null
+          city?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -2507,7 +2521,11 @@ export type Database = {
           microsoft_contact_id?: string | null
           notes?: string | null
           phone?: string | null
+          phone_mobile?: string | null
+          postal_code?: string | null
           public_id?: string
+          salutation?: string | null
+          street?: string | null
           synced_at?: string | null
           synced_from?: string | null
           tenant_id?: string
