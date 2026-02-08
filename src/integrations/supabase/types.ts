@@ -3679,6 +3679,538 @@ export type Database = {
           },
         ]
       }
+      dev_project_calculations: {
+        Row: {
+          ancillary_cost_percent: number | null
+          annualized_return: number | null
+          break_even_units: number | null
+          calculated_at: string | null
+          calculation_name: string | null
+          created_at: string
+          financing_ltv_percent: number | null
+          financing_rate_percent: number | null
+          gross_profit: number | null
+          holding_period_months: number | null
+          id: string
+          is_active: boolean | null
+          net_profit: number | null
+          profit_margin_percent: number | null
+          profit_per_unit: number | null
+          project_id: string
+          purchase_price: number | null
+          renovation_per_sqm: number | null
+          renovation_total: number | null
+          sales_commission_percent: number | null
+          total_investment: number | null
+          total_sale_proceeds: number | null
+          updated_at: string
+        }
+        Insert: {
+          ancillary_cost_percent?: number | null
+          annualized_return?: number | null
+          break_even_units?: number | null
+          calculated_at?: string | null
+          calculation_name?: string | null
+          created_at?: string
+          financing_ltv_percent?: number | null
+          financing_rate_percent?: number | null
+          gross_profit?: number | null
+          holding_period_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          net_profit?: number | null
+          profit_margin_percent?: number | null
+          profit_per_unit?: number | null
+          project_id: string
+          purchase_price?: number | null
+          renovation_per_sqm?: number | null
+          renovation_total?: number | null
+          sales_commission_percent?: number | null
+          total_investment?: number | null
+          total_sale_proceeds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ancillary_cost_percent?: number | null
+          annualized_return?: number | null
+          break_even_units?: number | null
+          calculated_at?: string | null
+          calculation_name?: string | null
+          created_at?: string
+          financing_ltv_percent?: number | null
+          financing_rate_percent?: number | null
+          gross_profit?: number | null
+          holding_period_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          net_profit?: number | null
+          profit_margin_percent?: number | null
+          profit_per_unit?: number | null
+          project_id?: string
+          purchase_price?: number | null
+          renovation_per_sqm?: number | null
+          renovation_total?: number | null
+          sales_commission_percent?: number | null
+          total_investment?: number | null
+          total_sale_proceeds?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_project_calculations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_project_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          doc_type: string
+          document_id: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          storage_node_id: string | null
+          tenant_id: string
+          unit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          doc_type?: string
+          document_id?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          storage_node_id?: string | null
+          tenant_id: string
+          unit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          doc_type?: string
+          document_id?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          storage_node_id?: string | null
+          tenant_id?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_project_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_documents_storage_node_id_fkey"
+            columns: ["storage_node_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_documents_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dev_project_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_project_reservations: {
+        Row: {
+          buyer_contact_id: string | null
+          cancellation_date: string | null
+          cancellation_reason: string | null
+          commission_amount: number | null
+          completion_date: string | null
+          confirmation_date: string | null
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          id: string
+          notary_date: string | null
+          notes: string | null
+          partner_org_id: string | null
+          partner_user_id: string | null
+          project_id: string
+          reservation_date: string | null
+          reserved_price: number | null
+          status: string
+          tenant_id: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          commission_amount?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          notary_date?: string | null
+          notes?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id: string
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string
+          tenant_id: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          commission_amount?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          notary_date?: string | null
+          notes?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id?: string
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string
+          tenant_id?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_project_reservations_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_reservations_partner_org_id_fkey"
+            columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_reservations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_reservations_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dev_project_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_project_units: {
+        Row: {
+          area_sqm: number | null
+          balcony: boolean | null
+          created_at: string
+          current_rent: number | null
+          floor: number | null
+          garden: boolean | null
+          grundbuchblatt: string | null
+          id: string
+          list_price: number | null
+          min_price: number | null
+          notes: string | null
+          parking: boolean | null
+          parking_type: string | null
+          price_per_sqm: number | null
+          project_id: string
+          rent_net: number | null
+          rent_nk: number | null
+          rooms_count: number | null
+          status: string
+          te_number: string | null
+          tenant_id: string
+          tenant_name: string | null
+          unit_number: string
+          updated_at: string
+        }
+        Insert: {
+          area_sqm?: number | null
+          balcony?: boolean | null
+          created_at?: string
+          current_rent?: number | null
+          floor?: number | null
+          garden?: boolean | null
+          grundbuchblatt?: string | null
+          id?: string
+          list_price?: number | null
+          min_price?: number | null
+          notes?: string | null
+          parking?: boolean | null
+          parking_type?: string | null
+          price_per_sqm?: number | null
+          project_id: string
+          rent_net?: number | null
+          rent_nk?: number | null
+          rooms_count?: number | null
+          status?: string
+          te_number?: string | null
+          tenant_id: string
+          tenant_name?: string | null
+          unit_number: string
+          updated_at?: string
+        }
+        Update: {
+          area_sqm?: number | null
+          balcony?: boolean | null
+          created_at?: string
+          current_rent?: number | null
+          floor?: number | null
+          garden?: boolean | null
+          grundbuchblatt?: string | null
+          id?: string
+          list_price?: number | null
+          min_price?: number | null
+          notes?: string | null
+          parking?: boolean | null
+          parking_type?: string | null
+          price_per_sqm?: number | null
+          project_id?: string
+          rent_net?: number | null
+          rent_nk?: number | null
+          rooms_count?: number | null
+          status?: string
+          te_number?: string | null
+          tenant_id?: string
+          tenant_name?: string | null
+          unit_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_project_units_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_units_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_projects: {
+        Row: {
+          address: string | null
+          ancillary_cost_percent: number | null
+          avg_unit_price: number | null
+          city: string | null
+          commission_rate_percent: number | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          developer_context_id: string
+          holding_period_months: number | null
+          id: string
+          name: string
+          postal_code: string | null
+          project_code: string
+          project_start_date: string | null
+          purchase_price: number | null
+          renovation_budget: number | null
+          state: string | null
+          status: string
+          target_end_date: string | null
+          tenant_id: string
+          total_sale_target: number | null
+          total_units_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          ancillary_cost_percent?: number | null
+          avg_unit_price?: number | null
+          city?: string | null
+          commission_rate_percent?: number | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          developer_context_id: string
+          holding_period_months?: number | null
+          id?: string
+          name: string
+          postal_code?: string | null
+          project_code: string
+          project_start_date?: string | null
+          purchase_price?: number | null
+          renovation_budget?: number | null
+          state?: string | null
+          status?: string
+          target_end_date?: string | null
+          tenant_id: string
+          total_sale_target?: number | null
+          total_units_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          ancillary_cost_percent?: number | null
+          avg_unit_price?: number | null
+          city?: string | null
+          commission_rate_percent?: number | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          developer_context_id?: string
+          holding_period_months?: number | null
+          id?: string
+          name?: string
+          postal_code?: string | null
+          project_code?: string
+          project_start_date?: string | null
+          purchase_price?: number | null
+          renovation_budget?: number | null
+          state?: string | null
+          status?: string
+          target_end_date?: string | null
+          tenant_id?: string
+          total_sale_target?: number | null
+          total_units_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_projects_developer_context_id_fkey"
+            columns: ["developer_context_id"]
+            isOneToOne: false
+            referencedRelation: "developer_contexts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      developer_contexts: {
+        Row: {
+          city: string | null
+          context_type: string
+          created_at: string
+          house_number: string | null
+          hrb_number: string | null
+          id: string
+          is_default: boolean | null
+          legal_form: string | null
+          managing_director: string | null
+          name: string
+          postal_code: string | null
+          street: string | null
+          tax_rate_percent: number | null
+          tenant_id: string
+          updated_at: string
+          ust_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          context_type?: string
+          created_at?: string
+          house_number?: string | null
+          hrb_number?: string | null
+          id?: string
+          is_default?: boolean | null
+          legal_form?: string | null
+          managing_director?: string | null
+          name: string
+          postal_code?: string | null
+          street?: string | null
+          tax_rate_percent?: number | null
+          tenant_id: string
+          updated_at?: string
+          ust_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          context_type?: string
+          created_at?: string
+          house_number?: string | null
+          hrb_number?: string | null
+          id?: string
+          is_default?: boolean | null
+          legal_form?: string | null
+          managing_director?: string | null
+          name?: string
+          postal_code?: string | null
+          street?: string | null
+          tax_rate_percent?: number | null
+          tenant_id?: string
+          updated_at?: string
+          ust_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_contexts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doc_type_catalog: {
         Row: {
           anchors: Json | null
