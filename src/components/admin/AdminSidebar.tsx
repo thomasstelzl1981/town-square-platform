@@ -7,7 +7,7 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2
+  UserCog, ClipboardCheck, Users2, Sparkles
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,8 +31,13 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'OrganizationDetail': Building2,
   'Users': Users,
   'Delegations': Link2,
-  'MasterContacts': Contact,
-  'MasterTemplates': Settings2,
+  // Masterdata
+  'MasterTemplatesImmobilienakte': Building2,
+  'MasterTemplatesSelbstauskunft': FileText,
+  // KI Office
+  'AdminKiOffice': Sparkles,
+  'AdminEmailTab': Mail,
+  'AdminKontakteTab': Contact,
   'TileCatalog': Grid3X3,
   'Integrations': Plug,
   'CommunicationHub': Mail,
@@ -82,13 +87,14 @@ interface GroupConfig {
 
 const GROUP_CONFIG: Record<string, GroupConfig> = {
   'foundation': { label: 'Tenants & Access', priority: 1 },
-  'master': { label: 'Master Data', priority: 2 },
-  'activation': { label: 'Feature Activation', priority: 3 },
-  'backbone': { label: 'Backbone', priority: 4 },
-  'desks': { label: 'Operative Desks', priority: 5 },
-  'agents': { label: 'AI Agents', priority: 6 },
-  'system': { label: 'System', priority: 7 },
-  'platformAdmin': { label: 'Platform Admin', priority: 8 },
+  'masterdata': { label: 'Masterdata', priority: 2 },
+  'ki-office': { label: 'KI Office', priority: 3 },
+  'activation': { label: 'Feature Activation', priority: 4 },
+  'backbone': { label: 'Backbone', priority: 5 },
+  'desks': { label: 'Operative Desks', priority: 6 },
+  'agents': { label: 'AI Agents', priority: 7 },
+  'system': { label: 'System', priority: 8 },
+  'platformAdmin': { label: 'Platform Admin', priority: 9 },
 };
 
 // Route to group mapping via prefix
@@ -96,8 +102,13 @@ function getGroupKey(path: string, component: string): string {
   if (path === '' || path === 'organizations' || path === 'users' || path === 'delegations') {
     return 'foundation';
   }
-  if (path === 'contacts' || path === 'master-templates') {
-    return 'master';
+  // Masterdata
+  if (path.startsWith('masterdata/')) {
+    return 'masterdata';
+  }
+  // KI Office (nur Landing Page zeigen, Sub-Items werden via Tab-Navigation erreicht)
+  if (path === 'ki-office') {
+    return 'ki-office';
   }
   if (path === 'tiles') {
     return 'activation';
@@ -131,7 +142,7 @@ function shouldShowInNav(path: string): boolean {
   if (path.includes(':')) return false;
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
-      path === 'agents' || path === 'futureroom') {
+      path === 'agents' || path === 'futureroom' || path === 'ki-office') {
     return true;
   }
   // Skip sub-routes of desks (they will be accessible from their parent page)
@@ -139,13 +150,18 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
     path.startsWith('acquiary/') ||
-    path.startsWith('agents/')
+    path.startsWith('agents/') ||
+    path.startsWith('ki-office/')
   )) {
     return false;
   }
   // FutureRoom sub-items are accessed via internal tabs, NOT sidebar
   if (path.startsWith('futureroom/')) {
     return false;
+  }
+  // Masterdata sub-items should be shown (they're standalone pages)
+  if (path.startsWith('masterdata/')) {
+    return true;
   }
   return true;
 }

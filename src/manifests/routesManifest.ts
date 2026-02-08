@@ -84,10 +84,13 @@ export const zone1Admin: ZoneDefinition = {
     { path: "organizations/:id", component: "OrganizationDetail", title: "Organisation Details", dynamic: true },
     { path: "users", component: "Users", title: "Benutzer" },
     { path: "delegations", component: "Delegations", title: "Delegationen" },
-    { path: "contacts", component: "MasterContacts", title: "Kontakte" },
-    { path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" },
-    { path: "master-templates/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" },
-    { path: "master-templates/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" },
+    // Masterdata
+    { path: "masterdata/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" },
+    { path: "masterdata/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" },
+    // KI Office
+    { path: "ki-office", component: "AdminKiOffice", title: "KI Office" },
+    { path: "ki-office/email", component: "AdminEmailTab", title: "E-Mail" },
+    { path: "ki-office/kontakte", component: "AdminKontakteTab", title: "Kontakte" },
     { path: "tiles", component: "TileCatalog", title: "Tile-Katalog" },
     { path: "integrations", component: "Integrations", title: "Integrationen" },
     { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
