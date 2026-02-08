@@ -27,6 +27,7 @@ interface StorageNode {
   scope_hint: string | null;
   property_id: string | null;
   unit_id: string | null;
+  module_code: string | null;
   created_at: string;
 }
 
@@ -55,15 +56,23 @@ interface DocumentLink {
   object_id: string | null;
 }
 
-// System folder definitions for seeding
+// System folder definitions for seeding (legacy - now handled by DB trigger)
+// Kept for backwards compatibility only
 const SYSTEM_FOLDERS = [
   { key: 'inbox', name: 'Posteingang' },
-  { key: 'immobilien', name: 'Immobilien' },
-  { key: 'finanzierung', name: 'Finanzierung' },
-  { key: 'bonitaetsunterlagen', name: 'Bonitätsunterlagen' },
+  { key: 'user_files', name: 'Eigene Dateien' },
   { key: 'needs_review', name: 'Zur Prüfung' },
   { key: 'archive', name: 'Archiv' },
   { key: 'sonstiges', name: 'Sonstiges' },
+];
+
+// Module root folders (now handled by DB trigger)
+const MODULE_ROOT_FOLDERS = [
+  { key: 'MOD_04_ROOT', name: 'Immobilien', module_code: 'MOD_04' },
+  { key: 'MOD_06_ROOT', name: 'Verkauf', module_code: 'MOD_06' },
+  { key: 'MOD_07_ROOT', name: 'Finanzierung', module_code: 'MOD_07' },
+  { key: 'MOD_16_ROOT', name: 'Sanierung', module_code: 'MOD_16' },
+  { key: 'MOD_17_ROOT', name: 'Car-Management', module_code: 'MOD_17' },
 ];
 
 export function StorageTab() {
@@ -108,36 +117,57 @@ export function StorageTab() {
     enabled: !!activeTenantId,
   });
 
-  // Seed system nodes if they don't exist
+  // Seed system and module root nodes if they don't exist
+  // Note: This is now primarily handled by DB trigger, but kept for backwards compatibility
   useEffect(() => {
     async function seedSystemNodes() {
       if (!activeTenantId || nodesLoading) return;
       
-      // Check if any system nodes exist
-      const systemNodes = nodes.filter(n => n.node_type === 'system');
-      if (systemNodes.length >= SYSTEM_FOLDERS.length) return;
+      // Check if module roots exist (new architecture)
+      const existingTemplates = new Set(nodes.map(n => n.template_id));
+      const hasModuleRoots = MODULE_ROOT_FOLDERS.every(f => existingTemplates.has(f.key));
+      
+      // If module roots exist, we're on the new architecture - no need to seed
+      if (hasModuleRoots) return;
       
       try {
-        const existingKeys = new Set(systemNodes.map(n => n.template_id));
+        const nodesToCreate: any[] = [];
         
         // Create missing system nodes
-        const nodesToCreate = SYSTEM_FOLDERS
-          .filter(f => !existingKeys.has(f.key))
-          .map(f => ({
-            tenant_id: activeTenantId,
-            parent_id: null,
-            name: f.name,
-            node_type: 'system',
-            template_id: f.key,
-          }));
+        SYSTEM_FOLDERS.forEach(f => {
+          if (!existingTemplates.has(f.key)) {
+            nodesToCreate.push({
+              tenant_id: activeTenantId,
+              parent_id: null,
+              name: f.name,
+              node_type: 'system',
+              template_id: f.key,
+              module_code: 'SYSTEM',
+            });
+          }
+        });
+        
+        // Create missing module root folders
+        MODULE_ROOT_FOLDERS.forEach(f => {
+          if (!existingTemplates.has(f.key)) {
+            nodesToCreate.push({
+              tenant_id: activeTenantId,
+              parent_id: null,
+              name: f.name,
+              node_type: 'folder',
+              template_id: f.key,
+              module_code: f.module_code,
+            });
+          }
+        });
         
         if (nodesToCreate.length > 0) {
           await supabase.from('storage_nodes').insert(nodesToCreate);
           refetchNodes();
-          toast.success('System-Ordner erstellt');
+          toast.success('Ordnerstruktur erstellt');
         }
       } catch (err) {
-        console.error('Error seeding system nodes:', err);
+        console.error('Error seeding nodes:', err);
       }
     }
     
