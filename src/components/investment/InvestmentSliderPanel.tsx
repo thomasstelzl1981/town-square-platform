@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Settings2, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalculationInput } from '@/hooks/useInvestmentEngine';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface InvestmentSliderPanelProps {
   value: CalculationInput;
@@ -41,6 +45,9 @@ export function InvestmentSliderPanel({
   showAdvanced = true,
   purchasePrice,
 }: InvestmentSliderPanelProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const isMobile = useIsMobile();
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 
@@ -51,7 +58,9 @@ export function InvestmentSliderPanel({
   const maxEquity = purchasePrice || value.purchasePrice || 500000;
 
   const isCompact = layout === 'compact';
-  const gridClass = layout === 'horizontal' ? 'grid md:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-5';
+  const gridClass = layout === 'horizontal' && !isMobile 
+    ? 'grid md:grid-cols-2 lg:grid-cols-4 gap-4' 
+    : 'space-y-5';
 
   return (
     <Card>
@@ -125,7 +134,9 @@ export function InvestmentSliderPanel({
         {/* 5. zvE (zu versteuerndes Einkommen) */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <Label>zvE (zu versteuerndes Einkommen)</Label>
+            <Label className={isMobile ? 'text-xs' : ''}>
+              {isMobile ? 'zvE' : 'zvE (zu versteuerndes Einkommen)'}
+            </Label>
             <span className="font-medium">{formatCurrency(value.taxableIncome)}</span>
           </div>
           <Slider
@@ -172,65 +183,112 @@ export function InvestmentSliderPanel({
             <button
               type="button"
               onClick={() => update('maritalStatus', 'single')}
-              className={`flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors ${
+              className={cn(
+                "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
                 value.maritalStatus === 'single'
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-background border-border hover:bg-muted'
-              }`}
+              )}
             >
               Einzeln
             </button>
             <button
               type="button"
               onClick={() => update('maritalStatus', 'married')}
-              className={`flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors ${
+              className={cn(
+                "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
                 value.maritalStatus === 'married'
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-background border-border hover:bg-muted'
-              }`}
+              )}
             >
               Splitting
             </button>
           </div>
         </div>
 
-        {/* Advanced Options */}
+        {/* Advanced Options - Collapsible on Mobile */}
         {showAdvanced && !isCompact && (
-          <>
-            <div className="space-y-2 pt-2 border-t">
-              <Label className="text-xs text-muted-foreground">Erweitert</Label>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <Label>Gebäudeanteil</Label>
-                <span className="font-medium">{Math.round(value.buildingShare * 100)}%</span>
+          isMobile ? (
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="pt-2 border-t">
+              <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
+                <span className="text-sm font-medium text-muted-foreground">Erweiterte Optionen</span>
+                {advancedOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <Label>Gebäudeanteil</Label>
+                    <span className="font-medium">{Math.round(value.buildingShare * 100)}%</span>
+                  </div>
+                  <Slider
+                    value={[value.buildingShare * 100]}
+                    onValueChange={([v]) => update('buildingShare', v / 100)}
+                    min={50}
+                    max={95}
+                    step={5}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>AfA-Modell</Label>
+                  <Select
+                    value={value.afaModel}
+                    onValueChange={(v) => update('afaModel', v as CalculationInput['afaModel'])}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linear">Linear 2%</SelectItem>
+                      <SelectItem value="7i">§7i Denkmal</SelectItem>
+                      <SelectItem value="7h">§7h Sanierungsgebiet</SelectItem>
+                      <SelectItem value="7b">§7b Neubau</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <>
+              <div className="space-y-2 pt-2 border-t">
+                <Label className="text-xs text-muted-foreground">Erweitert</Label>
               </div>
-              <Slider
-                value={[value.buildingShare * 100]}
-                onValueChange={([v]) => update('buildingShare', v / 100)}
-                min={50}
-                max={95}
-                step={5}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>AfA-Modell</Label>
-              <Select
-                value={value.afaModel}
-                onValueChange={(v) => update('afaModel', v as CalculationInput['afaModel'])}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="linear">Linear 2%</SelectItem>
-                  <SelectItem value="7i">§7i Denkmal</SelectItem>
-                  <SelectItem value="7h">§7h Sanierungsgebiet</SelectItem>
-                  <SelectItem value="7b">§7b Neubau</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <Label>Gebäudeanteil</Label>
+                  <span className="font-medium">{Math.round(value.buildingShare * 100)}%</span>
+                </div>
+                <Slider
+                  value={[value.buildingShare * 100]}
+                  onValueChange={([v]) => update('buildingShare', v / 100)}
+                  min={50}
+                  max={95}
+                  step={5}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>AfA-Modell</Label>
+                <Select
+                  value={value.afaModel}
+                  onValueChange={(v) => update('afaModel', v as CalculationInput['afaModel'])}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="linear">Linear 2%</SelectItem>
+                    <SelectItem value="7i">§7i Denkmal</SelectItem>
+                    <SelectItem value="7h">§7h Sanierungsgebiet</SelectItem>
+                    <SelectItem value="7b">§7b Neubau</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )
         )}
       </CardContent>
     </Card>
