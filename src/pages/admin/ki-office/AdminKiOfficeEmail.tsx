@@ -32,7 +32,7 @@ import { ThreadList } from '@/components/admin/ki-office/ThreadList';
 import { ConversationView } from '@/components/admin/ki-office/ConversationView';
 import { ContactPanel } from '@/components/admin/ki-office/ContactPanel';
 import { AIReplyAssistant } from '@/components/admin/ki-office/AIReplyAssistant';
-import { useAdminEmailThreads, type EmailThread } from '@/hooks/useAdminEmailThreads';
+import { useAdminEmailThreads, useThreadMessages, type EmailThread } from '@/hooks/useAdminEmailThreads';
 
 interface Contact {
   id: string;
@@ -65,9 +65,9 @@ export default function AdminKiOfficeEmail() {
   const [composeData, setComposeData] = useState<ComposeFormData>(emptyComposeData);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
-  const { threads, isLoading, useThreadMessages, markThreadRead, findOrCreateThread } = useAdminEmailThreads();
+  const { threads, isLoading, markThreadRead, findOrCreateThread } = useAdminEmailThreads();
 
-  // Get messages for selected thread
+  // Get messages for selected thread (separate hook call at top level)
   const { data: threadMessages = [], isLoading: messagesLoading } = useThreadMessages(selectedThread?.id || null);
 
   // Fetch admin contacts for recipient selection

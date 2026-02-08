@@ -58,68 +58,6 @@ export function useAdminEmailThreads() {
     },
   });
 
-  // Get messages for a specific thread
-  const useThreadMessages = (threadId: string | null) => {
-    return useQuery({
-      queryKey: ['admin-thread-messages', threadId],
-      queryFn: async () => {
-        if (!threadId) return [];
-
-        // Fetch both inbound and outbound messages for this thread
-        const [outboundRes, inboundRes] = await Promise.all([
-          supabase
-            .from('admin_outbound_emails')
-            .select('*')
-            .eq('thread_id', threadId)
-            .order('sent_at', { ascending: true }),
-          supabase
-            .from('admin_inbound_emails')
-            .select('*')
-            .eq('thread_id', threadId)
-            .order('received_at', { ascending: true }),
-        ]);
-
-        if (outboundRes.error) throw outboundRes.error;
-        if (inboundRes.error) throw inboundRes.error;
-
-        // Combine and sort by timestamp
-        const messages: ThreadMessage[] = [
-          ...(outboundRes.data || []).map((m) => ({
-            id: m.id,
-            type: 'outbound' as const,
-            from_email: 'noreply@systemofatown.de',
-            to_email: m.to_email,
-            subject: m.subject,
-            body_text: m.body_text,
-            body_html: m.body_html,
-            sent_at: m.sent_at,
-            received_at: null,
-            status: m.status,
-          })),
-          ...(inboundRes.data || []).map((m) => ({
-            id: m.id,
-            type: 'inbound' as const,
-            from_email: m.from_email,
-            to_email: m.to_email || 'admin@systemofatown.de',
-            subject: m.subject,
-            body_text: m.body_text,
-            body_html: m.body_html,
-            sent_at: null,
-            received_at: m.received_at,
-            is_read: m.is_read,
-          })),
-        ].sort((a, b) => {
-          const timeA = a.sent_at || a.received_at || '';
-          const timeB = b.sent_at || b.received_at || '';
-          return new Date(timeA).getTime() - new Date(timeB).getTime();
-        });
-
-        return messages;
-      },
-      enabled: !!threadId,
-    });
-  };
-
   // Create or find thread for a contact
   const findOrCreateThread = useMutation({
     mutationFn: async ({ contactId, subject }: { contactId: string; subject: string }) => {
@@ -195,11 +133,72 @@ export function useAdminEmailThreads() {
   return {
     threads: threadsQuery.data || [],
     isLoading: threadsQuery.isLoading,
-    useThreadMessages,
     findOrCreateThread,
     updateThreadStatus,
     markThreadRead,
   };
+}
+
+// Separate hook for thread messages - must be called at top level
+export function useThreadMessages(threadId: string | null) {
+  return useQuery({
+    queryKey: ['admin-thread-messages', threadId],
+    queryFn: async () => {
+      if (!threadId) return [];
+
+      // Fetch both inbound and outbound messages for this thread
+      const [outboundRes, inboundRes] = await Promise.all([
+        supabase
+          .from('admin_outbound_emails')
+          .select('*')
+          .eq('thread_id', threadId)
+          .order('sent_at', { ascending: true }),
+        supabase
+          .from('admin_inbound_emails')
+          .select('*')
+          .eq('thread_id', threadId)
+          .order('received_at', { ascending: true }),
+      ]);
+
+      if (outboundRes.error) throw outboundRes.error;
+      if (inboundRes.error) throw inboundRes.error;
+
+      // Combine and sort by timestamp
+      const messages: ThreadMessage[] = [
+        ...(outboundRes.data || []).map((m) => ({
+          id: m.id,
+          type: 'outbound' as const,
+          from_email: 'noreply@systemofatown.de',
+          to_email: m.to_email,
+          subject: m.subject,
+          body_text: m.body_text,
+          body_html: m.body_html,
+          sent_at: m.sent_at,
+          received_at: null,
+          status: m.status,
+        })),
+        ...(inboundRes.data || []).map((m) => ({
+          id: m.id,
+          type: 'inbound' as const,
+          from_email: m.from_email,
+          to_email: m.to_email || 'admin@systemofatown.de',
+          subject: m.subject,
+          body_text: m.body_text,
+          body_html: m.body_html,
+          sent_at: null,
+          received_at: m.received_at,
+          is_read: m.is_read,
+        })),
+      ].sort((a, b) => {
+        const timeA = a.sent_at || a.received_at || '';
+        const timeB = b.sent_at || b.received_at || '';
+        return new Date(timeA).getTime() - new Date(timeB).getTime();
+      });
+
+      return messages;
+    },
+    enabled: !!threadId,
+  });
 }
 
 export function useAdminContactTags(contactId: string | null) {
