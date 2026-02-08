@@ -1,194 +1,156 @@
 
-# Umfassende Analyse: Kaufy-Website, Partner-Portal und Golden Path
+## Ziel (was du angefragt hast)
 
-## Zusammenfassung der Prüfung
-
-Nach einer detaillierten Untersuchung des gesamten Datenflusses von MOD-04 bis zur KAUFY-Website und zum Partner-Portal wurden **funktionale Erfolge** sowie **konkrete Verbesserungspotentiale** identifiziert.
-
----
-
-## Teil 1: Was funktioniert
-
-### Golden Path - Datenfluss
-| Station | Status |
-|---------|--------|
-| MOD-04 Immobilienakte | ✅ Property- und Listing-Daten korrekt gespeichert |
-| MOD-06 Verkaufsexposé | ✅ Listing-Publikationen für "kaufy" und "partner_network" aktiv |
-| Zone 1 Sales Desk | ✅ Listings mit korrekten Channels verknüpft |
-| KAUFY Website | ✅ Listings werden geladen und angezeigt |
-| Partner-Katalog | ✅ Listings für Partner sichtbar |
-
-### Bilder im DMS
-Die Bilder sind physisch im Storage vorhanden:
-- `a0000000-0000-4000-a000-000000000001/demo/fotos/demo_aussen_1.jpg` ✅
-- `a0000000-0000-4000-a000-000000000001/demo/fotos/demo_wohnzimmer_1.jpg` ✅
-- usw.
-
-Die `document_links` Verknüpfungen sind korrekt eingerichtet mit `object_type='property'`.
+1) **Admin-Dashboard (Zone 1):** Die Website-Buttons sollen **nicht** auf „öffentliche URLs“ zielen, sondern auf **interne App-Pfade** (SPA-Routen), damit ihr die Seiten im Projekt-Kontext bearbeiten könnt.  
+2) **Future Room fehlt:** Im Admin-Dashboard bei den Website-Action-Buttons muss **Future Room** ergänzt werden.  
+3) **Kaufy-Website Bilder:** Trotz Freigabe werden auf der Website weiterhin **keine Bilder** angezeigt (Screenshots zeigen Placeholder).  
+4) **Design-Fix:** Beim Feld „Zu versteuerndes Einkommen“ steht „(zvE)“ in Klammern und erzeugt einen unsauberen Umbruch/Versatz → **Klammer-Zusatz entfernen**.
 
 ---
 
-## Teil 2: Identifizierte Probleme
+## Was ich aus Screenshot + Code ableite (Root Cause)
 
-### Problem 1: Armstrong Chatbot auf Mobile (Zone 3) — KRITISCH
+### A) „Keine Bilder“ ist aktuell ein Doppelproblem
+1) **KaufyHome zeigt generell keine Bilder, weil `image_url` nie befüllt wird.**  
+   - `KaufyHome.tsx` lädt Listings, übergibt sie an `KaufyPropertyCard`, aber setzt **kein** `property.image_url`.  
+   - `KaufyPropertyCard.tsx` fällt dann auf `'/placeholder.svg'` zurück → exakt das, was man in deinen Screenshots sieht.
 
-**Ist-Zustand:**
-Der Armstrong-Chatbot in Zone 3 (KAUFY) verwendet einen **Floating Button** rechts unten, der bei Klick ein Bottom-Sheet öffnet. Dies ist **nicht** die gewünschte "immer sichtbare" Chat-Bar.
+2) **Zusätzlich gibt es einen Backend/RLS-Fehler (500) bei `document_links`/`documents`-Abfragen**  
+   - Die Logs zeigen: **„infinite recursion detected in policy for relation "documents"“** und im Browser: **REST 500** auf `document_links?...documents!inner(...)`.  
+   - Ursache: Die aktuellen RLS-Policies referenzieren sich gegenseitig:
+     - `documents` Policy prüft via `EXISTS (...) FROM document_links ...`
+     - `document_links` Policy prüft via `EXISTS (...) FROM documents ...`
+     - Das kann Postgres als **Policy-Rekursion** erkennen → 500.
 
-**Soll-Zustand (laut Benutzeranforderung):**
-Eine **fixierte Input-Bar am unteren Bildschirmrand** — identisch zur Portal-Lösung (`ArmstrongInputBar.tsx`) — die immer sichtbar ist und bei Klick das Chat-Sheet öffnet.
+Ergebnis: Selbst wenn wir `KaufyHome` korrekt auf Bilder umbauen, schlägt die Bildabfrage derzeit potenziell mit 500 fehl, solange die RLS-Rekursion nicht sauber gelöst ist.
 
-**Betroffene Datei:** `src/pages/zone3/kaufy/KaufyLayout.tsx`
+### B) Admin-Dashboard Routes
+- In `src/pages/admin/Dashboard.tsx` werden die Website-Buttons aktuell mit `window.open('/kaufy', '_blank')` etc. geöffnet.  
+- Das ist zwar ein interner Pfad, aber:
+  - In der Praxis führt `_blank` oft dazu, dass ihr „aus dem Bearbeitungs-/Preview-Kontext“ raus navigiert.
+  - Außerdem fehlt **/futureroom** komplett.
 
-**Lösung:**
-Zone 3 muss eine eigene `ArmstrongInputBar`-Variante erhalten, die am unteren Bildschirmrand fixiert ist (ähnlich wie im Portal).
-
-### Problem 2: Grafiken auf Mobile Portrait
-
-**MasterGraph:**
-- Die Recharts-Grafik ist auf 390px-Breite lesbar
-- Die Summary-Stats am unteren Rand (3-Spalten-Grid) sind auf Mobile etwas eng, aber funktional
-
-**Haushaltsrechnung:**
-- Die mobile Optimierung (Stacking-Layout) wurde implementiert ✅
-- Monatliche Werte werden auf Mobile ausgeblendet ✅
-
-**DetailTable40Jahre:**
-- Mobile-Kartenansicht wurde implementiert ✅
-- Die Desktop-9-Spalten-Tabelle ist auf Mobile nicht sichtbar
-
-**Status:** Größtenteils gelöst, aber kleinere UX-Verbesserungen möglich.
-
-### Problem 3: Fehlerhafte Font-Ladung
-
-**Console-Fehler:**
-```
-Failed to load resource: 404 
-- D-DIN.woff2
-- D-DIN-Bold.woff2
-```
-
-Die DIN-Fonts werden von einem CDN geladen, das nicht mehr funktioniert. Dies sollte korrigiert werden.
-
-### Problem 4: Partner-Seite "Vertrieb" — Karriere-Content
-
-Die Seite `/kaufy/vertrieb` ist funktional und gut strukturiert mit:
-- Vorteile-Sektion ✅
-- "So werden Sie Partner" Workflow ✅
-- Voraussetzungen (§34c, VSH) ✅
-- Statistiken ✅
-
-**Verbesserungspotential:**
-- Keine "Karriere"-Differenzierung (Newcomer vs. Professional)
-- Keine Mentoring/Schulungs-Information für Einsteiger
-
-### Problem 5: Bilder im Exposé werden nicht angezeigt
-
-Obwohl die Bilder im Storage vorhanden sind und die RLS-Policies implementiert wurden, werden sie im KAUFY-Exposé möglicherweise nicht geladen wegen:
-
-1. **Signed URL Generation:** Anonyme User können keine Signed URLs erstellen, wenn die Storage-RLS nicht für anonymen Zugriff konfiguriert ist.
-
-**Lösung:** Storage Bucket Policy für öffentlichen Lesezugriff auf Kaufy-verknüpfte Bilder erweitern.
+### C) „(zvE)“ im UI
+- In `src/components/zone3/kaufy/InvestmentSearchCard.tsx` steht das Label als: **„Zu versteuerndes Einkommen (zvE)“**.
+- Durch die verfügbare Breite in der Search-Card bricht es bei euch unschön um (wie im Screenshot).
 
 ---
 
-## Teil 3: Konkrete Verbesserungen
+## Umsetzungsvorschlag (konkret, mit minimalem Risiko)
 
-### Verbesserung 1: Zone 3 Armstrong Input Bar
+### 1) Admin-Dashboard: Website-Buttons auf interne SPA-Routen umstellen + Future Room hinzufügen
+**Änderung in:** `src/pages/admin/Dashboard.tsx`
 
-Neue Komponente: `src/components/zone3/kaufy/ArmstrongInputBar.tsx`
+- Statt `window.open(..., '_blank')`:
+  - Nutzung von `useNavigate()` und `navigate('/kaufy')`, `navigate('/miety')`, `navigate('/sot')`, `navigate('/futureroom')`.
+- Optional (nice-to-have): Zusatz-Icon „extern öffnen“ als Secondary-Action, aber Standard bleibt **internes Navigieren**.
 
-Layout-Änderung in `KaufyLayout.tsx`:
-- Entferne Floating Button auf Mobile
-- Füge `ArmstrongInputBar` als festes Element am unteren Bildschirmrand hinzu
-- Padding für Safe-Area und Content-Offset
-
-```text
-// Mobile Layout:
-┌─────────────────────────────────────┐
-│ Header (KAUFY Logo + Nav)           │
-├─────────────────────────────────────┤
-│                                     │
-│ Main Content                        │
-│ (pb-16 für Input-Bar Offset)        │
-│                                     │
-├─────────────────────────────────────┤
-│ ✦ Ask Armstrong...           [↑]    │  ← Fixierte Input Bar
-└─────────────────────────────────────┘
-```
-
-### Verbesserung 2: Storage RLS für anonyme Bild-Lesezugriffe
-
-Die bestehende RLS-Policy für `public.documents` reicht nicht aus, da Supabase Storage eigene RLS-Regeln hat.
-
-**Lösung:** 
-Storage Policy für anonymen Lesezugriff auf Bilder von aktiven Kaufy-Listings.
-
-```text
--- Storage Policy: tenant-documents Bucket
-CREATE POLICY "public_read_kaufy_images"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'tenant-documents'
-  AND name LIKE '%.jpg' OR name LIKE '%.jpeg' OR name LIKE '%.png'
-  AND EXISTS (
-    SELECT 1 FROM documents d
-    JOIN document_links dl ON d.id = dl.document_id
-    JOIN listings l ON dl.object_id = l.property_id
-    JOIN listing_publications lp ON lp.listing_id = l.id
-    WHERE d.file_path = objects.name
-      AND lp.channel = 'kaufy'
-      AND lp.status = 'active'
-  )
-);
-```
-
-### Verbesserung 3: DIN Font Fallback
-
-Ersetze den fehlerhaften CDN-Link durch:
-- Lokale Font-Dateien oder
-- Fallback auf System-Font-Stack
-
-**Betroffene Datei:** Wahrscheinlich in CSS oder Tailwind-Config.
-
-### Verbesserung 4: Karriere-Seite für Partner
-
-Erweitere `/kaufy/vertrieb` um:
-- Zwei Tracks: "Newcomer" (Mentoring, Schulung) vs. "Professional" (§34c, VSH vorhanden)
-- Lead-Conversion-Fokus mit klarem CTA-Pfad
+**Ergebnis:** Klick im Admin-Dashboard bringt euch direkt in die internen Routen (bearbeitbarer Kontext), plus Future Room ist dabei.
 
 ---
 
-## Teil 4: Mobile UX Quick Wins
+### 2) Bilder auf Kaufy: „Golden Path“ sauber schließen (Home + Immobilien-Übersicht + Exposé)
+#### 2.1 KaufyHome: Listings um `image_url` (Hero Bild) erweitern
+**Änderung in:** `src/pages/zone3/kaufy/KaufyHome.tsx`
 
-| Bereich | Änderung |
-|---------|----------|
-| MasterGraph Stats | Auf Mobile zu 2-Spalten-Grid oder Stacking wechseln |
-| Property Cards (Home) | Kleinere Thumbnails, vertikales Stacking |
-| Navigation Header | "Registrieren"-Button auf Mobile kürzer ("Los") |
-| Armstrong CTA | Prominenter platzieren in Hero-Section |
+- Im bestehenden `dbListings` Query nach dem Laden der Listings:
+  - Property-IDs sammeln
+  - `document_links` für diese Properties laden (nur `object_type='property'`)
+  - bevorzugt `is_title_image=true`, sonst erstes nach `display_order`
+  - pro Bild eine URL erzeugen (siehe 2.3)
+  - `PropertyData` um `image_url` ergänzen und an `KaufyPropertyCard` weiterreichen
+
+Damit sind die Karten in deinen Screenshots (Passende Kapitalanlage-Objekte) nicht mehr Platzhalter.
+
+#### 2.2 KaufyImmobilien: bleibt, aber Bildlogik stabilisieren
+**Änderung in:** `src/pages/zone3/kaufy/KaufyImmobilien.tsx`
+
+- Die Seite hat schon eine Bildlogik, aber sie ist abhängig von der aktuell fehlerhaften RLS-Situation.
+- Nach dem RLS-Fix wird sie wieder funktionieren.
+- Zusätzlich:
+  - sicherstellen, dass Links sortiert (`display_order`) verarbeitet werden
+  - klare Priorisierung: `is_title_image` > erstes Bild
+
+#### 2.3 URL-Strategie: Signed URLs vs. direkter Download
+Da der Bucket nicht zwingend „public“ sein soll (und ihr wollt ja „öffentlich nur Bilder“ sehr gezielt), bleiben **Signed URLs** sinnvoll.  
+Wichtig: Das klappt nur zuverlässig, wenn die Storage-Policy + RLS auf den zugehörigen Tabellen korrekt ist (siehe Punkt 3).
 
 ---
 
-## Prioritäten
+### 3) Kritisch: RLS-Rekursion in `documents` / `document_links` beheben (damit keine 500 mehr)
+**Änderung via Migration (Backend):**
+- Aktuelle Policies `public_read_kaufy_images` und `public_read_kaufy_image_links` verursachen Rekursion.
+- Lösung: **Policy-Logik entkoppeln**, z.B. über eine `SECURITY DEFINER`-Funktion, die RLS nicht rekursiv triggert.
 
-| Priorität | Aufgabe |
-|-----------|---------|
-| P0 | Zone 3 Armstrong Input Bar (fixiert statt floating) |
-| P0 | Storage RLS für Bild-Anzeige |
-| P1 | Font-Fallback korrigieren |
-| P1 | Karriere-Track-Differenzierung |
-| P2 | Mobile Stat-Grids optimieren |
+**Plan für Migration:**
+1) Neue Funktion, z.B. `public.is_kaufy_public_image_document(doc_id uuid) returns boolean`  
+   - Prüft:
+     - Dokument ist `mime_type like 'image/%'`
+     - Dokument ist via `document_links` an `property` gebunden
+     - Property hängt an Listing mit `listing_publications(channel='kaufy', status='active')`
+2) Neue Policies:
+   - `documents`: SELECT erlaubt, wenn `is_kaufy_public_image_document(id)` true ist
+   - `document_links`: SELECT erlaubt, wenn `object_type='property'` und `is_kaufy_public_image_document(document_id)` true ist
+3) Alte rekursive Policies entfernen/ersetzen.
+4) Zusätzlich prüfen/entschärfen: **`documents_select_dev_mode` / `document_links_select_dev_mode`**  
+   - Diese klingen nach „Dev“, können aber inhaltlich zu breit sein.
+   - Ziel: öffentlich wirklich nur Bilder (Kaufy-aktive Listings), keine PDFs.
+
+**Ergebnis:** Die REST 500 verschwindet, und die Bildqueries funktionieren konsistent.
 
 ---
 
-## Betroffene Dateien
+### 4) UI-Fix: „(zvE)“ entfernen, Versatz beheben
+**Änderung in:** `src/components/zone3/kaufy/InvestmentSearchCard.tsx`
 
-| Datei | Änderung |
-|-------|----------|
-| `src/pages/zone3/kaufy/KaufyLayout.tsx` | Mobile Input Bar + Layout Offset |
-| `src/components/zone3/kaufy/ArmstrongInputBar.tsx` | Neue Komponente |
-| `src/components/zone3/kaufy/ArmstrongSidebar.tsx` | Mobile Toggle entfernen |
-| Storage RLS Migration | Öffentlicher Bild-Zugriff |
-| `src/styles/zone3-theme.css` oder Font-Config | DIN Font Fix |
-| `src/pages/zone3/kaufy/KaufyVertrieb.tsx` | Karriere-Tracks |
+- Label ändern von:
+  - „Zu versteuerndes Einkommen (zvE)“
+  zu:
+  - „Zu versteuerndes Einkommen“
+- Optional: Abkürzung „zvE“ als dezentes Help/Hint:
+  - placeholder z.B. „z. B. 60000“
+  - oder ein kleines Info-Tooltip (ohne Klammertext im Label)
+
+Zusätzlich (falls nötig):
+- `whitespace-nowrap` für Labels oder feinere Grid-Breakpoints, damit nichts mehr springt.
+
+---
+
+## Betroffene Dateien (geplant)
+
+1) `src/pages/admin/Dashboard.tsx`
+   - interne Navigation statt externe Öffnung
+   - Future Room Button hinzufügen
+
+2) `src/pages/zone3/kaufy/KaufyHome.tsx`
+   - `image_url`/Hero-Bild laden und an Cards übergeben
+
+3) `src/pages/zone3/kaufy/KaufyImmobilien.tsx`
+   - Bildauswahl robust machen (nach RLS-Fix)
+
+4) `src/components/zone3/kaufy/InvestmentSearchCard.tsx`
+   - Label-Text ohne „(zvE)“ + Layout-Finish
+
+5) Neue Backend-Migration (SQL)
+   - RLS-Rekursion fixen via Function + neue Policies
+   - dev_mode Policies prüfen/absichern
+
+---
+
+## Test-Checkliste (End-to-End)
+1) Admin: `/admin` → Buttons „Kaufy / Miety / SoT / Future Room“ navigieren **im selben Tab** auf interne Routen.
+2) Kaufy Startseite `/kaufy`:
+   - „Passende Kapitalanlage-Objekte“ zeigt **echte Bilder** statt Placeholder.
+3) Kaufy Liste `/kaufy/immobilien`:
+   - Cards zeigen Hero-Bilder.
+4) Kaufy Exposé `/kaufy/immobilien/:publicId`:
+   - Galerie lädt Bilder (keine 500er im Netzwerk).
+5) RLS-Sicherheit:
+   - Öffentlich: **nur Bilder**, keine PDFs über `documents/document_links`.
+6) UI:
+   - Label „Zu versteuerndes Einkommen“ ohne Klammerzusatz, kein Umbruch/Versatz.
+
+---
+
+## Hinweis zu einem technischen Risiko (kurz, wichtig)
+Die beobachtete Meldung „infinite recursion detected in policy“ ist ein **harter Backend-Fehler**, der Abfragen komplett killt. Den beheben wir zuerst, weil sonst jede weitere Bildintegration instabil bleibt.
