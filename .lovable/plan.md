@@ -1,347 +1,404 @@
 
-# MOD-13 PROJEKTE — Vollständige Implementierungsplanung
+# MOD-13 PROJEKTE — Vollständige Implementierung
 
 ## Zusammenfassung
 
-MOD-13 wird als eigenständiges Modul für **Bauträger/Aufteiler** implementiert, das den kompletten Projekt-Lebenszyklus von der Erfassung bis zum Abverkauf und Marketing abbildet. Die Architektur orientiert sich am bewährten MOD-04-Pattern (Kontexte → Portfolio → Akte), adaptiert aber die Fachlichkeit für Mehreinheiten-Projekte mit Aufteiler-KPIs.
+Diese Planung adressiert alle identifizierten Lücken in MOD-13, um einen vollständigen Golden Path für Bauträger/Aufteiler zu ermöglichen. Die wichtigsten Arbeitspakete sind:
+
+1. **DMS-Integration**: Automatische Ordnerstruktur bei Projektanlage
+2. **Mastervorlage**: Neue Zone 1 Projektakte-Vorlage
+3. **Projektakte erweitern**: Einheiten-Detailansicht + vollständige Blöcke
+4. **Reservierungs-Workflow**: Vollständiger CRUD mit Status-Tracking
+5. **Marketing-Funktionalität**: Kaufy-Integration + Landingpage-Builder
 
 ---
 
-## 1. Datenbank-Architektur
+## Phase 1: DMS-Integration (Automatische Ordnerstruktur)
 
-### 1.1 Neue Tabellen
+### 1.1 Problem
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    developer_contexts                           │
-│  (analog zu landlord_contexts für Bauträger/Aufteiler)         │
-├─────────────────────────────────────────────────────────────────┤
-│  id, tenant_id, name, context_type (GmbH/KG/Privat)            │
-│  legal_form, hrb_number, ust_id, managing_director             │
-│  street, postal_code, city, tax_rate_percent                   │
-│  is_default, created_at, updated_at                            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       dev_projects                              │
-│  (Zentrale Projekt-Entität)                                    │
-├─────────────────────────────────────────────────────────────────┤
-│  id, tenant_id, developer_context_id, project_code             │
-│  name, description, status (draft/active/completed/archived)   │
-│  address, city, postal_code, total_units_count                 │
-│  purchase_price, renovation_budget, total_sale_target          │
-│  avg_unit_price, commission_rate_percent                       │
-│  holding_period_months, project_start_date, target_end_date    │
-│  created_at, updated_at                                        │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ dev_project_    │  │ dev_project_    │  │ dev_project_    │
-│ units           │  │ calculations    │  │ documents       │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
+Aktuell wird bei Projektanlage **keine DMS-Ordnerstruktur** in `storage_nodes` erstellt. Dies muss analog zur Logik in MOD-04 erfolgen.
+
+### 1.2 Lösung
+
+**Neue Funktion in `useDevProjects.ts`:**
+
+```typescript
+async function createProjectDMSStructure(projectId: string, projectCode: string, units: CreateProjectUnitInput[]) {
+  const baseFolders = [
+    { name: projectCode, node_type: 'folder', level: 0 },
+    { name: 'Allgemein', parent: projectCode, node_type: 'folder', level: 1 },
+    { name: 'Exposé', parent: 'Allgemein', node_type: 'folder', level: 2 },
+    { name: 'Grundbuch', parent: 'Allgemein', node_type: 'folder', level: 2 },
+    { name: 'Teilungserklärung', parent: 'Allgemein', node_type: 'folder', level: 2 },
+    { name: 'Energieausweis', parent: 'Allgemein', node_type: 'folder', level: 2 },
+    { name: 'Fotos', parent: 'Allgemein', node_type: 'folder', level: 2 },
+    { name: 'Einheiten', parent: projectCode, node_type: 'folder', level: 1 },
+  ];
+  
+  // Pro Einheit: Ordner unter /Einheiten/{unit_number}
+  units.forEach(unit => {
+    baseFolders.push({
+      name: `WE-${unit.unit_number}`,
+      parent: 'Einheiten',
+      node_type: 'folder',
+      level: 2,
+      unit_id: unit.id // Verknüpfung
+    });
+  });
+  
+  // Insert into storage_nodes mit hierarchischer parent_id Auflösung
+}
 ```
 
-### 1.2 Tabellen-Definitionen
+### 1.3 Ordnerstruktur (Vorlage)
 
-**developer_contexts**
-- Verwaltet Verkäufer-Gesellschaften (analog zu `landlord_contexts`)
-- Felder: `id`, `tenant_id`, `name`, `context_type`, `legal_form`, `hrb_number`, `ust_id`, `managing_director`, `street`, `house_number`, `postal_code`, `city`, `tax_rate_percent`, `is_default`, `created_at`, `updated_at`
+```text
+/Projekte/
+└── BT-2024-001/                    ← Projekt-Root
+    ├── Allgemein/                  ← Globalobjekt-Dokumente
+    │   ├── Exposé/
+    │   ├── Grundbuch/
+    │   ├── Teilungserklärung/
+    │   ├── Energieausweis/
+    │   └── Fotos/
+    └── Einheiten/                  ← Einheiten-Dokumente
+        ├── WE-001/
+        │   ├── Grundriss/
+        │   ├── Mietvertrag/
+        │   └── Kaufvertrag/
+        ├── WE-002/
+        └── WE-003/
+```
 
-**dev_projects**
-- Kern-Projekt-Entität mit Aufteiler-spezifischen Feldern
-- Felder: `id`, `tenant_id`, `developer_context_id` (FK), `project_code`, `name`, `description`, `status`, `address`, `city`, `postal_code`, `total_units_count`, `purchase_price`, `renovation_budget`, `total_sale_target`, `avg_unit_price`, `commission_rate_percent`, `holding_period_months`, `project_start_date`, `target_end_date`, `created_at`, `updated_at`
+### 1.4 Integration
 
-**dev_project_units**
-- Einheiten innerhalb eines Projekts (nicht verknüpft mit MOD-04 units)
-- Felder: `id`, `tenant_id`, `project_id` (FK), `unit_number`, `floor`, `area_sqm`, `rooms_count`, `list_price`, `min_price`, `status` (frei/reserviert/verkauft), `grundbuchblatt`, `te_number`, `tenant_name`, `current_rent`, `created_at`, `updated_at`
-
-**dev_project_reservations**
-- Reservierungen pro Einheit
-- Felder: `id`, `tenant_id`, `project_id`, `unit_id` (FK), `buyer_contact_id` (FK contacts), `partner_id`, `status` (pending/confirmed/cancelled/completed), `reserved_price`, `reservation_date`, `expiry_date`, `notary_date`, `notes`, `created_at`, `updated_at`
-
-**dev_project_calculations**
-- Gespeicherte Aufteiler-Kalkulationen pro Projekt
-- Felder: `id`, `project_id`, `purchase_price`, `ancillary_cost_percent`, `renovation_total`, `sales_commission_percent`, `holding_period_months`, `total_sale_proceeds`, `gross_profit`, `profit_margin_percent`, `annualized_return`, `calculated_at`
-
-**dev_project_documents**
-- Projekt-Dokumente (global + pro Einheit)
-- Felder: `id`, `tenant_id`, `project_id`, `unit_id` (nullable), `document_id` (FK documents), `doc_type`, `created_at`
+- Trigger nach `createProject.mutateAsync()` Erfolg
+- Optional: Database-Trigger auf `dev_projects INSERT`
 
 ---
 
-## 2. Routen-Struktur & Navigation
+## Phase 2: Mastervorlage für Projektakte (Zone 1)
 
-### 2.1 URL-Schema
+### 2.1 Neue Datei
 
-```text
-/portal/projekte              → Dashboard (Projekt-Liste + CTA)
-/portal/projekte/neu          → Create Flow (2-Step Wizard)
-/portal/projekte/kontexte     → Kontext-Verwaltung (Verkäufer-Gesellschaften)
-/portal/projekte/portfolio    → Portfolio-Ansicht (aktiver Kontext)
-/portal/projekte/:projectId   → Projektakte (kanonisch)
-/portal/projekte/vertrieb     → Reservierungen & Vertrieb
-/portal/projekte/marketing    → Kaufy Listing & Landingpages
+**Pfad:** `src/pages/admin/MasterTemplatesProjektakte.tsx`
+
+### 2.2 Block-Struktur (Projektakte)
+
+| Block | Titel | Entität | Felder-Anzahl |
+|-------|-------|---------|---------------|
+| A | Identität | dev_projects | 12 |
+| B | Standort | dev_projects | 7 |
+| C | Einheiten | dev_project_units | 18 |
+| D | Aufteilerkalkulation | dev_project_calculations | 14 |
+| E | Preisliste | dev_project_units | 5 |
+| F | Dokumente | dev_project_documents | 8 |
+| G | Reservierungen | dev_project_reservations | 12 |
+| H | Vertrieb | dev_project_reservations | 6 |
+| I | Verträge | dev_project_documents | 4 |
+| J | Veröffentlichung | dev_projects | 5 |
+
+### 2.3 Globalobjekt-Felder (Block A-B, D-F, I-J)
+
+```typescript
+interface ProjectGlobalFields {
+  // Block A: Identität
+  id: string;
+  tenant_id: string;
+  developer_context_id: string;
+  project_code: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  total_units_count: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  
+  // Block B: Standort
+  address: string;
+  postal_code: string;
+  city: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  
+  // Block D: Kalkulation
+  purchase_price: number;
+  ancillary_cost_percent: number;
+  renovation_budget: number;
+  total_sale_target: number;
+  commission_rate_percent: number;
+  holding_period_months: number;
+  financing_rate_percent: number;
+  financing_ltv_percent: number;
+  // Calculated
+  total_investment: number;
+  gross_profit: number;
+  profit_margin_percent: number;
+  annualized_return: number;
+  profit_per_unit: number;
+  break_even_units: number;
+  
+  // Block J: Veröffentlichung
+  kaufy_listed: boolean;
+  kaufy_featured: boolean;
+  landingpage_enabled: boolean;
+  landingpage_url: string;
+  leadgen_enabled: boolean;
+}
 ```
 
-### 2.2 Menüstruktur (4 Tiles)
+### 2.4 Einheiten-Felder (Block C, E, G)
 
-| Nr | Tile | Route | Inhalt |
-|----|------|-------|--------|
-| 1 | **Kontexte** | `/projekte/kontexte` | Verkäufer-Gesellschaften anlegen/verwalten, Context Switcher |
-| 2 | **Portfolio** | `/projekte/portfolio` | Projektliste im aktiven Kontext, Aufteiler-KPIs, Eye-Icon → Akte |
-| 3 | **Vertrieb** | `/projekte/vertrieb` | Reservierungen, Partner-Performance, Reporting |
-| 4 | **Marketing** | `/projekte/marketing` | Kaufy free, Paid Projekt-Landingpage, Social Leadgen |
+```typescript
+interface ProjectUnitFields {
+  // Block C: Einheit-Stammdaten
+  id: string;
+  project_id: string;
+  unit_number: string;
+  floor: number;
+  area_sqm: number;
+  rooms_count: number;
+  balcony: boolean;
+  garden: boolean;
+  parking: boolean;
+  parking_type: string;
+  grundbuchblatt: string;
+  te_number: string;
+  tenant_name: string;
+  current_rent: number;
+  rent_net: number;
+  rent_nk: number;
+  notes: string;
+  status: UnitStatus;
+  
+  // Block E: Preise
+  list_price: number;
+  min_price: number;
+  price_per_sqm: number;
+  commission_amount: number;
+  net_proceeds: number;
+  
+  // Block G: Reservierung (1:1 pro Einheit)
+  reservation_id: string;
+  buyer_contact_id: string;
+  partner_org_id: string;
+  reserved_price: number;
+  reservation_date: string;
+  expiry_date: string;
+  confirmation_date: string;
+  notary_date: string;
+  completion_date: string;
+  reservation_status: ReservationStatus;
+}
+```
+
+### 2.5 Route & Navigation
+
+- Route: `/admin/master-templates/projektakte`
+- Link in `MasterTemplates.tsx` neben Immobilienakte und Selbstauskunft
 
 ---
 
-## 3. Komponenten-Architektur
+## Phase 3: Projektakte erweitern
 
-### 3.1 Kontext-Management (analog MOD-04)
+### 3.1 Einheiten-Detailansicht
 
-```text
-src/pages/portal/projekte/
-├── index.ts                      # Exports
-├── KontexteTab.tsx               # Verkäufer-Gesellschaften (Kopie von KontexteTab MOD-04)
-├── PortfolioTab.tsx              # Projektliste mit Aufteiler-KPIs
-├── ProjectDetailPage.tsx         # Projektakte (10-Block-Struktur)
-├── VertriebTab.tsx               # Reservierungen & Partner
-├── MarketingTab.tsx              # Kaufy + Landingpages
-└── CreateProjectRedirect.tsx     # /neu → Portfolio?create=1
-```
+**Neue Datei:** `src/pages/portal/projekte/UnitDetailPage.tsx`
 
-### 3.2 Projektakte (10 Sections analog Immobilienakte)
+- Route: `/portal/projekte/:projectId/einheit/:unitId`
+- Zeigt alle Felder einer Einheit (Block C, E, G)
+- Editierbar (analog zu `EditableUnitDossierView` aus MOD-04)
 
-| Block | Name | Inhalt |
-|-------|------|--------|
-| A | Identität/Status | Projektcode, Typ, Status, aktiver Kontext |
-| B | Standort/Story | Adresse, Beschreibung, Lage-Notes |
-| C | Einheiten | Einheiten-Liste mit Status (frei/reserviert/verkauft) |
-| D | Aufteilerkalkulation | Integrierte Kalkulations-Engine (aus MOD-12) |
-| E | Preisliste/Provision | Listenpreis, Mindestpreis, Provisionssatz je Einheit |
-| F | Dokumente | Global + je Einheit (DMS-Tree) |
-| G | Reservierungen | Pro Einheit: Käufer, Status, Ablauf |
-| H | Vertrieb | Partner-Zuordnung, Deals, Kommunikation |
-| I | Verträge | Kaufvertragsstatus, Drafts |
-| J | Veröffentlichung | Kaufy free/paid, Leadstatus, Projekt-Landingpage |
+### 3.2 Vollständige Blöcke E-J
+
+Ersetze Platzhalter in `ProjectDetailPage.tsx`:
+
+| Tab | Inhalt | Komponenten |
+|-----|--------|-------------|
+| E | Preisliste | Tabelle mit Listenpreis, Mindestpreis, €/m² pro Einheit |
+| F | Dokumente | DMS-Tree-Ansicht (aus `storage_nodes`) |
+| G | Reservierungen | Tabelle + `CreateReservationDialog` |
+| H | Vertrieb | Partner-Performance, Provisions-Tracking |
+| I | Verträge | Upload/Status für Kaufverträge |
+| J | Veröffentlichung | Kaufy-Toggle, Landingpage-Config |
 
 ### 3.3 Neue Komponenten
 
 ```text
 src/components/projekte/
-├── CreateDeveloperContextDialog.tsx    # Verkäufer-Gesellschaft anlegen
-├── CreateProjectDialog.tsx             # Projekt-Create (2-Step)
-├── ProjectPortfolioTable.tsx           # Portfolio-Tabelle mit Aufteiler-KPIs
-├── ProjectDossierView.tsx              # Projektakte-Layout
 ├── blocks/
-│   ├── ProjectIdentityBlock.tsx
-│   ├── ProjectLocationBlock.tsx
-│   ├── ProjectUnitsBlock.tsx           # Einheiten-Liste mit Status-Badges
-│   ├── ProjectCalculationBlock.tsx     # Integrierte Aufteilerkalkulation
-│   ├── ProjectPricingBlock.tsx         # Preisliste/Provision
+│   ├── ProjectPricingBlock.tsx
 │   ├── ProjectDocumentsBlock.tsx
 │   ├── ProjectReservationsBlock.tsx
-│   ├── ProjectSalesBlock.tsx           # Partner/Deals
+│   ├── ProjectSalesBlock.tsx
 │   ├── ProjectContractsBlock.tsx
-│   └── ProjectPublicationBlock.tsx     # Kaufy + Landingpage
-├── ReservationDialog.tsx               # Reservierung erfassen
-├── UnitStatusBadge.tsx                 # frei/reserviert/verkauft
-└── SalesPartnerAssignment.tsx          # Partner zuordnen
+│   └── ProjectPublicationBlock.tsx
+├── CreateReservationDialog.tsx
+├── EditUnitDialog.tsx
+└── UnitDetailView.tsx
 ```
 
 ---
 
-## 4. Kalkulations-Engine
+## Phase 4: Reservierungs-Workflow
 
-Die Aufteilerkalkulation wird aus MOD-12 übernommen und erweitert:
+### 4.1 Status-Workflow
 
 ```text
-Eingaben:
-- Kaufpreis gesamt
-- Anzahl Einheiten
-- Ø Verkaufspreis/Einheit (oder individuelle Preise)
-- Sanierungskosten gesamt (oder pro Einheit)
-- Vertriebsprovision %
-- Haltedauer (Monate)
-- Erwerbsnebenkosten %
-
-Ausgaben:
-- Gesamter Verkaufserlös
-- Bruttogewinn
-- Marge %
-- Annualisierte Rendite
-- Gewinn/Einheit
-- Break-Even-Punkt (Anzahl verkaufter Einheiten)
+available → reserved (pending) → confirmed → notary_scheduled → completed
+                ↓                    ↓
+             cancelled           cancelled
+                ↓                    ↓
+             expired              expired
 ```
 
-### 4.1 KPI-Spalten in Portfolio-Tabelle
+### 4.2 CreateReservationDialog
 
-| Spalte | Beschreibung |
-|--------|--------------|
-| Projekt-Code | z.B. "BT-2024-001" |
-| Name/Standort | Projektname + Stadt |
-| Einheiten | Total / Frei / Reserviert / Verkauft |
-| Kaufpreis | Gesamt-Einkaufspreis |
-| Verkaufsziel | Σ Listenpreise |
-| Marge | Bruttogewinn % |
-| Fortschritt | % verkauft (visueller Balken) |
-| Status | Draft/Aktiv/Abgeschlossen |
+```typescript
+interface CreateReservationDialogProps {
+  projectId: string;
+  unitId: string;
+  onSuccess: () => void;
+}
 
----
-
-## 5. Vertrieb & Reservierungen
-
-### 5.1 Reservierungs-Workflow
-
-```text
-1. Einheit "frei" → Partner/Käufer zuordnen → Status "reserviert"
-2. Reservierung bestätigen (Owner + Buyer Consent)
-3. Notartermin eintragen
-4. Nach Beurkundung → Status "verkauft"
-5. Bei Abbruch → Status zurück auf "frei" + Grund dokumentieren
+// Felder:
+// - Käufer (Autocomplete aus contacts)
+// - Partner (Select aus organizations mit type='partner')
+// - Reservierungspreis
+// - Ablaufdatum (Default: +14 Tage)
+// - Notizen
 ```
 
-### 5.2 Partner-Performance View
+### 4.3 Reservierungs-Tabelle im VertriebTab
 
-- Welcher Partner hat welche Einheiten reserviert/verkauft
-- Provisions-Tracking
-- Export für Abrechnung
-
----
-
-## 6. Marketing & Veröffentlichung
-
-### 6.1 Kaufy Integration (Free)
-
-- Projekt in Zone 3 Kaufy-Marktplatz listen
-- Consent-Flow analog MOD-06
-
-### 6.2 Paid Features (Platzhalter-UI)
-
-| Feature | Preis | Beschreibung |
-|---------|-------|--------------|
-| Projekt-Präsentation | 200€/Monat | Featured Placement unter Kaufy → Projekte |
-| Projekt-Landingpage | 200€/Monat | Generierte Subdomain mit Investment-Rechner |
-| Social Leadgen | Variabel | Integration mit MOD-10 Leads |
-
----
-
-## 7. Hooks & Services
-
-### 7.1 Neue Hooks
-
-```text
-src/hooks/
-├── useDeveloperContexts.ts        # CRUD für Verkäufer-Kontexte
-├── useDevProjects.ts              # Projekt-CRUD + Portfolio-Query
-├── useProjectDossier.ts           # Aggregierte Akte-Daten
-├── useProjectUnits.ts             # Einheiten-CRUD
-├── useProjectReservations.ts      # Reservierungs-Management
-├── useProjectCalculation.ts       # Aufteilerkalkulation (abgeleitet von useAcqTools)
-└── useProjectPublication.ts       # Kaufy-Listing + Paid-Features
+```typescript
+// Spalten:
+// - Einheit (WE-001)
+// - Käufer (Name)
+// - Partner (Organisation)
+// - Status (Badge)
+// - Preis
+// - Ablauf
+// - Aktionen (Bestätigen, Notartermin, Abschließen, Stornieren)
 ```
 
-### 7.2 Type-Definitionen
+### 4.4 Partner-Performance
 
-```text
-src/types/projekte.ts
-├── DeveloperContext
-├── DevProject
-├── DevProjectUnit
-├── DevProjectReservation
-├── ProjectDossierData
-├── AufteilerCalculation
-└── ProjectPublicationStatus
+```typescript
+// Aggregation pro Partner:
+// - Anzahl Reservierungen
+// - Anzahl Verkäufe
+// - Gesamt-Volumen
+// - Gesamt-Provision
+// - Conversion-Rate (Reservierung → Verkauf)
 ```
 
 ---
 
-## 8. Implementierungs-Phasen
+## Phase 5: Marketing-Funktionalität
 
-### Phase 1: Datenbank + Grundstruktur
-1. Migration: Tabellen `developer_contexts`, `dev_projects`, `dev_project_units`
-2. RLS-Policies (tenant_id-basiert)
-3. Basis-Routing in `ProjektePage.tsx`
+### 5.1 Kaufy-Integration
 
-### Phase 2: Kontext-Management
-4. `CreateDeveloperContextDialog` (kopiert/adaptiert von MOD-04)
-5. `KontexteTab` mit Context-Switcher
-
-### Phase 3: Portfolio + Create-Flow
-6. `CreateProjectDialog` (2-Step Wizard)
-7. `PortfolioTab` mit Aufteiler-KPIs
-8. Portfolio-Tabelle mit Status-Aggregation
-
-### Phase 4: Projektakte
-9. `ProjectDetailPage` (Routing)
-10. 10-Block-Struktur implementieren (A-J)
-11. Integrierte Aufteilerkalkulation (Block D)
-12. Einheiten-Management (Block C)
-
-### Phase 5: Vertrieb & Reservierungen
-13. Migration: `dev_project_reservations`
-14. `ReservationDialog` + Status-Workflow
-15. `VertriebTab` mit Partner-Performance
-
-### Phase 6: Marketing & Veröffentlichung
-16. `MarketingTab` mit Kaufy-Toggle
-17. Paid-Feature Platzhalter-UI
-18. Integration mit Zone 1 Sales Desk (Übergabe-Logik)
-
----
-
-## 9. Abhängigkeiten & Integrationen
-
-| System | Integration |
-|--------|-------------|
-| **MOD-02 KI-Office** | Kontakte (Käufer), Kalender (Notartermine) |
-| **Zone 1 Sales Desk** | Projekt-Übergabe für Marktplatz-Freigabe |
-| **MOD-09 Partner-Netzwerk** | Partner-Zuordnung bei Reservierungen |
-| **MOD-10 Leads** | Leadgen-Kampagnen für Projekte |
-| **Zone 3 Kaufy** | Projekt-Listings + Landingpages |
-
----
-
-## 10. Technische Details
-
-### 10.1 RLS-Policies
+**Datenbank-Erweiterung:**
 
 ```sql
--- developer_contexts: Nur eigener Tenant
-CREATE POLICY "tenant_isolation" ON developer_contexts
-  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id');
-
--- dev_projects: Tenant + optional Context-Scoping
-CREATE POLICY "tenant_isolation" ON dev_projects
-  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id');
-
--- dev_project_units: Via project_id
-CREATE POLICY "via_project" ON dev_project_units
-  FOR ALL USING (
-    project_id IN (SELECT id FROM dev_projects WHERE tenant_id = auth.jwt() ->> 'tenant_id')
-  );
+ALTER TABLE dev_projects ADD COLUMN kaufy_listed BOOLEAN DEFAULT false;
+ALTER TABLE dev_projects ADD COLUMN kaufy_featured BOOLEAN DEFAULT false;
+ALTER TABLE dev_projects ADD COLUMN landingpage_slug VARCHAR(100);
 ```
 
-### 10.2 Bestehende Komponenten (Wiederverwendung)
+**MarketingTab.tsx Erweiterung:**
 
-- `PropertyTable` → adaptiert zu `ProjectPortfolioTable`
-- `CreateContextDialog` → adaptiert zu `CreateDeveloperContextDialog`
-- `calculateAufteilerKPIs` aus `useAcqTools` → direkt nutzbar
-- `UnitDossierView` Layout → Vorlage für `ProjectDossierView`
+```typescript
+// Switch-Handler für Kaufy-Listing
+const handleKaufyToggle = async (projectId: string, enabled: boolean) => {
+  await updateProject.mutateAsync({ 
+    id: projectId, 
+    kaufy_listed: enabled 
+  });
+  // Trigger: Projekt in Zone 3 Kaufy-Marktplatz anzeigen/ausblenden
+};
+```
+
+### 5.2 Projekt-Landingpage-Generator
+
+**Konzept:**
+
+- Subdomain: `{projekt-slug}.kaufy.de`
+- Template: Hero + Projekt-Galerie + Einheiten-Liste + Investment-Rechner + Lead-Formular
+- Integration mit `useInvestmentEngine` für Rechner
+
+**Neue Route (Zone 3):**
+
+```text
+src/pages/zone3/projekt/[slug]/
+├── index.tsx           ← Landing
+├── einheiten.tsx       ← Einheiten-Liste
+└── rechner.tsx         ← Investment-Rechner
+```
+
+### 5.3 Social Leadgen (Platzhalter)
+
+- Integration mit MOD-10 Leads
+- Kampagnen-Verwaltung (Facebook, Instagram, Google)
+- Lead-Attribution zu Projekten
+
+---
+
+## Technische Details
+
+### Neue Dateien
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/pages/admin/MasterTemplatesProjektakte.tsx` | Zone 1 Mastervorlage |
+| `src/pages/portal/projekte/UnitDetailPage.tsx` | Einheiten-Detailansicht |
+| `src/components/projekte/blocks/*.tsx` | 6 neue Block-Komponenten |
+| `src/components/projekte/CreateReservationDialog.tsx` | Reservierung erfassen |
+| `src/components/projekte/EditUnitDialog.tsx` | Einheit bearbeiten |
+| `src/hooks/useProjectDMS.ts` | DMS-Ordner-Management |
+| `src/pages/zone3/projekt/[slug].tsx` | Projekt-Landingpage |
+
+### Datenbank-Migration
+
+```sql
+-- DMS-Integration
+ALTER TABLE storage_nodes ADD COLUMN dev_project_id UUID REFERENCES dev_projects(id);
+
+-- Marketing-Felder
+ALTER TABLE dev_projects 
+  ADD COLUMN kaufy_listed BOOLEAN DEFAULT false,
+  ADD COLUMN kaufy_featured BOOLEAN DEFAULT false,
+  ADD COLUMN landingpage_slug VARCHAR(100),
+  ADD COLUMN landingpage_enabled BOOLEAN DEFAULT false;
+
+-- Index für Landingpage-Lookup
+CREATE UNIQUE INDEX idx_dev_projects_landingpage_slug 
+  ON dev_projects(landingpage_slug) WHERE landingpage_slug IS NOT NULL;
+```
+
+### Implementierungs-Reihenfolge
+
+1. **DMS-Integration** (kritisch für Dokumenten-Workflow)
+2. **Mastervorlage** (Dokumentation + Referenz)
+3. **Reservierungs-Workflow** (Core Business Logic)
+4. **Projektakte-Blöcke** (UI-Vervollständigung)
+5. **Marketing** (Monetarisierung)
 
 ---
 
 ## Erwartetes Ergebnis
 
-Nach Implementierung ist der **Golden Path** vollständig klickbar:
+Nach Implementierung:
 
-1. **Kontext anlegen** → Verkäufer-Gesellschaft erfassen
-2. **Projekt erstellen** → Adresse, Einheiten, Kaufpreis
-3. **Portfolio** → Übersicht aller Projekte mit Aufteiler-KPIs
-4. **Projektakte** → Detailansicht mit Kalkulation, Einheiten, Dokumenten
-5. **Reservierung** → Einheit einem Käufer/Partner zuordnen
-6. **Vertrieb** → Partner-Performance, Provisionen
-7. **Marketing** → Kaufy-Listing, Landingpage-Option
-8. **Übergabe** → Zone 1 Sales Desk für Marktplatz-Freigabe
+- Vollständiger Golden Path: Kontext → Projekt → Einheiten → Reservierung → Verkauf → Marketing
+- Automatische DMS-Struktur bei Projektanlage
+- Mastervorlage als Referenz in Zone 1
+- Jede Einheit hat eine eigene Verkaufsakte mit Dokumenten
+- Reservierungs-Status-Tracking mit Partner-Attribution
+- Kaufy-Marktplatz-Integration für Projekte
+- Landingpage-Generator für Premium-Projekte
