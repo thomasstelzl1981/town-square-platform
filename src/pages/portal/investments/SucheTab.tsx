@@ -121,40 +121,86 @@ export default function SucheTab() {
         return [];
       }
 
-      // Get property IDs for title image lookup
+      // Get property IDs for image lookup
       const propertyIds = data
         .map((item: any) => item.properties?.id)
         .filter(Boolean) as string[];
 
-      // Fetch title images from document_links
+      // Pick best image per property:
+      // 1) is_title_image=true
+      // 2) lowest display_order
       const imageMap = new Map<string, string>();
-      
+
       if (propertyIds.length > 0) {
-        const { data: titleImages } = await supabase
+        const { data: imageLinks, error: linksError } = await supabase
           .from('document_links')
           .select(`
             object_id,
+            is_title_image,
+            display_order,
             documents!inner (file_path, mime_type)
           `)
           .in('object_id', propertyIds)
           .eq('object_type', 'property')
-          .eq('is_title_image', true);
+          .order('is_title_image', { ascending: false })
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: true });
 
-        // Generate signed URLs for title images
-        for (const img of titleImages || []) {
-          const doc = img.documents as any;
-          if (doc?.file_path && doc?.mime_type?.startsWith('image/')) {
-            const { data: signedUrlData } = await supabase.storage
-              .from('property-documents')
-              .createSignedUrl(doc.file_path, 3600);
-            
-            if (signedUrlData?.signedUrl) {
-              imageMap.set(img.object_id, resolveStorageSignedUrl(signedUrlData.signedUrl));
+        if (linksError) {
+          console.warn('Title image lookup error:', linksError);
+        } else {
+          const bestByProperty = new Map<
+            string,
+            { file_path: string; is_title_image: boolean; display_order: number }
+          >();
+
+          for (const link of (imageLinks || []) as any[]) {
+            const doc = link.documents as any;
+            if (!doc?.file_path) continue;
+            if (!String(doc?.mime_type || '').startsWith('image/')) continue;
+
+            const candidate = {
+              file_path: doc.file_path as string,
+              is_title_image: !!link.is_title_image,
+              display_order: typeof link.display_order === 'number' ? link.display_order : 0,
+            };
+
+            const current = bestByProperty.get(link.object_id);
+            if (!current) {
+              bestByProperty.set(link.object_id, candidate);
+              continue;
+            }
+
+            // Prefer explicit title image
+            if (candidate.is_title_image && !current.is_title_image) {
+              bestByProperty.set(link.object_id, candidate);
+              continue;
+            }
+
+            // Otherwise, prefer lower display_order
+            if (candidate.is_title_image === current.is_title_image && candidate.display_order < current.display_order) {
+              bestByProperty.set(link.object_id, candidate);
             }
           }
+
+          await Promise.all(
+            Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
+              const { data: signedUrlData, error: signedErr } = await supabase.storage
+                .from('tenant-documents')
+                .createSignedUrl(best.file_path, 3600);
+
+              if (signedErr) {
+                console.warn('Signed URL error (tile):', signedErr);
+                return;
+              }
+
+              if (signedUrlData?.signedUrl) {
+                imageMap.set(objectId, resolveStorageSignedUrl(signedUrlData.signedUrl));
+              }
+            })
+          );
         }
       }
-
       // Transform to PublicListing format with hero images
       return (data || []).map((item: any) => ({
         listing_id: item.id,

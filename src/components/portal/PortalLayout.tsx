@@ -89,7 +89,7 @@ function PortalLayoutInner() {
   // Mobile Layout - Identisch zu Desktop: Outlet für konsistentes Routing
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-atmosphere flex flex-col">
+      <div className="h-screen bg-atmosphere flex flex-col overflow-hidden">
         {/* System Bar */}
         <SystemBar />
         
@@ -117,7 +117,7 @@ function PortalLayoutInner() {
 
   // Desktop Layout
   return (
-    <div className="min-h-screen bg-atmosphere flex flex-col">
+    <div className="h-screen bg-atmosphere flex flex-col overflow-hidden">
       {/* System Bar */}
       <SystemBar />
       
