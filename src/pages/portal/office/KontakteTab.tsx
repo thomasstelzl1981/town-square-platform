@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -15,6 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { DetailDrawer } from '@/components/shared/DetailDrawer';
 import { EmptyContacts } from '@/components/shared/EmptyState';
@@ -26,20 +33,60 @@ import {
   User, 
   Mail, 
   Phone, 
+  Smartphone,
   Building2, 
   FileText,
   Pencil,
   Trash2,
-  Loader2
+  Loader2,
+  MapPin
 } from 'lucide-react';
+
+// Category configuration with colors
+const CATEGORIES = [
+  { value: 'Mieter', label: 'Mieter', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+  { value: 'Eigentümer', label: 'Eigentümer', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  { value: 'Verwalter', label: 'Verwalter', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+  { value: 'Makler', label: 'Makler', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+  { value: 'Bank', label: 'Bank', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' },
+  { value: 'Handwerker', label: 'Handwerker', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+  { value: 'Sonstige', label: 'Sonstige', className: 'bg-muted text-muted-foreground' },
+] as const;
+
+const SALUTATIONS = [
+  { value: 'Herr', label: 'Herr' },
+  { value: 'Frau', label: 'Frau' },
+  { value: 'Divers', label: 'Divers' },
+  { value: 'Firma', label: 'Firma' },
+] as const;
+
+function getCategoryBadge(category: string | null) {
+  if (!category) return null;
+  const cat = CATEGORIES.find(c => c.value === category);
+  return cat ? (
+    <Badge variant="outline" className={cat.className}>
+      {cat.label}
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="bg-muted text-muted-foreground">
+      {category}
+    </Badge>
+  );
+}
 
 interface Contact {
   id: string;
   first_name: string;
   last_name: string;
+  salutation: string | null;
   email: string | null;
   phone: string | null;
+  phone_mobile: string | null;
+  street: string | null;
+  postal_code: string | null;
+  city: string | null;
   company: string | null;
+  category: string | null;
   notes: string | null;
   public_id: string;
   created_at: string;
@@ -51,26 +98,28 @@ interface Contact {
 
 const columns: Column<Contact>[] = [
   {
-    key: 'name',
+    key: 'first_name',
+    header: 'Vorname',
+    render: (_value: unknown, contact: Contact) => (
+      <div className="flex items-center gap-2">
+        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <User className="h-4 w-4 text-primary" />
+        </div>
+        <span className="font-medium">{contact.first_name}</span>
+      </div>
+    ),
+  },
+  {
+    key: 'last_name',
     header: 'Name',
     render: (_value: unknown, contact: Contact) => (
       <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <User className="h-4 w-4 text-primary" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="font-medium">{contact.first_name} {contact.last_name}</p>
-            {contact.synced_from && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                {contact.synced_from === 'google' ? '📧 Google' : contact.synced_from === 'microsoft' ? '📧 MS' : ''}
-              </span>
-            )}
-          </div>
-          {contact.company && (
-            <p className="text-xs text-muted-foreground">{contact.company}</p>
-          )}
-        </div>
+        <span>{contact.last_name}</span>
+        {contact.synced_from && (
+          <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {contact.synced_from === 'google' ? '📧' : contact.synced_from === 'microsoft' ? '📧' : ''}
+          </span>
+        )}
       </div>
     ),
   },
@@ -80,11 +129,56 @@ const columns: Column<Contact>[] = [
     render: (_value: unknown, contact: Contact) => contact.email || '-',
   },
   {
+    key: 'phone_mobile',
+    header: 'Mobil',
+    render: (_value: unknown, contact: Contact) => contact.phone_mobile || '-',
+  },
+  {
     key: 'phone',
     header: 'Telefon',
     render: (_value: unknown, contact: Contact) => contact.phone || '-',
   },
+  {
+    key: 'company',
+    header: 'Firma',
+    render: (_value: unknown, contact: Contact) => contact.company || '-',
+  },
+  {
+    key: 'category',
+    header: 'Kategorie',
+    render: (_value: unknown, contact: Contact) => getCategoryBadge(contact.category) || '-',
+  },
 ];
+
+interface ContactFormData {
+  salutation: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  phone_mobile: string;
+  street: string;
+  postal_code: string;
+  city: string;
+  company: string;
+  category: string;
+  notes: string;
+}
+
+const emptyFormData: ContactFormData = {
+  salutation: '',
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  phone_mobile: '',
+  street: '',
+  postal_code: '',
+  city: '',
+  company: '',
+  category: '',
+  notes: '',
+};
 
 export function KontakteTab() {
   const navigate = useNavigate();
@@ -94,16 +188,7 @@ export function KontakteTab() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    company: '',
-    notes: '',
-  });
+  const [formData, setFormData] = useState<ContactFormData>(emptyFormData);
 
   // Fetch contacts
   const { data: contacts = [], isLoading } = useQuery({
@@ -120,7 +205,7 @@ export function KontakteTab() {
 
   // Create contact mutation
   const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: ContactFormData) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('active_tenant_id')
@@ -130,11 +215,23 @@ export function KontakteTab() {
         throw new Error('Kein aktiver Mandant');
       }
 
-      const { error } = await supabase.from('contacts').insert({
-        ...data,
+      const insertData = {
+        first_name: data.first_name,
+        last_name: data.last_name,
         tenant_id: profile.active_tenant_id,
-        public_id: crypto.randomUUID().slice(0, 8),
-      });
+        salutation: data.salutation || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        phone_mobile: data.phone_mobile || null,
+        street: data.street || null,
+        postal_code: data.postal_code || null,
+        city: data.city || null,
+        company: data.company || null,
+        category: data.category || null,
+        notes: data.notes || null,
+      };
+
+      const { error } = await supabase.from('contacts').insert([insertData] as any);
 
       if (error) throw error;
     },
@@ -142,7 +239,7 @@ export function KontakteTab() {
       toast.success('Kontakt erstellt');
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setCreateDialogOpen(false);
-      resetForm();
+      setFormData(emptyFormData);
     },
     onError: (error) => {
       toast.error('Fehler: ' + error.message);
@@ -151,11 +248,27 @@ export function KontakteTab() {
 
   // Update contact mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id: string }) => {
+    mutationFn: async (data: ContactFormData & { id: string }) => {
       const { id, ...updateData } = data;
+      
+      const cleanedData: Record<string, string | null> = {
+        first_name: updateData.first_name,
+        last_name: updateData.last_name,
+        salutation: updateData.salutation || null,
+        email: updateData.email || null,
+        phone: updateData.phone || null,
+        phone_mobile: updateData.phone_mobile || null,
+        street: updateData.street || null,
+        postal_code: updateData.postal_code || null,
+        city: updateData.city || null,
+        company: updateData.company || null,
+        category: updateData.category || null,
+        notes: updateData.notes || null,
+      };
+
       const { error } = await supabase
         .from('contacts')
-        .update(updateData)
+        .update(cleanedData)
         .eq('id', id);
 
       if (error) throw error;
@@ -187,25 +300,20 @@ export function KontakteTab() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      company: '',
-      notes: '',
-    });
-  };
-
   const handleRowClick = (contact: Contact) => {
     setSelectedContact(contact);
     setFormData({
+      salutation: contact.salutation || '',
       first_name: contact.first_name,
       last_name: contact.last_name,
       email: contact.email || '',
       phone: contact.phone || '',
+      phone_mobile: contact.phone_mobile || '',
+      street: contact.street || '',
+      postal_code: contact.postal_code || '',
+      city: contact.city || '',
       company: contact.company || '',
+      category: contact.category || '',
       notes: contact.notes || '',
     });
     setEditMode(false);
@@ -224,7 +332,9 @@ export function KontakteTab() {
       contact.first_name.toLowerCase().includes(query) ||
       contact.last_name.toLowerCase().includes(query) ||
       contact.email?.toLowerCase().includes(query) ||
-      contact.company?.toLowerCase().includes(query)
+      contact.company?.toLowerCase().includes(query) ||
+      contact.category?.toLowerCase().includes(query) ||
+      contact.city?.toLowerCase().includes(query)
     );
   });
 
@@ -235,6 +345,156 @@ export function KontakteTab() {
       </div>
     );
   }
+
+  // Shared form fields component for reuse in dialog and drawer
+  const ContactFormFields = ({ isCreate = false }: { isCreate?: boolean }) => (
+    <div className="space-y-6">
+      {/* Section 1: Person / Firma */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium text-muted-foreground">Person</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="salutation">Anrede</Label>
+            <Select
+              value={formData.salutation}
+              onValueChange={(value) => setFormData({ ...formData, salutation: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Auswählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {SALUTATIONS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategorie</Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => setFormData({ ...formData, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Auswählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="first_name">Vorname *</Label>
+            <Input
+              id="first_name"
+              value={formData.first_name}
+              onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="last_name">Nachname *</Label>
+            <Input
+              id="last_name"
+              value={formData.last_name}
+              onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="company">Firma</Label>
+          <Input
+            id="company"
+            value={formData.company}
+            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {/* Section 2: Kontakt */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium text-muted-foreground">Kontakt</h4>
+        <div className="space-y-2">
+          <Label htmlFor="email">E-Mail</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone_mobile">Mobil</Label>
+            <Input
+              id="phone_mobile"
+              type="tel"
+              value={formData.phone_mobile}
+              onChange={(e) => setFormData({ ...formData, phone_mobile: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefon (Festnetz)</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 3: Adresse */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium text-muted-foreground">Adresse</h4>
+        <div className="space-y-2">
+          <Label htmlFor="street">Straße & Hausnummer</Label>
+          <Input
+            id="street"
+            value={formData.street}
+            onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="postal_code">PLZ</Label>
+            <Input
+              id="postal_code"
+              value={formData.postal_code}
+              onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+            />
+          </div>
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="city">Ort</Label>
+            <Input
+              id="city"
+              value={formData.city}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 4: Notizen */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notizen</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={3}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -256,60 +516,15 @@ export function KontakteTab() {
               Neuer Kontakt
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neuen Kontakt erstellen</DialogTitle>
               <DialogDescription>
                 Fügen Sie einen neuen Kontakt zu Ihrem Adressbuch hinzu.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Vorname *</Label>
-                  <Input
-                    id="first_name"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Nachname *</Label>
-                  <Input
-                    id="last_name"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefon</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Firma</Label>
-                <Input
-                  id="company"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
+            <ContactFormFields isCreate />
+            <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Abbrechen
               </Button>
@@ -344,8 +559,16 @@ export function KontakteTab() {
         description={selectedContact?.company || undefined}
         footer={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => deleteMutation.mutate(selectedContact!.id)}>
-              <Trash2 className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              onClick={() => deleteMutation.mutate(selectedContact!.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
               Löschen
             </Button>
             <Button onClick={handleWriteLetter} className="flex-1">
@@ -360,57 +583,14 @@ export function KontakteTab() {
             {editMode ? (
               // Edit Form
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Vorname</Label>
-                    <Input
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nachname</Label>
-                    <Input
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>E-Mail</Label>
-                  <Input
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefon</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Firma</Label>
-                  <Input
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notizen</Label>
-                  <Input
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2">
+                <ContactFormFields />
+                <div className="flex gap-2 pt-4">
                   <Button variant="outline" onClick={() => setEditMode(false)}>
                     Abbrechen
                   </Button>
                   <Button 
                     onClick={() => updateMutation.mutate({ ...formData, id: selectedContact.id })}
-                    disabled={updateMutation.isPending}
+                    disabled={updateMutation.isPending || !formData.first_name || !formData.last_name}
                   >
                     {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Speichern
@@ -427,20 +607,28 @@ export function KontakteTab() {
                   </Button>
                 </div>
                 <div className="space-y-4">
+                  {/* Header with avatar */}
                   <div className="flex items-center gap-3">
                     <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                       <User className="h-8 w-8 text-primary" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg">
+                        {selectedContact.salutation && `${selectedContact.salutation} `}
                         {selectedContact.first_name} {selectedContact.last_name}
                       </h3>
                       {selectedContact.company && (
                         <p className="text-muted-foreground">{selectedContact.company}</p>
                       )}
+                      {selectedContact.category && (
+                        <div className="mt-1">
+                          {getCategoryBadge(selectedContact.category)}
+                        </div>
+                      )}
                     </div>
                   </div>
 
+                  {/* Contact info */}
                   <div className="space-y-3">
                     {selectedContact.email && (
                       <div className="flex items-center gap-3 text-sm">
@@ -450,12 +638,22 @@ export function KontakteTab() {
                         </a>
                       </div>
                     )}
+                    {selectedContact.phone_mobile && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Smartphone className="h-4 w-4 text-muted-foreground" />
+                        <a href={`tel:${selectedContact.phone_mobile}`} className="text-primary hover:underline">
+                          {selectedContact.phone_mobile}
+                        </a>
+                        <span className="text-xs text-muted-foreground">(Mobil)</span>
+                      </div>
+                    )}
                     {selectedContact.phone && (
                       <div className="flex items-center gap-3 text-sm">
                         <Phone className="h-4 w-4 text-muted-foreground" />
                         <a href={`tel:${selectedContact.phone}`} className="text-primary hover:underline">
                           {selectedContact.phone}
                         </a>
+                        <span className="text-xs text-muted-foreground">(Festnetz)</span>
                       </div>
                     )}
                     {selectedContact.company && (
@@ -466,13 +664,33 @@ export function KontakteTab() {
                     )}
                   </div>
 
-                  {selectedContact.notes && (
+                  {/* Address */}
+                  {(selectedContact.street || selectedContact.city) && (
                     <div className="pt-4 border-t">
-                      <h4 className="text-sm font-medium mb-2">Notizen</h4>
-                      <p className="text-sm text-muted-foreground">{selectedContact.notes}</p>
+                      <h4 className="text-sm font-medium mb-2">Adresse</h4>
+                      <div className="flex items-start gap-3 text-sm">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          {selectedContact.street && <div>{selectedContact.street}</div>}
+                          {(selectedContact.postal_code || selectedContact.city) && (
+                            <div>
+                              {selectedContact.postal_code} {selectedContact.city}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
+                  {/* Notes */}
+                  {selectedContact.notes && (
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm font-medium mb-2">Notizen</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedContact.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Communication history placeholder */}
                   <div className="pt-4 border-t">
                     <h4 className="text-sm font-medium mb-2">Kommunikation</h4>
                     <p className="text-sm text-muted-foreground">
