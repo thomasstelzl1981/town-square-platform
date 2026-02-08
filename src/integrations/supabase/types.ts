@@ -4362,6 +4362,7 @@ export type Database = {
           created_at: string | null
           display_order: number | null
           document_id: string
+          expose_visibility: string | null
           id: string
           is_title_image: boolean | null
           link_status: string | null
@@ -4376,6 +4377,7 @@ export type Database = {
           created_at?: string | null
           display_order?: number | null
           document_id: string
+          expose_visibility?: string | null
           id?: string
           is_title_image?: boolean | null
           link_status?: string | null
@@ -4390,6 +4392,7 @@ export type Database = {
           created_at?: string | null
           display_order?: number | null
           document_id?: string
+          expose_visibility?: string | null
           id?: string
           is_title_image?: boolean | null
           link_status?: string | null
