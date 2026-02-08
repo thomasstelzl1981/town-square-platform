@@ -67,30 +67,20 @@ export default function KaufyExpose() {
             city,
             postal_code,
             total_area_sqm,
-            construction_year
+            construction_year,
+            annual_income
           )
         `)
         .eq('public_id', publicId)
         .single();
 
       if (error || !data) {
-        // Return mock data for demo
-        return {
-          id: publicId,
-          public_id: publicId,
-          title: 'Attraktives Mehrfamilienhaus in Top-Lage',
-          description: 'Dieses gepflegte Mehrfamilienhaus bietet eine solide Rendite und wurde kürzlich umfassend saniert.',
-          asking_price: 890000,
-          property_type: 'multi_family',
-          address: 'Musterstraße 123',
-          city: 'Leipzig',
-          postal_code: '04103',
-          total_area_sqm: 620,
-          year_built: 1925,
-          monthly_rent: 4200,
-          units_count: 8,
-        };
+        console.error('Listing query error:', error);
+        return null;
       }
+
+      const props = data.properties as any;
+      const annualIncome = props?.annual_income || 0;
 
       return {
         id: data.id,
@@ -98,13 +88,13 @@ export default function KaufyExpose() {
         title: data.title || 'Immobilie',
         description: data.description || '',
         asking_price: data.asking_price || 0,
-        property_type: (data.properties as any)?.property_type || 'multi_family',
-        address: (data.properties as any)?.address || '',
-        city: (data.properties as any)?.city || '',
-        postal_code: (data.properties as any)?.postal_code || '',
-        total_area_sqm: (data.properties as any)?.total_area_sqm || 0,
-        year_built: (data.properties as any)?.construction_year || 0,
-        monthly_rent: 0,
+        property_type: props?.property_type || 'multi_family',
+        address: props?.address || '',
+        city: props?.city || '',
+        postal_code: props?.postal_code || '',
+        total_area_sqm: props?.total_area_sqm || 0,
+        year_built: props?.construction_year || 0,
+        monthly_rent: Math.round(annualIncome / 12),
         units_count: 0,
       };
     },
