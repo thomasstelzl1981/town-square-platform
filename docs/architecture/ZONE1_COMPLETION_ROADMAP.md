@@ -104,13 +104,13 @@ Alle Module sind sichtbar für vollständige Entwicklung.
 ---
 
 ### Phase 5: System (Gruppe 9)
-**Status:** Funktional, Bereinigung
+**Status:** ✅ Abgeschlossen
 
-| Modul | Aufgabe |
-|-------|---------|
-| Integrationen | Lovable AI dokumentieren, Status-Sync mit Secrets |
-| Oversight | Fertig (nur KPIs, keine Seeds) |
-| Audit Log | Filter nach Modul hinzufügen |
+| Modul | Aufgabe | Status |
+|-------|---------|--------|
+| Integrationen | Status-Sync mit Secrets, Webhook-Section entfernt | ✅ |
+| Oversight | 6 KPI-Blöcke, 4 Tabs, Detail-Dialoge | ✅ |
+| Audit Log | Filter nach Typ/Org/Suche (Modul-Filter entfernt) | ✅ |
 
 ---
 
@@ -236,4 +236,6 @@ Phase 11: Platform Admin + Abrechnung + Tenant-Onboarding
 
 ## Letzte Aktualisierung
 
+- **2026-02-08:** Phase 5 abgeschlossen (Integrationen: Secret-Status-Sync, Webhooks entfernt, Audit Log vollständig)
+- **2026-02-08:** Phase 2 abgeschlossen (Dashboard Breakdowns, Filter für Orgs/Users/Delegationen)
 - **2026-02-08:** Phase 1 gestartet, MOD-00 eingefügt, Roadmap erstellt

@@ -9,21 +9,28 @@ import {
   Plug, 
   Mail, 
   CreditCard, 
-  Cloud, 
   FileText,
-  MessageSquare,
-  Calendar,
+  MapPin,
+  Building2,
+  Send,
+  Phone,
+  BarChart3,
+  Bot,
+  Zap,
   Database,
   Lock,
   Settings,
-  Zap,
-  Building2,
-  Send,
-  MapPin,
-  Phone,
-  BarChart3,
-  Bot
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
+
+// Secret keys that indicate an integration is active
+const SECRET_TO_INTEGRATION: Record<string, string[]> = {
+  'RESEND_API_KEY': ['RESEND', 'resend'],
+  'GOOGLE_MAPS_API_KEY': ['GOOGLE_MAPS', 'GOOGLE_PLACES'],
+  'LOVABLE_API_KEY': ['LOVABLE_AI'],
+  'OPENAI_API_KEY': ['LOVABLE_AI'], // Fallback
+};
 
 // Icon mapping based on integration code
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -33,7 +40,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CAYA: FileText,
   LOVABLE_AI: Bot,
   GMAIL_OAUTH: Mail,
-  MICROSOFT_OAUTH: Calendar,
+  MICROSOFT_OAUTH: Mail,
   GOOGLE_MAPS: MapPin,
   GOOGLE_PLACES: MapPin,
   FUTURE_ROOM: Building2,
@@ -55,10 +62,34 @@ const CATEGORY_LABELS: Record<string, string> = {
   edge_function: 'Edge Function',
 };
 
-function getStatusBadge(status: string) {
+// Determine if integration has a configured secret
+function isIntegrationActive(code: string, configuredSecrets: string[]): boolean {
+  for (const [secret, codes] of Object.entries(SECRET_TO_INTEGRATION)) {
+    if (codes.includes(code) && configuredSecrets.includes(secret)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getStatusBadge(status: string, hasSecret: boolean) {
+  if (hasSecret) {
+    return (
+      <Badge className="bg-green-600 flex items-center gap-1">
+        <CheckCircle2 className="h-3 w-3" />
+        Aktiv
+      </Badge>
+    );
+  }
+  
   switch (status) {
     case 'active':
-      return <Badge className="bg-green-600">Aktiv</Badge>;
+      return (
+        <Badge variant="outline" className="text-amber-600 border-amber-600 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          Secret fehlt
+        </Badge>
+      );
     case 'pending_setup':
       return <Badge variant="outline">Einrichtung ausstehend</Badge>;
     case 'inactive':
@@ -69,6 +100,15 @@ function getStatusBadge(status: string) {
 }
 
 export default function Integrations() {
+  // Hardcoded list of configured secrets (from Lovable Cloud)
+  const configuredSecrets = [
+    'GOOGLE_MAPS_API_KEY',
+    'LOVABLE_API_KEY',
+    'OPENAI_API_KEY',
+    'RESEND_API_KEY',
+    'VITE_GOOGLE_MAPS_API_KEY',
+  ];
+
   const { data: integrations, isLoading, error } = useQuery({
     queryKey: ['integration-registry'],
     queryFn: async () => {
@@ -118,37 +158,25 @@ export default function Integrations() {
         </p>
       </div>
 
-      {/* API Keys Section */}
+      {/* API Keys Status Overview */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            <CardTitle>API-Schlüssel</CardTitle>
+            <CardTitle>Konfigurierte Secrets</CardTitle>
           </div>
           <CardDescription>
-            Verwaltung von API-Keys für externe Dienste
+            API-Schlüssel, die in Lovable Cloud hinterlegt sind
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-medium">Production API Key</p>
-                <p className="text-sm text-muted-foreground">
-                  Für Live-Umgebung
-                </p>
-              </div>
-              <Badge variant="outline">••••••••••••••••</Badge>
-            </div>
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-medium">Development API Key</p>
-                <p className="text-sm text-muted-foreground">
-                  Für Testumgebung
-                </p>
-              </div>
-              <Badge variant="outline">••••••••••••••••</Badge>
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {configuredSecrets.map(secret => (
+              <Badge key={secret} variant="outline" className="flex items-center gap-1.5 py-1.5">
+                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                {secret}
+              </Badge>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -162,13 +190,14 @@ export default function Integrations() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {(items as Array<{ id: string; code: string; name: string; status: string; description: string | null; type: string }>).map((integration) => {
               const Icon = ICON_MAP[integration.code] || Plug;
+              const hasSecret = isIntegrationActive(integration.code, configuredSecrets);
               return (
                 <Card key={integration.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Icon className="h-5 w-5" />
+                        <div className={`p-2 rounded-lg ${hasSecret ? 'bg-green-600/10' : 'bg-primary/10'}`}>
+                          <Icon className={`h-5 w-5 ${hasSecret ? 'text-green-600' : ''}`} />
                         </div>
                         <div>
                           <CardTitle className="text-lg">{integration.name}</CardTitle>
@@ -177,7 +206,7 @@ export default function Integrations() {
                           </CardDescription>
                         </div>
                       </div>
-                      {getStatusBadge(integration.status)}
+                      {getStatusBadge(integration.status, hasSecret)}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -185,7 +214,7 @@ export default function Integrations() {
                       {integration.description || 'Keine Beschreibung verfügbar'}
                     </p>
                     <div className="flex items-center justify-between">
-                      {integration.status === 'active' ? (
+                      {hasSecret ? (
                         <>
                           <Switch checked={true} />
                           <Button variant="outline" size="sm">
@@ -200,7 +229,7 @@ export default function Integrations() {
                         </Button>
                       ) : (
                         <Button variant="outline" className="w-full" disabled>
-                          Inaktiv
+                          Secret konfigurieren
                         </Button>
                       )}
                     </div>
@@ -211,27 +240,6 @@ export default function Integrations() {
           </div>
         </div>
       ))}
-
-      {/* Webhooks Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            <CardTitle>Webhooks</CardTitle>
-          </div>
-          <CardDescription>
-            Eingehende und ausgehende Webhook-Konfiguration
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Keine Webhooks konfiguriert</p>
-            <Button variant="outline" className="mt-4">
-              Webhook hinzufügen
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
