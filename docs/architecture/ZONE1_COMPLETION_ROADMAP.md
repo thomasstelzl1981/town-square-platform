@@ -95,6 +95,7 @@ Alle Module sind sichtbar für vollständige Entwicklung.
 |-------|---------|---------------|
 | Tile-Katalog | MOD-00 anzeigen, als Doku nutzen | Jetzt (Dokumentation) |
 | Tile-Katalog | Tenant-Aktivierung Tab | Phase 11 (echte Tenants) |
+| Rollen & Berechtigungen | Rollen-Katalog + Matrix (Read-Only) | ✅ Implementiert |
 | Partner-Verifizierung | Status-Workflow UI | Phase 11 (echte Partner) |
 
 **Wichtig:** Im Entwicklungs-Account (`isDevelopmentMode = true`) zeigt Zone 2 ALLE Module.

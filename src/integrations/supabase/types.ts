@@ -9748,6 +9748,8 @@ export type Database = {
         | "sales_partner"
         | "renter_user"
         | "finance_manager"
+        | "akquise_manager"
+        | "future_room_web_user_lite"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
       partner_verification_status:
         | "pending"
@@ -10120,6 +10122,8 @@ export const Constants = {
         "sales_partner",
         "renter_user",
         "finance_manager",
+        "akquise_manager",
+        "future_room_web_user_lite",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
       partner_verification_status: [
