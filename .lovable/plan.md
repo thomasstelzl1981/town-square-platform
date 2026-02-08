@@ -1,137 +1,186 @@
 
-# Reparatur Simulation-Tab: Immer anzeigen + Spaltenname korrigieren
+# Anpassung Simulation-Tab: Angleichung an Dashboard-Standard
 
-## Zusammenfassung
+## Analyse der Unterschiede
 
-**2 Fehler gefunden:**
-1. Falscher Spaltenname: `lender_name` statt `bank_name` (Zeile 173)
-2. Unnötige Bedingung: Simulation wird nur angezeigt wenn Finanzierung vorhanden (Zeile 314)
+### 1. Grafik (Chart) - Farbliche Abweichungen
 
----
+| Element | Dashboard (MasterGraph) | Simulation (Aktuell) |
+|---------|-------------------------|----------------------|
+| Chart-Typ | `ComposedChart` mit Gradients | `AreaChart` ohne Gradients |
+| Immobilienwert | `hsl(var(--primary))` + Gradient | `hsl(var(--chart-1))` |
+| Nettovermögen | `hsl(142, 76%, 36%)` (Grün) + Gradient | `hsl(var(--chart-2))` |
+| Restschuld | Gestrichelte Linie `strokeDasharray="5 5"` | Durchgezogene Linie |
+| Tilgung | Nicht gezeigt | Nicht gezeigt |
 
-## Fehler 1: Falscher Spaltenname
+### 2. Tabelle - Fehlende Spalten
 
-### Aktueller Code (PropertyDetailPage.tsx, Zeile 173)
-```typescript
-.select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-```
+| Dashboard (DetailTable40Jahre) | Simulation (Aktuell) |
+|--------------------------------|----------------------|
+| Jahr | Jahr |
+| Miete (rent) | Miete p.a. |
+| Zinsen (interest) | — fehlt |
+| Tilgung (repayment) | — fehlt |
+| Restschuld | Restschuld |
+| Steuerersparnis | — (soll entfernt werden) |
+| Cashflow | — fehlt |
+| Immobilienwert | Verkehrswert |
+| Nettovermögen | Netto-Vermögen |
 
-### Problem
-Die Spalte `lender_name` existiert nicht in der `loans`-Tabelle. Der korrekte Name ist `bank_name`.
+### 3. Steuervorteil-Box
 
-### Lösung
-```typescript
-.select('id, loan_number, bank_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
-```
-
-### Mapping anpassen (Zeile 181)
-```typescript
-// Von:
-bank_name: loan.lender_name,
-
-// Zu:
-bank_name: loan.bank_name,
-```
+User-Anforderung: **Steuervorteil komplett entfernen**, da nur die reine Immobilien-Performance betrachtet werden soll.
 
 ---
 
-## Fehler 2: Simulation nur bei vorhandener Finanzierung
+## Lösung: Komponenten-Refactoring
 
-### Aktueller Code (Zeilen 314-338)
-```typescript
-{property && financing.length > 0 ? (
-  <InventoryInvestmentSimulation ... />
-) : (
-  <div className="...">
-    <p>Keine Finanzierungsdaten vorhanden</p>
-  </div>
-)}
-```
+### Option A: InventoryInvestmentSimulation anpassen (empfohlen)
 
-### Problem
-Für schuldenfreie Immobilien wird nur ein leerer Zustand angezeigt. Die Wertentwicklung ist aber auch ohne Finanzierung interessant.
+Die bestehende Komponente so anpassen, dass sie:
+1. Die gleichen Farben wie MasterGraph verwendet
+2. Tilgung im Chart zeigt (als zusätzliche Linie oder Area)
+3. Die Tabelle um fehlende Spalten erweitert (Annuität, Zins, Monatsbelastung)
+4. Die Steuervorteil-Box entfernt
 
-### Lösung
-Bedingung entfernen und Fallback-Werte für Finanzierung (0) verwenden:
+### Option B: DetailTable40Jahre direkt nutzen
 
-```typescript
-{property ? (
-  <InventoryInvestmentSimulation
-    data={{
-      purchasePrice: property.purchase_price || property.market_value || 0,
-      marketValue: property.market_value || property.purchase_price || 0,
-      annualRent: (property.rental_income_monthly || 0) * 12,
-      // Fallback auf 0 wenn keine Finanzierung
-      outstandingBalance: financing[0]?.current_balance || 0,
-      interestRatePercent: financing[0]?.interest_rate || 0,
-      annuityMonthly: financing[0]?.monthly_rate || 0,
-      buildingSharePercent: accountingData?.building_share_percent || 80,
-      afaRatePercent: accountingData?.afa_rate_percent || 2,
-      afaMethod: accountingData?.afa_method || 'linear',
-      contextName: contextData?.name,
-      marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
-    }}
-  />
-) : null}
-```
+Schwieriger, da die Datenstruktur (`YearlyData` aus useInvestmentEngine) nicht identisch ist mit den lokalen Berechnungen.
 
 ---
 
-## Anpassung InventoryInvestmentSimulation
+## Änderungen im Detail
 
-Die Komponente zeigt bei `outstandingBalance = 0` automatisch:
-- Restschuld: 0 EUR (verschwindet im Chart)
-- Netto-Vermögen = Verkehrswert (da keine Schulden)
-- Steuervorteil: nur AfA (keine Zinsabzüge)
+### 1. Grafik: Farbschema angleichen + Tilgung hinzufügen
 
-Optional können wir die Info-Box für "Restschuld" ausblenden wenn 0:
+```tsx
+// ComposedChart statt AreaChart verwenden
+// Gleiche Gradients wie MasterGraph
 
-```typescript
-// In InfoBox-Rendering (Zeile 198)
-{data.outstandingBalance > 0 && (
-  <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
-)}
+<defs>
+  <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+  </linearGradient>
+  <linearGradient id="wealthGradient" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.4}/>
+    <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0}/>
+  </linearGradient>
+</defs>
+
+// Immobilienwert
+<Area 
+  dataKey="verkehrswert" 
+  name="Immobilienwert"
+  stroke="hsl(var(--primary))" 
+  fill="url(#valueGradient)"
+/>
+
+// Nettovermögen
+<Area 
+  dataKey="nettoVermoegen" 
+  name="Nettovermögen"
+  stroke="hsl(142, 76%, 36%)" 
+  fill="url(#wealthGradient)"
+/>
+
+// Restschuld - gestrichelte Linie
+<Line 
+  dataKey="restschuld" 
+  name="Restschuld"
+  stroke="hsl(var(--destructive))"
+  strokeDasharray="5 5"
+/>
+
+// NEU: Tilgung als Linie (kumulativ oder jährlich)
+<Line 
+  dataKey="tilgung" 
+  name="Tilgung (p.a.)"
+  stroke="hsl(221, 83%, 53%)"  // Blau
+  strokeWidth={2}
+/>
 ```
+
+### 2. Tabelle: Spalten erweitern
+
+Neue Spalten hinzufügen:
+
+| Spalte | Datenfeld | Beschreibung |
+|--------|-----------|--------------|
+| Netto Kaltmiete | `miete` | Mieteinnahmen p.a. |
+| Annuität | `annuität` (neu berechnen) | Annuität p.a. = Zins + Tilgung |
+| Zinsen | `zins` | Bereits berechnet |
+| Tilgung | `tilgung` | Bereits berechnet |
+| Monatsbelastung | Annuität / 12 | Monatliche Rate |
+
+Anpassung der projectionData-Berechnung:
+
+```tsx
+years.push({
+  year: 2026 + year,
+  verkehrswert: Math.round(currentValue),
+  restschuld: Math.max(0, Math.round(debt)),
+  nettoVermoegen: Math.round(netWealth),
+  miete: Math.round(currentRent),
+  zins: Math.round(interest),
+  tilgung: Math.round(amortization),
+  // NEU:
+  annuitaet: Math.round(interest + amortization),
+  monatsbelastung: Math.round((interest + amortization) / 12),
+});
+```
+
+### 3. Steuervorteil-Box entfernen
+
+Die gesamte Card (Zeilen 207-230) wird entfernt, da nur die reine Immobilien-Performance relevant ist.
+
+Auch den Steuersatz-Badge im Header entfernen (Zeile 150-152).
 
 ---
 
-## Ergebnis nach der Korrektur
+## Ergebnis-Vorschau
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ MIT Finanzierung                                                │
-├─────────────────────────────────────────────────────────────────┤
-│ • Chart zeigt: Verkehrswert, Restschuld, Netto-Vermögen        │
-│ • Steuervorteil: AfA + Zinsen berücksichtigt                   │
-│ • Tabelle: Alle Spalten sichtbar                               │
-└─────────────────────────────────────────────────────────────────┘
+### Grafik (nach Änderung)
+- Immobilienwert: Primärfarbe mit Gradient (wie Dashboard)
+- Nettovermögen: Grün mit Gradient (wie Dashboard)
+- Restschuld: Rot, gestrichelt (wie Dashboard)
+- NEU: Tilgung als blaue Linie
 
-┌─────────────────────────────────────────────────────────────────┐
-│ OHNE Finanzierung (schuldenfrei)                                │
-├─────────────────────────────────────────────────────────────────┤
-│ • Chart zeigt: Verkehrswert = Netto-Vermögen (identisch)       │
-│ • Restschuld-Linie bei 0 / ausgeblendet                        │
-│ • Steuervorteil: nur AfA                                       │
-│ • Tabelle: Restschuld-Spalte zeigt "–"                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Tabelle (nach Änderung)
+| Jahr | Miete | Annuität | Zinsen | Tilgung | Monatsbelastung | Restschuld | Verkehrswert | Nettovermögen |
+|------|-------|----------|--------|---------|-----------------|------------|--------------|---------------|
+| 2026 | 10.800 € | 8.964 € | 5.472 € | 3.492 € | 747 € | 148.508 € | 224.400 € | 75.892 € |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ---
 
 ## Betroffene Dateien
 
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `PropertyDetailPage.tsx` | 173 | `lender_name` → `bank_name` |
-| `PropertyDetailPage.tsx` | 181 | `loan.lender_name` → `loan.bank_name` |
-| `PropertyDetailPage.tsx` | 314-338 | Bedingung `financing.length > 0` entfernen |
-| `InventoryInvestmentSimulation.tsx` | 196-200 | Optional: Restschuld-Box ausblenden wenn 0 |
+| Datei | Änderungen |
+|-------|------------|
+| `src/components/immobilienakte/InventoryInvestmentSimulation.tsx` | Chart-Farben, Tilgung-Linie, Tabellenspalten, Steuervorteil entfernen |
 
 ---
 
 ## Implementierungsschritte
 
-1. Spaltenname in Abfrage korrigieren (Zeile 173)
-2. Mapping anpassen (Zeile 181)
-3. Bedingung für Simulation entfernen (Zeile 314)
-4. Optional: Komponente für schuldenfreie Darstellung optimieren
+1. **Chart anpassen:**
+   - `AreaChart` → `ComposedChart` ändern
+   - Gradients aus MasterGraph übernehmen
+   - Farben angleichen (primary, grün, destructive)
+   - Restschuld-Linie gestrichelt machen
+   - Tilgung als neue Linie hinzufügen
+
+2. **Steuervorteil-Komponenten entfernen:**
+   - Steuersatz-Badge im Header entfernen
+   - Komplette Steuervorteil-Card entfernen
+   - `taxBenefit` useMemo kann bleiben (schadet nicht) oder ebenfalls entfernt werden
+
+3. **Tabelle erweitern:**
+   - projectionData um `annuitaet` und `monatsbelastung` erweitern
+   - Neue Spalten in TableHeader/TableBody hinzufügen:
+     - Miete, Annuität, Zinsen, Tilgung, Monatsbelastung, Restschuld, Verkehrswert, Nettovermögen
+
+4. **Optional: Mobile-View anpassen**
+   - Die aktuelle Komponente hat keine spezielle Mobile-Kartenansicht wie DetailTable40Jahre
+   - Könnte bei Bedarf später ergänzt werden
