@@ -95,7 +95,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
     { path: "oversight", component: "Oversight", title: "Oversight" },
     { path: "audit", component: "AuditLog", title: "Audit Log" },
-    { path: "billing", component: "Billing", title: "Abrechnung" },
+    
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
     { path: "inbox", component: "Inbox", title: "Posteingang" },
     { path: "leadpool", component: "LeadPool", title: "Lead Pool" },

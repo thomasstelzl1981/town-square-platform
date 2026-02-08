@@ -7,7 +7,7 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2, Sparkles
+  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +42,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'Integrations': Plug,
   'Oversight': Eye,
   'AuditLog': FileText,
-  'Billing': CreditCard,
   'Agreements': FileCheck,
   'Inbox': Inbox,
   'LeadPool': Target,
@@ -76,6 +75,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'FinanceDeskBerater': UserCog,
   'FinanceDeskZuweisung': Link2,
   'FinanceDeskMonitoring': Eye,
+  // Armstrong Zone 1
+  'ArmstrongDashboard': Sparkles,
+  'ArmstrongActions': FileText,
+  'ArmstrongLogs': FileText,
+  'ArmstrongBilling': CreditCard,
+  'ArmstrongKnowledge': BookOpen,
+  'ArmstrongPolicies': Scale,
+  'ArmstrongTestHarness': FlaskConical,
 };
 
 // Group configuration for grouping routes
@@ -88,12 +95,13 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
   'foundation': { label: 'Tenants & Access', priority: 1 },
   'masterdata': { label: 'Masterdata', priority: 2 },
   'ki-office': { label: 'KI Office', priority: 3 },
-  'activation': { label: 'Feature Activation', priority: 4 },
-  'backbone': { label: 'Backbone', priority: 5 },
-  'desks': { label: 'Operative Desks', priority: 6 },
-  'agents': { label: 'AI Agents', priority: 7 },
-  'system': { label: 'System', priority: 8 },
-  'platformAdmin': { label: 'Platform Admin', priority: 9 },
+  'armstrong': { label: 'Armstrong Zone 1', priority: 4 },
+  'activation': { label: 'Feature Activation', priority: 5 },
+  'backbone': { label: 'Backbone', priority: 6 },
+  'desks': { label: 'Operative Desks', priority: 7 },
+  'agents': { label: 'AI Agents', priority: 8 },
+  'system': { label: 'System', priority: 9 },
+  'platformAdmin': { label: 'Platform Admin', priority: 10 },
 };
 
 // Route to group mapping via prefix
@@ -109,6 +117,10 @@ function getGroupKey(path: string, component: string): string {
   if (path === 'ki-office-email' || path === 'ki-office-kontakte' || path === 'communication') {
     return 'ki-office';
   }
+  // Armstrong Zone 1
+  if (path.startsWith('armstrong')) {
+    return 'armstrong';
+  }
   if (path === 'tiles') {
     return 'activation';
   }
@@ -116,7 +128,8 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('futureroom')) {
     return 'desks';
   }
-  if (path === 'billing' || path === 'agreements' || path === 'inbox') {
+  // Backbone (billing removed - duplicate of Zone 2)
+  if (path === 'agreements' || path === 'inbox') {
     return 'backbone';
   }
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || path.startsWith('acquiary')) {
@@ -146,6 +159,16 @@ function shouldShowInNav(path: string): boolean {
   }
   // KI Office items are now top-level, show them
   if (path === 'ki-office-email' || path === 'ki-office-kontakte') {
+    return true;
+  }
+  // Armstrong Zone 1 - show all 7 menu items
+  if (path === 'armstrong' || 
+      path === 'armstrong/actions' || 
+      path === 'armstrong/logs' || 
+      path === 'armstrong/knowledge' ||
+      path === 'armstrong/billing' ||
+      path === 'armstrong/policies' ||
+      path === 'armstrong/test') {
     return true;
   }
   // Skip sub-routes of desks (they will be accessible from their parent page)
