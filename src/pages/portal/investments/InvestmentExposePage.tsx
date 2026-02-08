@@ -1,33 +1,30 @@
 /**
  * InvestmentExposePage — Vollbild-Exposé für MOD-08 (Investment-Suche)
  * 
- * WICHTIG: Dies ist eine eigenständige Seite (kein Modal!), die das Layout
- * von KaufyExpose adaptiert, aber im Portal-Kontext bleibt.
- * 
- * Features:
- * - 40-Jahres-Chart (MasterGraph)
- * - Haushaltsrechnung (5-Zeilen EÜR)
- * - Interaktive Parameter-Slider
- * - 10-Jahres-Projektion
- * - Favoriten-Toggle
+ * REFAKTORISIERT: Nutzt jetzt gemeinsame Komponenten aus src/components/investment/
+ * - MasterGraph
+ * - Haushaltsrechnung  
+ * - InvestmentSliderPanel
+ * - DetailTable40Jahre
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Heart, MapPin, Maximize2, Calendar, Building2, 
-  Share2, Loader2, ChevronDown, ChevronUp, MessageSquare
+  Share2, Loader2, MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useInvestmentEngine, defaultInput, CalculationInput, YearlyData } from '@/hooks/useInvestmentEngine';
+import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
+import { 
+  MasterGraph, 
+  Haushaltsrechnung, 
+  InvestmentSliderPanel, 
+  DetailTable40Jahre 
+} from '@/components/investment';
 
 interface ListingData {
   id: string;
@@ -47,9 +44,7 @@ interface ListingData {
 
 export default function InvestmentExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
-  const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
-  const [showDetailTable, setShowDetailTable] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
   // Interactive parameters state
@@ -194,13 +189,6 @@ export default function InvestmentExposePage() {
     );
   }
 
-  const chartData = calcResult?.projection.slice(0, 40).map(p => ({
-    year: p.year,
-    'Immobilienwert': p.propertyValue,
-    'Nettovermögen': p.netWealth,
-    'Restschuld': p.remainingDebt,
-  })) || [];
-
   const propertyTypeLabel = {
     'multi_family': 'Mehrfamilienhaus',
     'single_family': 'Einfamilienhaus',
@@ -291,342 +279,64 @@ export default function InvestmentExposePage() {
               )}
             </div>
 
-            {/* Master Graph */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Wertentwicklung (40 Jahre)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isCalculating ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin" />
-                  </div>
-                ) : chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={chartData}>
-                      <XAxis dataKey="year" />
-                      <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="Immobilienwert" 
-                        stroke="hsl(var(--primary))" 
-                        fill="hsl(var(--primary) / 0.2)" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="Nettovermögen" 
-                        stroke="hsl(142 71% 45%)" 
-                        fill="hsl(142 71% 45% / 0.2)" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="Restschuld" 
-                        stroke="hsl(var(--destructive))" 
-                        fill="hsl(var(--destructive) / 0.1)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : null}
-              </CardContent>
-            </Card>
+            {/* MasterGraph - Gemeinsame Komponente */}
+            {isCalculating ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : calcResult ? (
+              <MasterGraph 
+                projection={calcResult.projection} 
+                title="Wertentwicklung (40 Jahre)"
+                variant="full"
+              />
+            ) : null}
 
-            {/* Haushaltsrechnung */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ihre monatliche Übersicht (Jahr 1)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isCalculating ? (
-                  <Skeleton className="h-48" />
-                ) : calcResult ? (
-                  <div className="space-y-2 font-mono text-sm">
-                    <div className="flex justify-between py-2 border-b">
-                      <span>Mieteinnahmen</span>
-                      <span className="text-green-600 font-semibold">+{formatCurrency(calcResult.projection[0]?.rent / 12 || 0)}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b">
-                      <span>Darlehensrate</span>
-                      <span className="text-red-600">-{formatCurrency((calcResult.projection[0]?.interest + calcResult.projection[0]?.repayment) / 12 || 0)}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b">
-                      <span>Bewirtschaftung</span>
-                      <span className="text-red-600">-{formatCurrency(calcResult.projection[0]?.managementCost / 12 || 0)}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b">
-                      <span>Steuereffekt</span>
-                      <span className="text-green-600">+{formatCurrency(calcResult.projection[0]?.taxSavings / 12 || 0)}</span>
-                    </div>
-                    <div 
-                      className="flex justify-between py-3 px-3 -mx-2 rounded-lg mt-2"
-                      style={{ backgroundColor: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45% / 0.1)' : 'hsl(var(--muted))' }}
-                    >
-                      <span className="font-bold">Netto nach Steuer</span>
-                      <span 
-                        className="font-bold text-lg"
-                        style={{ color: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45%)' : 'inherit' }}
-                      >
-                        {formatCurrency(calcResult.summary.monthlyBurden || 0)}/Mo
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            {/* 5-Box Cashflow-Darstellung */}
+            {/* Haushaltsrechnung - Gemeinsame Komponente */}
             {calcResult && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monatlicher Cashflow nach Steuern</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-2">
-                    <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
-                      <p className="text-green-700 font-bold text-lg">
-                        +{formatCurrency(calcResult.projection[0]?.rent / 12 || 0)}
-                      </p>
-                      <p className="text-xs text-green-600">Miete</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
-                      <p className="text-red-700 font-bold text-lg">
-                        -{formatCurrency((calcResult.projection[0]?.interest + calcResult.projection[0]?.repayment) / 12 || 0)}
-                      </p>
-                      <p className="text-xs text-red-600">Rate</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
-                      <p className="text-red-700 font-bold text-lg">
-                        -{formatCurrency(calcResult.projection[0]?.managementCost / 12 || 0)}
-                      </p>
-                      <p className="text-xs text-red-600">Verw.</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
-                      <p className="text-green-700 font-bold text-lg">
-                        +{formatCurrency(calcResult.projection[0]?.taxSavings / 12 || 0)}
-                      </p>
-                      <p className="text-xs text-green-600">Steuer</p>
-                    </div>
-                    <div 
-                      className="text-center p-3 rounded-lg border-2"
-                      style={{ 
-                        backgroundColor: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45% / 0.1)' : 'hsl(var(--muted))',
-                        borderColor: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45%)' : 'hsl(var(--border))'
-                      }}
-                    >
-                      <p 
-                        className="font-bold text-lg"
-                        style={{ color: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45%)' : 'inherit' }}
-                      >
-                        {formatCurrency(calcResult.summary.monthlyBurden || 0)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Netto/Mo</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <Haushaltsrechnung 
+                result={calcResult} 
+                variant="detailed"
+                showMonthly={true}
+              />
             )}
 
-            {/* Detail Table (Collapsible) */}
+            {/* Detail Table - Gemeinsame Komponente */}
             {calcResult && (
-              <Collapsible open={showDetailTable} onOpenChange={setShowDetailTable}>
-                <Card>
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <CardTitle>10-Jahres-Detailtabelle</CardTitle>
-                        {showDetailTable ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left py-2 px-2">Jahr</th>
-                              <th className="text-right py-2 px-2">Miete</th>
-                              <th className="text-right py-2 px-2">Zins</th>
-                              <th className="text-right py-2 px-2">Tilgung</th>
-                              <th className="text-right py-2 px-2">Restschuld</th>
-                              <th className="text-right py-2 px-2">Wert</th>
-                              <th className="text-right py-2 px-2">Vermögen</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {calcResult.projection.slice(0, 10).map((row: YearlyData) => (
-                              <tr key={row.year} className="border-b hover:bg-muted/50">
-                                <td className="py-2 px-2 font-medium">{row.year}</td>
-                                <td className="py-2 px-2 text-right text-green-600">{formatCurrency(row.rent)}</td>
-                                <td className="py-2 px-2 text-right text-red-600">{formatCurrency(row.interest)}</td>
-                                <td className="py-2 px-2 text-right text-blue-600">{formatCurrency(row.repayment)}</td>
-                                <td className="py-2 px-2 text-right">{formatCurrency(row.remainingDebt)}</td>
-                                <td className="py-2 px-2 text-right">{formatCurrency(row.propertyValue)}</td>
-                                <td className="py-2 px-2 text-right font-medium text-green-600">{formatCurrency(row.netWealth)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+              <DetailTable40Jahre 
+                projection={calcResult.projection}
+                defaultOpen={false}
+              />
             )}
           </div>
 
           {/* Right Column - Interactive Calculator */}
           <div className="space-y-6">
-            <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle>Investment-Rechner</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Passen Sie die Parameter an Ihre Situation an
+            <div className="sticky top-24">
+              {/* InvestmentSliderPanel - Gemeinsame Komponente */}
+              <InvestmentSliderPanel
+                value={params}
+                onChange={setParams}
+                layout="vertical"
+                showAdvanced={true}
+                purchasePrice={listing.asking_price}
+              />
+
+              {/* Armstrong CTA */}
+              <div className="mt-6 p-4 rounded-lg border bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <span className="font-medium">Fragen zum Objekt?</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Armstrong beantwortet Ihre Fragen zur Finanzierung und Rendite.
                 </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* zVE */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>zu versteuerndes Einkommen</Label>
-                    <span className="text-sm font-medium">{formatCurrency(params.taxableIncome)}</span>
-                  </div>
-                  <Slider
-                    value={[params.taxableIncome]}
-                    onValueChange={([v]) => setParams(p => ({ ...p, taxableIncome: v }))}
-                    min={20000}
-                    max={200000}
-                    step={1000}
-                  />
-                </div>
-
-                {/* Eigenkapital */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>Eigenkapital</Label>
-                    <span className="text-sm font-medium">{formatCurrency(params.equity)}</span>
-                  </div>
-                  <Slider
-                    value={[params.equity]}
-                    onValueChange={([v]) => setParams(p => ({ ...p, equity: v }))}
-                    min={0}
-                    max={Math.max(params.purchasePrice * 0.5, 100000)}
-                    step={5000}
-                  />
-                </div>
-
-                {/* Tilgung */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>Tilgung</Label>
-                    <span className="text-sm font-medium">{params.repaymentRate.toFixed(1)}%</span>
-                  </div>
-                  <Slider
-                    value={[params.repaymentRate * 10]}
-                    onValueChange={([v]) => setParams(p => ({ ...p, repaymentRate: v / 10 }))}
-                    min={10}
-                    max={50}
-                    step={1}
-                  />
-                </div>
-
-                {/* Wertsteigerung */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>Wertsteigerung p.a.</Label>
-                    <span className="text-sm font-medium">{params.valueGrowthRate.toFixed(1)}%</span>
-                  </div>
-                  <Slider
-                    value={[params.valueGrowthRate * 10]}
-                    onValueChange={([v]) => setParams(p => ({ ...p, valueGrowthRate: v / 10 }))}
-                    min={0}
-                    max={50}
-                    step={1}
-                  />
-                </div>
-
-                {/* Key Results */}
-                {calcResult && (
-                  <div className="mt-6 p-4 rounded-xl bg-muted space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Darlehen</span>
-                      <span className="font-medium">{formatCurrency(calcResult.summary.loanAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">LTV</span>
-                      <span className="font-medium">{calcResult.summary.ltv.toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Zinssatz</span>
-                      <span className="font-medium">{calcResult.summary.interestRate.toFixed(2)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Rate/Monat</span>
-                      <span className="font-medium">{formatCurrency((calcResult.summary.yearlyInterest + calcResult.summary.yearlyRepayment) / 12)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-3">
-                      <span className="font-semibold">Belastung/Monat</span>
-                      <span 
-                        className="font-bold text-lg"
-                        style={{ color: (calcResult.summary.monthlyBurden || 0) <= 0 ? 'hsl(142 71% 45%)' : 'inherit' }}
-                      >
-                        {formatCurrency(calcResult.summary.monthlyBurden)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* CTAs */}
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    onClick={() => navigate('/portal/finanzierung/anfrage')}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Finanzierung anfragen
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={toggleFavorite}
-                  >
-                    <Heart className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                    {isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 10-Year Projection Summary */}
-            {calcResult && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Entwicklung nach 10 Jahren</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Restschuld</span>
-                    <span className="font-medium">{formatCurrency(calcResult.projection[10]?.remainingDebt || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Objektwert</span>
-                    <span className="font-medium">{formatCurrency(calcResult.projection[10]?.propertyValue || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Wertzuwachs</span>
-                    <span className="font-medium text-green-600">
-                      +{formatCurrency((calcResult.projection[10]?.propertyValue || 0) - params.purchasePrice)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-medium">Eigenkapitalaufbau</span>
-                    <span className="font-bold text-green-600">
-                      +{formatCurrency((calcResult.projection[10]?.netWealth || 0) - params.equity)}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                <Button className="w-full" variant="outline">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Mit Armstrong sprechen
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
