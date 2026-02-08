@@ -1,129 +1,201 @@
+/**
+ * FutureRoomKarriere — Finanzierungsmanager Recruiting Page
+ * 
+ * Fokus: Rolle im System, fertiges Tooling, Orchestrierung
+ * Keine klassische Vermittlung, sondern Systemarbeit
+ */
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { 
   ChevronRight, TrendingUp, Users, Building2, 
-  Award, Clock, Wallet 
+  Award, Clock, Wallet, Laptop, FolderCheck, 
+  Workflow, ShieldCheck, ArrowRight, CheckCircle2
 } from 'lucide-react';
 
 export default function FutureRoomKarriere() {
   const benefits = [
     {
-      icon: <TrendingUp className="h-6 w-6" />,
-      title: 'Attraktive Provisionen',
-      description: 'Verdienen Sie an jeder vermittelten Finanzierung mit transparentem Provisionsmodell.',
+      icon: <FolderCheck className="h-6 w-6" />,
+      title: 'Fertige Finanzierungsordner',
+      description: 'Übernehmen Sie Fälle mit vollständig aufbereiteten Unterlagen — Selbstauskunft, Dokumente, alles geprüft.',
     },
     {
       icon: <Building2 className="h-6 w-6" />,
-      title: 'Zugang zu 400+ Banken',
-      description: 'Nutzen Sie unser Netzwerk zu über 400 Finanzierungspartnern.',
+      title: 'Direkter Bankzugang',
+      description: 'Arbeiten Sie in unserem System mit direkten Schnittstellen zu über 400 Bankpartnern.',
     },
     {
-      icon: <Clock className="h-6 w-6" />,
-      title: 'Flexible Arbeitszeiten',
-      description: 'Arbeiten Sie selbstständig und gestalten Sie Ihren Arbeitsalltag.',
+      icon: <Laptop className="h-6 w-6" />,
+      title: 'Modernes Tooling',
+      description: 'Unser Portal unterstützt Sie bei Einreichung, Tracking und Kommunikation — alles an einem Ort.',
     },
     {
-      icon: <Award className="h-6 w-6" />,
-      title: 'Professionelles Tooling',
-      description: 'Moderne Plattform mit automatisierter Dokumentenprüfung und Statusverfolgung.',
+      icon: <Workflow className="h-6 w-6" />,
+      title: 'Orchestrierte Prozesse',
+      description: 'Keine Medienbrüche. Von der Anfrage bis zur Auszahlung — durchgängig digital.',
+    },
+  ];
+
+  const roleDetails = [
+    {
+      title: 'Was Sie tun',
+      items: [
+        'Finanzierungsfälle aus dem FutureRoom-System übernehmen',
+        'Bankfertige Unterlagen bei passenden Instituten einreichen',
+        'Kunden während des Prozesses begleiten und beraten',
+        'Status und Fortschritt im Portal dokumentieren',
+      ],
+    },
+    {
+      title: 'Was Sie bekommen',
+      items: [
+        'Fälle mit vollständig aufbereiteten Unterlagen',
+        'KI-gestützte Unterstützung bei der Bankauswahl',
+        'Transparentes Provisionsmodell',
+        'Flexibles Arbeiten — Sie entscheiden, welche Fälle Sie übernehmen',
+      ],
     },
   ];
 
   const requirements = [
     'IHK-Zulassung als Immobiliardarlehensvermittler (§34i GewO)',
-    'Erfahrung in der Finanzierungsberatung',
-    'Eigenständige und kundenorientierte Arbeitsweise',
-    'Affinität zu digitalen Tools',
+    'Erfahrung in der Baufinanzierung oder Bereitschaft zur Einarbeitung',
+    'Affinität zu digitalen Tools und Prozessen',
+    'Kundenorientierte, eigenständige Arbeitsweise',
   ];
 
   return (
     <div>
       {/* Hero */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10" />
-        <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 text-sm mb-6">
-              <Users className="h-4 w-4" />
-              Karriere bei FutureRoom
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Werden Sie{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">
-                Finanzierungsmanager
-              </span>
-            </h1>
-            <p className="text-xl text-white/70 mb-8">
-              Profitieren Sie von unserer Plattform und unserem Netzwerk. 
-              Begleiten Sie Kunden auf dem Weg zur Immobilienfinanzierung.
-            </p>
-            <Button size="lg" className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900">
-              Jetzt bewerben
-              <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
+      <section className="fr-hero">
+        <div className="fr-hero-content">
+          <div className="fr-hero-badge">
+            <Users className="h-4 w-4" />
+            Karriere bei FutureRoom
           </div>
+          <h1 className="fr-hero-title">
+            Werden Sie{' '}
+            <span className="highlight">Finanzierungsmanager</span>
+          </h1>
+          <p className="fr-hero-subtitle">
+            Übernehmen Sie vorbereitete Finanzierungsfälle aus unserem System. 
+            Profitieren Sie von fertigen Unterlagen, direkten Bankzugängen und modernem Tooling.
+          </p>
+          <button className="fr-btn fr-btn-primary text-lg">
+            Jetzt bewerben
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       </section>
 
       {/* Benefits */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Ihre Vorteile</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {benefits.map((benefit, index) => (
-              <Card key={index} className="bg-white/5 border-white/10">
-                <CardContent className="pt-6">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center text-amber-400 mb-4">
-                    {benefit.icon}
-                  </div>
-                  <h3 className="font-semibold text-white mb-2">{benefit.title}</h3>
-                  <p className="text-sm text-white/60">{benefit.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+      <section className="fr-section">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Ihre Vorteile</h2>
+          <p className="fr-section-subtitle">
+            Als Finanzierungsmanager bei FutureRoom arbeiten Sie nicht wie bei klassischen Vermittlern.
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {benefits.map((benefit, index) => (
+            <div key={index} className="fr-card">
+              <div className="fr-card-icon">
+                {benefit.icon}
+              </div>
+              <h3 className="fr-card-title">{benefit.title}</h3>
+              <p className="fr-card-text">{benefit.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Role Details */}
+      <section className="fr-process">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Die Rolle im Detail</h2>
+        </div>
+        <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto">
+          {roleDetails.map((section, index) => (
+            <div key={index} className="fr-card">
+              <h3 className="text-lg font-bold mb-4" style={{ color: 'hsl(165 70% 36%)' }}>
+                {section.title}
+              </h3>
+              <ul className="space-y-3">
+                {section.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: 'hsl(165 70% 36%)' }} />
+                    <span className="text-gray-600">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* System Preview */}
+      <section className="fr-section">
+        <div className="fr-card" style={{ background: 'linear-gradient(135deg, hsl(210 35% 8%) 0%, hsl(210 30% 15%) 100%)', borderColor: 'transparent' }}>
+          <div className="text-center py-8">
+            <h3 className="text-2xl font-bold text-white mb-4">
+              Arbeiten im FutureRoom-System
+            </h3>
+            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
+              Unser Portal bietet Ihnen alles, was Sie brauchen: Fallübersicht, Dokumenten-Viewer, 
+              Bank-Schnittstellen, Kundenkommunikation und Status-Tracking — integriert und effizient.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm">
+                📋 Fallmanagement
+              </div>
+              <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm">
+                📁 Dokumente
+              </div>
+              <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm">
+                🏦 Bankzugang
+              </div>
+              <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm">
+                💬 Kommunikation
+              </div>
+              <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm">
+                📊 Reporting
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Requirements */}
-      <section className="py-20 bg-white/5">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-8">Anforderungen</h2>
-            <Card className="bg-white/5 border-white/10">
-              <CardContent className="pt-6">
-                <ul className="space-y-4">
-                  {requirements.map((req, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-amber-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <ChevronRight className="h-4 w-4 text-amber-400" />
-                      </div>
-                      <span className="text-white/80">{req}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+      <section className="fr-process">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Anforderungen</h2>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <div className="fr-card">
+            <ul className="space-y-4">
+              {requirements.map((req, index) => (
+                <li key={index} className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'hsl(165 70% 36% / 0.1)' }}>
+                    <ShieldCheck className="h-4 w-4" style={{ color: 'hsl(165 70% 36%)' }} />
+                  </div>
+                  <span className="text-gray-700 pt-1">{req}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <Card className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30">
-            <CardContent className="py-12 text-center">
-              <h2 className="text-3xl font-bold mb-4">Bereit für den nächsten Schritt?</h2>
-              <p className="text-white/70 mb-8 max-w-2xl mx-auto">
-                Senden Sie uns Ihre Bewerbung und werden Sie Teil des FutureRoom-Teams.
-              </p>
-              <Button size="lg" className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900">
-                Bewerbung starten
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
-            </CardContent>
-          </Card>
+      <section className="fr-cta">
+        <div className="fr-cta-content">
+          <h2 className="fr-cta-title">Bereit für den nächsten Schritt?</h2>
+          <p className="fr-cta-text">
+            Bewerben Sie sich als Finanzierungsmanager und werden Sie Teil des FutureRoom-Netzwerks.
+          </p>
+          <button className="fr-btn fr-btn-primary">
+            Bewerbung starten
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       </section>
     </div>

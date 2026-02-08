@@ -1,166 +1,224 @@
+/**
+ * FutureRoomHome — Landing Page für Finanzierungsorchestrierung
+ * 
+ * Fokus: Digitale Orchestrierung, nicht Vermittlung
+ * KI-gestützte Aufbereitung, Online-Antragstellung, fertige Finanzierungsordner
+ */
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { 
   ChevronRight, Shield, Clock, CheckCircle2, 
-  TrendingUp, Building2, Users, Sparkles 
+  TrendingUp, Building2, Users, Sparkles, FileText,
+  Bot, FolderSync, Workflow, ArrowRight, Landmark
 } from 'lucide-react';
 
 export default function FutureRoomHome() {
   const features = [
     {
-      icon: <Shield className="h-6 w-6" />,
-      title: 'Professionelle Prüfung',
-      description: 'Ihre Unterlagen werden von erfahrenen Finanzierungsspezialisten geprüft.',
+      icon: <Workflow className="h-6 w-6" />,
+      title: 'Digitale Orchestrierung',
+      description: 'Wir steuern den gesamten Prozess — von der Anfrage bis zur Auszahlung. Kein Vermittler, sondern Ihr Partner.',
     },
     {
-      icon: <Clock className="h-6 w-6" />,
-      title: 'Schnelle Bearbeitung',
-      description: 'Innerhalb von 48 Stunden erhalten Sie eine erste Einschätzung.',
+      icon: <FolderSync className="h-6 w-6" />,
+      title: 'Fertiger Finanzierungsordner',
+      description: 'Immer aktuelle, bankfertige Unterlagen aus unserem System. Selbstauskunft, Dokumente, alles digital.',
     },
     {
-      icon: <TrendingUp className="h-6 w-6" />,
-      title: 'Beste Konditionen',
-      description: 'Zugang zu über 400 Finanzierungspartnern für optimale Konditionen.',
+      icon: <Bot className="h-6 w-6" />,
+      title: 'KI-gestützte Aufbereitung',
+      description: 'Automatische Dokumentenprüfung und -aufbereitung. Wir finden den richtigen Weg für Ihre Situation.',
     },
     {
-      icon: <CheckCircle2 className="h-6 w-6" />,
-      title: 'Transparenter Prozess',
-      description: 'Verfolgen Sie den Status Ihrer Anfrage jederzeit online.',
+      icon: <FileText className="h-6 w-6" />,
+      title: 'Online-Antragstellung',
+      description: 'Komplett digitaler Prozess. Keine Papierberge, keine Wartezeiten. Einreichen per Klick.',
     },
   ];
 
   const stats = [
+    { value: '100%', label: 'Digital' },
     { value: '400+', label: 'Bankpartner' },
-    { value: '2.500+', label: 'Vermittelte Finanzierungen' },
-    { value: '98%', label: 'Erfolgsquote' },
-    { value: '48h', label: 'Erste Einschätzung' },
+    { value: '48h', label: 'Ersteinschätzung' },
+    { value: '24/7', label: 'Status-Tracking' },
+  ];
+
+  const processSteps = [
+    { 
+      step: '1', 
+      title: 'Daten erfassen', 
+      description: 'Füllen Sie Ihre Selbstauskunft digital aus — wir führen Sie Schritt für Schritt.' 
+    },
+    { 
+      step: '2', 
+      title: 'Dokumente hochladen', 
+      description: 'Unser System prüft automatisch auf Vollständigkeit und bereitet bankfertig auf.' 
+    },
+    { 
+      step: '3', 
+      title: 'Finanzierung erhalten', 
+      description: 'Ihr Finanzierungsmanager orchestriert die Einreichung bei den passenden Banken.' 
+    },
+  ];
+
+  const usp = [
+    {
+      title: 'Keine Vermittlungsplattform',
+      description: 'Wir sind nicht ProHyp oder Interhyp. Wir orchestrieren — mit eigenem System, eigenen Finanzierungsmanagern und direkten Bankbeziehungen.',
+    },
+    {
+      title: 'Früher ansetzen',
+      description: 'Schon bei der Selbstauskunft helfen wir. Korrekte Daten, vollständige Unterlagen, optimale Aufbereitung — bevor es zur Bank geht.',
+    },
+    {
+      title: 'Volle Transparenz',
+      description: 'Verfolgen Sie jeden Schritt online. Sehen Sie den Status Ihrer Anfrage in Echtzeit. Keine Blackbox.',
+    },
   ];
 
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10" />
-        <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 text-sm mb-6">
-              <Sparkles className="h-4 w-4" />
-              Professionelle Finanzierungsvermittlung
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Ihre Immobilienfinanzierung.{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">
-                Einfach gemacht.
-              </span>
-            </h1>
-            <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
-              Starten Sie Ihren Bonitätscheck und erhalten Sie innerhalb von 48 Stunden 
-              eine professionelle Einschätzung Ihrer Finanzierungsmöglichkeiten.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/futureroom/bonitat">
-                <Button size="lg" className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 hover:from-amber-500 hover:to-orange-600 text-lg px-8">
-                  Bonitätscheck starten
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/futureroom/karriere">
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 text-lg px-8">
-                  Für Finanzberater
-                </Button>
-              </Link>
-            </div>
+      <section className="fr-hero">
+        <div className="fr-hero-content">
+          <div className="fr-hero-badge">
+            <Sparkles className="h-4 w-4" />
+            Digitale Finanzierungsorchestrierung
+          </div>
+          <h1 className="fr-hero-title">
+            Immobilienfinanzierung.{' '}
+            <span className="highlight">Neu gedacht.</span>
+          </h1>
+          <p className="fr-hero-subtitle">
+            Wir orchestrieren Ihre Finanzierung von Anfang an — KI-gestützte Aufbereitung, 
+            vollständige Finanzierungsordner, direkte Bankeinreichung. Alles digital.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/futureroom/bonitat">
+              <button className="fr-btn fr-btn-primary text-lg px-8">
+                Finanzierung starten
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </Link>
+            <Link to="/futureroom/karriere">
+              <button className="fr-btn fr-btn-outline text-lg px-8">
+                Finanzierungsmanager werden
+              </button>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 border-y border-white/10">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-amber-400 mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-white/60">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+      <section className="fr-stats-bar">
+        <div className="fr-stats-grid">
+          {stats.map((stat, index) => (
+            <div key={index}>
+              <div className="fr-stat-value">{stat.value}</div>
+              <div className="fr-stat-label">{stat.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Warum FutureRoom?</h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              Wir verbinden modernste Technologie mit persönlicher Beratung für 
-              die beste Finanzierungslösung.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature, index) => (
-              <Card key={index} className="bg-white/5 border-white/10">
-                <CardContent className="pt-6">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center text-amber-400 mb-4">
-                    {feature.icon}
-                  </div>
-                  <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
-                  <p className="text-sm text-white/60">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <section className="fr-section">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Warum FutureRoom?</h2>
+          <p className="fr-section-subtitle">
+            Wir sind keine klassische Vermittlungsplattform. Wir orchestrieren den gesamten 
+            Finanzierungsprozess mit modernster Technologie.
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature, index) => (
+            <div key={index} className="fr-card">
+              <div className="fr-card-icon">
+                {feature.icon}
+              </div>
+              <h3 className="fr-card-title">{feature.title}</h3>
+              <p className="fr-card-text">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* USP Section */}
+      <section className="fr-process">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Was uns unterscheidet</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+          {usp.map((item, index) => (
+            <div key={index} className="fr-card text-center">
+              <h3 className="fr-card-title mb-3">{item.title}</h3>
+              <p className="fr-card-text">{item.description}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* Process Section */}
-      <section className="py-20 bg-white/5">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">So einfach geht's</h2>
-          </div>
-          <div className="max-w-4xl mx-auto">
-            <div className="grid gap-8 md:grid-cols-3">
-              {[
-                { step: '1', title: 'Daten eingeben', description: 'Füllen Sie den Bonitätscheck aus – kostenlos und unverbindlich.' },
-                { step: '2', title: 'Prüfung', description: 'Unsere Experten prüfen Ihre Unterlagen und finden passende Banken.' },
-                { step: '3', title: 'Finanzierung', description: 'Sie erhalten die besten Angebote und schließen Ihre Finanzierung ab.' },
-              ].map((item, index) => (
-                <div key={index} className="text-center">
-                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl font-bold text-slate-900 mx-auto mb-4">
-                    {item.step}
-                  </div>
-                  <h3 className="font-semibold text-white mb-2">{item.title}</h3>
-                  <p className="text-sm text-white/60">{item.description}</p>
-                </div>
-              ))}
+      <section className="fr-section">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">So einfach funktioniert's</h2>
+          <p className="fr-section-subtitle">
+            Drei Schritte zu Ihrer Finanzierung — wir begleiten Sie bei jedem.
+          </p>
+        </div>
+        <div className="fr-process-steps">
+          {processSteps.map((item, index) => (
+            <div key={index} className="fr-process-step">
+              <div className="fr-process-number">{item.step}</div>
+              <h3 className="fr-process-title">{item.title}</h3>
+              <p className="fr-process-text">{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Finanzierungsmanager Teaser */}
+      <section className="fr-section">
+        <div className="fr-card" style={{ background: 'linear-gradient(135deg, hsl(165 70% 36% / 0.08) 0%, hsl(158 64% 52% / 0.05) 100%)', borderColor: 'hsl(165 70% 36% / 0.2)' }}>
+          <div className="flex flex-col md:flex-row items-center gap-8 p-4">
+            <div className="flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(165 70% 36%) 0%, hsl(158 64% 52%) 100%)' }}>
+                <Users className="h-10 w-10 text-white" />
+              </div>
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'hsl(210 30% 15%)' }}>
+                Werden Sie Finanzierungsmanager
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Sie haben eine §34i-Zulassung und wollen mit modernem Tooling arbeiten? 
+                Übernehmen Sie Finanzierungsfälle aus unserem System und profitieren Sie von 
+                fertigen Unterlagen und direkten Bankzugängen.
+              </p>
+              <Link to="/futureroom/karriere">
+                <button className="fr-btn fr-btn-outline-light">
+                  Mehr erfahren
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <Card className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30">
-            <CardContent className="py-12 text-center">
-              <h2 className="text-3xl font-bold mb-4">Bereit für Ihre Finanzierung?</h2>
-              <p className="text-white/70 mb-8 max-w-2xl mx-auto">
-                Starten Sie jetzt Ihren kostenlosen Bonitätscheck und erhalten Sie 
-                innerhalb von 48 Stunden eine professionelle Einschätzung.
-              </p>
-              <Link to="/futureroom/bonitat">
-                <Button size="lg" className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 hover:from-amber-500 hover:to-orange-600">
-                  Jetzt starten
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+      <section className="fr-cta">
+        <div className="fr-cta-content">
+          <h2 className="fr-cta-title">Bereit für Ihre Finanzierung?</h2>
+          <p className="fr-cta-text">
+            Starten Sie jetzt Ihre digitale Finanzierungsanfrage. 
+            Kostenlos, unverbindlich und vollständig online.
+          </p>
+          <Link to="/futureroom/bonitat">
+            <button className="fr-btn fr-btn-primary">
+              Jetzt starten
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </Link>
         </div>
       </section>
     </div>
