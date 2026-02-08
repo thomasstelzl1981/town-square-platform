@@ -245,7 +245,7 @@ const ArmstrongActions: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      {action.requires_confirmation ? (
+                      {action.execution_mode === 'execute_with_confirmation' || action.execution_mode === 'draft_only' ? (
                         <Shield className="h-4 w-4 text-status-warning mx-auto" />
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -313,15 +313,19 @@ const ArmstrongActions: React.FC = () => {
                     </Badge>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-1">Bestätigung</h4>
-                    {selectedAction.requires_confirmation ? (
-                      <Badge variant="outline" className="bg-status-warning/10">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Erforderlich
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Nicht erforderlich</Badge>
-                    )}
+                    <h4 className="text-sm font-medium mb-1">Execution Mode</h4>
+                    <Badge variant="outline" className={
+                      selectedAction.execution_mode === 'execute_with_confirmation' ? 'bg-status-warning/10' :
+                      selectedAction.execution_mode === 'draft_only' ? 'bg-primary/10' :
+                      selectedAction.execution_mode === 'readonly' ? 'bg-muted' : ''
+                    }>
+                      {selectedAction.execution_mode === 'readonly' && 'Readonly'}
+                      {selectedAction.execution_mode === 'draft_only' && 'Draft Only'}
+                      {selectedAction.execution_mode === 'execute_with_confirmation' && (
+                        <><Shield className="h-3 w-3 mr-1" />Mit Bestätigung</>
+                      )}
+                      {selectedAction.execution_mode === 'execute' && 'Direkt'}
+                    </Badge>
                   </div>
                 </div>
 
