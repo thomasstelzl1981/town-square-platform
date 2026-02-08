@@ -10749,6 +10749,39 @@ export type Database = {
           },
         ]
       }
+      widget_preferences: {
+        Row: {
+          config_json: Json | null
+          created_at: string
+          enabled: boolean
+          id: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+          widget_code: string
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+          widget_code: string
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+          widget_code?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_armstrong_costs_daily: {

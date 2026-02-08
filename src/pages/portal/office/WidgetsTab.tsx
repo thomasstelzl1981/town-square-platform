@@ -1,10 +1,13 @@
 /**
- * WidgetsTab — Archive of completed Armstrong widgets
+ * WidgetsTab — KI-Office Widgets Management
  * 
- * Displays all completed/cancelled widgets in a compact list view.
+ * Two tabs:
+ * 1. Systemwidgets - Configure dashboard system widgets
+ * 2. Aufgabenwidgets - Archive of completed Armstrong widgets
  */
 
 import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,7 +31,8 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  Inbox
+  Inbox,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -36,6 +40,7 @@ import { de } from 'date-fns/locale';
 import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SystemWidgetsTab } from './SystemWidgetsTab';
 
 // Icon mapping
 const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
@@ -85,7 +90,7 @@ const DEMO_COMPLETED_WIDGETS: Widget[] = [
   },
 ];
 
-export function WidgetsTab() {
+function TaskWidgetsContent() {
   const isMobile = useIsMobile();
   const [widgets] = useState<Widget[]>(DEMO_COMPLETED_WIDGETS);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -249,5 +254,37 @@ export function WidgetsTab() {
         </div>
       )}
     </div>
+  );
+}
+
+export function WidgetsTab() {
+  const isMobile = useIsMobile();
+
+  return (
+    <Tabs defaultValue="system" className="w-full">
+      <div className={cn(
+        "border-b",
+        isMobile ? "px-4 pt-4" : "px-4 md:px-6 lg:px-8 pt-4"
+      )}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="system" className="gap-2">
+            <Settings2 className="h-4 w-4" />
+            Systemwidgets
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="gap-2">
+            <Layers className="h-4 w-4" />
+            Aufgaben
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="system" className="mt-0">
+        <SystemWidgetsTab />
+      </TabsContent>
+
+      <TabsContent value="tasks" className="mt-0">
+        <TaskWidgetsContent />
+      </TabsContent>
+    </Tabs>
   );
 }

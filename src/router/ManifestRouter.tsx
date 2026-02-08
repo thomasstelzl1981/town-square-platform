@@ -195,6 +195,7 @@ import {
   ArmstrongPolicies,
   ArmstrongTestHarness,
 } from '@/pages/admin/armstrong';
+import ArmstrongIntegrations from '@/pages/admin/armstrong/ArmstrongIntegrations';
 
 const adminComponentMap: Record<string, React.ComponentType> = {
   Dashboard,
@@ -237,6 +238,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   ArmstrongBilling,
   ArmstrongPolicies,
   ArmstrongTestHarness,
+  ArmstrongIntegrations,
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)

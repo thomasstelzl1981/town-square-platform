@@ -149,6 +149,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/knowledge", component: "ArmstrongKnowledge", title: "Knowledge Base" },
     { path: "armstrong/policies", component: "ArmstrongPolicies", title: "Policies" },
     { path: "armstrong/test", component: "ArmstrongTestHarness", title: "Test Harness" },
+    { path: "armstrong/integrations", component: "ArmstrongIntegrations", title: "Widget-Integrationen" },
   ],
 };
 
