@@ -1,47 +1,46 @@
 /* =============================================================================
-   SYSTEM OF A TOWN — SpaceX/Revolut Premium Styles
-   Version: 2.0.0 — Deep Space Aesthetic, No Blue
+   SYSTEM OF A TOWN — SpaceX-Inspired Premium Styles
+   Version: 1.0.0
    ============================================================================= */
 
 /* ===========================================================================
-   ATMOSPHERIC BACKGROUNDS
+   ATMOSPHERIC BACKGROUNDS — THEME-AWARE
    =========================================================================== */
 
-/* Deep Space Atmosphere (Dark Mode - Default) */
-html.theme-sot-dark .sot-atmosphere,
-html[data-sot-theme="dark"] .sot-atmosphere,
-.theme-sot-dark .sot-atmosphere {
+/* Deep Space Atmosphere (Dark Mode) */
+.theme-sot-dark .sot-atmosphere,
+:root[data-sot-theme="dark"] .sot-atmosphere {
   background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(38 80% 20% / 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, hsl(0 0% 15% / 0.4) 0%, transparent 50%),
-    linear-gradient(180deg, hsl(0 0% 4%) 0%, hsl(0 0% 2%) 100%);
+    radial-gradient(ellipse 80% 70% at 90% 0%, hsl(220 60% 18% / 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(275 45% 14% / 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, hsl(222 70% 4%) 0%, hsl(222 80% 2%) 100%);
 }
 
-/* Light Atmosphere */
-html.theme-sot .sot-atmosphere,
-html[data-sot-theme="light"] .sot-atmosphere,
-.theme-sot .sot-atmosphere {
+/* Light Atmosphere (Light Mode) */
+.theme-sot .sot-atmosphere,
+:root[data-sot-theme="light"] .sot-atmosphere {
   background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(38 60% 90% / 0.5) 0%, transparent 60%),
-    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 98%) 100%);
+    radial-gradient(ellipse 80% 70% at 90% 0%, hsl(210 60% 92% / 0.8) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(217 60% 88% / 0.6) 0%, transparent 60%),
+    linear-gradient(180deg, hsl(210 40% 98%) 0%, hsl(210 40% 96%) 100%);
 }
 
-/* Fallback */
+/* Fallback when no theme class is on parent */
 .sot-atmosphere {
   background: hsl(var(--z3-background));
 }
 
-/* Amber Gradient for CTAs */
+/* Nebula Gradient for CTAs */
 .sot-nebula {
-  background: linear-gradient(135deg, hsl(38 95% 50%) 0%, hsl(28 90% 45%) 100%);
+  background: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(275 45% 45%) 100%);
 }
 
 /* Subtle Grid Pattern */
 .sot-grid-pattern {
   background-image: 
-    linear-gradient(hsl(var(--z3-border) / 0.2) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--z3-border) / 0.2) 1px, transparent 1px);
-  background-size: 80px 80px;
+    linear-gradient(hsl(var(--z3-border) / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--z3-border) / 0.3) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
 /* ===========================================================================
@@ -65,7 +64,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(ellipse 100% 80% at 50% -30%, hsl(38 95% 55% / 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 100% 100% at 50% -20%, hsl(217 91% 60% / 0.15) 0%, transparent 60%);
   pointer-events: none;
 }
 
@@ -76,33 +75,34 @@ html[data-sot-theme="light"] .sot-atmosphere,
 .sot-glass {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  background: hsl(var(--z3-background) / 0.85);
+  background: hsl(var(--z3-background) / 0.8);
   border: 1px solid hsl(var(--z3-border) / 0.5);
 }
 
 .sot-glass-card {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  background: hsl(var(--z3-card) / 0.7);
+  background: hsl(var(--z3-card) / 0.6);
   border: 1px solid hsl(var(--z3-border) / 0.4);
   border-radius: 1.5rem;
 }
 
 /* ===========================================================================
-   TYPOGRAPHY — Clean Sans-Serif (SpaceX Style)
+   TYPOGRAPHY — D-DIN INSPIRED
    =========================================================================== */
 
 .sot-display {
   font-size: clamp(2.5rem, 8vw, 5rem);
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.0;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-transform: uppercase;
 }
 
 .sot-headline {
   font-size: clamp(1.75rem, 4vw, 3rem);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.1;
 }
 
@@ -115,7 +115,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
 .sot-label {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: hsl(var(--z3-muted-foreground));
 }
@@ -126,7 +126,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
 
 .sot-btn-primary {
   background: hsl(var(--z3-accent));
-  color: hsl(0 0% 0%);
+  color: hsl(var(--z3-background));
   padding: 0.875rem 2rem;
   border-radius: 9999px;
   font-weight: 600;
@@ -203,7 +203,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, hsl(var(--z3-accent)), hsl(28 90% 45%));
+  background: linear-gradient(90deg, hsl(var(--z3-accent)), hsl(275 45% 50%));
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -211,7 +211,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
 .sot-module-card:hover {
   border-color: hsl(var(--z3-accent) / 0.5);
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px -15px hsl(0 0% 0% / 0.3);
+  box-shadow: 0 20px 40px -15px hsl(var(--z3-accent) / 0.15);
 }
 
 .sot-module-card:hover::before {
@@ -230,7 +230,10 @@ html[data-sot-theme="light"] .sot-atmosphere,
   font-size: clamp(2.5rem, 6vw, 4rem);
   font-weight: 700;
   line-height: 1;
-  color: hsl(var(--z3-foreground));
+  background: linear-gradient(135deg, hsl(var(--z3-foreground)), hsl(var(--z3-accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .sot-stat-label {
@@ -292,7 +295,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
 }
 
 /* ===========================================================================
-   GLOW EFFECTS (Amber)
+   GLOW EFFECTS
    =========================================================================== */
 
 .sot-glow-accent {
@@ -307,6 +310,7 @@ html[data-sot-theme="light"] .sot-atmosphere,
    RESPONSIVE UTILITIES
    =========================================================================== */
 
+/* Mobile First Adjustments */
 @media (max-width: 640px) {
   .sot-hero-section {
     min-height: 85vh;
@@ -361,12 +365,14 @@ html[data-sot-theme="light"] .sot-atmosphere,
     padding: 1.5rem;
   }
   
+  /* Fix grid on tablet */
   .zone3-container {
     padding-left: 1rem;
     padding-right: 1rem;
   }
 }
 
+/* Large screens */
 @media (min-width: 1024px) {
   .sot-display {
     font-size: 4.5rem;
@@ -440,26 +446,6 @@ html[data-sot-theme="light"] .sot-atmosphere,
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===========================================================================
-   FEATURE IMAGES
-   =========================================================================== */
-
-.sot-feature-image {
-  border-radius: 1.5rem;
-  overflow: hidden;
-  position: relative;
-}
-
-.sot-feature-image::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, hsl(var(--z3-background)) 0%, transparent 30%);
-  pointer-events: none;
-}
-
-.sot-feature-image img {
-  width: 100%;
-  height: auto;
-  display: block;
+.zone3-page * {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
