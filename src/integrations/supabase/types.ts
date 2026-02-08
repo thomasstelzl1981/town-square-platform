@@ -777,6 +777,271 @@ export type Database = {
           },
         ]
       }
+      admin_contact_tags: {
+        Row: {
+          contact_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          tag: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          tag: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_contact_tags_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_email_enrollments: {
+        Row: {
+          completed_at: string | null
+          contact_id: string | null
+          current_step: number | null
+          enrolled_at: string | null
+          id: string
+          last_sent_at: string | null
+          next_send_at: string | null
+          sequence_id: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id?: string | null
+          current_step?: number | null
+          enrolled_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          sequence_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string | null
+          current_step?: number | null
+          enrolled_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          sequence_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_email_enrollments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_email_enrollments_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_email_sequence_steps: {
+        Row: {
+          body_override: string | null
+          created_at: string | null
+          delay_days: number | null
+          delay_hours: number | null
+          id: string
+          send_condition: string | null
+          sequence_id: string | null
+          stats: Json | null
+          step_order: number
+          subject_override: string | null
+          template_id: string | null
+        }
+        Insert: {
+          body_override?: string | null
+          created_at?: string | null
+          delay_days?: number | null
+          delay_hours?: number | null
+          id?: string
+          send_condition?: string | null
+          sequence_id?: string | null
+          stats?: Json | null
+          step_order: number
+          subject_override?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          body_override?: string | null
+          created_at?: string | null
+          delay_days?: number | null
+          delay_hours?: number | null
+          id?: string
+          send_condition?: string | null
+          sequence_id?: string | null
+          stats?: Json | null
+          step_order?: number
+          subject_override?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_email_sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_email_sequence_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_email_sequences: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          stats: Json | null
+          status: string | null
+          target_categories: string[] | null
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          stats?: Json | null
+          status?: string | null
+          target_categories?: string[] | null
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          stats?: Json | null
+          status?: string | null
+          target_categories?: string[] | null
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      admin_email_templates: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      admin_email_threads: {
+        Row: {
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          last_activity_at: string | null
+          message_count: number | null
+          status: string | null
+          subject: string | null
+          unread_count: number | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_activity_at?: string | null
+          message_count?: number | null
+          status?: string | null
+          subject?: string | null
+          unread_count?: number | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_activity_at?: string | null
+          message_count?: number | null
+          status?: string | null
+          subject?: string | null
+          unread_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_email_threads_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_inbound_emails: {
         Row: {
           body_html: string | null
@@ -791,6 +1056,7 @@ export type Database = {
           received_at: string
           resend_inbound_id: string | null
           subject: string | null
+          thread_id: string | null
           to_email: string | null
         }
         Insert: {
@@ -806,6 +1072,7 @@ export type Database = {
           received_at?: string
           resend_inbound_id?: string | null
           subject?: string | null
+          thread_id?: string | null
           to_email?: string | null
         }
         Update: {
@@ -821,6 +1088,7 @@ export type Database = {
           received_at?: string
           resend_inbound_id?: string | null
           subject?: string | null
+          thread_id?: string | null
           to_email?: string | null
         }
         Relationships: [
@@ -838,6 +1106,13 @@ export type Database = {
             referencedRelation: "admin_outbound_emails"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "admin_inbound_emails_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_threads"
+            referencedColumns: ["id"]
+          },
         ]
       }
       admin_outbound_emails: {
@@ -849,6 +1124,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           delivered_at: string | null
+          enrollment_id: string | null
           error_message: string | null
           id: string
           opened_at: string | null
@@ -856,8 +1132,10 @@ export type Database = {
           resend_message_id: string | null
           routing_token: string | null
           sent_at: string | null
+          sequence_step_id: string | null
           status: string
           subject: string
+          thread_id: string | null
           to_email: string
           to_name: string | null
         }
@@ -869,6 +1147,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
+          enrollment_id?: string | null
           error_message?: string | null
           id?: string
           opened_at?: string | null
@@ -876,8 +1155,10 @@ export type Database = {
           resend_message_id?: string | null
           routing_token?: string | null
           sent_at?: string | null
+          sequence_step_id?: string | null
           status?: string
           subject: string
+          thread_id?: string | null
           to_email: string
           to_name?: string | null
         }
@@ -889,6 +1170,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
+          enrollment_id?: string | null
           error_message?: string | null
           id?: string
           opened_at?: string | null
@@ -896,8 +1178,10 @@ export type Database = {
           resend_message_id?: string | null
           routing_token?: string | null
           sent_at?: string | null
+          sequence_step_id?: string | null
           status?: string
           subject?: string
+          thread_id?: string | null
           to_email?: string
           to_name?: string | null
         }
@@ -909,7 +1193,100 @@ export type Database = {
             referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "admin_outbound_emails_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_outbound_emails_sequence_step_id_fkey"
+            columns: ["sequence_step_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_sequence_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_outbound_emails_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_threads"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      admin_research_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          error_message: string | null
+          id: string
+          job_type: string
+          query_params: Json
+          results: Json | null
+          results_count: number | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          job_type: string
+          query_params: Json
+          results?: Json | null
+          results_count?: number | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          query_params?: Json
+          results?: Json | null
+          results_count?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      admin_saved_segments: {
+        Row: {
+          contact_count: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          filter_config: Json
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          filter_config: Json
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          filter_config?: Json
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       agreement_templates: {
         Row: {

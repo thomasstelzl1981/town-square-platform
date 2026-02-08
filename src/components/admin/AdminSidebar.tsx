@@ -35,9 +35,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'MasterTemplatesImmobilienakte': Building2,
   'MasterTemplatesSelbstauskunft': FileText,
   // KI Office
+  'AdminKiOfficeDashboard': Sparkles,
   'AdminKiOfficeEmail': Mail,
+  'AdminKiOfficeSequenzen': Target,
+  'AdminKiOfficeTemplates': FileText,
   'AdminKiOfficeKontakte': Contact,
-  'CommunicationHub': Sparkles,
+  'AdminKiOfficeRecherche': Users,
   'TileCatalog': Grid3X3,
   'Integrations': Plug,
   'Oversight': Eye,
@@ -115,8 +118,10 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('masterdata/')) {
     return 'masterdata';
   }
-  // KI Office (separate menu items)
-  if (path === 'ki-office-email' || path === 'ki-office-kontakte' || path === 'communication') {
+  // KI Office (all sub-pages)
+  if (path === 'ki-office' || path === 'ki-office-email' || path === 'ki-office-kontakte' || 
+      path === 'ki-office-sequenzen' || path === 'ki-office-templates' || path === 'ki-office-recherche' ||
+      path === 'communication') {
     return 'ki-office';
   }
   // Armstrong Zone 1
@@ -162,8 +167,9 @@ function shouldShowInNav(path: string): boolean {
       path === 'agents' || path === 'futureroom') {
     return true;
   }
-  // KI Office items are now top-level, show them
-  if (path === 'ki-office-email' || path === 'ki-office-kontakte') {
+  // KI Office items show all
+  if (path === 'ki-office' || path === 'ki-office-email' || path === 'ki-office-kontakte' ||
+      path === 'ki-office-sequenzen' || path === 'ki-office-templates' || path === 'ki-office-recherche') {
     return true;
   }
   // Armstrong Zone 1 - show all 7 menu items
