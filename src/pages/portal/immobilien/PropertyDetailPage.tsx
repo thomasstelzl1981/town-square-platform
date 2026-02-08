@@ -170,7 +170,7 @@ export default function PropertyDetailPage() {
       // P0-FIX: Removed .eq('is_active', true) and order — loans table has no is_active column
       const { data: loansResult } = await (supabase as any)
         .from('loans')
-        .select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
+        .select('id, loan_number, bank_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
         .eq('property_id', id)
         .eq('tenant_id', activeTenantId);
 
@@ -178,7 +178,7 @@ export default function PropertyDetailPage() {
       const mappedFinancing: PropertyFinancing[] = (loansResult || []).map((loan: any) => ({
         id: loan.id,
         loan_number: loan.loan_number,
-        bank_name: loan.lender_name,
+        bank_name: loan.bank_name,
         original_amount: null,
         current_balance: loan.outstanding_balance_eur,
         interest_rate: loan.interest_rate_percent,
@@ -309,14 +309,15 @@ export default function PropertyDetailPage() {
             )}
           </TabsContent>
 
-          {/* NEW: Investment Simulation Tab */}
+          {/* Investment Simulation Tab - shows for all properties (with or without financing) */}
           <TabsContent value="simulation">
-            {property && financing.length > 0 ? (
+            {property ? (
               <InventoryInvestmentSimulation
                 data={{
                   purchasePrice: property.purchase_price || property.market_value || 0,
-                  marketValue: property.market_value || 0,
+                  marketValue: property.market_value || property.purchase_price || 0,
                   annualRent: (unit?.current_monthly_rent || 0) * 12,
+                  // Fallback to 0 if no financing (debt-free property)
                   outstandingBalance: financing[0]?.current_balance || 0,
                   interestRatePercent: financing[0]?.interest_rate || 0,
                   annuityMonthly: financing[0]?.monthly_rate || 0,
@@ -327,15 +328,7 @@ export default function PropertyDetailPage() {
                   marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
                 }}
               />
-            ) : (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <div className="text-center">
-                  <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">Keine Finanzierungsdaten vorhanden</p>
-                  <p className="text-sm mt-1">Fügen Sie zuerst ein Darlehen hinzu, um die Simulation zu nutzen.</p>
-                </div>
-              </div>
-            )}
+            ) : null}
           </TabsContent>
 
           <TabsContent value="expose">
