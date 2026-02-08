@@ -1,355 +1,233 @@
 
-# Investment-Engine Homogenisierung — Vollständiger Plan v2.0
+# Reparaturplan: Investment-Engine Homogenisierung v2.1
 
-## Executive Summary
+## Identifizierte Kernprobleme
 
-Dieser Plan konsolidiert die drei Investment-Ansichten (Zone 3 KAUFY, MOD-08 Suche, MOD-09 Beratung) auf eine gemeinsame Komponentenbasis. Neue Anforderungen:
+Nach tiefgehender Analyse aller drei Investment-Ansichten wurden folgende kritische Probleme identifiziert:
 
-1. **Quadratische Ergebnis-Kacheln** im 4-Quadranten-Layout (Bild | Daten | Einnahmen | Ausgaben)
-2. **T-Konto-Stil** (Adenauer-Kreuz) für die Haushaltsrechnung
-3. **Dokumenten-Freigabe** mit DSGVO-konformer Mieterdaten-Schwärzung
-4. **Single Source of Truth** für alle Investment-Exposés
+| # | Problem | Betroffene Dateien | Priorität |
+|---|---------|-------------------|-----------|
+| 1 | **Bilder nicht sichtbar** — `ExposeImageGallery` erhält `listing.id` statt `property_id` | `InvestmentExposePage.tsx`, `ExposeImageGallery.tsx` | KRITISCH |
+| 2 | **Metrics zeigen 0 €** — Cache wird nach Render gefüllt, Kacheln zeigen leere Werte | `SucheTab.tsx`, `InvestmentResultTile.tsx` | KRITISCH |
+| 3 | **MOD-09 keine Ergebnisse** — Race-Condition bei `refetch()` und State-Update | `BeratungTab.tsx` | KRITISCH |
+| 4 | **Google Maps falsch positioniert** — Mitten im Content statt ganz unten | `InvestmentExposePage.tsx` | HOCH |
+| 5 | **Kachel-Design falsch** — 4 gleiche Quadranten statt Bild oben, T-Konto unten | `InvestmentResultTile.tsx` | HOCH |
+| 6 | **Kein Titelbild in Suchergebnissen** — `hero_image_path: null` fest gesetzt | `SucheTab.tsx`, `BeratungTab.tsx` | HOCH |
 
 ---
 
-## Teil 1: Ergebnis-Kachel (InvestmentResultTile)
+## Detaillierte Reparaturen
 
-### Anforderung
-Die Suchergebnis-Kacheln sollen quadratisch sein und in vier Quadranten aufgeteilt werden:
+### 1. Bilder-Query korrigieren (KRITISCH)
 
-```text
-┌─────────────────┬─────────────────┐
-│                 │ € 320.000       │
-│    [BILD]       │ 87 m² · Hamburg │
-│   Titelbild     │ MFH · 2 WE      │
-│                 │ 4,2% Rendite    │
-├─────────────────┼─────────────────┤
-│   EINNAHMEN     │   AUSGABEN      │
-│ + Miete €1.100  │ − Zins    €450  │
-│                 │ − Tilgung €300  │
-├─────────────────┴─────────────────┤
-│  MONATSBELASTUNG: +€350/Mo  ✓     │
-└───────────────────────────────────┘
-```
+**Problem:** Die Bildergalerie fragt nach `object_id = listing.id`, aber Bilder sind an `property_id` gebunden.
 
-### Komponente: `InvestmentResultTile.tsx`
+**Lösung A: Property-ID in der Query extrahieren**
 
-**Neue Datei:** `src/components/investment/InvestmentResultTile.tsx`
+In `InvestmentExposePage.tsx`:
+- Die Query liefert bereits `properties.id` — diesen Wert an `ExposeImageGallery` übergeben
+- Änderung: `propertyId={listing.property_id}` statt `propertyId={listing.id}`
 
+**Lösung B: ExposeImageGallery flexibler machen**
+- Falls `propertyId` nicht übergeben wird, eine zusätzliche Query ausführen um `property_id` aus dem Listing zu holen
+
+**Betroffene Dateien:**
+- `src/pages/portal/investments/InvestmentExposePage.tsx`
+- `src/components/investment/ExposeImageGallery.tsx` (optional: Fallback-Logik)
+
+---
+
+### 2. Metrics-Berechnung synchronisieren (KRITISCH)
+
+**Problem:** Die Investment-Engine-Berechnung läuft asynchron. Die Kacheln rendern bevor die Ergebnisse da sind.
+
+**Lösung:**
+1. Berechnung blockierend vor dem Setzen von `hasSearched` abschließen
+2. `metricsCache` initial mit "loading" State füllen
+3. Fallback-Werte basierend auf Standard-Finanzierungsparametern anzeigen
+
+**Betroffene Dateien:**
+- `src/pages/portal/investments/SucheTab.tsx`
+
+**Änderung:**
 ```typescript
-interface InvestmentResultTileProps {
-  listing: PublicListing;
-  metrics?: InvestmentMetrics | null;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => void;
-  showProvision?: boolean;
-  linkPrefix?: string;
-}
+const handleInvestmentSearch = useCallback(async () => {
+  await refetch();
+  
+  const newCache: Record<string, any> = {};
+  
+  // Alle Berechnungen ABWARTEN
+  await Promise.all(listings.slice(0, 20).map(async (listing) => {
+    const result = await calculate(input);
+    if (result) {
+      newCache[listing.listing_id] = {
+        monthlyBurden: result.summary.monthlyBurden,
+        // ...
+      };
+    }
+  }));
+  
+  setMetricsCache(newCache);
+  setHasSearched(true);  // NACH dem Cache-Update
+}, [...]);
 ```
-
-**Struktur:**
-- `aspect-square` für quadratisches Format
-- CSS Grid: `grid-cols-2 grid-rows-[1fr_1fr_auto]`
-- **Quadrant 1 (oben links):** Bild mit Herz-Icon für Favoriten
-- **Quadrant 2 (oben rechts):** Objektdaten (Preis, Fläche, Ort, Typ, Rendite)
-- **Quadrant 3 (unten links):** Einnahmen (grüner Hintergrund)
-- **Quadrant 4 (unten rechts):** Ausgaben (roter Hintergrund)
-- **Footer:** Monatsbelastung hervorgehoben mit farbcodiertem Ergebnis
 
 ---
 
-## Teil 2: Haushaltsrechnung als T-Konto
+### 3. MOD-09 Race-Condition beheben (KRITISCH)
 
-### Anforderung
-Die Einnahmen-Ausgaben-Rechnung soll im klassischen Buchhaltungsstil (Adenauer-Kreuz / T-Konto) dargestellt werden:
+**Problem:** `handleSearch` ruft `refetch()` auf, aber iteriert dann über die alte `rawListings` Variable.
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│                    HAUSHALTSRECHNUNG                        │
-├────────────────────────────┬───────────────────────────────┤
-│       EINNAHMEN p.a.       │       AUSGABEN p.a.           │
-│                            │                               │
-│  + Mieteinnahmen  €12.000  │  − Zinsen         €5.000      │
-│  + Steuerersparnis €2.400  │  − Tilgung        €3.000      │
-│                            │  − Verwaltung       €300      │
-├────────────────────────────┴───────────────────────────────┤
-│                     NETTO-BELASTUNG                         │
-│                    +€340/Mo (positiver Cashflow)            │
-└────────────────────────────────────────────────────────────┘
-```
-
-### Änderung: `Haushaltsrechnung.tsx`
-
-**Neue Variante:** `variant="ledger"` (T-Konto-Stil)
-
+**Lösung:**
 ```typescript
-interface HaushaltsrechnungProps {
-  result: CalculationResult;
-  variant?: 'compact' | 'detailed' | 'ledger';  // NEU: ledger
-  showMonthly?: boolean;
-  className?: string;
-}
-```
-
-**T-Konto Layout:**
-- `grid md:grid-cols-2 gap-0` mit vertikaler Trennlinie
-- Linke Spalte: Grüner Rand, Einnahmen mit `+` Prefix
-- Rechte Spalte: Roter Rand, Ausgaben mit `−` Prefix
-- Footer: Ergebniszeile spanning beide Spalten
-
----
-
-## Teil 3: Dokumenten-Freigabe für Exposés
-
-### Anforderung
-Im Investment-Exposé müssen Dokumente abrufbar sein (Grundbuch, Energieausweis, Teilungserklärung etc.), jedoch mit DSGVO-konformer Sperrung von Mieterdaten.
-
-### Architektur
-
-**Neue Tabelle/Spalte in `document_links`:**
-```sql
-ALTER TABLE document_links ADD COLUMN 
-  expose_visibility TEXT DEFAULT 'internal' 
-  CHECK (expose_visibility IN ('internal', 'partner', 'public'));
-```
-
-**Dokumenten-Kategorien:**
-
-| Kategorie | Standard-Freigabe | Besonderheit |
-|-----------|-------------------|--------------|
-| Grundbuchauszug | `partner` | Freigabe für Partner-Netzwerk |
-| Energieausweis | `public` | Öffentlich (KAUFY) |
-| Teilungserklärung | `partner` | Freigabe für Partner |
-| Fotos | `public` | Öffentlich |
-| **Mietvertrag** | `internal` | **NIEMALS freigeben** |
-| **Nebenkostenabrechnung** | `internal` | **NIEMALS freigeben** |
-
-### Komponente: `ExposeDocuments.tsx`
-
-**Neue Datei:** `src/components/investment/ExposeDocuments.tsx`
-
-**Features:**
-- Query auf `document_links` mit `expose_visibility != 'internal'`
-- Automatische Filterung nach Viewer-Typ (public/partner/internal)
-- Kategorisierte Darstellung (Rechtliches, Energie, Sonstiges)
-- Download-Buttons mit Signed URLs
-
-### Schwärzungs-Workflow für Mieterdaten
-
-**Edge Function:** `sot-document-redact`
-
-Wenn ein Dokument mit Mieterdaten (erkannt an `document_type = 'lease'` oder `document_type = 'utility_bill'`) freigegeben werden soll:
-
-1. **Prüfung:** Dokument enthält sensible Mieterdaten?
-2. **KI-Schwärzung:** Automatische Erkennung und Schwärzung von:
-   - Mieter-Namen
-   - Mieter-Adressen (außer Objektadresse)
-   - Bankverbindungen
-   - Geburtsdaten
-3. **Speicherung:** Geschwärzte Kopie in separatem Storage-Pfad
-4. **Freigabe:** Nur geschwärzte Version wird extern sichtbar
-
----
-
-## Teil 4: Gemeinsame Exposé-Komponente
-
-### Komponente: `InvestmentExposeView.tsx`
-
-**Neue Datei:** `src/components/investment/InvestmentExposeView.tsx`
-
-Diese Komponente wird von allen drei Ansichten (KAUFY, MOD-08, MOD-09) verwendet.
-
-```typescript
-interface InvestmentExposeViewProps {
-  listing: ListingData;
-  images: ListingImage[];
-  documents: ExposeDocument[];
-  calcResult: CalculationResult | null;
-  params: CalculationInput;
-  onParamsChange: (params: CalculationInput) => void;
-  showMap?: boolean;
-  showDocuments?: boolean;
-  variant?: 'page' | 'modal';
-  viewerType?: 'public' | 'partner' | 'internal';
-}
-```
-
-**Layout-Struktur:**
-
-```text
-┌────────────────────────────────────────┬──────────────────┐
-│  [Bildergalerie mit Prev/Next/Dots]    │                  │
-├────────────────────────────────────────┤  INVESTMENT      │
-│  Titel · Adresse · Badges              │  SLIDER          │
-├────────────────────────────────────────┤  PANEL           │
-│  Key Facts (Preis, Fläche, Rendite)    │                  │
-├────────────────────────────────────────┤  (sticky)        │
-│  MasterGraph (40-Jahres-Projektion)    │                  │
-├────────────────────────────────────────┤                  │
-│  Haushaltsrechnung (T-Konto)           │                  │
-├────────────────────────────────────────┤                  │
-│  DetailTable40Jahre (Collapsible)      │                  │
-├────────────────────────────────────────┤                  │
-│  Dokumente (falls showDocuments=true)  │                  │
-├────────────────────────────────────────┴──────────────────┤
-│  Google Maps (ganz unten, volle Breite)                   │
-└───────────────────────────────────────────────────────────┘
-```
-
----
-
-## Teil 5: Bildergalerie zentralisieren
-
-### Komponente: `ExposeImageGallery.tsx` (Investment-Version)
-
-**Neue Datei:** `src/components/investment/ExposeImageGallery.tsx`
-
-Die bestehende `ExposeImageGallery` in `src/components/verkauf/` ist für die Editor-Ansicht (MOD-06). Für die Investment-Ansicht benötigen wir eine Read-Only-Version mit:
-
-- Navigation: Prev/Next Buttons
-- Dot-Indikatoren
-- Fullscreen-Lightbox
-- Klickbare Thumbnails
-- Lazy Loading
-
-**Query-Logik (kopiert aus KaufyExpose):**
-```typescript
-// Bilder über document_links → documents laden
-const { data: images } = useQuery({
-  queryKey: ['expose-images', propertyId],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('document_links')
-      .select(`
-        id, display_order, is_title_image,
-        documents!inner (id, name, file_path, mime_type)
-      `)
-      .eq('object_type', 'property')
-      .eq('object_id', propertyId)
-      .in('documents.mime_type', ['image/jpeg', 'image/png', 'image/webp']);
-    
-    // Signed URLs generieren...
-    return sortedImages;
+const handleSearch = useCallback(async () => {
+  const { data: freshListings } = await refetch();  // Nutze die frischen Daten
+  const listings = freshListings || [];
+  
+  // Iteriere über listings, nicht rawListings
+  for (const listing of listings) {
+    // ...calculate
   }
-});
+}, [refetch, calculate, searchParams]);  // rawListings NICHT in Dependencies
+```
+
+**Betroffene Dateien:**
+- `src/pages/portal/vertriebspartner/BeratungTab.tsx`
+
+---
+
+### 4. Google Maps an das Ende verschieben (HOCH)
+
+**Problem:** Map ist bei Zeile 285 platziert, sollte nach allen Tabs/Dokumenten sein.
+
+**Lösung:** Map-Block ans Ende des Left-Column Containers verschieben (nach `DetailTable40Jahre`).
+
+**Betroffene Dateien:**
+- `src/pages/portal/investments/InvestmentExposePage.tsx`
+
+**Vorher:**
+```
+[Image Gallery]
+[Property Details]
+[Map]  ← HIER IST SIE JETZT
+[MasterGraph]
+[Haushaltsrechnung]
+[DetailTable]
+```
+
+**Nachher:**
+```
+[Image Gallery]
+[Property Details]
+[MasterGraph]
+[Haushaltsrechnung]
+[DetailTable]
+[Map]  ← HIERHIN VERSCHIEBEN
 ```
 
 ---
 
-## Teil 6: Dokumenten-Freigabe in MOD-04/MOD-06
+### 5. Kachel-Design überarbeiten (HOCH)
 
-### Anforderung
-Im Verkaufsexposé (MOD-06) muss eine Kachel zur Dokumentenfreigabe existieren.
+**Problem:** Aktuelles Design teilt in 4 gleiche Quadranten. Gewünscht: Bild oben (50%), T-Konto unten (50%).
 
-### Komponente: `ExposeDocumentReleaseCard.tsx`
+**Gewünschtes Layout:**
 
-**Neue Datei:** `src/components/verkauf/ExposeDocumentReleaseCard.tsx`
-
-**Features:**
-- Zeigt alle verfügbaren Dokumente der Immobilie
-- Toggle-Switches für `expose_visibility` (intern/partner/öffentlich)
-- **Automatische Sperrung** von Mieterdokumenten
-- Warnung bei Freigabe sensibler Dokumente
-- Preview-Option für Dokumente
-
-**Integration in ExposeDetail.tsx:**
-```typescript
-// Neuer Tab "Dokumente" in Tabs
-<TabsTrigger value="dokumente">Dokumente</TabsTrigger>
-
-<TabsContent value="dokumente">
-  <ExposeDocumentReleaseCard 
-    propertyId={property.id}
-    listingId={listing?.id}
-  />
-</TabsContent>
+```text
+┌─────────────────────────────────────┐
+│           [BILD]                    │
+│         (Titelbild)                 │
+│                                     │
+├──────────────────┬──────────────────┤
+│  € 220.000       │  3,7% Rendite    │
+│  Leipzig · ETW   │  62 m²           │
+├──────────────────┴──────────────────┤
+│  EINNAHMEN       │  AUSGABEN        │
+│  + Miete  €682   │  − Zins   €495   │
+│  + Steuer €120   │  − Tilg.  €283   │
+├─────────────────────────────────────┤
+│  MONATSBELASTUNG: +€24/Mo ✓         │
+└─────────────────────────────────────┘
 ```
+
+**Änderungen:**
+- Obere Hälfte: Bild (volle Breite, `aspect-[4/3]` oder `aspect-video`)
+- Daten-Bar: Kompakte Zeile mit Preis, Ort, Rendite, Fläche
+- Untere Hälfte: T-Konto mit Summierung
+- Footer: Monatsbelastung prominent
+
+**Betroffene Dateien:**
+- `src/components/investment/InvestmentResultTile.tsx`
+
+---
+
+### 6. Titelbilder in Suchergebnissen laden (HOCH)
+
+**Problem:** `hero_image_path` wird fest auf `null` gesetzt statt das Titelbild zu laden.
+
+**Lösung:** Nach dem Laden der Listings eine zusätzliche Query für Titelbilder ausführen:
+
+```typescript
+// In SucheTab.tsx
+const propertyIds = listings.map(l => l.properties?.id).filter(Boolean);
+
+// Titelbilder laden
+const { data: titleImages } = await supabase
+  .from('document_links')
+  .select(`
+    object_id,
+    documents!inner (file_path)
+  `)
+  .in('object_id', propertyIds)
+  .eq('is_title_image', true)
+  .eq('object_type', 'property');
+
+// Signed URLs generieren und zuordnen
+```
+
+**Betroffene Dateien:**
+- `src/pages/portal/investments/SucheTab.tsx`
+- `src/pages/portal/vertriebspartner/BeratungTab.tsx`
 
 ---
 
 ## Technische Umsetzung
 
-### Neue Dateien
+### Dateien zu ändern
 
-| Datei | Zweck |
-|-------|-------|
-| `src/components/investment/InvestmentResultTile.tsx` | Quadratische Suchergebnis-Kachel |
-| `src/components/investment/InvestmentExposeView.tsx` | Gemeinsame Exposé-Ansicht |
-| `src/components/investment/ExposeImageGallery.tsx` | Read-Only Bildergalerie für Exposés |
-| `src/components/investment/ExposeDocuments.tsx` | Dokumenten-Download im Exposé |
-| `src/components/verkauf/ExposeDocumentReleaseCard.tsx` | Dokumenten-Freigabe in MOD-06 |
-| `supabase/functions/sot-document-redact/index.ts` | KI-Schwärzung für Mieterdaten |
-
-### Zu ändernde Dateien
-
-| Datei | Änderung |
-|-------|----------|
-| `src/components/investment/Haushaltsrechnung.tsx` | Neue `variant="ledger"` hinzufügen |
-| `src/components/investment/index.ts` | Neue Exports hinzufügen |
-| `src/pages/zone3/kaufy/KaufyExpose.tsx` | Refaktorieren auf `InvestmentExposeView` |
-| `src/pages/portal/investments/InvestmentExposePage.tsx` | Refaktorieren auf `InvestmentExposeView` |
-| `src/pages/portal/investments/SucheTab.tsx` | `InvestmentSearchCard` → `InvestmentResultTile` |
-| `src/components/vertriebspartner/PartnerExposeModal.tsx` | Refaktorieren auf `InvestmentExposeView` |
-| `src/components/vertriebspartner/PartnerPropertyGrid.tsx` | Neue Kacheln verwenden |
-| `src/pages/portal/verkauf/ExposeDetail.tsx` | Tab "Dokumente" hinzufügen |
-
-### Zu löschende Dateien
-
-| Datei | Grund |
-|-------|-------|
-| `src/components/investment/InvestmentSearchCard.tsx` | Ersetzt durch `InvestmentResultTile` |
-
-### Datenbank-Migration
-
-```sql
--- Dokumenten-Freigabe für Exposés
-ALTER TABLE document_links 
-ADD COLUMN IF NOT EXISTS expose_visibility TEXT DEFAULT 'internal'
-CHECK (expose_visibility IN ('internal', 'partner', 'public'));
-
--- Index für schnelle Abfragen
-CREATE INDEX IF NOT EXISTS idx_document_links_expose_visibility 
-ON document_links(expose_visibility) 
-WHERE expose_visibility != 'internal';
-
--- Mieterdokumente automatisch auf 'internal' setzen
-UPDATE document_links 
-SET expose_visibility = 'internal'
-WHERE document_id IN (
-  SELECT id FROM documents 
-  WHERE document_type IN ('lease', 'utility_bill', 'tenant_correspondence')
-);
-```
+| Datei | Änderungen |
+|-------|------------|
+| `InvestmentExposePage.tsx` | 1) Property-ID korrekt extrahieren, 2) Map ans Ende verschieben |
+| `ExposeImageGallery.tsx` | Optional: Fallback-Query für property_id |
+| `SucheTab.tsx` | 1) Metrics-Berechnung synchronisieren, 2) Titelbilder laden |
+| `BeratungTab.tsx` | Race-Condition beheben, Titelbilder laden |
+| `InvestmentResultTile.tsx` | Komplettes Redesign: Bild oben, T-Konto unten, Summierung |
 
 ---
 
 ## Akzeptanzkriterien
 
-| # | Test | Priorität |
-|---|------|-----------|
-| 1 | Suchergebnis-Kacheln sind quadratisch (`aspect-square`) | Hoch |
-| 2 | Kacheln zeigen 4-Quadranten-Layout (Bild, Daten, Einnahmen, Ausgaben) | Hoch |
-| 3 | Haushaltsrechnung im T-Konto-Stil (Einnahmen links, Ausgaben rechts) | Hoch |
-| 4 | Monatsbelastung ist prominent hervorgehoben | Hoch |
-| 5 | Bildergalerie funktioniert in allen 3 Ansichten identisch | Hoch |
-| 6 | Bilder sind klickbar mit Prev/Next Navigation | Mittel |
-| 7 | Google Maps erscheint ganz unten im Exposé | Mittel |
-| 8 | Investment-Slider bleibt sticky beim Scrollen | Mittel |
-| 9 | Dokumenten-Kachel im Exposé zeigt freigegebene Dokumente | Mittel |
-| 10 | MOD-06 hat Tab "Dokumente" zur Freigabe-Steuerung | Mittel |
-| 11 | Mieterdokumente sind automatisch gesperrt | Hoch |
-| 12 | KAUFY, MOD-08 und MOD-09 sehen visuell identisch aus | Hoch |
+| # | Test | Status |
+|---|------|--------|
+| 1 | Bilder werden in MOD-08 Exposé angezeigt | 🔴 Kaputt |
+| 2 | Bilder werden in MOD-09 Modal angezeigt | 🔴 Kaputt |
+| 3 | Bilder werden in KAUFY Exposé angezeigt | 🟢 OK |
+| 4 | Suchergebnis-Kacheln zeigen Titelbilder | 🔴 Kaputt |
+| 5 | Zinsen/Tilgung zeigen korrekte Werte (nicht 0€) | 🔴 Kaputt |
+| 6 | MOD-09 zeigt Objekte nach "Berechnen" | 🔴 Kaputt |
+| 7 | Google Maps ist ganz unten im Exposé | 🔴 Falsch |
+| 8 | Kachel hat korrektes Layout (Bild oben, T-Konto unten) | 🔴 Falsch |
+| 9 | Monatsbelastung wird korrekt berechnet und angezeigt | 🔴 Kaputt |
+| 10 | Slider-Panel bleibt sticky beim Scrollen | 🟢 OK |
 
 ---
 
 ## Zusammenfassung
 
-Dieses Refactoring eliminiert die "Copy-Paste-Architektur" und etabliert eine echte Single Source of Truth:
+Die Hauptprobleme sind:
 
-1. **`InvestmentResultTile`** — Quadratische Kacheln mit 4-Quadranten-Layout
-2. **`Haushaltsrechnung variant="ledger"`** — T-Konto-Stil wie in der Buchhaltung
-3. **`InvestmentExposeView`** — Eine Komponente für alle Investment-Exposés
-4. **`ExposeDocuments`** — Dokumenten-Download mit DSGVO-Schutz
-5. **`ExposeDocumentReleaseCard`** — Freigabe-Steuerung in MOD-06
+1. **Daten-Mapping-Fehler:** `listing.id` wird verwendet wo `property_id` nötig ist
+2. **Async-Timing-Probleme:** Rendering vor Daten-Laden
+3. **UI-Struktur:** Layout entspricht nicht der Spezifikation
 
-Nach der Implementierung gibt es nur noch **eine Stelle**, an der Änderungen vorgenommen werden müssen — die gemeinsamen Komponenten in `src/components/investment/`.
+Nach diesen Reparaturen werden alle drei Investment-Ansichten konsistent funktionieren mit korrekten Bildern, Berechnungen und dem gewünschten T-Konto-Layout.
