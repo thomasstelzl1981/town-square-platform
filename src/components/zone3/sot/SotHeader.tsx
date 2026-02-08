@@ -1,12 +1,10 @@
 /**
- * SoT Header — Glass Effect with Theme Toggle & Armstrong Logo
+ * SoT Header — Glass Effect with Theme Toggle
  */
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Menu, X } from 'lucide-react';
+import { Building2, Sun, Moon, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useSotTheme } from '@/hooks/useSotTheme';
-import armstrongLogoDark from '@/assets/logos/armstrong_logo_mono_white.png';
-import armstrongLogoLight from '@/assets/logos/armstrong_logo_mono_black.png';
 
 const navItems = [
   { href: '/sot/produkt', label: 'Produkt' },
@@ -22,21 +20,19 @@ export function SotHeader() {
   const { isDark, toggleTheme } = useSotTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Use appropriate logo based on theme
-  const logoSrc = isDark ? armstrongLogoDark : armstrongLogoLight;
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 sot-glass">
       <div className="zone3-container">
         <nav className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo with Armstrong branding */}
+          {/* Logo */}
           <Link to="/sot" className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
-            <img 
-              src={logoSrc} 
-              alt="System of a Town" 
-              className="h-8 w-auto object-contain"
-            />
-            <span className="hidden sm:block font-semibold" style={{ color: 'hsl(var(--z3-foreground))' }}>
+            <div 
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'hsl(var(--z3-accent))' }}
+            >
+              <Building2 className="w-5 h-5" style={{ color: 'hsl(var(--z3-background))' }} />
+            </div>
+            <span className="hidden sm:block" style={{ color: 'hsl(var(--z3-foreground))' }}>
               System of a Town
             </span>
           </Link>

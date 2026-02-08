@@ -4,15 +4,30 @@
    ============================================================================= */
 
 /* ===========================================================================
-   ATMOSPHERIC BACKGROUNDS
+   ATMOSPHERIC BACKGROUNDS — THEME-AWARE
    =========================================================================== */
 
-/* Deep Space Atmosphere */
-.sot-atmosphere {
+/* Deep Space Atmosphere (Dark Mode) */
+.theme-sot-dark .sot-atmosphere,
+:root[data-sot-theme="dark"] .sot-atmosphere {
   background: 
     radial-gradient(ellipse 80% 70% at 90% 0%, hsl(220 60% 18% / 0.6) 0%, transparent 70%),
     radial-gradient(ellipse 60% 50% at 5% 100%, hsl(275 45% 14% / 0.4) 0%, transparent 60%),
     linear-gradient(180deg, hsl(222 70% 4%) 0%, hsl(222 80% 2%) 100%);
+}
+
+/* Light Atmosphere (Light Mode) */
+.theme-sot .sot-atmosphere,
+:root[data-sot-theme="light"] .sot-atmosphere {
+  background: 
+    radial-gradient(ellipse 80% 70% at 90% 0%, hsl(210 60% 92% / 0.8) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(217 60% 88% / 0.6) 0%, transparent 60%),
+    linear-gradient(180deg, hsl(210 40% 98%) 0%, hsl(210 40% 96%) 100%);
+}
+
+/* Fallback when no theme class is on parent */
+.sot-atmosphere {
+  background: hsl(var(--z3-background));
 }
 
 /* Nebula Gradient for CTAs */

@@ -40,8 +40,14 @@ export function SotHeroSection({
       >
         {/* Tagline */}
         <div className="sot-label mb-6 tracking-widest">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-current/20 bg-white/5">
-            ✦ System of a Town
+          <span 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border"
+            style={{ 
+              borderColor: 'hsl(var(--z3-border))',
+              backgroundColor: 'hsl(var(--z3-card) / 0.6)'
+            }}
+          >
+            ✦ SYSTEM OF A TOWN
           </span>
         </div>
         
