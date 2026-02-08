@@ -3,19 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
 import { FileUploader } from '@/components/shared';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -591,6 +585,31 @@ export function PortfolioTab() {
     },
   ];
 
+  // Count properties per context for display - MOVED BEFORE EARLY RETURN
+  const propertyCountByContext = useMemo(() => {
+    const counts: Record<string, number> = {};
+    contextAssignments.forEach(a => {
+      counts[a.context_id] = (counts[a.context_id] || 0) + 1;
+    });
+    return counts;
+  }, [contextAssignments]);
+
+  const totalPropertyCount = useMemo(() => {
+    return [...new Set(unitsWithProperties?.map(u => u.property_id) || [])].length;
+  }, [unitsWithProperties]);
+
+  const selectedContext = contexts.find(c => c.id === selectedContextId);
+
+  const handleContextSelect = useCallback((contextId: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (contextId) {
+      newParams.set('context', contextId);
+    } else {
+      newParams.delete('context');
+    }
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
   if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -601,46 +620,76 @@ export function PortfolioTab() {
 
   return (
     <div className="space-y-6 pt-6">
-      {/* Header with Context Dropdown + New Property Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">Immobilienportfolio</h2>
-          {contexts.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1">
-                  <Building2 className="h-4 w-4" />
-                  {selectedContextId 
-                    ? contexts.find(c => c.id === selectedContextId)?.name || 'Alle Vermietereinheiten'
-                    : 'Alle Vermietereinheiten'}
-                  <span className="ml-1 text-xs">▼</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => {
-                  const newParams = new URLSearchParams(searchParams);
-                  newParams.delete('context');
-                  setSearchParams(newParams);
-                }}>
-                  Alle Vermietereinheiten
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {contexts.map(ctx => (
-                  <DropdownMenuItem 
-                    key={ctx.id} 
-                    onClick={() => {
-                      const newParams = new URLSearchParams(searchParams);
-                      newParams.set('context', ctx.id);
-                      setSearchParams(newParams);
-                    }}
+      {/* NEW: Context Selection Cards */}
+      {contexts.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Wählen Sie Ihre Vermietereinheit</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+            {/* "Alle" Card */}
+            <button
+              onClick={() => handleContextSelect(null)}
+              className={cn(
+                "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
+                !selectedContextId 
+                  ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm" 
+                  : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Alle</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {totalPropertyCount} Objekt{totalPropertyCount !== 1 ? 'e' : ''}
+              </span>
+            </button>
+
+            {/* Context Cards */}
+            {contexts.map(ctx => {
+              const count = propertyCountByContext[ctx.id] || 0;
+              const isActive = selectedContextId === ctx.id;
+              return (
+                <button
+                  key={ctx.id}
+                  onClick={() => handleContextSelect(ctx.id)}
+                  className={cn(
+                    "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
+                    isActive 
+                      ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm" 
+                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
+                  )}
+                >
+                  <span className="font-medium truncate max-w-[140px]">{ctx.name}</span>
+                  <Badge 
+                    variant={ctx.context_type === 'PRIVATE' ? 'secondary' : 'default'} 
+                    className="w-fit text-xs"
                   >
-                    {ctx.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-      </div>
+                    {ctx.context_type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {count} Objekt{count !== 1 ? 'e' : ''}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* Add New Context Card */}
+            <button
+              onClick={() => navigate('/portal/immobilien/kontexte')}
+              className="flex flex-col items-center justify-center gap-1 p-4 rounded-xl border border-dashed border-muted-foreground/30 min-w-[100px] text-center transition-all shrink-0 hover:border-primary/50 hover:bg-muted/20"
+            >
+              <Plus className="h-5 w-5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Neue</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Updated Portfolio Header - shows selected context name */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          Immobilienportfolio{selectedContext ? ` — ${selectedContext.name}` : ''}
+        </h2>
       </div>
 
       {/* KPI Cards - IMMER sichtbar, ANNUAL values */}
