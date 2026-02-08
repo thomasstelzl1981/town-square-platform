@@ -1,26 +1,25 @@
 /**
- * KatalogDetailPage — Partner-Exposé mit Bildern und Unterlagen
+ * KatalogDetailPage — Read-Only Verkaufsexposé für Partner
  * Route: /portal/vertriebspartner/katalog/:publicId
+ * 
+ * Architektur: Zeigt das freigegebene Exposé aus MOD-04/06 (KEINE Investment Engine!)
+ * Die Investment Engine wird nur im Beratung-Tab verwendet.
  */
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ArrowLeft, Download, FileText, MapPin, Calendar, 
-  Building2, Maximize2, Loader2, Handshake, MessageSquare
+  Building2, Maximize2, Handshake, MessageSquare, Zap,
+  TrendingUp, Percent, PiggyBank, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
-import { 
-  MasterGraph, 
-  Haushaltsrechnung, 
-  InvestmentSliderPanel, 
-  DetailTable40Jahre 
-} from '@/components/investment';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExposeLocationMap } from '@/components/verkauf';
 
 interface DocumentItem {
   id: string;
@@ -36,28 +35,27 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   'land_register': 'Grundbuchauszug',
 };
 
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  'multi_family': 'Mehrfamilienhaus',
+  'single_family': 'Einfamilienhaus',
+  'apartment': 'Eigentumswohnung',
+  'commercial': 'Gewerbe',
+};
+
 const KatalogDetailPage = () => {
   const { publicId } = useParams<{ publicId: string }>();
   const navigate = useNavigate();
-  const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
-  
-  const [params, setParams] = useState<CalculationInput>({
-    ...defaultInput,
-    purchasePrice: 250000,
-    monthlyRent: 800,
-  });
 
   // Helper to validate UUID format
   const isValidUUID = (str: string) => 
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
-  // Fetch listing with property data
+  // Fetch listing with full property data
   const { data: listing, isLoading: isLoadingListing } = useQuery({
     queryKey: ['partner-listing-detail', publicId],
     queryFn: async () => {
       if (!publicId) return null;
 
-      // Build query - only check id if it's a valid UUID format
       let query = supabase
         .from('listings')
         .select(`
@@ -69,18 +67,22 @@ const KatalogDetailPage = () => {
           commission_rate,
           properties!inner (
             id,
+            code,
             property_type,
             address,
+            address_house_no,
             city,
             postal_code,
             total_area_sqm,
             year_built,
-            annual_income
+            renovation_year,
+            energy_source,
+            heating_type,
+            annual_income,
+            market_value
           )
         `);
 
-      // If it's a valid UUID, check both id and public_id
-      // Otherwise, only check public_id (to avoid PostgreSQL cast error)
       if (isValidUUID(publicId)) {
         query = query.or(`public_id.eq.${publicId},id.eq.${publicId}`);
       } else {
@@ -103,16 +105,37 @@ const KatalogDetailPage = () => {
         description: data.description || '',
         asking_price: data.asking_price || 0,
         commission_rate: data.commission_rate || 0,
+        property_code: props?.code || '',
         property_type: props?.property_type || 'multi_family',
         address: props?.address || '',
+        address_house_no: props?.address_house_no || '',
         city: props?.city || '',
         postal_code: props?.postal_code || '',
         total_area_sqm: props?.total_area_sqm || 0,
-        year_built: props?.year_built || 0,
-        monthly_rent: Math.round((props?.annual_income || 0) / 12),
+        year_built: props?.year_built || null,
+        renovation_year: props?.renovation_year || null,
+        energy_source: props?.energy_source || null,
+        heating_type: props?.heating_type || null,
+        annual_income: props?.annual_income || 0,
+        market_value: props?.market_value || 0,
       };
     },
     enabled: !!publicId,
+  });
+
+  // Fetch property accounting (AfA)
+  const { data: accounting } = useQuery({
+    queryKey: ['property-accounting', listing?.property_id],
+    queryFn: async () => {
+      if (!listing?.property_id) return null;
+      const { data } = await supabase
+        .from('property_accounting')
+        .select('afa_rate_percent, afa_method, book_value_eur, land_share_percent, building_share_percent')
+        .eq('property_id', listing.property_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!listing?.property_id,
   });
 
   // Fetch images
@@ -143,7 +166,6 @@ const KatalogDetailPage = () => {
         return [];
       }
 
-      // Generate signed URLs
       const imagePromises = (links || []).map(async (link: any) => {
         const doc = link.documents;
         const { data: urlData } = await supabase.storage
@@ -194,24 +216,6 @@ const KatalogDetailPage = () => {
     enabled: !!listing?.property_id,
   });
 
-  // Initialize params with listing data
-  useEffect(() => {
-    if (listing) {
-      setParams(prev => ({
-        ...prev,
-        purchasePrice: listing.asking_price || 250000,
-        monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
-      }));
-    }
-  }, [listing]);
-
-  // Calculate when params change
-  useEffect(() => {
-    if (params.purchasePrice > 0) {
-      calculate(params);
-    }
-  }, [params, calculate]);
-
   const handleDownload = async (doc: DocumentItem) => {
     const { data } = await supabase.storage
       .from('tenant-documents')
@@ -222,12 +226,19 @@ const KatalogDetailPage = () => {
     }
   };
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('de-DE', { 
+  const formatCurrency = (value: number | null | undefined) => {
+    if (!value) return '—';
+    return new Intl.NumberFormat('de-DE', { 
       style: 'currency', 
       currency: 'EUR',
       maximumFractionDigits: 0 
     }).format(value);
+  };
+
+  const formatPercent = (value: number | null | undefined) => {
+    if (!value) return '—';
+    return `${value.toFixed(2)} %`;
+  };
 
   if (isLoadingListing) {
     return (
@@ -254,15 +265,22 @@ const KatalogDetailPage = () => {
     );
   }
 
-  const propertyTypeLabel = {
-    'multi_family': 'Mehrfamilienhaus',
-    'single_family': 'Einfamilienhaus',
-    'apartment': 'Eigentumswohnung',
-    'commercial': 'Gewerbe',
-  }[listing.property_type] || 'Immobilie';
-
+  const propertyTypeLabel = PROPERTY_TYPE_LABELS[listing.property_type] || 'Immobilie';
   const coverImage = images.find(img => img.is_cover) || images[0];
   const otherImages = images.filter(img => img.id !== coverImage?.id);
+  
+  // Calculate metrics
+  const annualRent = listing.annual_income || 0;
+  const monthlyRent = Math.round(annualRent / 12);
+  const grossYield = listing.asking_price > 0 ? (annualRent / listing.asking_price) * 100 : 0;
+  const pricePerSqm = listing.total_area_sqm > 0 && listing.asking_price > 0 
+    ? listing.asking_price / listing.total_area_sqm 
+    : 0;
+
+  // Full address
+  const fullAddress = listing.address_house_no 
+    ? `${listing.address} ${listing.address_house_no}` 
+    : listing.address;
 
   return (
     <div className="space-y-6">
@@ -277,14 +295,13 @@ const KatalogDetailPage = () => {
       </Button>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column - Property Info & Calculations */}
+        {/* Left Column - Property Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Image Gallery */}
           <Card>
             <CardContent className="p-4">
               {images.length > 0 ? (
                 <div className="space-y-3">
-                  {/* Hero Image */}
                   {coverImage && (
                     <div className="aspect-video rounded-lg overflow-hidden bg-muted">
                       <img 
@@ -294,7 +311,6 @@ const KatalogDetailPage = () => {
                       />
                     </div>
                   )}
-                  {/* Thumbnail Row */}
                   {otherImages.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {otherImages.map(img => (
@@ -320,7 +336,33 @@ const KatalogDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Property Details */}
+          {/* Key Facts Bar */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(listing.asking_price)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Kaufpreis</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{listing.total_area_sqm?.toLocaleString('de-DE') || '—'} m²</p>
+                  <p className="text-xs text-muted-foreground">Wohnfläche</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{listing.year_built || '—'}</p>
+                  <p className="text-xs text-muted-foreground">Baujahr</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">{grossYield.toFixed(2)}%</p>
+                  <p className="text-xs text-muted-foreground">Bruttorendite</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Property Header */}
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -329,53 +371,203 @@ const KatalogDetailPage = () => {
                   <CardTitle className="text-xl">{listing.title}</CardTitle>
                   <p className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
                     <MapPin className="w-4 h-4" />
-                    {listing.postal_code} {listing.city}, {listing.address}
+                    {listing.postal_code} {listing.city}, {fullAddress}
                   </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(listing.asking_price)}
-                  </p>
-                  {/* Provision nur in Katalog-Liste sichtbar, nicht im Exposé */}
+                  {listing.property_code && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Objekt-ID: {listing.property_code}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50">
-                <div>
-                  <p className="text-sm text-muted-foreground">Wohnfläche</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Maximize2 className="w-4 h-4" /> {listing.total_area_sqm} m²
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Baujahr</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> {listing.year_built || '–'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Mieteinnahmen</p>
-                  <p className="font-semibold">{formatCurrency(params.monthlyRent)}/Mo</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Bruttorendite</p>
-                  <p className="font-semibold text-primary">
-                    {listing.asking_price > 0 
-                      ? ((params.monthlyRent * 12 / listing.asking_price) * 100).toFixed(1) + '%'
-                      : '–'}
-                  </p>
-                </div>
-              </div>
-
-              {listing.description && (
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Beschreibung</h3>
-                  <p className="text-muted-foreground text-sm">{listing.description}</p>
-                </div>
-              )}
-            </CardContent>
+            {listing.description && (
+              <CardContent>
+                <h3 className="font-semibold mb-2">Beschreibung</h3>
+                <p className="text-muted-foreground text-sm whitespace-pre-line">{listing.description}</p>
+              </CardContent>
+            )}
           </Card>
+
+          {/* Tab-Content (READ-ONLY) */}
+          <Tabs defaultValue="objekt" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="objekt">Objektdaten</TabsTrigger>
+              <TabsTrigger value="rendite">Rendite & AfA</TabsTrigger>
+              <TabsTrigger value="energie">Energie</TabsTrigger>
+            </TabsList>
+
+            {/* Tab: Objektdaten */}
+            <TabsContent value="objekt" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Home className="h-5 w-5" />
+                    Objektdaten
+                  </CardTitle>
+                  <CardDescription>Stammdaten aus der Immobilienakte</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    {/* Grunddaten */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Grunddaten</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Objektart</span>
+                          <span className="font-medium">{propertyTypeLabel}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Wohnfläche</span>
+                          </div>
+                          <span className="font-medium">{listing.total_area_sqm?.toLocaleString('de-DE')} m²</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">€/m²</span>
+                          <span className="font-medium">{formatCurrency(pricePerSqm)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Baujahr & Zustand */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Baujahr & Zustand</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Baujahr</span>
+                          </div>
+                          <span className="font-medium">{listing.year_built || '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Modernisierung</span>
+                          <span className="font-medium">{listing.renovation_year || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Adresse */}
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Standort</h4>
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Adresse</span>
+                      </div>
+                      <span className="font-medium">
+                        {fullAddress}, {listing.postal_code} {listing.city}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab: Rendite & AfA */}
+            <TabsContent value="rendite" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Rendite & Abschreibung
+                  </CardTitle>
+                  <CardDescription>Investmentkennzahlen für Kapitalanleger</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    {/* Mietrendite */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Mieteinnahmen</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Monatliche Miete (Kalt)</span>
+                          <span className="font-bold">{formatCurrency(monthlyRent)}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Jahresmiete</span>
+                          <span className="font-bold">{formatCurrency(annualRent)}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                          <span className="text-sm font-medium">Bruttorendite</span>
+                          <span className="font-bold text-primary text-lg">{grossYield.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AfA-Daten */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Abschreibung (AfA)</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <PiggyBank className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">AfA-Modell</span>
+                          </div>
+                          <span className="font-medium">{accounting?.afa_method || 'Linear'}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Percent className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">AfA-Satz</span>
+                          </div>
+                          <span className="font-medium">{formatPercent(accounting?.afa_rate_percent)}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Gebäudeanteil</span>
+                          <span className="font-medium">{formatPercent(accounting?.building_share_percent)}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span className="text-sm">Grundstücksanteil</span>
+                          <span className="font-medium">{formatPercent(accounting?.land_share_percent)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab: Energie */}
+            <TabsContent value="energie" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Energieausweis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <span className="text-sm text-muted-foreground">Ausweistyp</span>
+                        <span className="font-medium">—</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <span className="text-sm text-muted-foreground">Effizienzklasse</span>
+                        <Badge variant="outline" className="font-bold">—</Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <span className="text-sm text-muted-foreground">Heizungsart</span>
+                        <span className="font-medium">{listing.heating_type || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <span className="text-sm text-muted-foreground">Energieträger</span>
+                        <span className="font-medium">{listing.energy_source || '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
           {/* Documents Section */}
           {documents.length > 0 && (
@@ -416,54 +608,61 @@ const KatalogDetailPage = () => {
             </Card>
           )}
 
-          {/* Investment Graphs */}
-          {isCalculating ? (
-            <div className="h-64 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          ) : calcResult ? (
-            <>
-              <MasterGraph 
-                projection={calcResult.projection} 
-                title="Wertentwicklung (40 Jahre)"
-                variant="full"
-              />
-              <Haushaltsrechnung 
-                result={calcResult} 
-                variant="detailed"
-                showMonthly={true}
-              />
-              <DetailTable40Jahre 
-                projection={calcResult.projection}
-                defaultOpen={false}
-              />
-            </>
-          ) : null}
+          {/* Location Map — GANZ UNTEN */}
+          <ExposeLocationMap 
+            address={fullAddress}
+            city={listing.city}
+            postalCode={listing.postal_code}
+            showExactLocation={true}
+          />
         </div>
 
-        {/* Right Column - Controls */}
-        <div className="space-y-6">
+        {/* Right Column - Sidebar */}
+        <div className="space-y-4">
           <div className="sticky top-24">
-            {/* Investment Slider Panel */}
-            <InvestmentSliderPanel
-              value={params}
-              onChange={setParams}
-              layout="vertical"
-              showAdvanced={true}
-              purchasePrice={listing.asking_price}
-            />
+            {/* Kennzahlen Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-3xl font-bold text-primary">
+                  {formatCurrency(listing.asking_price)}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Kaufpreis</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Bruttorendite</span>
+                    <span className="font-bold text-primary">{grossYield.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mieteinnahmen</span>
+                    <span className="font-medium">{formatCurrency(monthlyRent)}/Mo</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Wohnfläche</span>
+                    <span className="font-medium">{listing.total_area_sqm?.toLocaleString('de-DE')} m²</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Baujahr</span>
+                    <span className="font-medium">{listing.year_built || '—'}</span>
+                  </div>
+                </div>
 
-            {/* Action Buttons */}
-            <div className="mt-6 space-y-3">
-              <Button className="w-full gap-2">
-                <Handshake className="h-4 w-4" />
-                Deal starten
-              </Button>
-              <Button variant="outline" className="w-full gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Anfrage senden
-              </Button>
-            </div>
+                <Separator />
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <Button className="w-full gap-2">
+                    <Handshake className="h-4 w-4" />
+                    Deal starten
+                  </Button>
+                  <Button variant="outline" className="w-full gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Anfrage senden
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
