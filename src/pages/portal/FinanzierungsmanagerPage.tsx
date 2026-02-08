@@ -32,12 +32,14 @@ export default function FinanzierungsmanagerPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: cases, isLoading } = useFutureRoomCases();
-  const { memberships } = useAuth();
+  const { memberships, isPlatformAdmin } = useAuth();
 
-  // Role check: requires finance_manager
-  const isFinanceManager = memberships.some(m => m.role === 'finance_manager');
+  // Access check:
+  // - finance_manager: operational access
+  // - platform_admin: superuser override (dev/muster account needs full visibility)
+  const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
 
-  if (!isFinanceManager) {
+  if (!canAccess) {
     return (
       <div className="p-6">
         <Card>
