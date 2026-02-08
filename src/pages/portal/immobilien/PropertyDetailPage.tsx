@@ -271,27 +271,14 @@ export default function PropertyDetailPage() {
   return (
     <div className="space-y-6">
       <div ref={contentRef}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild className="no-print">
-                <Link to="/portal/immobilien/portfolio">
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              </Button>
-              <h2 className="text-2xl font-bold tracking-tight">
-                {property.code ? `${property.code} – ` : ''}{property.address}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2 ml-10">
-              <Badge variant="outline">{property.property_type}</Badge>
-              <span className="text-muted-foreground">
-                {property.postal_code} {property.city}
-              </span>
-            </div>
-          </div>
-{/* Buttons entfernt — Bearbeiten inline, KI in EditableAddressBlock */}
+        {/* Minimaler Header: Nur Back-Button */}
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="ghost" size="sm" asChild className="no-print">
+            <Link to="/portal/immobilien/portfolio">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <span className="text-sm text-muted-foreground">Zurück zur Übersicht</span>
         </div>
 
         {/* Tabs - Akte is now the default/first tab */}
