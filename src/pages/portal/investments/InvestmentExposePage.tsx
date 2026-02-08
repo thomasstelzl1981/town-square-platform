@@ -19,13 +19,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
-import { ExposeLocationMap } from '@/components/verkauf';
 import { 
   MasterGraph, 
   Haushaltsrechnung, 
   InvestmentSliderPanel, 
-  DetailTable40Jahre 
+  DetailTable40Jahre,
+  ExposeImageGallery
 } from '@/components/investment';
+import { ExposeLocationMap } from '@/components/verkauf';
 
 interface ListingData {
   id: string;
@@ -227,10 +228,11 @@ export default function InvestmentExposePage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image Placeholder */}
-            <div className="aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-              <Building2 className="w-16 h-16 text-muted-foreground" />
-            </div>
+            {/* Image Gallery - Shared Component */}
+            <ExposeImageGallery 
+              propertyId={listing.id}
+              aspectRatio="video"
+            />
 
             {/* Property Details */}
             <div>
@@ -303,11 +305,11 @@ export default function InvestmentExposePage() {
               />
             ) : null}
 
-            {/* Haushaltsrechnung - Gemeinsame Komponente */}
+            {/* Haushaltsrechnung - T-Konto-Stil */}
             {calcResult && (
               <Haushaltsrechnung 
                 result={calcResult} 
-                variant="detailed"
+                variant="ledger"
                 showMonthly={true}
               />
             )}

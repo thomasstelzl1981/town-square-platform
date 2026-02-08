@@ -23,7 +23,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { InvestmentSearchCard } from '@/components/investment/InvestmentSearchCard';
+import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { 
   Search, Calculator, ChevronDown, Loader2, Building2, 
   TrendingUp, Filter, LayoutGrid, List 
@@ -451,17 +451,16 @@ export default function SucheTab() {
           ) : (
             <div className={cn(
               viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 : 'flex flex-col gap-4'
             )}>
               {filteredListings.map((listing) => (
-                <InvestmentSearchCard
+                <InvestmentResultTile
                   key={listing.listing_id}
                   listing={listing}
                   metrics={searchMode === 'investment' ? metricsCache[listing.listing_id] : null}
                   isFavorite={isFavorite(listing.listing_id)}
                   onToggleFavorite={() => handleToggleFavorite(listing)}
-                  variant={viewMode}
                   linkPrefix="/portal/investments/objekt"
                 />
               ))}

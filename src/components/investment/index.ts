@@ -6,3 +6,7 @@ export { MasterGraph } from './MasterGraph';
 export { Haushaltsrechnung } from './Haushaltsrechnung';
 export { DetailTable40Jahre } from './DetailTable40Jahre';
 export { InvestmentSearchCard } from './InvestmentSearchCard';
+export { InvestmentResultTile } from './InvestmentResultTile';
+export { ExposeImageGallery } from './ExposeImageGallery';
+export { InvestmentExposeView } from './InvestmentExposeView';
+export { ExposeDocuments } from './ExposeDocuments';
