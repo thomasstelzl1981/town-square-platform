@@ -62,7 +62,7 @@ export default function KaufyHome() {
           id, public_id, title, asking_price,
           properties!inner (
             property_type, address, city, postal_code, 
-            total_area_sqm, construction_year, annual_income
+            total_area_sqm, year_built, annual_income
           )
         `)
         .in('id', publications.map(p => p.listing_id))
@@ -83,7 +83,7 @@ export default function KaufyHome() {
         city: l.properties.city || '',
         postal_code: l.properties.postal_code || '',
         total_area_sqm: l.properties.total_area_sqm || 0,
-        year_built: l.properties.construction_year || 0,
+        year_built: l.properties.year_built || 0,
         gross_yield: l.asking_price > 0 
           ? ((l.properties.annual_income || 0) / l.asking_price) * 100 
           : 0,
@@ -207,12 +207,14 @@ export default function KaufyHome() {
                 </p>
               )}
             </div>
-            <Link 
-              to="/kaufy/immobilien" 
-              className="zone3-btn-secondary text-sm"
-            >
-              Alle anzeigen →
-            </Link>
+            {properties.length > 0 && (
+              <Link 
+                to="/kaufy/immobilien" 
+                className="zone3-btn-secondary text-sm"
+              >
+                Alle anzeigen →
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
