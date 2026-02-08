@@ -5,7 +5,7 @@ import { de } from 'date-fns/locale';
 import { PropertyMap } from './PropertyMap';
 import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
 import ExposeHeadlineCard from '@/components/verkauf/ExposeHeadlineCard';
-import ExposeDescriptionCard from '@/components/verkauf/ExposeDescriptionCard';
+import ExposeDescriptionDisplay from '@/components/verkauf/ExposeDescriptionDisplay';
 import type { UnitDossierData } from '@/types/immobilienakte';
 
 interface Property {
@@ -119,10 +119,7 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
 
       {/* Objektbeschreibung + Karte - 2-Spalten-Layout */}
       <div className="grid gap-6 md:grid-cols-2">
-        <ExposeDescriptionCard
-          propertyId={property.id}
-          description={property.description}
-        />
+        <ExposeDescriptionDisplay description={property.description} />
         <PropertyMap
           address={property.address}
           city={property.city}
