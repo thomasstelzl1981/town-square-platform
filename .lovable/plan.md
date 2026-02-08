@@ -1,157 +1,131 @@
 
-# Korrektur der Adress-Struktur für Demo-Daten
+# Bereinigung: Doppelte Objektbeschreibung entfernen
 
-## Problemanalyse
+## Problemzusammenfassung
 
-Die Hausnummer ist im falschen Feld gespeichert:
+Die Objektbeschreibung erscheint an zwei Stellen:
+1. **Immobilienakte (Tab "Akte")**: Im Block "Lage & Beschreibung" (`EditableAddressBlock`)
+2. **Exposé (Tab "Exposé")**: Als eigene Karte (`ExposeDescriptionCard`)
 
-| Feld | Aktueller Wert | Erwarteter Wert |
-|------|----------------|-----------------|
-| `address` | "Leipziger Straße 42" | "Leipziger Straße" |
-| `address_house_no` | NULL | "42" |
-
----
-
-## Datenbankstruktur (korrekt vorhanden)
-
-Die Tabelle `properties` hat bereits beide Felder:
-- `address` (TEXT, NOT NULL) — für die Straße
-- `address_house_no` (TEXT, nullable) — für die Hausnummer
+Beide speichern in `properties.description`, aber mit unterschiedlichen Speichermechanismen → führt zu Synchronisationsproblemen.
 
 ---
 
-## Ursache
+## Empfohlene Lösung
 
-Die Seed-Migration hat die Daten in einem kombinierten Format eingefügt:
+**Objektbeschreibung nur noch in der Immobilienakte bearbeiten** (SSOT-Prinzip)
 
-```sql
--- Aus Migration 20260203004029
-INSERT INTO properties (..., address, ...)
-VALUES (..., 'Leipziger Straße 42', ...);
+Im Exposé-Tab wird die Beschreibung:
+- Nur noch **angezeigt** (read-only)
+- Mit einem Link/Button zur Bearbeitung in der Akte versehen
+
+---
+
+## Änderungen
+
+### 1. Neue Read-Only-Komponente erstellen
+
+**Datei:** `src/components/verkauf/ExposeDescriptionDisplay.tsx`
+
+Eine einfache Anzeige-Komponente, die:
+- Die Beschreibung aus `properties.description` anzeigt
+- Einen "Bearbeiten in Akte"-Hinweis zeigt
+- Keine eigene Speicher-Logik hat
+
+```tsx
+const ExposeDescriptionDisplay = ({ 
+  description 
+}: { description: string | null }) => {
+  return (
+    <Card className="h-full">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Objektbeschreibung</CardTitle>
+          <span className="text-xs text-muted-foreground">
+            (bearbeiten im Tab "Akte")
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {description ? (
+          <p className="text-sm whitespace-pre-wrap">{description}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            Noch keine Beschreibung vorhanden. 
+            Erstellen Sie eine im Tab "Akte" unter "Lage & Beschreibung".
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 ```
 
----
+### 2. ExposeTab.tsx anpassen
 
-## Lösung
+**Datei:** `src/components/portfolio/ExposeTab.tsx`
 
-### Option 1: Datenbank-Migration zur Bereinigung (empfohlen)
+Zeilen 7-8 und 122-125 ändern:
 
-Eine Migration, die:
-1. Die Hausnummer aus dem `address`-Feld extrahiert
-2. In `address_house_no` schreibt
-3. Das `address`-Feld bereinigt
+```tsx
+// Import ändern
+import ExposeDescriptionDisplay from '@/components/verkauf/ExposeDescriptionDisplay';
 
-```sql
-UPDATE properties
-SET 
-  address_house_no = CASE 
-    WHEN address ~ ' [0-9]+[a-zA-Z]?$' 
-    THEN regexp_replace(address, '.* ([0-9]+[a-zA-Z]?)$', '\1')
-    ELSE NULL
-  END,
-  address = CASE 
-    WHEN address ~ ' [0-9]+[a-zA-Z]?$' 
-    THEN regexp_replace(address, ' [0-9]+[a-zA-Z]?$', '')
-    ELSE address
-  END
-WHERE address_house_no IS NULL
-  AND address ~ ' [0-9]+[a-zA-Z]?$';
+// Verwendung ändern
+<ExposeDescriptionDisplay description={property.description} />
 ```
 
-### Option 2: Nur Demo-Daten manuell korrigieren
+### 3. ExposeDescriptionCard.tsx optional entfernen
 
-```sql
-UPDATE properties
-SET 
-  address = 'Leipziger Straße',
-  address_house_no = '42'
-WHERE id = '00000000-0000-4000-a000-000000000001';
+Die alte Komponente kann gelöscht werden, da sie nicht mehr benötigt wird.
+
+---
+
+## Datenfluss nach der Änderung
+
 ```
-
----
-
-## Nach der Korrektur
-
-Sie können dann in der Immobilienakte die Adresse frei bearbeiten:
-
-- **Straße**: "Musterstraße" → wird in `address` gespeichert
-- **Hausnr.**: "123a" → wird in `address_house_no` gespeichert
-- **PLZ/Ort**: Funktioniert bereits korrekt
-
----
-
-## Code-Flow (bereits korrekt implementiert)
-
-```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ EditableAddressBlock                                            │
-│   onFieldChange('street', 'Musterstraße')                       │
-│   onFieldChange('houseNumber', '123a')                          │
+│ SSOT: properties.description                                    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ useDossierForm.updateField('street', 'Musterstraße')            │
-│ useDossierForm.updateField('houseNumber', '123a')               │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ getPropertyChanges() → mapped.address = 'Musterstraße'          │
-│                     → mapped.addressHouseNo = '123a'            │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ useDossierMutations.useUpdateProperty()                         │
-│   → UPDATE properties SET address='...', address_house_no='...' │
-└─────────────────────────────────────────────────────────────────┘
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│ Tab "Akte"          │         │ Tab "Exposé"        │
+│ EditableAddressBlock│         │ ExposeDescription-  │
+│ → SCHREIBEN + LESEN │         │ Display             │
+│ → KI-Generierung    │         │ → NUR LESEN         │
+└─────────────────────┘         └─────────────────────┘
 ```
 
 ---
 
-## Zu ändernde Komponente: DossierHeader
+## Vorteile
 
-Die angezeigte Adresse im Header muss ebenfalls die Trennung berücksichtigen.
-
-**Aktuell in `useUnitDossier.ts` (Zeile 236):**
-```typescript
-address: `${property.address} • ${property.property_type} ${property.postal_code} ${property.city}`,
-```
-
-**Sollte werden:**
-```typescript
-address: `${property.address}${(property as any).address_house_no ? ' ' + (property as any).address_house_no : ''} • ${property.property_type} ${property.postal_code} ${property.city}`,
-```
+| Aspekt | Vorher | Nachher |
+|--------|--------|---------|
+| Bearbeitungsorte | 2 | 1 |
+| Synchronisation | Konfliktgefahr | Keine Konflikte |
+| Speichermechanismen | 2 verschiedene | 1 einheitlicher |
+| UX-Klarheit | Verwirrend | Eindeutig |
 
 ---
 
-## Implementierungsschritte
+## Betroffene Dateien
 
-1. **Datenbank-Migration**: Demo-Daten korrigieren (address + address_house_no trennen)
-2. **useUnitDossier.ts**: Die zusammengesetzte Adress-Anzeige anpassen
-3. **Test**: Adresse in der UI ändern und prüfen ob Speichern funktioniert
-
----
-
-## Dateien
-
-| Datei | Änderung |
-|-------|----------|
-| Migration | address/address_house_no für Demo-Daten trennen |
-| `src/hooks/useUnitDossier.ts` | Zeile 236 - Address-Zusammensetzung anpassen |
+| Datei | Aktion |
+|-------|--------|
+| `src/components/verkauf/ExposeDescriptionDisplay.tsx` | Neu erstellen |
+| `src/components/portfolio/ExposeTab.tsx` | Import und Verwendung ändern |
+| `src/components/verkauf/ExposeDescriptionCard.tsx` | Kann gelöscht werden |
 
 ---
 
-## Hinweis zur echten Adresse
+## Alternative (falls gewünscht)
 
-Nach dieser Korrektur können Sie:
-1. Die Immobilienakte öffnen
-2. Im Block "Lage & Beschreibung" die Felder bearbeiten:
-   - Straße: z.B. "Prager Straße"
-   - Hausnr.: z.B. "10"
-   - PLZ: z.B. "01069"
-   - Ort: z.B. "Dresden"
-3. Speichern klicken
+Falls die KI-Generierung auch im Exposé-Tab verfügbar sein soll, können wir stattdessen:
+- Die Beschreibung im Exposé-Tab editierbar lassen
+- Aber **dieselbe Speicher-Logik wie in der Akte** verwenden (über Query-Invalidation und Dossier-Refresh)
 
-Die Änderungen werden persistent in der Datenbank gespeichert und bei jedem Laden der Akte korrekt angezeigt.
+Diese Alternative wäre komplexer, aber würde beide Orte synchron halten.
