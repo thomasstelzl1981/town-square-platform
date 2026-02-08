@@ -64,6 +64,9 @@ export default function DelegationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<DelegationStatus | 'all'>('all');
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -193,6 +196,11 @@ export default function DelegationsPage() {
     setRevokeTarget(null);
   };
 
+  // Filtered delegations
+  const filteredDelegations = delegations.filter(d => 
+    statusFilter === 'all' || d.status === statusFilter
+  );
+
   const formatScopes = (scopes: any) => {
     if (Array.isArray(scopes)) {
       if (scopes.length === 0) return 'Keine';
@@ -321,18 +329,37 @@ export default function DelegationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Delegations</CardTitle>
-          <CardDescription>Cross-organization access grants and their status</CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>All Delegations</CardTitle>
+              <CardDescription>
+                {filteredDelegations.length} von {delegations.length} Delegationen
+              </CardDescription>
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DelegationStatus | 'all')}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Status-Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="revoked">Revoked</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : delegations.length === 0 ? (
+          ) : filteredDelegations.length === 0 ? (
             <div className="text-center py-8">
               <Link2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">No delegations found</p>
+              <p className="mt-2 text-muted-foreground">
+                {delegations.length === 0 ? 'No delegations found' : 'Keine Treffer für Filter'}
+              </p>
             </div>
           ) : (
             <Table>
@@ -347,7 +374,7 @@ export default function DelegationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {delegations.map((delegation) => (
+                {filteredDelegations.map((delegation) => (
                   <TableRow key={delegation.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">

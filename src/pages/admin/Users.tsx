@@ -65,13 +65,14 @@ interface MembershipWithOrg extends Membership {
 // P0-ROLE-AUDIT: All defined roles per ACCESS_MATRIX + membership_role enum
 // Roles: platform_admin, org_admin, internal_ops, sales_partner, renter_user, finance_manager
 // ============================================================================
-const ROLES: { value: MembershipRole; label: string; restricted?: boolean; description?: string }[] = [
-  { value: 'platform_admin', label: 'Platform Admin', restricted: true, description: 'God Mode, Zugriff auf alle Tenants' },
-  { value: 'org_admin', label: 'Org Admin', description: 'Voller Zugriff auf eigenen Tenant' },
-  { value: 'internal_ops', label: 'Internal Ops', description: 'Operativer Mitarbeiter' },
-  { value: 'sales_partner', label: 'Sales Partner', description: 'Vertriebspartner (MOD-09/10)' },
-  { value: 'renter_user', label: 'Renter User', description: 'Mieter (Miety Andockpunkt)' },
-  { value: 'finance_manager', label: 'Finance Manager', description: 'Finanzierungsberater (MOD-07)' },
+const ROLES: { value: MembershipRole; label: string; restricted?: boolean; description?: string; variant?: 'default' | 'secondary' | 'outline' | 'destructive' }[] = [
+  { value: 'platform_admin', label: 'Platform Admin', restricted: true, description: 'God Mode, Zugriff auf alle Tenants', variant: 'default' },
+  { value: 'org_admin', label: 'Org Admin', description: 'Voller Zugriff auf eigenen Tenant', variant: 'secondary' },
+  { value: 'internal_ops', label: 'Internal User', description: 'Operativer Mitarbeiter', variant: 'outline' },
+  { value: 'sales_partner', label: 'Sales Partner', description: 'Vertriebspartner (MOD-08/09/10)', variant: 'outline' },
+  { value: 'renter_user', label: 'Mieter (Lite)', description: 'Mieter (Miety Andockpunkt)', variant: 'outline' },
+  { value: 'finance_manager', label: 'Finanzierungsmanager', description: 'Manager (MOD-11)', variant: 'secondary' },
+  { value: 'akquise_manager', label: 'Akquise-Manager', description: 'Manager (MOD-12)', variant: 'secondary' },
 ];
 
 export default function UsersPage() {
@@ -409,8 +410,8 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>{getOrgName(membership.tenant_id)}</TableCell>
                     <TableCell>
-                      <Badge variant={membership.role === 'platform_admin' ? 'default' : 'secondary'}>
-                        {formatRole(membership.role)}
+                      <Badge variant={ROLES.find(r => r.value === membership.role)?.variant || 'outline'}>
+                        {ROLES.find(r => r.value === membership.role)?.label || formatRole(membership.role)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

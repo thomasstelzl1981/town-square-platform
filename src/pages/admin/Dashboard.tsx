@@ -13,11 +13,25 @@ interface Stats {
   profiles: number;
   memberships: number;
   delegations: number;
+  // Breakdown by org type
+  orgsByType: Record<string, number>;
+  // Breakdown by role
+  membershipsByRole: Record<string, number>;
+  // Active vs inactive delegations
+  activeDelegations: number;
 }
 
 export default function Dashboard() {
   const { profile, memberships, isPlatformAdmin, activeOrganization } = useAuth();
-  const [stats, setStats] = useState<Stats>({ organizations: 0, profiles: 0, memberships: 0, delegations: 0 });
+  const [stats, setStats] = useState<Stats>({ 
+    organizations: 0, 
+    profiles: 0, 
+    memberships: 0, 
+    delegations: 0,
+    orgsByType: {},
+    membershipsByRole: {},
+    activeDelegations: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
@@ -28,18 +42,39 @@ export default function Dashboard() {
     async function fetchStats() {
       setLoading(true);
       try {
-        const [orgsRes, profilesRes, membershipsRes, delegationsRes] = await Promise.all([
+        const [orgsRes, profilesRes, membershipsRes, delegationsRes, orgsDetailRes, membershipsDetailRes, activeDelegationsRes] = await Promise.all([
           supabase.from('organizations').select('id', { count: 'exact', head: true }),
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('memberships').select('id', { count: 'exact', head: true }),
           supabase.from('org_delegations').select('id', { count: 'exact', head: true }),
+          // Breakdown by org_type
+          supabase.from('organizations').select('org_type'),
+          // Breakdown by role
+          supabase.from('memberships').select('role'),
+          // Active delegations only
+          supabase.from('org_delegations').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         ]);
+        
+        // Count orgs by type
+        const orgsByType: Record<string, number> = {};
+        (orgsDetailRes.data || []).forEach((org: any) => {
+          orgsByType[org.org_type] = (orgsByType[org.org_type] || 0) + 1;
+        });
+        
+        // Count memberships by role
+        const membershipsByRole: Record<string, number> = {};
+        (membershipsDetailRes.data || []).forEach((m: any) => {
+          membershipsByRole[m.role] = (membershipsByRole[m.role] || 0) + 1;
+        });
         
         setStats({
           organizations: orgsRes.count || 0,
           profiles: profilesRes.count || 0,
           memberships: membershipsRes.count || 0,
           delegations: delegationsRes.count || 0,
+          orgsByType,
+          membershipsByRole,
+          activeDelegations: activeDelegationsRes.count || 0,
         });
       } catch (error) {
         console.error('Failed to fetch stats:', error);
@@ -290,7 +325,15 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '—' : stats.organizations}</div>
-            <p className="text-xs text-muted-foreground">Total tenants</p>
+            {!loading && Object.keys(stats.orgsByType).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {Object.entries(stats.orgsByType).map(([type, count]) => (
+                  <Badge key={type} variant="outline" className="text-xs">
+                    {type}: {count}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -312,7 +355,15 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '—' : stats.memberships}</div>
-            <p className="text-xs text-muted-foreground">Role assignments</p>
+            {!loading && Object.keys(stats.membershipsByRole).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {Object.entries(stats.membershipsByRole).map(([role, count]) => (
+                  <Badge key={role} variant={role === 'platform_admin' ? 'default' : 'secondary'} className="text-xs">
+                    {formatRole(role)}: {count}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -323,7 +374,16 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '—' : stats.delegations}</div>
-            <p className="text-xs text-muted-foreground">Cross-org access grants</p>
+            {!loading && (
+              <div className="flex gap-2 mt-2">
+                <Badge variant="default" className="text-xs">
+                  Active: {stats.activeDelegations}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Revoked: {stats.delegations - stats.activeDelegations}
+                </Badge>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
