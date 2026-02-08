@@ -96,6 +96,12 @@ interface ContextFormData {
   tax_assessment_type: TaxAssessmentType;
   church_tax: boolean;
   children_count: number;
+  // NEW: Structured managing director fields
+  md_salutation: string;
+  md_first_name: string;
+  md_last_name: string;
+  tax_number: string;
+  registry_court: string;
 }
 
 const emptyOwner: OwnerData = {
@@ -133,6 +139,12 @@ const defaultFormData: ContextFormData = {
   tax_assessment_type: 'SPLITTING',
   church_tax: false,
   children_count: 0,
+  // NEW: Structured managing director defaults
+  md_salutation: '',
+  md_first_name: '',
+  md_last_name: '',
+  tax_number: '',
+  registry_court: '',
 };
 
 export function CreateContextDialog({ open, onOpenChange, editContext }: CreateContextDialogProps) {
@@ -203,6 +215,12 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
         tax_assessment_type: (editContext.tax_assessment_type as TaxAssessmentType) || 'SPLITTING',
         church_tax: editContext.church_tax ?? false,
         children_count: editContext.children_count ?? 0,
+        // NEW: Load structured managing director fields
+        md_salutation: '',
+        md_first_name: '',
+        md_last_name: '',
+        tax_number: '',
+        registry_court: '',
       });
       setStep(1);
     }
@@ -245,6 +263,11 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
     mutationFn: async () => {
       if (!activeTenantId) throw new Error('Keine Organisation aktiv');
       
+      // Build managing_director from structured fields for backward compatibility
+      const managingDirectorDisplay = formData.context_type === 'BUSINESS' && formData.md_first_name && formData.md_last_name
+        ? `${formData.md_salutation ? formData.md_salutation + ' ' : ''}${formData.md_first_name} ${formData.md_last_name}`.trim()
+        : formData.managing_director || null;
+      
       const contextData = {
         tenant_id: activeTenantId,
         name: formData.name,
@@ -258,7 +281,13 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
         hrb_number: formData.context_type === 'BUSINESS' ? formData.hrb_number || null : null,
         ust_id: formData.context_type === 'BUSINESS' ? formData.ust_id || null : null,
         legal_form: formData.context_type === 'BUSINESS' ? formData.legal_form || null : null,
-        managing_director: formData.context_type === 'BUSINESS' ? formData.managing_director || null : null,
+        managing_director: managingDirectorDisplay,
+        // NEW: Structured managing director fields
+        md_salutation: formData.context_type === 'BUSINESS' ? formData.md_salutation || null : null,
+        md_first_name: formData.context_type === 'BUSINESS' ? formData.md_first_name || null : null,
+        md_last_name: formData.context_type === 'BUSINESS' ? formData.md_last_name || null : null,
+        tax_number: formData.context_type === 'BUSINESS' ? formData.tax_number || null : null,
+        registry_court: formData.context_type === 'BUSINESS' ? formData.registry_court || null : null,
         // Private tax basis fields
         tax_regime: formData.context_type === 'PRIVATE' ? formData.tax_assessment_type : null,
         taxable_income_yearly: formData.context_type === 'PRIVATE' ? formData.taxable_income_yearly : null,
@@ -869,7 +898,52 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
         ) : (
           /* STEP 2b: Business - Company Details */
           <div className="space-y-4">
-            <p className="text-sm font-medium text-muted-foreground">Gesellschaftsangaben</p>
+            {/* Geschäftsführer / Inhaber */}
+            <div className="p-4 border rounded-lg bg-muted/20 space-y-4">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Geschäftsführer / Inhaber
+              </p>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Anrede</Label>
+                  <Select
+                    value={formData.md_salutation}
+                    onValueChange={(v) => updateField('md_salutation', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Anrede" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Herr">Herr</SelectItem>
+                      <SelectItem value="Frau">Frau</SelectItem>
+                      <SelectItem value="Divers">Divers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Vorname</Label>
+                  <Input
+                    placeholder="Max"
+                    value={formData.md_first_name}
+                    onChange={(e) => updateField('md_first_name', e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-xs">Nachname</Label>
+                  <Input
+                    placeholder="Mustermann"
+                    value={formData.md_last_name}
+                    onChange={(e) => updateField('md_last_name', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Registerdaten */}
+            <p className="text-sm font-medium text-muted-foreground">Registerdaten</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Rechtsform</Label>
@@ -892,35 +966,45 @@ export function CreateContextDialog({ open, onOpenChange, editContext }: CreateC
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="managing_director">Geschäftsführer</Label>
+                <Label htmlFor="tax_number">Steuernummer</Label>
                 <Input
-                  id="managing_director"
-                  placeholder="z.B. Hans Müller"
-                  value={formData.managing_director}
-                  onChange={(e) => updateField('managing_director', e.target.value)}
+                  id="tax_number"
+                  placeholder="z.B. 123/456/78901"
+                  value={formData.tax_number}
+                  onChange={(e) => updateField('tax_number', e.target.value)}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="hrb">HRB-Nummer</Label>
+                <Label htmlFor="registry_court">Amtsgericht</Label>
+                <Input
+                  id="registry_court"
+                  placeholder="z.B. Amtsgericht Leipzig"
+                  value={formData.registry_court}
+                  onChange={(e) => updateField('registry_court', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hrb">Handelsregisternummer</Label>
                 <Input
                   id="hrb"
-                  placeholder="z.B. HRB 12345 B"
+                  placeholder="z.B. HRB 12345"
                   value={formData.hrb_number}
                   onChange={(e) => updateField('hrb_number', e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ust">USt-IdNr.</Label>
-                <Input
-                  id="ust"
-                  placeholder="z.B. DE123456789"
-                  value={formData.ust_id}
-                  onChange={(e) => updateField('ust_id', e.target.value)}
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ust">USt-IdNr.</Label>
+              <Input
+                id="ust"
+                placeholder="z.B. DE123456789"
+                value={formData.ust_id}
+                onChange={(e) => updateField('ust_id', e.target.value)}
+              />
             </div>
 
             <Separator />

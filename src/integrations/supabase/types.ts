@@ -5738,13 +5738,18 @@ export type Database = {
           legal_form: string | null
           managing_director: string | null
           marginal_tax_rate: number | null
+          md_first_name: string | null
+          md_last_name: string | null
+          md_salutation: string | null
           name: string
           notes: string | null
           postal_code: string | null
           public_id: string
+          registry_court: string | null
           solidarity_surcharge: boolean | null
           street: string | null
           tax_assessment_type: string | null
+          tax_number: string | null
           tax_rate_percent: number | null
           tax_regime: string | null
           taxable_income_yearly: number | null
@@ -5768,13 +5773,18 @@ export type Database = {
           legal_form?: string | null
           managing_director?: string | null
           marginal_tax_rate?: number | null
+          md_first_name?: string | null
+          md_last_name?: string | null
+          md_salutation?: string | null
           name: string
           notes?: string | null
           postal_code?: string | null
           public_id?: string
+          registry_court?: string | null
           solidarity_surcharge?: boolean | null
           street?: string | null
           tax_assessment_type?: string | null
+          tax_number?: string | null
           tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null
@@ -5798,13 +5808,18 @@ export type Database = {
           legal_form?: string | null
           managing_director?: string | null
           marginal_tax_rate?: number | null
+          md_first_name?: string | null
+          md_last_name?: string | null
+          md_salutation?: string | null
           name?: string
           notes?: string | null
           postal_code?: string | null
           public_id?: string
+          registry_court?: string | null
           solidarity_surcharge?: boolean | null
           street?: string | null
           tax_assessment_type?: string | null
+          tax_number?: string | null
           tax_rate_percent?: number | null
           tax_regime?: string | null
           taxable_income_yearly?: number | null

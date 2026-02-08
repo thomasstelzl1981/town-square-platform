@@ -36,6 +36,12 @@ interface LandlordContext {
   tax_assessment_type?: string | null;
   church_tax?: boolean | null;
   children_count?: number | null;
+  // NEW: Structured managing director fields
+  md_salutation?: string | null;
+  md_first_name?: string | null;
+  md_last_name?: string | null;
+  tax_number?: string | null;
+  registry_court?: string | null;
 }
 
 interface ContextMember {
@@ -69,6 +75,12 @@ interface ContextFormData {
   house_number: string;
   postal_code: string;
   city: string;
+  // NEW: Structured managing director fields
+  md_salutation: string;
+  md_first_name: string;
+  md_last_name: string;
+  tax_number: string;
+  registry_court: string;
 }
 
 interface OwnerData {
@@ -171,6 +183,11 @@ export function KontexteTab() {
         calculatedTaxRate = Math.round(taxResult.marginalTaxRate * 100);
       }
 
+      // Build managing_director from structured fields for backward compatibility
+      const managingDirectorDisplay = editFormData.context_type === 'BUSINESS' && editFormData.md_first_name && editFormData.md_last_name
+        ? `${editFormData.md_salutation ? editFormData.md_salutation + ' ' : ''}${editFormData.md_first_name} ${editFormData.md_last_name}`.trim()
+        : editFormData.managing_director || null;
+
       // Update landlord_contexts
       const { error: ctxError } = await supabase
         .from('landlord_contexts')
@@ -182,10 +199,16 @@ export function KontexteTab() {
           tax_assessment_type: editFormData.context_type === 'PRIVATE' ? editFormData.tax_assessment_type : null,
           church_tax: editFormData.context_type === 'PRIVATE' ? editFormData.church_tax : null,
           children_count: editFormData.context_type === 'PRIVATE' ? editFormData.children_count : null,
-          managing_director: editFormData.context_type === 'BUSINESS' ? editFormData.managing_director : null,
+          managing_director: managingDirectorDisplay,
           legal_form: editFormData.context_type === 'BUSINESS' ? editFormData.legal_form : null,
           hrb_number: editFormData.context_type === 'BUSINESS' ? editFormData.hrb_number : null,
           ust_id: editFormData.context_type === 'BUSINESS' ? editFormData.ust_id : null,
+          // NEW: Structured fields
+          md_salutation: editFormData.context_type === 'BUSINESS' ? editFormData.md_salutation || null : null,
+          md_first_name: editFormData.context_type === 'BUSINESS' ? editFormData.md_first_name || null : null,
+          md_last_name: editFormData.context_type === 'BUSINESS' ? editFormData.md_last_name || null : null,
+          tax_number: editFormData.context_type === 'BUSINESS' ? editFormData.tax_number || null : null,
+          registry_court: editFormData.context_type === 'BUSINESS' ? editFormData.registry_court || null : null,
           street: editFormData.street || null,
           house_number: editFormData.house_number || null,
           postal_code: editFormData.postal_code || null,
@@ -257,6 +280,12 @@ export function KontexteTab() {
       house_number: ctx.house_number || '',
       postal_code: ctx.postal_code || '',
       city: ctx.city || '',
+      // NEW: Structured managing director fields
+      md_salutation: ctx.md_salutation || '',
+      md_first_name: ctx.md_first_name || '',
+      md_last_name: ctx.md_last_name || '',
+      tax_number: ctx.tax_number || '',
+      registry_court: ctx.registry_court || '',
     });
     setEditOwners(members.map(m => ({
       id: m.id,
@@ -389,15 +418,22 @@ export function KontexteTab() {
 
           {!isPrivate && (
             <div className="border-t pt-3 space-y-1 text-sm">
-              {ctx.managing_director && (
+              {/* Display structured GF name or fallback to managing_director */}
+              {(ctx.md_first_name || ctx.md_last_name || ctx.managing_director) && (
                 <div className="flex items-center gap-2">
                   <User className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="truncate">GF: {ctx.managing_director}</span>
+                  <span className="truncate">
+                    GF: {ctx.md_first_name || ctx.md_last_name 
+                      ? `${ctx.md_salutation ? ctx.md_salutation + ' ' : ''}${ctx.md_first_name || ''} ${ctx.md_last_name || ''}`.trim()
+                      : ctx.managing_director}
+                  </span>
                 </div>
               )}
               <p className="text-xs text-muted-foreground truncate">
                 {[
-                  ctx.hrb_number && `HRB: ${ctx.hrb_number}`,
+                  ctx.registry_court && ctx.hrb_number && `${ctx.registry_court}, HRB ${ctx.hrb_number}`,
+                  !ctx.registry_court && ctx.hrb_number && `HRB: ${ctx.hrb_number}`,
+                  ctx.tax_number && `StNr: ${ctx.tax_number}`,
                   ctx.ust_id && `USt-ID: ${ctx.ust_id}`,
                 ].filter(Boolean).join(' · ') || '–'}
               </p>
@@ -615,37 +651,101 @@ export function KontexteTab() {
           
           {/* BUSINESS: Firmendaten */}
           {editFormData.context_type === 'BUSINESS' && (
-            <div className="space-y-3 p-3 bg-muted/40 rounded-lg">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Firmendaten</span>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Geschäftsführer</Label>
-                  <Input 
-                    value={editFormData.managing_director}
-                    onChange={(e) => setEditFormData({ ...editFormData, managing_director: e.target.value })}
-                    placeholder="Max Mustermann" 
-                    className="h-8 text-sm" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Rechtsform</Label>
-                  <Input 
-                    value={editFormData.legal_form}
-                    onChange={(e) => setEditFormData({ ...editFormData, legal_form: e.target.value })}
-                    placeholder="GmbH" 
-                    className="h-8 text-sm" 
-                  />
+            <>
+              {/* Geschäftsführer / Inhaber */}
+              <div className="space-y-3 p-3 bg-muted/40 rounded-lg">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Geschäftsführer / Inhaber</span>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Anrede</Label>
+                    <Select 
+                      value={editFormData.md_salutation} 
+                      onValueChange={(v) => setEditFormData({ ...editFormData, md_salutation: v })}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Anrede" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Herr">Herr</SelectItem>
+                        <SelectItem value="Frau">Frau</SelectItem>
+                        <SelectItem value="Divers">Divers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Vorname</Label>
+                    <Input 
+                      value={editFormData.md_first_name}
+                      onChange={(e) => setEditFormData({ ...editFormData, md_first_name: e.target.value })}
+                      placeholder="Max" 
+                      className="h-8 text-sm" 
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Nachname</Label>
+                    <Input 
+                      value={editFormData.md_last_name}
+                      onChange={(e) => setEditFormData({ ...editFormData, md_last_name: e.target.value })}
+                      placeholder="Mustermann" 
+                      className="h-8 text-sm" 
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">HRB-Nummer</Label>
-                  <Input 
-                    value={editFormData.hrb_number}
-                    onChange={(e) => setEditFormData({ ...editFormData, hrb_number: e.target.value })}
-                    placeholder="12345 B" 
-                    className="h-8 text-sm" 
-                  />
+
+              {/* Registerdaten */}
+              <div className="space-y-3 p-3 bg-muted/40 rounded-lg">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Registerdaten</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Rechtsform</Label>
+                    <Select 
+                      value={editFormData.legal_form} 
+                      onValueChange={(v) => setEditFormData({ ...editFormData, legal_form: v })}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Rechtsform" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GmbH">GmbH</SelectItem>
+                        <SelectItem value="UG">UG (haftungsbeschränkt)</SelectItem>
+                        <SelectItem value="GmbH & Co. KG">GmbH & Co. KG</SelectItem>
+                        <SelectItem value="KG">KG</SelectItem>
+                        <SelectItem value="OHG">OHG</SelectItem>
+                        <SelectItem value="AG">AG</SelectItem>
+                        <SelectItem value="e.K.">e.K.</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Steuernummer</Label>
+                    <Input 
+                      value={editFormData.tax_number}
+                      onChange={(e) => setEditFormData({ ...editFormData, tax_number: e.target.value })}
+                      placeholder="123/456/78901" 
+                      className="h-8 text-sm" 
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amtsgericht</Label>
+                    <Input 
+                      value={editFormData.registry_court}
+                      onChange={(e) => setEditFormData({ ...editFormData, registry_court: e.target.value })}
+                      placeholder="Amtsgericht Leipzig" 
+                      className="h-8 text-sm" 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Handelsregisternummer</Label>
+                    <Input 
+                      value={editFormData.hrb_number}
+                      onChange={(e) => setEditFormData({ ...editFormData, hrb_number: e.target.value })}
+                      placeholder="HRB 12345" 
+                      className="h-8 text-sm" 
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">USt-ID</Label>
@@ -657,17 +757,23 @@ export function KontexteTab() {
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Steuersatz (%)</Label>
-                <Input 
-                  type="number"
-                  value={editFormData.tax_rate_percent}
-                  onChange={(e) => setEditFormData({ ...editFormData, tax_rate_percent: Number(e.target.value) || 30 })}
-                  placeholder="30" 
-                  className="h-8 text-sm" 
-                />
+
+              {/* Steuersatz */}
+              <div className="space-y-3 p-3 bg-muted/40 rounded-lg">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Steuersatz</span>
+                <div className="space-y-1">
+                  <Label className="text-xs">Gesamtsteuersatz (%)</Label>
+                  <Input 
+                    type="number"
+                    value={editFormData.tax_rate_percent}
+                    onChange={(e) => setEditFormData({ ...editFormData, tax_rate_percent: Number(e.target.value) || 30 })}
+                    placeholder="30" 
+                    className="h-8 text-sm" 
+                  />
+                  <p className="text-xs text-muted-foreground">KSt + GewSt + Soli (Standard: 30%)</p>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Adresse (für beide Typen) */}
