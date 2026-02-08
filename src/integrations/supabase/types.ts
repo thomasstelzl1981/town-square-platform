@@ -10295,6 +10295,10 @@ export type Database = {
         Returns: undefined
       }
       is_akquise_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_kaufy_public_image_document: {
+        Args: { doc_id: string }
+        Returns: boolean
+      }
       is_parent_access_blocked: {
         Args: { target_org_id: string }
         Returns: boolean

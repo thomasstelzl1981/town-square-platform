@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive } from 'lucide-react';
+import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive, Rocket } from 'lucide-react';
 import { PdfExportFooter } from '@/components/pdf';
 import { toast } from 'sonner';
-
 interface Stats {
   organizations: number;
   profiles: number;
@@ -22,8 +22,9 @@ interface Stats {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { profile, memberships, isPlatformAdmin, activeOrganization } = useAuth();
-  const [stats, setStats] = useState<Stats>({ 
+  const [stats, setStats] = useState<Stats>({
     organizations: 0, 
     profiles: 0, 
     memberships: 0, 
@@ -179,7 +180,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-3">
               <Button 
                 variant="outline" 
-                onClick={() => window.open('/kaufy', '_blank')}
+                onClick={() => navigate('/kaufy')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -187,7 +188,7 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => window.open('/sot', '_blank')}
+                onClick={() => navigate('/sot')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -195,15 +196,23 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => window.open('/miety', '_blank')}
+                onClick={() => navigate('/miety')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
                 Miety
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/futureroom')}
+                className="gap-2"
+              >
+                <Rocket className="h-4 w-4" />
+                Future Room
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Go-live: kaufy.app | systemofatown.app | miety.app
+              Go-live: kaufy.app | systemofatown.app | miety.app | futureroom.app
             </p>
           </div>
           {/* Documentation Export */}
