@@ -1,285 +1,92 @@
 
-# Plan: Kaufy Zone 3 Investment-Engine Harmonisierung
+# Plan: `/kaufy/immobilien` Route entfernen — Homepage `/kaufy` als einzige Immobilien-Seite
 
-## Detaillierte Problemanalyse
+## Problemanalyse
 
-Nach gründlicher Code- und visueller Analyse habe ich folgende Diskrepanzen identifiziert:
+Die Kaufy-Website hat aktuell zwei Immobilien-Seiten mit unterschiedlichen Designs:
 
-### Seite 1: KaufyHome.tsx (Homepage)
-**Status: Funktioniert korrekt**
-- Investment-Suchfeld mit zVE/EK vorhanden (`InvestmentSearchCard`)
-- Property-Cards mit Investment-Metriken (`KaufyPropertyCard`)
-- Berechnung via Edge Function funktioniert
+| Route | Komponente | Problem |
+|-------|------------|---------|
+| `/kaufy` (Homepage) | `KaufyPropertyCard` | ✅ Korrektes Design |
+| `/kaufy/immobilien` | `InvestmentResultTile` | ❌ Falsches Design (MOD-08 Portal-Kachel) |
 
-### Seite 2: KaufyImmobilien.tsx (Immobilien-Übersicht)
-**Status: Veraltet — verwendet nicht die Investment-Engine**
+**Ihr Design (`KaufyPropertyCard`)** ist das saubere, durchdachte Design mit:
+- 4:3 Bildformat
+- Vertikale Metrik-Anzeige (Cashflow, Steuervorteil, Netto-Belastung)
+- Zone3-Styling (--z3-* Variablen)
+- Eigener Netto-Belastungs-Footer mit farbigem Hintergrund
 
-| Aspekt | Ist-Zustand | Soll-Zustand (wie MOD-08) |
-|--------|-------------|---------------------------|
-| Suchfeld | Nur Text-Filter | zVE + EK Investment-Suche |
-| Cards | Eigene simple Cards | `InvestmentResultTile` mit T-Konto |
-| Berechnung | Keine | `useInvestmentEngine` + `metricsCache` |
+Die `/kaufy/immobilien`-Seite verwendet stattdessen `InvestmentResultTile` — das ist die **Portal-Kachel für MOD-08**, nicht für die öffentliche Website.
 
-**Konkret fehlt:**
-- Zeilen 166-177: Nur einfache Textsuche
-- Zeilen 220-281: Eigene Card-Implementierung ohne Investment-Metriken
+## Lösung: Route entfernen und Links anpassen
 
-### Seite 3: KaufyExpose.tsx (Einzelobjekt-Exposé)
-**Status: Teilweise veraltet**
+### Phase 1: Route aus Manifest entfernen
 
-| Aspekt | Ist-Zustand | Soll-Zustand (wie MOD-08) |
-|--------|-------------|---------------------------|
-| Haushaltsrechnung | `variant="detailed"` (Zeile 385) | `variant="ledger"` (T-Konto) |
-| Bildergalerie | Eigene Implementierung (Zeilen 276-319) | `ExposeImageGallery` SSOT |
-| Dokumente | Nicht vorhanden | `ExposeDocuments` |
-| Karte | Nicht vorhanden | `ExposeLocationMap` |
-| Key Facts | 4 Spalten | 6 Spalten (+ Rendite, Heizung) |
+**Datei:** `src/manifests/routesManifest.ts`
 
----
+Die Route `{ path: "immobilien", component: "KaufyImmobilien" }` wird entfernt.
+Die dynamische Exposé-Route `{ path: "immobilien/:publicId", component: "KaufyExpose" }` bleibt.
 
-## Lösung: Drei-Phasen-Implementierung
+### Phase 2: Navigation anpassen
 
-### Phase 1: KaufyImmobilien.tsx — Investment-Suche integrieren
+**Datei:** `src/pages/zone3/kaufy/KaufyLayout.tsx`
 
-**Neue Imports hinzufügen:**
-```typescript
-import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
-import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
-import { InvestmentSearchCard } from '@/components/zone3/kaufy/InvestmentSearchCard';
-```
+Alle Links, die auf `/kaufy/immobilien` zeigen, werden auf `/kaufy` umgeleitet:
+- Header-Navigation (Zeile 15): "Immobilien" → `/kaufy`
+- Footer (Zeile 143): "Immobilien" → `/kaufy`
 
-**Neue State-Variablen:**
-```typescript
-const [hasSearched, setHasSearched] = useState(false);
-const [metricsCache, setMetricsCache] = useState<Record<string, any>>({});
-const [searchParams, setSearchParams] = useState<{ zvE: number; equity: number } | null>(null);
-const { calculate, isLoading: isCalculating } = useInvestmentEngine();
-```
+### Phase 3: "Alle anzeigen" Button entfernen
 
-**Investment-Berechnung (analog zu MOD-08 SucheTab.tsx Zeilen 237-280):**
-```typescript
-const handleInvestmentSearch = useCallback(async (params: { zvE: number; equity: number }) => {
-  setSearchParams(params);
-  const newCache: Record<string, any> = {};
-  
-  await Promise.all(listings.slice(0, 20).map(async (listing) => {
-    const input: CalculationInput = {
-      ...defaultInput,
-      purchasePrice: listing.asking_price,
-      monthlyRent: listing.monthly_rent_total || (listing.asking_price * 0.04 / 12),
-      equity: params.equity,
-      taxableIncome: params.zvE,
-      maritalStatus: 'single',
-      hasChurchTax: false,
-    };
+**Datei:** `src/pages/zone3/kaufy/KaufyHome.tsx`
 
-    const result = await calculate(input);
-    if (result) {
-      newCache[listing.id] = {
-        monthlyBurden: result.summary.monthlyBurden,
-        roiAfterTax: result.summary.roiAfterTax,
-        loanAmount: result.summary.loanAmount,
-        yearlyInterest: result.summary.yearlyInterest,
-        yearlyRepayment: result.summary.yearlyRepayment,
-        yearlyTaxSavings: result.summary.yearlyTaxSavings,
-      };
-    }
-  }));
+Der Button "Alle anzeigen →" (Zeilen 219-226) wird entfernt, da es keine separate Übersichtsseite mehr gibt. Die Homepage IST die Übersicht.
 
-  setMetricsCache(newCache);
-  setHasSearched(true);
-}, [listings, calculate]);
-```
+### Phase 4: Weitere Links im Codebase anpassen
 
-**Hero-Section erweitern:**
-Ersetzen der einfachen Textsuche durch `InvestmentSearchCard`:
-```tsx
-{/* Investment Search im Hero */}
-<InvestmentSearchCard onSearch={handleInvestmentSearch} isLoading={isCalculating} />
-```
+Folgende Dateien werden geprüft und Links zu `/kaufy/immobilien` auf `/kaufy` geändert:
+- `src/pages/zone3/kaufy/KaufyExpose.tsx` — "Zurück"-Link
+- `src/pages/zone3/kaufy/KaufyModule.tsx` — CTA-Links
+- `src/pages/zone3/kaufy/KaufyBeratung.tsx` — Evtl. Links
 
-**Cards durch InvestmentResultTile ersetzen:**
-```tsx
-{filteredListings.map((listing) => (
-  <InvestmentResultTile
-    key={listing.id}
-    listing={{
-      listing_id: listing.id,
-      public_id: listing.public_id,
-      title: listing.title,
-      asking_price: listing.asking_price,
-      property_type: listing.property_type,
-      address: listing.address,
-      city: listing.city,
-      postal_code: listing.postal_code,
-      total_area_sqm: listing.total_area_sqm,
-      unit_count: 1,
-      monthly_rent_total: listing.monthly_rent_total || 0,
-      hero_image_path: listing.hero_image_path,
-    }}
-    metrics={hasSearched ? metricsCache[listing.id] : null}
-    isFavorite={favorites.includes(listing.public_id)}
-    onToggleFavorite={() => toggleFavorite(listing.public_id)}
-    linkPrefix="/kaufy/immobilien"
-  />
-))}
-```
+### Phase 5: Komponente löschen
 
-**Interface erweitern:**
-```typescript
-interface PublicListing {
-  // ... bestehende Felder ...
-  monthly_rent_total?: number; // hinzufügen für Berechnung
-}
-```
+**Datei:** `src/pages/zone3/kaufy/KaufyImmobilien.tsx`
 
-### Phase 2: KaufyExpose.tsx — SSOT-Komponenten nutzen
+Die Datei wird gelöscht, da sie nicht mehr verwendet wird.
 
-**Änderung 1: Haushaltsrechnung (Zeile 385)**
-```tsx
-// VORHER:
-<Haushaltsrechnung result={calcResult} variant="detailed" showMonthly={true} />
+## Routen-Struktur nach der Änderung
 
-// NACHHER:
-<Haushaltsrechnung result={calcResult} variant="ledger" showMonthly={true} />
-```
+| Route | Inhalt |
+|-------|--------|
+| `/kaufy` | Homepage mit Hero, Investment-Suche, `KaufyPropertyCard` |
+| `/kaufy/immobilien/:publicId` | Einzelnes Exposé (bleibt) |
+| `/kaufy/vermieter` | Statische Seite (unverändert) |
+| `/kaufy/verkaeufer` | Statische Seite (unverändert) |
+| `/kaufy/vertrieb` | Statische Seite (unverändert) |
+| ... | Alle anderen Routen bleiben |
 
-**Änderung 2: Bildergalerie ersetzen (Zeilen 276-319)**
-```tsx
-// VORHER: 43 Zeilen eigene Implementierung
-
-// NACHHER:
-import { ExposeImageGallery } from '@/components/investment';
-
-<ExposeImageGallery propertyId={listing.property_id} aspectRatio="video" />
-```
-
-Dafür muss `property_id` in der Listing-Query hinzugefügt werden.
-
-**Änderung 3: Dokumente hinzufügen (nach DetailTable40Jahre)**
-```tsx
-import { ExposeDocuments } from '@/components/investment';
-
-{/* Nach DetailTable40Jahre */}
-<ExposeDocuments propertyId={listing.property_id} viewerType="external" />
-```
-
-**Änderung 4: Google Maps hinzufügen (am Ende)**
-```tsx
-import { ExposeLocationMap } from '@/components/verkauf';
-
-{/* Am Ende des Contents */}
-<ExposeLocationMap
-  address={listing.address}
-  city={listing.city}
-  postalCode={listing.postal_code}
-  showExactLocation={false}
-/>
-```
-
-**Änderung 5: Key Facts auf 6 Spalten erweitern (Zeilen 337-358)**
-```tsx
-<div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 rounded-xl bg-muted/50">
-  {/* Bestehende 4 Spalten */}
-  <div>
-    <p className="text-sm text-muted-foreground">Wohnfläche</p>
-    <p className="font-semibold flex items-center gap-1">
-      <Maximize2 className="w-4 h-4" /> {listing.total_area_sqm} m²
-    </p>
-  </div>
-  {/* ... weitere bestehende ... */}
-  
-  {/* 2 neue Spalten */}
-  <div>
-    <p className="text-sm text-muted-foreground">Rendite (brutto)</p>
-    <p className="font-semibold">
-      {listing.asking_price > 0 
-        ? `${((params.monthlyRent * 12) / listing.asking_price * 100).toFixed(1)}%`
-        : '–'}
-    </p>
-  </div>
-  <div>
-    <p className="text-sm text-muted-foreground">Heizung</p>
-    <p className="font-semibold">{listing.heating_type || '–'}</p>
-  </div>
-</div>
-```
-
-### Phase 3: Listing-Query erweitern
-
-**KaufyExpose.tsx — property_id in Query (Zeile 74-93)**
-```typescript
-const { data: listing, isLoading } = useQuery({
-  queryKey: ['public-listing', publicId],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('listings')
-      .select(`
-        id, public_id, title, description, asking_price,
-        properties!inner (
-          id,           // ← HINZUFÜGEN für ExposeImageGallery, ExposeDocuments
-          property_type, address, city, postal_code,
-          total_area_sqm, year_built, annual_income,
-          heating_type  // ← HINZUFÜGEN für Key Facts
-        )
-      `)
-      .eq('public_id', publicId)
-      .single();
-    
-    // ... Transform mit property_id: props.id
-  }
-});
-```
-
----
+**Entfernt:**
+- `/kaufy/immobilien` (redundante Übersichtsseite)
 
 ## Dateien-Änderungen
 
-| Datei | Änderungsumfang |
-|-------|-----------------|
-| `src/pages/zone3/kaufy/KaufyImmobilien.tsx` | Investment-Suche + InvestmentResultTile (ca. 80 Zeilen ändern) |
-| `src/pages/zone3/kaufy/KaufyExpose.tsx` | SSOT-Komponenten + variant="ledger" (ca. 60 Zeilen ändern) |
-
----
-
-## Technische Abhängigkeiten
-
-Alle benötigten Komponenten existieren bereits:
-- `InvestmentSearchCard` — bereits in `src/components/zone3/kaufy/`
-- `InvestmentResultTile` — bereits in `src/components/investment/`
-- `ExposeImageGallery` — bereits in `src/components/investment/`
-- `ExposeDocuments` — bereits in `src/components/investment/`
-- `ExposeLocationMap` — bereits in `src/components/verkauf/`
-- `useInvestmentEngine` — bereits in `src/hooks/`
-
----
+| Datei | Aktion |
+|-------|--------|
+| `src/manifests/routesManifest.ts` | Route entfernen |
+| `src/pages/zone3/kaufy/KaufyLayout.tsx` | Nav-Links anpassen |
+| `src/pages/zone3/kaufy/KaufyHome.tsx` | "Alle anzeigen" Button entfernen |
+| `src/pages/zone3/kaufy/KaufyExpose.tsx` | Zurück-Link prüfen |
+| `src/pages/zone3/kaufy/KaufyModule.tsx` | CTA-Links prüfen |
+| `src/pages/zone3/kaufy/KaufyImmobilien.tsx` | Löschen |
+| `src/router/ManifestRouter.tsx` | Import entfernen |
 
 ## Akzeptanzkriterien
 
 | # | Test | Erwartung |
 |---|------|-----------|
-| 1 | Kaufy → /kaufy/immobilien laden | Investment-Suchfelder (zVE, EK) sichtbar |
-| 2 | Suche ausführen | T-Konto-Kacheln mit Monatsbelastung erscheinen |
-| 3 | Kachel klicken → Exposé | Bildergalerie mit `ExposeImageGallery` |
-| 4 | Exposé → Haushaltsrechnung | T-Konto-Layout (ledger) statt detailed |
-| 5 | Exposé scrollen | Dokumente-Sektion sichtbar |
-| 6 | Exposé am Ende | Google Maps Karte sichtbar |
-| 7 | Key Facts prüfen | 6 Spalten inkl. Rendite und Heizung |
-| 8 | Kaufy Homepage bleibt unverändert | Keine Regression |
-| 9 | MOD-08 bleibt unverändert | Keine Regression |
-
----
-
-## Zusammenfassung
-
-Die Kaufy-Website hat drei unterschiedliche Zustände:
-
-1. **KaufyHome** (Homepage): ✅ Nutzt Investment-Engine korrekt
-2. **KaufyImmobilien** (Übersicht): ❌ Veraltet — keine Investment-Suche, simple Cards
-3. **KaufyExpose** (Exposé): ❌ Teilweise veraltet — `variant="detailed"`, eigene Galerie
-
-Die Lösung synchronisiert alle drei Seiten mit dem MOD-08 Standard durch:
-- Integration der `InvestmentSearchCard` in die Übersichtsseite
-- Verwendung der `InvestmentResultTile` mit T-Konto-Layout
-- Umstellung auf SSOT-Komponenten (`ExposeImageGallery`, `ExposeDocuments`, `ExposeLocationMap`)
-- Änderung der Haushaltsrechnung auf `variant="ledger"`
+| 1 | `/kaufy` aufrufen | Homepage zeigt `KaufyPropertyCard` (Ihr Design) |
+| 2 | Investment-Suche durchführen | Kacheln zeigen berechnete Metriken |
+| 3 | Auf Kachel klicken | Navigation zu `/kaufy/immobilien/{publicId}` (Exposé) |
+| 4 | Navigation "Immobilien" klicken | Führt zu `/kaufy` |
+| 5 | `/kaufy/immobilien` aufrufen | 404 (Route existiert nicht mehr) |
+| 6 | Alle statischen Kaufy-Seiten | Funktionieren weiterhin |
