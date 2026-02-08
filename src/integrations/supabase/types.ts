@@ -8668,6 +8668,8 @@ export type Database = {
       }
       tenant_extraction_settings: {
         Row: {
+          auto_enrich_contacts_email: boolean | null
+          auto_enrich_contacts_post: boolean | null
           auto_extract_caya: boolean | null
           auto_extract_connectors: boolean | null
           auto_extract_resend: boolean | null
@@ -8679,6 +8681,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_enrich_contacts_email?: boolean | null
+          auto_enrich_contacts_post?: boolean | null
           auto_extract_caya?: boolean | null
           auto_extract_connectors?: boolean | null
           auto_extract_resend?: boolean | null
@@ -8690,6 +8694,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_enrich_contacts_email?: boolean | null
+          auto_enrich_contacts_post?: boolean | null
           auto_extract_caya?: boolean | null
           auto_extract_connectors?: boolean | null
           auto_extract_resend?: boolean | null
