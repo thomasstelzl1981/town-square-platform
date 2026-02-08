@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalculationResult } from '@/hooks/useInvestmentEngine';
 import { Receipt, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HaushaltsrechnungProps {
   result: CalculationResult;
@@ -18,6 +19,7 @@ export function Haushaltsrechnung({
 }: HaushaltsrechnungProps) {
   const { summary, projection } = result;
   const year1 = projection[0];
+  const isMobile = useIsMobile();
   
   const formatCurrency = (value: number, showSign = false) => {
     const formatted = new Intl.NumberFormat('de-DE', { 
@@ -34,6 +36,9 @@ export function Haushaltsrechnung({
 
   const isPositive = summary.monthlyBurden <= 0;
   const monthlyDisplay = Math.abs(summary.monthlyBurden);
+
+  // Mobile: Hide per-month details in line items to avoid line breaks
+  const shouldShowMonthlyDetail = showMonthly && !isMobile;
 
   if (variant === 'compact') {
     return (
@@ -62,6 +67,75 @@ export function Haushaltsrechnung({
     );
   }
 
+  // Mobile: Stacked vertical layout
+  if (isMobile) {
+    return (
+      <Card className={className}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Haushaltsrechnung
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Ergebnis zuerst auf Mobile */}
+          <div className={cn(
+            "p-4 rounded-lg",
+            isPositive ? 'bg-green-50 border border-green-200' : 'bg-muted/50'
+          )}>
+            <div className="flex items-center gap-2 mb-2">
+              <PiggyBank className={cn("h-5 w-5", isPositive ? 'text-green-600' : 'text-muted-foreground')} />
+              <span className="font-semibold text-sm">NETTO-BELASTUNG</span>
+            </div>
+            <p className={cn("text-3xl font-bold", isPositive ? 'text-green-600' : 'text-foreground')}>
+              {isPositive ? '+' : ''}{formatCurrency(summary.monthlyBurden)}/Mo
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatCurrency(summary.monthlyBurden * 12)}/Jahr
+            </p>
+          </div>
+
+          {/* Kompakte Übersicht */}
+          <div className="space-y-2">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-sm">Mieteinnahmen</span>
+              <span className="text-sm font-medium text-green-600">
+                +{formatCurrency(year1?.rent || summary.yearlyRent)}/Jahr
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-sm">Darlehensrate</span>
+              <span className="text-sm font-medium text-red-600">
+                -{formatCurrency(summary.yearlyInterest + summary.yearlyRepayment)}/Jahr
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-sm">Steuerersparnis</span>
+              <span className="text-sm font-medium text-green-600">
+                +{formatCurrency(summary.yearlyTaxSavings)}/Jahr
+              </span>
+            </div>
+          </div>
+
+          {/* ROI */}
+          <div className="grid grid-cols-2 gap-4 pt-2 text-center">
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">ROI vor Steuern</p>
+              <p className="font-semibold">{summary.roiBeforeTax.toFixed(2)}%</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">ROI nach Steuern</p>
+              <p className={cn("font-semibold", summary.roiAfterTax >= 0 ? 'text-green-600' : 'text-red-600')}>
+                {summary.roiAfterTax.toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Desktop: Full detailed layout
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
@@ -77,10 +151,10 @@ export function Haushaltsrechnung({
             Einnahmen
           </h4>
           <div className="flex justify-between py-1.5 border-b">
-            <span className="text-sm">Mieteinnahmen {showMonthly && <span className="text-muted-foreground">(×12)</span>}</span>
+            <span className="text-sm">Mieteinnahmen {shouldShowMonthlyDetail && <span className="text-muted-foreground">(×12)</span>}</span>
             <span className="text-sm font-medium text-green-600">
               +{formatCurrency(year1?.rent || summary.yearlyRent)}
-              {showMonthly && <span className="text-xs text-muted-foreground ml-1">({formatCurrency((year1?.rent || summary.yearlyRent) / 12)}/Mo)</span>}
+              {shouldShowMonthlyDetail && <span className="text-xs text-muted-foreground ml-1">({formatCurrency((year1?.rent || summary.yearlyRent) / 12)}/Mo)</span>}
             </span>
           </div>
         </div>
@@ -94,7 +168,7 @@ export function Haushaltsrechnung({
             <span className="text-sm">Darlehensrate (Zins + Tilgung)</span>
             <span className="text-sm font-medium text-red-600">
               -{formatCurrency(summary.yearlyInterest + summary.yearlyRepayment)}
-              {showMonthly && <span className="text-xs text-muted-foreground ml-1">({formatCurrency((summary.yearlyInterest + summary.yearlyRepayment) / 12)}/Mo)</span>}
+              {shouldShowMonthlyDetail && <span className="text-xs text-muted-foreground ml-1">({formatCurrency((summary.yearlyInterest + summary.yearlyRepayment) / 12)}/Mo)</span>}
             </span>
           </div>
           <div className="flex justify-between py-1.5 border-b text-muted-foreground">
@@ -126,7 +200,7 @@ export function Haushaltsrechnung({
             <span className="text-sm">Steuerersparnis</span>
             <span className="text-sm font-medium text-green-600">
               +{formatCurrency(summary.yearlyTaxSavings)}
-              {showMonthly && <span className="text-xs text-muted-foreground ml-1">({formatCurrency(summary.yearlyTaxSavings / 12)}/Mo)</span>}
+              {shouldShowMonthlyDetail && <span className="text-xs text-muted-foreground ml-1">({formatCurrency(summary.yearlyTaxSavings / 12)}/Mo)</span>}
             </span>
           </div>
         </div>
