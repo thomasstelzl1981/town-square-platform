@@ -98,6 +98,11 @@ interface Contact {
 
 const columns: Column<Contact>[] = [
   {
+    key: 'salutation',
+    header: 'Anrede',
+    render: (_value: unknown, contact: Contact) => contact.salutation || '-',
+  },
+  {
     key: 'first_name',
     header: 'Vorname',
     render: (_value: unknown, contact: Contact) => (
@@ -137,6 +142,21 @@ const columns: Column<Contact>[] = [
     key: 'phone',
     header: 'Telefon',
     render: (_value: unknown, contact: Contact) => contact.phone || '-',
+  },
+  {
+    key: 'street',
+    header: 'Straße',
+    render: (_value: unknown, contact: Contact) => contact.street || '-',
+  },
+  {
+    key: 'postal_code',
+    header: 'PLZ',
+    render: (_value: unknown, contact: Contact) => contact.postal_code || '-',
+  },
+  {
+    key: 'city',
+    header: 'Ort',
+    render: (_value: unknown, contact: Contact) => contact.city || '-',
   },
   {
     key: 'company',
