@@ -1,251 +1,216 @@
 
+# Plan: Rollen-Management-Modul für Zone 1
 
-# Zone 1 Fertigstellungsplan v1.1 (korrigiert)
+## Zusammenfassung
 
-## Korrektur zu Phase 4
-
-Phase 4 (Feature Activation) wird praezisiert:
-
-### Phase 4: Feature Activation (Gruppe 5)
-
-**Status:** Infrastruktur vorhanden, aktuell NICHT aktiv fuer Zone 2
-
-### Wichtige Klarstellung
-
-| Aspekt | Entwicklungs-Account | Echte Tenants |
-|--------|---------------------|---------------|
-| Modul-Sichtbarkeit | ALLE Module sichtbar | Tile-Aktivierung steuert |
-| Code-Logik | `isDevelopmentMode = true` → zeigt alles | `tenant_tile_activation` wird ausgewertet |
-| Partner-Verifizierung | Nicht relevant | Schaltet Partner-Zugang |
-
-**Konsequenz fuer jetzt:**
-- Tile-Katalog zeigt Modul-Uebersicht (Dokumentation)
-- Tenant-Aktivierung Tab ist vorbereitet, aber ohne Wirkung
-- Wirkung erst bei Onboarding echter Tenants (Phase 11)
+Erstellung eines neuen Moduls **"Rollen & Berechtigungen"** unter Feature Activation (Gruppe 5), das die Rollen-Modul-Matrix visualisiert und als zentrale Dokumentation dient.
 
 ---
 
-### Phase 4 Tasks (aktualisiert)
+## Phase 1: Datenbank-Bereinigung
 
-| Schritt | Aufgabe | Prioritaet | Begruendung |
-|---------|---------|------------|-------------|
-| 4.1 | MOD-00 in tile_catalog einfuegen | Hoch | Vollstaendigkeit des Katalogs |
-| 4.2 | Tile-Katalog als Modul-Dokumentation nutzen | Mittel | Referenz fuer Entwicklung |
-| 4.3 | Partner-Verifizierung UI fertigstellen | Niedrig | Erst bei echten Partnern relevant |
-| 4.4 | **NICHT:** Zone 2 Sichtbarkeit testen | - | Entwicklungs-Account zeigt alles |
+### 1.1 membership_role Enum korrigieren
+
+Aktueller Stand:
+- platform_admin
+- org_admin
+- internal_ops (soll: internal_user laut Spezifikation)
+- sales_partner
+- renter_user (soll: tenant_renter_lite laut Spezifikation)
+- finance_manager
+
+Fehlend:
+- akquise_manager
+- future_room_web_user_lite
+
+SQL-Migration:
+```sql
+-- Neue Rollen hinzufuegen
+ALTER TYPE membership_role ADD VALUE IF NOT EXISTS 'akquise_manager';
+ALTER TYPE membership_role ADD VALUE IF NOT EXISTS 'future_room_web_user_lite';
+```
+
+Hinweis: Umbenennungen (internal_ops → internal_user) erfordern Datenmigration und werden auf Phase 11 verschoben.
+
+### 1.2 app_role Enum synchronisieren
+
+Aktueller Stand:
+- platform_admin
+- moderator (nicht in Spezifikation)
+- user (nicht in Spezifikation)
+- finance_manager
+- akquise_manager
+
+Empfehlung: app_role wird nicht aktiv genutzt (user_roles Tabelle ist leer). Bereinigung auf Phase 11 verschieben.
 
 ---
 
-### Abhaengigkeit verdeutlicht
+## Phase 2: Neues Modul erstellen
 
-```text
-Entwicklungs-Account (jetzt):
-  PortalNav.tsx Zeile 190-195:
-  if (isDevelopmentMode) {
-    setActiveTileCodes(null); // null = show all
-    return;
-  }
-  → ALLE Module sichtbar, tenant_tile_activation ignoriert
+### 2.1 Neue Datei: `src/pages/admin/RolesManagement.tsx`
 
-Echte Tenants (spaeter Phase 11):
-  - Zone 1 aktiviert Module pro Tenant
-  - Zone 2 liest tenant_tile_activation
-  - Nur aktivierte Module erscheinen in Sidebar
+Struktur mit 3 Tabs:
+
+**Tab 1: Rollen-Katalog**
+- Tabelle aller definierten Rollen
+- Spalten: Rolle, Zone, Beschreibung, Ziel-Module
+- Datenquelle: Statische ROLES_CATALOG Konstante (aus Rollenübersicht)
+
+**Tab 2: Modul-Rollen-Matrix**
+- Grid: Module (Zeilen) x Rollen (Spalten)
+- Checkmarks für Zugriff
+- Datenquelle: routesManifest.ts (requires_role) + statische Matrix
+- Read-Only Ansicht
+
+**Tab 3: Governance-Regeln**
+- Superuser-Dokumentation
+- isDevelopmentMode Erklärung
+- Zone 2 als Entwicklungs-Account
+
+### 2.2 Rollen-Konstante definieren
+
+```typescript
+// src/constants/rolesMatrix.ts
+export const ROLES_CATALOG = [
+  {
+    code: 'platform_admin',
+    label: 'Platform Admin',
+    zone: 'Zone 1',
+    description: 'Plattformbetreiber (God Mode)',
+    modules: ['ALLE Zone 1', 'ALLE Zone 2 (Oversight)'],
+  },
+  {
+    code: 'org_admin',
+    label: 'Org Admin',
+    zone: 'Zone 2',
+    description: 'Tenant-Eigentuemer / Hauptnutzer',
+    modules: ['MOD-00 bis MOD-20 (vollstaendig)'],
+  },
+  {
+    code: 'internal_user', // Hinweis: DB hat noch internal_ops
+    label: 'Internal User',
+    zone: 'Zone 2',
+    description: 'Mitarbeiter im Tenant',
+    modules: ['MOD-00, MOD-02, MOD-03, MOD-04 (limited), MOD-05, MOD-06, MOD-07, MOD-13, MOD-14, MOD-17'],
+  },
+  {
+    code: 'sales_partner',
+    label: 'Sales Partner',
+    zone: 'Zone 2',
+    description: 'Vertriebspartner',
+    modules: ['MOD-00, MOD-06 (read), MOD-07 (Status), MOD-08, MOD-09, MOD-10'],
+  },
+  {
+    code: 'finance_manager',
+    label: 'Finanzierungsmanager',
+    zone: 'Zone 2',
+    description: 'FutureRoom Finanzmanager',
+    modules: ['MOD-00, MOD-03 (Finanz-Docs), MOD-07 (read), MOD-11'],
+  },
+  {
+    code: 'akquise_manager',
+    label: 'Akquise-Manager',
+    zone: 'Zone 2',
+    description: 'Akquise/Acquiary Manager',
+    modules: ['MOD-00, MOD-03, MOD-04 (limited), MOD-08 (Mandate), MOD-12'],
+  },
+  {
+    code: 'future_room_web_user_lite',
+    label: 'FutureRoom Lite',
+    zone: 'Zone 3 Entry',
+    description: 'Zone 3 Registrierung (eingeschraenkt)',
+    modules: ['MOD-00 (limited), MOD-07 (Selbstauskunft)'],
+  },
+  {
+    code: 'tenant_renter_lite', // Hinweis: DB hat renter_user
+    label: 'Mieter (Lite)',
+    zone: 'Zone 2 Andock',
+    description: 'Mieter mit eigenem Mini-Tenant',
+    modules: ['MOD-03 (eigene), MOD-14 (limited), MOD-20'],
+  },
+];
 ```
 
 ---
 
-## Aktualisierter Phasenplan (vollstaendig)
+## Phase 3: Routing und Sidebar
 
-### Phase 1: Dokumentation und Datenbereinigung
-**Ziel:** Repo und DB synchronisieren
+### 3.1 Route in routesManifest.ts ergaenzen
 
-| Schritt | Aufgabe |
-|---------|---------|
-| 1.1 | MOD-00 in tile_catalog einfuegen |
-| 1.2 | integration_registry: OPENAI-Diskrepanz klaeren |
-| 1.3 | ZONE1_ADMIN_ROUTES.md aktualisieren |
-| 1.4 | A2_Zone1_Admin_Governance.md auf v3.0 |
-| 1.5 | ZONE1_COMPLETION_ROADMAP.md erstellen (dieses Dokument) |
+```typescript
+// In zone1Admin.routes hinzufuegen:
+{ path: "roles", component: "RolesManagement", title: "Rollen & Berechtigungen" },
+```
 
----
+### 3.2 AdminSidebar.tsx anpassen
 
-### Phase 2: Tenants und Access (Gruppe 1)
-**Status:** Funktional, Feinarbeit
+getGroupKey() erweitern:
+```typescript
+if (path === 'tiles' || path === 'roles' || path === 'partner-verification') {
+  return 'activation';
+}
+```
 
-| Modul | Aufgabe |
-|-------|---------|
-| Dashboard | KPI-Queries validieren |
-| Organisationen | Typ-Filter hinzufuegen |
-| Benutzer | Rollen-Badge pruefen |
-| Delegationen | Filter nach Typ |
+### 3.3 ICON_MAP ergaenzen
 
----
-
-### Phase 3: Masterdata (Gruppe 2)
-**Status:** Read-Only Viewer (SSOT = Zone 2)
-
-| Modul | Aufgabe |
-|-------|---------|
-| Immobilienakte Vorlage | Als Read-Only Referenz aus Zone 2 Types |
-| Selbstauskunft Vorlage | Als Read-Only Referenz aus Zone 2 Types |
-
-**Regel:** Zone 1 veraendert diese Strukturen NICHT. Sie dienen der Dokumentation.
-
----
-
-### Phase 4: Feature Activation (Gruppe 5)
-**Status:** Infrastruktur bereit, Wirkung erst bei echten Tenants
-
-| Modul | Aufgabe | Wann relevant |
-|-------|---------|---------------|
-| Tile-Katalog | MOD-00 anzeigen, als Doku nutzen | Jetzt (Dokumentation) |
-| Tile-Katalog | Tenant-Aktivierung Tab | Phase 11 (echte Tenants) |
-| Partner-Verifizierung | Status-Workflow UI | Phase 11 (echte Partner) |
-
----
-
-### Phase 5: System (Gruppe 9)
-**Status:** Funktional, Bereinigung
-
-| Modul | Aufgabe |
-|-------|---------|
-| Integrationen | OPENAI korrigieren, Lovable AI dokumentieren |
-| Oversight | Fertig (nur KPIs) |
-| Audit Log | Filter nach Modul |
-
----
-
-### Phase 6: Armstrong Zone 1 (Gruppe 4)
-**Status:** Nur Mock-Daten
-
-| Schritt | Aufgabe |
-|---------|---------|
-| 6A | DB-Schema erstellen (armstrong_action_runs, etc.) |
-| 6B | Module mit DB verbinden |
-
----
-
-### Phase 7: Operative Desks (Gruppe 7)
-**Status:** Teilweise implementiert
-
-| Desk | Status |
-|------|--------|
-| FutureRoom | Funktional, Feinarbeit |
-| Acquiary | Funktional, Feinarbeit |
-| LeadPool | Funktional |
-| Provisionen | Grundstruktur |
-| Sales Desk | Stub → implementieren |
-| Finance Desk | Stub → Redirect oder entfernen |
-
----
-
-### Phase 8: KI Office (Gruppe 3)
-**Status:** Stubs
-
-| Modul | Aufgabe |
-|-------|---------|
-| E-Mail | Resend-Integration (System-Mails) |
-| Kontakte | Zone 1 Scope Filter |
-| Kommunikation | Event-Timeline |
-
----
-
-### Phase 9: Backbone (Gruppe 6)
-**Status:** Stubs
-
-| Modul | Aufgabe |
-|-------|---------|
-| Vereinbarungen | Template-Liste |
-| Posteingang | Caya-Integration |
-
----
-
-### Phase 10: AI Agents (Gruppe 8)
-**Status:** Stubs
-
-| Modul | Aufgabe |
-|-------|---------|
-| Dashboard | Agenten-Uebersicht |
-| Katalog | Verfuegbare Agenten |
-| Instanzen | Laufende Agenten |
-| Runs | Ausfuehrungshistorie |
-| Policies | Sicherheitsregeln |
-
----
-
-### Phase 11: Platform Admin, Abrechnung und Tenant-Onboarding (Gruppe 10)
-**Status:** Zum Schluss
-
-| Modul | Aufgabe |
-|-------|---------|
-| Support | Ticket-System |
-| Rechnungsstellung (NEU) | Sidebar-Menupunkt + Grundstruktur |
-| Zahlungen (NEU) | Stripe-Integration |
-| **Tenant-Onboarding** | Tile-Aktivierung wird hier relevant |
-
-**Hier wird Feature Activation erst wirklich aktiv:**
-- Neue Tenants anlegen
-- Module pro Tenant freischalten
-- Partner verifizieren
-
----
-
-## Zusammenfassung: Reihenfolge
-
-```text
-Phase 1: Dokumentation und Datengrundlagen
-    ↓
-Phase 2: Tenants und Access (Feinarbeit)
-    ↓
-Phase 3: Masterdata (Read-Only Viewer)
-    ↓
-Phase 4: Feature Activation (Infrastruktur, Doku-Modus)
-    ↓
-Phase 5: System (Integrationen bereinigen)
-    ↓
-Phase 6: Armstrong Zone 1 (DB-Schema + Integration)
-    ↓
-Phase 7: Operative Desks (komplettieren)
-    ↓
-Phase 8: KI Office (System-Kommunikation)
-    ↓
-Phase 9: Backbone (Templates, Inbound)
-    ↓
-Phase 10: AI Agents (Governance)
-    ↓
-Phase 11: Platform Admin + Abrechnung + Tenant-Onboarding
-          (Feature Activation wird hier AKTIV)
+```typescript
+'RolesManagement': Shield, // oder UserCog
 ```
 
 ---
 
-## Governance-Regeln (unveraendert)
+## Phase 4: Dokumentation aktualisieren
 
-### Regel 1: Zone 2 ist SSOT fuer Business-Daten
-Zone 1 darf Zone 2 Daten niemals veraendern ohne explizite Freigabe.
+### 4.1 ACCESS_MATRIX.md auf v2.0
 
-### Regel 2: Zone 1 steuert durch Konfiguration
-Zone 1 veraendert eigene Governance-Daten:
-- Tile-Aktivierungen
-- Partner-Verifizierung
-- Mandats-Zuweisung
-- Lead-Zuweisung
+- Alle 8 Rollen dokumentieren
+- MOD-11, MOD-12 hinzufuegen
+- Lite-Rollen erklaeren
 
-### Regel 3: Masterdata = Read-Only Spiegel
-Die Masterdata-Vorlagen sind Viewer, keine Editoren.
+### 4.2 ZONE1_ADMIN_ROUTES.md
 
-### Regel 4: Entwicklungs-Account zeigt alles
-Im Development-Mode ist tenant_tile_activation deaktiviert.
-Alle Module sind sichtbar fuer vollstaendige Entwicklung.
+Feature Activation erweitern:
+```
+| /admin/roles | RolesManagement | Rollen & Berechtigungen |
+```
+
+### 4.3 ZONE1_COMPLETION_ROADMAP.md
+
+Phase 4 aktualisieren:
+```
+| Rollen & Berechtigungen | Rollen-Katalog + Matrix (Read-Only) | Jetzt |
+```
 
 ---
 
-## Naechster Schritt
+## Dateien die erstellt/geaendert werden
 
-Phase 1 starten:
-1. MOD-00 in tile_catalog einfuegen (DB-Migration)
-2. ZONE1_COMPLETION_ROADMAP.md im Repo erstellen
-3. ZONE1_ADMIN_ROUTES.md aktualisieren
-4. A2_Zone1_Admin_Governance.md auf v3.0
+| Datei | Aktion |
+|-------|--------|
+| `supabase/migrations/xxx_add_roles.sql` | NEU: akquise_manager, future_room_web_user_lite |
+| `src/constants/rolesMatrix.ts` | NEU: Rollen-Definition |
+| `src/pages/admin/RolesManagement.tsx` | NEU: 3-Tab-Modul |
+| `src/manifests/routesManifest.ts` | Route hinzufuegen |
+| `src/components/admin/AdminSidebar.tsx` | Group-Mapping |
+| `docs/architecture/ACCESS_MATRIX.md` | v2.0 mit allen Rollen |
+| `docs/architecture/ZONE1_ADMIN_ROUTES.md` | Route dokumentieren |
+| `docs/architecture/ZONE1_COMPLETION_ROADMAP.md` | Phase 4 aktualisieren |
+
+---
+
+## Governance-Hinweis im UI
+
+Das neue Modul wird einen prominenten Hinweis enthalten:
+
+> **Entwicklungs-Account**
+> 
+> Im Entwicklungsmodus (isDevelopmentMode = true) und fuer Platform Admins sind ALLE Module sichtbar, unabhaengig von Rollen-Zuweisungen. Die Rollen-Steuerung greift erst bei echten Tenant-Nutzern.
+
+---
+
+## Abhaengigkeiten
+
+- Keine Aenderungen an Zone 2 (SSOT bleibt Zone 2)
+- DB-Migration ist abwaertskompatibel (nur ADD VALUE)
+- Umbenennungen (internal_ops → internal_user) werden auf Phase 11 verschoben
 
