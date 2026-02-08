@@ -1,19 +1,21 @@
 /**
  * KaufyExpose — Vollbild-Exposé für Zone 3 (KAUFY Marketplace)
  * 
- * REFAKTORISIERT: Nutzt jetzt gemeinsame Komponenten aus src/components/investment/
- * - MasterGraph
- * - Haushaltsrechnung  
+ * REFAKTORISIERT: Nutzt jetzt SSOT-Komponenten aus src/components/investment/
+ * - MasterGraph (40-Jahres-Chart)
+ * - Haushaltsrechnung (variant="ledger" für T-Konto)
  * - InvestmentSliderPanel
  * - DetailTable40Jahre
+ * - ExposeImageGallery (statt eigene Galerie)
+ * - ExposeDocuments
  * 
- * BILDER: Lädt Bilder via document_links + documents mit öffentlicher RLS
+ * Plus: ExposeLocationMap für Google Maps
  */
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Heart, MapPin, Maximize2, Calendar, Building2, 
-  Share2, Loader2, MessageSquare, ChevronLeft, ChevronRight
+  Share2, Loader2, MessageSquare, TrendingUp, Flame
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,15 +27,11 @@ import {
   MasterGraph, 
   Haushaltsrechnung, 
   InvestmentSliderPanel, 
-  DetailTable40Jahre 
+  DetailTable40Jahre,
+  ExposeImageGallery,
+  ExposeDocuments 
 } from '@/components/investment';
-
-interface ListingImage {
-  id: string;
-  name: string;
-  url: string;
-  is_cover: boolean;
-}
+import ExposeLocationMap from '@/components/verkauf/ExposeLocationMap';
 
 interface ListingData {
   id: string;
@@ -49,13 +47,19 @@ interface ListingData {
   year_built: number;
   monthly_rent: number;
   units_count: number;
+  property_id: string;
+  heating_type: string | null;
 }
 
 export default function KaufyExpose() {
   const { publicId } = useParams<{ publicId: string }>();
+  const [searchParams] = useSearchParams();
   const [isFavorite, setIsFavorite] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
+
+  // Read URL params for consistent calculation from search
+  const urlZve = searchParams.get('zve');
+  const urlEk = searchParams.get('ek');
 
   // Interactive parameters state
   const [params, setParams] = useState<CalculationInput>({
@@ -64,7 +68,7 @@ export default function KaufyExpose() {
     monthlyRent: 800,
   });
 
-  // Fetch listing data
+  // Fetch listing data with property_id and heating_type
   const { data: listing, isLoading } = useQuery({
     queryKey: ['public-listing', publicId],
     queryFn: async () => {
@@ -86,7 +90,9 @@ export default function KaufyExpose() {
             postal_code,
             total_area_sqm,
             year_built,
-            annual_income
+            annual_income,
+            heating_type,
+            unit_count
           )
         `)
         .eq('public_id', publicId)
@@ -113,81 +119,29 @@ export default function KaufyExpose() {
         total_area_sqm: props?.total_area_sqm || 0,
         year_built: props?.year_built || 0,
         monthly_rent: Math.round(annualIncome / 12),
-        units_count: 0,
+        units_count: props?.unit_count || 0,
+        property_id: props?.id || '',
+        heating_type: props?.heating_type || null,
       };
     },
     enabled: !!publicId,
   });
 
-  // Fetch images via document_links (öffentliche RLS für Kaufy-Bilder)
-  const { data: images = [] } = useQuery({
-    queryKey: ['kaufy-listing-images', listing?.id],
-    queryFn: async () => {
-      if (!listing) return [];
-
-      // Get property_id from the listing query (we need to refetch to get it)
-      const { data: listingWithProperty } = await supabase
-        .from('listings')
-        .select('properties!inner(id)')
-        .eq('public_id', publicId)
-        .single();
-
-      const propertyId = (listingWithProperty?.properties as any)?.id;
-      if (!propertyId) return [];
-
-      const { data: links, error } = await supabase
-        .from('document_links')
-        .select(`
-          display_order,
-          is_title_image,
-          documents!inner (
-            id,
-            name,
-            file_path,
-            mime_type
-          )
-        `)
-        .eq('object_type', 'property')
-        .eq('object_id', propertyId)
-        .like('documents.mime_type', 'image/%')
-        .order('display_order', { ascending: true });
-
-      if (error) {
-        console.error('Images query error:', error);
-        return [];
-      }
-
-      // Generate signed URLs
-      const imagePromises = (links || []).map(async (link: any) => {
-        const doc = link.documents;
-        const { data: urlData } = await supabase.storage
-          .from('tenant-documents')
-          .createSignedUrl(doc.file_path, 3600);
-
-        return {
-          id: doc.id,
-          name: doc.name,
-          url: urlData?.signedUrl || '',
-          is_cover: link.is_title_image || false,
-        };
-      });
-
-      return Promise.all(imagePromises);
-    },
-    enabled: !!listing?.id,
-  });
   useEffect(() => {
     if (listing) {
       setParams(prev => ({
         ...prev,
         purchasePrice: listing.asking_price || 250000,
         monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
+        // Apply URL params if present (from search page)
+        taxableIncome: urlZve ? Number(urlZve) : prev.taxableIncome,
+        equity: urlEk ? Number(urlEk) : prev.equity,
       }));
 
       const favorites = JSON.parse(localStorage.getItem('kaufy_favorites') || '[]');
       setIsFavorite(favorites.includes(publicId));
     }
-  }, [listing, publicId]);
+  }, [listing, publicId, urlZve, urlEk]);
 
   // Calculate when params change
   useEffect(() => {
@@ -241,6 +195,22 @@ export default function KaufyExpose() {
     'commercial': 'Gewerbe',
   }[listing.property_type] || 'Immobilie';
 
+  // Calculate gross yield
+  const grossYield = listing.asking_price > 0 
+    ? ((params.monthlyRent * 12) / listing.asking_price * 100).toFixed(1)
+    : '0.0';
+
+  // Heating type label
+  const heatingTypeLabel = {
+    'gas': 'Gas',
+    'oil': 'Öl',
+    'heat_pump': 'Wärmepumpe',
+    'district': 'Fernwärme',
+    'electric': 'Elektro',
+    'pellet': 'Pellet',
+    'other': 'Sonstige',
+  }[listing.heating_type || ''] || listing.heating_type || '–';
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--z3-background))' }}>
       {/* Header */}
@@ -272,51 +242,11 @@ export default function KaufyExpose() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image Gallery */}
-            {images.length > 0 ? (
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
-                <img 
-                  src={images[currentImageIndex]?.url}
-                  alt={images[currentImageIndex]?.name || 'Objektbild'}
-                  className="w-full h-full object-cover"
-                />
-                {images.length > 1 && (
-                  <>
-                    <button
-                      onClick={() => setCurrentImageIndex(prev => 
-                        prev === 0 ? images.length - 1 : prev - 1
-                      )}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                    >
-                      <ChevronLeft className="w-6 h-6" />
-                    </button>
-                    <button
-                      onClick={() => setCurrentImageIndex(prev => 
-                        prev === images.length - 1 ? 0 : prev + 1
-                      )}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                    >
-                      <ChevronRight className="w-6 h-6" />
-                    </button>
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-                      {images.map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setCurrentImageIndex(idx)}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            idx === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-                <Building2 className="w-16 h-16 text-muted-foreground" />
-              </div>
-            )}
+            {/* SSOT Image Gallery */}
+            <ExposeImageGallery 
+              propertyId={listing.property_id} 
+              aspectRatio="video"
+            />
 
             {/* Property Details */}
             <div>
@@ -334,7 +264,8 @@ export default function KaufyExpose() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-muted/50">
+              {/* Key Facts - 6 columns */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 rounded-xl bg-muted/50">
                 <div>
                   <p className="text-sm text-muted-foreground">Wohnfläche</p>
                   <p className="font-semibold flex items-center gap-1">
@@ -349,11 +280,25 @@ export default function KaufyExpose() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Einheiten</p>
-                  <p className="font-semibold">{listing.units_count || '–'} WE</p>
+                  <p className="font-semibold flex items-center gap-1">
+                    <Building2 className="w-4 h-4" /> {listing.units_count || '–'} WE
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Mieteinnahmen</p>
                   <p className="font-semibold">{formatCurrency(params.monthlyRent)}/Mo</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Rendite (brutto)</p>
+                  <p className="font-semibold flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4" /> {grossYield}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Heizung</p>
+                  <p className="font-semibold flex items-center gap-1">
+                    <Flame className="w-4 h-4" /> {heatingTypeLabel}
+                  </p>
                 </div>
               </div>
 
@@ -378,11 +323,11 @@ export default function KaufyExpose() {
               />
             ) : null}
 
-            {/* Haushaltsrechnung - Gemeinsame Komponente */}
+            {/* Haushaltsrechnung - T-Konto Layout (ledger) */}
             {calcResult && (
               <Haushaltsrechnung 
                 result={calcResult} 
-                variant="detailed"
+                variant="ledger"
                 showMonthly={true}
               />
             )}
@@ -394,6 +339,22 @@ export default function KaufyExpose() {
                 defaultOpen={false}
               />
             )}
+
+            {/* SSOT Dokumente */}
+            {listing.property_id && (
+              <ExposeDocuments 
+                propertyId={listing.property_id} 
+                viewerType="public"
+              />
+            )}
+
+            {/* Google Maps am Ende */}
+            <ExposeLocationMap
+              address={listing.address}
+              city={listing.city}
+              postalCode={listing.postal_code}
+              showExactLocation={false}
+            />
           </div>
 
           {/* Right Column - Interactive Calculator */}
