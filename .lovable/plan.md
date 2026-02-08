@@ -3,7 +3,8 @@
 
 ## Übersicht
 
-Dieser Plan umfasst die vollständige Überarbeitung der KAUFY-Website in 5 aufeinander aufbauenden Phasen. Jede Phase ist in sich abgeschlossen und testbar.
+Dieser Plan umfasst die vollständige Überarbeitung der KAUFY-Website in 5 aufeinander aufbauenden Phasen. **ALLE PHASEN ABGESCHLOSSEN ✓**
+
 
 ---
 
