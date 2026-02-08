@@ -1,121 +1,67 @@
 
-# Anpassung Simulation-Tab: Angleichung an Dashboard-Standard
 
-## Analyse der Unterschiede
+# Anpassung Simulation-Tab: Cashflow statt Monatsbelastung + Kompakte Annahmen-Kacheln
 
-### 1. Grafik (Chart) - Farbliche Abweichungen
+## Zusammenfassung der Änderungen
 
-| Element | Dashboard (MasterGraph) | Simulation (Aktuell) |
-|---------|-------------------------|----------------------|
-| Chart-Typ | `ComposedChart` mit Gradients | `AreaChart` ohne Gradients |
-| Immobilienwert | `hsl(var(--primary))` + Gradient | `hsl(var(--chart-1))` |
-| Nettovermögen | `hsl(142, 76%, 36%)` (Grün) + Gradient | `hsl(var(--chart-2))` |
-| Restschuld | Gestrichelte Linie `strokeDasharray="5 5"` | Durchgezogene Linie |
-| Tilgung | Nicht gezeigt | Nicht gezeigt |
+### 1. Tabelle: "Monatsbelastung" → "Cashflow"
 
-### 2. Tabelle - Fehlende Spalten
+**Aktuelle Spalte:**
+- `monatsbelastung`: Zeigt die monatliche Rate (Annuität / 12)
 
-| Dashboard (DetailTable40Jahre) | Simulation (Aktuell) |
-|--------------------------------|----------------------|
-| Jahr | Jahr |
-| Miete (rent) | Miete p.a. |
-| Zinsen (interest) | — fehlt |
-| Tilgung (repayment) | — fehlt |
-| Restschuld | Restschuld |
-| Steuerersparnis | — (soll entfernt werden) |
-| Cashflow | — fehlt |
-| Immobilienwert | Verkehrswert |
-| Nettovermögen | Netto-Vermögen |
+**Neue Spalte:**
+- `cashflow`: Jährliche Belastung der Immobilie = Miete - Annuität
+- Kann positiv (Überschuss) oder negativ (Unterdeckung) sein
+- Ohne Steuereffekt
 
-### 3. Steuervorteil-Box
-
-User-Anforderung: **Steuervorteil komplett entfernen**, da nur die reine Immobilien-Performance betrachtet werden soll.
-
----
-
-## Lösung: Komponenten-Refactoring
-
-### Option A: InventoryInvestmentSimulation anpassen (empfohlen)
-
-Die bestehende Komponente so anpassen, dass sie:
-1. Die gleichen Farben wie MasterGraph verwendet
-2. Tilgung im Chart zeigt (als zusätzliche Linie oder Area)
-3. Die Tabelle um fehlende Spalten erweitert (Annuität, Zins, Monatsbelastung)
-4. Die Steuervorteil-Box entfernt
-
-### Option B: DetailTable40Jahre direkt nutzen
-
-Schwieriger, da die Datenstruktur (`YearlyData` aus useInvestmentEngine) nicht identisch ist mit den lokalen Berechnungen.
-
----
-
-## Änderungen im Detail
-
-### 1. Grafik: Farbschema angleichen + Tilgung hinzufügen
-
-```tsx
-// ComposedChart statt AreaChart verwenden
-// Gleiche Gradients wie MasterGraph
-
-<defs>
-  <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-  </linearGradient>
-  <linearGradient id="wealthGradient" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.4}/>
-    <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0}/>
-  </linearGradient>
-</defs>
-
-// Immobilienwert
-<Area 
-  dataKey="verkehrswert" 
-  name="Immobilienwert"
-  stroke="hsl(var(--primary))" 
-  fill="url(#valueGradient)"
-/>
-
-// Nettovermögen
-<Area 
-  dataKey="nettoVermoegen" 
-  name="Nettovermögen"
-  stroke="hsl(142, 76%, 36%)" 
-  fill="url(#wealthGradient)"
-/>
-
-// Restschuld - gestrichelte Linie
-<Line 
-  dataKey="restschuld" 
-  name="Restschuld"
-  stroke="hsl(var(--destructive))"
-  strokeDasharray="5 5"
-/>
-
-// NEU: Tilgung als Linie (kumulativ oder jährlich)
-<Line 
-  dataKey="tilgung" 
-  name="Tilgung (p.a.)"
-  stroke="hsl(221, 83%, 53%)"  // Blau
-  strokeWidth={2}
-/>
+**Berechnung:**
+```typescript
+cashflow: Math.round(currentRent - totalAnnuity)
 ```
 
-### 2. Tabelle: Spalten erweitern
+### 2. Annahmen-Kacheln: Slider → Kompakte +/- Stepper
 
-Neue Spalten hinzufügen:
+**Aktuelles Design (Zeilen 138-176):**
+- Card mit Schiebereglern
+- Viel Platz, langsame Bedienung
 
-| Spalte | Datenfeld | Beschreibung |
-|--------|-----------|--------------|
-| Netto Kaltmiete | `miete` | Mieteinnahmen p.a. |
-| Annuität | `annuität` (neu berechnen) | Annuität p.a. = Zins + Tilgung |
-| Zinsen | `zins` | Bereits berechnet |
-| Tilgung | `tilgung` | Bereits berechnet |
-| Monatsbelastung | Annuität / 12 | Monatliche Rate |
+**Neues Design:**
+Kompakte Stepper-Kacheln mit:
+- Bezeichnung (z.B. "Wertzuwachs p.a.")
+- Zahl (z.B. "2,0%")
+- Minus-Button (links)
+- Plus-Button (rechts)
 
-Anpassung der projectionData-Berechnung:
+```
+┌───────────────────────────────────────────────────────────────┐
+│  [-]   Wertzuwachs p.a.   2,0%   [+]                         │
+│  [-]   Mietsteigerung p.a.   1,5%   [+]                      │
+└───────────────────────────────────────────────────────────────┘
+```
 
-```tsx
+---
+
+## Implementierungsdetails
+
+### 1. Interface anpassen
+
+```typescript
+interface ProjectionRow {
+  year: number;
+  verkehrswert: number;
+  restschuld: number;
+  nettoVermoegen: number;
+  miete: number;
+  zins: number;
+  tilgung: number;
+  annuitaet: number;
+  cashflow: number;  // NEU: ersetzt monatsbelastung
+}
+```
+
+### 2. projectionData Berechnung ändern
+
+```typescript
 years.push({
   year: 2026 + year,
   verkehrswert: Math.round(currentValue),
@@ -124,63 +70,151 @@ years.push({
   miete: Math.round(currentRent),
   zins: Math.round(interest),
   tilgung: Math.round(amortization),
-  // NEU:
-  annuitaet: Math.round(interest + amortization),
-  monatsbelastung: Math.round((interest + amortization) / 12),
+  annuitaet: Math.round(totalAnnuity),
+  // NEU: Cashflow = Miete - Annuität
+  cashflow: Math.round(currentRent - totalAnnuity),
 });
 ```
 
-### 3. Steuervorteil-Box entfernen
+### 3. Tabellen-Spalte ändern
 
-Die gesamte Card (Zeilen 207-230) wird entfernt, da nur die reine Immobilien-Performance relevant ist.
+**Header:**
+```tsx
+<TableHead className="text-right">Cashflow</TableHead>
+```
 
-Auch den Steuersatz-Badge im Header entfernen (Zeile 150-152).
+**Body:**
+```tsx
+<TableCell className={cn(
+  "text-right font-medium",
+  row.cashflow >= 0 ? "text-green-600" : "text-destructive"
+)}>
+  {formatCurrency(row.cashflow)}
+</TableCell>
+```
+
+### 4. Kompakte Annahmen-Stepper erstellen
+
+Neue Komponente innerhalb der Datei:
+
+```tsx
+interface StepperProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+}
+
+function CompactStepper({ label, value, onChange, min, max, step, suffix = '%' }: StepperProps) {
+  const decrease = () => onChange(Math.max(min, value - step));
+  const increase = () => onChange(Math.min(max, value + step));
+  
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+      <button 
+        onClick={decrease}
+        disabled={value <= min}
+        className="w-8 h-8 flex items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-50"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-semibold">{value.toFixed(1)}{suffix}</p>
+      </div>
+      <button 
+        onClick={increase}
+        disabled={value >= max}
+        className="w-8 h-8 flex items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+```
+
+### 5. Annahmen-Bereich ersetzen
+
+**Alt (Zeilen 138-176):** Card mit Slidern
+
+**Neu:**
+```tsx
+{/* Kompakte Annahmen-Stepper */}
+<div className="grid grid-cols-2 gap-3">
+  <CompactStepper
+    label="Wertzuwachs p.a."
+    value={valueGrowth}
+    onChange={setValueGrowth}
+    min={0}
+    max={5}
+    step={0.5}
+  />
+  <CompactStepper
+    label="Mietsteigerung p.a."
+    value={rentGrowth}
+    onChange={setRentGrowth}
+    min={0}
+    max={5}
+    step={0.5}
+  />
+</div>
+```
 
 ---
 
-## Ergebnis-Vorschau
+## Vorher/Nachher-Vergleich
 
-### Grafik (nach Änderung)
-- Immobilienwert: Primärfarbe mit Gradient (wie Dashboard)
-- Nettovermögen: Grün mit Gradient (wie Dashboard)
-- Restschuld: Rot, gestrichelt (wie Dashboard)
-- NEU: Tilgung als blaue Linie
+### Tabelle
 
-### Tabelle (nach Änderung)
-| Jahr | Miete | Annuität | Zinsen | Tilgung | Monatsbelastung | Restschuld | Verkehrswert | Nettovermögen |
-|------|-------|----------|--------|---------|-----------------|------------|--------------|---------------|
-| 2026 | 10.800 € | 8.964 € | 5.472 € | 3.492 € | 747 € | 148.508 € | 224.400 € | 75.892 € |
-| ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| Vorher | Nachher |
+|--------|---------|
+| Mtl. Rate: 747 € | Cashflow: +1.836 € (grün) |
+| Mtl. Rate: 747 € | Cashflow: -564 € (rot) |
+
+### Annahmen-Bereich
+
+**Vorher:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Annahmen anpassen                                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Wertzuwachs p.a.                                    [2.0%]     │
+│  ━━━━━━━━━━━━━━━━━━━━━●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━       │
+│                                                                 │
+│  Mietsteigerung p.a.                                 [1.5%]     │
+│  ━━━━━━━━━━━━━━━●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Nachher:**
+```
+┌────────────────────────┐  ┌────────────────────────┐
+│  [-]  Wertzuwachs    │  │  [-]  Mietsteigerung │
+│       p.a.           │  │       p.a.           │
+│       2,0%       [+] │  │       1,5%       [+] │
+└────────────────────────┘  └────────────────────────┘
+```
 
 ---
 
-## Betroffene Dateien
+## Betroffene Datei
 
 | Datei | Änderungen |
 |-------|------------|
-| `src/components/immobilienakte/InventoryInvestmentSimulation.tsx` | Chart-Farben, Tilgung-Linie, Tabellenspalten, Steuervorteil entfernen |
+| `InventoryInvestmentSimulation.tsx` | Interface, Berechnung, Tabelle, Annahmen-UI |
 
 ---
 
 ## Implementierungsschritte
 
-1. **Chart anpassen:**
-   - `AreaChart` → `ComposedChart` ändern
-   - Gradients aus MasterGraph übernehmen
-   - Farben angleichen (primary, grün, destructive)
-   - Restschuld-Linie gestrichelt machen
-   - Tilgung als neue Linie hinzufügen
+1. **Import erweitern**: `Minus` und `Plus` Icons von lucide-react importieren
+2. **Interface ändern**: `monatsbelastung` → `cashflow`
+3. **Berechnung anpassen**: `cashflow = miete - annuitaet`
+4. **CompactStepper-Komponente** erstellen (inline)
+5. **Annahmen-Bereich** ersetzen: Card mit Slidern → Grid mit Steppern
+6. **Tabellen-Spalte** ändern: Header + Body mit farbcodiertem Cashflow
 
-2. **Steuervorteil-Komponenten entfernen:**
-   - Steuersatz-Badge im Header entfernen
-   - Komplette Steuervorteil-Card entfernen
-   - `taxBenefit` useMemo kann bleiben (schadet nicht) oder ebenfalls entfernt werden
-
-3. **Tabelle erweitern:**
-   - projectionData um `annuitaet` und `monatsbelastung` erweitern
-   - Neue Spalten in TableHeader/TableBody hinzufügen:
-     - Miete, Annuität, Zinsen, Tilgung, Monatsbelastung, Restschuld, Verkehrswert, Nettovermögen
-
-4. **Optional: Mobile-View anpassen**
-   - Die aktuelle Komponente hat keine spezielle Mobile-Kartenansicht wie DetailTable40Jahre
-   - Könnte bei Bedarf später ergänzt werden
