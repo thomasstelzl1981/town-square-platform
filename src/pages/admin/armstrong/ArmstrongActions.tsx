@@ -3,6 +3,7 @@
  * 
  * Read-only view of the Armstrong Actions Manifest (SSOT).
  * Shows all available actions with filtering and details.
+ * Integrates with DB overrides for effective_status calculation.
  */
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -36,13 +37,13 @@ import {
   Shield,
   Database,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle,
+  Ban,
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { 
-  armstrongActions, 
-  ArmstrongAction, 
-} from "@/manifests/armstrongManifest";
+import { useArmstrongActions, ArmstrongActionWithOverride } from "@/hooks/useArmstrongActions";
 
 const riskColors = {
   low: "bg-status-success/10 text-status-success",
@@ -56,25 +57,35 @@ const costColors = {
   premium: "bg-status-warning/10 text-status-warning",
 };
 
+const statusColors = {
+  active: "bg-status-success/10 text-status-success",
+  restricted: "bg-status-warning/10 text-status-warning",
+  disabled: "bg-status-error/10 text-status-error",
+};
+
 const ArmstrongActions: React.FC = () => {
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
   const [zoneFilter, setZoneFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
-  const [selectedAction, setSelectedAction] = useState<ArmstrongAction | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedAction, setSelectedAction] = useState<ArmstrongActionWithOverride | null>(null);
+
+  // Use hook with DB integration
+  const { actions, stats, isLoading, error } = useArmstrongActions();
 
   // Get unique modules for filter
   const modules = useMemo(() => {
     const moduleSet = new Set<string>();
-    armstrongActions.forEach(action => {
+    actions.forEach(action => {
       if (action.module) moduleSet.add(action.module);
     });
     return ['all', ...Array.from(moduleSet).sort()];
-  }, []);
+  }, [actions]);
 
   // Filter actions
   const filteredActions = useMemo(() => {
-    return armstrongActions.filter(action => {
+    return actions.filter(action => {
       // Search filter
       if (search) {
         const searchLower = search.toLowerCase();
@@ -102,9 +113,25 @@ const ArmstrongActions: React.FC = () => {
         return false;
       }
 
+      // Status filter (effective_status)
+      if (statusFilter !== 'all' && action.effective_status !== statusFilter) {
+        return false;
+      }
+
       return true;
     });
-  }, [search, moduleFilter, zoneFilter, riskFilter]);
+  }, [actions, search, moduleFilter, zoneFilter, riskFilter, statusFilter]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-status-error mx-auto mb-4" />
+          <p className="text-status-error">Fehler beim Laden der Actions</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -172,9 +199,49 @@ const ArmstrongActions: React.FC = () => {
                 <SelectItem value="high">Hoch</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                <SelectItem value="active">Aktiv</SelectItem>
+                <SelectItem value="restricted">Eingeschränkt</SelectItem>
+                <SelectItem value="disabled">Deaktiviert</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">Gesamt</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-status-success">{stats.active}</div>
+            <p className="text-xs text-muted-foreground">Aktiv</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-status-warning">{stats.restricted}</div>
+            <p className="text-xs text-muted-foreground">Eingeschränkt</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-status-error">{stats.disabled}</div>
+            <p className="text-xs text-muted-foreground">Deaktiviert</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Actions Table */}
       <Card>
@@ -183,13 +250,21 @@ const ArmstrongActions: React.FC = () => {
             <div>
               <CardTitle>Aktionen</CardTitle>
               <CardDescription>
-                {filteredActions.length} von {armstrongActions.length} Aktionen
+                {filteredActions.length} von {stats.total} Aktionen
+                {stats.withOverrides > 0 && (
+                  <span className="ml-2 text-status-warning">
+                    ({stats.withOverrides} mit Override)
+                  </span>
+                )}
               </CardDescription>
             </div>
-            <Badge variant="outline">
-              <Database className="h-3 w-3 mr-1" />
-              SSOT: armstrongManifest.ts
-            </Badge>
+            <div className="flex items-center gap-2">
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              <Badge variant="outline">
+                <Database className="h-3 w-3 mr-1" />
+                SSOT + Overrides
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -199,7 +274,7 @@ const ArmstrongActions: React.FC = () => {
                 <TableRow>
                   <TableHead className="w-[250px]">Action Code</TableHead>
                   <TableHead>Titel</TableHead>
-                  <TableHead className="w-[100px]">Modul</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead className="w-[80px]">Zonen</TableHead>
                   <TableHead className="w-[100px]">Risiko</TableHead>
                   <TableHead className="w-[100px]">Kosten</TableHead>
@@ -214,14 +289,25 @@ const ArmstrongActions: React.FC = () => {
                       {action.action_code}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {action.title_de}
+                      <div className="flex items-center gap-2">
+                        {action.title_de}
+                        {action.override && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-status-warning/10 text-status-warning border-status-warning/30">
+                            Override
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {action.module ? (
-                        <Badge variant="outline">{action.module}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">Global</span>
-                      )}
+                      <Badge className={statusColors[action.effective_status]}>
+                        {action.effective_status === 'active' && 'Aktiv'}
+                        {action.effective_status === 'restricted' && (
+                          <><AlertTriangle className="h-3 w-3 mr-1" />Eingeschränkt</>
+                        )}
+                        {action.effective_status === 'disabled' && (
+                          <><Ban className="h-3 w-3 mr-1" />Deaktiviert</>
+                        )}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
