@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Download, FileCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 
 interface ExposeDocument {
   id: string;
@@ -52,7 +53,8 @@ export function ExposeDocuments({
           documents (
             id,
             name,
-            document_type,
+            doc_type,
+            detected_type,
             file_path,
             mime_type
           )
@@ -79,7 +81,7 @@ export function ExposeDocuments({
         .map((link: any) => ({
           id: link.documents.id,
           name: link.documents.name,
-          document_type: link.documents.document_type || 'other',
+          document_type: link.documents.doc_type || link.documents.detected_type || 'other',
           file_path: link.documents.file_path,
           expose_visibility: link.expose_visibility || 'internal',
         }));
@@ -96,9 +98,11 @@ export function ExposeDocuments({
         .createSignedUrl(doc.file_path, 60);
 
       if (error) throw error;
-      
-      // Open in new tab
-      window.open(data.signedUrl, '_blank');
+
+      const url = resolveStorageSignedUrl(data?.signedUrl);
+      if (!url) throw new Error('Keine Download-URL erhalten');
+
+      window.open(url, '_blank');
     } catch (err) {
       console.error('Download error:', err);
       toast.error('Download fehlgeschlagen');
@@ -153,7 +157,19 @@ export function ExposeDocuments({
   }
 
   if (documents.length === 0) {
-    return null; // Don't show section if no documents
+    return (
+      <Card className={className}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileCheck className="h-4 w-4" />
+            Dokumente
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          Keine freigegebenen Dokumente vorhanden.
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
