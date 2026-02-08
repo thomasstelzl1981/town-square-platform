@@ -9,7 +9,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
+import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,7 +121,7 @@ serve(async (req) => {
   }
 });
 
-// Send email via SMTP using denomailer
+// Send email via SMTP using deno-smtp
 async function sendSmtpMail(
   account: any,
   email: {
@@ -145,46 +145,47 @@ async function sendSmtpMail(
     return { success: false, error: 'Failed to decode credentials: ' + (e as Error).message };
   }
 
-  // Determine TLS mode based on port
-  // Port 465 = implicit TLS (tls: true)
-  // Port 587 = STARTTLS (tls: false, but uses STARTTLS command)
+  const client = new SmtpClient();
   const port = account.smtp_port || 587;
-  const useTls = port === 465;
-
-  const client = new SMTPClient({
-    connection: {
-      hostname: account.smtp_host,
-      port: port,
-      tls: useTls,
-      auth: {
-        username: account.email_address,
-        password: password,
-      },
-    },
-    debug: true,
-  });
 
   try {
     console.log('Connecting to SMTP server...');
-    await client.connect();
+    
+    // Connect based on port (465 = TLS, 587 = STARTTLS)
+    if (port === 465) {
+      await client.connectTLS({
+        hostname: account.smtp_host,
+        port: port,
+        username: account.email_address,
+        password: password,
+      });
+    } else {
+      await client.connect({
+        hostname: account.smtp_host,
+        port: port,
+        username: account.email_address,
+        password: password,
+      });
+    }
+    
     console.log('Connected, sending email...');
 
     const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${account.smtp_host}>`;
+    const fromName = account.display_name || account.email_address.split('@')[0];
+
+    // Build email content
+    const content = email.bodyHtml 
+      ? `Content-Type: text/html; charset=utf-8\r\n\r\n${email.bodyHtml}`
+      : (email.bodyText || '');
 
     await client.send({
-      from: {
-        mail: account.email_address,
-        name: account.display_name || account.email_address.split('@')[0],
-      },
-      to: email.to.map(addr => ({ mail: addr })),
-      cc: email.cc?.map(addr => ({ mail: addr })),
-      bcc: email.bcc?.map(addr => ({ mail: addr })),
+      from: `"${fromName}" <${account.email_address}>`,
+      to: email.to,
+      cc: email.cc,
+      bcc: email.bcc,
       subject: email.subject,
       content: email.bodyText || '',
       html: email.bodyHtml,
-      headers: {
-        'Message-ID': messageId,
-      },
     });
 
     await client.close();
