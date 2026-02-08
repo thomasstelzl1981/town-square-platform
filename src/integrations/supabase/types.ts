@@ -1370,6 +1370,346 @@ export type Database = {
           },
         ]
       }
+      armstrong_action_overrides: {
+        Row: {
+          action_code: string
+          created_at: string | null
+          disabled_until: string | null
+          id: string
+          org_id: string | null
+          restricted_reason: string | null
+          scope_type: string
+          status_override: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          action_code: string
+          created_at?: string | null
+          disabled_until?: string | null
+          id?: string
+          org_id?: string | null
+          restricted_reason?: string | null
+          scope_type?: string
+          status_override: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          action_code?: string
+          created_at?: string | null
+          disabled_until?: string | null
+          id?: string
+          org_id?: string | null
+          restricted_reason?: string | null
+          scope_type?: string
+          status_override?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_action_overrides_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_action_overrides_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      armstrong_action_runs: {
+        Row: {
+          action_code: string
+          correlation_id: string | null
+          cost_cents: number | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_context: Json | null
+          org_id: string | null
+          output_result: Json | null
+          payload_hash: string | null
+          payload_size_bytes: number | null
+          pii_present: boolean | null
+          retention_days: number | null
+          session_id: string | null
+          status: string
+          tokens_used: number | null
+          user_id: string | null
+          zone: string
+        }
+        Insert: {
+          action_code: string
+          correlation_id?: string | null
+          cost_cents?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_context?: Json | null
+          org_id?: string | null
+          output_result?: Json | null
+          payload_hash?: string | null
+          payload_size_bytes?: number | null
+          pii_present?: boolean | null
+          retention_days?: number | null
+          session_id?: string | null
+          status: string
+          tokens_used?: number | null
+          user_id?: string | null
+          zone: string
+        }
+        Update: {
+          action_code?: string
+          correlation_id?: string | null
+          cost_cents?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_context?: Json | null
+          org_id?: string | null
+          output_result?: Json | null
+          payload_hash?: string | null
+          payload_size_bytes?: number | null
+          pii_present?: boolean | null
+          retention_days?: number | null
+          session_id?: string | null
+          status?: string
+          tokens_used?: number | null
+          user_id?: string | null
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_action_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_action_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      armstrong_billing_events: {
+        Row: {
+          action_code: string
+          action_run_id: string | null
+          cost_cents: number | null
+          cost_model: string
+          created_at: string | null
+          credits_charged: number | null
+          id: string
+          org_id: string
+        }
+        Insert: {
+          action_code: string
+          action_run_id?: string | null
+          cost_cents?: number | null
+          cost_model: string
+          created_at?: string | null
+          credits_charged?: number | null
+          id?: string
+          org_id: string
+        }
+        Update: {
+          action_code?: string
+          action_run_id?: string | null
+          cost_cents?: number | null
+          cost_model?: string
+          created_at?: string | null
+          credits_charged?: number | null
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_billing_events_action_run_id_fkey"
+            columns: ["action_run_id"]
+            isOneToOne: false
+            referencedRelation: "armstrong_action_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_billing_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      armstrong_knowledge_items: {
+        Row: {
+          category: string
+          confidence: string | null
+          content: string
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          item_code: string
+          org_id: string | null
+          published_at: string | null
+          reviewed_by: string | null
+          scope: string
+          sources: Json | null
+          status: string
+          subcategory: string | null
+          summary_de: string | null
+          title_de: string
+          updated_at: string | null
+          valid_until: string | null
+          version: string | null
+        }
+        Insert: {
+          category: string
+          confidence?: string | null
+          content: string
+          content_type: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          item_code: string
+          org_id?: string | null
+          published_at?: string | null
+          reviewed_by?: string | null
+          scope?: string
+          sources?: Json | null
+          status?: string
+          subcategory?: string | null
+          summary_de?: string | null
+          title_de: string
+          updated_at?: string | null
+          valid_until?: string | null
+          version?: string | null
+        }
+        Update: {
+          category?: string
+          confidence?: string | null
+          content?: string
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          item_code?: string
+          org_id?: string | null
+          published_at?: string | null
+          reviewed_by?: string | null
+          scope?: string
+          sources?: Json | null
+          status?: string
+          subcategory?: string | null
+          summary_de?: string | null
+          title_de?: string
+          updated_at?: string | null
+          valid_until?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_knowledge_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_knowledge_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_knowledge_items_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      armstrong_policies: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          policy_code: string
+          status: string
+          title_de: string
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+          version: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          policy_code: string
+          status?: string
+          title_de: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+          version?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          policy_code?: string
+          status?: string
+          title_de?: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_policies_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "armstrong_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor_user_id: string
@@ -9443,6 +9783,38 @@ export type Database = {
       }
     }
     Views: {
+      v_armstrong_costs_daily: {
+        Row: {
+          action_code: string | null
+          avg_duration_ms: number | null
+          date: string | null
+          failure_count: number | null
+          org_id: string | null
+          run_count: number | null
+          total_cost_cents: number | null
+          total_tokens: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_action_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_armstrong_dashboard_kpis: {
+        Row: {
+          actions_24h: number | null
+          active_policies_count: number | null
+          avg_response_ms_24h: number | null
+          costs_30d_cents: number | null
+          error_rate_7d: number | null
+          knowledge_items_count: number | null
+        }
+        Relationships: []
+      }
       v_public_knowledge: {
         Row: {
           category: string | null
@@ -9546,6 +9918,25 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
+      rpc_armstrong_log_action_run: {
+        Args: {
+          p_action_code: string
+          p_correlation_id: string
+          p_cost_cents?: number
+          p_duration_ms?: number
+          p_error_message?: string
+          p_input_context?: Json
+          p_org_id: string
+          p_output_result?: Json
+          p_pii_present?: boolean
+          p_session_id: string
+          p_status: string
+          p_tokens_used?: number
+          p_user_id: string
+          p_zone: string
+        }
+        Returns: string
+      }
       search_document_chunks: {
         Args: { p_limit?: number; p_query: string; p_tenant_id: string }
         Returns: {
