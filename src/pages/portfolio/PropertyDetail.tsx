@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Loader2, AlertTriangle, Edit, Sparkles, FileText } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
-import { FeaturesTab } from '@/components/portfolio/FeaturesTab';
+import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
 import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { UnitDossierView, EditableUnitDossierView } from '@/components/immobilienakte';
@@ -271,7 +271,7 @@ export default function PropertyDetail() {
               Akte
             </TabsTrigger>
             <TabsTrigger value="expose">Exposé</TabsTrigger>
-            <TabsTrigger value="features">Features</TabsTrigger>
+            <TabsTrigger value="verkaufsauftrag">Verkaufsauftrag</TabsTrigger>
             <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
             <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
           </TabsList>
@@ -295,10 +295,14 @@ export default function PropertyDetail() {
             />
           </TabsContent>
 
-          <TabsContent value="features">
-            <FeaturesTab 
+          <TabsContent value="verkaufsauftrag">
+            <VerkaufsauftragTab 
               propertyId={property.id} 
               tenantId={property.tenant_id}
+              unitId={unit?.id}
+              askingPrice={property.market_value || undefined}
+              propertyAddress={property.address}
+              propertyCity={property.city}
               onUpdate={fetchProperty}
             />
           </TabsContent>

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2 } from 'lucide-react';
+import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useSalesDeskListings, useToggleListingBlock, useUpdateListingDistribution } from '@/hooks/useSalesDeskListings';
 
@@ -195,6 +195,7 @@ function VeroeffentlichungenTab() {
               <TableHead className="text-right">Preis</TableHead>
               <TableHead className="text-center">Partner</TableHead>
               <TableHead className="text-center">Kaufy</TableHead>
+              <TableHead className="text-center">Scout24</TableHead>
               <TableHead className="text-center">Blockiert</TableHead>
             </TableRow>
           </TableHeader>
@@ -255,6 +256,16 @@ function VeroeffentlichungenTab() {
                         }
                       />
                       {hasKaufy && <Globe className="h-4 w-4 text-primary" />}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {/* Scout24 - Coming Soon */}
+                    <div className="flex items-center justify-center gap-2">
+                      <Switch
+                        checked={false}
+                        disabled={true}
+                      />
+                      <Badge variant="outline" className="text-xs">Soon</Badge>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
