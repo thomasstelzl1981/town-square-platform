@@ -210,7 +210,7 @@ export const zone2Portal: ZoneDefinition = {
         // PRIMARY: Portfolio is the main entry point for MOD-04
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
         // SECONDARY: Context management
-        { path: "kontexte", component: "KontexteTab", title: "Kontexte" },
+        { path: "kontexte", component: "KontexteTab", title: "Vermietereinheit" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
       ],
