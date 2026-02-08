@@ -1,13 +1,12 @@
 /* =============================================================================
-   ZONE 3 — WEBSITE THEMES (Light Mode)
-   Version: 2.0.0 — Phase 3 Update (Sky Theme)
+   ZONE 3 — WEBSITE THEMES
+   Version: 3.0.0 — SpaceX-Inspired Dark-First Design
    ============================================================================= */
 
 /* ===========================================================================
    KAUFY THEME — Dezenter Himmelblau-Touch
    =========================================================================== */
 .theme-kaufy {
-  /* Sky-inspired subtle tones */
   --z3-background: 210 40% 99%;
   --z3-foreground: 220 20% 10%;
   --z3-card: 0 0% 100%;
@@ -25,50 +24,51 @@
 }
 
 /* ===========================================================================
-   SYSTEM OF A TOWN THEME — SpaceX-Inspired Dark-First
+   SYSTEM OF A TOWN — SpaceX/Revolut Dark-First Design
+   Colors: Deep Space Black, Pure White, Amber Accent (no blue!)
    =========================================================================== */
 
-/* Default: Light Mode (for toggle) - applied to html or container */
-.theme-sot,
-:root[data-sot-theme="light"],
-html.theme-sot {
-  --z3-background: 210 40% 98%;
-  --z3-foreground: 222 47% 11%;
-  --z3-card: 0 0% 100%;
-  --z3-card-foreground: 222 47% 11%;
-  --z3-primary: 217 91% 60%;
+/* Light Mode */
+html.theme-sot,
+html[data-sot-theme="light"],
+.theme-sot {
+  --z3-background: 0 0% 100%;
+  --z3-foreground: 0 0% 8%;
+  --z3-card: 0 0% 98%;
+  --z3-card-foreground: 0 0% 8%;
+  --z3-primary: 0 0% 8%;
   --z3-primary-foreground: 0 0% 100%;
-  --z3-secondary: 210 40% 96%;
-  --z3-secondary-foreground: 222 47% 11%;
-  --z3-muted: 210 40% 96%;
-  --z3-muted-foreground: 215 16% 47%;
-  --z3-accent: 217 91% 60%;
-  --z3-accent-foreground: 0 0% 100%;
-  --z3-border: 214 32% 91%;
-  --z3-input: 214 32% 91%;
+  --z3-secondary: 0 0% 96%;
+  --z3-secondary-foreground: 0 0% 8%;
+  --z3-muted: 0 0% 96%;
+  --z3-muted-foreground: 0 0% 45%;
+  /* Amber accent like Revolut */
+  --z3-accent: 38 95% 50%;
+  --z3-accent-foreground: 0 0% 0%;
+  --z3-border: 0 0% 90%;
+  --z3-input: 0 0% 90%;
 }
 
-/* Dark Mode — Primary Experience (SpaceX-Inspired) */
-.theme-sot-dark,
-.theme-sot.dark,
-:root[data-sot-theme="dark"],
-html.theme-sot-dark {
-  --z3-background: 222 47% 6%;
-  --z3-foreground: 210 40% 98%;
-  --z3-card: 222 30% 10%;
-  --z3-card-foreground: 210 40% 98%;
-  --z3-primary: 217 91% 60%;
-  --z3-primary-foreground: 222 47% 6%;
-  --z3-secondary: 222 30% 14%;
-  --z3-secondary-foreground: 210 40% 98%;
-  --z3-muted: 222 25% 16%;
-  --z3-muted-foreground: 215 20% 65%;
-  --z3-accent: 217 91% 60%;
-  --z3-accent-secondary: 275 45% 50%;
-  --z3-accent-foreground: 0 0% 100%;
-  --z3-border: 222 20% 18%;
-  --z3-input: 222 20% 18%;
-  --z3-glow: 217 91% 60%;
+/* Dark Mode — Primary Experience (SpaceX Deep Space) */
+html.theme-sot-dark,
+html[data-sot-theme="dark"],
+.theme-sot-dark {
+  --z3-background: 0 0% 4%;
+  --z3-foreground: 0 0% 98%;
+  --z3-card: 0 0% 8%;
+  --z3-card-foreground: 0 0% 98%;
+  --z3-primary: 0 0% 100%;
+  --z3-primary-foreground: 0 0% 4%;
+  --z3-secondary: 0 0% 12%;
+  --z3-secondary-foreground: 0 0% 98%;
+  --z3-muted: 0 0% 14%;
+  --z3-muted-foreground: 0 0% 60%;
+  /* Amber/Gold accent - warm, premium */
+  --z3-accent: 38 95% 55%;
+  --z3-accent-foreground: 0 0% 0%;
+  --z3-border: 0 0% 18%;
+  --z3-input: 0 0% 18%;
+  --z3-glow: 38 95% 55%;
 }
 
 /* ===========================================================================
