@@ -23,26 +23,38 @@ export function useSotTheme() {
   });
 
   // Apply theme class to documentElement (html) for proper CSS variable cascade
+  // NO CLEANUP that removes the class - we want it to persist during toggle
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
     const root = document.documentElement;
     const themeClass = theme === 'dark' ? 'theme-sot-dark' : 'theme-sot';
+    const oppositeClass = theme === 'dark' ? 'theme-sot' : 'theme-sot-dark';
     
-    // Remove any existing SoT theme classes
-    root.classList.remove('theme-sot', 'theme-sot-dark');
+    // Remove the opposite theme class (not all classes!)
+    root.classList.remove(oppositeClass);
     
     // Add the current theme class
     root.classList.add(themeClass);
     
+    // Set data attribute for CSS fallback
+    root.setAttribute('data-sot-theme', theme);
+    
     // Store preference
     localStorage.setItem(STORAGE_KEY, theme);
     
-    // Cleanup on unmount (when leaving SoT pages)
-    return () => {
-      root.classList.remove('theme-sot', 'theme-sot-dark');
-    };
+    // Note: We do NOT clean up on every theme change
+    // Cleanup only happens when component unmounts (leaving SoT)
   }, [theme]);
+
+  // Separate cleanup effect that only runs on unmount
+  useEffect(() => {
+    return () => {
+      const root = document.documentElement;
+      root.classList.remove('theme-sot', 'theme-sot-dark');
+      root.removeAttribute('data-sot-theme');
+    };
+  }, []); // Empty deps = only runs on unmount
 
   const toggleTheme = useCallback(() => {
     setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
