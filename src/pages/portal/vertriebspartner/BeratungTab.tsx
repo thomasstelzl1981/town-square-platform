@@ -22,6 +22,7 @@ import {
 
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 
 const BeratungTab = () => {
   // Search parameters
@@ -72,15 +73,20 @@ const BeratungTab = () => {
         .select(`
           id, public_id, title, asking_price, commission_rate, status,
           properties!inner (
-            address, city, property_type, total_area_sqm, annual_income
+            id, address, city, property_type, total_area_sqm, annual_income
           )
         `)
         .in('id', listingIds)
         .in('status', ['active', 'reserved']);
 
       if (listingsError) throw listingsError;
+      if (!listingsData?.length) return [];
 
-      return (listingsData || []).map((l: any) => {
+      // Fetch hero images using shared helper
+      const propertyIds = listingsData.map((l: any) => l.properties.id).filter(Boolean);
+      const imageMap = await fetchPropertyImages(propertyIds);
+
+      return listingsData.map((l: any) => {
         const props = l.properties;
         const annualRent = props?.annual_income || 0;
         const price = l.asking_price || 0;
@@ -97,7 +103,7 @@ const BeratungTab = () => {
           property_type: props?.property_type,
           total_area_sqm: props?.total_area_sqm,
           annual_rent: annualRent,
-          hero_image_path: null,
+          hero_image_path: imageMap.get(props.id) || null,
           grossYield,
           cashFlowBeforeTax: null,
           taxSavings: null,
