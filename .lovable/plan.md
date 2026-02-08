@@ -1,143 +1,157 @@
 
-# Bereinigung des doppelten Headers in der Immobilienakte
+# Korrektur der Adress-Struktur für Demo-Daten
 
-## Zusammenfassung
+## Problemanalyse
 
-Die Immobilienakte zeigt redundante Informationen in zwei separaten Headern an:
-1. **PropertyDetailPage Header** (Page-Level)
-2. **DossierHeader** (Component-Level)
+Die Hausnummer ist im falschen Feld gespeichert:
 
-Die Lösung ist, den **Page-Level Header zu entfernen** und nur den DossierHeader zu behalten.
+| Feld | Aktueller Wert | Erwarteter Wert |
+|------|----------------|-----------------|
+| `address` | "Leipziger Straße 42" | "Leipziger Straße" |
+| `address_house_no` | NULL | "42" |
 
 ---
 
-## Aktueller Zustand (Problem)
+## Datenbankstruktur (korrekt vorhanden)
+
+Die Tabelle `properties` hat bereits beide Felder:
+- `address` (TEXT, NOT NULL) — für die Straße
+- `address_house_no` (TEXT, nullable) — für die Hausnummer
+
+---
+
+## Ursache
+
+Die Seed-Migration hat die Daten in einem kombinierten Format eingefügt:
+
+```sql
+-- Aus Migration 20260203004029
+INSERT INTO properties (..., address, ...)
+VALUES (..., 'Leipziger Straße 42', ...);
+```
+
+---
+
+## Lösung
+
+### Option 1: Datenbank-Migration zur Bereinigung (empfohlen)
+
+Eine Migration, die:
+1. Die Hausnummer aus dem `address`-Feld extrahiert
+2. In `address_house_no` schreibt
+3. Das `address`-Feld bereinigt
+
+```sql
+UPDATE properties
+SET 
+  address_house_no = CASE 
+    WHEN address ~ ' [0-9]+[a-zA-Z]?$' 
+    THEN regexp_replace(address, '.* ([0-9]+[a-zA-Z]?)$', '\1')
+    ELSE NULL
+  END,
+  address = CASE 
+    WHEN address ~ ' [0-9]+[a-zA-Z]?$' 
+    THEN regexp_replace(address, ' [0-9]+[a-zA-Z]?$', '')
+    ELSE address
+  END
+WHERE address_house_no IS NULL
+  AND address ~ ' [0-9]+[a-zA-Z]?$';
+```
+
+### Option 2: Nur Demo-Daten manuell korrigieren
+
+```sql
+UPDATE properties
+SET 
+  address = 'Leipziger Straße',
+  address_house_no = '42'
+WHERE id = '00000000-0000-4000-a000-000000000001';
+```
+
+---
+
+## Nach der Korrektur
+
+Sie können dann in der Immobilienakte die Adresse frei bearbeiten:
+
+- **Straße**: "Musterstraße" → wird in `address` gespeichert
+- **Hausnr.**: "123a" → wird in `address_house_no` gespeichert
+- **PLZ/Ort**: Funktioniert bereits korrekt
+
+---
+
+## Code-Flow (bereits korrekt implementiert)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ [←] DEMO-001 – Leipziger Straße 42                              │  ← PropertyDetailPage Header
-│     [ETW]  04109 Leipzig                                        │
-├─────────────────────────────────────────────────────────────────┤
-│ [ Akte | Simulation | Exposé | Features | Mietverhältnis | ... ]│  ← Tab Navigation
-├─────────────────────────────────────────────────────────────────┤
-│ DEMO-001                                [Vermietet]             │  ← DossierHeader (DOPPELT!)
-│ 📍 Leipziger Straße 42 • ECW 04109 Leipzig                      │
-│──────────────────────────────────────────────────────────────── │
-│ [Rest der Akte...]                                              │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Problem:** Die Information `DEMO-001`, `Leipziger Straße 42`, `04109 Leipzig` erscheint zweimal.
-
----
-
-## Zielzustand (Bereinigt)
-
-```text
+│ EditableAddressBlock                                            │
+│   onFieldChange('street', 'Musterstraße')                       │
+│   onFieldChange('houseNumber', '123a')                          │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ [←] Immobilienakte: DEMO-001                                    │  ← Kompakter Back-Button
-├─────────────────────────────────────────────────────────────────┤
-│ [ Akte | Simulation | Exposé | Features | Mietverhältnis | ... ]│  ← Tab Navigation
-├─────────────────────────────────────────────────────────────────┤
-│ DEMO-001                                [Vermietet]             │  ← DossierHeader (EINZIGER)
-│ 📍 Leipziger Straße 42 • ECW 04109 Leipzig     Stand: 08.02.26  │
-│ ✓ Daten OK                                                      │
-│──────────────────────────────────────────────────────────────── │
-│ [Rest der Akte...]                                              │
+│ useDossierForm.updateField('street', 'Musterstraße')            │
+│ useDossierForm.updateField('houseNumber', '123a')               │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ getPropertyChanges() → mapped.address = 'Musterstraße'          │
+│                     → mapped.addressHouseNo = '123a'            │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ useDossierMutations.useUpdateProperty()                         │
+│   → UPDATE properties SET address='...', address_house_no='...' │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technische Lösung
+## Zu ändernde Komponente: DossierHeader
 
-### Änderung in PropertyDetailPage.tsx
+Die angezeigte Adresse im Header muss ebenfalls die Trennung berücksichtigen.
 
-**Zeilen 274-295 ersetzen:**
-
-Vorher:
-```tsx
-{/* Header */}
-<div className="flex items-start justify-between mb-6">
-  <div className="space-y-1">
-    <div className="flex items-center gap-2">
-      <Button variant="ghost" size="sm" asChild className="no-print">
-        <Link to="/portal/immobilien/portfolio">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-      </Button>
-      <h2 className="text-2xl font-bold tracking-tight">
-        {property.code ? `${property.code} – ` : ''}{property.address}
-      </h2>
-    </div>
-    <div className="flex items-center gap-2 ml-10">
-      <Badge variant="outline">{property.property_type}</Badge>
-      <span className="text-muted-foreground">
-        {property.postal_code} {property.city}
-      </span>
-    </div>
-  </div>
-</div>
+**Aktuell in `useUnitDossier.ts` (Zeile 236):**
+```typescript
+address: `${property.address} • ${property.property_type} ${property.postal_code} ${property.city}`,
 ```
 
-Nachher:
-```tsx
-{/* Minimaler Header: Nur Back-Button */}
-<div className="flex items-center gap-2 mb-4">
-  <Button variant="ghost" size="sm" asChild className="no-print">
-    <Link to="/portal/immobilien/portfolio">
-      <ArrowLeft className="h-4 w-4" />
-    </Link>
-  </Button>
-  <span className="text-sm text-muted-foreground">Zurück zur Übersicht</span>
-</div>
+**Sollte werden:**
+```typescript
+address: `${property.address}${(property as any).address_house_no ? ' ' + (property as any).address_house_no : ''} • ${property.property_type} ${property.postal_code} ${property.city}`,
 ```
-
----
-
-## Warum diese Lösung?
-
-| Aspekt | Begründung |
-|--------|------------|
-| **DossierHeader behalten** | Enthält mehr Infos (Status, Stand, Datenqualität) |
-| **Page-Header entfernen** | Nur redundante Infos, keine Zusatzfunktion |
-| **Back-Button behalten** | Navigationsfluss muss erhalten bleiben |
-| **Tabs unverändert** | Funktionieren unabhängig vom Header |
-
----
-
-## Alternative Überlegung: DossierHeader entfernen?
-
-Wurde verworfen, weil:
-- DossierHeader enthält **Status-Badge** (Vermietet/Leerstand)
-- DossierHeader enthält **Stand-Datum** (asofDate)
-- DossierHeader enthält **Datenqualitäts-Indikator** (OK/Prüfen)
-- DossierHeader ist Teil des **SSOT-Dossier-Konzepts**
-
----
-
-## Zu ändernde Datei
-
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `PropertyDetailPage.tsx` | 274-295 | Page-Header durch minimalen Back-Link ersetzen |
 
 ---
 
 ## Implementierungsschritte
 
-1. PropertyDetailPage.tsx öffnen
-2. Zeilen 274-295 (kompletter Header-Block) ersetzen
-3. Nur Back-Button und "Zurück zur Übersicht" Text behalten
-4. Testen, dass die Akte nun sauber ohne Dopplung aussieht
+1. **Datenbank-Migration**: Demo-Daten korrigieren (address + address_house_no trennen)
+2. **useUnitDossier.ts**: Die zusammengesetzte Adress-Anzeige anpassen
+3. **Test**: Adresse in der UI ändern und prüfen ob Speichern funktioniert
 
 ---
 
-## Vorher/Nachher Vergleich
+## Dateien
 
-| Vorher | Nachher |
-|--------|---------|
-| 2x Objektcode | 1x Objektcode |
-| 2x Adresse | 1x Adresse |
-| 2x PLZ/Stadt | 1x PLZ/Stadt |
-| ~80px Header-Höhe verschwendet | Sauberes, aufgeräumtes Layout |
+| Datei | Änderung |
+|-------|----------|
+| Migration | address/address_house_no für Demo-Daten trennen |
+| `src/hooks/useUnitDossier.ts` | Zeile 236 - Address-Zusammensetzung anpassen |
+
+---
+
+## Hinweis zur echten Adresse
+
+Nach dieser Korrektur können Sie:
+1. Die Immobilienakte öffnen
+2. Im Block "Lage & Beschreibung" die Felder bearbeiten:
+   - Straße: z.B. "Prager Straße"
+   - Hausnr.: z.B. "10"
+   - PLZ: z.B. "01069"
+   - Ort: z.B. "Dresden"
+3. Speichern klicken
+
+Die Änderungen werden persistent in der Datenbank gespeichert und bei jedem Laden der Akte korrekt angezeigt.
