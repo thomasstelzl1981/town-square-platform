@@ -67,7 +67,7 @@ import Integrations from '@/pages/admin/Integrations';
 import CommunicationHub from '@/pages/admin/CommunicationHub';
 import Oversight from '@/pages/admin/Oversight';
 import AuditLog from '@/pages/admin/AuditLog';
-import Billing from '@/pages/admin/Billing';
+
 import Agreements from '@/pages/admin/Agreements';
 import Inbox from '@/pages/admin/Inbox';
 import LeadPool from '@/pages/admin/LeadPool';
@@ -192,7 +192,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   CommunicationHub,
   Oversight,
   AuditLog,
-  Billing,
+  
   Agreements,
   Inbox,
   LeadPool,
