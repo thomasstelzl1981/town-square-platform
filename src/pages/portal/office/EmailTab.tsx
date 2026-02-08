@@ -625,26 +625,109 @@ export function EmailTab() {
         </div>
 
         {/* Right - Email Detail / Preview */}
-        <div className="col-span-6 border rounded-lg flex flex-col">
-          <div className="flex-1 flex items-center justify-center text-center p-8">
-            {hasConnectedAccount ? (
-              <div className="space-y-3">
-                <MailOpen className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h3 className="font-semibold">Keine E-Mail ausgewählt</h3>
-                <p className="text-sm text-muted-foreground">
-                  Wählen Sie eine E-Mail aus der Liste, um sie anzuzeigen
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <Mail className="h-12 w-12 text-muted-foreground/50 mx-auto" />
-                <h3 className="font-semibold">E-Mail-Client</h3>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Nach der Verbindung eines E-Mail-Kontos können Sie hier Ihre Nachrichten lesen und verwalten.
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="col-span-6 border rounded-lg flex flex-col overflow-hidden">
+          {selectedEmail && messages.length > 0 ? (
+            (() => {
+              const email = messages.find((m: any) => m.id === selectedEmail);
+              if (!email) return null;
+              return (
+                <div className="flex flex-col h-full">
+                  {/* Email Header */}
+                  <div className="p-4 border-b space-y-3">
+                    <div className="flex items-start justify-between">
+                      <h2 className="text-lg font-semibold">{email.subject || '(Kein Betreff)'}</h2>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary">
+                          {(email.from_name || email.from_address || '?')[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{email.from_name || email.from_address}</span>
+                          {email.from_name && (
+                            <span className="text-sm text-muted-foreground">&lt;{email.from_address}&gt;</span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          An: {Array.isArray(email.to_addresses) ? email.to_addresses.join(', ') : activeAccount?.email_address}
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(email.received_at).toLocaleString('de-DE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Email Body */}
+                  <ScrollArea className="flex-1 p-4">
+                    {email.body_html ? (
+                      <div 
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: email.body_html }}
+                      />
+                    ) : (
+                      <pre className="whitespace-pre-wrap text-sm font-sans">
+                        {email.body_text || email.snippet || 'Kein Inhalt'}
+                      </pre>
+                    )}
+                  </ScrollArea>
+                  {/* Email Actions */}
+                  <div className="p-3 border-t flex gap-2">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Antworten
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Allen antworten
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Weiterleiten
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-center p-8">
+              {hasConnectedAccount ? (
+                <div className="space-y-3">
+                  <MailOpen className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h3 className="font-semibold">Keine E-Mail ausgewählt</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Wählen Sie eine E-Mail aus der Liste, um sie anzuzeigen
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Mail className="h-12 w-12 text-muted-foreground/50 mx-auto" />
+                  <h3 className="font-semibold">E-Mail-Client</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Nach der Verbindung eines E-Mail-Kontos können Sie hier Ihre Nachrichten lesen und verwalten.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
