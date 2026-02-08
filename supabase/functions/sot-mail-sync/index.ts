@@ -2,7 +2,7 @@
  * SOT-MAIL-SYNC Edge Function
  * 
  * Synchronizes emails from connected mail accounts:
- * - IMAP: Uses @workingdevshero/deno-imap
+ * - IMAP: Uses @workingdevshero/deno-imap with mailparser for MIME parsing
  * - Google: Uses Gmail API
  * - Microsoft: Uses Graph API
  */
@@ -10,6 +10,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
+import { simpleParser } from 'npm:mailparser@3.6.6';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +22,9 @@ interface SyncRequest {
   folder?: string;
   limit?: number;
 }
+
+// Maximum body size to store (500KB per field)
+const MAX_BODY_SIZE = 500 * 1024;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -132,7 +136,33 @@ serve(async (req) => {
   }
 });
 
-// IMAP Mail sync using @workingdevshero/deno-imap
+/**
+ * Strip HTML tags from a string to create a plain text snippet
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Truncate string to max length
+ */
+function truncate(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  return str.substring(0, maxLen);
+}
+
+// IMAP Mail sync using @workingdevshero/deno-imap with mailparser
 async function syncImapMail(
   supabase: any, 
   account: any, 
@@ -182,24 +212,29 @@ async function syncImapMail(
     const start = Math.max(1, total - limit + 1);
     const range = `${start}:${total}`;
     
-    console.log(`Fetching messages ${range}`);
+    console.log(`Fetching messages ${range} with full content...`);
 
-    // Fetch messages with envelope, flags, and BODY
+    // Fetch messages with envelope, flags, and FULL raw content
+    // Using 'full: true' to get msg.raw (Uint8Array) which we parse with mailparser
     const messages = await client.fetch(range, {
       envelope: true,
       flags: true,
       uid: true,
+      internalDate: true,
       bodyStructure: true,
-      body: true, // Fetch full body content
+      full: true, // This gives us msg.raw containing the complete RFC822 message
     });
 
-    console.log(`Fetched ${messages.length} messages`);
+    console.log(`Fetched ${messages.length} messages, parsing content...`);
 
     let synced = 0;
     for (const msg of messages) {
       try {
         const envelope = msg.envelope;
-        if (!envelope) continue;
+        if (!envelope) {
+          console.log('Skipping message without envelope');
+          continue;
+        }
 
         // Extract from address
         const fromAddr = envelope.from?.[0];
@@ -213,55 +248,74 @@ async function syncImapMail(
           addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : ''
         ).filter(Boolean) || [];
 
-        // Parse flags
-        const flags = msg.flags || [];
-        const isRead = flags.includes('\\Seen');
-        const isStarred = flags.includes('\\Flagged');
+        // Parse flags - normalize by removing backslashes
+        // The deno-imap library returns flags like 'Seen' instead of '\\Seen'
+        const rawFlags = msg.flags || [];
+        const normFlags = rawFlags.map((f: string) => f.replace(/^\\/, ''));
+        const isRead = normFlags.includes('Seen') || rawFlags.includes('\\Seen');
+        const isStarred = normFlags.includes('Flagged') || rawFlags.includes('\\Flagged');
 
         // Parse date
         let receivedAt: string;
         try {
-          receivedAt = envelope.date 
-            ? new Date(envelope.date).toISOString()
-            : new Date().toISOString();
+          if (msg.internalDate) {
+            receivedAt = new Date(msg.internalDate).toISOString();
+          } else if (envelope.date) {
+            receivedAt = new Date(envelope.date).toISOString();
+          } else {
+            receivedAt = new Date().toISOString();
+          }
         } catch {
           receivedAt = new Date().toISOString();
         }
 
-        // Extract body content
+        // Parse MIME content using mailparser
         let bodyText = '';
         let bodyHtml = '';
         let snippet = '';
+        let hasAttachments = false;
         
-        // Try to get body from various possible locations
-        if (msg.body) {
-          // Direct body content
-          if (typeof msg.body === 'string') {
-            bodyText = msg.body;
-          } else if (msg.body.text) {
-            bodyText = msg.body.text;
-          } else if (msg.body.html) {
-            bodyHtml = msg.body.html;
-          }
-        }
-        
-        // Check for parts in bodyStructure (multipart messages)
-        if (msg.bodyParts) {
-          for (const part of msg.bodyParts) {
-            if (part.type === 'text/plain' && part.content) {
-              bodyText = part.content;
-            } else if (part.type === 'text/html' && part.content) {
-              bodyHtml = part.content;
+        if (msg.raw) {
+          try {
+            // msg.raw is a Uint8Array containing the full RFC822 message
+            const parsed = await simpleParser(msg.raw);
+            
+            // Extract text content
+            if (parsed.text) {
+              bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+            }
+            
+            // Extract HTML content
+            if (parsed.html && typeof parsed.html === 'string') {
+              bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+            }
+            
+            // Check for attachments
+            if (parsed.attachments && parsed.attachments.length > 0) {
+              hasAttachments = true;
+            }
+            
+            console.log(`Parsed message UID ${msg.uid}: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+          } catch (parseError) {
+            console.error(`Error parsing MIME for UID ${msg.uid}:`, parseError);
+            // Fallback: try to decode raw as string
+            try {
+              const decoder = new TextDecoder('utf-8', { fatal: false });
+              const rawText = decoder.decode(msg.raw);
+              bodyText = truncate(rawText, MAX_BODY_SIZE);
+            } catch {
+              console.error('Fallback text decode also failed');
             }
           }
+        } else {
+          console.log(`No raw content for UID ${msg.uid}`);
         }
         
         // Generate snippet from body content
         if (bodyText) {
-          snippet = bodyText.substring(0, 200).replace(/\s+/g, ' ').trim();
+          snippet = truncate(bodyText.replace(/\s+/g, ' ').trim(), 200);
         } else if (bodyHtml) {
-          // Strip HTML tags for snippet
-          snippet = bodyHtml.replace(/<[^>]*>/g, '').substring(0, 200).replace(/\s+/g, ' ').trim();
+          snippet = truncate(stripHtml(bodyHtml), 200);
         }
 
         // Upsert message with body content
@@ -278,10 +332,10 @@ async function syncImapMail(
             to_addresses: toAddrs,
             body_text: bodyText || null,
             body_html: bodyHtml || null,
-            snippet: snippet,
+            snippet: snippet || '(Kein Inhalt)',
             is_read: isRead,
             is_starred: isStarred,
-            has_attachments: false,
+            has_attachments: hasAttachments,
             received_at: receivedAt,
           }, {
             onConflict: 'account_id,message_id',
