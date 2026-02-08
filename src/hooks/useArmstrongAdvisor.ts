@@ -107,10 +107,13 @@ interface AdvisorResponse {
 }
 
 // =============================================================================
-// MVP MODULE LIST
+// MVP MODULE LIST & GLOBAL ASSIST
 // =============================================================================
 
 const MVP_MODULES = ['MOD-00', 'MOD-04', 'MOD-07', 'MOD-08'];
+
+// Global Assist: Armstrong helps everywhere, but module-specific actions
+// are only available in MVP modules
 
 // =============================================================================
 // HOOK

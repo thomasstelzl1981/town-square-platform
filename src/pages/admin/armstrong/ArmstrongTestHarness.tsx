@@ -3,8 +3,10 @@
  * 
  * Dry-Run-Umgebung für Action-Validierung.
  * Ermöglicht das Testen von Actions ohne echte Auswirkungen.
+ * 
+ * STATUS: Phase 2 Feature (Schema-Validierung aktiv, Execution Mock geplant)
  */
-import { FlaskConical, Play, Settings, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+import { FlaskConical, Play, Settings, RefreshCw, CheckCircle2, XCircle, ArrowLeft, AlertTriangle, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
 
 const TEST_RESULTS = [
   { id: 1, action: '—', status: 'pending', timestamp: null },
@@ -26,26 +30,48 @@ export default function ArmstrongTestHarness() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 text-primary" />
-            Test Harness
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Dry-Run-Umgebung für Action-Validierung
-          </p>
+        <div className="flex items-center gap-4">
+          <Link to="/admin/armstrong">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Zurück
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <FlaskConical className="h-6 w-6 text-primary" />
+              Test Harness
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Dry-Run-Umgebung für Action-Validierung
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" disabled>
             <RefreshCw className="h-4 w-4 mr-2" />
             Reset
           </Button>
-          <Button>
+          <Button disabled>
             <Play className="h-4 w-4 mr-2" />
             Dry-Run starten
           </Button>
         </div>
       </div>
+
+      {/* Phase 2 Notice */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Phase 2 Feature</AlertTitle>
+        <AlertDescription>
+          <p>Dry-Run &amp; Simulation ist für Phase 2 geplant. Aktuell verfügbar:</p>
+          <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+            <li><strong>Schema-Validierung:</strong> Actions werden gegen das Manifest validiert</li>
+            <li><strong>Mock-Context:</strong> Simulierte Tenant/User-Kontexte für Tests</li>
+            <li><strong>Geplant:</strong> Vollständige Execution-Simulation ohne Side Effects</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
 
       {/* Test Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
