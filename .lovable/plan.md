@@ -1,239 +1,299 @@
 
 
-## Zone 1 KI Office: Separate Menuepunkte mit Resend-basiertem E-Mail-System
+## Sidebar-Bereinigung: Billing loeschen und Armstrong Zone 1 etablieren
 
 ### Zusammenfassung
 
-Die Sidebar wird umstrukturiert, sodass **E-Mail** und **Kontakte** als separate Menuepunkte im KI Office erscheinen (nicht mehr als Tabs). Das E-Mail-System wird komplett auf **Resend** umgestellt (kein IMAP/SMTP), was fuer transaktionale E-Mails aus dem Admin-Bereich besser geeignet ist. Zusaetzlich wird **Kommunikation** (CommunicationHub) in die KI-Office-Gruppe verschoben.
+Der duplizierte Menuepunkt "Billing" (Zeile 98) wird entfernt. Eine neue Kategorie **"Armstrong Zone 1"** wird als Gruppe 4 etabliert mit 7 Menuepunkten. Fehlende Komponenten werden als Placeholder erstellt.
 
 ---
 
-### 1. Neue Sidebar-Struktur
+### Wichtige Unterscheidung: Zwei Billing-Konzepte
 
-**Aktuelle Struktur:**
+| Konzept | Ort | Zweck |
+|---------|-----|-------|
+| **Abrechnung** | Zone 2 Stammdaten | Kaufmaennische Rechnungsstellung an User (Credits kaufen → Rechnung erhalten) |
+| **Armstrong Billing** | Zone 1 Armstrong | Technische Verbrauchserfassung (genutzte Credits durch KI-Aktionen kalkulieren) |
+
+**Abrechnung (Zone 2):** User kauft 500 Credits → System erstellt Rechnung → User bezahlt
+
+**Armstrong Billing (Zone 1):** User nutzt "Web-Recherche" Action → System erfasst 5 Credits Verbrauch → Aggregation fuer Kostenkontrolle
+
+---
+
+### 1. Zu loeschende Route
+
+**Datei:** `src/manifests/routesManifest.ts`
+
+**Zeile 98 entfernen:**
 ```text
-KI Office:
-  - KI Office (Landing mit Tabs)
-
-System:
-  - Kommunikation
+{ path: "billing", component: "Billing", title: "Abrechnung" }
 ```
 
-**Neue Struktur:**
+Diese Route ist ein Duplikat - die kaufmaennische Abrechnung existiert bereits in Zone 2 unter Stammdaten.
+
+---
+
+### 2. Neue Sidebar-Kategorie: Armstrong Zone 1
+
+**Datei:** `src/components/admin/AdminSidebar.tsx`
+
+**GROUP_CONFIG anpassen (Priority-Shift):**
 ```text
-KI Office:
-  - E-Mail
-  - Kontakte
-  - Kommunikation
+'foundation': { label: 'Tenants & Access', priority: 1 },
+'masterdata': { label: 'Masterdata', priority: 2 },
+'ki-office': { label: 'KI Office', priority: 3 },
+'armstrong': { label: 'Armstrong Zone 1', priority: 4 },  // NEU
+'activation': { label: 'Feature Activation', priority: 5 },
+'backbone': { label: 'Backbone', priority: 6 },
+'desks': { label: 'Operative Desks', priority: 7 },
+'agents': { label: 'AI Agents', priority: 8 },
+'system': { label: 'System', priority: 9 },
+'platformAdmin': { label: 'Platform Admin', priority: 10 },
 ```
 
 ---
 
-### 2. Routen-Aenderungen
+### 3. getGroupKey erweitern
 
-**Entfernen:**
-- `ki-office` (Landing Page mit Tabs wird nicht mehr benoetigt)
-- `ki-office/email` (wird zu `ki-office-email`)
-- `ki-office/kontakte` (wird zu `ki-office-kontakte`)
-
-**Neu:**
 ```text
-{ path: "ki-office-email", component: "AdminKiOfficeEmail", title: "E-Mail" }
-{ path: "ki-office-kontakte", component: "AdminKiOfficeKontakte", title: "Kontakte" }
-```
+// Armstrong Zone 1
+if (path.startsWith('armstrong')) {
+  return 'armstrong';
+}
 
-**Verschieben:**
-- `communication` bleibt unter dem Pfad, wird aber zur Gruppe `ki-office` zugeordnet
-
----
-
-### 3. AdminSidebar.tsx Anpassungen
-
-**getGroupKey Funktion:**
-```text
-// KI Office Gruppe
-if (path === 'ki-office-email' || path === 'ki-office-kontakte' || path === 'communication') {
-  return 'ki-office';
+// Billing aus Backbone entfernen (Route wird geloescht)
+if (path === 'agreements' || path === 'inbox') {
+  return 'backbone';
 }
 ```
 
-**shouldShowInNav:**
-- Die alten `ki-office/` Sub-Routes werden entfernt
-- Neue Top-Level-Routes werden angezeigt
+---
 
-**ICON_MAP Erweiterung:**
+### 4. shouldShowInNav erweitern
+
 ```text
-'AdminKiOfficeEmail': Mail,
-'AdminKiOfficeKontakte': Contact,
+// Armstrong Zone 1 - alle 7 Menuepunkte anzeigen
+if (path === 'armstrong' || 
+    path === 'armstrong/actions' || 
+    path === 'armstrong/logs' || 
+    path === 'armstrong/knowledge' ||
+    path === 'armstrong/billing' ||
+    path === 'armstrong/policies' ||
+    path === 'armstrong/test') {
+  return true;
+}
 ```
 
 ---
 
-### 4. E-Mail-System: Von IMAP zu Resend
+### 5. ICON_MAP erweitern
 
-**Konzept:**
-Das Admin-E-Mail-System arbeitet **nicht** mit einem klassischen Posteingang (IMAP), sondern mit:
-- **Ausgehend:** Transaktionale E-Mails ueber Resend API
-- **Eingehend:** Resend Inbound Webhook (wie bei Akquise)
+**Neue Imports:**
+```text
+import { BookOpen, Scale, FlaskConical } from 'lucide-react';
+```
+
+**Neue Eintraege:**
+```text
+// Armstrong Zone 1
+'ArmstrongDashboard': Sparkles,
+'ArmstrongActions': FileText,
+'ArmstrongLogs': FileText,
+'ArmstrongBilling': CreditCard,
+'ArmstrongKnowledge': BookOpen,
+'ArmstrongPolicies': Scale,
+'ArmstrongTestHarness': FlaskConical,
+```
+
+---
+
+### 6. Neue Sidebar-Struktur unter Armstrong Zone 1
+
+| Menuepunkt | Route | Komponente | Zweck |
+|------------|-------|------------|-------|
+| Armstrong Console | `/admin/armstrong` | ArmstrongDashboard | KPIs: Action-Volumen, Kosten, Fehlerraten |
+| Actions-Katalog | `/admin/armstrong/actions` | ArmstrongActions | Manifest-Viewer aller KI-Aktionen |
+| Action Logs | `/admin/armstrong/logs` | ArmstrongLogs | Audit-Trail aller ausgefuehrten Aktionen |
+| Knowledge Base | `/admin/armstrong/knowledge` | ArmstrongKnowledge | Kuratierte Immobilien-Wissensdatenbank |
+| Billing | `/admin/armstrong/billing` | ArmstrongBilling | **Verbrauchskalkulation** (Credits pro Action) |
+| Policies | `/admin/armstrong/policies` | ArmstrongPolicies | System-Prompts und Guardrails |
+| Test Harness | `/admin/armstrong/test` | ArmstrongTestHarness | Dry-Run-Umgebung fuer Action-Tests |
+
+---
+
+### 7. Armstrong Billing - Detaillierte Funktion
+
+**Zweck:** Technische Verbrauchserfassung und Kostenkalkulation fuer KI-Aktionen
 
 **Funktionen:**
 | Feature | Beschreibung |
 |---------|--------------|
-| E-Mail senden | Direkt ueber Resend API mit Template |
-| Gesendet-Historie | Alle gesendeten E-Mails in DB-Tabelle |
-| Antworten empfangen | Via Inbound-Webhook + Routing |
-| Kontaktanreicherung | Bei eingehenden E-Mails → Kontakt enrichen |
+| Verbrauchsuebersicht | Aggregierte Credit-Nutzung pro Tenant/Zeitraum |
+| Action-Kosten-Mapping | Zuweisung von Credit-Kosten zu einzelnen Actions |
+| Plan-Zuordnung | Freemium-Limits vs. Paid-Kontingente definieren |
+| Kostenprognose | Hochrechnung basierend auf Nutzungstrends |
+| Threshold-Alerts | Warnungen bei hohem Verbrauch |
 
-**Vorteil gegenueber IMAP:**
-- Keine Konto-Konfiguration noetig
-- Zuverlaessiger E-Mail-Versand
-- Automatisches Tracking (Oeffnungen, Klicks)
-- Bereits vorhandene Infrastruktur (RESEND_API_KEY)
+**Unterschied zur Zone 2 Abrechnung:**
+- Zone 2 Abrechnung: "User X hat 500 Credits fuer 49 EUR gekauft"
+- Armstrong Billing: "User X hat diese Woche 127 Credits verbraucht (davon 45 fuer Web-Recherche, 82 fuer Dokument-Extraktion)"
 
 ---
 
-### 5. Neue/Angepasste Dateien
+### 8. Fehlende Komponenten (Placeholder)
+
+**4 neue Dateien erstellen:**
+
+**a) `src/pages/admin/armstrong/ArmstrongKnowledge.tsx`**
+
+Kuratierte Wissensdatenbank fuer deutsche Immobilienthemen.
+
+```text
+- Wissenskategorien: Steuern, Mietrecht, Finanzierung, ESG
+- Eintraege hinzufuegen/bearbeiten
+- Veroeffentlichungsstatus
+- Quellenangaben verwalten
+```
+
+**b) `src/pages/admin/armstrong/ArmstrongBilling.tsx`**
+
+Verbrauchskalkulation und Credit-Tracking.
+
+```text
+- Dashboard: Gesamtverbrauch, Top-Actions, Top-Nutzer
+- Action-Kosten-Mapping: Credits pro Action-Typ
+- Plan-Verwaltung: Freemium-Limits, Paid-Kontingente
+- Alerts: Threshold-Konfiguration
+```
+
+**c) `src/pages/admin/armstrong/ArmstrongPolicies.tsx`**
+
+Policy-Editor fuer System-Prompts und Guardrails.
+
+```text
+- System-Prompts bearbeiten
+- Guardrails konfigurieren (z.B. max. Token, verbotene Topics)
+- Sicherheitsregeln
+- Versionierung und Audit-Trail
+```
+
+**d) `src/pages/admin/armstrong/ArmstrongTestHarness.tsx`**
+
+Dry-Run-Umgebung fuer Action-Validierung.
+
+```text
+- Action aus Katalog auswaehlen
+- Mock-Context definieren (Tenant, User, Daten)
+- Dry-Run ausfuehren (ohne echte Auswirkungen)
+- Ergebnis validieren und debuggen
+```
+
+---
+
+### 9. Index-Export aktualisieren
+
+**Datei:** `src/pages/admin/armstrong/index.ts`
+
+```text
+export { default as ArmstrongDashboard } from './ArmstrongDashboard';
+export { default as ArmstrongActions } from './ArmstrongActions';
+export { default as ArmstrongLogs } from './ArmstrongLogs';
+export { default as ArmstrongKnowledge } from './ArmstrongKnowledge';
+export { default as ArmstrongBilling } from './ArmstrongBilling';
+export { default as ArmstrongPolicies } from './ArmstrongPolicies';
+export { default as ArmstrongTestHarness } from './ArmstrongTestHarness';
+```
+
+---
+
+### 10. Zu loeschende Datei
+
+**Datei:** `src/pages/admin/Billing.tsx`
+
+Die duplizierte Billing-Komponente wird geloescht (Zone 2 hat "Abrechnung" in Stammdaten fuer kaufmaennische Rechnungsstellung).
+
+---
+
+### 11. Finale Sidebar-Struktur
+
+```text
+Tenants & Access (1)
+  - Dashboard
+  - Organisationen
+  - Benutzer
+  - Delegationen
+
+Masterdata (2)
+  - Immobilienakte Vorlage
+  - Selbstauskunft Vorlage
+
+KI Office (3)
+  - E-Mail
+  - Kontakte
+  - Kommunikation
+
+Armstrong Zone 1 (4)                    
+  - Armstrong Console          → KPIs Dashboard
+  - Actions-Katalog            → Manifest-Viewer
+  - Action Logs                → Audit-Trail
+  - Knowledge Base             → Immobilien-Wissen
+  - Billing                    → Verbrauchskalkulation
+  - Policies                   → Guardrails
+  - Test Harness               → Dry-Run Tests
+
+Feature Activation (5)
+  - Tile-Katalog
+
+Backbone (6)
+  - Vereinbarungen
+  - Posteingang
+
+Operative Desks (7)
+  - FutureRoom
+  - Sales Desk
+  - Finance Desk
+  - Acquiary
+
+AI Agents (8)
+  - Agents
+
+System (9)
+  - Integrationen
+  - Oversight
+  - Audit Log
+  - Lead Pool
+  - Partner-Verifizierung
+  - Provisionen
+
+Platform Admin (10)
+  - Support
+```
+
+---
+
+### 12. Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/routesManifest.ts` | Neue Top-Level-Routes |
-| `src/components/admin/AdminSidebar.tsx` | Gruppierung + Icons |
-| `src/pages/admin/ki-office/AdminKiOfficeEmail.tsx` | NEU: Resend-basierter E-Mail-Client |
-| `src/pages/admin/ki-office/AdminKiOfficeKontakte.tsx` | UMBENENNEN von AdminKontakteTab |
-| `src/pages/admin/ki-office/index.tsx` | ENTFERNEN (nicht mehr benoetigt) |
-| `src/pages/admin/ki-office/AdminEmailTab.tsx` | ENTFERNEN (ersetzt durch neue Komponente) |
+| `src/manifests/routesManifest.ts` | Zeile 98 loeschen, 4 neue Routes hinzufuegen |
+| `src/components/admin/AdminSidebar.tsx` | GROUP_CONFIG, getGroupKey, shouldShowInNav, ICON_MAP |
+| `src/pages/admin/Billing.tsx` | LOESCHEN |
+| `src/pages/admin/armstrong/ArmstrongKnowledge.tsx` | NEU (Placeholder) |
+| `src/pages/admin/armstrong/ArmstrongBilling.tsx` | NEU (Placeholder) |
+| `src/pages/admin/armstrong/ArmstrongPolicies.tsx` | NEU (Placeholder) |
+| `src/pages/admin/armstrong/ArmstrongTestHarness.tsx` | NEU (Placeholder) |
+| `src/pages/admin/armstrong/index.ts` | Exports erweitern |
 
 ---
 
-### 6. UI-Design: Admin E-Mail (Resend-basiert)
+### 13. Zusammenfassung
 
-```text
-+----------------------------------------------------------+
-| E-Mail                                       [+ Neue E-Mail]|
-+----------------------------------------------------------+
-| Statistiken                                               |
-| +------------+ +------------+ +------------+ +------------+|
-| | Gesendet   | | Zugestellt | | Geoeffnet  | | Beantwortet||
-| | 156        | | 152 (97%)  | | 89 (58%)   | | 23 (15%)   ||
-| +------------+ +------------+ +------------+ +------------+|
-+----------------------------------------------------------+
-| [Gesendet] [Eingang] [Templates]                         |
-+----------------------------------------------------------+
-| Tabelle mit E-Mail-Historie                              |
-| - Empfaenger | Betreff | Status | Datum | Aktionen       |
-+----------------------------------------------------------+
-```
-
-**Neue E-Mail Dialog:**
-- Empfaenger auswaehlen (aus Admin-Kontakten)
-- Template auswaehlen oder Freitext
-- Absender: noreply@systemofatown.de (Resend-Domain)
-
----
-
-### 7. Datenbank-Tabelle fuer Admin-E-Mails
-
-**Neue Tabelle: `admin_outbound_emails`**
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| `id` | UUID | Primary Key |
-| `to_email` | TEXT | Empfaenger-Adresse |
-| `to_name` | TEXT | Empfaenger-Name |
-| `contact_id` | UUID | Referenz auf contacts (optional) |
-| `subject` | TEXT | Betreff |
-| `body_html` | TEXT | HTML-Inhalt |
-| `body_text` | TEXT | Plain-Text-Inhalt |
-| `resend_message_id` | TEXT | Resend-ID fuer Tracking |
-| `status` | TEXT | queued/sent/delivered/opened/replied |
-| `sent_at` | TIMESTAMP | Sendezeitpunkt |
-| `opened_at` | TIMESTAMP | Erstes Oeffnen |
-| `replied_at` | TIMESTAMP | Antwort erhalten |
-| `created_by` | UUID | Admin-User |
-| `created_at` | TIMESTAMP | Erstellungszeitpunkt |
-
-**Neue Tabelle: `admin_inbound_emails`**
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| `id` | UUID | Primary Key |
-| `resend_inbound_id` | TEXT | Resend-ID |
-| `from_email` | TEXT | Absender |
-| `from_name` | TEXT | Absender-Name |
-| `subject` | TEXT | Betreff |
-| `body_text` | TEXT | Inhalt |
-| `body_html` | TEXT | HTML-Inhalt |
-| `contact_id` | UUID | Referenz auf contacts |
-| `in_reply_to_id` | UUID | Referenz auf outbound |
-| `is_read` | BOOLEAN | Gelesen-Status |
-| `received_at` | TIMESTAMP | Empfangszeitpunkt |
-
----
-
-### 8. Edge Functions
-
-**Neue Function: `sot-admin-mail-send`**
-- Sendet E-Mails ueber Resend API
-- Speichert in `admin_outbound_emails`
-- Setzt Reply-To mit Routing-Token
-
-**Erweiterte Function: `sot-contact-enrichment`**
-- Wird bei eingehenden Admin-E-Mails aufgerufen
-- Extrahiert Kontaktdaten aus Signatur
-- Erstellt/aktualisiert Kontakt mit `scope = 'zone1_admin'`
-
----
-
-### 9. Ablauf: E-Mail senden und Antwort erhalten
-
-```text
-1. Admin klickt "Neue E-Mail"
-        |
-        v
-2. Waehlt Kontakt + schreibt Nachricht
-        |
-        v
-3. Edge Function sot-admin-mail-send
-   - Sendet via Resend
-   - Speichert in admin_outbound_emails
-   - Setzt Reply-To: admin+{msg_id}@incoming.systemofatown.de
-        |
-        v
-4. Empfaenger antwortet
-        |
-        v
-5. Resend Inbound Webhook
-   - Parsed Reply-To Token
-   - Speichert in admin_inbound_emails
-   - Ruft sot-contact-enrichment auf
-        |
-        v
-6. Admin sieht Antwort im "Eingang"-Tab
-```
-
----
-
-### 10. Sicherheit
-
-- RLS-Policies fuer `admin_outbound_emails` und `admin_inbound_emails`
-- Nur `platform_admin` darf zugreifen
-- RESEND_API_KEY muss konfiguriert sein (bereits vorhanden im System)
-
----
-
-### 11. Secret-Pruefung
-
-**Benoetigt:** `RESEND_API_KEY`
-
-**Status:** Das Secret ist laut Dokumentation im System vorgesehen, muss aber noch konfiguriert werden. Falls nicht vorhanden, wird der E-Mail-Versand gequeued aber nicht gesendet.
-
----
-
-### 12. Zusammenfassung der Aenderungen
-
-1. **Sidebar:** Drei separate Menuepunkte (E-Mail, Kontakte, Kommunikation) unter "KI Office"
-2. **E-Mail-System:** Komplett Resend-basiert (kein IMAP/SMTP)
-3. **Neue Tabellen:** `admin_outbound_emails`, `admin_inbound_emails`
-4. **Kontaktanreicherung:** Funktioniert automatisch bei eingehenden E-Mails
-5. **Datentrennung:** Alle Daten strikt in Zone 1 (`scope = 'zone1_admin'`)
+1. **Billing Route loeschen:** `/admin/billing` entfernt (Duplikat der Zone 2 Abrechnung)
+2. **Armstrong Zone 1:** Neue Sidebar-Gruppe mit Priority 4
+3. **7 Menuepunkte:** Console, Actions, Logs, Knowledge, Billing, Policies, Test Harness
+4. **Klare Billing-Trennung:** 
+   - Zone 2 Abrechnung = Kaufmaennische Rechnungsstellung (Credits kaufen)
+   - Armstrong Billing = Technische Verbrauchskalkulation (Credits nutzen)
+5. **4 neue Placeholder-Komponenten:** Grundgeruest fuer spaetere Implementierung
 
