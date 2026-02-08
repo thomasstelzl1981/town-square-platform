@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ import {
 
 // Category configuration with colors
 const CATEGORIES = [
+  { value: 'Offen', label: 'Offen', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
   { value: 'Mieter', label: 'Mieter', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
   { value: 'Eigentümer', label: 'Eigentümer', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
   { value: 'Verwalter', label: 'Verwalter', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
@@ -216,6 +218,70 @@ export function KontakteTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<ContactFormData>(emptyFormData);
+  const [emailEnrichEnabled, setEmailEnrichEnabled] = useState(false);
+  const [postEnrichEnabled, setPostEnrichEnabled] = useState(false);
+
+  // Fetch enrichment settings
+  const { data: enrichSettings } = useQuery({
+    queryKey: ['tenant-enrich-settings'],
+    queryFn: async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .single();
+      
+      if (!profile?.active_tenant_id) return null;
+      
+      const { data, error } = await supabase
+        .from('tenant_extraction_settings')
+        .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
+        .eq('tenant_id', profile.active_tenant_id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching enrich settings:', error);
+        return null;
+      }
+      return data;
+    },
+  });
+
+  // Sync state with DB
+  useEffect(() => {
+    if (enrichSettings) {
+      setEmailEnrichEnabled(enrichSettings.auto_enrich_contacts_email ?? false);
+      setPostEnrichEnabled(enrichSettings.auto_enrich_contacts_post ?? false);
+    }
+  }, [enrichSettings]);
+
+  // Update enrichment settings mutation
+  const updateEnrichSettingsMutation = useMutation({
+    mutationFn: async ({ field, value }: { field: 'auto_enrich_contacts_email' | 'auto_enrich_contacts_post'; value: boolean }) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .single();
+      
+      if (!profile?.active_tenant_id) {
+        throw new Error('Kein aktiver Mandant');
+      }
+
+      const { error } = await supabase
+        .from('tenant_extraction_settings')
+        .upsert({
+          tenant_id: profile.active_tenant_id,
+          [field]: value,
+        }, { onConflict: 'tenant_id' });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-enrich-settings'] });
+    },
+    onError: (error) => {
+      toast.error('Fehler beim Speichern: ' + error.message);
+    },
+  });
 
   // Fetch contacts
   const { data: contacts = [], isLoading } = useQuery({
@@ -524,7 +590,7 @@ export function KontakteTab() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-2">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
@@ -536,6 +602,39 @@ export function KontakteTab() {
             className="pl-9"
           />
         </div>
+        
+        {/* Auto-Enrich Switches */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="email-enrich" className="text-sm text-muted-foreground cursor-pointer">
+              E-Mail
+            </Label>
+            <Switch
+              id="email-enrich"
+              checked={emailEnrichEnabled}
+              onCheckedChange={(checked) => {
+                setEmailEnrichEnabled(checked);
+                updateEnrichSettingsMutation.mutate({ field: 'auto_enrich_contacts_email', value: checked });
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="post-enrich" className="text-sm text-muted-foreground cursor-pointer">
+              Post
+            </Label>
+            <Switch
+              id="post-enrich"
+              checked={postEnrichEnabled}
+              onCheckedChange={(checked) => {
+                setPostEnrichEnabled(checked);
+                updateEnrichSettingsMutation.mutate({ field: 'auto_enrich_contacts_post', value: checked });
+              }}
+            />
+          </div>
+        </div>
+
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">

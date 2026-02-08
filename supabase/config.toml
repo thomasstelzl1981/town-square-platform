@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.sot-contacts-sync]
 verify_jwt = false
+
+[functions.sot-contact-enrichment]
+verify_jwt = false
