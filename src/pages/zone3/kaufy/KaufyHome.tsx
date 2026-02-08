@@ -1,4 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+/**
+ * KaufyHome — Phase 3 Update
+ * Hero-Texte optimiert: "Finden Sie Ihre Rendite-Immobilie" + "Steueroptimiert kaufen. Digital verwalten."
+ */
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Building2, Users, Briefcase } from 'lucide-react';
@@ -169,17 +173,18 @@ export default function KaufyHome() {
               Kostenlos registrieren
             </Link>
             
+            {/* Phase 3: Optimierte Hero-Texte */}
             <h1 
               className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6"
               style={{ color: 'white' }}
             >
-              Die KI-Plattform für Kapitalanlage-Immobilien.
+              Finden Sie Ihre Rendite-Immobilie.
             </h1>
             <p 
               className="text-xl md:text-2xl mb-12 max-w-2xl"
               style={{ color: 'hsl(var(--z3-background) / 0.9)' }}
             >
-              Marktplatz & digitale Mietsonderverwaltung
+              Steueroptimiert kaufen. Digital verwalten.
             </p>
 
             {/* Search Card */}
@@ -251,7 +256,7 @@ export default function KaufyHome() {
                 <Building2 className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
               <h3 className="zone3-heading-3 mb-2">Vermieter</h3>
-              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
+              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>
                 Digitale Mietsonderverwaltung
               </p>
               <p className="zone3-text-small">
@@ -271,7 +276,7 @@ export default function KaufyHome() {
                 <Users className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
               <h3 className="zone3-heading-3 mb-2">Verkäufer</h3>
-              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
+              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>
                 Reichweite & Qualität
               </p>
               <p className="zone3-text-small">
@@ -279,7 +284,7 @@ export default function KaufyHome() {
               </p>
             </Link>
 
-            {/* Vertriebe */}
+            {/* Partner */}
             <Link 
               to="/kaufy/vertrieb"
               className="zone3-card p-8 group hover:shadow-xl transition-all"
@@ -290,8 +295,8 @@ export default function KaufyHome() {
               >
                 <Briefcase className="w-7 h-7" style={{ color: 'hsl(var(--z3-primary))' }} />
               </div>
-              <h3 className="zone3-heading-3 mb-2">Vertriebe</h3>
-              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-primary))' }}>
+              <h3 className="zone3-heading-3 mb-2">Partner</h3>
+              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>
                 Exklusive Partner-Suite
               </p>
               <p className="zone3-text-small">
@@ -315,13 +320,13 @@ export default function KaufyHome() {
             className="text-3xl md:text-4xl font-bold mb-6"
             style={{ color: 'hsl(var(--z3-background))' }}
           >
-            Bereit für deine erste Kapitalanlage?
+            Bereit für Ihre erste Kapitalanlage?
           </h2>
           <p 
             className="text-lg mb-8 max-w-xl mx-auto"
             style={{ color: 'hsl(var(--z3-background) / 0.8)' }}
           >
-            Registriere dich kostenlos und entdecke Objekte mit transparenter Renditeberechnung.
+            Registrieren Sie sich kostenlos und entdecken Sie Objekte mit transparenter Renditeberechnung.
           </p>
           <Link 
             to="/auth?mode=register&source=kaufy" 

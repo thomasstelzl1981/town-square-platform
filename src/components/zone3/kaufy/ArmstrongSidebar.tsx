@@ -1,3 +1,7 @@
+/**
+ * ArmstrongSidebar — Phase 3 Update
+ * Fix: lg:top-16 (64px Header-Offset) und lg:h-[calc(100vh-64px)]
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Bot, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -160,7 +164,7 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
   };
 
   // Mobile: Bottom sheet style
-  // Desktop: Fixed right sidebar
+  // Desktop: Fixed right sidebar below header (64px offset)
   return (
     <>
       {/* Mobile Toggle Button */}
@@ -180,9 +184,9 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
       <aside
         className={`
           fixed z-40 transition-transform duration-300 ease-in-out
-          lg:right-0 lg:top-0 lg:h-full lg:w-[320px] lg:translate-x-0
+          lg:right-0 lg:top-16 lg:h-[calc(100vh-64px)] lg:w-[320px] lg:translate-x-0
           ${isOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
-          bottom-0 left-0 right-0 h-[70vh] lg:h-full
+          bottom-0 left-0 right-0 h-[70vh] lg:h-[calc(100vh-64px)]
           rounded-t-2xl lg:rounded-none
           shadow-2xl lg:shadow-none
           border-t lg:border-l lg:border-t-0
@@ -264,7 +268,7 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
 
         {/* Chat Messages */}
         <ScrollArea 
-          className="flex-1 h-[calc(100%-200px)] lg:h-[calc(100%-240px)]"
+          className="flex-1 h-[calc(100%-200px)] lg:h-[calc(100%-200px)]"
           ref={scrollRef}
         >
           <div className="p-4 space-y-4">

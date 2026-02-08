@@ -1,26 +1,27 @@
 /* =============================================================================
    ZONE 3 — WEBSITE THEMES (Light Mode)
-   Version: 1.0.0
+   Version: 2.0.0 — Phase 3 Update (Sky Theme)
    ============================================================================= */
 
 /* ===========================================================================
-   KAUFY THEME
+   KAUFY THEME — Dezenter Himmelblau-Touch
    =========================================================================== */
 .theme-kaufy {
-  --z3-background: 0 0% 98%;
-  --z3-foreground: 0 0% 7%;
+  /* Sky-inspired subtle tones */
+  --z3-background: 210 40% 99%;
+  --z3-foreground: 220 20% 10%;
   --z3-card: 0 0% 100%;
-  --z3-card-foreground: 0 0% 7%;
-  --z3-primary: 0 0% 7%;
+  --z3-card-foreground: 220 20% 10%;
+  --z3-primary: 220 20% 10%;
   --z3-primary-foreground: 0 0% 100%;
-  --z3-secondary: 0 0% 96%;
-  --z3-secondary-foreground: 0 0% 7%;
-  --z3-muted: 0 0% 96%;
-  --z3-muted-foreground: 0 0% 45%;
-  --z3-accent: 0 0% 7%;
+  --z3-secondary: 210 30% 97%;
+  --z3-secondary-foreground: 220 20% 10%;
+  --z3-muted: 210 25% 96%;
+  --z3-muted-foreground: 215 16% 47%;
+  --z3-accent: 210 80% 55%;
   --z3-accent-foreground: 0 0% 100%;
-  --z3-border: 0 0% 90%;
-  --z3-input: 0 0% 90%;
+  --z3-border: 210 20% 92%;
+  --z3-input: 210 20% 92%;
 }
 
 /* ===========================================================================
