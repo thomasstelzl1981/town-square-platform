@@ -23,19 +23,17 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Zone 2: User Portal Layout (Refactored)
+ * Zone 2: User Portal Layout
  * 
  * Desktop:
- * - SystemBar: Fixed top system bar with Home, Logo, Clock, Armstrong toggle, User
+ * - SystemBar: Fixed top bar (Home, Logo, Clock, Armstrong, User)
  * - TopNavigation: 3-level navigation (Area > Module > Tile)
  * - ArmstrongContainer: Collapsed bottom-right or expanded right stripe
- * - No left sidebar (removed)
  * 
  * Mobile:
  * - SystemBar: Simplified top bar
- * - MobileCardView: Card-based area/module navigation
  * - MobileBottomNav: Fixed bottom with area switcher
- * - ArmstrongPod: Persistent entry above bottom nav
+ * - ArmstrongInputBar: Persistent entry above bottom nav
  * - ArmstrongSheet: Bottom sheet for chat
  */
 
