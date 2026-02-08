@@ -2,14 +2,14 @@
  * SOT-MAIL-SEND Edge Function
  * 
  * Sends emails via connected mail accounts:
- * - IMAP: Uses SMTP via denomailer
+ * - IMAP: Uses SMTP via nodemailer
  * - Google: Uses Gmail API
  * - Microsoft: Uses Graph API
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts';
+import nodemailer from 'npm:nodemailer@6.9.9';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,7 +121,7 @@ serve(async (req) => {
   }
 });
 
-// Send email via SMTP using deno-smtp
+// Send email via SMTP using nodemailer
 async function sendSmtpMail(
   account: any,
   email: {
@@ -145,60 +145,44 @@ async function sendSmtpMail(
     return { success: false, error: 'Failed to decode credentials: ' + (e as Error).message };
   }
 
-  const client = new SmtpClient();
   const port = account.smtp_port || 587;
 
   try {
-    console.log('Connecting to SMTP server...');
-    
-    // Connect based on port (465 = TLS, 587 = STARTTLS)
-    if (port === 465) {
-      await client.connectTLS({
-        hostname: account.smtp_host,
-        port: port,
-        username: account.email_address,
-        password: password,
-      });
-    } else {
-      await client.connect({
-        hostname: account.smtp_host,
-        port: port,
-        username: account.email_address,
-        password: password,
-      });
-    }
-    
-    console.log('Connected, sending email...');
+    // Create nodemailer transport
+    const transporter = nodemailer.createTransport({
+      host: account.smtp_host,
+      port: port,
+      secure: port === 465, // true for 465, false for other ports
+      auth: {
+        user: account.email_address,
+        pass: password,
+      },
+      tls: {
+        // Do not fail on invalid certs
+        rejectUnauthorized: false,
+      },
+    });
 
-    const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${account.smtp_host}>`;
+    console.log('Sending email via nodemailer...');
+
     const fromName = account.display_name || account.email_address.split('@')[0];
 
-    // Build email content
-    const content = email.bodyHtml 
-      ? `Content-Type: text/html; charset=utf-8\r\n\r\n${email.bodyHtml}`
-      : (email.bodyText || '');
-
-    await client.send({
+    // Send email
+    const info = await transporter.sendMail({
       from: `"${fromName}" <${account.email_address}>`,
-      to: email.to,
-      cc: email.cc,
-      bcc: email.bcc,
+      to: email.to.join(', '),
+      cc: email.cc?.join(', '),
+      bcc: email.bcc?.join(', '),
       subject: email.subject,
-      content: email.bodyText || '',
+      text: email.bodyText || '',
       html: email.bodyHtml,
     });
 
-    await client.close();
-    console.log('Email sent successfully');
-    return { success: true, messageId };
+    console.log('Email sent successfully, messageId:', info.messageId);
+    return { success: true, messageId: info.messageId };
 
   } catch (error: any) {
     console.error('SMTP send failed:', error);
-    try {
-      await client.close();
-    } catch {
-      // Ignore close errors
-    }
     return { success: false, error: error.message || 'SMTP send failed' };
   }
 }
