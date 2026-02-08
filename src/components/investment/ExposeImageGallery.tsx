@@ -56,15 +56,7 @@ export function ExposeImageGallery({
         )
         .eq('object_type', 'property')
         .eq('object_id', propertyId)
-        // NOTE: Filter on joined columns is inconsistent with 'like' in PostgREST.
-        // Use explicit allowlist for reliability.
-        .in('documents.mime_type', [
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-          'image/gif',
-          'image/jpg',
-        ])
+        .order('is_title_image', { ascending: false })
         .order('display_order', { ascending: true });
 
       if (error) {
@@ -72,9 +64,16 @@ export function ExposeImageGallery({
         return [];
       }
 
+      // NOTE: Join-filters on documents.* are inconsistent in PostgREST.
+      // We therefore filter client-side for reliability.
+      const imageLinks = (links || []).filter((link: any) => {
+        const doc = link.documents as any;
+        return !!doc?.file_path && String(doc?.mime_type || '').startsWith('image/');
+      });
+
       // Generate signed URLs
-      const imagePromises = (links || []).map(async (link: any) => {
-        const doc = link.documents;
+      const imagePromises = imageLinks.map(async (link: any) => {
+        const doc = link.documents as any;
         const { data: urlData, error: urlError } = await supabase.storage
           .from('tenant-documents')
           .createSignedUrl(doc.file_path, 3600);
