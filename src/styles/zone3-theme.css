@@ -25,8 +25,10 @@
 }
 
 /* ===========================================================================
-   SYSTEM OF A TOWN THEME
+   SYSTEM OF A TOWN THEME — SpaceX-Inspired Dark-First
    =========================================================================== */
+
+/* Default: Light Mode (for toggle) */
 .theme-sot {
   --z3-background: 210 40% 98%;
   --z3-foreground: 222 47% 11%;
@@ -42,6 +44,27 @@
   --z3-accent-foreground: 0 0% 100%;
   --z3-border: 214 32% 91%;
   --z3-input: 214 32% 91%;
+}
+
+/* Dark Mode — Primary Experience (SpaceX-Inspired) */
+.theme-sot-dark,
+.theme-sot.dark {
+  --z3-background: 222 47% 6%;
+  --z3-foreground: 210 40% 98%;
+  --z3-card: 222 30% 10%;
+  --z3-card-foreground: 210 40% 98%;
+  --z3-primary: 217 91% 60%;
+  --z3-primary-foreground: 222 47% 6%;
+  --z3-secondary: 222 30% 14%;
+  --z3-secondary-foreground: 210 40% 98%;
+  --z3-muted: 222 25% 16%;
+  --z3-muted-foreground: 215 20% 65%;
+  --z3-accent: 217 91% 60%;
+  --z3-accent-secondary: 275 45% 50%;
+  --z3-accent-foreground: 0 0% 100%;
+  --z3-border: 222 20% 18%;
+  --z3-input: 222 20% 18%;
+  --z3-glow: 217 91% 60%;
 }
 
 /* ===========================================================================

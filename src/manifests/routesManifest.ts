@@ -531,6 +531,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "module/:moduleId", component: "SotModuleDetail", title: "Modul-Details", dynamic: true },
       { path: "use-cases", component: "SotUseCases", title: "Use Cases" },
       { path: "preise", component: "SotPreise", title: "Preise" },
+      { path: "demo", component: "SotDemo", title: "Demo" },
       { path: "faq", component: "SotFAQ", title: "FAQ" },
     ],
   },

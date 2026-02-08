@@ -1,88 +1,142 @@
+/**
+ * SoT Home — SpaceX-Inspired Hero Landing Page
+ */
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, FileText, Mail, Building2, Wallet, TrendingUp, Search, Users, BarChart3 } from 'lucide-react';
+import { ArrowRight, Check, Building2, Sparkles, FolderOpen, Landmark, BarChart } from 'lucide-react';
+import { SotHeroSection, SotStats, SotModuleShowcase, SotCTA } from '@/components/zone3/sot';
+import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
+import { getFeaturedModules } from '@/data/sotWebsiteModules';
 
-const modules = [
-  { num: '01', name: 'Stammdaten', icon: Users, desc: 'Kontakte & Organisationen' },
-  { num: '02', name: 'KI Office', icon: Mail, desc: 'E-Mails, Aufgaben, Kalender' },
-  { num: '03', name: 'DMS', icon: FileText, desc: 'Dokumentenmanagement' },
-  { num: '04', name: 'Immobilien', icon: Building2, desc: 'Portfolio-Management' },
-  { num: '05', name: 'MSV', icon: BarChart3, desc: 'Mietmanagement' },
-  { num: '06', name: 'Verkauf', icon: TrendingUp, desc: 'Objektvermarktung' },
-  { num: '07', name: 'Finanzierung', icon: Wallet, desc: 'Finanzierungsfälle' },
-  { num: '08', name: 'Investment-Suche', icon: Search, desc: 'Neue Objekte finden' },
+const benefits = [
+  {
+    icon: BarChart,
+    title: '80% weniger Aufwand',
+    description: 'Automatisierte Workflows und KI-Unterstützung reduzieren manuelle Arbeit drastisch.',
+  },
+  {
+    icon: Building2,
+    title: 'Voller Überblick',
+    description: 'Alle Objekte, Mieter, Dokumente und Finanzen an einem Ort — strukturiert und auffindbar.',
+  },
+  {
+    icon: Sparkles,
+    title: 'KI-First',
+    description: 'Armstrong, Ihr KI-Assistent, unterstützt bei Texten, Analysen und Entscheidungen.',
+  },
+];
+
+const trustedFeatures = [
+  'DSGVO-konform',
+  'Deutsche Server',
+  'Verschlüsselte Daten',
+  'Regelmäßige Backups',
 ];
 
 export default function SotHome() {
+  const { ref: benefitsRef, isVisible: benefitsVisible } = useSotScrollAnimation();
+  const { ref: featuredRef, isVisible: featuredVisible } = useSotScrollAnimation();
+  const featuredModules = getFeaturedModules();
+
   return (
     <div>
-      <section className="zone3-hero">
-        <div className="zone3-container">
-          <h1 className="zone3-heading-1 mb-6">Ihre Immobilien. Intelligent verwaltet.</h1>
-          <p className="zone3-text-large max-w-2xl mx-auto mb-8">
-            System of a Town ist die KI-gestützte Software für Vermieter und Portfoliohalter.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/auth?mode=register&source=sot" className="zone3-btn-primary inline-flex items-center gap-2" style={{ backgroundColor: 'hsl(var(--z3-accent))' }}>
-              Kostenlos starten <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link to="/sot/produkt" className="zone3-btn-secondary">Demo ansehen</Link>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section */}
+      <SotHeroSection
+        title="Immobilienverwaltung. Neu gedacht."
+        subtitle="Die KI-Software für Vermieter und Portfoliohalter. Verwalten Sie Objekte, Mieter und Dokumente — mit Armstrong, Ihrem intelligenten Assistenten."
+        showDemo={true}
+      />
 
-      <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
-        <div className="zone3-container text-center">
-          <h2 className="zone3-heading-2 mb-4">Das Ergebnis</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
-                <Check className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
-              </div>
-              <p className="font-medium">80% weniger Verwaltungsaufwand</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
-                <Check className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
-              </div>
-              <p className="font-medium">Voller Überblick über Ihr Portfolio</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
-                <Check className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
-              </div>
-              <p className="font-medium">Mehr Zeit für das Wesentliche</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Stats Section */}
+      <SotStats />
 
-      <section className="zone3-section">
+      {/* Benefits Section */}
+      <section className="py-24">
         <div className="zone3-container">
-          <h2 className="zone3-heading-2 text-center mb-12">8 Module für vollständige Kontrolle</h2>
-          <div className="zone3-grid-4">
-            {modules.map((mod) => (
-              <div key={mod.num} className="zone3-card p-6 text-center">
-                <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
-                  <mod.icon className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
+          <div className="text-center mb-16">
+            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+              Warum System of a Town?
+            </span>
+            <h2 className="sot-headline mt-4">Mehr Kontrolle. Weniger Chaos.</h2>
+          </div>
+
+          <div 
+            ref={benefitsRef}
+            className="grid md:grid-cols-3 gap-8"
+          >
+            {benefits.map((benefit, index) => (
+              <div
+                key={benefit.title}
+                className={`sot-glass-card p-8 text-center sot-fade-in ${benefitsVisible ? 'visible' : ''}`}
+                style={{ transitionDelay: `${index * 150}ms` }}
+              >
+                <div 
+                  className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center"
+                  style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
+                >
+                  <benefit.icon className="w-8 h-8" style={{ color: 'hsl(var(--z3-accent))' }} />
                 </div>
-                <div className="text-xs font-bold mb-1" style={{ color: 'hsl(var(--z3-accent))' }}>MOD-{mod.num}</div>
-                <h3 className="font-semibold mb-1">{mod.name}</h3>
-                <p className="zone3-text-small">{mod.desc}</p>
+                <h3 className="text-xl font-bold mb-3">{benefit.title}</h3>
+                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                  {benefit.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-foreground))', color: 'hsl(var(--z3-background))' }}>
-        <div className="zone3-container text-center">
-          <h2 className="zone3-heading-2 mb-6">Bereit für die Digitalisierung?</h2>
-          <p className="text-lg opacity-80 mb-8">14 Tage kostenlos testen. Keine Kreditkarte erforderlich.</p>
-          <Link to="/auth?mode=register&source=sot" className="zone3-btn-primary inline-flex items-center gap-2" style={{ backgroundColor: 'hsl(var(--z3-background))', color: 'hsl(var(--z3-foreground))' }}>
-            Jetzt starten <ArrowRight className="w-4 h-4" />
-          </Link>
+      {/* Divider */}
+      <div className="zone3-container">
+        <div className="sot-divider" />
+      </div>
+
+      {/* Featured Modules */}
+      <section className="py-24">
+        <div className="zone3-container">
+          <div className="text-center mb-16">
+            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+              Die Highlights
+            </span>
+            <h2 className="sot-headline mt-4">Beliebte Module</h2>
+            <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
+              Unsere leistungsstärksten Module — von KI-Office bis Finanzierung.
+            </p>
+          </div>
+
+          <div ref={featuredRef}>
+            <SotModuleShowcase highlightOnly showCategories={false} />
+          </div>
+
+          <div className="text-center mt-12">
+            <Link to="/sot/module" className="sot-btn-secondary">
+              Alle Module entdecken
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </section>
+
+      {/* Trust Section */}
+      <section className="py-16" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
+        <div className="zone3-container">
+          <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16">
+            {trustedFeatures.map((feature) => (
+              <div key={feature} className="flex items-center gap-2">
+                <Check className="w-5 h-5" style={{ color: 'hsl(var(--z3-accent))' }} />
+                <span className="text-sm font-medium">{feature}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <SotCTA
+        variant="gradient"
+        title="Bereit für den Start?"
+        subtitle="14 Tage kostenlos testen. Keine Kreditkarte erforderlich."
+        secondaryCta={{ label: 'Demo ansehen', to: '/sot/demo' }}
+      />
     </div>
   );
 }
