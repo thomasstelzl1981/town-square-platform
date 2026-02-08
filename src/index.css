@@ -5,11 +5,12 @@
 @import './styles/zone3-theme.css';
 
 /* ===========================================================================
-   D-DIN Font Family (SIL Open Font License)
+   D-DIN Font Family — Fallback to system fonts
+   Original CDN no longer available, using modern system font stack
    =========================================================================== */
 @font-face {
   font-family: 'D-DIN';
-  src: url('https://cdn.jsdelivr.net/gh/nickonometry/din-fonts@master/D-DIN.woff2') format('woff2');
+  src: local('DIN'), local('DIN Alternate'), local('DIN Next'), local('DIN Pro');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -17,10 +18,15 @@
 
 @font-face {
   font-family: 'D-DIN';
-  src: url('https://cdn.jsdelivr.net/gh/nickonometry/din-fonts@master/D-DIN-Bold.woff2') format('woff2');
+  src: local('DIN Bold'), local('DIN Alternate Bold'), local('DIN Next Bold'), local('DIN Pro Bold');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+}
+
+/* Fallback font stack for systems without DIN */
+:root {
+  --font-din-fallback: 'D-DIN', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 }
 
 /* =============================================================================

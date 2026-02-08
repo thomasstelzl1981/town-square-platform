@@ -163,22 +163,10 @@ export function ArmstrongSidebar({ context, isOpen, onToggle }: ArmstrongSidebar
     }
   };
 
-  // Mobile: Bottom sheet style
+  // Mobile: Bottom sheet style (triggered by KaufyInputBar)
   // Desktop: Fixed right sidebar below header (64px offset)
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={onToggle}
-        className="lg:hidden fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
-        style={{ 
-          backgroundColor: 'hsl(var(--z3-primary))', 
-          color: 'hsl(var(--z3-primary-foreground))' 
-        }}
-        aria-label="Armstrong öffnen"
-      >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-      </button>
 
       {/* Sidebar / Bottom Sheet */}
       <aside
