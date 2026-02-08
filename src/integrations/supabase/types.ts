@@ -777,6 +777,140 @@ export type Database = {
           },
         ]
       }
+      admin_inbound_emails: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          contact_id: string | null
+          created_at: string
+          from_email: string
+          from_name: string | null
+          id: string
+          in_reply_to_id: string | null
+          is_read: boolean
+          received_at: string
+          resend_inbound_id: string | null
+          subject: string | null
+          to_email: string | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          contact_id?: string | null
+          created_at?: string
+          from_email: string
+          from_name?: string | null
+          id?: string
+          in_reply_to_id?: string | null
+          is_read?: boolean
+          received_at?: string
+          resend_inbound_id?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          contact_id?: string | null
+          created_at?: string
+          from_email?: string
+          from_name?: string | null
+          id?: string
+          in_reply_to_id?: string | null
+          is_read?: boolean
+          received_at?: string
+          resend_inbound_id?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_inbound_emails_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_inbound_emails_in_reply_to_id_fkey"
+            columns: ["in_reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "admin_outbound_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_outbound_emails: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          bounced_at: string | null
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          opened_at: string | null
+          replied_at: string | null
+          resend_message_id: string | null
+          routing_token: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          to_email: string
+          to_name: string | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          bounced_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          replied_at?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          to_email: string
+          to_name?: string | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          bounced_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          replied_at?: string | null
+          resend_message_id?: string | null
+          routing_token?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+          to_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_outbound_emails_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agreement_templates: {
         Row: {
           code: string
