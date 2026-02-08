@@ -148,17 +148,23 @@ export default function SucheTab() {
     });
   }, [listings, yieldMin]);
 
-  // Calculate metrics for investment search
+  // Calculate metrics for investment search - FIX: use fresh data from refetch
   const handleInvestmentSearch = useCallback(async () => {
-    setHasSearched(true);
-    await refetch();
+    // First fetch listings
+    const { data: freshListings } = await refetch();
+    const listingsToProcess = (freshListings || []).slice(0, 20);
+    
+    if (listingsToProcess.length === 0) {
+      setHasSearched(true);
+      return;
+    }
 
-    // Calculate metrics for each listing
+    // Calculate metrics for ALL listings in parallel BEFORE setting hasSearched
     const newCache: Record<string, any> = {};
     
-    for (const listing of listings.slice(0, 20)) { // Limit to avoid too many API calls
+    await Promise.all(listingsToProcess.map(async (listing: PublicListing) => {
       const loanAmount = listing.asking_price - equity;
-      const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12); // Fallback 4% yield
+      const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
       
       const input: CalculationInput = {
         ...defaultInput,
@@ -176,12 +182,17 @@ export default function SucheTab() {
           monthlyBurden: result.summary.monthlyBurden,
           roiAfterTax: result.summary.roiAfterTax,
           loanAmount: result.summary.loanAmount,
+          yearlyInterest: result.summary.yearlyInterest,
+          yearlyRepayment: result.summary.yearlyRepayment,
+          yearlyTaxSavings: result.summary.yearlyTaxSavings,
         };
       }
-    }
+    }));
 
-    setMetricsCache(prev => ({ ...prev, ...newCache }));
-  }, [listings, equity, zve, maritalStatus, hasChurchTax, calculate, refetch]);
+    // Update cache first, THEN set hasSearched
+    setMetricsCache(newCache);
+    setHasSearched(true);
+  }, [equity, zve, maritalStatus, hasChurchTax, calculate, refetch]);
 
   const handleClassicSearch = useCallback(() => {
     setHasSearched(true);

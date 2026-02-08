@@ -71,6 +71,7 @@ export default function InvestmentExposePage() {
           title,
           description,
           asking_price,
+          property_id,
           properties!inner (
             id,
             property_type,
@@ -95,16 +96,17 @@ export default function InvestmentExposePage() {
             title,
             description,
             asking_price,
+            property_id,
             properties!inner (
               id,
               property_type,
               address,
               city,
               postal_code,
-            total_area_sqm,
-            year_built,
-            annual_income
-          )
+              total_area_sqm,
+              year_built,
+              annual_income
+            )
         `)
         .eq('id', publicId)
         .maybeSingle();
@@ -123,6 +125,7 @@ export default function InvestmentExposePage() {
       return {
         id: data.id,
         public_id: data.public_id,
+        property_id: (data as any).property_id || props?.id,
         title: data.title || 'Immobilie',
         description: data.description || '',
         asking_price: data.asking_price || 0,
@@ -228,9 +231,9 @@ export default function InvestmentExposePage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image Gallery - Shared Component */}
+            {/* Image Gallery - Shared Component (uses property_id, not listing.id!) */}
             <ExposeImageGallery 
-              propertyId={listing.id}
+              propertyId={(listing as any).property_id || listing.id}
               aspectRatio="video"
             />
 
@@ -281,15 +284,6 @@ export default function InvestmentExposePage() {
                 </div>
               )}
 
-              {/* Standortkarte (MVP, ohne API-Key) */}
-              <div className="mt-6">
-                <ExposeLocationMap
-                  address={listing.address}
-                  city={listing.city}
-                  postalCode={listing.postal_code}
-                  showExactLocation={false}
-                />
-              </div>
             </div>
 
             {/* MasterGraph - Gemeinsame Komponente */}
@@ -321,6 +315,16 @@ export default function InvestmentExposePage() {
                 defaultOpen={false}
               />
             )}
+
+            {/* Standortkarte - GANZ UNTEN */}
+            <div className="mt-6">
+              <ExposeLocationMap
+                address={listing.address}
+                city={listing.city}
+                postalCode={listing.postal_code}
+                showExactLocation={false}
+              />
+            </div>
           </div>
 
           {/* Right Column - Interactive Calculator */}
