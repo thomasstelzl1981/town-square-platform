@@ -51,27 +51,31 @@ export function Haushaltsrechnung({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-0">
-          {/* T-Konto Grid */}
+          {/* T-Konto Grid - mit aligned Summenzeilen */}
           <div className="grid md:grid-cols-2 gap-0 border rounded-lg overflow-hidden">
             {/* Linke Spalte: Einnahmen */}
             <div className="p-4 bg-green-50/50 dark:bg-green-950/20 border-l-4 border-l-green-500">
-              <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-3">
-                Einnahmen p.a.
-              </h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm">+ Mieteinnahmen</span>
-                  <span className="text-sm font-medium text-green-600">
-                    {formatCurrency(year1?.rent || summary.yearlyRent)}
-                  </span>
+              <div className="flex flex-col min-h-[140px]">
+                <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-3">
+                  Einnahmen p.a.
+                </h4>
+                {/* Content - nimmt verfügbaren Platz */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">+ Mieteinnahmen</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {formatCurrency(year1?.rent || summary.yearlyRent)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">+ Steuerersparnis</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {formatCurrency(summary.yearlyTaxSavings)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">+ Steuerersparnis</span>
-                  <span className="text-sm font-medium text-green-600">
-                    {formatCurrency(summary.yearlyTaxSavings)}
-                  </span>
-                </div>
-                <div className="border-t pt-2 mt-2">
+                {/* Footer - immer am unteren Rand */}
+                <div className="border-t border-green-300 dark:border-green-700 pt-2 mt-auto">
                   <div className="flex justify-between font-semibold">
                     <span className="text-sm">Σ Einnahmen</span>
                     <span className="text-sm text-green-600">
@@ -84,29 +88,33 @@ export function Haushaltsrechnung({
 
             {/* Rechte Spalte: Ausgaben */}
             <div className="p-4 bg-red-50/50 dark:bg-red-950/20 border-l border-l-red-500 md:border-l-4">
-              <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-3">
-                Ausgaben p.a.
-              </h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm">− Zinsen</span>
-                  <span className="text-sm font-medium text-red-600">
-                    {formatCurrency(summary.yearlyInterest)}
-                  </span>
+              <div className="flex flex-col min-h-[140px]">
+                <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-3">
+                  Ausgaben p.a.
+                </h4>
+                {/* Content - nimmt verfügbaren Platz */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">− Zinsen</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {formatCurrency(summary.yearlyInterest)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">− Tilgung</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {formatCurrency(summary.yearlyRepayment)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">− Verwaltung</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {formatCurrency(300)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">− Tilgung</span>
-                  <span className="text-sm font-medium text-red-600">
-                    {formatCurrency(summary.yearlyRepayment)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">− Verwaltung</span>
-                  <span className="text-sm font-medium text-red-600">
-                    {formatCurrency(300)}
-                  </span>
-                </div>
-                <div className="border-t pt-2 mt-2">
+                {/* Footer - immer am unteren Rand, aligned mit linker Spalte */}
+                <div className="border-t border-red-300 dark:border-red-700 pt-2 mt-auto">
                   <div className="flex justify-between font-semibold">
                     <span className="text-sm">Σ Ausgaben</span>
                     <span className="text-sm text-red-600">

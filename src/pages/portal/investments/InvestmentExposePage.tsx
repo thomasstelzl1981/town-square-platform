@@ -229,8 +229,8 @@ export default function InvestmentExposePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Navigation */}
-      <div className="border-b bg-card">
+      {/* Header Navigation - Fixed height for sticky calc */}
+      <div className="border-b bg-card sticky top-0 z-10">
         <div className="px-6 py-4 flex items-center justify-between">
           <Link 
             to="/portal/investments/suche" 
@@ -252,8 +252,8 @@ export default function InvestmentExposePage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="p-6">
+      {/* Main Content - Use relative positioning for sticky context */}
+      <div className="relative p-6">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
@@ -364,16 +364,18 @@ export default function InvestmentExposePage() {
             </div>
           </div>
 
-          {/* Right Column - Interactive Calculator */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-6 pr-1">
-              <InvestmentSliderPanel
-                value={params}
-                onChange={setParams}
-                layout="vertical"
-                showAdvanced={true}
-                purchasePrice={listing.asking_price}
-              />
+          {/* Right Column - Interactive Calculator (STICKY) */}
+          <div className="hidden lg:block lg:col-span-1">
+            <div className="sticky top-20 space-y-6">
+              <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+                <InvestmentSliderPanel
+                  value={params}
+                  onChange={setParams}
+                  layout="vertical"
+                  showAdvanced={true}
+                  purchasePrice={listing.asking_price}
+                />
+              </div>
             </div>
           </div>
         </div>
