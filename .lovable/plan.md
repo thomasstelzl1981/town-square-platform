@@ -1,156 +1,347 @@
 
-## Ziel (was du angefragt hast)
+# MOD-13 PROJEKTE — Vollständige Implementierungsplanung
 
-1) **Admin-Dashboard (Zone 1):** Die Website-Buttons sollen **nicht** auf „öffentliche URLs“ zielen, sondern auf **interne App-Pfade** (SPA-Routen), damit ihr die Seiten im Projekt-Kontext bearbeiten könnt.  
-2) **Future Room fehlt:** Im Admin-Dashboard bei den Website-Action-Buttons muss **Future Room** ergänzt werden.  
-3) **Kaufy-Website Bilder:** Trotz Freigabe werden auf der Website weiterhin **keine Bilder** angezeigt (Screenshots zeigen Placeholder).  
-4) **Design-Fix:** Beim Feld „Zu versteuerndes Einkommen“ steht „(zvE)“ in Klammern und erzeugt einen unsauberen Umbruch/Versatz → **Klammer-Zusatz entfernen**.
+## Zusammenfassung
 
----
-
-## Was ich aus Screenshot + Code ableite (Root Cause)
-
-### A) „Keine Bilder“ ist aktuell ein Doppelproblem
-1) **KaufyHome zeigt generell keine Bilder, weil `image_url` nie befüllt wird.**  
-   - `KaufyHome.tsx` lädt Listings, übergibt sie an `KaufyPropertyCard`, aber setzt **kein** `property.image_url`.  
-   - `KaufyPropertyCard.tsx` fällt dann auf `'/placeholder.svg'` zurück → exakt das, was man in deinen Screenshots sieht.
-
-2) **Zusätzlich gibt es einen Backend/RLS-Fehler (500) bei `document_links`/`documents`-Abfragen**  
-   - Die Logs zeigen: **„infinite recursion detected in policy for relation "documents"“** und im Browser: **REST 500** auf `document_links?...documents!inner(...)`.  
-   - Ursache: Die aktuellen RLS-Policies referenzieren sich gegenseitig:
-     - `documents` Policy prüft via `EXISTS (...) FROM document_links ...`
-     - `document_links` Policy prüft via `EXISTS (...) FROM documents ...`
-     - Das kann Postgres als **Policy-Rekursion** erkennen → 500.
-
-Ergebnis: Selbst wenn wir `KaufyHome` korrekt auf Bilder umbauen, schlägt die Bildabfrage derzeit potenziell mit 500 fehl, solange die RLS-Rekursion nicht sauber gelöst ist.
-
-### B) Admin-Dashboard Routes
-- In `src/pages/admin/Dashboard.tsx` werden die Website-Buttons aktuell mit `window.open('/kaufy', '_blank')` etc. geöffnet.  
-- Das ist zwar ein interner Pfad, aber:
-  - In der Praxis führt `_blank` oft dazu, dass ihr „aus dem Bearbeitungs-/Preview-Kontext“ raus navigiert.
-  - Außerdem fehlt **/futureroom** komplett.
-
-### C) „(zvE)“ im UI
-- In `src/components/zone3/kaufy/InvestmentSearchCard.tsx` steht das Label als: **„Zu versteuerndes Einkommen (zvE)“**.
-- Durch die verfügbare Breite in der Search-Card bricht es bei euch unschön um (wie im Screenshot).
+MOD-13 wird als eigenständiges Modul für **Bauträger/Aufteiler** implementiert, das den kompletten Projekt-Lebenszyklus von der Erfassung bis zum Abverkauf und Marketing abbildet. Die Architektur orientiert sich am bewährten MOD-04-Pattern (Kontexte → Portfolio → Akte), adaptiert aber die Fachlichkeit für Mehreinheiten-Projekte mit Aufteiler-KPIs.
 
 ---
 
-## Umsetzungsvorschlag (konkret, mit minimalem Risiko)
+## 1. Datenbank-Architektur
 
-### 1) Admin-Dashboard: Website-Buttons auf interne SPA-Routen umstellen + Future Room hinzufügen
-**Änderung in:** `src/pages/admin/Dashboard.tsx`
+### 1.1 Neue Tabellen
 
-- Statt `window.open(..., '_blank')`:
-  - Nutzung von `useNavigate()` und `navigate('/kaufy')`, `navigate('/miety')`, `navigate('/sot')`, `navigate('/futureroom')`.
-- Optional (nice-to-have): Zusatz-Icon „extern öffnen“ als Secondary-Action, aber Standard bleibt **internes Navigieren**.
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    developer_contexts                           │
+│  (analog zu landlord_contexts für Bauträger/Aufteiler)         │
+├─────────────────────────────────────────────────────────────────┤
+│  id, tenant_id, name, context_type (GmbH/KG/Privat)            │
+│  legal_form, hrb_number, ust_id, managing_director             │
+│  street, postal_code, city, tax_rate_percent                   │
+│  is_default, created_at, updated_at                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       dev_projects                              │
+│  (Zentrale Projekt-Entität)                                    │
+├─────────────────────────────────────────────────────────────────┤
+│  id, tenant_id, developer_context_id, project_code             │
+│  name, description, status (draft/active/completed/archived)   │
+│  address, city, postal_code, total_units_count                 │
+│  purchase_price, renovation_budget, total_sale_target          │
+│  avg_unit_price, commission_rate_percent                       │
+│  holding_period_months, project_start_date, target_end_date    │
+│  created_at, updated_at                                        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ dev_project_    │  │ dev_project_    │  │ dev_project_    │
+│ units           │  │ calculations    │  │ documents       │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
 
-**Ergebnis:** Klick im Admin-Dashboard bringt euch direkt in die internen Routen (bearbeitbarer Kontext), plus Future Room ist dabei.
+### 1.2 Tabellen-Definitionen
 
----
+**developer_contexts**
+- Verwaltet Verkäufer-Gesellschaften (analog zu `landlord_contexts`)
+- Felder: `id`, `tenant_id`, `name`, `context_type`, `legal_form`, `hrb_number`, `ust_id`, `managing_director`, `street`, `house_number`, `postal_code`, `city`, `tax_rate_percent`, `is_default`, `created_at`, `updated_at`
 
-### 2) Bilder auf Kaufy: „Golden Path“ sauber schließen (Home + Immobilien-Übersicht + Exposé)
-#### 2.1 KaufyHome: Listings um `image_url` (Hero Bild) erweitern
-**Änderung in:** `src/pages/zone3/kaufy/KaufyHome.tsx`
+**dev_projects**
+- Kern-Projekt-Entität mit Aufteiler-spezifischen Feldern
+- Felder: `id`, `tenant_id`, `developer_context_id` (FK), `project_code`, `name`, `description`, `status`, `address`, `city`, `postal_code`, `total_units_count`, `purchase_price`, `renovation_budget`, `total_sale_target`, `avg_unit_price`, `commission_rate_percent`, `holding_period_months`, `project_start_date`, `target_end_date`, `created_at`, `updated_at`
 
-- Im bestehenden `dbListings` Query nach dem Laden der Listings:
-  - Property-IDs sammeln
-  - `document_links` für diese Properties laden (nur `object_type='property'`)
-  - bevorzugt `is_title_image=true`, sonst erstes nach `display_order`
-  - pro Bild eine URL erzeugen (siehe 2.3)
-  - `PropertyData` um `image_url` ergänzen und an `KaufyPropertyCard` weiterreichen
+**dev_project_units**
+- Einheiten innerhalb eines Projekts (nicht verknüpft mit MOD-04 units)
+- Felder: `id`, `tenant_id`, `project_id` (FK), `unit_number`, `floor`, `area_sqm`, `rooms_count`, `list_price`, `min_price`, `status` (frei/reserviert/verkauft), `grundbuchblatt`, `te_number`, `tenant_name`, `current_rent`, `created_at`, `updated_at`
 
-Damit sind die Karten in deinen Screenshots (Passende Kapitalanlage-Objekte) nicht mehr Platzhalter.
+**dev_project_reservations**
+- Reservierungen pro Einheit
+- Felder: `id`, `tenant_id`, `project_id`, `unit_id` (FK), `buyer_contact_id` (FK contacts), `partner_id`, `status` (pending/confirmed/cancelled/completed), `reserved_price`, `reservation_date`, `expiry_date`, `notary_date`, `notes`, `created_at`, `updated_at`
 
-#### 2.2 KaufyImmobilien: bleibt, aber Bildlogik stabilisieren
-**Änderung in:** `src/pages/zone3/kaufy/KaufyImmobilien.tsx`
+**dev_project_calculations**
+- Gespeicherte Aufteiler-Kalkulationen pro Projekt
+- Felder: `id`, `project_id`, `purchase_price`, `ancillary_cost_percent`, `renovation_total`, `sales_commission_percent`, `holding_period_months`, `total_sale_proceeds`, `gross_profit`, `profit_margin_percent`, `annualized_return`, `calculated_at`
 
-- Die Seite hat schon eine Bildlogik, aber sie ist abhängig von der aktuell fehlerhaften RLS-Situation.
-- Nach dem RLS-Fix wird sie wieder funktionieren.
-- Zusätzlich:
-  - sicherstellen, dass Links sortiert (`display_order`) verarbeitet werden
-  - klare Priorisierung: `is_title_image` > erstes Bild
-
-#### 2.3 URL-Strategie: Signed URLs vs. direkter Download
-Da der Bucket nicht zwingend „public“ sein soll (und ihr wollt ja „öffentlich nur Bilder“ sehr gezielt), bleiben **Signed URLs** sinnvoll.  
-Wichtig: Das klappt nur zuverlässig, wenn die Storage-Policy + RLS auf den zugehörigen Tabellen korrekt ist (siehe Punkt 3).
-
----
-
-### 3) Kritisch: RLS-Rekursion in `documents` / `document_links` beheben (damit keine 500 mehr)
-**Änderung via Migration (Backend):**
-- Aktuelle Policies `public_read_kaufy_images` und `public_read_kaufy_image_links` verursachen Rekursion.
-- Lösung: **Policy-Logik entkoppeln**, z.B. über eine `SECURITY DEFINER`-Funktion, die RLS nicht rekursiv triggert.
-
-**Plan für Migration:**
-1) Neue Funktion, z.B. `public.is_kaufy_public_image_document(doc_id uuid) returns boolean`  
-   - Prüft:
-     - Dokument ist `mime_type like 'image/%'`
-     - Dokument ist via `document_links` an `property` gebunden
-     - Property hängt an Listing mit `listing_publications(channel='kaufy', status='active')`
-2) Neue Policies:
-   - `documents`: SELECT erlaubt, wenn `is_kaufy_public_image_document(id)` true ist
-   - `document_links`: SELECT erlaubt, wenn `object_type='property'` und `is_kaufy_public_image_document(document_id)` true ist
-3) Alte rekursive Policies entfernen/ersetzen.
-4) Zusätzlich prüfen/entschärfen: **`documents_select_dev_mode` / `document_links_select_dev_mode`**  
-   - Diese klingen nach „Dev“, können aber inhaltlich zu breit sein.
-   - Ziel: öffentlich wirklich nur Bilder (Kaufy-aktive Listings), keine PDFs.
-
-**Ergebnis:** Die REST 500 verschwindet, und die Bildqueries funktionieren konsistent.
-
----
-
-### 4) UI-Fix: „(zvE)“ entfernen, Versatz beheben
-**Änderung in:** `src/components/zone3/kaufy/InvestmentSearchCard.tsx`
-
-- Label ändern von:
-  - „Zu versteuerndes Einkommen (zvE)“
-  zu:
-  - „Zu versteuerndes Einkommen“
-- Optional: Abkürzung „zvE“ als dezentes Help/Hint:
-  - placeholder z.B. „z. B. 60000“
-  - oder ein kleines Info-Tooltip (ohne Klammertext im Label)
-
-Zusätzlich (falls nötig):
-- `whitespace-nowrap` für Labels oder feinere Grid-Breakpoints, damit nichts mehr springt.
+**dev_project_documents**
+- Projekt-Dokumente (global + pro Einheit)
+- Felder: `id`, `tenant_id`, `project_id`, `unit_id` (nullable), `document_id` (FK documents), `doc_type`, `created_at`
 
 ---
 
-## Betroffene Dateien (geplant)
+## 2. Routen-Struktur & Navigation
 
-1) `src/pages/admin/Dashboard.tsx`
-   - interne Navigation statt externe Öffnung
-   - Future Room Button hinzufügen
+### 2.1 URL-Schema
 
-2) `src/pages/zone3/kaufy/KaufyHome.tsx`
-   - `image_url`/Hero-Bild laden und an Cards übergeben
+```text
+/portal/projekte              → Dashboard (Projekt-Liste + CTA)
+/portal/projekte/neu          → Create Flow (2-Step Wizard)
+/portal/projekte/kontexte     → Kontext-Verwaltung (Verkäufer-Gesellschaften)
+/portal/projekte/portfolio    → Portfolio-Ansicht (aktiver Kontext)
+/portal/projekte/:projectId   → Projektakte (kanonisch)
+/portal/projekte/vertrieb     → Reservierungen & Vertrieb
+/portal/projekte/marketing    → Kaufy Listing & Landingpages
+```
 
-3) `src/pages/zone3/kaufy/KaufyImmobilien.tsx`
-   - Bildauswahl robust machen (nach RLS-Fix)
+### 2.2 Menüstruktur (4 Tiles)
 
-4) `src/components/zone3/kaufy/InvestmentSearchCard.tsx`
-   - Label-Text ohne „(zvE)“ + Layout-Finish
-
-5) Neue Backend-Migration (SQL)
-   - RLS-Rekursion fixen via Function + neue Policies
-   - dev_mode Policies prüfen/absichern
-
----
-
-## Test-Checkliste (End-to-End)
-1) Admin: `/admin` → Buttons „Kaufy / Miety / SoT / Future Room“ navigieren **im selben Tab** auf interne Routen.
-2) Kaufy Startseite `/kaufy`:
-   - „Passende Kapitalanlage-Objekte“ zeigt **echte Bilder** statt Placeholder.
-3) Kaufy Liste `/kaufy/immobilien`:
-   - Cards zeigen Hero-Bilder.
-4) Kaufy Exposé `/kaufy/immobilien/:publicId`:
-   - Galerie lädt Bilder (keine 500er im Netzwerk).
-5) RLS-Sicherheit:
-   - Öffentlich: **nur Bilder**, keine PDFs über `documents/document_links`.
-6) UI:
-   - Label „Zu versteuerndes Einkommen“ ohne Klammerzusatz, kein Umbruch/Versatz.
+| Nr | Tile | Route | Inhalt |
+|----|------|-------|--------|
+| 1 | **Kontexte** | `/projekte/kontexte` | Verkäufer-Gesellschaften anlegen/verwalten, Context Switcher |
+| 2 | **Portfolio** | `/projekte/portfolio` | Projektliste im aktiven Kontext, Aufteiler-KPIs, Eye-Icon → Akte |
+| 3 | **Vertrieb** | `/projekte/vertrieb` | Reservierungen, Partner-Performance, Reporting |
+| 4 | **Marketing** | `/projekte/marketing` | Kaufy free, Paid Projekt-Landingpage, Social Leadgen |
 
 ---
 
-## Hinweis zu einem technischen Risiko (kurz, wichtig)
-Die beobachtete Meldung „infinite recursion detected in policy“ ist ein **harter Backend-Fehler**, der Abfragen komplett killt. Den beheben wir zuerst, weil sonst jede weitere Bildintegration instabil bleibt.
+## 3. Komponenten-Architektur
+
+### 3.1 Kontext-Management (analog MOD-04)
+
+```text
+src/pages/portal/projekte/
+├── index.ts                      # Exports
+├── KontexteTab.tsx               # Verkäufer-Gesellschaften (Kopie von KontexteTab MOD-04)
+├── PortfolioTab.tsx              # Projektliste mit Aufteiler-KPIs
+├── ProjectDetailPage.tsx         # Projektakte (10-Block-Struktur)
+├── VertriebTab.tsx               # Reservierungen & Partner
+├── MarketingTab.tsx              # Kaufy + Landingpages
+└── CreateProjectRedirect.tsx     # /neu → Portfolio?create=1
+```
+
+### 3.2 Projektakte (10 Sections analog Immobilienakte)
+
+| Block | Name | Inhalt |
+|-------|------|--------|
+| A | Identität/Status | Projektcode, Typ, Status, aktiver Kontext |
+| B | Standort/Story | Adresse, Beschreibung, Lage-Notes |
+| C | Einheiten | Einheiten-Liste mit Status (frei/reserviert/verkauft) |
+| D | Aufteilerkalkulation | Integrierte Kalkulations-Engine (aus MOD-12) |
+| E | Preisliste/Provision | Listenpreis, Mindestpreis, Provisionssatz je Einheit |
+| F | Dokumente | Global + je Einheit (DMS-Tree) |
+| G | Reservierungen | Pro Einheit: Käufer, Status, Ablauf |
+| H | Vertrieb | Partner-Zuordnung, Deals, Kommunikation |
+| I | Verträge | Kaufvertragsstatus, Drafts |
+| J | Veröffentlichung | Kaufy free/paid, Leadstatus, Projekt-Landingpage |
+
+### 3.3 Neue Komponenten
+
+```text
+src/components/projekte/
+├── CreateDeveloperContextDialog.tsx    # Verkäufer-Gesellschaft anlegen
+├── CreateProjectDialog.tsx             # Projekt-Create (2-Step)
+├── ProjectPortfolioTable.tsx           # Portfolio-Tabelle mit Aufteiler-KPIs
+├── ProjectDossierView.tsx              # Projektakte-Layout
+├── blocks/
+│   ├── ProjectIdentityBlock.tsx
+│   ├── ProjectLocationBlock.tsx
+│   ├── ProjectUnitsBlock.tsx           # Einheiten-Liste mit Status-Badges
+│   ├── ProjectCalculationBlock.tsx     # Integrierte Aufteilerkalkulation
+│   ├── ProjectPricingBlock.tsx         # Preisliste/Provision
+│   ├── ProjectDocumentsBlock.tsx
+│   ├── ProjectReservationsBlock.tsx
+│   ├── ProjectSalesBlock.tsx           # Partner/Deals
+│   ├── ProjectContractsBlock.tsx
+│   └── ProjectPublicationBlock.tsx     # Kaufy + Landingpage
+├── ReservationDialog.tsx               # Reservierung erfassen
+├── UnitStatusBadge.tsx                 # frei/reserviert/verkauft
+└── SalesPartnerAssignment.tsx          # Partner zuordnen
+```
+
+---
+
+## 4. Kalkulations-Engine
+
+Die Aufteilerkalkulation wird aus MOD-12 übernommen und erweitert:
+
+```text
+Eingaben:
+- Kaufpreis gesamt
+- Anzahl Einheiten
+- Ø Verkaufspreis/Einheit (oder individuelle Preise)
+- Sanierungskosten gesamt (oder pro Einheit)
+- Vertriebsprovision %
+- Haltedauer (Monate)
+- Erwerbsnebenkosten %
+
+Ausgaben:
+- Gesamter Verkaufserlös
+- Bruttogewinn
+- Marge %
+- Annualisierte Rendite
+- Gewinn/Einheit
+- Break-Even-Punkt (Anzahl verkaufter Einheiten)
+```
+
+### 4.1 KPI-Spalten in Portfolio-Tabelle
+
+| Spalte | Beschreibung |
+|--------|--------------|
+| Projekt-Code | z.B. "BT-2024-001" |
+| Name/Standort | Projektname + Stadt |
+| Einheiten | Total / Frei / Reserviert / Verkauft |
+| Kaufpreis | Gesamt-Einkaufspreis |
+| Verkaufsziel | Σ Listenpreise |
+| Marge | Bruttogewinn % |
+| Fortschritt | % verkauft (visueller Balken) |
+| Status | Draft/Aktiv/Abgeschlossen |
+
+---
+
+## 5. Vertrieb & Reservierungen
+
+### 5.1 Reservierungs-Workflow
+
+```text
+1. Einheit "frei" → Partner/Käufer zuordnen → Status "reserviert"
+2. Reservierung bestätigen (Owner + Buyer Consent)
+3. Notartermin eintragen
+4. Nach Beurkundung → Status "verkauft"
+5. Bei Abbruch → Status zurück auf "frei" + Grund dokumentieren
+```
+
+### 5.2 Partner-Performance View
+
+- Welcher Partner hat welche Einheiten reserviert/verkauft
+- Provisions-Tracking
+- Export für Abrechnung
+
+---
+
+## 6. Marketing & Veröffentlichung
+
+### 6.1 Kaufy Integration (Free)
+
+- Projekt in Zone 3 Kaufy-Marktplatz listen
+- Consent-Flow analog MOD-06
+
+### 6.2 Paid Features (Platzhalter-UI)
+
+| Feature | Preis | Beschreibung |
+|---------|-------|--------------|
+| Projekt-Präsentation | 200€/Monat | Featured Placement unter Kaufy → Projekte |
+| Projekt-Landingpage | 200€/Monat | Generierte Subdomain mit Investment-Rechner |
+| Social Leadgen | Variabel | Integration mit MOD-10 Leads |
+
+---
+
+## 7. Hooks & Services
+
+### 7.1 Neue Hooks
+
+```text
+src/hooks/
+├── useDeveloperContexts.ts        # CRUD für Verkäufer-Kontexte
+├── useDevProjects.ts              # Projekt-CRUD + Portfolio-Query
+├── useProjectDossier.ts           # Aggregierte Akte-Daten
+├── useProjectUnits.ts             # Einheiten-CRUD
+├── useProjectReservations.ts      # Reservierungs-Management
+├── useProjectCalculation.ts       # Aufteilerkalkulation (abgeleitet von useAcqTools)
+└── useProjectPublication.ts       # Kaufy-Listing + Paid-Features
+```
+
+### 7.2 Type-Definitionen
+
+```text
+src/types/projekte.ts
+├── DeveloperContext
+├── DevProject
+├── DevProjectUnit
+├── DevProjectReservation
+├── ProjectDossierData
+├── AufteilerCalculation
+└── ProjectPublicationStatus
+```
+
+---
+
+## 8. Implementierungs-Phasen
+
+### Phase 1: Datenbank + Grundstruktur
+1. Migration: Tabellen `developer_contexts`, `dev_projects`, `dev_project_units`
+2. RLS-Policies (tenant_id-basiert)
+3. Basis-Routing in `ProjektePage.tsx`
+
+### Phase 2: Kontext-Management
+4. `CreateDeveloperContextDialog` (kopiert/adaptiert von MOD-04)
+5. `KontexteTab` mit Context-Switcher
+
+### Phase 3: Portfolio + Create-Flow
+6. `CreateProjectDialog` (2-Step Wizard)
+7. `PortfolioTab` mit Aufteiler-KPIs
+8. Portfolio-Tabelle mit Status-Aggregation
+
+### Phase 4: Projektakte
+9. `ProjectDetailPage` (Routing)
+10. 10-Block-Struktur implementieren (A-J)
+11. Integrierte Aufteilerkalkulation (Block D)
+12. Einheiten-Management (Block C)
+
+### Phase 5: Vertrieb & Reservierungen
+13. Migration: `dev_project_reservations`
+14. `ReservationDialog` + Status-Workflow
+15. `VertriebTab` mit Partner-Performance
+
+### Phase 6: Marketing & Veröffentlichung
+16. `MarketingTab` mit Kaufy-Toggle
+17. Paid-Feature Platzhalter-UI
+18. Integration mit Zone 1 Sales Desk (Übergabe-Logik)
+
+---
+
+## 9. Abhängigkeiten & Integrationen
+
+| System | Integration |
+|--------|-------------|
+| **MOD-02 KI-Office** | Kontakte (Käufer), Kalender (Notartermine) |
+| **Zone 1 Sales Desk** | Projekt-Übergabe für Marktplatz-Freigabe |
+| **MOD-09 Partner-Netzwerk** | Partner-Zuordnung bei Reservierungen |
+| **MOD-10 Leads** | Leadgen-Kampagnen für Projekte |
+| **Zone 3 Kaufy** | Projekt-Listings + Landingpages |
+
+---
+
+## 10. Technische Details
+
+### 10.1 RLS-Policies
+
+```sql
+-- developer_contexts: Nur eigener Tenant
+CREATE POLICY "tenant_isolation" ON developer_contexts
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id');
+
+-- dev_projects: Tenant + optional Context-Scoping
+CREATE POLICY "tenant_isolation" ON dev_projects
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id');
+
+-- dev_project_units: Via project_id
+CREATE POLICY "via_project" ON dev_project_units
+  FOR ALL USING (
+    project_id IN (SELECT id FROM dev_projects WHERE tenant_id = auth.jwt() ->> 'tenant_id')
+  );
+```
+
+### 10.2 Bestehende Komponenten (Wiederverwendung)
+
+- `PropertyTable` → adaptiert zu `ProjectPortfolioTable`
+- `CreateContextDialog` → adaptiert zu `CreateDeveloperContextDialog`
+- `calculateAufteilerKPIs` aus `useAcqTools` → direkt nutzbar
+- `UnitDossierView` Layout → Vorlage für `ProjectDossierView`
+
+---
+
+## Erwartetes Ergebnis
+
+Nach Implementierung ist der **Golden Path** vollständig klickbar:
+
+1. **Kontext anlegen** → Verkäufer-Gesellschaft erfassen
+2. **Projekt erstellen** → Adresse, Einheiten, Kaufpreis
+3. **Portfolio** → Übersicht aller Projekte mit Aufteiler-KPIs
+4. **Projektakte** → Detailansicht mit Kalkulation, Einheiten, Dokumenten
+5. **Reservierung** → Einheit einem Käufer/Partner zuordnen
+6. **Vertrieb** → Partner-Performance, Provisionen
+7. **Marketing** → Kaufy-Listing, Landingpage-Option
+8. **Übergabe** → Zone 1 Sales Desk für Marktplatz-Freigabe
