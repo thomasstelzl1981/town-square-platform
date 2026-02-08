@@ -1,0 +1,410 @@
+/**
+ * Project Detail Page - Projektakte (10-Block-Struktur)
+ * MOD-13 PROJEKTE
+ */
+
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { 
+  ArrowLeft, Building2, MapPin, LayoutGrid, Calculator, 
+  Euro, FileText, BookOpen, Users, FileSignature, Globe,
+  Pencil, MoreHorizontal
+} from 'lucide-react';
+import { useProjectDossier } from '@/hooks/useDevProjects';
+import { useProjectUnits } from '@/hooks/useProjectUnits';
+import { UnitStatusBadge } from '@/components/projekte';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
+import type { ProjectStatus } from '@/types/projekte';
+
+const STATUS_CONFIG: Record<ProjectStatus, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+  draft: { label: 'Entwurf', variant: 'outline' },
+  active: { label: 'Aktiv', variant: 'default' },
+  paused: { label: 'Pausiert', variant: 'secondary' },
+  completed: { label: 'Abgeschlossen', variant: 'secondary' },
+  archived: { label: 'Archiviert', variant: 'outline' },
+};
+
+function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat('de-DE', { 
+    style: 'currency', 
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export default function ProjectDetailPage() {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+  const { data: dossier, isLoading } = useProjectDossier(projectId);
+  const { units, stats: unitStats } = useProjectUnits(projectId);
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (!dossier) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-muted-foreground">Projekt nicht gefunden</p>
+        <Button variant="link" onClick={() => navigate('/portal/projekte/portfolio')}>
+          Zurück zum Portfolio
+        </Button>
+      </div>
+    );
+  }
+
+  const { project, context, calculation } = dossier;
+  const kpis = calculateProjectKPIs(project, units, calculation);
+  const statusConfig = STATUS_CONFIG[project.status];
+
+  // Calculate aufteiler if we have the data
+  const aufteilerCalc = project.purchase_price && project.total_sale_target ? calculateAufteiler({
+    purchase_price: project.purchase_price,
+    ancillary_cost_percent: project.ancillary_cost_percent,
+    renovation_total: project.renovation_budget || 0,
+    sales_commission_percent: project.commission_rate_percent,
+    holding_period_months: project.holding_period_months,
+    total_sale_proceeds: project.total_sale_target,
+    units_count: units.length || project.total_units_count,
+  }) : null;
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/portal/projekte/portfolio')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">{project.name}</h1>
+              <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+            </div>
+            <div className="flex items-center gap-4 text-muted-foreground mt-1">
+              <span className="font-mono">{project.project_code}</span>
+              {project.city && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {project.city}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Building2 className="h-4 w-4" />
+                {context.name}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick KPIs */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Einheiten</div>
+            <div className="text-2xl font-bold">{kpis.totalUnits}</div>
+            <div className="flex gap-2 mt-1 text-xs">
+              <span className="text-green-600">{kpis.unitsAvailable} frei</span>
+              <span className="text-yellow-600">{kpis.unitsReserved} res.</span>
+              <span className="text-blue-600">{kpis.unitsSold} verk.</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Fortschritt</div>
+            <div className="flex items-center gap-2">
+              <Progress value={kpis.progressPercent} className="flex-1" />
+              <span className="text-lg font-bold">{kpis.progressPercent}%</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Rohgewinn</div>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(aufteilerCalc?.gross_profit || kpis.grossProfit)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Marge</div>
+            <div className="text-2xl font-bold">
+              {(aufteilerCalc?.profit_margin_percent || kpis.marginPercent).toFixed(1)}%
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs for Dossier Sections */}
+      <Tabs defaultValue="units" className="space-y-4">
+        <TabsList className="grid grid-cols-5 lg:grid-cols-10 h-auto">
+          <TabsTrigger value="identity" className="flex items-center gap-1 text-xs">
+            <Building2 className="h-3 w-3" />
+            <span className="hidden lg:inline">Identität</span>
+          </TabsTrigger>
+          <TabsTrigger value="location" className="flex items-center gap-1 text-xs">
+            <MapPin className="h-3 w-3" />
+            <span className="hidden lg:inline">Standort</span>
+          </TabsTrigger>
+          <TabsTrigger value="units" className="flex items-center gap-1 text-xs">
+            <LayoutGrid className="h-3 w-3" />
+            <span className="hidden lg:inline">Einheiten</span>
+          </TabsTrigger>
+          <TabsTrigger value="calculation" className="flex items-center gap-1 text-xs">
+            <Calculator className="h-3 w-3" />
+            <span className="hidden lg:inline">Kalkulation</span>
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="flex items-center gap-1 text-xs">
+            <Euro className="h-3 w-3" />
+            <span className="hidden lg:inline">Preise</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-1 text-xs">
+            <FileText className="h-3 w-3" />
+            <span className="hidden lg:inline">Dokumente</span>
+          </TabsTrigger>
+          <TabsTrigger value="reservations" className="flex items-center gap-1 text-xs">
+            <BookOpen className="h-3 w-3" />
+            <span className="hidden lg:inline">Reserv.</span>
+          </TabsTrigger>
+          <TabsTrigger value="sales" className="flex items-center gap-1 text-xs">
+            <Users className="h-3 w-3" />
+            <span className="hidden lg:inline">Vertrieb</span>
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="flex items-center gap-1 text-xs">
+            <FileSignature className="h-3 w-3" />
+            <span className="hidden lg:inline">Verträge</span>
+          </TabsTrigger>
+          <TabsTrigger value="publication" className="flex items-center gap-1 text-xs">
+            <Globe className="h-3 w-3" />
+            <span className="hidden lg:inline">Marketing</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* A - Identity */}
+        <TabsContent value="identity">
+          <Card>
+            <CardHeader>
+              <CardTitle>A. Identität & Status</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-sm text-muted-foreground">Projekt-Code</label>
+                <p className="font-mono">{project.project_code}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Status</label>
+                <p><Badge variant={statusConfig.variant}>{statusConfig.label}</Badge></p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Verkäufer-Gesellschaft</label>
+                <p>{context.name}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Rechtsform</label>
+                <p>{context.legal_form || '—'}</p>
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm text-muted-foreground">Beschreibung</label>
+                <p>{project.description || 'Keine Beschreibung'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* B - Location */}
+        <TabsContent value="location">
+          <Card>
+            <CardHeader>
+              <CardTitle>B. Standort & Story</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-sm text-muted-foreground">Adresse</label>
+                <p>{project.address || '—'}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">PLZ / Stadt</label>
+                <p>{project.postal_code} {project.city}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Bundesland</label>
+                <p>{project.state || '—'}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Land</label>
+                <p>{project.country}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* C - Units */}
+        <TabsContent value="units">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>C. Einheiten ({units.length})</CardTitle>
+              <Button size="sm">+ Einheit hinzufügen</Button>
+            </CardHeader>
+            <CardContent>
+              {units.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Noch keine Einheiten angelegt</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Nr.</th>
+                        <th className="text-left py-2">Etage</th>
+                        <th className="text-right py-2">Fläche</th>
+                        <th className="text-right py-2">Zimmer</th>
+                        <th className="text-right py-2">Listenpreis</th>
+                        <th className="text-right py-2">€/m²</th>
+                        <th className="text-center py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {units.map((unit) => (
+                        <tr key={unit.id} className="border-b hover:bg-muted/50">
+                          <td className="py-2 font-medium">{unit.unit_number}</td>
+                          <td className="py-2">{unit.floor ?? '—'}</td>
+                          <td className="py-2 text-right">{unit.area_sqm?.toFixed(1)} m²</td>
+                          <td className="py-2 text-right">{unit.rooms_count}</td>
+                          <td className="py-2 text-right">{formatCurrency(unit.list_price)}</td>
+                          <td className="py-2 text-right">{formatCurrency(unit.price_per_sqm)}</td>
+                          <td className="py-2 text-center">
+                            <UnitStatusBadge status={unit.status} size="sm" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* D - Calculation */}
+        <TabsContent value="calculation">
+          <Card>
+            <CardHeader>
+              <CardTitle>D. Aufteilerkalkulation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {aufteilerCalc ? (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Eingaben</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Kaufpreis:</span>
+                        <p className="font-medium">{formatCurrency(project.purchase_price)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Erwerbsnebenkosten:</span>
+                        <p className="font-medium">{project.ancillary_cost_percent}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Sanierung:</span>
+                        <p className="font-medium">{formatCurrency(project.renovation_budget)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Haltedauer:</span>
+                        <p className="font-medium">{project.holding_period_months} Monate</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Verkaufsziel:</span>
+                        <p className="font-medium">{formatCurrency(project.total_sale_target)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Provision:</span>
+                        <p className="font-medium">{project.commission_rate_percent}%</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Ergebnisse</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Gesamtinvestition:</span>
+                        <p className="font-medium">{formatCurrency(aufteilerCalc.total_investment)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Bruttogewinn:</span>
+                        <p className="font-medium text-green-600">{formatCurrency(aufteilerCalc.gross_profit)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Marge:</span>
+                        <p className="font-medium">{aufteilerCalc.profit_margin_percent.toFixed(1)}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Annualisiert:</span>
+                        <p className="font-medium">{aufteilerCalc.annualized_return.toFixed(1)}% p.a.</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Gewinn/Einheit:</span>
+                        <p className="font-medium">{formatCurrency(aufteilerCalc.profit_per_unit)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Break-Even:</span>
+                        <p className="font-medium">{aufteilerCalc.break_even_units} Einheiten</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Bitte geben Sie Kaufpreis und Verkaufsziel ein, um die Kalkulation zu sehen.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* E-J: Placeholder tabs */}
+        {['pricing', 'documents', 'reservations', 'sales', 'contracts', 'publication'].map((tab) => (
+          <TabsContent key={tab} value={tab}>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {tab === 'pricing' && 'E. Preisliste & Provision'}
+                  {tab === 'documents' && 'F. Dokumente'}
+                  {tab === 'reservations' && 'G. Reservierungen'}
+                  {tab === 'sales' && 'H. Vertrieb'}
+                  {tab === 'contracts' && 'I. Verträge'}
+                  {tab === 'publication' && 'J. Veröffentlichung'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Dieser Bereich wird in der nächsten Phase implementiert.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
