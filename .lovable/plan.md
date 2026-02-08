@@ -1,69 +1,185 @@
 
 
-## Spaltenreihenfolge und Internal ID anpassen
+## Automatische Kontaktanreicherung aus E-Mail und Post
 
 ### Zusammenfassung
 
-Die bestehende `public_id` Spalte wird als "Interne ID" in der Tabelle angezeigt. Die Spaltenreihenfolge wird wie gewuenscht angepasst.
+Eine KI-gestuetzte Funktion extrahiert Kontaktdaten aus E-Mail-Signaturen und Post-Absenderinformationen. Bestehende Kontakte werden angereichert, neue mit Kategorie "Offen" angelegt. Die Funktion ist separat fuer E-Mail und Post aktivierbar.
 
 ---
 
-### Neue Spaltenreihenfolge
+### 1. UI-Anpassungen in KontakteTab.tsx
 
-| # | Spalte | Datenfeld | Beispiel |
-|---|--------|-----------|----------|
-| 1 | **Interne ID** | `public_id` | SOT-K-MAXMUSTER |
-| 2 | **Firma** | `company` | Immo-HV GmbH |
-| 3 | **Anrede** | `salutation` | Herr |
-| 4 | **Vorname** | `first_name` | Max |
-| 5 | **Name** | `last_name` | Mustermann |
-| 6 | **E-Mail** | `email` | max@example.de |
-| 7 | **Mobil** | `phone_mobile` | +49 170 1234567 |
-| 8 | **Telefon** | `phone` | +49 341 12345 |
-| 9 | **Strasse** | `street` | Musterstr. 1 |
-| 10 | **PLZ** | `postal_code` | 04109 |
-| 11 | **Ort** | `city` | Leipzig |
-| 12 | **Kategorie** | `category` | Badge mit Farbe |
-
----
-
-### Umsetzung
-
-**Datei:** `src/pages/portal/office/KontakteTab.tsx`
-
-Die `columns`-Definition wird in der neuen Reihenfolge sortiert:
+**Neues Layout der Header-Zeile:**
 
 ```text
-const columns: Column<Contact>[] = [
-  { key: 'public_id', header: 'Interne ID', ... },    // NEU an Position 1
-  { key: 'company', header: 'Firma', ... },           // Verschoben nach vorn
-  { key: 'salutation', header: 'Anrede', ... },
-  { key: 'first_name', header: 'Vorname', ... },
-  { key: 'last_name', header: 'Name', ... },
-  { key: 'email', header: 'E-Mail', ... },
-  { key: 'phone_mobile', header: 'Mobil', ... },
-  { key: 'phone', header: 'Telefon', ... },
-  { key: 'street', header: 'Strasse', ... },
-  { key: 'postal_code', header: 'PLZ', ... },
-  { key: 'city', header: 'Ort', ... },
-  { key: 'category', header: 'Kategorie', ... },
-];
++-----------------------------------------------------------+
+|                                                           |
+| [Suche...]           [Auto-Anreicherung Schalter] [+ Neu] |
+|                                                           |
++-----------------------------------------------------------+
+```
+
+**Schalter-Details:**
+- Zwei Toggle-Switches nebeneinander: "E-Mail" und "Post"
+- Jeder Switch zeigt: Label + Mail/FileText Icon + Switch-Komponente
+- Status wird im LocalStorage UND Datenbank (tenant_extraction_settings) gespeichert
+- Abstand nach oben zur Headline mit `pt-2` oder `mt-2`
+
+---
+
+### 2. Datenbank-Erweiterung
+
+**Neue Spalten in `tenant_extraction_settings`:**
+
+| Spalte | Typ | Default | Beschreibung |
+|--------|-----|---------|--------------|
+| `auto_enrich_contacts_email` | BOOLEAN | false | E-Mail-Signatur-Parsing aktiv |
+| `auto_enrich_contacts_post` | BOOLEAN | false | Post-Absender-Parsing aktiv |
+
+**Neue Kategorie fuer `contacts.category`:**
+- Wert: `Offen`
+- Farbe: `bg-amber-100 text-amber-800`
+
+---
+
+### 3. Edge Function: `sot-contact-enrichment`
+
+**Trigger:** Wird aufgerufen nach E-Mail-Sync oder Post-Verarbeitung
+
+**Logik:**
+1. Pruefe ob Auto-Enrich fuer den Kanal aktiv ist
+2. Extrahiere Kontaktdaten aus Quelle:
+   - **E-Mail:** `from_address`, `from_name`, `body_text` (Signatur-Parsing via KI)
+   - **Post:** `sender_info` JSON aus `inbound_items`
+3. Suche existierenden Kontakt per E-Mail-Adresse
+4. **Falls gefunden:** Update nur NULL-Felder (keine Ueberschreibung)
+5. **Falls nicht gefunden:** Neuen Kontakt mit `category = 'Offen'` anlegen
+
+**Signatur-Parsing Strategie:**
+```text
+E-Mail-Signatur Beispiel:
+"Mit freundlichen Gruessen
+Thomas Stelzl
+Mobil: +49 160 90117358
+Email: thomas.stelzl@example.com"
+
+Extrahierte Felder:
+- first_name: "Thomas"
+- last_name: "Stelzl"  
+- phone_mobile: "+49 160 90117358"
+- email: "thomas.stelzl@example.com"
 ```
 
 ---
 
-### Vorhandene IDs
+### 4. Ablauf-Schema
 
-Die `public_id` wird automatisch generiert und hat das Format:
-- `SOT-K-MAXMUSTER` (Max Mustermann)
-- `SOT-K-HOFFMANN` (Sandra Hoffmann)
-- `SOT-K-WEBER` (Michael Weber)
-
-Diese ID ist bereits eindeutig und kann fuer Verlinkungen genutzt werden.
+```text
+E-Mail/Post eingehend
+        |
+        v
++------------------+
+| Kanal aktiv?     |---> Nein ---> Ende
++------------------+
+        |
+        Ja
+        v
++------------------+
+| Daten extrahieren|
+| (KI fuer E-Mail) |
++------------------+
+        |
+        v
++------------------+
+| Kontakt suchen   |
+| (per E-Mail)     |
++------------------+
+        |
+   +----+----+
+   |         |
+Gefunden   Nicht gefunden
+   |         |
+   v         v
+Update    Neu anlegen
+NULL-     (category:
+Felder    "Offen")
+```
 
 ---
 
-### Keine Datenbank-Aenderungen noetig
+### 5. Betroffene Dateien
 
-Die `public_id` Spalte existiert bereits - es wird nur die UI-Darstellung angepasst.
+1. **Migration:** Neue Spalten in `tenant_extraction_settings`
+2. **KontakteTab.tsx:** Header-Bereich mit Schaltern und Abstand
+3. **CATEGORIES-Array:** Neue Kategorie "Offen" hinzufuegen
+4. **Edge Function:** `supabase/functions/sot-contact-enrichment/index.ts`
+5. **E-Mail-Sync:** Trigger nach neuer E-Mail (in `sot-mail-sync`)
+
+---
+
+### 6. Technische Details
+
+**TypeScript: Schalter-State**
+```text
+const [emailEnrichEnabled, setEmailEnrichEnabled] = useState(false);
+const [postEnrichEnabled, setPostEnrichEnabled] = useState(false);
+
+// Query zum Laden der Settings
+useQuery(['tenant-enrich-settings'], async () => {
+  const { data } = await supabase
+    .from('tenant_extraction_settings')
+    .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
+    .single();
+  return data;
+});
+```
+
+**Neue Kategorie:**
+```text
+{ 
+  value: 'Offen', 
+  label: 'Offen', 
+  className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' 
+}
+```
+
+**Edge Function Payload:**
+```text
+{
+  source: 'email' | 'post',
+  tenant_id: string,
+  data: {
+    email?: string,
+    from_name?: string,
+    body_text?: string,      // nur bei E-Mail
+    sender_info?: object     // nur bei Post
+  }
+}
+```
+
+---
+
+### 7. KI-Modell fuer Signatur-Parsing
+
+Verwendung von Lovable AI (google/gemini-3-flash-preview):
+
+**Prompt-Beispiel:**
+```text
+Extrahiere Kontaktdaten aus dieser E-Mail-Signatur.
+Antworte als JSON mit: first_name, last_name, company, 
+phone_mobile, phone, street, postal_code, city.
+Felder ohne Wert als null.
+
+Signatur:
+{body_text}
+```
+
+---
+
+### 8. Sicherheit
+
+- RLS-Policies pruefen tenant_id Zugehoerigkeit
+- Nur eigene Kontakte werden angereichert/erstellt
+- Kein Ueberschreiben bestehender Daten (nur NULL-Felder werden gefuellt)
 
