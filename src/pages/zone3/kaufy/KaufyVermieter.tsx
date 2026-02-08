@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Building2, Users, TrendingUp, ArrowRight } from 'lucide-react';
+import { Building2, Users, TrendingUp, ArrowRight, Shield, LineChart, FileCheck } from 'lucide-react';
 
 export default function KaufyVermieter() {
   return (
@@ -8,13 +8,13 @@ export default function KaufyVermieter() {
       <section className="zone3-hero">
         <div className="zone3-container">
           <h1 className="zone3-heading-1 mb-6">
-            Ihr Bestandsobjekt. Unsere Expertise.
+            Ihre Immobilie. Unser Know-how.
           </h1>
           <p className="zone3-text-large max-w-2xl mx-auto mb-8">
-            Verwalten, finanzieren oder verkaufen Sie Ihre Immobilie mit System of a Town.
+            Verwalten Sie Ihr Portfolio digital, optimieren Sie Ihre Rendite und behalten Sie alle Kennzahlen im Blick.
           </p>
           <Link to="/auth?mode=register&source=kaufy" className="zone3-btn-primary inline-flex items-center gap-2">
-            Jetzt starten
+            Kostenlos starten
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -23,14 +23,15 @@ export default function KaufyVermieter() {
       {/* Benefits Grid */}
       <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
         <div className="zone3-container">
+          <h2 className="zone3-heading-2 text-center mb-12">Warum KAUFY für Vermieter?</h2>
           <div className="zone3-grid-3">
             <div className="zone3-card p-8 text-center">
               <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
                 <Building2 className="w-8 h-8" />
               </div>
-              <h3 className="zone3-heading-3 mb-4">Portfolio-Überblick</h3>
+              <h3 className="zone3-heading-3 mb-4">Vollständiger Überblick</h3>
               <p className="zone3-text-small">
-                Alle Objekte auf einen Blick mit wichtigen Kennzahlen und Dokumenten.
+                Alle Objekte, Dokumente und Kennzahlen zentral an einem Ort. Keine verstreuten Excel-Listen mehr.
               </p>
             </div>
 
@@ -38,9 +39,9 @@ export default function KaufyVermieter() {
               <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
                 <Users className="w-8 h-8" />
               </div>
-              <h3 className="zone3-heading-3 mb-4">Mieterservice</h3>
+              <h3 className="zone3-heading-3 mb-4">Digitaler Mieterservice</h3>
               <p className="zone3-text-small">
-                Digitale Kommunikation mit Mietern über das Miety-Portal.
+                Kommunizieren Sie direkt mit Ihren Mietern über das Miety-Portal. Anfragen, Dokumente und Termine an einem Ort.
               </p>
             </div>
 
@@ -48,48 +49,80 @@ export default function KaufyVermieter() {
               <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
                 <TrendingUp className="w-8 h-8" />
               </div>
-              <h3 className="zone3-heading-3 mb-4">Verkaufsoption</h3>
+              <h3 className="zone3-heading-3 mb-4">Rendite optimieren</h3>
               <p className="zone3-text-small">
-                Nahtloser Übergang zum Verkauf mit allen vorhandenen Unterlagen.
+                Analysieren Sie die Wirtschaftlichkeit Ihrer Immobilien mit 40-Jahres-Projektionen und Steuervorteilen.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Module Preview */}
+      {/* Features Section */}
       <section className="zone3-section">
         <div className="zone3-container">
-          <h2 className="zone3-heading-2 text-center mb-12">Ihre Module</h2>
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="zone3-card p-6 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center font-bold" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
-                04
+          <div className="max-w-4xl mx-auto">
+            <h2 className="zone3-heading-2 text-center mb-12">Was Sie erwartet</h2>
+            <div className="space-y-6">
+              <div className="zone3-card p-6 flex items-start gap-6">
+                <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
+                  <FileCheck className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-2">Immobilienverwaltung</h3>
+                  <p className="zone3-text-small">
+                    Erfassen Sie alle Objektdaten, Einheiten und Mietverträge. Automatische Berechnung von Kennzahlen wie Rendite, Cashflow und Wertsteigerung.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Immobilienverwaltung</h3>
-                <p className="zone3-text-small">Portfolio-Management mit allen Objektdaten und Dokumenten.</p>
+
+              <div className="zone3-card p-6 flex items-start gap-6">
+                <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
+                  <LineChart className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-2">Mietmanagement</h3>
+                  <p className="zone3-text-small">
+                    Behalten Sie Mieteingänge im Blick, erstellen Sie Nebenkostenabrechnungen und verwalten Sie Mieterhöhungen digital.
+                  </p>
+                </div>
+              </div>
+
+              <div className="zone3-card p-6 flex items-start gap-6">
+                <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-2">Verkaufsoption</h3>
+                  <p className="zone3-text-small">
+                    Entscheiden Sie sich für einen Verkauf? Alle Unterlagen sind bereits digital vorhanden. Nahtloser Übergang zum Verkaufsprozess.
+                  </p>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="zone3-card p-6 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center font-bold" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
-                05
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Mietmanagement (MSV)</h3>
-                <p className="zone3-text-small">Mietverträge, Zahlungen und Nebenkostenabrechnungen.</p>
-              </div>
+      {/* Trust Elements */}
+      <section className="zone3-section-sm" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
+        <div className="zone3-container">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+              <p className="text-3xl font-bold mb-2">500+</p>
+              <p className="zone3-text-small">Verwaltete Objekte</p>
             </div>
-
-            <div className="zone3-card p-6 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center font-bold" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
-                06
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Verkauf</h3>
-                <p className="zone3-text-small">Objektvermarktung über KAUFY und externe Portale.</p>
-              </div>
+            <div>
+              <p className="text-3xl font-bold mb-2">98%</p>
+              <p className="zone3-text-small">Zufriedene Vermieter</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold mb-2">24/7</p>
+              <p className="zone3-text-small">Online-Zugriff</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold mb-2">DSGVO</p>
+              <p className="zone3-text-small">Konform & sicher</p>
             </div>
           </div>
         </div>
@@ -103,7 +136,7 @@ export default function KaufyVermieter() {
             Starten Sie kostenlos und erleben Sie, wie einfach Immobilienverwaltung sein kann.
           </p>
           <Link to="/auth?mode=register&source=kaufy" className="zone3-btn-primary inline-flex items-center gap-2" style={{ backgroundColor: 'hsl(var(--z3-background))', color: 'hsl(var(--z3-foreground))' }}>
-            Jetzt starten
+            Kostenlos starten
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

@@ -29,10 +29,10 @@ export default function KaufyBeratung() {
       <section className="zone3-hero">
         <div className="zone3-container">
           <h1 className="zone3-heading-1 mb-6">
-            Kapitalanlage verstehen
+            Was können Sie sich leisten?
           </h1>
           <p className="zone3-text-large max-w-2xl mx-auto">
-            Berechnen Sie Ihre individuelle Monatsbelastung und finden Sie passende Immobilien.
+            Berechnen Sie Ihre individuelle Monatsbelastung und finden Sie passende Rendite-Immobilien.
           </p>
         </div>
       </section>
