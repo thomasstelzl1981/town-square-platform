@@ -80,6 +80,46 @@ export default function KaufyImmobilien() {
         return [];
       }
 
+      // 3. Fetch hero images for all properties
+      const propertyIds = (listingsData || []).map((l: any) => l.properties?.id).filter(Boolean);
+      
+      let heroImages: Record<string, string> = {};
+      
+      if (propertyIds.length > 0) {
+        // Get cover images from document_links
+        const { data: imageLinks } = await supabase
+          .from('document_links')
+          .select(`
+            object_id,
+            is_title_image,
+            documents!inner (
+              id,
+              file_path,
+              mime_type
+            )
+          `)
+          .eq('object_type', 'property')
+          .in('object_id', propertyIds)
+          .like('documents.mime_type', 'image/%');
+
+        // Get first/cover image for each property
+        for (const link of (imageLinks || [])) {
+          const propId = link.object_id;
+          const doc = link.documents as any;
+          
+          // Prefer title image, otherwise use first found
+          if (!heroImages[propId] || link.is_title_image) {
+            const { data: urlData } = await supabase.storage
+              .from('tenant-documents')
+              .createSignedUrl(doc.file_path, 3600);
+            
+            if (urlData?.signedUrl) {
+              heroImages[propId] = urlData.signedUrl;
+            }
+          }
+        }
+      }
+
       // Transform to expected format
       return (listingsData || []).map((l: any) => ({
         id: l.id,
@@ -92,7 +132,7 @@ export default function KaufyImmobilien() {
         postal_code: l.properties?.postal_code || '',
         total_area_sqm: l.properties?.total_area_sqm || 0,
         status: l.status,
-        hero_image_path: null,
+        hero_image_path: heroImages[l.properties?.id] || null,
       }));
     },
   });

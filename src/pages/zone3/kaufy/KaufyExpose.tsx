@@ -6,12 +6,14 @@
  * - Haushaltsrechnung  
  * - InvestmentSliderPanel
  * - DetailTable40Jahre
+ * 
+ * BILDER: Lädt Bilder via document_links + documents mit öffentlicher RLS
  */
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Heart, MapPin, Maximize2, Calendar, Building2, 
-  Share2, Loader2, MessageSquare
+  Share2, Loader2, MessageSquare, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +27,13 @@ import {
   InvestmentSliderPanel, 
   DetailTable40Jahre 
 } from '@/components/investment';
+
+interface ListingImage {
+  id: string;
+  name: string;
+  url: string;
+  is_cover: boolean;
+}
 
 interface ListingData {
   id: string;
@@ -45,6 +54,7 @@ interface ListingData {
 export default function KaufyExpose() {
   const { publicId } = useParams<{ publicId: string }>();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
   // Interactive parameters state
@@ -109,7 +119,63 @@ export default function KaufyExpose() {
     enabled: !!publicId,
   });
 
-  // Initialize params with listing data
+  // Fetch images via document_links (öffentliche RLS für Kaufy-Bilder)
+  const { data: images = [] } = useQuery({
+    queryKey: ['kaufy-listing-images', listing?.id],
+    queryFn: async () => {
+      if (!listing) return [];
+
+      // Get property_id from the listing query (we need to refetch to get it)
+      const { data: listingWithProperty } = await supabase
+        .from('listings')
+        .select('properties!inner(id)')
+        .eq('public_id', publicId)
+        .single();
+
+      const propertyId = (listingWithProperty?.properties as any)?.id;
+      if (!propertyId) return [];
+
+      const { data: links, error } = await supabase
+        .from('document_links')
+        .select(`
+          display_order,
+          is_title_image,
+          documents!inner (
+            id,
+            name,
+            file_path,
+            mime_type
+          )
+        `)
+        .eq('object_type', 'property')
+        .eq('object_id', propertyId)
+        .like('documents.mime_type', 'image/%')
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('Images query error:', error);
+        return [];
+      }
+
+      // Generate signed URLs
+      const imagePromises = (links || []).map(async (link: any) => {
+        const doc = link.documents;
+        const { data: urlData } = await supabase.storage
+          .from('tenant-documents')
+          .createSignedUrl(doc.file_path, 3600);
+
+        return {
+          id: doc.id,
+          name: doc.name,
+          url: urlData?.signedUrl || '',
+          is_cover: link.is_title_image || false,
+        };
+      });
+
+      return Promise.all(imagePromises);
+    },
+    enabled: !!listing?.id,
+  });
   useEffect(() => {
     if (listing) {
       setParams(prev => ({
@@ -206,10 +272,51 @@ export default function KaufyExpose() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Property Info & Calculations */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image Placeholder */}
-            <div className="aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-              <Building2 className="w-16 h-16 text-muted-foreground" />
-            </div>
+            {/* Image Gallery */}
+            {images.length > 0 ? (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
+                <img 
+                  src={images[currentImageIndex]?.url}
+                  alt={images[currentImageIndex]?.name || 'Objektbild'}
+                  className="w-full h-full object-cover"
+                />
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setCurrentImageIndex(prev => 
+                        prev === 0 ? images.length - 1 : prev - 1
+                      )}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentImageIndex(prev => 
+                        prev === images.length - 1 ? 0 : prev + 1
+                      )}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                      {images.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            idx === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center">
+                <Building2 className="w-16 h-16 text-muted-foreground" />
+              </div>
+            )}
 
             {/* Property Details */}
             <div>

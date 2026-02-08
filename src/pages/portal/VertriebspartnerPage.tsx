@@ -8,6 +8,7 @@ import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks
 
 // Lazy load sub-pages
 const KatalogTab = lazy(() => import('./vertriebspartner/KatalogTab'));
+const KatalogDetailPage = lazy(() => import('./vertriebspartner/KatalogDetailPage'));
 const BeratungTab = lazy(() => import('./vertriebspartner/BeratungTab'));
 const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
 const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
@@ -22,6 +23,7 @@ const VertriebspartnerPage = () => {
       
       {/* Tile routes */}
       <Route path="katalog" element={<KatalogTab />} />
+      <Route path="katalog/:publicId" element={<KatalogDetailPage />} />
       <Route path="beratung" element={<BeratungTab />} />
       <Route path="kunden" element={<KundenTab />} />
       <Route path="network" element={<NetworkTab />} />
