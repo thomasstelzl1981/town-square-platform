@@ -1,118 +1,176 @@
 
-## Kurzdiagnose (warum DNS/Resend nicht schuld ist)
+## Erweiterung: E-Mail-Signatur, Briefkopf-Daten und Spracherkennung
 
-Deine DNS-Änderungen (für re:send/Domain-Verification) haben keinen Einfluss darauf, ob IMAP beim Abrufen den E-Mail-Body liefert. Dass neue Testmails ankommen, bestätigt außerdem, dass IMAP grundsätzlich funktioniert.
+### Zusammenfassung
 
-Der Grund, warum du überall „Kein Inhalt“ siehst, ist ein Bug in unserer IMAP-Sync-Implementierung:
-
-- Wir rufen `client.fetch(...)` mit Optionen auf, die diese IMAP-Library gar nicht kennt (`body: true`)  
-- und wir lesen anschließend Felder aus, die es im Rückgabe-Objekt nicht gibt (`msg.body`, `msg.bodyParts`)
-
-Die Library liefert Inhalte nur über:
-- `full: true` (dann kommt `msg.raw` + `msg.parts.TEXT`)
-- oder `bodyParts: [...]` (dann kommt `msg.parts[...]`)
-
-Dadurch werden aktuell nie `body_text`, `body_html`, `snippet` befüllt → UI zeigt immer „Kein Inhalt“.
-
-Zusatz-Bug (nicht dein Hauptproblem, aber sichtbar):  
-Die Library entfernt Backslashes aus Flags (`Seen` statt `\\Seen`). Unser Code prüft aktuell `\\Seen`, daher bleiben Mails praktisch immer „ungelesen“.
+Ich werde drei Erweiterungen implementieren:
+1. **Mouse-Over-Verhalten im Posteingang** beheben
+2. **Spracherkennung im E-Mail-Composer** hinzufuegen (nutzt bereits vorhandenen Armstrong Voice Hook)
+3. **Zwei neue Kacheln in Stammdaten/Profil** fuer Signatur und Briefkopf-Daten
 
 ---
 
-## Ziel
+### 1. Mouse-Over-Verhalten im Posteingang (EmailTab)
 
-1) Beim Sync werden Inhalte zuverlässig geholt und in `mail_messages.body_text/body_html/snippet` gespeichert.  
-2) Beim Klick auf eine Mail ist der Inhalt lesbar.  
-3) Flags (gelesen/markiert) werden korrekt gemappt.
+**Problem:** Die E-Mail-Listen-Buttons haben `hover:bg-muted/50`, was moeglicherweise inkonsistent wirkt.
 
----
-
-## Umsetzungsschritte (konkret)
-
-### 1) IMAP Fetch korrekt machen (Edge Function `sot-mail-sync`)
-**Datei:** `supabase/functions/sot-mail-sync/index.ts`
-
-**Änderungen:**
-- Ersetze den aktuellen Fetch-Block:
-
-  - Entferne: `body: true` (existiert nicht)
-  - Nutze stattdessen: `full: true` (und optional `internalDate: true`, `size: true`)
-
-**Beispiel-Strategie:**
-- `client.fetch(range, { envelope:true, flags:true, uid:true, internalDate:true, bodyStructure:true, full:true })`
-- Danach für jeden `msg`:
-  - Raw-Message aus `msg.raw` (Uint8Array) auslesen
-  - MIME sauber parsen (siehe Schritt 2)
-  - `body_text`, `body_html`, `snippet` upserten
-
-**Warum das sicher wirkt:**  
-Die Library baut dann `BODY.PEEK[]` in den IMAP-FETCH ein. Ohne das kommt schlicht kein Inhalt zurück.
+**Loesung:**
+- Hover-Stil anpassen fuer konsistentere UX
+- Uebergang glaetten mit `transition-colors duration-150`
+- Zeile 567-592 in `EmailTab.tsx` anpassen
 
 ---
 
-### 2) MIME/Multipart zuverlässig parsen (statt „string splits“)
-Nur `raw` in Text zu verwandeln reicht bei Multipart/Quoted-Printable/Base64 nicht.
+### 2. Spracherkennung im E-Mail-Composer
 
-**Vorschlag:**
-- In der Edge Function `npm:mailparser` verwenden (`simpleParser`), um aus `raw` sauber `text` und `html` zu extrahieren.
-- Danach:
-  - `body_text = parsed.text ?? null`
-  - `body_html = parsed.html ?? null` (falls string)
-  - `snippet` aus `body_text` oder aus HTML (Tags strippen)
+**Vorhandene Infrastruktur:**
+- `VoiceButton` Komponente existiert bereits (`src/components/armstrong/VoiceButton.tsx`)
+- `useArmstrongVoice` Hook verfuegbar (`src/hooks/useArmstrongVoice.ts`)
+- WebSocket-Verbindung zu `sot-armstrong-voice` Edge Function
 
-**Schutz gegen übergroße Inhalte (empfohlen):**
-- Body vor dem Speichern begrenzen (z.B. 200–500 KB pro Feld), um DB nicht aufzublähen.
-- Wenn zu groß: `snippet` speichern + `body_*` leer lassen und später „on demand“ nachladen (optional, siehe Schritt 4 optional).
+**Aenderungen:**
 
----
+**Datei: `src/components/portal/office/ComposeEmailDialog.tsx`**
+- Import `VoiceButton` und `useArmstrongVoice`
+- Mikrofon-Button neben Betreff und Nachricht-Feld hinzufuegen
+- Transkript automatisch in aktives Feld einfuegen
+- States verwalten fuer welches Feld gerade diktiert wird
 
-### 3) Flags korrekt mappen (Seen/Flagged)
-**Datei:** `supabase/functions/sot-mail-sync/index.ts`
+**Konzept:**
+```text
+Betreff-Feld          [Mic-Button]
+Nachricht-Feld        [Mic-Button]
+```
 
-Aktuell:
-- `flags.includes('\\Seen')` funktioniert nicht, weil die Library `Seen` liefert.
-
-**Fix:**
-- Prüfe auf beide Varianten oder normalisiere:
-  - `const normFlags = (msg.flags ?? []).map(f => f.replace(/^\\/, ''))`
-  - `isRead = normFlags.includes('Seen')`
-  - `isStarred = normFlags.includes('Flagged')`
+Beim Klick auf Mikrofon:
+1. Spracheingabe starten
+2. Transkript in entsprechendes Feld einfuegen
+3. Button zeigt Listening-Status
 
 ---
 
-### 4) (Optional, falls Performance/Timeouts später auffallen) Lazy-Load pro Mail
-Wenn sich herausstellt, dass `full:true` bei vielen Mails/Attachments zu langsam wird, implementieren wir zusätzlich eine zweite Backend-Funktion:
+### 3. Neue Kacheln in Stammdaten/Profil
 
-- `sot-mail-fetch-body`:
-  - Input: `accountId`, `uid`
-  - macht `fetch('UID', { byUid:true, bodyParts:['TEXT'] oder full:true })`
-  - parsed und updatet nur diese eine Mail in `mail_messages`
+**Datei: `src/pages/portal/stammdaten/ProfilTab.tsx`**
 
-Frontend:
-- Wenn der User eine Mail anklickt und `body_*` leer ist → „Inhalt laden…“ und Trigger dieser Funktion.
+**Kachel 5: E-Mail-Signatur**
+- Textarea fuer eigene Signatur
+- Button "Vorschlag generieren" basierend auf Profildaten
+- Vorschlag beinhaltet: Name, Telefonnummern, E-Mail
+- Signatur wird in `profiles.email_signature` gespeichert (neues Feld)
 
-Für deinen aktuellen Zustand (wenige Mails) ist Schritt 1–3 aber der schnellste und sauberste Fix.
+**Kachel 6: Briefkopf-Daten**
+- Felder fuer Briefgenerator-spezifische Daten:
+  - Firmenname (optional, falls gewerblich)
+  - Logo-Upload (Bild-URL)
+  - Zusaetzliche Zeile (z.B. Rechtsform, Registernummer)
+  - Bankverbindung (IBAN, BIC, Bankname)
+  - Webseite
+- Daten werden in `profiles.letterhead_*` Feldern gespeichert
+
+**Neue Datenbankfelder in `profiles`:**
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email_signature TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_logo_url TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_company_line TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_extra_line TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_bank_name TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_iban TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_bic TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS letterhead_website TEXT;
+```
 
 ---
 
-## Verifikation (wie wir prüfen, dass es wirklich geht)
+### 4. Signatur-Vorschlag generieren
 
-1) Sync im UI auslösen (oder automatisch beim Laden).
-2) Datenbankcheck (intern): `body_text_len/body_html_len` muss > 0 sein für mindestens die Testmails.
-3) UI: Mail anklicken → Inhalt sichtbar (Text oder HTML).
-4) UI: Read/Unread-State plausibel (nach Mark-Read später; falls wir das UI-Flagging schon drin haben).
+**Logik im Frontend:**
+- Basierend auf vorhandenen Profildaten automatisch eine Signatur erstellen:
+```
+Mit freundlichen Gruessen
+
+{Vorname} {Nachname}
+Tel: {phone_mobile} | {phone_landline}
+E-Mail: {email}
+```
+
+**Oder mit AI (optional Lovable AI):**
+- Edge Function aufrufen, die eine professionelle Signatur generiert
 
 ---
 
-## Risiken / Edge Cases
+### 5. Integration in bestehende Features
 
-- Multipart + Attachments: `mailparser` löst das zuverlässig.
-- HTML-only Mails: `body_html` wird gesetzt; UI rendert HTML.
-- Sehr große Mails: können Timeouts verursachen → dann Schritt 4 (Lazy Load) aktivieren.
+**E-Mail-Versand (`sot-mail-send`):**
+- Beim Senden pruefen, ob Signatur in Profil vorhanden
+- Signatur automatisch an `bodyText` und `bodyHtml` anhaengen
+
+**Briefgenerator (`BriefTab`):**
+- Briefkopf-Daten aus Profil laden
+- Bei Post-Versand/PDF-Generierung Logo und Bankdaten einfuegen
 
 ---
 
-## Optional nächste Verbesserungen (nach dem Fix)
-- Button „Inhalt nachladen“ direkt in der Detailansicht, wenn Body fehlt
-- Attachments anzeigen & downloaden (aus BodyStructure/Parts)
-- „Als gelesen markieren“ beim Öffnen (IMAP STORE + DB Update)
+### Technische Umsetzungsschritte
+
+1. **Datenbank-Migration:**
+   - Neue Spalten zu `profiles` hinzufuegen
+
+2. **ProfilTab.tsx erweitern:**
+   - State um neue Felder ergaenzen
+   - Zwei neue Card-Komponenten hinzufuegen
+   - Update-Mutation erweitern
+   - Signatur-Vorschlag-Button implementieren
+
+3. **ComposeEmailDialog.tsx erweitern:**
+   - VoiceButton integrieren
+   - Transkript-Handling implementieren
+   - Signatur automatisch anhaengen (optional mit Checkbox)
+
+4. **EmailTab.tsx anpassen:**
+   - Hover-Styling optimieren
+
+5. **sot-mail-send Edge Function erweitern:**
+   - Signatur aus Profil laden und anhaengen
+
+---
+
+### UI-Vorschau der neuen Kacheln
+
+```text
++------------------------------------------+
+|  [Pen-Icon] E-Mail-Signatur              |
+|  Ihre persoenliche E-Mail-Signatur       |
++------------------------------------------+
+|  +------------------------------------+  |
+|  | Mit freundlichen Gruessen          |  |
+|  |                                    |  |
+|  | Max Mustermann                     |  |
+|  | Tel: +49 170 1234567               |  |
+|  | E-Mail: max@example.de             |  |
+|  +------------------------------------+  |
+|                                          |
+|  [Sparkles] Vorschlag generieren         |
++------------------------------------------+
+
++------------------------------------------+
+|  [FileText-Icon] Briefkopf-Daten         |
+|  Daten fuer den KI-Briefgenerator        |
++------------------------------------------+
+|  Logo:           [Upload-Bereich]        |
+|  Firmenzusatz:   [_______________]       |
+|  Webseite:       [_______________]       |
+|  Separator ---------------------------------
+|  Bankname:       [_______________]       |
+|  IBAN:           [_______________]       |
+|  BIC:            [_______________]       |
++------------------------------------------+
+```
+
+---
+
+### Risiken und Abhaengigkeiten
+
+- **Armstrong Voice WebSocket:** Muss verfuegbar sein fuer Spracherkennung
+- **Signatur-Anhaengung:** Kann optional sein (User muss aktivieren koennen)
+- **Logo-Upload:** Nutzt bestehenden Storage-Bucket `tenant-documents`
