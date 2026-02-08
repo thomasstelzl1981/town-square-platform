@@ -107,16 +107,23 @@ const BeratungTab = () => {
     },
   });
 
-  // Calculate metrics for all listings
+  // Calculate metrics for all listings - FIX: use fresh data from refetch
   const handleSearch = useCallback(async () => {
-    setHasSearched(true);
-    await refetch();
+    // First fetch fresh listings
+    const { data: freshListings } = await refetch();
+    const listingsToProcess = freshListings || [];
+    
+    if (listingsToProcess.length === 0) {
+      setHasSearched(true);
+      return;
+    }
 
     const newCache: Record<string, any> = {};
     
-    for (const listing of rawListings) {
+    // Calculate metrics for ALL listings in parallel
+    await Promise.all(listingsToProcess.map(async (listing: any) => {
       const monthlyRent = listing.annual_rent / 12;
-      if (monthlyRent <= 0 || listing.asking_price <= 0) continue;
+      if (monthlyRent <= 0 || listing.asking_price <= 0) return;
       
       const input: CalculationInput = {
         ...defaultInput,
@@ -130,7 +137,6 @@ const BeratungTab = () => {
 
       const result = await calculate(input);
       if (result) {
-        // Calculate monthly values
         const yearlyRent = listing.annual_rent;
         const yearlyRate = result.summary.yearlyInterest + result.summary.yearlyRepayment;
         const cashFlowBeforeTax = (yearlyRent - yearlyRate) / 12;
@@ -139,10 +145,12 @@ const BeratungTab = () => {
         
         newCache[listing.id] = { cashFlowBeforeTax, taxSavings, netBurden };
       }
-    }
+    }));
 
+    // Update cache first, THEN set hasSearched
     setMetricsCache(newCache);
-  }, [rawListings, searchParams, calculate, refetch]);
+    setHasSearched(true);
+  }, [searchParams, calculate, refetch]);
 
   // Merge cached metrics into listings
   const listingsWithMetrics = useMemo(() => {

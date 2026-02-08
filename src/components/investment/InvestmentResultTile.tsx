@@ -1,19 +1,21 @@
 /**
- * InvestmentResultTile — Quadratische Suchergebnis-Kachel im 4-Quadranten-Layout
+ * InvestmentResultTile — Suchergebnis-Kachel mit korrektem Layout
  * 
- * Layout:
- * ┌─────────────────┬─────────────────┐
- * │                 │ € 320.000       │
- * │    [BILD]       │ 87 m² · Hamburg │
- * │   Titelbild     │ MFH · 4,2%      │
- * │                 │                 │
- * ├─────────────────┼─────────────────┤
- * │   EINNAHMEN     │   AUSGABEN      │
- * │ + Miete €1.100  │ − Zins    €450  │
- * │                 │ − Tilgung €300  │
- * ├─────────────────┴─────────────────┤
- * │  MONATSBELASTUNG: +€350/Mo  ✓     │
- * └───────────────────────────────────┘
+ * Layout (RICHTIG):
+ * ┌─────────────────────────────────────┐
+ * │           [BILD]                    │
+ * │         (Titelbild)                 │
+ * │                                     │
+ * ├──────────────────┬──────────────────┤
+ * │  € 220.000       │  3,7% Rendite    │
+ * │  Leipzig · ETW   │  62 m²           │
+ * ├──────────────────┴──────────────────┤
+ * │  EINNAHMEN       │  AUSGABEN        │
+ * │  + Miete  €682   │  − Zins   €495   │
+ * │  + Steuer €120   │  − Tilg.  €283   │
+ * ├─────────────────────────────────────┤
+ * │  MONATSBELASTUNG: +€24/Mo ✓         │
+ * └─────────────────────────────────────┘
  */
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -81,6 +83,10 @@ export function InvestmentResultTile({
   const monthlyRepayment = metrics?.yearlyRepayment ? metrics.yearlyRepayment / 12 : (metrics?.loanAmount ? (metrics.loanAmount * 0.02) / 12 : 0);
   const monthlyTaxSavings = metrics?.yearlyTaxSavings ? metrics.yearlyTaxSavings / 12 : 0;
 
+  // Calculate totals for T-Konto
+  const totalRevenue = monthlyRent + monthlyTaxSavings;
+  const totalExpenses = monthlyInterest + monthlyRepayment;
+
   const propertyTypeLabel = {
     'multi_family': 'MFH',
     'single_family': 'EFH',
@@ -90,131 +96,142 @@ export function InvestmentResultTile({
 
   return (
     <Link to={`${linkPrefix}/${listing.public_id || listing.listing_id}`}>
-      <Card className="aspect-square overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-        {/* 4-Quadrant Grid: 2 rows (equal), 2 columns (equal) + footer */}
-        <div className="h-full flex flex-col">
-          {/* Top Row: Image + Property Data */}
-          <div className="flex-1 grid grid-cols-2 min-h-0">
-            {/* Quadrant 1: Image */}
-            <div className="bg-muted flex items-center justify-center relative overflow-hidden">
-              {listing.hero_image_path ? (
-                <img 
-                  src={listing.hero_image_path} 
-                  alt={listing.title} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-              ) : (
-                <Building2 className="w-10 h-10 text-muted-foreground" />
-              )}
-              
-              {/* Favorite Button */}
-              {onToggleFavorite && (
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite(); }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
-                >
-                  <Heart className={cn("w-4 h-4", isFavorite && "fill-red-500 text-red-500")} />
-                </button>
-              )}
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
+        {/* Bild OBEN (ca. 40% Höhe) */}
+        <div className="aspect-[16/9] bg-muted flex items-center justify-center relative overflow-hidden">
+          {listing.hero_image_path ? (
+            <img 
+              src={listing.hero_image_path} 
+              alt={listing.title} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
+          ) : (
+            <Building2 className="w-12 h-12 text-muted-foreground" />
+          )}
+          
+          {/* Favorite Button */}
+          {onToggleFavorite && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite(); }}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+            >
+              <Heart className={cn("w-4 h-4", isFavorite && "fill-red-500 text-red-500")} />
+            </button>
+          )}
 
-              {/* Provision Badge */}
-              {showProvision && listing.partner_commission_rate && (
-                <Badge className="absolute top-2 left-2 text-xs bg-primary">
-                  {listing.partner_commission_rate}%
-                </Badge>
-              )}
+          {/* Provision Badge */}
+          {showProvision && listing.partner_commission_rate && (
+            <Badge className="absolute top-2 left-2 text-xs bg-primary">
+              {listing.partner_commission_rate}%
+            </Badge>
+          )}
+
+          {/* Rendite Badge */}
+          <Badge className="absolute bottom-2 right-2 bg-green-600 text-white">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            {grossYield}%
+          </Badge>
+        </div>
+
+        {/* Daten-Bar (Preis, Ort, Fläche, Typ) */}
+        <div className="px-4 py-3 border-b bg-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-bold text-primary truncate">
+                {formatCurrency(listing.asking_price)}
+              </p>
+              <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                <MapPin className="w-3 h-3 flex-shrink-0" />
+                {listing.city}
+              </p>
             </div>
-
-            {/* Quadrant 2: Property Data */}
-            <div className="p-3 flex flex-col justify-between border-l bg-card">
-              <div className="space-y-1">
-                <p className="text-lg font-bold text-primary leading-tight">
-                  {formatCurrency(listing.asking_price)}
-                </p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{listing.city}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {listing.total_area_sqm} m² · {propertyTypeLabel}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 text-green-600">
-                <TrendingUp className="w-3 h-3" />
-                <span className="text-sm font-semibold">{grossYield}%</span>
-              </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-medium">{listing.total_area_sqm} m²</p>
+              <p className="text-xs text-muted-foreground">{propertyTypeLabel}</p>
             </div>
           </div>
+        </div>
 
-          {/* Bottom Row: T-Konto (Einnahmen | Ausgaben) */}
-          <div className="flex-1 grid grid-cols-2 min-h-0 border-t">
-            {/* Quadrant 3: Einnahmen (grün) */}
-            <div className="p-3 bg-green-50/50 dark:bg-green-950/20 flex flex-col">
-              <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">
-                Einnahmen
-              </p>
-              <div className="space-y-0.5 text-xs">
+        {/* T-Konto (Einnahmen | Ausgaben) */}
+        <div className="grid grid-cols-2 divide-x">
+          {/* Einnahmen (links, grün) */}
+          <div className="p-3 bg-green-50/50 dark:bg-green-950/20">
+            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
+              Einnahmen
+            </p>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">+ Miete</span>
+                <span className="font-medium text-green-600">
+                  {formatCurrencyShort(monthlyRent)}
+                </span>
+              </div>
+              {monthlyTaxSavings > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">+ Miete</span>
+                  <span className="text-muted-foreground">+ Steuer</span>
                   <span className="font-medium text-green-600">
-                    {formatCurrencyShort(monthlyRent)}/Mo
+                    {formatCurrencyShort(monthlyTaxSavings)}
                   </span>
                 </div>
-                {monthlyTaxSavings > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">+ Steuervorteil</span>
-                    <span className="font-medium text-green-600">
-                      {formatCurrencyShort(monthlyTaxSavings)}/Mo
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quadrant 4: Ausgaben (rot) */}
-            <div className="p-3 bg-red-50/50 dark:bg-red-950/20 border-l flex flex-col">
-              <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-1">
-                Ausgaben
-              </p>
-              <div className="space-y-0.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">− Zinsen</span>
-                  <span className="font-medium text-red-600">
-                    {formatCurrencyShort(monthlyInterest)}/Mo
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">− Tilgung</span>
-                  <span className="font-medium text-red-600">
-                    {formatCurrencyShort(monthlyRepayment)}/Mo
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer: Monatsbelastung */}
-          <div className={cn(
-            "px-3 py-2 border-t flex items-center justify-between",
-            isPositiveCashflow 
-              ? "bg-green-100 dark:bg-green-900/30" 
-              : "bg-muted/50"
-          )}>
-            <span className="text-xs font-medium">Monatsbelastung</span>
-            <span className={cn(
-              "text-sm font-bold",
-              isPositiveCashflow ? "text-green-600" : "text-foreground"
-            )}>
-              {metrics ? (
-                <>
-                  {isPositiveCashflow ? '+' : ''}{formatCurrencyShort(Math.abs(metrics.monthlyBurden))}/Mo
-                  {isPositiveCashflow && <span className="ml-1">✓</span>}
-                </>
-              ) : (
-                '—'
               )}
-            </span>
+              <div className="flex justify-between pt-1 border-t border-green-200 dark:border-green-800">
+                <span className="font-medium text-green-700 dark:text-green-400">Σ</span>
+                <span className="font-bold text-green-700 dark:text-green-400">
+                  {formatCurrencyShort(totalRevenue)}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Ausgaben (rechts, rot) */}
+          <div className="p-3 bg-red-50/50 dark:bg-red-950/20">
+            <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2">
+              Ausgaben
+            </p>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">− Zinsen</span>
+                <span className="font-medium text-red-600">
+                  {formatCurrencyShort(monthlyInterest)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">− Tilgung</span>
+                <span className="font-medium text-red-600">
+                  {formatCurrencyShort(monthlyRepayment)}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-red-200 dark:border-red-800">
+                <span className="font-medium text-red-700 dark:text-red-400">Σ</span>
+                <span className="font-bold text-red-700 dark:text-red-400">
+                  {formatCurrencyShort(totalExpenses)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer: Monatsbelastung - prominent */}
+        <div className={cn(
+          "px-4 py-3 border-t flex items-center justify-between",
+          isPositiveCashflow 
+            ? "bg-green-100 dark:bg-green-900/30" 
+            : "bg-muted/50"
+        )}>
+          <span className="text-sm font-semibold">Monatsbelastung</span>
+          <span className={cn(
+            "text-base font-bold",
+            isPositiveCashflow ? "text-green-600" : "text-foreground"
+          )}>
+            {metrics ? (
+              <>
+                {isPositiveCashflow ? '+' : '-'}{formatCurrencyShort(Math.abs(metrics.monthlyBurden))}/Mo
+                {isPositiveCashflow && <span className="ml-1">✓</span>}
+              </>
+            ) : (
+              '—'
+            )}
+          </span>
         </div>
       </Card>
     </Link>
