@@ -2,7 +2,7 @@
  * SOT-MAIL-SYNC Edge Function
  * 
  * Synchronizes emails from connected mail accounts:
- * - IMAP: Uses @workingdevshero/deno-imap with mailparser for MIME parsing
+ * - IMAP: Uses @workingdevshero/deno-imap with custom MIME parsing
  * - Google: Uses Gmail API
  * - Microsoft: Uses Graph API
  */
@@ -10,7 +10,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
-import { simpleParser } from 'npm:mailparser@3.6.6';
+import { decode as decodeBase64 } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,6 +137,119 @@ serve(async (req) => {
 });
 
 /**
+ * Decode Quoted-Printable encoded string
+ */
+function decodeQuotedPrintable(input: string): string {
+  return input
+    // Handle soft line breaks (=\r\n or =\n)
+    .replace(/=\r?\n/g, '')
+    // Handle encoded characters (=XX where XX is hex)
+    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+}
+
+/**
+ * Decode Base64 encoded string
+ */
+function decodeBase64Content(input: string): string {
+  try {
+    // Remove all whitespace from base64
+    const cleaned = input.replace(/\s/g, '');
+    const bytes = decodeBase64(cleaned);
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  } catch (e) {
+    console.error('Base64 decode error:', e);
+    return input;
+  }
+}
+
+/**
+ * Parse a MIME multipart message and extract text/html parts
+ */
+function parseMimeMessage(rawMessage: string): { text: string; html: string; hasAttachments: boolean } {
+  let text = '';
+  let html = '';
+  let hasAttachments = false;
+
+  // Check if it's a multipart message
+  const contentTypeMatch = rawMessage.match(/Content-Type:\s*multipart\/[^;]+;\s*boundary="?([^"\r\n]+)"?/i);
+  
+  if (contentTypeMatch) {
+    const boundary = contentTypeMatch[1];
+    const boundaryMarker = '--' + boundary;
+    
+    // Split by boundary
+    const parts = rawMessage.split(boundaryMarker);
+    
+    for (const part of parts) {
+      if (!part.trim() || part.trim() === '--') continue;
+      
+      // Check content type of this part
+      const partContentType = part.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
+      const transferEncoding = part.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
+      const contentDisposition = part.match(/Content-Disposition:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
+      
+      // Check if this is an attachment
+      if (contentDisposition === 'attachment' || part.match(/filename=/i)) {
+        hasAttachments = true;
+        continue;
+      }
+      
+      // Find the body (after double newline)
+      const bodyMatch = part.match(/\r?\n\r?\n([\s\S]*)/);
+      if (!bodyMatch) continue;
+      
+      let bodyContent = bodyMatch[1].trim();
+      
+      // Decode based on transfer encoding
+      if (transferEncoding === 'quoted-printable') {
+        bodyContent = decodeQuotedPrintable(bodyContent);
+      } else if (transferEncoding === 'base64') {
+        bodyContent = decodeBase64Content(bodyContent);
+      }
+      
+      // Handle nested multipart
+      if (partContentType?.startsWith('multipart/')) {
+        const nestedResult = parseMimeMessage(part);
+        if (nestedResult.text && !text) text = nestedResult.text;
+        if (nestedResult.html && !html) html = nestedResult.html;
+        if (nestedResult.hasAttachments) hasAttachments = true;
+      } else if (partContentType === 'text/plain') {
+        if (!text) text = bodyContent;
+      } else if (partContentType === 'text/html') {
+        if (!html) html = bodyContent;
+      }
+    }
+  } else {
+    // Not multipart - single part message
+    const contentType = rawMessage.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase() || 'text/plain';
+    const transferEncoding = rawMessage.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
+    
+    // Find body after headers (double newline)
+    const bodyMatch = rawMessage.match(/\r?\n\r?\n([\s\S]*)/);
+    if (bodyMatch) {
+      let bodyContent = bodyMatch[1].trim();
+      
+      // Decode based on transfer encoding
+      if (transferEncoding === 'quoted-printable') {
+        bodyContent = decodeQuotedPrintable(bodyContent);
+      } else if (transferEncoding === 'base64') {
+        bodyContent = decodeBase64Content(bodyContent);
+      }
+      
+      if (contentType === 'text/html') {
+        html = bodyContent;
+      } else {
+        text = bodyContent;
+      }
+    }
+  }
+
+  return { text, html, hasAttachments };
+}
+
+/**
  * Strip HTML tags from a string to create a plain text snippet
  */
 function stripHtml(html: string): string {
@@ -162,7 +275,7 @@ function truncate(str: string, maxLen: number): string {
   return str.substring(0, maxLen);
 }
 
-// IMAP Mail sync using @workingdevshero/deno-imap with mailparser
+// IMAP Mail sync using @workingdevshero/deno-imap with manual MIME parsing
 async function syncImapMail(
   supabase: any, 
   account: any, 
@@ -215,14 +328,13 @@ async function syncImapMail(
     console.log(`Fetching messages ${range} with full content...`);
 
     // Fetch messages with envelope, flags, and FULL raw content
-    // Using 'full: true' to get msg.raw (Uint8Array) which we parse with mailparser
     const messages = await client.fetch(range, {
       envelope: true,
       flags: true,
       uid: true,
       internalDate: true,
       bodyStructure: true,
-      full: true, // This gives us msg.raw containing the complete RFC822 message
+      full: true,
     });
 
     console.log(`Fetched ${messages.length} messages, parsing content...`);
@@ -249,7 +361,6 @@ async function syncImapMail(
         ).filter(Boolean) || [];
 
         // Parse flags - normalize by removing backslashes
-        // The deno-imap library returns flags like 'Seen' instead of '\\Seen'
         const rawFlags = msg.flags || [];
         const normFlags = rawFlags.map((f: string) => f.replace(/^\\/, ''));
         const isRead = normFlags.includes('Seen') || rawFlags.includes('\\Seen');
@@ -269,7 +380,7 @@ async function syncImapMail(
           receivedAt = new Date().toISOString();
         }
 
-        // Parse MIME content using mailparser
+        // Parse MIME content manually
         let bodyText = '';
         let bodyHtml = '';
         let snippet = '';
@@ -277,35 +388,20 @@ async function syncImapMail(
         
         if (msg.raw) {
           try {
-            // msg.raw is a Uint8Array containing the full RFC822 message
-            const parsed = await simpleParser(msg.raw);
+            // Convert Uint8Array to string
+            const decoder = new TextDecoder('utf-8', { fatal: false });
+            const rawMessage = decoder.decode(msg.raw);
             
-            // Extract text content
-            if (parsed.text) {
-              bodyText = truncate(parsed.text, MAX_BODY_SIZE);
-            }
+            // Parse MIME structure
+            const parsed = parseMimeMessage(rawMessage);
             
-            // Extract HTML content
-            if (parsed.html && typeof parsed.html === 'string') {
-              bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
-            }
-            
-            // Check for attachments
-            if (parsed.attachments && parsed.attachments.length > 0) {
-              hasAttachments = true;
-            }
+            bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+            bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+            hasAttachments = parsed.hasAttachments;
             
             console.log(`Parsed message UID ${msg.uid}: text=${bodyText.length}b, html=${bodyHtml.length}b`);
           } catch (parseError) {
             console.error(`Error parsing MIME for UID ${msg.uid}:`, parseError);
-            // Fallback: try to decode raw as string
-            try {
-              const decoder = new TextDecoder('utf-8', { fatal: false });
-              const rawText = decoder.decode(msg.raw);
-              bodyText = truncate(rawText, MAX_BODY_SIZE);
-            } catch {
-              console.error('Fallback text decode also failed');
-            }
           }
         } else {
           console.log(`No raw content for UID ${msg.uid}`);
