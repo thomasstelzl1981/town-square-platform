@@ -1,9 +1,11 @@
 
 ## Zone 1 Admin: Umstrukturierung Sidebar und KI-Office
 
+**Status: ✅ Implementiert**
+
 ### Zusammenfassung
 
-Die Admin-Sidebar wird reorganisiert. Eine neue Kategorie "KI Office" wird hinzugefuegt, die einen eigenen E-Mail-Client und Kontakte-Manager fuer Zone 1 enthaelt. Die Daten werden strikt getrennt - jedes Modul/Zone hat seinen eigenen Kontaktpool.
+Die Admin-Sidebar wurde reorganisiert. Eine neue Kategorie "KI Office" wurde hinzugefuegt, die einen eigenen E-Mail-Client und Kontakte-Manager fuer Zone 1 enthaelt. Die Daten werden strikt getrennt - jedes Modul/Zone hat seinen eigenen Kontaktpool via `scope` Spalte.
 
 ---
 

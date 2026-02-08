@@ -2479,6 +2479,7 @@ export type Database = {
           postal_code: string | null
           public_id: string
           salutation: string | null
+          scope: string | null
           street: string | null
           synced_at: string | null
           synced_from: string | null
@@ -2502,6 +2503,7 @@ export type Database = {
           postal_code?: string | null
           public_id: string
           salutation?: string | null
+          scope?: string | null
           street?: string | null
           synced_at?: string | null
           synced_from?: string | null
@@ -2525,6 +2527,7 @@ export type Database = {
           postal_code?: string | null
           public_id?: string
           salutation?: string | null
+          scope?: string | null
           street?: string | null
           synced_at?: string | null
           synced_from?: string | null

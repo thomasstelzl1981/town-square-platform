@@ -8,7 +8,8 @@ const corsHeaders = {
 
 interface EnrichmentPayload {
   source: 'email' | 'post';
-  tenant_id: string;
+  scope?: 'zone1_admin' | 'zone2_tenant';
+  tenant_id: string | null;
   data: {
     email?: string;
     from_name?: string;
@@ -165,41 +166,53 @@ serve(async (req) => {
 
   try {
     const payload: EnrichmentPayload = await req.json();
-    const { source, tenant_id, data } = payload;
+    const { source, scope = 'zone2_tenant', tenant_id, data } = payload;
 
-    console.log(`Contact enrichment triggered for source: ${source}, tenant: ${tenant_id}`);
+    console.log(`Contact enrichment triggered for source: ${source}, scope: ${scope}, tenant: ${tenant_id}`);
+
+    // Validate: Zone 2 requires tenant_id, Zone 1 does not
+    if (scope === 'zone2_tenant' && !tenant_id) {
+      return new Response(JSON.stringify({ error: "tenant_id required for zone2_tenant scope" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    }
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if enrichment is enabled for this channel
-    const { data: settings, error: settingsError } = await supabase
-      .from('tenant_extraction_settings')
-      .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
-      .eq('tenant_id', tenant_id)
-      .maybeSingle();
+    // Check if enrichment is enabled for this channel (only for zone2_tenant with tenant_id)
+    if (scope === 'zone2_tenant' && tenant_id) {
+      const { data: settings, error: settingsError } = await supabase
+        .from('tenant_extraction_settings')
+        .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
 
-    if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
-      return new Response(JSON.stringify({ error: "Failed to fetch settings" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (settingsError) {
+        console.error("Error fetching settings:", settingsError);
+        return new Response(JSON.stringify({ error: "Failed to fetch settings" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const isEnabled = source === 'email' 
+        ? settings?.auto_enrich_contacts_email 
+        : settings?.auto_enrich_contacts_post;
+
+      if (!isEnabled) {
+        console.log(`Auto-enrich is disabled for ${source}`);
+        return new Response(JSON.stringify({ skipped: true, reason: `Auto-enrich disabled for ${source}` }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
-
-    const isEnabled = source === 'email' 
-      ? settings?.auto_enrich_contacts_email 
-      : settings?.auto_enrich_contacts_post;
-
-    if (!isEnabled) {
-      console.log(`Auto-enrich is disabled for ${source}`);
-      return new Response(JSON.stringify({ skipped: true, reason: `Auto-enrich disabled for ${source}` }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // For zone1_admin, enrichment is always enabled (admin controls it manually)
 
     // Extract contact data based on source
     let extractedContact: ExtractedContact | null = null;
@@ -240,15 +253,21 @@ serve(async (req) => {
 
     console.log("Extracted contact:", extractedContact);
 
-    // Search for existing contact by email
+    // Search for existing contact by email (with scope filter)
     let existingContact = null;
     if (extractedContact.email) {
-      const { data: found } = await supabase
+      let query = supabase
         .from('contacts')
         .select('*')
-        .eq('tenant_id', tenant_id)
-        .eq('email', extractedContact.email)
-        .maybeSingle();
+        .eq('scope', scope)
+        .eq('email', extractedContact.email);
+      
+      // For zone2_tenant, also filter by tenant_id
+      if (scope === 'zone2_tenant' && tenant_id) {
+        query = query.eq('tenant_id', tenant_id);
+      }
+      
+      const { data: found } = await query.maybeSingle();
       existingContact = found;
     }
 
@@ -322,7 +341,8 @@ serve(async (req) => {
       }
 
       const newContact = {
-        tenant_id,
+        tenant_id: scope === 'zone1_admin' ? null : tenant_id,
+        scope,
         first_name: extractedContact.first_name || 'Unbekannt',
         last_name: extractedContact.last_name || 'Unbekannt',
         email: extractedContact.email,
