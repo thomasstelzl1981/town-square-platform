@@ -5,9 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProfileFormData {
@@ -29,6 +30,16 @@ interface ProfileFormData {
   // Tax
   tax_number: string;
   tax_id: string;
+  // Email Signature
+  email_signature: string;
+  // Letterhead
+  letterhead_logo_url: string;
+  letterhead_company_line: string;
+  letterhead_extra_line: string;
+  letterhead_bank_name: string;
+  letterhead_iban: string;
+  letterhead_bic: string;
+  letterhead_website: string;
 }
 
 export function ProfilTab() {
@@ -50,6 +61,14 @@ export function ProfilTab() {
     phone_whatsapp: '',
     tax_number: '',
     tax_id: '',
+    email_signature: '',
+    letterhead_logo_url: '',
+    letterhead_company_line: '',
+    letterhead_extra_line: '',
+    letterhead_bank_name: '',
+    letterhead_iban: '',
+    letterhead_bic: '',
+    letterhead_website: '',
   });
 
   // Fetch profile
@@ -84,6 +103,14 @@ export function ProfilTab() {
           phone_whatsapp: '+49 170 1234567',
           tax_number: '123/456/78901',
           tax_id: 'DE123456789',
+          email_signature: '',
+          letterhead_logo_url: '',
+          letterhead_company_line: '',
+          letterhead_extra_line: '',
+          letterhead_bank_name: '',
+          letterhead_iban: '',
+          letterhead_bic: '',
+          letterhead_website: '',
         };
       }
       
@@ -112,6 +139,14 @@ export function ProfilTab() {
         phone_whatsapp: (profile as any).phone_whatsapp || '',
         tax_number: (profile as any).tax_number || '',
         tax_id: (profile as any).tax_id || '',
+        email_signature: (profile as any).email_signature || '',
+        letterhead_logo_url: (profile as any).letterhead_logo_url || '',
+        letterhead_company_line: (profile as any).letterhead_company_line || '',
+        letterhead_extra_line: (profile as any).letterhead_extra_line || '',
+        letterhead_bank_name: (profile as any).letterhead_bank_name || '',
+        letterhead_iban: (profile as any).letterhead_iban || '',
+        letterhead_bic: (profile as any).letterhead_bic || '',
+        letterhead_website: (profile as any).letterhead_website || '',
       });
     }
   }, [profile]);
@@ -131,6 +166,14 @@ export function ProfilTab() {
         .update({
           display_name: data.display_name,
           avatar_url: data.avatar_url,
+          email_signature: data.email_signature,
+          letterhead_logo_url: data.letterhead_logo_url,
+          letterhead_company_line: data.letterhead_company_line,
+          letterhead_extra_line: data.letterhead_extra_line,
+          letterhead_bank_name: data.letterhead_bank_name,
+          letterhead_iban: data.letterhead_iban,
+          letterhead_bic: data.letterhead_bic,
+          letterhead_website: data.letterhead_website,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user!.id);
@@ -181,6 +224,61 @@ export function ProfilTab() {
     } catch (error) {
       toast.error('Avatar-Upload fehlgeschlagen');
     }
+  };
+
+  const handleLogoUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    if (isDevelopmentMode && !user?.id) {
+      toast.info('Logo-Upload im Entwicklungsmodus nicht verfügbar');
+      return;
+    }
+    
+    if (!user?.id) return;
+    
+    const file = files[0];
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${user.id}/letterhead-logo.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-documents')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('tenant-documents')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, letterhead_logo_url: urlData.publicUrl }));
+      toast.success('Logo hochgeladen');
+    } catch (error) {
+      toast.error('Logo-Upload fehlgeschlagen');
+    }
+  };
+
+  const generateSignatureSuggestion = () => {
+    const parts: string[] = ['Mit freundlichen Grüßen', ''];
+    
+    const fullName = [formData.first_name, formData.last_name].filter(Boolean).join(' ');
+    if (fullName) {
+      parts.push(fullName);
+    } else if (formData.display_name) {
+      parts.push(formData.display_name);
+    }
+    
+    const phones: string[] = [];
+    if (formData.phone_mobile) phones.push(`Mobil: ${formData.phone_mobile}`);
+    if (formData.phone_landline) phones.push(`Tel: ${formData.phone_landline}`);
+    if (phones.length > 0) parts.push(phones.join(' | '));
+    
+    if (formData.email) {
+      parts.push(`E-Mail: ${formData.email}`);
+    }
+    
+    setFormData(prev => ({ ...prev, email_signature: parts.join('\n') }));
+    toast.success('Signatur-Vorschlag erstellt');
   };
 
   if (isLoading) {
@@ -404,6 +502,132 @@ export function ProfilTab() {
               />
             </FormRow>
           </FormSection>
+        </CardContent>
+      </Card>
+
+      {/* E-Mail-Signatur */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PenLine className="h-5 w-5" />
+            E-Mail-Signatur
+          </CardTitle>
+          <CardDescription>
+            Ihre persönliche Signatur, die automatisch an E-Mails angehängt wird.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={formData.email_signature}
+            onChange={e => setFormData(prev => ({ ...prev, email_signature: e.target.value }))}
+            placeholder="Mit freundlichen Grüßen&#10;&#10;Max Mustermann&#10;Tel: +49 170 1234567&#10;E-Mail: max@example.de"
+            rows={6}
+            className="font-mono text-sm"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={generateSignatureSuggestion}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            Vorschlag generieren
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Briefkopf-Daten */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Briefkopf-Daten
+          </CardTitle>
+          <CardDescription>
+            Daten für den KI-Briefgenerator (Logo, Firma, Bankverbindung).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Logo Upload */}
+          <div className="flex items-start gap-6">
+            {formData.letterhead_logo_url && (
+              <img 
+                src={formData.letterhead_logo_url} 
+                alt="Logo" 
+                className="h-16 w-auto object-contain border rounded-md p-1"
+              />
+            )}
+            <div className="flex-1">
+              <FileUploader
+                onFilesSelected={handleLogoUpload}
+                accept="image/*"
+                label="Logo hochladen"
+                hint="PNG mit transparentem Hintergrund empfohlen"
+                maxSize={2 * 1024 * 1024}
+              />
+            </div>
+          </div>
+
+          <FormSection>
+            <FormRow>
+              <FormInput
+                label="Firmenzusatz"
+                name="letterhead_company_line"
+                value={formData.letterhead_company_line}
+                onChange={e => setFormData(prev => ({ ...prev, letterhead_company_line: e.target.value }))}
+                placeholder="Mustermann GmbH"
+                hint="Optional: Firmenname (falls gewerblich)"
+              />
+              <FormInput
+                label="Zusatzzeile"
+                name="letterhead_extra_line"
+                value={formData.letterhead_extra_line}
+                onChange={e => setFormData(prev => ({ ...prev, letterhead_extra_line: e.target.value }))}
+                placeholder="HRB 12345 · Amtsgericht München"
+                hint="Optional: Rechtsform, Registernummer"
+              />
+            </FormRow>
+            <FormRow>
+              <FormInput
+                label="Webseite"
+                name="letterhead_website"
+                type="url"
+                value={formData.letterhead_website}
+                onChange={e => setFormData(prev => ({ ...prev, letterhead_website: e.target.value }))}
+                placeholder="https://www.example.de"
+              />
+            </FormRow>
+          </FormSection>
+
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Bankverbindung</p>
+            <FormSection>
+              <FormRow>
+                <FormInput
+                  label="Bankname"
+                  name="letterhead_bank_name"
+                  value={formData.letterhead_bank_name}
+                  onChange={e => setFormData(prev => ({ ...prev, letterhead_bank_name: e.target.value }))}
+                  placeholder="Deutsche Bank"
+                />
+                <FormInput
+                  label="IBAN"
+                  name="letterhead_iban"
+                  value={formData.letterhead_iban}
+                  onChange={e => setFormData(prev => ({ ...prev, letterhead_iban: e.target.value }))}
+                  placeholder="DE89 3704 0044 0532 0130 00"
+                />
+                <FormInput
+                  label="BIC"
+                  name="letterhead_bic"
+                  value={formData.letterhead_bic}
+                  onChange={e => setFormData(prev => ({ ...prev, letterhead_bic: e.target.value }))}
+                  placeholder="COBADEFFXXX"
+                />
+              </FormRow>
+            </FormSection>
+          </div>
         </CardContent>
       </Card>
 

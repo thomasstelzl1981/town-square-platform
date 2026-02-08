@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Send, X, Paperclip, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Send, X, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
+import { VoiceButton } from '@/components/armstrong/VoiceButton';
+import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 
 interface ComposeEmailDialogProps {
   open: boolean;
@@ -21,6 +23,8 @@ interface ComposeEmailDialogProps {
   accountEmail: string;
   onSent: () => void;
 }
+
+type DictationTarget = 'subject' | 'body' | null;
 
 export function ComposeEmailDialog({
   open,
@@ -36,6 +40,49 @@ export function ComposeEmailDialog({
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
+  const [dictationTarget, setDictationTarget] = useState<DictationTarget>(null);
+
+  const voice = useArmstrongVoice();
+  const lastTranscriptRef = useRef('');
+
+  // Watch for transcript changes and append to the target field
+  useEffect(() => {
+    if (voice.transcript && voice.transcript !== lastTranscriptRef.current) {
+      const newText = voice.transcript.slice(lastTranscriptRef.current.length);
+      lastTranscriptRef.current = voice.transcript;
+
+      if (dictationTarget === 'subject') {
+        setSubject(prev => prev + newText);
+      } else if (dictationTarget === 'body') {
+        setBody(prev => prev + newText);
+      }
+    }
+  }, [voice.transcript, dictationTarget]);
+
+  // Stop dictation when dialog closes
+  useEffect(() => {
+    if (!open && voice.isListening) {
+      voice.stopListening();
+      setDictationTarget(null);
+    }
+  }, [open, voice.isListening, voice.stopListening]);
+
+  const handleDictation = (target: DictationTarget) => {
+    if (voice.isListening && dictationTarget === target) {
+      // Stop current dictation
+      voice.stopListening();
+      setDictationTarget(null);
+      lastTranscriptRef.current = '';
+    } else {
+      // Start new dictation for this target
+      if (voice.isListening) {
+        voice.stopListening();
+      }
+      setDictationTarget(target);
+      lastTranscriptRef.current = voice.transcript || '';
+      voice.startListening();
+    }
+  };
 
   const resetForm = () => {
     setTo('');
@@ -44,10 +91,15 @@ export function ComposeEmailDialog({
     setSubject('');
     setBody('');
     setShowCcBcc(false);
+    setDictationTarget(null);
+    lastTranscriptRef.current = '';
   };
 
   const handleClose = () => {
     if (isSending) return;
+    if (voice.isListening) {
+      voice.stopListening();
+    }
     resetForm();
     onOpenChange(false);
   };
@@ -177,30 +229,58 @@ export function ComposeEmailDialog({
             </>
           )}
 
-          {/* Subject */}
+          {/* Subject with Voice */}
           <div className="space-y-2">
             <Label htmlFor="email-subject">Betreff</Label>
-            <Input
-              id="email-subject"
-              placeholder="Betreff eingeben..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              disabled={isSending}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="email-subject"
+                placeholder="Betreff eingeben..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                disabled={isSending}
+                className="flex-1"
+              />
+              <VoiceButton
+                isListening={voice.isListening && dictationTarget === 'subject'}
+                isProcessing={voice.isProcessing && dictationTarget === 'subject'}
+                isSpeaking={voice.isSpeaking}
+                isConnected={voice.isConnected}
+                error={voice.error}
+                onToggle={() => handleDictation('subject')}
+                size="sm"
+              />
+            </div>
           </div>
 
-          {/* Body */}
+          {/* Body with Voice */}
           <div className="space-y-2">
-            <Label htmlFor="email-body">Nachricht</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email-body">Nachricht</Label>
+              <VoiceButton
+                isListening={voice.isListening && dictationTarget === 'body'}
+                isProcessing={voice.isProcessing && dictationTarget === 'body'}
+                isSpeaking={voice.isSpeaking}
+                isConnected={voice.isConnected}
+                error={voice.error}
+                onToggle={() => handleDictation('body')}
+                size="sm"
+              />
+            </div>
             <Textarea
               id="email-body"
-              placeholder="Ihre Nachricht..."
+              placeholder="Ihre Nachricht... (Mikrofon-Button für Spracheingabe)"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               disabled={isSending}
               rows={12}
               className="resize-none"
             />
+            {voice.isListening && dictationTarget === 'body' && (
+              <p className="text-xs text-primary animate-pulse">
+                🎤 Mikrofon aktiv — Sprechen Sie Ihre Nachricht...
+              </p>
+            )}
           </div>
         </div>
 

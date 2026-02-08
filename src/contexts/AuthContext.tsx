@@ -86,6 +86,15 @@ const DEV_MOCK_PROFILE: Profile = {
   phone_landline: null,
   phone_mobile: null,
   phone_whatsapp: null,
+  // Email signature and letterhead fields
+  email_signature: null,
+  letterhead_logo_url: null,
+  letterhead_company_line: null,
+  letterhead_extra_line: null,
+  letterhead_bank_name: null,
+  letterhead_iban: null,
+  letterhead_bic: null,
+  letterhead_website: null,
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
