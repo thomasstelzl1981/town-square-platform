@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Search, MapPin, Building2, Heart, ArrowRight, Loader2, Home } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Heart, ArrowRight, Loader2, Home } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
+import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
+import { InvestmentSearchCard } from '@/components/zone3/kaufy/InvestmentSearchCard';
 
 interface PublicListing {
   id: string;
@@ -16,11 +19,14 @@ interface PublicListing {
   total_area_sqm: number;
   status: string;
   hero_image_path: string | null;
+  monthly_rent_total: number;
 }
 
 export default function KaufyImmobilien() {
-  const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [metricsCache, setMetricsCache] = useState<Record<string, any>>({});
+  const { calculate, isLoading: isCalculating } = useInvestmentEngine();
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -35,7 +41,7 @@ export default function KaufyImmobilien() {
   }, []);
 
   // Fetch only Kaufy-published listings (gemäß Plan: channel='kaufy')
-  const { data: listings = [], isLoading, error } = useQuery({
+  const { data: listings = [], isLoading } = useQuery({
     queryKey: ['kaufy-public-listings'],
     queryFn: async () => {
       // 1. Get listing IDs with active Kaufy publication
@@ -69,7 +75,8 @@ export default function KaufyImmobilien() {
             address,
             city,
             postal_code,
-            total_area_sqm
+            total_area_sqm,
+            annual_income
           )
         `)
         .in('id', listingIds)
@@ -120,20 +127,28 @@ export default function KaufyImmobilien() {
         }
       }
 
-      // Transform to expected format
-      return (listingsData || []).map((l: any) => ({
-        id: l.id,
-        public_id: l.public_id || l.id,
-        title: l.title || `Objekt ${l.properties?.city || ''}`,
-        asking_price: l.asking_price || 0,
-        property_type: l.properties?.property_type || 'multi_family',
-        address: l.properties?.address || '',
-        city: l.properties?.city || '',
-        postal_code: l.properties?.postal_code || '',
-        total_area_sqm: l.properties?.total_area_sqm || 0,
-        status: l.status,
-        hero_image_path: heroImages[l.properties?.id] || null,
-      }));
+      // Transform to expected format with monthly_rent_total
+      return (listingsData || []).map((l: any) => {
+        const annualIncome = l.properties?.annual_income || 0;
+        const monthlyRent = annualIncome > 0 
+          ? annualIncome / 12 
+          : (l.asking_price || 0) * 0.04 / 12;
+
+        return {
+          id: l.id,
+          public_id: l.public_id || l.id,
+          title: l.title || `Objekt ${l.properties?.city || ''}`,
+          asking_price: l.asking_price || 0,
+          property_type: l.properties?.property_type || 'multi_family',
+          address: l.properties?.address || '',
+          city: l.properties?.city || '',
+          postal_code: l.properties?.postal_code || '',
+          total_area_sqm: l.properties?.total_area_sqm || 0,
+          status: l.status,
+          hero_image_path: heroImages[l.properties?.id] || null,
+          monthly_rent_total: Math.round(monthlyRent),
+        };
+      });
     },
   });
 
@@ -145,12 +160,53 @@ export default function KaufyImmobilien() {
     localStorage.setItem('kaufy_favorites', JSON.stringify(newFavorites));
   };
 
-  const filteredListings = listings.filter((l: PublicListing) => 
-    l.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    l.city?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Investment search handler - calculates metrics for all listings
+  const handleInvestmentSearch = useCallback(async (params: {
+    zvE: number;
+    equity: number;
+    maritalStatus: 'single' | 'married';
+    hasChurchTax: boolean;
+    state: string;
+  }) => {
+    if (listings.length === 0) {
+      setHasSearched(true);
+      return;
+    }
 
-  const hasListings = filteredListings.length > 0;
+    const newCache: Record<string, any> = {};
+
+    await Promise.all(
+      listings.slice(0, 20).map(async (listing: PublicListing) => {
+        const input: CalculationInput = {
+          ...defaultInput,
+          purchasePrice: listing.asking_price,
+          monthlyRent: listing.monthly_rent_total || (listing.asking_price * 0.04 / 12),
+          equity: params.equity,
+          taxableIncome: params.zvE,
+          maritalStatus: params.maritalStatus,
+          hasChurchTax: params.hasChurchTax,
+          churchTaxState: params.state,
+        };
+
+        const result = await calculate(input);
+        if (result) {
+          newCache[listing.id] = {
+            monthlyBurden: result.summary.monthlyBurden,
+            roiAfterTax: result.summary.roiAfterTax,
+            loanAmount: result.summary.loanAmount,
+            yearlyInterest: result.summary.yearlyInterest,
+            yearlyRepayment: result.summary.yearlyRepayment,
+            yearlyTaxSavings: result.summary.yearlyTaxSavings,
+          };
+        }
+      })
+    );
+
+    setMetricsCache(newCache);
+    setHasSearched(true);
+  }, [listings, calculate]);
+
+  const hasListings = listings.length > 0;
 
   return (
     <div className="kaufy-theme">
@@ -162,18 +218,12 @@ export default function KaufyImmobilien() {
             Entdecken Sie aktuelle Angebote von geprüften Anbietern.
           </p>
           
-          {/* Search */}
-          <div className="max-w-xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/40" />
-              <input
-                type="text"
-                placeholder="Stadt oder Objektart suchen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-lg border border-black/10 focus:border-black/30 focus:outline-none"
-              />
-            </div>
+          {/* Investment Search Card */}
+          <div className="max-w-3xl mx-auto">
+            <InvestmentSearchCard 
+              onSearch={handleInvestmentSearch} 
+              isLoading={isCalculating} 
+            />
           </div>
         </div>
       </section>
@@ -183,7 +233,7 @@ export default function KaufyImmobilien() {
         <div className="zone3-container">
           <div className="flex items-center justify-between mb-8">
             <p className="zone3-text-small">
-              {isLoading ? 'Lade Objekte...' : `${filteredListings.length} Objekte gefunden`}
+              {isLoading ? 'Lade Objekte...' : `${listings.length} Objekte gefunden`}
             </p>
             {favorites.length > 0 && (
               <p className="zone3-text-small flex items-center gap-2">
@@ -216,68 +266,28 @@ export default function KaufyImmobilien() {
           ) : (
             <>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredListings.map((listing: PublicListing) => (
-                  <div key={listing.id} className="zone3-card overflow-hidden">
-                    {/* Image placeholder */}
-                    <div className="h-48 bg-black/5 flex items-center justify-center relative">
-                      {listing.hero_image_path ? (
-                        <img 
-                          src={listing.hero_image_path} 
-                          alt={listing.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Building2 className="w-16 h-16 text-black/20" />
-                      )}
-                      {listing.status === 'reserved' && (
-                        <div className="absolute top-3 left-3 px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded">
-                          Reserviert
-                        </div>
-                      )}
-                      <button
-                        onClick={() => toggleFavorite(listing.public_id)}
-                        className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform"
-                      >
-                        <Heart 
-                          className={`w-5 h-5 ${favorites.includes(listing.public_id) ? 'fill-red-500 text-red-500' : 'text-black/40'}`} 
-                        />
-                      </button>
-                    </div>
-                    
-                    <div className="p-5">
-                      <h3 className="zone3-heading-3 mb-2">{listing.title}</h3>
-                      <p className="zone3-text-small flex items-center gap-1 mb-4">
-                        <MapPin className="w-4 h-4" />
-                        {listing.postal_code} {listing.city}
-                      </p>
-                      
-                      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                        <div>
-                          <span className="text-black/50">Preis</span>
-                          <p className="font-semibold">{listing.asking_price?.toLocaleString('de-DE') || '–'} €</p>
-                        </div>
-                        <div>
-                          <span className="text-black/50">Fläche</span>
-                          <p className="font-semibold">{listing.total_area_sqm || '–'} m²</p>
-                        </div>
-                        <div>
-                          <span className="text-black/50">Typ</span>
-                          <p className="font-semibold capitalize">{listing.property_type?.replace('_', ' ') || '–'}</p>
-                        </div>
-                        <div>
-                          <span className="text-black/50">Ort</span>
-                          <p className="font-semibold">{listing.city}</p>
-                        </div>
-                      </div>
-                      
-                      <Link 
-                        to={`/kaufy/immobilien/${listing.public_id}`}
-                        className="zone3-btn-primary w-full text-center block text-sm"
-                      >
-                        Details ansehen
-                      </Link>
-                    </div>
-                  </div>
+                {listings.map((listing: PublicListing) => (
+                  <InvestmentResultTile
+                    key={listing.id}
+                    listing={{
+                      listing_id: listing.id,
+                      public_id: listing.public_id,
+                      title: listing.title,
+                      asking_price: listing.asking_price,
+                      property_type: listing.property_type,
+                      address: listing.address,
+                      city: listing.city,
+                      postal_code: listing.postal_code,
+                      total_area_sqm: listing.total_area_sqm,
+                      unit_count: 1,
+                      monthly_rent_total: listing.monthly_rent_total,
+                      hero_image_path: listing.hero_image_path,
+                    }}
+                    metrics={hasSearched ? metricsCache[listing.id] : null}
+                    isFavorite={favorites.includes(listing.public_id)}
+                    onToggleFavorite={() => toggleFavorite(listing.public_id)}
+                    linkPrefix="/kaufy/immobilien"
+                  />
                 ))}
               </div>
 
