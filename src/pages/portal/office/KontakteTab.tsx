@@ -98,6 +98,18 @@ interface Contact {
 
 const columns: Column<Contact>[] = [
   {
+    key: 'public_id',
+    header: 'Interne ID',
+    render: (_value: unknown, contact: Contact) => (
+      <span className="font-mono text-xs text-muted-foreground">{contact.public_id}</span>
+    ),
+  },
+  {
+    key: 'company',
+    header: 'Firma',
+    render: (_value: unknown, contact: Contact) => contact.company || '-',
+  },
+  {
     key: 'salutation',
     header: 'Anrede',
     render: (_value: unknown, contact: Contact) => contact.salutation || '-',
@@ -157,11 +169,6 @@ const columns: Column<Contact>[] = [
     key: 'city',
     header: 'Ort',
     render: (_value: unknown, contact: Contact) => contact.city || '-',
-  },
-  {
-    key: 'company',
-    header: 'Firma',
-    render: (_value: unknown, contact: Contact) => contact.company || '-',
   },
   {
     key: 'category',
