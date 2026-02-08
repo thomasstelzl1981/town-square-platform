@@ -126,8 +126,8 @@ export function InvestmentSearchCard({ onSearch, isLoading }: InvestmentSearchCa
           {/* Main Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                Zu versteuerndes Einkommen (zvE)
+              <Label className="text-sm whitespace-nowrap" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                Zu versteuerndes Einkommen
               </Label>
               <div className="relative">
                 <Input
