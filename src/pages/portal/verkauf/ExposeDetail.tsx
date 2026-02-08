@@ -20,6 +20,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,8 +55,9 @@ import {
   Loader2,
   PiggyBank
 } from 'lucide-react';
-import { PartnerReleaseDialog, SalesMandateDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
+import { PartnerReleaseDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
 import { useViewTracking } from '@/hooks/useViewTracking';
+
 
 // Types
 interface UnitData {
@@ -136,7 +138,6 @@ const ExposeDetail = () => {
     commission_rate: [7]
   });
   const [hasChanges, setHasChanges] = useState(false);
-  const [salesMandateOpen, setSalesMandateOpen] = useState(false);
   const [partnerReleaseOpen, setPartnerReleaseOpen] = useState(false);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
@@ -280,23 +281,9 @@ const ExposeDetail = () => {
     onError: (err: Error) => toast.error(`Fehler: ${err.message}`)
   });
 
-  // Activate listing
-  const activateMutation = useMutation({
-    mutationFn: async () => {
-      await saveMutation.mutateAsync();
-      const { error } = await supabase
-        .from('listings')
-        .update({ status: 'active' })
-        .eq('id', listing!.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      refetchListing();
-      setSalesMandateOpen(false);
-      toast.success('Verkaufsauftrag erteilt – Objekt ist jetzt aktiv');
-    },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`)
-  });
+  // Note: Listing activation now happens in MOD-04 VerkaufsauftragTab
+  // This mutation is kept for backward compatibility but should not be used directly
+
 
   // Partner release mutation
   const partnerReleaseMutation = useMutation({
@@ -823,13 +810,22 @@ const ExposeDetail = () => {
             <CardContent className="space-y-4">
               {listing?.status === 'draft' ? (
                 <>
-                  <p className="text-sm text-muted-foreground">
-                    Prüfen Sie Ihr Exposé und erteilen Sie den Verkaufsauftrag.
-                  </p>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Verkaufsauftrag nicht erteilt. Bitte aktivieren Sie den Verkaufsauftrag im{' '}
+                      <Link 
+                        to={`/portal/immobilien/${property.id}?tab=verkaufsauftrag`}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Immobilien-Dossier → Verkaufsauftrag
+                      </Link>.
+                    </AlertDescription>
+                  </Alert>
                   
-                  {/* Validation Checklist */}
-                  <div className="space-y-2 p-3 bg-background rounded-lg border">
-                    <p className="text-xs font-medium text-muted-foreground uppercase">Checkliste</p>
+                  {/* Validation Checklist (informativ) */}
+                  <div className="space-y-2 p-3 bg-muted rounded-lg border">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Exposé-Status</p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         {formData.title ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <AlertCircle className="h-4 w-4 text-muted-foreground" />}
@@ -843,22 +839,8 @@ const ExposeDetail = () => {
                         {formData.description ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <AlertCircle className="h-4 w-4 text-muted-foreground" />}
                         <span className={formData.description ? '' : 'text-muted-foreground'}>Beschreibung vorhanden</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {formData.commission_rate[0] >= 3 ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <AlertCircle className="h-4 w-4 text-muted-foreground" />}
-                        <span className={formData.commission_rate[0] >= 3 ? '' : 'text-muted-foreground'}>Provision ≥ 3%</span>
-                      </div>
                     </div>
                   </div>
-
-                  <Button 
-                    className="w-full" 
-                    size="lg"
-                    onClick={() => setSalesMandateOpen(true)}
-                    disabled={!canActivate}
-                  >
-                    <FileCheck className="h-4 w-4 mr-2" />
-                    Verkaufsauftrag erteilen
-                  </Button>
                 </>
               ) : (
                 <>
@@ -1002,15 +984,6 @@ const ExposeDetail = () => {
       </div>
 
       {/* Dialogs */}
-      <SalesMandateDialog
-        open={salesMandateOpen}
-        onOpenChange={setSalesMandateOpen}
-        listingTitle={formData.title || property.address || 'Objekt'}
-        askingPrice={parseFloat(formData.asking_price) || 0}
-        commissionRate={formData.commission_rate[0]}
-        onConfirm={async () => activateMutation.mutateAsync()}
-        isLoading={activateMutation.isPending}
-      />
 
       <PartnerReleaseDialog
         open={partnerReleaseOpen}
