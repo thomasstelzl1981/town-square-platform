@@ -1,208 +1,333 @@
 
-# Reparaturplan v3.1 — Die 3 kritischen UI-Fehler
+# Implementierungsplan: KI-Office Systemwidgets (ON/OFF)
 
-## Problem 1: Titelbild fehlt in Ergebniskacheln
+## Übersicht
 
-### Ursache
-In `SucheTab.tsx` Zeile 134 wird `hero_image_path: null` hart gesetzt, anstatt das Titelbild aus `document_links` zu laden.
+Dieses Feature ermöglicht Nutzern, ihre Dashboard-Systemwidgets über KI-Office → Widgets zentral zu verwalten (aktivieren/deaktivieren, sortieren). MOD-00 Dashboard rendert dann nur die aktivierten Widgets.
 
-### Lösung
-Nach dem Laden der Listings eine zweite Query ausführen, die die Titelbilder lädt:
+---
 
+## A) Architektur-Überblick
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                     KI-OFFICE (MOD-02)                          │
+│  ┌─────────────────┐    ┌─────────────────────────────────────┐ │
+│  │  Tab 1:         │    │  Tab 2:                             │ │
+│  │  Systemwidgets  │    │  Aufgabenwidgets (bestehend)        │ │
+│  │  ─────────────  │    │                                     │ │
+│  │  [✓] Globe      │    │  Erledigte Armstrong-Widgets        │ │
+│  │  [✓] Wetter     │    │                                     │ │
+│  │  [ ] Finanzen   │    │                                     │ │
+│  │  [✓] News       │    │                                     │ │
+│  │  ...            │    │                                     │ │
+│  └─────────────────┘    └─────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                   DATENBANK (widget_preferences)                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ user_id │ widget_code    │ enabled │ sort_order │ config  │ │
+│  │─────────│────────────────│─────────│────────────│─────────│ │
+│  │ u1      │ SYS.GLOBE      │ true    │ 1          │ {}      │ │
+│  │ u1      │ SYS.WEATHER    │ true    │ 2          │ {}      │ │
+│  │ u1      │ SYS.FIN.MARKET │ false   │ 3          │ {}      │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                     MOD-00 DASHBOARD                             │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ SYSTEMWIDGETS (enabled=true, nach sort_order)               ││
+│  │ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                        ││
+│  │ │Globe │ │Wetter│ │News  │ │Space │                        ││
+│  │ └──────┘ └──────┘ └──────┘ └──────┘                        ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ AUFGABENWIDGETS (Armstrong Tasks)                           ││
+│  │ ┌──────┐ ┌──────┐                                          ││
+│  │ │Brief │ │Remind│                                          ││
+│  │ └──────┘ └──────┘                                          ││
+│  └─────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## B) Systemwidget-Katalog (7 Widgets)
+
+| Code | Name | Status | Quelle | Cache |
+|------|------|--------|--------|-------|
+| `SYS.GLOBE.EARTH` | Google Earth | LIVE | Google Maps 3D | - |
+| `SYS.WEATHER.SUMMARY` | Wetter | LIVE | Open-Meteo | 30min |
+| `SYS.FIN.MARKETS` | Finanzüberblick | STUB | Finnhub (geplant) | 30min |
+| `SYS.NEWS.BRIEFING` | News | STUB | RSS/NewsAPI | 60min |
+| `SYS.SPACE.DAILY` | Space/Weltall | STUB | NASA APOD / ISS | 24h/15min |
+| `SYS.MINDSET.QUOTE` | Zitat/Fokus | STUB | ZenQuotes | 24h |
+| `SYS.AUDIO.RADIO` | Radio/Musik | STUB | Radio Browser | - |
+
+---
+
+## C) Datenbank-Schema
+
+### Neue Tabelle: `widget_preferences`
+
+```sql
+CREATE TABLE public.widget_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  widget_code TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  config_json JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  
+  CONSTRAINT unique_user_widget UNIQUE (user_id, widget_code)
+);
+
+-- RLS Policies
+ALTER TABLE widget_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own preferences"
+  ON widget_preferences FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own preferences"
+  ON widget_preferences FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own preferences"
+  ON widget_preferences FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own preferences"
+  ON widget_preferences FOR DELETE
+  USING (auth.uid() = user_id);
+```
+
+---
+
+## D) Implementierungsschritte
+
+### Phase 1: Datenmodell & Hook
+
+**1.1 Datenbank-Migration**
+- Tabelle `widget_preferences` anlegen mit RLS-Policies
+
+**1.2 Systemwidget-Registry (`src/config/systemWidgets.ts`)**
 ```typescript
-// Nachdem listings geladen sind, Titelbilder nachladen
-const propertyIds = data.map(item => item.properties?.id).filter(Boolean);
-
-const { data: titleImages } = await supabase
-  .from('document_links')
-  .select(`
-    object_id,
-    documents!inner (file_path, mime_type)
-  `)
-  .in('object_id', propertyIds)
-  .eq('object_type', 'property')
-  .eq('is_title_image', true)
-  .in('documents.mime_type', ['image/jpeg', 'image/png', 'image/webp']);
-
-// Signed URLs generieren und als Map speichern
-const imageMap = new Map();
-for (const img of titleImages || []) {
-  if (img.documents?.file_path) {
-    const { data: signedUrl } = await supabase.storage
-      .from('property-documents')
-      .createSignedUrl(img.documents.file_path, 3600);
-    if (signedUrl?.signedUrl) {
-      imageMap.set(img.object_id, resolveStorageSignedUrl(signedUrl.signedUrl));
-    }
-  }
+export interface SystemWidgetDefinition {
+  code: string;
+  name_de: string;
+  description_de: string;
+  icon: string;
+  gradient: string;
+  data_source: string;
+  cache_interval_min: number;
+  cost_model: 'free' | 'metered';
+  status: 'live' | 'stub';
+  has_autoplay: boolean;
+  privacy_note?: string;
 }
 
-// hero_image_path aus Map zuweisen
-return data.map(item => ({
-  ...mappedListing,
-  hero_image_path: imageMap.get(item.properties?.id) || null,
-}));
+export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
+  {
+    code: 'SYS.GLOBE.EARTH',
+    name_de: 'Google Earth',
+    description_de: '3D-Globus mit Ihrem Standort',
+    icon: 'Globe',
+    gradient: 'from-green-500/10 to-green-600/5',
+    data_source: 'Google Maps 3D API',
+    cache_interval_min: 0,
+    cost_model: 'free',
+    status: 'live',
+    has_autoplay: false,
+  },
+  // ... weitere 6 Widgets
+];
 ```
 
-**Betroffene Datei:** `src/pages/portal/investments/SucheTab.tsx`
+**1.3 Hook: `useWidgetPreferences`**
+```typescript
+export function useWidgetPreferences() {
+  // Lädt Preferences aus DB
+  // Fallback: localStorage wenn nicht eingeloggt
+  // CRUD-Operationen mit Optimistic Updates
+  return {
+    preferences: SystemWidgetPreference[],
+    enabledWidgets: string[],
+    isLoading: boolean,
+    toggleWidget: (code: string, enabled: boolean) => Promise<void>,
+    updateOrder: (newOrder: string[]) => Promise<void>,
+    resetToDefaults: () => Promise<void>,
+  };
+}
+```
+
+### Phase 2: KI-Office Widgets-Tab Refactoring
+
+**2.1 WidgetsTab mit Tabs-Component**
+- Tab 1: **Systemwidgets** (NEU)
+- Tab 2: **Aufgabenwidgets** (bestehender Code)
+
+**2.2 SystemWidgetsTab-Component**
+- Liste aller 7 Systemwidgets mit:
+  - Toggle ON/OFF (Switch)
+  - Drag-Handle für Sortierung
+  - Info-Button → öffnet Detail-Drawer
+- Sortierung via @dnd-kit (bereits installiert)
+
+**2.3 SystemWidgetDetailDrawer**
+- Zeigt: Beschreibung, Datenquelle, Cache-Hinweis, Kostenmodell, Status
+- Read-only für Nutzer
+
+### Phase 3: MOD-00 Dashboard Integration
+
+**3.1 PortalDashboard.tsx anpassen**
+```typescript
+// Statt hardcoded SYSTEM_WIDGET_IDS:
+const { enabledWidgets, preferences } = useWidgetPreferences();
+
+// Systemwidgets nach sort_order sortieren
+const systemWidgetIds = preferences
+  .filter(p => p.enabled)
+  .sort((a, b) => a.sort_order - b.sort_order)
+  .map(p => p.widget_code);
+
+// Dann Task-Widgets hinten anhängen
+const allWidgetIds = [...systemWidgetIds, ...taskWidgetIds];
+```
+
+**3.2 Widget-Rendering Map erweitern**
+- Mapping von `widget_code` → React-Component
+- Neue Stub-Components für C3-C7
+
+### Phase 4: Stub-Widgets (UI-Platzhalter)
+
+Für die noch nicht angebundenen APIs (Finanzen, News, Space, Quote, Radio):
+
+```typescript
+// src/components/dashboard/widgets/FinanceWidget.tsx (Stub)
+export function FinanceWidget() {
+  return (
+    <Card className="aspect-square bg-gradient-to-br from-amber-500/10 to-amber-600/5">
+      <CardContent className="h-full flex flex-col items-center justify-center">
+        <TrendingUp className="h-10 w-10 text-amber-500/50 mb-4" />
+        <p className="text-sm text-muted-foreground text-center">
+          Finanzüberblick
+        </p>
+        <Badge variant="outline" className="mt-2">Coming Soon</Badge>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Phase 5: Zone 1 — Widget-Registry Viewer
+
+**5.1 Neue Page: `/admin/armstrong/integrations`**
+- Read-only Übersicht aller Systemwidgets
+- Zeigt: Code, Name, Datenquelle, Status, Kostenmodell
+- Quelle: Static JSON (SYSTEM_WIDGETS Registry)
+
+**5.2 Navigation in ArmstrongDashboard.tsx erweitern**
+- Quick-Link "Integrations/Widgets"
 
 ---
 
-## Problem 2: Einstellungs-Kachel nicht sticky
+## E) Dateien-Übersicht
 
-### Ursache
-Das `sticky top-24` funktioniert nur, wenn:
-1. Das Parent-Element höher ist als der sticky-Container
-2. Der sticky-Container nicht den gesamten sichtbaren Bereich einnimmt
+### Neue Dateien
 
-Aktuell scrollt die **gesamte Seite** - nicht die linke Spalte. Der sticky-Container braucht einen scrollbaren Kontext.
+| Pfad | Beschreibung |
+|------|--------------|
+| `src/config/systemWidgets.ts` | Widget-Registry (alle 7 Widgets) |
+| `src/hooks/useWidgetPreferences.ts` | DB-Hook für Preferences |
+| `src/pages/portal/office/SystemWidgetsTab.tsx` | Tab für Systemwidget-Verwaltung |
+| `src/components/office/SystemWidgetCard.tsx` | Widget-Karte mit Toggle |
+| `src/components/office/SystemWidgetDetailDrawer.tsx` | Detail-Drawer |
+| `src/components/dashboard/widgets/FinanceWidget.tsx` | Stub |
+| `src/components/dashboard/widgets/NewsWidget.tsx` | Stub |
+| `src/components/dashboard/widgets/SpaceWidget.tsx` | Stub |
+| `src/components/dashboard/widgets/QuoteWidget.tsx` | Stub |
+| `src/components/dashboard/widgets/RadioWidget.tsx` | Stub |
+| `src/pages/admin/armstrong/ArmstrongIntegrations.tsx` | Zone 1 Registry Viewer |
 
-### Lösung
-Die Layout-Struktur so ändern, dass die **linke Spalte scrollt** während die rechte fixed bleibt:
+### Zu modifizierende Dateien
 
-```tsx
-{/* Main Content - Fixed Height Layout */}
-<div className="h-[calc(100vh-5rem)]"> {/* Header-Höhe abziehen */}
-  <div className="h-full grid lg:grid-cols-3 gap-8 p-6">
-    {/* Left Column - SCROLLBAR */}
-    <div className="lg:col-span-2 overflow-y-auto pr-4 space-y-8">
-      {/* ... Content ... */}
-    </div>
-
-    {/* Right Column - FIXED (nicht sticky, sondern implizit fixed durch Parent) */}
-    <div className="lg:col-span-1 overflow-y-auto">
-      <InvestmentSliderPanel ... />
-    </div>
-  </div>
-</div>
-```
-
-**Alternative (einfacher):**
-Den gesamten Container mit `position: relative` und definierter Höhe versehen, sodass `sticky` korrekt funktioniert.
-
-```tsx
-<div className="relative min-h-screen">
-  <div className="grid lg:grid-cols-3 gap-8 p-6">
-    {/* Left - Normal scroll */}
-    <div className="lg:col-span-2 space-y-8">
-      ...
-    </div>
-
-    {/* Right - Sticky */}
-    <div className="hidden lg:block">
-      <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto">
-        <InvestmentSliderPanel ... />
-      </div>
-    </div>
-  </div>
-</div>
-```
-
-**Betroffene Datei:** `src/pages/portal/investments/InvestmentExposePage.tsx`
+| Pfad | Änderungen |
+|------|------------|
+| `src/pages/portal/office/WidgetsTab.tsx` | Tabs-Struktur mit 2 Tabs |
+| `src/pages/portal/PortalDashboard.tsx` | Integration von useWidgetPreferences |
+| `src/types/widget.ts` | SystemWidgetType erweitern |
+| `src/router/ManifestRouter.tsx` | Route für Integrations-Page |
+| `src/pages/admin/armstrong/ArmstrongDashboard.tsx` | Quick-Link hinzufügen |
 
 ---
 
-## Problem 3: Summen-Strich nicht aligned im T-Konto
+## F) API-Adapter Blueprint (Zukunft)
 
-### Ursache
-Linke Spalte: 2 Zeilen (Mieteinnahmen, Steuerersparnis)
-Rechte Spalte: 3 Zeilen (Zinsen, Tilgung, Verwaltung)
+Für Phase 2 (echte API-Anbindung) werden Edge Functions benötigt:
 
-Die `border-t` vor Σ erscheint auf unterschiedlicher Höhe.
-
-### Lösung A: CSS Grid mit gleichen Zeilen
-Beide Spalten mit festem Grid-Layout, sodass die Summenzeile immer in derselben Grid-Row ist:
-
-```tsx
-<div className="grid md:grid-cols-2 gap-0 border rounded-lg overflow-hidden">
-  {/* Linke Spalte */}
-  <div className="p-4 bg-green-50/50 border-l-4 border-l-green-500">
-    <div className="grid grid-rows-[auto_1fr_auto] min-h-[160px]">
-      <h4>Einnahmen p.a.</h4>
-      
-      {/* Content - flexibel */}
-      <div className="space-y-2">
-        <div>+ Mieteinnahmen...</div>
-        <div>+ Steuerersparnis...</div>
-      </div>
-      
-      {/* Footer - immer unten */}
-      <div className="border-t pt-2 mt-auto">
-        <div>Σ Einnahmen</div>
-      </div>
-    </div>
-  </div>
-
-  {/* Rechte Spalte - identische Struktur */}
-  <div className="p-4 bg-red-50/50 border-l-4 border-l-red-500">
-    <div className="grid grid-rows-[auto_1fr_auto] min-h-[160px]">
-      <h4>Ausgaben p.a.</h4>
-      
-      <div className="space-y-2">
-        <div>− Zinsen...</div>
-        <div>− Tilgung...</div>
-        <div>− Verwaltung...</div>
-      </div>
-      
-      <div className="border-t pt-2 mt-auto">
-        <div>Σ Ausgaben</div>
-      </div>
-    </div>
-  </div>
-</div>
+```text
+supabase/functions/
+├── widget-finance/      # Finnhub/Alpha Vantage Proxy
+├── widget-news/         # RSS/NewsAPI Aggregator
+├── widget-space/        # NASA APOD / ISS Location
+├── widget-quote/        # ZenQuotes Proxy
+└── widget-radio/        # Radio Browser API Proxy
 ```
 
-Der Trick: `grid-rows-[auto_1fr_auto]` mit `min-h-[160px]` stellt sicher, dass:
-- Header (auto) passt sich an
-- Content (1fr) nimmt verfügbaren Platz
-- Footer (auto) ist immer am selben Y-Punkt
-
-### Lösung B: Flexbox mit mt-auto
-```tsx
-<div className="flex flex-col min-h-[160px]">
-  <h4>Header</h4>
-  <div className="flex-1 space-y-2">
-    {/* Variable Anzahl Zeilen */}
-  </div>
-  <div className="border-t pt-2 mt-auto">
-    Σ Summe
-  </div>
-</div>
-```
-
-**Betroffene Datei:** `src/components/investment/Haushaltsrechnung.tsx`
+**Wichtig:** Keine API-Keys im Client. Alle Requests über Edge Functions.
 
 ---
 
-## Technische Umsetzung
+## G) Akzeptanzkriterien
 
-### Dateien zu ändern
-
-| Datei | Änderungen |
-|-------|------------|
-| `src/pages/portal/investments/SucheTab.tsx` | Titelbilder aus document_links laden |
-| `src/pages/portal/investments/InvestmentExposePage.tsx` | Layout für korrektes Sticky-Verhalten |
-| `src/components/investment/Haushaltsrechnung.tsx` | T-Konto mit aligned Summenzeilen |
-
----
-
-## Akzeptanzkriterien
-
-| # | Test | Erwartung |
-|---|------|-----------|
-| 1 | Suchergebnis-Kacheln zeigen Titelbilder | ✓ Wenn is_title_image=true existiert |
-| 2 | Beim Scrollen bleibt Parameter-Panel rechts fixiert | ✓ Panel scrollt nicht mit |
-| 3 | Σ Einnahmen und Σ Ausgaben sind auf gleicher Höhe | ✓ Horizontale Linie durchgehend |
-| 4 | T-Konto funktioniert auch bei unterschiedlicher Zeilenanzahl | ✓ Flexibles Layout |
+| # | Kriterium | Test |
+|---|-----------|------|
+| 1 | KI-Office → Widgets zeigt 2 Tabs | Klick auf Menüpunkt |
+| 2 | Systemwidgets-Tab listet alle 7 Widgets | Visuelle Prüfung |
+| 3 | Toggle speichert in DB | Toggle → Page Reload → Zustand bleibt |
+| 4 | Sortierung per Drag & Drop funktioniert | Widgets umsortieren |
+| 5 | MOD-00 zeigt nur aktivierte Widgets | Widget deaktivieren → verschwindet |
+| 6 | Reihenfolge in MOD-00 entspricht sort_order | Umsortieren → Dashboard prüfen |
+| 7 | Stub-Widgets zeigen "Coming Soon" | Prüfung der Platzhalter |
+| 8 | Zone 1 Registry Viewer zeigt alle Widgets | /admin/armstrong/integrations |
+| 9 | Kein Autoplay bei Radio-Widget | Widget aktivieren, prüfen |
+| 10 | Empty State wenn alle deaktiviert | Alle Toggles aus → Hinweis |
 
 ---
 
-## Zusammenfassung
+## H) Governance-Regeln (Eingehalten)
 
-Die drei Probleme haben klar identifizierbare Ursachen:
+- Keine Write-Aktionen in SSOT durch Systemwidgets
+- Keine Autoplay-Funktionen
+- Externe API-Calls nur über Edge Functions (Blueprints angelegt)
+- Kostenmodell dokumentiert (aktuell alle "free" im MVP)
+- Datenschutz-Hinweise in Registry
 
-1. **Titelbild:** Query für Titelbilder fehlt komplett
-2. **Sticky:** CSS-Kontext erfordert definierte Höhe oder scroll-Container
-3. **Summen-Strich:** Flexbox mit `mt-auto` oder Grid mit festen Rows
+---
 
-Nach der Reparatur werden alle drei Ansichten (KAUFY, MOD-08, MOD-09) konsistent und benutzerfreundlich sein.
+## I) Zusammenfassung: Was ist Live vs Stub?
+
+| Widget | Status |
+|--------|--------|
+| Globe (Earth) | LIVE |
+| Wetter | LIVE |
+| Finanzen | STUB (UI-Platzhalter) |
+| News | STUB (UI-Platzhalter) |
+| Space | STUB (UI-Platzhalter) |
+| Zitat | STUB (UI-Platzhalter) |
+| Radio | STUB (UI-Platzhalter) |
+
+Die Stub-Widgets zeigen einen eleganten "Coming Soon" Platzhalter und können aktiviert/deaktiviert werden, um die Sortierung vorzubereiten.
+
+---
+
+## J) Technischer Hinweis
+
+Die bestehende `useWidgetOrder` Hook wird für die **Aufgabenwidgets** (Armstrong Tasks) weiterverwendet. Die neue `useWidgetPreferences` Hook ist nur für **Systemwidgets** zuständig. Beide werden in `PortalDashboard.tsx` kombiniert.
