@@ -135,6 +135,17 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
   const init = useCallback(async () => {
     if (!containerRef.current) return;
 
+    // maps3d ist (Stand heute) nicht zuverlässig in allen Browsern verfügbar (insb. Safari).
+    // In diesen Fällen schalten wir sauber auf den CSS-Fallback, statt „grau“ zu bleiben.
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isSafari = /safari/i.test(ua) && !/chrome|crios|android/i.test(ua);
+
+    if (isSafari) {
+      setApiError("3D-Globus ist in Safari aktuell nicht unterstützt – Fallback aktiv.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setApiError(null);
@@ -151,7 +162,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       const MapMode = lib?.MapMode;
 
       if (!Map3DElement) {
-        throw new Error("Map3DElement nicht verfügbar (maps3d) ");
+        throw new Error("Map3DElement nicht verfügbar (maps3d)");
       }
 
       const map = new Map3DElement({
