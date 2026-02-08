@@ -47,14 +47,18 @@ const KatalogDetailPage = () => {
     monthlyRent: 800,
   });
 
+  // Helper to validate UUID format
+  const isValidUUID = (str: string) => 
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
   // Fetch listing with property data
   const { data: listing, isLoading: isLoadingListing } = useQuery({
     queryKey: ['partner-listing-detail', publicId],
     queryFn: async () => {
       if (!publicId) return null;
 
-      // Query by public_id OR by id (fallback for listings without public_id)
-      const { data, error } = await supabase
+      // Build query - only check id if it's a valid UUID format
+      let query = supabase
         .from('listings')
         .select(`
           id,
@@ -73,10 +77,17 @@ const KatalogDetailPage = () => {
             year_built,
             annual_income
           )
-        `)
-        .or(`public_id.eq.${publicId},id.eq.${publicId}`)
-        .limit(1)
-        .maybeSingle();
+        `);
+
+      // If it's a valid UUID, check both id and public_id
+      // Otherwise, only check public_id (to avoid PostgreSQL cast error)
+      if (isValidUUID(publicId)) {
+        query = query.or(`public_id.eq.${publicId},id.eq.${publicId}`);
+      } else {
+        query = query.eq('public_id', publicId);
+      }
+
+      const { data, error } = await query.limit(1).maybeSingle();
 
       if (error || !data) {
         console.error('Listing query error:', error);
@@ -325,11 +336,7 @@ const KatalogDetailPage = () => {
                   <p className="text-2xl font-bold text-primary">
                     {formatCurrency(listing.asking_price)}
                   </p>
-                  {listing.commission_rate > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Provision: {listing.commission_rate}%
-                    </p>
-                  )}
+                  {/* Provision nur in Katalog-Liste sichtbar, nicht im Exposé */}
                 </div>
               </div>
             </CardHeader>

@@ -487,6 +487,10 @@ const KatalogTab = () => {
         <CardContent>
           <PropertyTable
             data={filteredListings}
+            onRowClick={(row) => {
+              const identifier = row.public_id || row.id;
+              navigate(`/portal/vertriebspartner/katalog/${identifier}`);
+            }}
             columns={columns}
             isLoading={isLoading}
             rowActions={renderRowActions}
