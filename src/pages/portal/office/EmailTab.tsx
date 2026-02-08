@@ -358,6 +358,86 @@ export function EmailTab() {
     enabled: !!activeAccount,
   });
 
+  // Delete mutation - moves email to trash or permanently deletes if already in trash
+  const deleteMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!activeAccount) throw new Error('No account selected');
+      
+      const message = messages.find((m: any) => m.id === messageId);
+      if (!message) throw new Error('Message not found');
+      
+      if (selectedFolder === 'trash') {
+        // Permanently delete if already in trash
+        const { error } = await supabase
+          .from('mail_messages')
+          .delete()
+          .eq('id', messageId);
+        if (error) throw error;
+      } else {
+        // Move to trash
+        const { error } = await supabase
+          .from('mail_messages')
+          .update({ folder: 'TRASH' })
+          .eq('id', messageId);
+        if (error) throw error;
+      }
+      return messageId;
+    },
+    onSuccess: (messageId) => {
+      toast.success(selectedFolder === 'trash' ? 'E-Mail endgültig gelöscht' : 'E-Mail in Papierkorb verschoben');
+      if (selectedEmail === messageId) {
+        setSelectedEmail(null);
+      }
+      refetchMessages();
+    },
+    onError: (error: any) => {
+      toast.error('Löschen fehlgeschlagen: ' + error.message);
+    },
+  });
+
+  // Archive mutation - moves email to archive
+  const archiveMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!activeAccount) throw new Error('No account selected');
+      
+      const { error } = await supabase
+        .from('mail_messages')
+        .update({ folder: 'ARCHIVE' })
+        .eq('id', messageId);
+      if (error) throw error;
+      return messageId;
+    },
+    onSuccess: (messageId) => {
+      toast.success('E-Mail archiviert');
+      if (selectedEmail === messageId) {
+        setSelectedEmail(null);
+      }
+      refetchMessages();
+    },
+    onError: (error: any) => {
+      toast.error('Archivieren fehlgeschlagen: ' + error.message);
+    },
+  });
+
+  // Toggle star mutation
+  const toggleStarMutation = useMutation({
+    mutationFn: async ({ messageId, isStarred }: { messageId: string; isStarred: boolean }) => {
+      const { error } = await supabase
+        .from('mail_messages')
+        .update({ is_starred: !isStarred })
+        .eq('id', messageId);
+      if (error) throw error;
+      return { messageId, newStarred: !isStarred };
+    },
+    onSuccess: ({ newStarred }) => {
+      toast.success(newStarred ? 'E-Mail markiert' : 'Markierung entfernt');
+      refetchMessages();
+    },
+    onError: (error: any) => {
+      toast.error('Fehler: ' + error.message);
+    },
+  });
+
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
@@ -638,13 +718,31 @@ export function EmailTab() {
                     <div className="flex items-start justify-between">
                       <h2 className="text-lg font-semibold">{email.subject || '(Kein Betreff)'}</h2>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => toggleStarMutation.mutate({ messageId: email.id, isStarred: email.is_starred })}
+                          disabled={toggleStarMutation.isPending}
+                        >
                           <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => archiveMutation.mutate(email.id)}
+                          disabled={archiveMutation.isPending}
+                        >
                           <Archive className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => deleteMutation.mutate(email.id)}
+                          disabled={deleteMutation.isPending}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
