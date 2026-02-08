@@ -72,6 +72,11 @@ export interface DevProject {
   holding_period_months: number;
   project_start_date: string | null;
   target_end_date: string | null;
+  // Marketing fields
+  kaufy_listed: boolean;
+  kaufy_featured: boolean;
+  landingpage_slug: string | null;
+  landingpage_enabled: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;

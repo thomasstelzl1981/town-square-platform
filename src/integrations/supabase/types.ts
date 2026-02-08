@@ -3955,6 +3955,7 @@ export type Database = {
         Row: {
           area_sqm: number | null
           balcony: boolean | null
+          commission_amount: number | null
           created_at: string
           current_rent: number | null
           floor: number | null
@@ -3981,6 +3982,7 @@ export type Database = {
         Insert: {
           area_sqm?: number | null
           balcony?: boolean | null
+          commission_amount?: number | null
           created_at?: string
           current_rent?: number | null
           floor?: number | null
@@ -4007,6 +4009,7 @@ export type Database = {
         Update: {
           area_sqm?: number | null
           balcony?: boolean | null
+          commission_amount?: number | null
           created_at?: string
           current_rent?: number | null
           floor?: number | null
@@ -4061,6 +4064,10 @@ export type Database = {
           developer_context_id: string
           holding_period_months: number | null
           id: string
+          kaufy_featured: boolean | null
+          kaufy_listed: boolean | null
+          landingpage_enabled: boolean | null
+          landingpage_slug: string | null
           name: string
           postal_code: string | null
           project_code: string
@@ -4088,6 +4095,10 @@ export type Database = {
           developer_context_id: string
           holding_period_months?: number | null
           id?: string
+          kaufy_featured?: boolean | null
+          kaufy_listed?: boolean | null
+          landingpage_enabled?: boolean | null
+          landingpage_slug?: string | null
           name: string
           postal_code?: string | null
           project_code: string
@@ -4115,6 +4126,10 @@ export type Database = {
           developer_context_id?: string
           holding_period_months?: number | null
           id?: string
+          kaufy_featured?: boolean | null
+          kaufy_listed?: boolean | null
+          landingpage_enabled?: boolean | null
+          landingpage_slug?: string | null
           name?: string
           postal_code?: string | null
           project_code?: string
@@ -9871,6 +9886,8 @@ export type Database = {
         Row: {
           auto_created: boolean | null
           created_at: string | null
+          dev_project_id: string | null
+          dev_project_unit_id: string | null
           doc_type_hint: string | null
           id: string
           name: string
@@ -9887,6 +9904,8 @@ export type Database = {
         Insert: {
           auto_created?: boolean | null
           created_at?: string | null
+          dev_project_id?: string | null
+          dev_project_unit_id?: string | null
           doc_type_hint?: string | null
           id?: string
           name: string
@@ -9903,6 +9922,8 @@ export type Database = {
         Update: {
           auto_created?: boolean | null
           created_at?: string | null
+          dev_project_id?: string | null
+          dev_project_unit_id?: string | null
           doc_type_hint?: string | null
           id?: string
           name?: string
@@ -9917,6 +9938,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "storage_nodes_dev_project_id_fkey"
+            columns: ["dev_project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_nodes_dev_project_unit_id_fkey"
+            columns: ["dev_project_unit_id"]
+            isOneToOne: false
+            referencedRelation: "dev_project_units"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "storage_nodes_parent_id_fkey"
             columns: ["parent_id"]
