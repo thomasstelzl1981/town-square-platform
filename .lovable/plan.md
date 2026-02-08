@@ -1,318 +1,118 @@
 
-# E-Mail-System Analyse & Reparaturplan
+## Kurzdiagnose (warum DNS/Resend nicht schuld ist)
 
-## Identifizierte Probleme
+Deine DNS-Änderungen (für re:send/Domain-Verification) haben keinen Einfluss darauf, ob IMAP beim Abrufen den E-Mail-Body liefert. Dass neue Testmails ankommen, bestätigt außerdem, dass IMAP grundsätzlich funktioniert.
 
-### Problem 1: IMAP-Synchronisation — NICHT IMPLEMENTIERT
+Der Grund, warum du überall „Kein Inhalt“ siehst, ist ein Bug in unserer IMAP-Sync-Implementierung:
 
-**Log-Beweis:**
-```
-ERROR Sync error: Error: IMAP sync requires external worker service - coming soon
-```
+- Wir rufen `client.fetch(...)` mit Optionen auf, die diese IMAP-Library gar nicht kennt (`body: true`)  
+- und wir lesen anschließend Felder aus, die es im Rückgabe-Objekt nicht gibt (`msg.body`, `msg.bodyParts`)
 
-**Code-Stelle:** `supabase/functions/sot-mail-sync/index.ts` Zeile 305
-```typescript
-throw new Error('IMAP sync requires external worker service - coming soon');
-```
+Die Library liefert Inhalte nur über:
+- `full: true` (dann kommt `msg.raw` + `msg.parts.TEXT`)
+- oder `bodyParts: [...]` (dann kommt `msg.parts[...]`)
 
-Die `syncImapMail()` Funktion ist nur ein Platzhalter, der einen Fehler wirft. Es gibt keine echte IMAP-Verbindung.
+Dadurch werden aktuell nie `body_text`, `body_html`, `snippet` befüllt → UI zeigt immer „Kein Inhalt“.
 
-**Status in Datenbank:**
-| Feld | Wert |
-|------|------|
-| email_address | thomas.stelzl@systemofatown.com |
-| provider | imap |
-| sync_status | **error** |
-| sync_error | IMAP sync requires external worker service - coming soon |
+Zusatz-Bug (nicht dein Hauptproblem, aber sichtbar):  
+Die Library entfernt Backslashes aus Flags (`Seen` statt `\\Seen`). Unser Code prüft aktuell `\\Seen`, daher bleiben Mails praktisch immer „ungelesen“.
 
 ---
 
-### Problem 2: SMTP-Versand — NICHT IMPLEMENTIERT
+## Ziel
 
-**Code-Stelle:** `supabase/functions/sot-mail-send/index.ts` Zeile 266
-```typescript
-return { 
-  success: false, 
-  error: 'SMTP sending requires external relay service - coming soon' 
-};
-```
-
-Die `sendImapMail()` Funktion für SMTP ist ebenfalls nur ein Platzhalter.
+1) Beim Sync werden Inhalte zuverlässig geholt und in `mail_messages.body_text/body_html/snippet` gespeichert.  
+2) Beim Klick auf eine Mail ist der Inhalt lesbar.  
+3) Flags (gelesen/markiert) werden korrekt gemappt.
 
 ---
 
-### Problem 3: "Neue E-Mail" Button — KEINE COMPOSE-UI
+## Umsetzungsschritte (konkret)
 
-**Code-Stelle:** `EmailTab.tsx` Zeile 480-482
-```typescript
-<Button className="w-full gap-2" size="sm" disabled={!hasConnectedAccount}>
-  <Plus className="h-4 w-4" />
-  Neue E-Mail
-</Button>
-```
-
-Der Button ist vorhanden, aber es gibt **keine onClick-Handler** und **keine Compose-Dialog-Komponente**. Der Button macht nichts.
-
----
-
-## Lösung: Deno-IMAP Library
-
-Es existiert eine produktionsreife IMAP-Library für Deno:
-
-**`jsr:@workingdevshero/deno-imap`**
-
-- ✅ Funktioniert mit Cloudflare Workers und Deno
-- ✅ TLS/SSL Support
-- ✅ PLAIN/LOGIN Authentication
-- ✅ Message operations (search, fetch, move, copy, delete)
-- ✅ Promise-based API
-- ✅ TypeScript Types
-
----
-
-## Reparaturplan
-
-### Phase 1: IMAP-Synchronisation implementieren
-
+### 1) IMAP Fetch korrekt machen (Edge Function `sot-mail-sync`)
 **Datei:** `supabase/functions/sot-mail-sync/index.ts`
 
-Ersetze den Platzhalter `syncImapMail()` mit echter IMAP-Verbindung:
+**Änderungen:**
+- Ersetze den aktuellen Fetch-Block:
 
-```typescript
-import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
+  - Entferne: `body: true` (existiert nicht)
+  - Nutze stattdessen: `full: true` (und optional `internalDate: true`, `size: true`)
 
-async function syncImapMail(
-  supabase: any, 
-  account: any, 
-  folder: string, 
-  limit: number
-): Promise<number> {
-  // Passwort aus Base64-encoded credentials_vault_key dekodieren
-  const credentials = JSON.parse(atob(account.credentials_vault_key));
-  
-  const client = new ImapClient({
-    host: account.imap_host,
-    port: account.imap_port,
-    tls: true,
-    username: account.email_address,
-    password: credentials.password,
-  });
+**Beispiel-Strategie:**
+- `client.fetch(range, { envelope:true, flags:true, uid:true, internalDate:true, bodyStructure:true, full:true })`
+- Danach für jeden `msg`:
+  - Raw-Message aus `msg.raw` (Uint8Array) auslesen
+  - MIME sauber parsen (siehe Schritt 2)
+  - `body_text`, `body_html`, `snippet` upserten
 
-  await client.connect();
-  await client.selectMailbox(folder);
-  
-  // Letzte N Nachrichten abrufen
-  const messages = await client.fetch(`1:${limit}`, {
-    envelope: true,
-    bodyStructure: true,
-    flags: true,
-  });
-
-  let synced = 0;
-  for (const msg of messages) {
-    await supabase.from('mail_messages').upsert({
-      account_id: account.id,
-      message_id: msg.uid.toString(),
-      folder: folder.toUpperCase(),
-      subject: msg.envelope?.subject || '(Kein Betreff)',
-      from_address: msg.envelope?.from?.[0]?.address || '',
-      from_name: msg.envelope?.from?.[0]?.name || '',
-      to_addresses: msg.envelope?.to?.map(t => t.address) || [],
-      is_read: msg.flags?.includes('\\Seen'),
-      is_starred: msg.flags?.includes('\\Flagged'),
-      received_at: msg.envelope?.date,
-    }, { onConflict: 'account_id,message_id' });
-    synced++;
-  }
-
-  client.disconnect();
-  return synced;
-}
-```
+**Warum das sicher wirkt:**  
+Die Library baut dann `BODY.PEEK[]` in den IMAP-FETCH ein. Ohne das kommt schlicht kein Inhalt zurück.
 
 ---
 
-### Phase 2: SMTP-Versand via Resend
+### 2) MIME/Multipart zuverlässig parsen (statt „string splits“)
+Nur `raw` in Text zu verwandeln reicht bei Multipart/Quoted-Printable/Base64 nicht.
 
-Da SMTP über TCP in Edge Functions komplex ist, nutzen wir Resend als Relay:
+**Vorschlag:**
+- In der Edge Function `npm:mailparser` verwenden (`simpleParser`), um aus `raw` sauber `text` und `html` zu extrahieren.
+- Danach:
+  - `body_text = parsed.text ?? null`
+  - `body_html = parsed.html ?? null` (falls string)
+  - `snippet` aus `body_text` oder aus HTML (Tags strippen)
 
-**Datei:** `supabase/functions/sot-mail-send/index.ts`
-
-```typescript
-import { Resend } from 'npm:resend@4.0.0';
-
-async function sendImapMail(account, email) {
-  // Option A: Resend als SMTP-Relay
-  const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-  
-  const { data, error } = await resend.emails.send({
-    from: `${account.display_name} <${account.email_address}>`,
-    to: email.to,
-    cc: email.cc,
-    bcc: email.bcc,
-    subject: email.subject,
-    html: email.bodyHtml || email.bodyText,
-    reply_to: account.email_address,
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true, messageId: data.id };
-}
-```
-
-**Hinweis:** Für Resend muss die Domain verifiziert werden (systemofatown.com).
+**Schutz gegen übergroße Inhalte (empfohlen):**
+- Body vor dem Speichern begrenzen (z.B. 200–500 KB pro Feld), um DB nicht aufzublähen.
+- Wenn zu groß: `snippet` speichern + `body_*` leer lassen und später „on demand“ nachladen (optional, siehe Schritt 4 optional).
 
 ---
 
-### Phase 3: Compose-Dialog erstellen
+### 3) Flags korrekt mappen (Seen/Flagged)
+**Datei:** `supabase/functions/sot-mail-sync/index.ts`
 
-**Datei:** `EmailTab.tsx` — Neue Komponente
+Aktuell:
+- `flags.includes('\\Seen')` funktioniert nicht, weil die Library `Seen` liefert.
 
-```typescript
-// ComposeEmailDialog Component
-function ComposeEmailDialog({ 
-  open, 
-  onOpenChange, 
-  accountId,
-  onSent 
-}: { 
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  accountId: string;
-  onSent: () => void;
-}) {
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [isSending, setIsSending] = useState(false);
-
-  const handleSend = async () => {
-    setIsSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-mail-send', {
-        body: {
-          accountId,
-          to: to.split(',').map(e => e.trim()),
-          subject,
-          bodyText: body,
-        },
-      });
-      
-      if (error || data?.error) throw new Error(data?.error || error.message);
-      
-      toast.success('E-Mail gesendet');
-      onSent();
-      onOpenChange(false);
-    } catch (error) {
-      toast.error('Senden fehlgeschlagen: ' + error.message);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Neue E-Mail</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <Input 
-            placeholder="An: empfaenger@domain.de" 
-            value={to} 
-            onChange={e => setTo(e.target.value)} 
-          />
-          <Input 
-            placeholder="Betreff" 
-            value={subject} 
-            onChange={e => setSubject(e.target.value)} 
-          />
-          <Textarea 
-            placeholder="Nachricht..." 
-            value={body} 
-            onChange={e => setBody(e.target.value)}
-            rows={10}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Abbrechen
-          </Button>
-          <Button onClick={handleSend} disabled={isSending || !to || !subject}>
-            {isSending ? <Loader2 className="animate-spin" /> : <Send />}
-            Senden
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
+**Fix:**
+- Prüfe auf beide Varianten oder normalisiere:
+  - `const normFlags = (msg.flags ?? []).map(f => f.replace(/^\\/, ''))`
+  - `isRead = normFlags.includes('Seen')`
+  - `isStarred = normFlags.includes('Flagged')`
 
 ---
 
-### Phase 4: Button mit Dialog verbinden
+### 4) (Optional, falls Performance/Timeouts später auffallen) Lazy-Load pro Mail
+Wenn sich herausstellt, dass `full:true` bei vielen Mails/Attachments zu langsam wird, implementieren wir zusätzlich eine zweite Backend-Funktion:
 
-```typescript
-// In EmailTab:
-const [showComposeDialog, setShowComposeDialog] = useState(false);
+- `sot-mail-fetch-body`:
+  - Input: `accountId`, `uid`
+  - macht `fetch('UID', { byUid:true, bodyParts:['TEXT'] oder full:true })`
+  - parsed und updatet nur diese eine Mail in `mail_messages`
 
-// Button aktualisieren:
-<Button 
-  className="w-full gap-2" 
-  size="sm" 
-  disabled={!hasConnectedAccount}
-  onClick={() => setShowComposeDialog(true)}
->
-  <Plus className="h-4 w-4" />
-  Neue E-Mail
-</Button>
+Frontend:
+- Wenn der User eine Mail anklickt und `body_*` leer ist → „Inhalt laden…“ und Trigger dieser Funktion.
 
-// Dialog einbinden:
-<ComposeEmailDialog
-  open={showComposeDialog}
-  onOpenChange={setShowComposeDialog}
-  accountId={activeAccount?.id || ''}
-  onSent={() => refetchMessages()}
-/>
-```
+Für deinen aktuellen Zustand (wenige Mails) ist Schritt 1–3 aber der schnellste und sauberste Fix.
 
 ---
 
-## Zusammenfassung der Änderungen
+## Verifikation (wie wir prüfen, dass es wirklich geht)
 
-| Datei | Änderung |
-|-------|----------|
-| `supabase/functions/sot-mail-sync/index.ts` | IMAP-Sync mit `deno-imap` Library |
-| `supabase/functions/sot-mail-send/index.ts` | SMTP via Resend-Relay |
-| `src/pages/portal/office/EmailTab.tsx` | ComposeEmailDialog + Button-Handler |
-
----
-
-## Voraussetzungen
-
-| Requirement | Status |
-|-------------|--------|
-| IONOS IMAP-Account | ✅ Vorhanden in DB |
-| RESEND_API_KEY | ⚠️ Muss hinzugefügt werden (für SMTP-Relay) |
-| Domain-Verifizierung | ⚠️ systemofatown.com bei Resend verifizieren |
+1) Sync im UI auslösen (oder automatisch beim Laden).
+2) Datenbankcheck (intern): `body_text_len/body_html_len` muss > 0 sein für mindestens die Testmails.
+3) UI: Mail anklicken → Inhalt sichtbar (Text oder HTML).
+4) UI: Read/Unread-State plausibel (nach Mark-Read später; falls wir das UI-Flagging schon drin haben).
 
 ---
 
-## Erwartetes Ergebnis
+## Risiken / Edge Cases
 
-Nach Implementierung:
-
-1. **Synchronisation:** E-Mails werden aus IONOS-Postfach abgerufen und in `mail_messages` gespeichert
-2. **Compose:** Klick auf "Neue E-Mail" öffnet Dialog
-3. **Senden:** E-Mails werden über Resend-Relay versendet (erscheint als `ihre@systemofatown.com`)
-4. **Sync-Status:** `connected` statt `error`
+- Multipart + Attachments: `mailparser` löst das zuverlässig.
+- HTML-only Mails: `body_html` wird gesetzt; UI rendert HTML.
+- Sehr große Mails: können Timeouts verursachen → dann Schritt 4 (Lazy Load) aktivieren.
 
 ---
 
-## Technischer Hinweis
-
-Die `deno-imap` Library öffnet TCP-Verbindungen. Dies funktioniert in Supabase Edge Functions, kann aber bei hoher Last zu Timeouts führen. Für Production-Scale wäre ein dedizierter IMAP-Sync-Worker (z.B. via Cron) empfehlenswert.
+## Optional nächste Verbesserungen (nach dem Fix)
+- Button „Inhalt nachladen“ direkt in der Detailansicht, wenn Body fehlt
+- Attachments anzeigen & downloaden (aus BodyStructure/Parts)
+- „Als gelesen markieren“ beim Öffnen (IMAP STORE + DB Update)
