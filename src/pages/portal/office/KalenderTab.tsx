@@ -22,6 +22,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -31,7 +32,8 @@ import {
   MapPin,
   User,
   Building,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
 interface CalendarEvent {
@@ -44,10 +46,14 @@ interface CalendarEvent {
   location: string | null;
   contact_id: string | null;
   property_id: string | null;
+  google_event_id?: string | null;
+  microsoft_event_id?: string | null;
+  synced_from?: string | null;
 }
 
 export function KalenderTab() {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -152,6 +158,154 @@ export function KalenderTab() {
   // Adjust for Monday start (German calendar)
   const adjustedFirstDay = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
+  // === MOBILE: Vereinfachte Listenansicht ===
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={goToPrevMonth}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-lg font-semibold min-w-[140px] text-center">
+              {format(currentMonth, 'MMMM yyyy', { locale: de })}
+            </h2>
+            <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={handleOpenCreate}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw]">
+              <DialogHeader>
+                <DialogTitle>Neuer Termin</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="m-title">Titel *</Label>
+                  <Input
+                    id="m-title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="z.B. Besichtigung"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="m-all_day">Ganztägig</Label>
+                  <Switch
+                    id="m-all_day"
+                    checked={formData.all_day}
+                    onCheckedChange={(checked) => setFormData({ ...formData, all_day: checked })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="m-start_at">Start *</Label>
+                  <Input
+                    id="m-start_at"
+                    type={formData.all_day ? 'date' : 'datetime-local'}
+                    value={formData.start_at}
+                    onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="m-location">Ort</Label>
+                  <Input
+                    id="m-location"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button 
+                  onClick={() => createMutation.mutate(formData)}
+                  disabled={!formData.title || !formData.start_at || createMutation.isPending}
+                >
+                  {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Erstellen
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Mobile: Schnellzugriff Heute */}
+        <Button variant="outline" size="sm" className="w-full" onClick={goToToday}>
+          <CalendarIcon className="h-4 w-4 mr-2" />
+          Heute
+        </Button>
+
+        {/* Mobile: Tagesliste für aktuellen Monat */}
+        <Card>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[calc(100vh-320px)]">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-center py-8">
+                  <CalendarIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Keine Termine in diesem Monat
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="p-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{event.title}</h4>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {event.all_day ? (
+                              <span>Ganztägig</span>
+                            ) : (
+                              <span>{format(new Date(event.start_at), 'HH:mm')}</span>
+                            )}
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{event.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-medium">
+                            {format(new Date(event.start_at), 'd. MMM', { locale: de })}
+                          </div>
+                          {event.synced_from && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {event.synced_from === 'google' ? '📅 Google' : '📅 MS'}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // === DESKTOP: Original 12-Column Grid ===
   return (
     <div className="grid grid-cols-12 gap-6">
       {/* Calendar View */}

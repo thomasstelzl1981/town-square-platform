@@ -43,6 +43,10 @@ interface Contact {
   notes: string | null;
   public_id: string;
   created_at: string;
+  google_contact_id?: string | null;
+  microsoft_contact_id?: string | null;
+  synced_from?: string | null;
+  synced_at?: string | null;
 }
 
 const columns: Column<Contact>[] = [
@@ -55,7 +59,14 @@ const columns: Column<Contact>[] = [
           <User className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <p className="font-medium">{contact.first_name} {contact.last_name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{contact.first_name} {contact.last_name}</p>
+            {contact.synced_from && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                {contact.synced_from === 'google' ? '📧 Google' : contact.synced_from === 'microsoft' ? '📧 MS' : ''}
+              </span>
+            )}
+          </div>
           {contact.company && (
             <p className="text-xs text-muted-foreground">{contact.company}</p>
           )}

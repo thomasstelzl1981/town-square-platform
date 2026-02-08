@@ -31,9 +31,17 @@ interface ModuleHowItWorksProps {
   className?: string;
 }
 
+// Mobile-allowed routes for MOD-02 (KI-Office)
+const MOBILE_ALLOWED_ROUTES = ['/portal/office/brief', '/portal/office/widgets'];
+
 export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) {
   const isMobile = useIsMobile();
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Filter subTiles for mobile - only show Brief and Widgets for MOD-02
+  const displayTiles = isMobile && content.moduleCode === 'MOD-02'
+    ? content.subTiles.filter(tile => MOBILE_ALLOWED_ROUTES.some(r => tile.route.includes(r)))
+    : content.subTiles;
 
   // === MOBILE: Kompakte Ansicht ===
   if (isMobile) {
@@ -45,10 +53,10 @@ export function ModuleHowItWorks({ content, className }: ModuleHowItWorksProps) 
           <p className="text-sm text-muted-foreground">{content.oneLiner}</p>
         </div>
 
-        {/* SubTile Buttons — PRIMÄRE NAVIGATION */}
-        {content.subTiles.length > 0 && (
+        {/* SubTile Buttons — PRIMÄRE NAVIGATION (filtered for mobile) */}
+        {displayTiles.length > 0 && (
           <div className="grid gap-2">
-            {content.subTiles.map((tile) => (
+            {displayTiles.map((tile) => (
               <Button
                 key={tile.route}
                 variant="outline"
