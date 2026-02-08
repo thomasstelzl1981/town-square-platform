@@ -2,13 +2,14 @@
  * SOT-MAIL-SEND Edge Function
  * 
  * Sends emails via connected mail accounts:
+ * - IMAP: Uses SMTP via denomailer
  * - Google: Uses Gmail API
  * - Microsoft: Uses Graph API
- * - IMAP: Uses SMTP (placeholder)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,7 +93,7 @@ serve(async (req) => {
     } else if (account.provider === 'microsoft') {
       result = await sendMicrosoftMail(account, { to, cc, bcc, subject, bodyHtml, bodyText, replyToMessageId });
     } else if (account.provider === 'imap') {
-      result = await sendImapMail(account, { to, cc, bcc, subject, bodyHtml, bodyText });
+      result = await sendSmtpMail(account, { to, cc, bcc, subject, bodyHtml, bodyText });
     } else {
       result = { success: false, error: 'Unknown provider' };
     }
@@ -120,6 +121,87 @@ serve(async (req) => {
   }
 });
 
+// Send email via SMTP using denomailer
+async function sendSmtpMail(
+  account: any,
+  email: {
+    to: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject: string;
+    bodyHtml?: string;
+    bodyText?: string;
+  }
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  console.log(`SMTP send for ${account.email_address} via ${account.smtp_host}:${account.smtp_port}`);
+  
+  // Decode credentials from base64
+  let password: string;
+  try {
+    const credentials = JSON.parse(atob(account.credentials_vault_key));
+    password = credentials.password;
+    if (!password) throw new Error('Password not found in credentials');
+  } catch (e) {
+    return { success: false, error: 'Failed to decode credentials: ' + (e as Error).message };
+  }
+
+  // Determine TLS mode based on port
+  // Port 465 = implicit TLS (tls: true)
+  // Port 587 = STARTTLS (tls: false, but uses STARTTLS command)
+  const port = account.smtp_port || 587;
+  const useTls = port === 465;
+
+  const client = new SMTPClient({
+    connection: {
+      hostname: account.smtp_host,
+      port: port,
+      tls: useTls,
+      auth: {
+        username: account.email_address,
+        password: password,
+      },
+    },
+    debug: true,
+  });
+
+  try {
+    console.log('Connecting to SMTP server...');
+    await client.connect();
+    console.log('Connected, sending email...');
+
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${account.smtp_host}>`;
+
+    await client.send({
+      from: {
+        mail: account.email_address,
+        name: account.display_name || account.email_address.split('@')[0],
+      },
+      to: email.to.map(addr => ({ mail: addr })),
+      cc: email.cc?.map(addr => ({ mail: addr })),
+      bcc: email.bcc?.map(addr => ({ mail: addr })),
+      subject: email.subject,
+      content: email.bodyText || '',
+      html: email.bodyHtml,
+      headers: {
+        'Message-ID': messageId,
+      },
+    });
+
+    await client.close();
+    console.log('Email sent successfully');
+    return { success: true, messageId };
+
+  } catch (error: any) {
+    console.error('SMTP send failed:', error);
+    try {
+      await client.close();
+    } catch {
+      // Ignore close errors
+    }
+    return { success: false, error: error.message || 'SMTP send failed' };
+  }
+}
+
 // Send email via Gmail API
 async function sendGoogleMail(
   account: any,
@@ -138,7 +220,6 @@ async function sendGoogleMail(
   }
 
   // Build RFC 2822 email message
-  const boundary = `boundary_${Date.now()}`;
   const body = email.bodyHtml || email.bodyText || '';
   const contentType = email.bodyHtml ? 'text/html' : 'text/plain';
   
@@ -236,32 +317,4 @@ async function sendMicrosoftMail(
   }
 
   return { success: true, messageId: `ms_${Date.now()}` };
-}
-
-// Send email via SMTP (placeholder)
-async function sendImapMail(
-  account: any,
-  email: {
-    to: string[];
-    cc?: string[];
-    bcc?: string[];
-    subject: string;
-    bodyHtml?: string;
-    bodyText?: string;
-  }
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // SMTP sending requires a TCP connection library
-  // For Deno edge functions, this needs Nodemailer or similar
-  
-  console.log(`SMTP send requested for ${account.email_address}`);
-  console.log(`To: ${email.to.join(', ')}, Subject: ${email.subject}`);
-  
-  // In production, you would:
-  // 1. Use a third-party SMTP relay (Resend, SendGrid, etc.)
-  // 2. Or use a worker service with SMTP capabilities
-  
-  return { 
-    success: false, 
-    error: 'SMTP sending requires external relay service - coming soon' 
-  };
 }
