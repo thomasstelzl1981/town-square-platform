@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { YearlyData } from '@/hooks/useInvestmentEngine';
 import { TrendingUp } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MasterGraphProps {
   projection: YearlyData[];
@@ -14,13 +15,14 @@ interface MasterGraphProps {
   variant?: 'full' | 'compact';
 }
 
-export function MasterGraph({ 
+export function MasterGraph({
   projection, 
   height = 320, 
   showLegend = true,
   title = '40-Jahres-Projektion',
   variant = 'full'
 }: MasterGraphProps) {
+  const isMobile = useIsMobile();
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { 
       style: 'currency', 
@@ -127,20 +129,26 @@ export function MasterGraph({
           </ResponsiveContainer>
         </div>
 
-        {/* Summary Stats */}
+        {/* Summary Stats — Mobile: 2-column stacked, Desktop: 3-column */}
         {variant === 'full' && startYear && endYear && (
-          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
-            <div className="text-center">
+          <div className={`grid gap-3 mt-4 pt-4 border-t ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            <div className={`text-center ${isMobile ? '' : ''}`}>
               <p className="text-xs text-muted-foreground">Startwert</p>
-              <p className="font-semibold">{formatCurrency(startYear.propertyValue)}</p>
+              <p className={`font-semibold ${isMobile ? 'text-sm' : ''}`}>
+                {formatCurrency(startYear.propertyValue)}
+              </p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">Endwert (Jahr 40)</p>
-              <p className="font-semibold">{formatCurrency(endYear.propertyValue)}</p>
+              <p className="text-xs text-muted-foreground">Endwert (J40)</p>
+              <p className={`font-semibold ${isMobile ? 'text-sm' : ''}`}>
+                {formatCurrency(endYear.propertyValue)}
+              </p>
             </div>
-            <div className="text-center">
+            <div className={`text-center ${isMobile ? 'col-span-2' : ''}`}>
               <p className="text-xs text-muted-foreground">Vermögenszuwachs</p>
-              <p className="font-semibold text-green-600">+{formatCurrency(netWealthGain)}</p>
+              <p className={`font-semibold text-green-600 ${isMobile ? 'text-base' : ''}`}>
+                +{formatCurrency(netWealthGain)}
+              </p>
             </div>
           </div>
         )}
