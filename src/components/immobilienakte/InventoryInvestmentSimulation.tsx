@@ -10,8 +10,6 @@
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import {
   ComposedChart,
   Area,
@@ -31,8 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { TrendingUp, Calculator } from 'lucide-react';
+import { Calculator, Minus, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 interface SimulationData {
   // Property data
@@ -65,7 +64,45 @@ interface ProjectionRow {
   zins: number;
   tilgung: number;
   annuitaet: number;
-  monatsbelastung: number;
+  cashflow: number;
+}
+
+interface StepperProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+}
+
+function CompactStepper({ label, value, onChange, min, max, step, suffix = '%' }: StepperProps) {
+  const decrease = () => onChange(Math.max(min, +(value - step).toFixed(1)));
+  const increase = () => onChange(Math.min(max, +(value + step).toFixed(1)));
+  
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+      <button 
+        onClick={decrease}
+        disabled={value <= min}
+        className="w-8 h-8 flex items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-50"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-semibold">{value.toFixed(1)}{suffix}</p>
+      </div>
+      <button 
+        onClick={increase}
+        disabled={value >= max}
+        className="w-8 h-8 flex items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimulationProps) {
@@ -101,7 +138,7 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
         zins: Math.round(interest),
         tilgung: Math.round(amortization),
         annuitaet: Math.round(totalAnnuity),
-        monatsbelastung: Math.round(totalAnnuity / 12),
+        cashflow: Math.round(currentRent - totalAnnuity),
       });
 
       // Next year calculations
@@ -125,55 +162,33 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
   return (
     <div className="space-y-6">
       {/* Header with context info */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calculator className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">Investment-Simulation</h3>
-          {data.contextName && (
-            <Badge variant="secondary">{data.contextName}</Badge>
-          )}
-        </div>
+      <div className="flex items-center gap-2">
+        <Calculator className="h-5 w-5 text-primary" />
+        <h3 className="font-semibold">Investment-Simulation</h3>
+        {data.contextName && (
+          <span className="px-2 py-1 text-xs rounded-md bg-muted text-muted-foreground">{data.contextName}</span>
+        )}
       </div>
 
-      {/* Sliders */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Annahmen anpassen
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm">Wertzuwachs p.a.</label>
-              <Badge variant="outline">{formatPercent(valueGrowth)}</Badge>
-            </div>
-            <Slider
-              value={[valueGrowth]}
-              onValueChange={([v]) => setValueGrowth(v)}
-              min={0}
-              max={5}
-              step={0.1}
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm">Mietsteigerung p.a.</label>
-              <Badge variant="outline">{formatPercent(rentGrowth)}</Badge>
-            </div>
-            <Slider
-              value={[rentGrowth]}
-              onValueChange={([v]) => setRentGrowth(v)}
-              min={0}
-              max={5}
-              step={0.1}
-              className="w-full"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Kompakte Annahmen-Stepper */}
+      <div className="grid grid-cols-2 gap-3">
+        <CompactStepper
+          label="Wertzuwachs p.a."
+          value={valueGrowth}
+          onChange={setValueGrowth}
+          min={0}
+          max={5}
+          step={0.5}
+        />
+        <CompactStepper
+          label="Mietsteigerung p.a."
+          value={rentGrowth}
+          onChange={setRentGrowth}
+          min={0}
+          max={5}
+          step={0.5}
+        />
+      </div>
 
       {/* Fixed Parameters Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -288,15 +303,15 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
                 <TableRow>
                   <TableHead>Jahr</TableHead>
                   <TableHead className="text-right">Miete</TableHead>
-                  {hasFinancing && (
-                    <>
-                      <TableHead className="text-right">Annuität</TableHead>
-                      <TableHead className="text-right">Zinsen</TableHead>
-                      <TableHead className="text-right">Tilgung</TableHead>
-                      <TableHead className="text-right">Mtl. Rate</TableHead>
-                      <TableHead className="text-right">Restschuld</TableHead>
-                    </>
-                  )}
+                    {hasFinancing && (
+                      <>
+                        <TableHead className="text-right">Annuität</TableHead>
+                        <TableHead className="text-right">Zinsen</TableHead>
+                        <TableHead className="text-right">Tilgung</TableHead>
+                        <TableHead className="text-right">Cashflow</TableHead>
+                        <TableHead className="text-right">Restschuld</TableHead>
+                      </>
+                    )}
                   <TableHead className="text-right">Verkehrswert</TableHead>
                   <TableHead className="text-right">Nettovermögen</TableHead>
                 </TableRow>
@@ -311,7 +326,12 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
                         <TableCell className="text-right">{formatCurrency(row.annuitaet)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(row.zins)}</TableCell>
                         <TableCell className="text-right text-blue-600">{formatCurrency(row.tilgung)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(row.monatsbelastung)}</TableCell>
+                        <TableCell className={cn(
+                          "text-right font-medium",
+                          row.cashflow >= 0 ? "text-green-600" : "text-destructive"
+                        )}>
+                          {formatCurrency(row.cashflow)}
+                        </TableCell>
                         <TableCell className="text-right text-destructive">
                           {row.restschuld > 0 ? formatCurrency(row.restschuld) : '–'}
                         </TableCell>
