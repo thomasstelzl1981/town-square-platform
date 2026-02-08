@@ -5,6 +5,8 @@
  * - IMAP: Uses SMTP via nodemailer
  * - Google: Uses Gmail API
  * - Microsoft: Uses Graph API
+ * 
+ * After sending, the email is stored locally in mail_messages for the Sent folder.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -100,6 +102,47 @@ serve(async (req) => {
 
     if (result.success) {
       console.log(`Email sent successfully: ${result.messageId}`);
+      
+      // Store the sent email in mail_messages for the SENT folder
+      try {
+        const sentAt = new Date().toISOString();
+        const displayName = account.display_name || account.email_address.split('@')[0];
+        
+        // Create a snippet from body text
+        const snippet = bodyText 
+          ? bodyText.substring(0, 200).replace(/\s+/g, ' ').trim()
+          : (bodyHtml ? stripHtmlTags(bodyHtml).substring(0, 200) : '');
+        
+        const { error: insertError } = await supabase
+          .from('mail_messages')
+          .insert({
+            account_id: accountId,
+            message_id: result.messageId || `sent_${Date.now()}`,
+            folder: 'SENT',
+            subject: subject,
+            from_address: account.email_address,
+            from_name: displayName,
+            to_addresses: to,
+            body_text: bodyText || null,
+            body_html: bodyHtml || null,
+            snippet: snippet || '(Kein Inhalt)',
+            is_read: true, // Sent emails are always "read"
+            is_starred: false,
+            has_attachments: false,
+            received_at: sentAt,
+          });
+        
+        if (insertError) {
+          console.error('Error storing sent email:', insertError);
+          // Don't fail the request - email was sent successfully
+        } else {
+          console.log('Sent email stored in mail_messages');
+        }
+      } catch (storeError) {
+        console.error('Error storing sent email:', storeError);
+        // Don't fail the request - email was sent successfully
+      }
+      
       return new Response(
         JSON.stringify({ success: true, messageId: result.messageId }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -120,6 +163,20 @@ serve(async (req) => {
     );
   }
 });
+
+// Simple HTML tag stripper for creating snippets
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 // Send email via SMTP using nodemailer
 async function sendSmtpMail(

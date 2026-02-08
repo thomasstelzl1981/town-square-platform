@@ -276,6 +276,16 @@ function truncate(str: string, maxLen: number): string {
 }
 
 // IMAP Mail sync using @workingdevshero/deno-imap with manual MIME parsing
+// Map standard folder names to common IMAP folder names
+const FOLDER_MAPPINGS: Record<string, string[]> = {
+  'INBOX': ['INBOX'],
+  'SENT': ['Sent', 'Sent Items', 'Sent Messages', 'Gesendet', 'INBOX.Sent', 'INBOX.Gesendet', 'Gesendete Objekte'],
+  'DRAFTS': ['Drafts', 'Draft', 'Entwürfe', 'INBOX.Drafts', 'INBOX.Entwürfe'],
+  'TRASH': ['Trash', 'Deleted', 'Deleted Items', 'Papierkorb', 'Gelöscht', 'INBOX.Trash', 'INBOX.Papierkorb'],
+  'ARCHIVE': ['Archive', 'Archiv', 'All Mail', 'INBOX.Archive', 'INBOX.Archiv'],
+  'SPAM': ['Spam', 'Junk', 'Junk E-Mail', 'INBOX.Spam', 'INBOX.Junk'],
+};
+
 async function syncImapMail(
   supabase: any, 
   account: any, 
@@ -308,11 +318,36 @@ async function syncImapMail(
     await client.connect();
     console.log('Authenticating...');
     await client.authenticate();
-    console.log('Connected, selecting mailbox:', folder);
     
-    // Select mailbox
-    const mailbox = await client.selectMailbox(folder);
-    console.log(`Mailbox selected: ${mailbox.exists} messages exist`);
+    // Map the requested folder to possible IMAP folder names
+    const normalizedFolder = folder.toUpperCase();
+    const possibleFolders = FOLDER_MAPPINGS[normalizedFolder] || [folder];
+    
+    console.log(`Looking for folder: ${folder}, trying: ${possibleFolders.join(', ')}`);
+    
+    // Try each possible folder name until one works
+    let mailbox: any = null;
+    let actualFolderName = folder;
+    
+    for (const tryFolder of possibleFolders) {
+      try {
+        console.log(`Trying mailbox: ${tryFolder}`);
+        mailbox = await client.selectMailbox(tryFolder);
+        actualFolderName = tryFolder;
+        console.log(`Successfully selected mailbox: ${tryFolder} (${mailbox.exists} messages)`);
+        break;
+      } catch (e) {
+        console.log(`Mailbox ${tryFolder} not found, trying next...`);
+      }
+    }
+    
+    if (!mailbox) {
+      console.log(`Could not find any matching mailbox for ${folder}`);
+      await client.disconnect();
+      return 0;
+    }
+    
+    console.log(`Mailbox selected: ${actualFolderName} with ${mailbox.exists} messages`);
 
     if (!mailbox.exists || mailbox.exists === 0) {
       console.log('No messages in mailbox');
