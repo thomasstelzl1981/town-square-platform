@@ -1,179 +1,194 @@
 
-# Bugfix-Plan: Partner-Exposé mit Bildern und Unterlagen
+# Umfassende Analyse: Kaufy-Website, Partner-Portal und Golden Path
 
-## Zusammenfassung
+## Zusammenfassung der Prüfung
 
-Die Investment-Suche funktioniert jetzt (Objekte werden angezeigt), aber das **vollständige Verkaufsexposé** mit Bildern und Unterlagen ist für Partner im MOD-09 nicht sichtbar. Die Bilder existieren im Storage, sind aber nicht in die Partner-Ansicht integriert.
+Nach einer detaillierten Untersuchung des gesamten Datenflusses von MOD-04 bis zur KAUFY-Website und zum Partner-Portal wurden **funktionale Erfolge** sowie **konkrete Verbesserungspotentiale** identifiziert.
 
-## Problemanalyse
+---
 
-### Ist-Zustand
-| Bereich | Status |
+## Teil 1: Was funktioniert
+
+### Golden Path - Datenfluss
+| Station | Status |
 |---------|--------|
-| Bilder im Storage | 5 Bilder physisch vorhanden |
-| document_links | Korrekt verknüpft mit Property |
-| RLS für listings/properties | Öffentlich lesbar (Kaufy-Channel) |
-| RLS für documents/document_links | NUR für eingeloggte Nutzer |
-| KaufyExpose | Zeigt Platzhalter-Icon statt Bilder |
-| Partner-Modul (KatalogTab) | Zeigt nur Metadaten, keine Bilder/Dokumente |
+| MOD-04 Immobilienakte | ✅ Property- und Listing-Daten korrekt gespeichert |
+| MOD-06 Verkaufsexposé | ✅ Listing-Publikationen für "kaufy" und "partner_network" aktiv |
+| Zone 1 Sales Desk | ✅ Listings mit korrekten Channels verknüpft |
+| KAUFY Website | ✅ Listings werden geladen und angezeigt |
+| Partner-Katalog | ✅ Listings für Partner sichtbar |
 
-### Soll-Zustand (basierend auf Benutzerantworten)
-- **Öffentlich sichtbar:** Nur Bilder (auf Kaufy-Website)
-- **Partner-Modul:** Vollständiges Exposé mit Bildern + PDFs (Energieausweis, Teilungserklärung, Grundbuch)
-- **Ort:** Im Partner-Modul nach Login
+### Bilder im DMS
+Die Bilder sind physisch im Storage vorhanden:
+- `a0000000-0000-4000-a000-000000000001/demo/fotos/demo_aussen_1.jpg` ✅
+- `a0000000-0000-4000-a000-000000000001/demo/fotos/demo_wohnzimmer_1.jpg` ✅
+- usw.
 
-## Lösung in 3 Teilen
+Die `document_links` Verknüpfungen sind korrekt eingerichtet mit `object_type='property'`.
 
-### Teil 1: Öffentliche Bilder-RLS für Kaufy (Zone 3)
+---
 
-Neue RLS-Policy, die anonymen Lesezugriff auf Bilder ermöglicht, die zu aktiven Kaufy-Listings gehören:
+## Teil 2: Identifizierte Probleme
+
+### Problem 1: Armstrong Chatbot auf Mobile (Zone 3) — KRITISCH
+
+**Ist-Zustand:**
+Der Armstrong-Chatbot in Zone 3 (KAUFY) verwendet einen **Floating Button** rechts unten, der bei Klick ein Bottom-Sheet öffnet. Dies ist **nicht** die gewünschte "immer sichtbare" Chat-Bar.
+
+**Soll-Zustand (laut Benutzeranforderung):**
+Eine **fixierte Input-Bar am unteren Bildschirmrand** — identisch zur Portal-Lösung (`ArmstrongInputBar.tsx`) — die immer sichtbar ist und bei Klick das Chat-Sheet öffnet.
+
+**Betroffene Datei:** `src/pages/zone3/kaufy/KaufyLayout.tsx`
+
+**Lösung:**
+Zone 3 muss eine eigene `ArmstrongInputBar`-Variante erhalten, die am unteren Bildschirmrand fixiert ist (ähnlich wie im Portal).
+
+### Problem 2: Grafiken auf Mobile Portrait
+
+**MasterGraph:**
+- Die Recharts-Grafik ist auf 390px-Breite lesbar
+- Die Summary-Stats am unteren Rand (3-Spalten-Grid) sind auf Mobile etwas eng, aber funktional
+
+**Haushaltsrechnung:**
+- Die mobile Optimierung (Stacking-Layout) wurde implementiert ✅
+- Monatliche Werte werden auf Mobile ausgeblendet ✅
+
+**DetailTable40Jahre:**
+- Mobile-Kartenansicht wurde implementiert ✅
+- Die Desktop-9-Spalten-Tabelle ist auf Mobile nicht sichtbar
+
+**Status:** Größtenteils gelöst, aber kleinere UX-Verbesserungen möglich.
+
+### Problem 3: Fehlerhafte Font-Ladung
+
+**Console-Fehler:**
+```
+Failed to load resource: 404 
+- D-DIN.woff2
+- D-DIN-Bold.woff2
+```
+
+Die DIN-Fonts werden von einem CDN geladen, das nicht mehr funktioniert. Dies sollte korrigiert werden.
+
+### Problem 4: Partner-Seite "Vertrieb" — Karriere-Content
+
+Die Seite `/kaufy/vertrieb` ist funktional und gut strukturiert mit:
+- Vorteile-Sektion ✅
+- "So werden Sie Partner" Workflow ✅
+- Voraussetzungen (§34c, VSH) ✅
+- Statistiken ✅
+
+**Verbesserungspotential:**
+- Keine "Karriere"-Differenzierung (Newcomer vs. Professional)
+- Keine Mentoring/Schulungs-Information für Einsteiger
+
+### Problem 5: Bilder im Exposé werden nicht angezeigt
+
+Obwohl die Bilder im Storage vorhanden sind und die RLS-Policies implementiert wurden, werden sie im KAUFY-Exposé möglicherweise nicht geladen wegen:
+
+1. **Signed URL Generation:** Anonyme User können keine Signed URLs erstellen, wenn die Storage-RLS nicht für anonymen Zugriff konfiguriert ist.
+
+**Lösung:** Storage Bucket Policy für öffentlichen Lesezugriff auf Kaufy-verknüpfte Bilder erweitern.
+
+---
+
+## Teil 3: Konkrete Verbesserungen
+
+### Verbesserung 1: Zone 3 Armstrong Input Bar
+
+Neue Komponente: `src/components/zone3/kaufy/ArmstrongInputBar.tsx`
+
+Layout-Änderung in `KaufyLayout.tsx`:
+- Entferne Floating Button auf Mobile
+- Füge `ArmstrongInputBar` als festes Element am unteren Bildschirmrand hinzu
+- Padding für Safe-Area und Content-Offset
 
 ```text
--- Öffentlicher Lesezugriff auf Bilder von Kaufy-Listings
+// Mobile Layout:
+┌─────────────────────────────────────┐
+│ Header (KAUFY Logo + Nav)           │
+├─────────────────────────────────────┤
+│                                     │
+│ Main Content                        │
+│ (pb-16 für Input-Bar Offset)        │
+│                                     │
+├─────────────────────────────────────┤
+│ ✦ Ask Armstrong...           [↑]    │  ← Fixierte Input Bar
+└─────────────────────────────────────┘
+```
+
+### Verbesserung 2: Storage RLS für anonyme Bild-Lesezugriffe
+
+Die bestehende RLS-Policy für `public.documents` reicht nicht aus, da Supabase Storage eigene RLS-Regeln hat.
+
+**Lösung:** 
+Storage Policy für anonymen Lesezugriff auf Bilder von aktiven Kaufy-Listings.
+
+```text
+-- Storage Policy: tenant-documents Bucket
 CREATE POLICY "public_read_kaufy_images"
-  ON public.documents FOR SELECT
-  USING (
-    mime_type LIKE 'image/%'
-    AND EXISTS (
-      SELECT 1 FROM document_links dl
-      JOIN listings l ON dl.object_id = l.property_id
-      JOIN listing_publications lp ON lp.listing_id = l.id
-      WHERE dl.document_id = documents.id
-        AND dl.object_type = 'property'
-        AND lp.channel = 'kaufy'
-        AND lp.status = 'active'
-    )
-  );
-
--- Passende Policy für document_links
-CREATE POLICY "public_read_kaufy_image_links"
-  ON public.document_links FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM documents d
-      JOIN listings l ON document_links.object_id = l.property_id
-      JOIN listing_publications lp ON lp.listing_id = l.id
-      WHERE d.id = document_links.document_id
-        AND d.mime_type LIKE 'image/%'
-        AND document_links.object_type = 'property'
-        AND lp.channel = 'kaufy'
-        AND lp.status = 'active'
-    )
-  );
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'tenant-documents'
+  AND name LIKE '%.jpg' OR name LIKE '%.jpeg' OR name LIKE '%.png'
+  AND EXISTS (
+    SELECT 1 FROM documents d
+    JOIN document_links dl ON d.id = dl.document_id
+    JOIN listings l ON dl.object_id = l.property_id
+    JOIN listing_publications lp ON lp.listing_id = l.id
+    WHERE d.file_path = objects.name
+      AND lp.channel = 'kaufy'
+      AND lp.status = 'active'
+  )
+);
 ```
 
-### Teil 2: KaufyExpose Bilder-Integration
+### Verbesserung 3: DIN Font Fallback
 
-Die Zone 3 Exposé-Seite muss die `ExposeImageGallery` oder eine vereinfachte Version nutzen.
+Ersetze den fehlerhaften CDN-Link durch:
+- Lokale Font-Dateien oder
+- Fallback auf System-Font-Stack
 
-Datei: `src/pages/zone3/kaufy/KaufyExpose.tsx`
+**Betroffene Datei:** Wahrscheinlich in CSS oder Tailwind-Config.
 
-Änderungen:
-1. Query für Bilder hinzufügen (via document_links)
-2. Signed URLs generieren
-3. Bildergalerie anstelle des Platzhalter-Icons rendern
+### Verbesserung 4: Karriere-Seite für Partner
 
-```text
-// Neue Query für Listing-Bilder
-const { data: images } = useQuery({
-  queryKey: ['listing-images', listing?.id],
-  queryFn: async () => {
-    // Hole Bilder via document_links + documents
-    const { data } = await supabase
-      .from('document_links')
-      .select('documents!inner(id, name, file_path, mime_type)')
-      .eq('object_type', 'property')
-      .eq('object_id', listing.property_id)
-      .like('documents.mime_type', 'image/%');
-    
-    // Generiere Signed URLs
-    // ...
-  },
-  enabled: !!listing?.id
-});
-```
+Erweitere `/kaufy/vertrieb` um:
+- Zwei Tracks: "Newcomer" (Mentoring, Schulung) vs. "Professional" (§34c, VSH vorhanden)
+- Lead-Conversion-Fokus mit klarem CTA-Pfad
 
-### Teil 3: Partner-Exposé-Detailseite (MOD-09)
+---
 
-Neue Komponente für eingeloggte Partner mit vollständigem Zugang zu:
-- Bildergalerie (mit Titelbild)
-- Dokumente (Energieausweis, Teilungserklärung, Grundbuch) als Download
+## Teil 4: Mobile UX Quick Wins
 
-Neue Datei: `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx`
+| Bereich | Änderung |
+|---------|----------|
+| MasterGraph Stats | Auf Mobile zu 2-Spalten-Grid oder Stacking wechseln |
+| Property Cards (Home) | Kleinere Thumbnails, vertikales Stacking |
+| Navigation Header | "Registrieren"-Button auf Mobile kürzer ("Los") |
+| Armstrong CTA | Prominenter platzieren in Hero-Section |
 
-Neue Route: `/portal/vertriebspartner/katalog/:publicId`
+---
 
-Struktur:
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  ← Zurück zum Katalog                                       │
-├─────────────────────────────────────────────────────────────┤
-│  [Bildergalerie - ExposeImageGallery]                       │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                   │
-│  │  ★  │ │     │ │     │ │     │ │     │                   │
-│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘                   │
-├─────────────────────────────────────────────────────────────┤
-│  Objektdetails (Preis, Rendite, Provision, Fläche, etc.)    │
-├─────────────────────────────────────────────────────────────┤
-│  📄 Unterlagen                                              │
-│  ┌──────────────────────────────────────────┐              │
-│  │ 📎 Energieausweis.pdf              [↓]   │              │
-│  │ 📎 Teilungserklärung.pdf           [↓]   │              │
-│  │ 📎 Grundbuchauszug.pdf             [↓]   │              │
-│  └──────────────────────────────────────────┘              │
-├─────────────────────────────────────────────────────────────┤
-│  [Investment-Simulation - InvestmentSliderPanel]            │
-│  [Haushaltsrechnung]                                        │
-├─────────────────────────────────────────────────────────────┤
-│  [Deal starten]  [Anfrage senden]                           │
-└─────────────────────────────────────────────────────────────┘
-```
+## Prioritäten
+
+| Priorität | Aufgabe |
+|-----------|---------|
+| P0 | Zone 3 Armstrong Input Bar (fixiert statt floating) |
+| P0 | Storage RLS für Bild-Anzeige |
+| P1 | Font-Fallback korrigieren |
+| P1 | Karriere-Track-Differenzierung |
+| P2 | Mobile Stat-Grids optimieren |
+
+---
 
 ## Betroffene Dateien
 
-| Datei | Änderungstyp |
-|-------|--------------|
-| Migration (RLS) | Neue Policies für public image access |
-| `src/pages/zone3/kaufy/KaufyExpose.tsx` | Bilder-Query + Galerie hinzufügen |
-| `src/pages/zone3/kaufy/KaufyImmobilien.tsx` | Titelbild aus document_links laden |
-| `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx` | Neue Detailseite |
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Navigation zur Detailseite |
-| `src/pages/portal/VertriebspartnerPage.tsx` | Route hinzufügen |
-
-## Unterlagen-Mapping
-
-Die doc_types für die gewünschten Unterlagen sind bereits definiert:
-
-| Unterlage | doc_type in DB | Ordner im DMS |
-|-----------|----------------|---------------|
-| Energieausweis | `energy_certificate` | 12_Energieausweis |
-| Teilungserklärung | `division_declaration` | 04_Teilungserklärung |
-| Grundbuch | `land_register` | 03_Grundbuchauszug |
-
-Query für Partner-Dokumente:
-```text
-SELECT d.id, d.name, d.file_path, d.doc_type
-FROM documents d
-JOIN document_links dl ON d.id = dl.document_id
-WHERE dl.object_type = 'property'
-  AND dl.object_id = '{property_id}'
-  AND d.doc_type IN ('energy_certificate', 'division_declaration', 'land_register')
-  AND d.mime_type = 'application/pdf';
-```
-
-## Mobile UI-Optimierungen (aus vorherigem Plan)
-
-Diese werden parallel implementiert:
-- Haushaltsrechnung: Vertikales Layout auf Mobile
-- DetailTable40Jahre: Kompakte Kartenansicht statt 9-Spalten-Tabelle
-- InvestmentSliderPanel: Collapsible Advanced-Optionen
-
-## Erfolgskriterien
-
-- [x] Kaufy-Website zeigt Bilder in der Objekt-Detailseite
-- [x] Kaufy-Übersicht zeigt Titelbild auf den Karten
-- [x] Partner-Katalog hat klickbare Detail-Ansicht
-- [x] Partner-Detailseite zeigt Bildergalerie
-- [x] Partner-Detailseite zeigt PDF-Unterlagen zum Download
-- [x] Unterlagen sind NICHT öffentlich zugänglich (nur nach Login)
-- [ ] Mobile-Darstellung ist optimiert
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/zone3/kaufy/KaufyLayout.tsx` | Mobile Input Bar + Layout Offset |
+| `src/components/zone3/kaufy/ArmstrongInputBar.tsx` | Neue Komponente |
+| `src/components/zone3/kaufy/ArmstrongSidebar.tsx` | Mobile Toggle entfernen |
+| Storage RLS Migration | Öffentlicher Bild-Zugriff |
+| `src/styles/zone3-theme.css` oder Font-Config | DIN Font Fix |
+| `src/pages/zone3/kaufy/KaufyVertrieb.tsx` | Karriere-Tracks |
