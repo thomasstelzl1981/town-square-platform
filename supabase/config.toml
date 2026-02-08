@@ -59,3 +59,18 @@ verify_jwt = false
 
 [functions.sot-armstrong-voice]
 verify_jwt = false
+
+[functions.sot-mail-connect]
+verify_jwt = false
+
+[functions.sot-mail-sync]
+verify_jwt = false
+
+[functions.sot-mail-send]
+verify_jwt = false
+
+[functions.sot-calendar-sync]
+verify_jwt = false
+
+[functions.sot-contacts-sync]
+verify_jwt = false

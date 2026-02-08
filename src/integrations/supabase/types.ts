@@ -1400,11 +1400,16 @@ export type Database = {
           created_by: string | null
           description: string | null
           end_at: string | null
+          google_event_id: string | null
+          ical_uid: string | null
           id: string
           location: string | null
+          microsoft_event_id: string | null
           property_id: string | null
           reminder_minutes: number | null
           start_at: string
+          synced_at: string | null
+          synced_from: string | null
           tenant_id: string
           title: string
           updated_at: string | null
@@ -1416,11 +1421,16 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_at?: string | null
+          google_event_id?: string | null
+          ical_uid?: string | null
           id?: string
           location?: string | null
+          microsoft_event_id?: string | null
           property_id?: string | null
           reminder_minutes?: number | null
           start_at: string
+          synced_at?: string | null
+          synced_from?: string | null
           tenant_id: string
           title: string
           updated_at?: string | null
@@ -1432,11 +1442,16 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_at?: string | null
+          google_event_id?: string | null
+          ical_uid?: string | null
           id?: string
           location?: string | null
+          microsoft_event_id?: string | null
           property_id?: string | null
           reminder_minutes?: number | null
           start_at?: string
+          synced_at?: string | null
+          synced_from?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string | null
@@ -2452,11 +2467,15 @@ export type Database = {
           created_at: string
           email: string | null
           first_name: string
+          google_contact_id: string | null
           id: string
           last_name: string
+          microsoft_contact_id: string | null
           notes: string | null
           phone: string | null
           public_id: string
+          synced_at: string | null
+          synced_from: string | null
           tenant_id: string
           updated_at: string
         }
@@ -2465,11 +2484,15 @@ export type Database = {
           created_at?: string
           email?: string | null
           first_name: string
+          google_contact_id?: string | null
           id?: string
           last_name: string
+          microsoft_contact_id?: string | null
           notes?: string | null
           phone?: string | null
           public_id: string
+          synced_at?: string | null
+          synced_from?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -2478,11 +2501,15 @@ export type Database = {
           created_at?: string
           email?: string | null
           first_name?: string
+          google_contact_id?: string | null
           id?: string
           last_name?: string
+          microsoft_contact_id?: string | null
           notes?: string | null
           phone?: string | null
           public_id?: string
+          synced_at?: string | null
+          synced_from?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -5292,6 +5319,151 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mail_accounts: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          credentials_vault_key: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          imap_host: string | null
+          imap_port: number | null
+          last_sync_at: string | null
+          provider: string
+          refresh_token: string | null
+          smtp_host: string | null
+          smtp_port: number | null
+          sync_error: string | null
+          sync_status: string | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          credentials_vault_key?: string | null
+          display_name?: string | null
+          email_address: string
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          last_sync_at?: string | null
+          provider: string
+          refresh_token?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
+          sync_error?: string | null
+          sync_status?: string | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          credentials_vault_key?: string | null
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
+          sync_error?: string | null
+          sync_status?: string | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mail_messages: {
+        Row: {
+          account_id: string
+          body_html: string | null
+          body_text: string | null
+          cc_addresses: Json | null
+          created_at: string | null
+          folder: string
+          from_address: string
+          from_name: string | null
+          has_attachments: boolean | null
+          id: string
+          is_read: boolean | null
+          is_starred: boolean | null
+          message_id: string
+          received_at: string
+          snippet: string | null
+          subject: string | null
+          thread_id: string | null
+          to_addresses: Json | null
+        }
+        Insert: {
+          account_id: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: Json | null
+          created_at?: string | null
+          folder?: string
+          from_address: string
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          message_id: string
+          received_at: string
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_addresses?: Json | null
+        }
+        Update: {
+          account_id?: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: Json | null
+          created_at?: string | null
+          folder?: string
+          from_address?: string
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          message_id?: string
+          received_at?: string
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_addresses?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_messages_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "mail_accounts"
             referencedColumns: ["id"]
           },
         ]

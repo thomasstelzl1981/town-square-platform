@@ -313,29 +313,89 @@ export function EmailTab() {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Fetch connected email accounts
-  const { data: accounts = [], isLoading: isLoadingAccounts } = useQuery({
+  // Fetch connected email accounts from database
+  const { data: accounts = [], isLoading: isLoadingAccounts, refetch: refetchAccounts } = useQuery({
     queryKey: ['email-accounts'],
     queryFn: async () => {
-      // In Phase 1, we check if any mail accounts are configured
-      // This would come from a mail_accounts table once implemented
-      // For now, return empty to show connection UI
-      return [] as EmailAccount[];
+      const { data, error } = await supabase
+        .from('mail_accounts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching mail accounts:', error);
+        return [];
+      }
+      return data as EmailAccount[];
     },
   });
 
   const hasConnectedAccount = accounts.length > 0;
+  const activeAccount = accounts[0]; // Use first account as default
 
-  // Handle OAuth connection for Google
+  // Fetch messages for selected account
+  const { data: messages = [], isLoading: isLoadingMessages, refetch: refetchMessages } = useQuery({
+    queryKey: ['email-messages', activeAccount?.id, selectedFolder],
+    queryFn: async () => {
+      if (!activeAccount) return [];
+      
+      const { data, error } = await supabase
+        .from('mail_messages')
+        .select('*')
+        .eq('account_id', activeAccount.id)
+        .eq('folder', selectedFolder.toUpperCase())
+        .order('received_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: !!activeAccount,
+  });
+
+  // Sync mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeAccount) throw new Error('No account selected');
+      
+      const { data, error } = await supabase.functions.invoke('sot-mail-sync', {
+        body: { accountId: activeAccount.id, folder: selectedFolder },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Postfach synchronisiert');
+      refetchMessages();
+    },
+    onError: (error: any) => {
+      toast.error('Synchronisation fehlgeschlagen: ' + error.message);
+    },
+  });
+
+  // Handle OAuth connection for Google (using Lovable Cloud)
   const handleGoogleConnect = async () => {
     setIsConnecting(true);
     try {
-      // Google OAuth is supported via Supabase Auth
+      // Use Supabase auth for Google OAuth with extended scopes
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
+          scopes: [
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://www.googleapis.com/auth/gmail.send',
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/contacts.readonly',
+          ].join(' '),
           redirectTo: `${window.location.origin}/portal/office/email`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
       if (error) throw error;
@@ -347,13 +407,21 @@ export function EmailTab() {
     }
   };
 
-  // Handle OAuth connection for Microsoft
+  // Handle OAuth connection for Microsoft (Azure AD - prepared but not yet active)
   const handleMicrosoftConnect = async () => {
     setIsConnecting(true);
     try {
-      // Microsoft OAuth would need to be configured in Supabase
-      toast.info('Microsoft-Integration wird in Kürze verfügbar sein');
-      // For now, show that it's not yet available
+      // Microsoft OAuth requires Azure AD configuration
+      // This is prepared but needs Azure App Registration
+      toast.info('Microsoft 365-Integration erfordert Azure-Konfiguration. Bitte kontaktieren Sie den Administrator.');
+      // When configured, use:
+      // const { data, error } = await supabase.auth.signInWithOAuth({
+      //   provider: 'azure',
+      //   options: {
+      //     scopes: 'Mail.Read Mail.Send Calendars.ReadWrite Contacts.Read offline_access',
+      //     redirectTo: `${window.location.origin}/portal/office/email`,
+      //   },
+      // });
     } catch (error: any) {
       toast.error('Microsoft-Verbindung fehlgeschlagen');
     } finally {
@@ -365,18 +433,19 @@ export function EmailTab() {
   const handleImapConnect = async (connectionData: any) => {
     setIsConnecting(true);
     try {
-      // This would call an edge function to validate and store IMAP credentials
-      const response = await supabase.functions.invoke('sot-mail-connect', {
+      const { data, error } = await supabase.functions.invoke('sot-mail-connect', {
         body: connectionData,
       });
 
-      if (response.error) throw response.error;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       toast.success('IMAP-Konto erfolgreich verbunden');
       setShowConnectionDialog(false);
-      queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+      refetchAccounts();
     } catch (error: any) {
-      toast.error('IMAP-Verbindung fehlgeschlagen: ' + error.message);
+      console.error('IMAP connection error:', error);
+      toast.error('IMAP-Verbindung fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsConnecting(false);
     }
@@ -455,20 +524,72 @@ export function EmailTab() {
                   disabled={!hasConnectedAccount}
                 />
               </div>
-              <Button variant="ghost" size="icon" disabled={!hasConnectedAccount}>
-                <RefreshCw className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={!hasConnectedAccount || syncMutation.isPending}
+                onClick={() => syncMutation.mutate()}
+              >
+                <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
               </Button>
             </div>
           </div>
           <ScrollArea className="flex-1">
             {hasConnectedAccount ? (
-              <div className="divide-y">
-                {/* Email items would go here when connected */}
+              isLoadingMessages ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : messages.length > 0 ? (
+                <div className="divide-y">
+                  {messages.map((msg: any) => (
+                    <button
+                      key={msg.id}
+                      onClick={() => setSelectedEmail(msg.id)}
+                      className={cn(
+                        'w-full p-3 text-left hover:bg-muted/50 transition-colors',
+                        selectedEmail === msg.id && 'bg-muted',
+                        !msg.is_read && 'bg-primary/5'
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {msg.is_starred && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                            <span className={cn("text-sm truncate", !msg.is_read && "font-semibold")}>
+                              {msg.from_name || msg.from_address}
+                            </span>
+                          </div>
+                          <p className={cn("text-sm truncate", !msg.is_read && "font-medium")}>
+                            {msg.subject || '(Kein Betreff)'}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {msg.snippet}
+                          </p>
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(msg.received_at).toLocaleDateString('de-DE')}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
                 <div className="p-8 text-center text-muted-foreground">
                   <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Keine E-Mails in diesem Ordner</p>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    onClick={() => syncMutation.mutate()}
+                    disabled={syncMutation.isPending}
+                    className="mt-2"
+                  >
+                    <RefreshCw className={cn("h-3 w-3 mr-1", syncMutation.isPending && "animate-spin")} />
+                    Synchronisieren
+                  </Button>
                 </div>
-              </div>
+              )
             ) : (
               <div className="p-8 text-center">
                 <Mail className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
