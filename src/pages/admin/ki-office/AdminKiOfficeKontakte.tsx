@@ -1,5 +1,5 @@
 /**
- * AdminKontakteTab — Zone 1 Kontakte Manager
+ * AdminKiOfficeKontakte — Zone 1 Kontakte Manager
  * Basiert auf Zone 2 KontakteTab, aber mit scope = 'zone1_admin'
  * KEINE Mandanten-Zuordnung (platform-weit)
  */
@@ -186,7 +186,7 @@ const emptyFormData: ContactFormData = {
   notes: '',
 };
 
-export function AdminKontakteTab() {
+export default function AdminKiOfficeKontakte() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);

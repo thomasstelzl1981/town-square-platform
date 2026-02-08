@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.sot-contact-enrichment]
 verify_jwt = false
+
+[functions.sot-admin-mail-send]
+verify_jwt = false

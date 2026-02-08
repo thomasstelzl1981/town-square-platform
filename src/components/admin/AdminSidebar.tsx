@@ -35,12 +35,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'MasterTemplatesImmobilienakte': Building2,
   'MasterTemplatesSelbstauskunft': FileText,
   // KI Office
-  'AdminKiOffice': Sparkles,
-  'AdminEmailTab': Mail,
-  'AdminKontakteTab': Contact,
+  'AdminKiOfficeEmail': Mail,
+  'AdminKiOfficeKontakte': Contact,
+  'CommunicationHub': Sparkles,
   'TileCatalog': Grid3X3,
   'Integrations': Plug,
-  'CommunicationHub': Mail,
   'Oversight': Eye,
   'AuditLog': FileText,
   'Billing': CreditCard,
@@ -106,8 +105,8 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('masterdata/')) {
     return 'masterdata';
   }
-  // KI Office (nur Landing Page zeigen, Sub-Items werden via Tab-Navigation erreicht)
-  if (path === 'ki-office') {
+  // KI Office (separate menu items)
+  if (path === 'ki-office-email' || path === 'ki-office-kontakte' || path === 'communication') {
     return 'ki-office';
   }
   if (path === 'tiles') {
@@ -126,7 +125,7 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('agents')) {
     return 'agents';
   }
-  if (path === 'integrations' || path === 'communication' || path === 'oversight' || 
+  if (path === 'integrations' || path === 'oversight' || 
       path === 'audit' || path === 'leadpool' || path === 'partner-verification' || path === 'commissions') {
     return 'system';
   }
@@ -142,7 +141,11 @@ function shouldShowInNav(path: string): boolean {
   if (path.includes(':')) return false;
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
-      path === 'agents' || path === 'futureroom' || path === 'ki-office') {
+      path === 'agents' || path === 'futureroom') {
+    return true;
+  }
+  // KI Office items are now top-level, show them
+  if (path === 'ki-office-email' || path === 'ki-office-kontakte') {
     return true;
   }
   // Skip sub-routes of desks (they will be accessible from their parent page)
@@ -150,8 +153,7 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
     path.startsWith('acquiary/') ||
-    path.startsWith('agents/') ||
-    path.startsWith('ki-office/')
+    path.startsWith('agents/')
   )) {
     return false;
   }
