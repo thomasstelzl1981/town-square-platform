@@ -35,6 +35,72 @@ export type { ArmstrongActionV2, ArmstrongZone, ExecutionMode, RiskLevel, CostMo
 export type ArmstrongAction = ArmstrongActionV2;
 
 // =============================================================================
+// TOP 30 MVP ACTION CODES (Phase 6 Content Blueprints)
+// =============================================================================
+
+/**
+ * TOP_30_MVP_ACTION_CODES — Core set of 30 actions for MVP.
+ * Selected based on:
+ * - Essential functionality coverage (Packs A-F, H)
+ * - K3/K4 compliance verified
+ * - Cost model validated
+ */
+export const TOP_30_MVP_ACTION_CODES = [
+  // Pack A: Core (6)
+  'ARM.GLOBAL.EXPLAIN_TERM',
+  'ARM.GLOBAL.FAQ',
+  'ARM.GLOBAL.HOW_IT_WORKS',
+  'ARM.GLOBAL.WEB_SEARCH',
+  'ARM.GLOBAL.SUMMARIZE_TEXT',
+  'ARM.GLOBAL.DRAFT_MESSAGE',
+  
+  // Pack B: Dashboard (5)
+  'ARM.MOD00.CREATE_TASK',
+  'ARM.MOD00.CREATE_REMINDER',
+  'ARM.MOD00.CREATE_NOTE',
+  'ARM.MOD00.CREATE_IDEA',
+  'ARM.MOD00.CREATE_PROJECT',
+  
+  // Pack C: DMS (4)
+  'ARM.MOD03.SEARCH_DOC',
+  'ARM.MOD03.EXPLAIN_UPLOAD',
+  'ARM.MOD03.LINK_DOC',
+  'ARM.MOD03.EXTRACT_DOC',
+  
+  // Pack D: Immobilien (6)
+  'ARM.MOD04.EXPLAIN_MODULE',
+  'ARM.MOD04.VALIDATE_PROPERTY',
+  'ARM.MOD04.CREATE_PROPERTY',
+  'ARM.MOD04.CREATE_UNIT',
+  'ARM.MOD04.CALCULATE_KPI',
+  'ARM.MOD04.DATA_QUALITY_CHECK',
+  
+  // Pack E: Finanzierung (4)
+  'ARM.MOD07.EXPLAIN_SELBSTAUSKUNFT',
+  'ARM.MOD07.DOC_CHECKLIST',
+  'ARM.MOD07.PREPARE_EXPORT',
+  'ARM.MOD07.VALIDATE_READINESS',
+  
+  // Pack F: Investment (4)
+  'ARM.MOD08.ANALYZE_FAVORITE',
+  'ARM.MOD08.RUN_SIMULATION',
+  'ARM.MOD08.CREATE_MANDATE',
+  'ARM.MOD08.WEB_RESEARCH',
+  
+  // Pack H: KB (1)
+  'ARM.KB.CREATE_RESEARCH_MEMO',
+] as const;
+
+export type Top30MvpActionCode = typeof TOP_30_MVP_ACTION_CODES[number];
+
+/**
+ * Check if action is in Top 30 MVP set
+ */
+export function isTop30MvpAction(actionCode: string): boolean {
+  return TOP_30_MVP_ACTION_CODES.includes(actionCode as Top30MvpActionCode);
+}
+
+// =============================================================================
 // ZONE 3 ALLOWED ACTIONS (Public/Unauthenticated)
 // =============================================================================
 
@@ -939,10 +1005,219 @@ export const armstrongActions: ArmstrongActionV2[] = [
     version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
-    cost_hint_cents: 5,
+    cost_hint_cents: 300, // 6 Credits × 50 Cent
+    credits_estimate: 6,
     api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
     ui_entrypoints: ['/portal'],
     audit_event_type: 'ARM_KB_RESEARCH_MEMO',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.KB.SUGGEST_KB_ITEM_FROM_CHAT',
+    title_de: 'KB-Artikel vorschlagen',
+    description_de: 'Schlägt einen neuen Knowledge Base Artikel basierend auf Chat-Kontext vor (nur Draft)',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'draft_only',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: ['armstrong_knowledge_items'],
+    side_effects: ['creates_kb_draft', 'credits_consumed'],
+    preconditions: ['user_authenticated', 'chat_context_available'],
+    postconditions: ['kb_draft_created', 'requires_review'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 100, // 2 Credits × 50 Cent
+    credits_estimate: 2,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_KB_SUGGEST_ITEM',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.KB.BUILD_SALES_SCRIPT_VARIANTS',
+    title_de: 'Verkaufsskript-Varianten erstellen',
+    description_de: 'Generiert verschiedene Varianten eines Verkaufsskripts (nur Draft)',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'draft_only',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: ['armstrong_knowledge_items'],
+    side_effects: ['creates_kb_draft', 'credits_consumed'],
+    preconditions: ['user_authenticated', 'base_script_provided'],
+    postconditions: ['kb_draft_created', 'requires_review'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 150, // 3 Credits × 50 Cent
+    credits_estimate: 3,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal', '/admin/armstrong/knowledge'],
+    audit_event_type: 'ARM_KB_SALES_SCRIPT',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // PACK A: NEW GLOBAL ACTIONS (Phase 6 Content Blueprints)
+  // ===========================================================================
+  {
+    action_code: 'ARM.GLOBAL.SUMMARIZE_TEXT',
+    title_de: 'Text zusammenfassen',
+    description_de: 'Fasst einen Text strukturiert zusammen (mit Disclaimer bei tax/legal)',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: [],
+    data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 100, // 2 Credits × 50 Cent
+    credits_estimate: 2,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_SUMMARIZE_TEXT',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.GLOBAL.DRAFT_MESSAGE',
+    title_de: 'Nachricht entwerfen',
+    description_de: 'Erstellt einen Entwurf für eine E-Mail oder Nachricht (ohne Senden)',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'medium',
+    execution_mode: 'draft_only',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['contacts'],
+    data_scopes_write: [],
+    side_effects: ['creates_draft', 'credits_consumed'],
+    preconditions: ['user_authenticated'],
+    postconditions: ['draft_available_for_review'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 100, // 2 Credits × 50 Cent
+    credits_estimate: 2,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal', '/portal/office'],
+    audit_event_type: 'ARM_DRAFT_MESSAGE',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // PACK B: NEW WIDGET ACTION (Phase 6 Content Blueprints)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD00.ARCHIVE_WIDGET',
+    title_de: 'Widget archivieren',
+    description_de: 'Archiviert ein bestehendes Dashboard-Widget',
+    zones: ['Z2'],
+    module: 'MOD-00',
+    risk_level: 'low',
+    execution_mode: 'execute_with_confirmation',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['widgets'],
+    data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
+    cost_model: 'free',
+    cost_unit: null,
+    cost_hint_cents: 0,
+    credits_estimate: 0,
+    api_contract: { type: 'internal', endpoint: null },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_ARCHIVE_WIDGET',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // PACK C: NEW DMS ACTION (Phase 6 Content Blueprints)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD03.DOC_CONFIDENCE_REVIEW_ASSIST',
+    title_de: 'Extraktions-Review unterstützen',
+    description_de: 'Erklärt Needs-Review-Status und listet Confidence/Fields auf',
+    zones: ['Z2'],
+    module: 'MOD-03',
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes', 'extracted_data'],
+    data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 100, // 2 Credits × 50 Cent
+    credits_estimate: 2,
+    api_contract: { type: 'internal', endpoint: null },
+    ui_entrypoints: ['/portal/dms'],
+    audit_event_type: 'ARM_DOC_CONFIDENCE_REVIEW',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // PACK D: NEW PROPERTY ACTIONS (Phase 6 Content Blueprints)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD04.SUGGEST_DOCUMENTS_CHECKLIST',
+    title_de: 'Dokumenten-Checkliste vorschlagen',
+    description_de: 'Schlägt vor, welche Dokumente für Bewertung/Finanzierung/Verkauf fehlen',
+    zones: ['Z2'],
+    module: 'MOD-04',
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['properties', 'documents', 'knowledge_base'],
+    data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 100, // 2 Credits × 50 Cent
+    credits_estimate: 2,
+    api_contract: { type: 'internal', endpoint: null },
+    ui_entrypoints: ['/portal/immobilien'],
+    audit_event_type: 'ARM_SUGGEST_DOC_CHECKLIST',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.MOD04.GENERATE_EXPOSE_DRAFT',
+    title_de: 'Exposé-Entwurf erstellen',
+    description_de: 'Generiert einen Exposé-Textentwurf für internes Review (ohne Publizieren)',
+    zones: ['Z2'],
+    module: 'MOD-04',
+    risk_level: 'medium',
+    execution_mode: 'draft_only',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['properties', 'units', 'documents'],
+    data_scopes_write: [],
+    side_effects: ['creates_draft', 'credits_consumed'],
+    preconditions: ['property_exists', 'user_authenticated'],
+    postconditions: ['draft_available_for_review'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 150, // 3 Credits × 50 Cent
+    credits_estimate: 3,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal/immobilien'],
+    audit_event_type: 'ARM_GENERATE_EXPOSE_DRAFT',
     status: 'active',
   },
 ];
