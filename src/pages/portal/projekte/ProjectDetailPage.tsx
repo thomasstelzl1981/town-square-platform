@@ -16,7 +16,15 @@ import {
 } from 'lucide-react';
 import { useProjectDossier } from '@/hooks/useDevProjects';
 import { useProjectUnits } from '@/hooks/useProjectUnits';
-import { UnitStatusBadge } from '@/components/projekte';
+import { 
+  UnitStatusBadge, 
+  ProjectPricingBlock,
+  ProjectDocumentsBlock,
+  ProjectReservationsBlock,
+  ProjectSalesBlock,
+  ProjectContractsBlock,
+  ProjectPublicationBlock,
+} from '@/components/projekte';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
 import type { ProjectStatus } from '@/types/projekte';
@@ -382,28 +390,43 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* E-J: Placeholder tabs */}
-        {['pricing', 'documents', 'reservations', 'sales', 'contracts', 'publication'].map((tab) => (
-          <TabsContent key={tab} value={tab}>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {tab === 'pricing' && 'E. Preisliste & Provision'}
-                  {tab === 'documents' && 'F. Dokumente'}
-                  {tab === 'reservations' && 'G. Reservierungen'}
-                  {tab === 'sales' && 'H. Vertrieb'}
-                  {tab === 'contracts' && 'I. Verträge'}
-                  {tab === 'publication' && 'J. Veröffentlichung'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Dieser Bereich wird in der nächsten Phase implementiert.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+        {/* E - Pricing */}
+        <TabsContent value="pricing">
+          <ProjectPricingBlock project={project} units={units} />
+        </TabsContent>
+
+        {/* F - Documents */}
+        <TabsContent value="documents">
+          <ProjectDocumentsBlock project={project} />
+        </TabsContent>
+
+        {/* G - Reservations */}
+        <TabsContent value="reservations">
+          <ProjectReservationsBlock projectId={project.id} units={units} />
+        </TabsContent>
+
+        {/* H - Sales */}
+        <TabsContent value="sales">
+          <ProjectSalesBlock 
+            projectId={project.id} 
+            reservations={dossier.reservations as any} 
+            commissionRate={project.commission_rate_percent} 
+          />
+        </TabsContent>
+
+        {/* I - Contracts */}
+        <TabsContent value="contracts">
+          <ProjectContractsBlock 
+            projectId={project.id} 
+            reservations={dossier.reservations as any} 
+            documents={dossier.documents as any} 
+          />
+        </TabsContent>
+
+        {/* J - Publication */}
+        <TabsContent value="publication">
+          <ProjectPublicationBlock project={project} />
+        </TabsContent>
       </Tabs>
     </div>
   );
