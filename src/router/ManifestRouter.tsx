@@ -82,6 +82,7 @@ import CommissionApproval from '@/pages/admin/CommissionApproval';
 import MasterTemplates from '@/pages/admin/MasterTemplates';
 import MasterTemplatesImmobilienakte from '@/pages/admin/MasterTemplatesImmobilienakte';
 import MasterTemplatesSelbstauskunft from '@/pages/admin/MasterTemplatesSelbstauskunft';
+import MasterTemplatesProjektakte from '@/pages/admin/MasterTemplatesProjektakte';
 import AdminFutureRoomLayout from '@/pages/admin/futureroom/FutureRoomLayout';
 import { AdminStubPage } from '@/pages/admin/stub';
 import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
@@ -193,6 +194,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   MasterTemplates,
   MasterTemplatesImmobilienakte,
   MasterTemplatesSelbstauskunft,
+  MasterTemplatesProjektakte,
   TileCatalog,
   Integrations,
   CommunicationHub,
