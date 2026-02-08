@@ -1,0 +1,9 @@
+-- Add email signature and letterhead fields to profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email_signature TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_logo_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_company_line TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_extra_line TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_bank_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_iban TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_bic TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS letterhead_website TEXT;

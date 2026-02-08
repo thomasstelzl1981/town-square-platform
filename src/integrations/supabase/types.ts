@@ -6516,11 +6516,19 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string
+          email_signature: string | null
           first_name: string | null
           house_number: string | null
           id: string
           is_business: boolean | null
           last_name: string | null
+          letterhead_bank_name: string | null
+          letterhead_bic: string | null
+          letterhead_company_line: string | null
+          letterhead_extra_line: string | null
+          letterhead_iban: string | null
+          letterhead_logo_url: string | null
+          letterhead_website: string | null
           person_mode: string | null
           phone_landline: string | null
           phone_mobile: string | null
@@ -6540,11 +6548,19 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email: string
+          email_signature?: string | null
           first_name?: string | null
           house_number?: string | null
           id: string
           is_business?: boolean | null
           last_name?: string | null
+          letterhead_bank_name?: string | null
+          letterhead_bic?: string | null
+          letterhead_company_line?: string | null
+          letterhead_extra_line?: string | null
+          letterhead_iban?: string | null
+          letterhead_logo_url?: string | null
+          letterhead_website?: string | null
           person_mode?: string | null
           phone_landline?: string | null
           phone_mobile?: string | null
@@ -6564,11 +6580,19 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string
+          email_signature?: string | null
           first_name?: string | null
           house_number?: string | null
           id?: string
           is_business?: boolean | null
           last_name?: string | null
+          letterhead_bank_name?: string | null
+          letterhead_bic?: string | null
+          letterhead_company_line?: string | null
+          letterhead_extra_line?: string | null
+          letterhead_iban?: string | null
+          letterhead_logo_url?: string | null
+          letterhead_website?: string | null
           person_mode?: string | null
           phone_landline?: string | null
           phone_mobile?: string | null

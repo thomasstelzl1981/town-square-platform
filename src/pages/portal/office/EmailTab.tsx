@@ -560,14 +560,15 @@ export function EmailTab() {
                 </div>
               ) : messages.length > 0 ? (
                 <div className="divide-y">
-                  {messages.map((msg: any) => (
+                {messages.map((msg: any) => (
                     <button
                       key={msg.id}
                       onClick={() => setSelectedEmail(msg.id)}
                       className={cn(
-                        'w-full p-3 text-left hover:bg-muted/50 transition-colors',
-                        selectedEmail === msg.id && 'bg-muted',
-                        !msg.is_read && 'bg-primary/5'
+                        'w-full p-3 text-left transition-colors duration-150',
+                        'hover:bg-accent/50',
+                        selectedEmail === msg.id && 'bg-accent',
+                        !msg.is_read && 'bg-primary/5 hover:bg-primary/10'
                       )}
                     >
                       <div className="flex items-start gap-2">
