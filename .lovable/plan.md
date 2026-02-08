@@ -1,114 +1,179 @@
 
-
-# Bugfix-Plan: Investment-Suche zeigt keine Objekte an
+# Bugfix-Plan: Partner-Exposé mit Bildern und Unterlagen
 
 ## Zusammenfassung
 
-Die Investment-Suche auf der KAUFY-Website zeigt "0 Objekte" an, obwohl ein gültiges Listing in der Datenbank existiert. Die Ursache sind drei zusammenhängende Probleme:
+Die Investment-Suche funktioniert jetzt (Objekte werden angezeigt), aber das **vollständige Verkaufsexposé** mit Bildern und Unterlagen ist für Partner im MOD-09 nicht sichtbar. Die Bilder existieren im Storage, sind aber nicht in die Partner-Ansicht integriert.
 
-1. **Falsche Datenbank-Spalte** in den Abfragen
-2. **Fehlende Zugriffsrechte** für nicht eingeloggte Besucher
-3. **Verwirrender Button** ("Alle anzeigen") bei leeren Ergebnissen
+## Problemanalyse
 
----
+### Ist-Zustand
+| Bereich | Status |
+|---------|--------|
+| Bilder im Storage | 5 Bilder physisch vorhanden |
+| document_links | Korrekt verknüpft mit Property |
+| RLS für listings/properties | Öffentlich lesbar (Kaufy-Channel) |
+| RLS für documents/document_links | NUR für eingeloggte Nutzer |
+| KaufyExpose | Zeigt Platzhalter-Icon statt Bilder |
+| Partner-Modul (KatalogTab) | Zeigt nur Metadaten, keine Bilder/Dokumente |
 
-## Was wird geändert
+### Soll-Zustand (basierend auf Benutzerantworten)
+- **Öffentlich sichtbar:** Nur Bilder (auf Kaufy-Website)
+- **Partner-Modul:** Vollständiges Exposé mit Bildern + PDFs (Energieausweis, Teilungserklärung, Grundbuch)
+- **Ort:** Im Partner-Modul nach Login
 
-### 1. Datenbank-Spaltenname korrigieren
+## Lösung in 3 Teilen
 
-Die Abfragen verwenden `construction_year`, aber die Spalte heißt tatsächlich `year_built`. Dies wird in drei Dateien korrigiert:
+### Teil 1: Öffentliche Bilder-RLS für Kaufy (Zone 3)
 
-- `src/pages/zone3/kaufy/KaufyHome.tsx`
-- `src/pages/zone3/kaufy/KaufyExpose.tsx`  
-- `src/pages/portal/investments/InvestmentExposePage.tsx`
-
-### 2. Öffentlichen Zugriff für Kaufy-Listings ermöglichen
-
-Neue Datenbank-Policies werden erstellt, die anonymen Besuchern erlauben, veröffentlichte Kaufy-Listings zu sehen:
-
-- Policy für `listing_publications`: Lesezugriff auf aktive Kaufy-Publikationen
-- Policy für `listings`: Lesezugriff auf Listings mit aktiver Kaufy-Publikation
-- Policy für `properties`: Lesezugriff auf Properties verknüpfter Listings
-
-### 3. "Alle anzeigen" Button verbessern
-
-Der Button wird nur angezeigt, wenn tatsächlich Objekte vorhanden sind. Bei 0 Objekten wird stattdessen ein hilfreicher Hinweis eingeblendet.
-
----
-
-## Technische Details
-
-### Datenbank-Änderungen (SQL Migration)
+Neue RLS-Policy, die anonymen Lesezugriff auf Bilder ermöglicht, die zu aktiven Kaufy-Listings gehören:
 
 ```text
--- 1. Öffentlicher Lesezugriff auf aktive Kaufy-Publikationen
-CREATE POLICY "public_read_kaufy_publications"
-  ON public.listing_publications FOR SELECT
-  USING (channel = 'kaufy' AND status = 'active');
-
--- 2. Öffentlicher Lesezugriff auf Listings mit Kaufy-Publikation
-CREATE POLICY "public_read_kaufy_listings"
-  ON public.listings FOR SELECT
+-- Öffentlicher Lesezugriff auf Bilder von Kaufy-Listings
+CREATE POLICY "public_read_kaufy_images"
+  ON public.documents FOR SELECT
   USING (
-    status IN ('active', 'reserved') AND
-    EXISTS (
-      SELECT 1 FROM listing_publications lp
-      WHERE lp.listing_id = listings.id
-        AND lp.channel = 'kaufy'
-        AND lp.status = 'active'
-    )
-  );
-
--- 3. Öffentlicher Lesezugriff auf verknüpfte Properties
-CREATE POLICY "public_read_kaufy_properties"
-  ON public.properties FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM listings l
+    mime_type LIKE 'image/%'
+    AND EXISTS (
+      SELECT 1 FROM document_links dl
+      JOIN listings l ON dl.object_id = l.property_id
       JOIN listing_publications lp ON lp.listing_id = l.id
-      WHERE l.property_id = properties.id
+      WHERE dl.document_id = documents.id
+        AND dl.object_type = 'property'
+        AND lp.channel = 'kaufy'
+        AND lp.status = 'active'
+    )
+  );
+
+-- Passende Policy für document_links
+CREATE POLICY "public_read_kaufy_image_links"
+  ON public.document_links FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM documents d
+      JOIN listings l ON document_links.object_id = l.property_id
+      JOIN listing_publications lp ON lp.listing_id = l.id
+      WHERE d.id = document_links.document_id
+        AND d.mime_type LIKE 'image/%'
+        AND document_links.object_type = 'property'
         AND lp.channel = 'kaufy'
         AND lp.status = 'active'
     )
   );
 ```
 
-### Code-Änderungen
+### Teil 2: KaufyExpose Bilder-Integration
 
-**KaufyHome.tsx** (Zeile 63-66):
+Die Zone 3 Exposé-Seite muss die `ExposeImageGallery` oder eine vereinfachte Version nutzen.
+
+Datei: `src/pages/zone3/kaufy/KaufyExpose.tsx`
+
+Änderungen:
+1. Query für Bilder hinzufügen (via document_links)
+2. Signed URLs generieren
+3. Bildergalerie anstelle des Platzhalter-Icons rendern
+
 ```text
-Vorher:  total_area_sqm, construction_year, annual_income
-Nachher: total_area_sqm, year_built, annual_income
+// Neue Query für Listing-Bilder
+const { data: images } = useQuery({
+  queryKey: ['listing-images', listing?.id],
+  queryFn: async () => {
+    // Hole Bilder via document_links + documents
+    const { data } = await supabase
+      .from('document_links')
+      .select('documents!inner(id, name, file_path, mime_type)')
+      .eq('object_type', 'property')
+      .eq('object_id', listing.property_id)
+      .like('documents.mime_type', 'image/%');
+    
+    // Generiere Signed URLs
+    // ...
+  },
+  enabled: !!listing?.id
+});
 ```
 
-**KaufyHome.tsx** (Zeile 86):
+### Teil 3: Partner-Exposé-Detailseite (MOD-09)
+
+Neue Komponente für eingeloggte Partner mit vollständigem Zugang zu:
+- Bildergalerie (mit Titelbild)
+- Dokumente (Energieausweis, Teilungserklärung, Grundbuch) als Download
+
+Neue Datei: `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx`
+
+Neue Route: `/portal/vertriebspartner/katalog/:publicId`
+
+Struktur:
 ```text
-Vorher:  year_built: l.properties.construction_year || 0,
-Nachher: year_built: l.properties.year_built || 0,
+┌─────────────────────────────────────────────────────────────┐
+│  ← Zurück zum Katalog                                       │
+├─────────────────────────────────────────────────────────────┤
+│  [Bildergalerie - ExposeImageGallery]                       │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                   │
+│  │  ★  │ │     │ │     │ │     │ │     │                   │
+│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘                   │
+├─────────────────────────────────────────────────────────────┤
+│  Objektdetails (Preis, Rendite, Provision, Fläche, etc.)    │
+├─────────────────────────────────────────────────────────────┤
+│  📄 Unterlagen                                              │
+│  ┌──────────────────────────────────────────┐              │
+│  │ 📎 Energieausweis.pdf              [↓]   │              │
+│  │ 📎 Teilungserklärung.pdf           [↓]   │              │
+│  │ 📎 Grundbuchauszug.pdf             [↓]   │              │
+│  └──────────────────────────────────────────┘              │
+├─────────────────────────────────────────────────────────────┤
+│  [Investment-Simulation - InvestmentSliderPanel]            │
+│  [Haushaltsrechnung]                                        │
+├─────────────────────────────────────────────────────────────┤
+│  [Deal starten]  [Anfrage senden]                           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**KaufyHome.tsx** (Zeile 208-216):
+## Betroffene Dateien
+
+| Datei | Änderungstyp |
+|-------|--------------|
+| Migration (RLS) | Neue Policies für public image access |
+| `src/pages/zone3/kaufy/KaufyExpose.tsx` | Bilder-Query + Galerie hinzufügen |
+| `src/pages/zone3/kaufy/KaufyImmobilien.tsx` | Titelbild aus document_links laden |
+| `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx` | Neue Detailseite |
+| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Navigation zur Detailseite |
+| `src/pages/portal/VertriebspartnerPage.tsx` | Route hinzufügen |
+
+## Unterlagen-Mapping
+
+Die doc_types für die gewünschten Unterlagen sind bereits definiert:
+
+| Unterlage | doc_type in DB | Ordner im DMS |
+|-----------|----------------|---------------|
+| Energieausweis | `energy_certificate` | 12_Energieausweis |
+| Teilungserklärung | `division_declaration` | 04_Teilungserklärung |
+| Grundbuch | `land_register` | 03_Grundbuchauszug |
+
+Query für Partner-Dokumente:
 ```text
-Der "Alle anzeigen" Link wird nur angezeigt, wenn properties.length > 0
+SELECT d.id, d.name, d.file_path, d.doc_type
+FROM documents d
+JOIN document_links dl ON d.id = dl.document_id
+WHERE dl.object_type = 'property'
+  AND dl.object_id = '{property_id}'
+  AND d.doc_type IN ('energy_certificate', 'division_declaration', 'land_register')
+  AND d.mime_type = 'application/pdf';
 ```
 
----
+## Mobile UI-Optimierungen (aus vorherigem Plan)
 
-## Betroffene Bereiche
+Diese werden parallel implementiert:
+- Haushaltsrechnung: Vertikales Layout auf Mobile
+- DetailTable40Jahre: Kompakte Kartenansicht statt 9-Spalten-Tabelle
+- InvestmentSliderPanel: Collapsible Advanced-Optionen
 
-| Bereich | Auswirkung |
-|---------|------------|
-| KAUFY Homepage | Listings werden für alle Besucher sichtbar |
-| KAUFY Immobilien-Seite | Detailseiten funktionieren für anonyme Benutzer |
-| Portal Investment-Suche | Korrigierter Spaltenname |
-| Mobile Ansicht | Identisches Verhalten wie Desktop |
+## Erfolgskriterien
 
----
-
-## Risiken & Mitigation
-
-| Risiko | Mitigation |
-|--------|------------|
-| Daten-Exposure | RLS-Policies begrenzen Zugriff strikt auf Kaufy-aktive Listings |
-| Bestehende Queries | Korrektur des Spaltennamens behebt auch andere potentielle Fehler |
-
+- [ ] Kaufy-Website zeigt Bilder in der Objekt-Detailseite
+- [ ] Kaufy-Übersicht zeigt Titelbild auf den Karten
+- [ ] Partner-Katalog hat klickbare Detail-Ansicht
+- [ ] Partner-Detailseite zeigt Bildergalerie
+- [ ] Partner-Detailseite zeigt PDF-Unterlagen zum Download
+- [ ] Unterlagen sind NICHT öffentlich zugänglich (nur nach Login)
+- [ ] Mobile-Darstellung ist optimiert
