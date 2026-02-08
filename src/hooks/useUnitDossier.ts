@@ -232,7 +232,7 @@ export function useUnitDossier(unitId: string | undefined) {
       const dossierData: UnitDossierData = {
         // Header - Property code (Akten-ID) takes priority over unit code
         unitCode: property.code || unitData.code || unitData.unit_number || 'MAIN',
-        address: `${property.address}, ${property.postal_code || ''} ${property.city}`.trim(),
+        address: `${property.address}${(property as any).address_house_no ? ' ' + (property as any).address_house_no : ''}, ${property.postal_code || ''} ${property.city}`.trim(),
         locationLabel: property.city,
         status: tenancyStatus === 'ACTIVE' ? 'VERMIETET' : tenancyStatus === 'VACANT' ? 'LEERSTAND' : 'IN_NEUVERMIETUNG',
         asofDate: unitData.dossier_asof_date || new Date().toISOString().split('T')[0],
