@@ -19,6 +19,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ComposeEmailDialog } from '@/components/portal/office/ComposeEmailDialog';
 import { 
   Inbox, 
   Send, 
@@ -311,6 +312,7 @@ export function EmailTab() {
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
+  const [showComposeDialog, setShowComposeDialog] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
   // Fetch connected email accounts from database
@@ -473,11 +475,27 @@ export function EmailTab() {
         isConnecting={isConnecting}
       />
 
+      {/* Compose Email Dialog */}
+      <ComposeEmailDialog
+        open={showComposeDialog}
+        onOpenChange={setShowComposeDialog}
+        accountId={activeAccount?.id || ''}
+        accountEmail={activeAccount?.email_address || ''}
+        onSent={() => {
+          refetchMessages();
+        }}
+      />
+
       {/* 3-Panel Email Client Layout */}
       <div className="grid grid-cols-12 gap-4 h-[calc(100vh-280px)]">
         {/* Left Sidebar - Folders */}
         <div className="col-span-2 border rounded-lg p-3 space-y-2">
-          <Button className="w-full gap-2" size="sm" disabled={!hasConnectedAccount}>
+          <Button 
+            className="w-full gap-2" 
+            size="sm" 
+            disabled={!hasConnectedAccount}
+            onClick={() => setShowComposeDialog(true)}
+          >
             <Plus className="h-4 w-4" />
             Neue E-Mail
           </Button>

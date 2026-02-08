@@ -2,13 +2,14 @@
  * SOT-MAIL-SYNC Edge Function
  * 
  * Synchronizes emails from connected mail accounts:
- * - Fetches new emails via IMAP or OAuth APIs
- * - Stores messages in mail_messages table
- * - Updates sync status
+ * - IMAP: Uses @workingdevshero/deno-imap
+ * - Google: Uses Gmail API
+ * - Microsoft: Uses Graph API
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,13 +91,10 @@ serve(async (req) => {
 
     try {
       if (account.provider === 'google') {
-        // Google Gmail API sync
         syncedMessages = await syncGoogleMail(supabase, account, folder, limit);
       } else if (account.provider === 'microsoft') {
-        // Microsoft Graph API sync
         syncedMessages = await syncMicrosoftMail(supabase, account, folder, limit);
       } else if (account.provider === 'imap') {
-        // IMAP sync (placeholder - needs IMAP library)
         syncedMessages = await syncImapMail(supabase, account, folder, limit);
       }
     } catch (error: any) {
@@ -133,6 +131,146 @@ serve(async (req) => {
     );
   }
 });
+
+// IMAP Mail sync using @workingdevshero/deno-imap
+async function syncImapMail(
+  supabase: any, 
+  account: any, 
+  folder: string, 
+  limit: number
+): Promise<number> {
+  console.log(`IMAP sync for ${account.email_address} on ${account.imap_host}:${account.imap_port}`);
+  
+  // Decode credentials from base64
+  let password: string;
+  try {
+    const credentials = JSON.parse(atob(account.credentials_vault_key));
+    password = credentials.password;
+    if (!password) throw new Error('Password not found in credentials');
+  } catch (e) {
+    throw new Error('Failed to decode credentials: ' + (e as Error).message);
+  }
+
+  // Create IMAP client
+  const client = new ImapClient({
+    host: account.imap_host,
+    port: account.imap_port || 993,
+    tls: true,
+    username: account.email_address,
+    password: password,
+  });
+
+  try {
+    console.log('Connecting to IMAP server...');
+    await client.connect();
+    console.log('Authenticating...');
+    await client.authenticate();
+    console.log('Connected, selecting mailbox:', folder);
+    
+    // Select mailbox
+    const mailbox = await client.selectMailbox(folder);
+    console.log(`Mailbox selected: ${mailbox.exists} messages exist`);
+
+    if (!mailbox.exists || mailbox.exists === 0) {
+      console.log('No messages in mailbox');
+      await client.disconnect();
+      return 0;
+    }
+
+    // Calculate range: fetch last N messages
+    const total = mailbox.exists;
+    const start = Math.max(1, total - limit + 1);
+    const range = `${start}:${total}`;
+    
+    console.log(`Fetching messages ${range}`);
+
+    // Fetch messages with envelope and flags
+    const messages = await client.fetch(range, {
+      envelope: true,
+      flags: true,
+      uid: true,
+    });
+
+    console.log(`Fetched ${messages.length} messages`);
+
+    let synced = 0;
+    for (const msg of messages) {
+      try {
+        const envelope = msg.envelope;
+        if (!envelope) continue;
+
+        // Extract from address
+        const fromAddr = envelope.from?.[0];
+        const fromEmail = fromAddr?.mailbox && fromAddr?.host 
+          ? `${fromAddr.mailbox}@${fromAddr.host}` 
+          : '';
+        const fromName = fromAddr?.name || '';
+
+        // Extract to addresses
+        const toAddrs = envelope.to?.map((addr: any) => 
+          addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : ''
+        ).filter(Boolean) || [];
+
+        // Parse flags
+        const flags = msg.flags || [];
+        const isRead = flags.includes('\\Seen');
+        const isStarred = flags.includes('\\Flagged');
+
+        // Parse date
+        let receivedAt: string;
+        try {
+          receivedAt = envelope.date 
+            ? new Date(envelope.date).toISOString()
+            : new Date().toISOString();
+        } catch {
+          receivedAt = new Date().toISOString();
+        }
+
+        // Upsert message
+        const { error } = await supabase
+          .from('mail_messages')
+          .upsert({
+            account_id: account.id,
+            message_id: msg.uid?.toString() || `imap_${Date.now()}_${synced}`,
+            thread_id: envelope.messageId || null,
+            folder: folder.toUpperCase(),
+            subject: envelope.subject || '(Kein Betreff)',
+            from_address: fromEmail,
+            from_name: fromName,
+            to_addresses: toAddrs,
+            snippet: '', // Would need body fetch for snippet
+            is_read: isRead,
+            is_starred: isStarred,
+            has_attachments: false,
+            received_at: receivedAt,
+          }, {
+            onConflict: 'account_id,message_id',
+          });
+
+        if (error) {
+          console.error('Error upserting message:', error);
+        } else {
+          synced++;
+        }
+      } catch (msgError) {
+        console.error('Error processing message:', msgError);
+      }
+    }
+
+    await client.disconnect();
+    console.log(`IMAP sync complete: ${synced} messages synced`);
+    return synced;
+
+  } catch (error) {
+    console.error('IMAP sync failed:', error);
+    try {
+      await client.disconnect();
+    } catch {
+      // Ignore close errors
+    }
+    throw error;
+  }
+}
 
 // Google Mail sync using Gmail API
 async function syncGoogleMail(
@@ -280,27 +418,4 @@ async function syncMicrosoftMail(
   }
 
   return synced;
-}
-
-// IMAP Mail sync (placeholder - needs IMAP library in Deno)
-async function syncImapMail(
-  supabase: any, 
-  account: any, 
-  folder: string, 
-  limit: number
-): Promise<number> {
-  // IMAP sync would require an IMAP library like imapflow
-  // For Deno edge functions, this is more complex due to TCP socket requirements
-  // For now, return a message indicating IMAP sync needs additional setup
-  
-  console.log(`IMAP sync requested for ${account.email_address}`);
-  console.log('IMAP direct sync requires additional server-side processing');
-  
-  // In a production environment, you would:
-  // 1. Use a worker service with IMAP library support
-  // 2. Or use a third-party email API (like Nylas, Context.io)
-  // 3. Or proxy through a microservice with IMAP capabilities
-  
-  // For now, we'll just mark it as needing external processing
-  throw new Error('IMAP sync requires external worker service - coming soon');
 }
