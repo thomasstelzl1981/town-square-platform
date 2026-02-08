@@ -5,6 +5,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,11 +77,11 @@ export default function SucheTab() {
   const { data: favorites = [] } = useInvestmentFavorites();
   const toggleFavorite = useToggleInvestmentFavorite();
 
-  // Fetch public listings
+  // Fetch public listings with title images
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['public-listings-search', cityFilter, priceMax, areaMin],
     queryFn: async () => {
-      // Try v_public_listings first, fallback to direct query
+      // Fetch listings
       let query = supabase
         .from('listings')
         .select(`
@@ -116,7 +117,45 @@ export default function SucheTab() {
         return [];
       }
 
-      // Transform to PublicListing format
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Get property IDs for title image lookup
+      const propertyIds = data
+        .map((item: any) => item.properties?.id)
+        .filter(Boolean) as string[];
+
+      // Fetch title images from document_links
+      const imageMap = new Map<string, string>();
+      
+      if (propertyIds.length > 0) {
+        const { data: titleImages } = await supabase
+          .from('document_links')
+          .select(`
+            object_id,
+            documents!inner (file_path, mime_type)
+          `)
+          .in('object_id', propertyIds)
+          .eq('object_type', 'property')
+          .eq('is_title_image', true);
+
+        // Generate signed URLs for title images
+        for (const img of titleImages || []) {
+          const doc = img.documents as any;
+          if (doc?.file_path && doc?.mime_type?.startsWith('image/')) {
+            const { data: signedUrlData } = await supabase.storage
+              .from('property-documents')
+              .createSignedUrl(doc.file_path, 3600);
+            
+            if (signedUrlData?.signedUrl) {
+              imageMap.set(img.object_id, resolveStorageSignedUrl(signedUrlData.signedUrl));
+            }
+          }
+        }
+      }
+
+      // Transform to PublicListing format with hero images
       return (data || []).map((item: any) => ({
         listing_id: item.id,
         public_id: item.public_id,
@@ -131,7 +170,7 @@ export default function SucheTab() {
         monthly_rent_total: item.properties?.annual_income 
           ? item.properties.annual_income / 12 
           : 0,
-        hero_image_path: null,
+        hero_image_path: imageMap.get(item.properties?.id) || null,
       })) as PublicListing[];
     },
     enabled: hasSearched || searchMode === 'classic',
