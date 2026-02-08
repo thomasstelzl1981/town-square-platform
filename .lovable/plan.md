@@ -1,131 +1,137 @@
 
-# Bereinigung: Doppelte Objektbeschreibung entfernen
+# Reparatur Simulation-Tab: Immer anzeigen + Spaltenname korrigieren
 
-## Problemzusammenfassung
+## Zusammenfassung
 
-Die Objektbeschreibung erscheint an zwei Stellen:
-1. **Immobilienakte (Tab "Akte")**: Im Block "Lage & Beschreibung" (`EditableAddressBlock`)
-2. **Exposé (Tab "Exposé")**: Als eigene Karte (`ExposeDescriptionCard`)
-
-Beide speichern in `properties.description`, aber mit unterschiedlichen Speichermechanismen → führt zu Synchronisationsproblemen.
+**2 Fehler gefunden:**
+1. Falscher Spaltenname: `lender_name` statt `bank_name` (Zeile 173)
+2. Unnötige Bedingung: Simulation wird nur angezeigt wenn Finanzierung vorhanden (Zeile 314)
 
 ---
 
-## Empfohlene Lösung
+## Fehler 1: Falscher Spaltenname
 
-**Objektbeschreibung nur noch in der Immobilienakte bearbeiten** (SSOT-Prinzip)
-
-Im Exposé-Tab wird die Beschreibung:
-- Nur noch **angezeigt** (read-only)
-- Mit einem Link/Button zur Bearbeitung in der Akte versehen
-
----
-
-## Änderungen
-
-### 1. Neue Read-Only-Komponente erstellen
-
-**Datei:** `src/components/verkauf/ExposeDescriptionDisplay.tsx`
-
-Eine einfache Anzeige-Komponente, die:
-- Die Beschreibung aus `properties.description` anzeigt
-- Einen "Bearbeiten in Akte"-Hinweis zeigt
-- Keine eigene Speicher-Logik hat
-
-```tsx
-const ExposeDescriptionDisplay = ({ 
-  description 
-}: { description: string | null }) => {
-  return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Objektbeschreibung</CardTitle>
-          <span className="text-xs text-muted-foreground">
-            (bearbeiten im Tab "Akte")
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {description ? (
-          <p className="text-sm whitespace-pre-wrap">{description}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">
-            Noch keine Beschreibung vorhanden. 
-            Erstellen Sie eine im Tab "Akte" unter "Lage & Beschreibung".
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+### Aktueller Code (PropertyDetailPage.tsx, Zeile 173)
+```typescript
+.select('id, loan_number, lender_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
 ```
 
-### 2. ExposeTab.tsx anpassen
+### Problem
+Die Spalte `lender_name` existiert nicht in der `loans`-Tabelle. Der korrekte Name ist `bank_name`.
 
-**Datei:** `src/components/portfolio/ExposeTab.tsx`
-
-Zeilen 7-8 und 122-125 ändern:
-
-```tsx
-// Import ändern
-import ExposeDescriptionDisplay from '@/components/verkauf/ExposeDescriptionDisplay';
-
-// Verwendung ändern
-<ExposeDescriptionDisplay description={property.description} />
+### Lösung
+```typescript
+.select('id, loan_number, bank_name, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
 ```
 
-### 3. ExposeDescriptionCard.tsx optional entfernen
+### Mapping anpassen (Zeile 181)
+```typescript
+// Von:
+bank_name: loan.lender_name,
 
-Die alte Komponente kann gelöscht werden, da sie nicht mehr benötigt wird.
+// Zu:
+bank_name: loan.bank_name,
+```
 
 ---
 
-## Datenfluss nach der Änderung
+## Fehler 2: Simulation nur bei vorhandener Finanzierung
+
+### Aktueller Code (Zeilen 314-338)
+```typescript
+{property && financing.length > 0 ? (
+  <InventoryInvestmentSimulation ... />
+) : (
+  <div className="...">
+    <p>Keine Finanzierungsdaten vorhanden</p>
+  </div>
+)}
+```
+
+### Problem
+Für schuldenfreie Immobilien wird nur ein leerer Zustand angezeigt. Die Wertentwicklung ist aber auch ohne Finanzierung interessant.
+
+### Lösung
+Bedingung entfernen und Fallback-Werte für Finanzierung (0) verwenden:
+
+```typescript
+{property ? (
+  <InventoryInvestmentSimulation
+    data={{
+      purchasePrice: property.purchase_price || property.market_value || 0,
+      marketValue: property.market_value || property.purchase_price || 0,
+      annualRent: (property.rental_income_monthly || 0) * 12,
+      // Fallback auf 0 wenn keine Finanzierung
+      outstandingBalance: financing[0]?.current_balance || 0,
+      interestRatePercent: financing[0]?.interest_rate || 0,
+      annuityMonthly: financing[0]?.monthly_rate || 0,
+      buildingSharePercent: accountingData?.building_share_percent || 80,
+      afaRatePercent: accountingData?.afa_rate_percent || 2,
+      afaMethod: accountingData?.afa_method || 'linear',
+      contextName: contextData?.name,
+      marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
+    }}
+  />
+) : null}
+```
+
+---
+
+## Anpassung InventoryInvestmentSimulation
+
+Die Komponente zeigt bei `outstandingBalance = 0` automatisch:
+- Restschuld: 0 EUR (verschwindet im Chart)
+- Netto-Vermögen = Verkehrswert (da keine Schulden)
+- Steuervorteil: nur AfA (keine Zinsabzüge)
+
+Optional können wir die Info-Box für "Restschuld" ausblenden wenn 0:
+
+```typescript
+// In InfoBox-Rendering (Zeile 198)
+{data.outstandingBalance > 0 && (
+  <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
+)}
+```
+
+---
+
+## Ergebnis nach der Korrektur
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ SSOT: properties.description                                    │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         │                               │
-         ▼                               ▼
-┌─────────────────────┐         ┌─────────────────────┐
-│ Tab "Akte"          │         │ Tab "Exposé"        │
-│ EditableAddressBlock│         │ ExposeDescription-  │
-│ → SCHREIBEN + LESEN │         │ Display             │
-│ → KI-Generierung    │         │ → NUR LESEN         │
-└─────────────────────┘         └─────────────────────┘
+│ MIT Finanzierung                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ • Chart zeigt: Verkehrswert, Restschuld, Netto-Vermögen        │
+│ • Steuervorteil: AfA + Zinsen berücksichtigt                   │
+│ • Tabelle: Alle Spalten sichtbar                               │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ OHNE Finanzierung (schuldenfrei)                                │
+├─────────────────────────────────────────────────────────────────┤
+│ • Chart zeigt: Verkehrswert = Netto-Vermögen (identisch)       │
+│ • Restschuld-Linie bei 0 / ausgeblendet                        │
+│ • Steuervorteil: nur AfA                                       │
+│ • Tabelle: Restschuld-Spalte zeigt "–"                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## Vorteile
-
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Bearbeitungsorte | 2 | 1 |
-| Synchronisation | Konfliktgefahr | Keine Konflikte |
-| Speichermechanismen | 2 verschiedene | 1 einheitlicher |
-| UX-Klarheit | Verwirrend | Eindeutig |
 
 ---
 
 ## Betroffene Dateien
 
-| Datei | Aktion |
-|-------|--------|
-| `src/components/verkauf/ExposeDescriptionDisplay.tsx` | Neu erstellen |
-| `src/components/portfolio/ExposeTab.tsx` | Import und Verwendung ändern |
-| `src/components/verkauf/ExposeDescriptionCard.tsx` | Kann gelöscht werden |
+| Datei | Zeilen | Änderung |
+|-------|--------|----------|
+| `PropertyDetailPage.tsx` | 173 | `lender_name` → `bank_name` |
+| `PropertyDetailPage.tsx` | 181 | `loan.lender_name` → `loan.bank_name` |
+| `PropertyDetailPage.tsx` | 314-338 | Bedingung `financing.length > 0` entfernen |
+| `InventoryInvestmentSimulation.tsx` | 196-200 | Optional: Restschuld-Box ausblenden wenn 0 |
 
 ---
 
-## Alternative (falls gewünscht)
+## Implementierungsschritte
 
-Falls die KI-Generierung auch im Exposé-Tab verfügbar sein soll, können wir stattdessen:
-- Die Beschreibung im Exposé-Tab editierbar lassen
-- Aber **dieselbe Speicher-Logik wie in der Akte** verwenden (über Query-Invalidation und Dossier-Refresh)
-
-Diese Alternative wäre komplexer, aber würde beide Orte synchron halten.
+1. Spaltenname in Abfrage korrigieren (Zeile 173)
+2. Mapping anpassen (Zeile 181)
+3. Bedingung für Simulation entfernen (Zeile 314)
+4. Optional: Komponente für schuldenfreie Darstellung optimieren
