@@ -1,193 +1,176 @@
 
-# Reparaturplan: Investment-Engine Homogenisierung v2.1
+# Reparaturplan v3.1 — Die 3 kritischen UI-Fehler
 
-## Identifizierte Kernprobleme
+## Problem 1: Titelbild fehlt in Ergebniskacheln
 
-Nach tiefgehender Analyse aller drei Investment-Ansichten wurden folgende kritische Probleme identifiziert:
+### Ursache
+In `SucheTab.tsx` Zeile 134 wird `hero_image_path: null` hart gesetzt, anstatt das Titelbild aus `document_links` zu laden.
 
-| # | Problem | Betroffene Dateien | Priorität |
-|---|---------|-------------------|-----------|
-| 1 | **Bilder nicht sichtbar** — `ExposeImageGallery` erhält `listing.id` statt `property_id` | `InvestmentExposePage.tsx`, `ExposeImageGallery.tsx` | KRITISCH |
-| 2 | **Metrics zeigen 0 €** — Cache wird nach Render gefüllt, Kacheln zeigen leere Werte | `SucheTab.tsx`, `InvestmentResultTile.tsx` | KRITISCH |
-| 3 | **MOD-09 keine Ergebnisse** — Race-Condition bei `refetch()` und State-Update | `BeratungTab.tsx` | KRITISCH |
-| 4 | **Google Maps falsch positioniert** — Mitten im Content statt ganz unten | `InvestmentExposePage.tsx` | HOCH |
-| 5 | **Kachel-Design falsch** — 4 gleiche Quadranten statt Bild oben, T-Konto unten | `InvestmentResultTile.tsx` | HOCH |
-| 6 | **Kein Titelbild in Suchergebnissen** — `hero_image_path: null` fest gesetzt | `SucheTab.tsx`, `BeratungTab.tsx` | HOCH |
-
----
-
-## Detaillierte Reparaturen
-
-### 1. Bilder-Query korrigieren (KRITISCH)
-
-**Problem:** Die Bildergalerie fragt nach `object_id = listing.id`, aber Bilder sind an `property_id` gebunden.
-
-**Lösung A: Property-ID in der Query extrahieren**
-
-In `InvestmentExposePage.tsx`:
-- Die Query liefert bereits `properties.id` — diesen Wert an `ExposeImageGallery` übergeben
-- Änderung: `propertyId={listing.property_id}` statt `propertyId={listing.id}`
-
-**Lösung B: ExposeImageGallery flexibler machen**
-- Falls `propertyId` nicht übergeben wird, eine zusätzliche Query ausführen um `property_id` aus dem Listing zu holen
-
-**Betroffene Dateien:**
-- `src/pages/portal/investments/InvestmentExposePage.tsx`
-- `src/components/investment/ExposeImageGallery.tsx` (optional: Fallback-Logik)
-
----
-
-### 2. Metrics-Berechnung synchronisieren (KRITISCH)
-
-**Problem:** Die Investment-Engine-Berechnung läuft asynchron. Die Kacheln rendern bevor die Ergebnisse da sind.
-
-**Lösung:**
-1. Berechnung blockierend vor dem Setzen von `hasSearched` abschließen
-2. `metricsCache` initial mit "loading" State füllen
-3. Fallback-Werte basierend auf Standard-Finanzierungsparametern anzeigen
-
-**Betroffene Dateien:**
-- `src/pages/portal/investments/SucheTab.tsx`
-
-**Änderung:**
-```typescript
-const handleInvestmentSearch = useCallback(async () => {
-  await refetch();
-  
-  const newCache: Record<string, any> = {};
-  
-  // Alle Berechnungen ABWARTEN
-  await Promise.all(listings.slice(0, 20).map(async (listing) => {
-    const result = await calculate(input);
-    if (result) {
-      newCache[listing.listing_id] = {
-        monthlyBurden: result.summary.monthlyBurden,
-        // ...
-      };
-    }
-  }));
-  
-  setMetricsCache(newCache);
-  setHasSearched(true);  // NACH dem Cache-Update
-}, [...]);
-```
-
----
-
-### 3. MOD-09 Race-Condition beheben (KRITISCH)
-
-**Problem:** `handleSearch` ruft `refetch()` auf, aber iteriert dann über die alte `rawListings` Variable.
-
-**Lösung:**
-```typescript
-const handleSearch = useCallback(async () => {
-  const { data: freshListings } = await refetch();  // Nutze die frischen Daten
-  const listings = freshListings || [];
-  
-  // Iteriere über listings, nicht rawListings
-  for (const listing of listings) {
-    // ...calculate
-  }
-}, [refetch, calculate, searchParams]);  // rawListings NICHT in Dependencies
-```
-
-**Betroffene Dateien:**
-- `src/pages/portal/vertriebspartner/BeratungTab.tsx`
-
----
-
-### 4. Google Maps an das Ende verschieben (HOCH)
-
-**Problem:** Map ist bei Zeile 285 platziert, sollte nach allen Tabs/Dokumenten sein.
-
-**Lösung:** Map-Block ans Ende des Left-Column Containers verschieben (nach `DetailTable40Jahre`).
-
-**Betroffene Dateien:**
-- `src/pages/portal/investments/InvestmentExposePage.tsx`
-
-**Vorher:**
-```
-[Image Gallery]
-[Property Details]
-[Map]  ← HIER IST SIE JETZT
-[MasterGraph]
-[Haushaltsrechnung]
-[DetailTable]
-```
-
-**Nachher:**
-```
-[Image Gallery]
-[Property Details]
-[MasterGraph]
-[Haushaltsrechnung]
-[DetailTable]
-[Map]  ← HIERHIN VERSCHIEBEN
-```
-
----
-
-### 5. Kachel-Design überarbeiten (HOCH)
-
-**Problem:** Aktuelles Design teilt in 4 gleiche Quadranten. Gewünscht: Bild oben (50%), T-Konto unten (50%).
-
-**Gewünschtes Layout:**
-
-```text
-┌─────────────────────────────────────┐
-│           [BILD]                    │
-│         (Titelbild)                 │
-│                                     │
-├──────────────────┬──────────────────┤
-│  € 220.000       │  3,7% Rendite    │
-│  Leipzig · ETW   │  62 m²           │
-├──────────────────┴──────────────────┤
-│  EINNAHMEN       │  AUSGABEN        │
-│  + Miete  €682   │  − Zins   €495   │
-│  + Steuer €120   │  − Tilg.  €283   │
-├─────────────────────────────────────┤
-│  MONATSBELASTUNG: +€24/Mo ✓         │
-└─────────────────────────────────────┘
-```
-
-**Änderungen:**
-- Obere Hälfte: Bild (volle Breite, `aspect-[4/3]` oder `aspect-video`)
-- Daten-Bar: Kompakte Zeile mit Preis, Ort, Rendite, Fläche
-- Untere Hälfte: T-Konto mit Summierung
-- Footer: Monatsbelastung prominent
-
-**Betroffene Dateien:**
-- `src/components/investment/InvestmentResultTile.tsx`
-
----
-
-### 6. Titelbilder in Suchergebnissen laden (HOCH)
-
-**Problem:** `hero_image_path` wird fest auf `null` gesetzt statt das Titelbild zu laden.
-
-**Lösung:** Nach dem Laden der Listings eine zusätzliche Query für Titelbilder ausführen:
+### Lösung
+Nach dem Laden der Listings eine zweite Query ausführen, die die Titelbilder lädt:
 
 ```typescript
-// In SucheTab.tsx
-const propertyIds = listings.map(l => l.properties?.id).filter(Boolean);
+// Nachdem listings geladen sind, Titelbilder nachladen
+const propertyIds = data.map(item => item.properties?.id).filter(Boolean);
 
-// Titelbilder laden
 const { data: titleImages } = await supabase
   .from('document_links')
   .select(`
     object_id,
-    documents!inner (file_path)
+    documents!inner (file_path, mime_type)
   `)
   .in('object_id', propertyIds)
+  .eq('object_type', 'property')
   .eq('is_title_image', true)
-  .eq('object_type', 'property');
+  .in('documents.mime_type', ['image/jpeg', 'image/png', 'image/webp']);
 
-// Signed URLs generieren und zuordnen
+// Signed URLs generieren und als Map speichern
+const imageMap = new Map();
+for (const img of titleImages || []) {
+  if (img.documents?.file_path) {
+    const { data: signedUrl } = await supabase.storage
+      .from('property-documents')
+      .createSignedUrl(img.documents.file_path, 3600);
+    if (signedUrl?.signedUrl) {
+      imageMap.set(img.object_id, resolveStorageSignedUrl(signedUrl.signedUrl));
+    }
+  }
+}
+
+// hero_image_path aus Map zuweisen
+return data.map(item => ({
+  ...mappedListing,
+  hero_image_path: imageMap.get(item.properties?.id) || null,
+}));
 ```
 
-**Betroffene Dateien:**
-- `src/pages/portal/investments/SucheTab.tsx`
-- `src/pages/portal/vertriebspartner/BeratungTab.tsx`
+**Betroffene Datei:** `src/pages/portal/investments/SucheTab.tsx`
+
+---
+
+## Problem 2: Einstellungs-Kachel nicht sticky
+
+### Ursache
+Das `sticky top-24` funktioniert nur, wenn:
+1. Das Parent-Element höher ist als der sticky-Container
+2. Der sticky-Container nicht den gesamten sichtbaren Bereich einnimmt
+
+Aktuell scrollt die **gesamte Seite** - nicht die linke Spalte. Der sticky-Container braucht einen scrollbaren Kontext.
+
+### Lösung
+Die Layout-Struktur so ändern, dass die **linke Spalte scrollt** während die rechte fixed bleibt:
+
+```tsx
+{/* Main Content - Fixed Height Layout */}
+<div className="h-[calc(100vh-5rem)]"> {/* Header-Höhe abziehen */}
+  <div className="h-full grid lg:grid-cols-3 gap-8 p-6">
+    {/* Left Column - SCROLLBAR */}
+    <div className="lg:col-span-2 overflow-y-auto pr-4 space-y-8">
+      {/* ... Content ... */}
+    </div>
+
+    {/* Right Column - FIXED (nicht sticky, sondern implizit fixed durch Parent) */}
+    <div className="lg:col-span-1 overflow-y-auto">
+      <InvestmentSliderPanel ... />
+    </div>
+  </div>
+</div>
+```
+
+**Alternative (einfacher):**
+Den gesamten Container mit `position: relative` und definierter Höhe versehen, sodass `sticky` korrekt funktioniert.
+
+```tsx
+<div className="relative min-h-screen">
+  <div className="grid lg:grid-cols-3 gap-8 p-6">
+    {/* Left - Normal scroll */}
+    <div className="lg:col-span-2 space-y-8">
+      ...
+    </div>
+
+    {/* Right - Sticky */}
+    <div className="hidden lg:block">
+      <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <InvestmentSliderPanel ... />
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Betroffene Datei:** `src/pages/portal/investments/InvestmentExposePage.tsx`
+
+---
+
+## Problem 3: Summen-Strich nicht aligned im T-Konto
+
+### Ursache
+Linke Spalte: 2 Zeilen (Mieteinnahmen, Steuerersparnis)
+Rechte Spalte: 3 Zeilen (Zinsen, Tilgung, Verwaltung)
+
+Die `border-t` vor Σ erscheint auf unterschiedlicher Höhe.
+
+### Lösung A: CSS Grid mit gleichen Zeilen
+Beide Spalten mit festem Grid-Layout, sodass die Summenzeile immer in derselben Grid-Row ist:
+
+```tsx
+<div className="grid md:grid-cols-2 gap-0 border rounded-lg overflow-hidden">
+  {/* Linke Spalte */}
+  <div className="p-4 bg-green-50/50 border-l-4 border-l-green-500">
+    <div className="grid grid-rows-[auto_1fr_auto] min-h-[160px]">
+      <h4>Einnahmen p.a.</h4>
+      
+      {/* Content - flexibel */}
+      <div className="space-y-2">
+        <div>+ Mieteinnahmen...</div>
+        <div>+ Steuerersparnis...</div>
+      </div>
+      
+      {/* Footer - immer unten */}
+      <div className="border-t pt-2 mt-auto">
+        <div>Σ Einnahmen</div>
+      </div>
+    </div>
+  </div>
+
+  {/* Rechte Spalte - identische Struktur */}
+  <div className="p-4 bg-red-50/50 border-l-4 border-l-red-500">
+    <div className="grid grid-rows-[auto_1fr_auto] min-h-[160px]">
+      <h4>Ausgaben p.a.</h4>
+      
+      <div className="space-y-2">
+        <div>− Zinsen...</div>
+        <div>− Tilgung...</div>
+        <div>− Verwaltung...</div>
+      </div>
+      
+      <div className="border-t pt-2 mt-auto">
+        <div>Σ Ausgaben</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+Der Trick: `grid-rows-[auto_1fr_auto]` mit `min-h-[160px]` stellt sicher, dass:
+- Header (auto) passt sich an
+- Content (1fr) nimmt verfügbaren Platz
+- Footer (auto) ist immer am selben Y-Punkt
+
+### Lösung B: Flexbox mit mt-auto
+```tsx
+<div className="flex flex-col min-h-[160px]">
+  <h4>Header</h4>
+  <div className="flex-1 space-y-2">
+    {/* Variable Anzahl Zeilen */}
+  </div>
+  <div className="border-t pt-2 mt-auto">
+    Σ Summe
+  </div>
+</div>
+```
+
+**Betroffene Datei:** `src/components/investment/Haushaltsrechnung.tsx`
 
 ---
 
@@ -197,37 +180,29 @@ const { data: titleImages } = await supabase
 
 | Datei | Änderungen |
 |-------|------------|
-| `InvestmentExposePage.tsx` | 1) Property-ID korrekt extrahieren, 2) Map ans Ende verschieben |
-| `ExposeImageGallery.tsx` | Optional: Fallback-Query für property_id |
-| `SucheTab.tsx` | 1) Metrics-Berechnung synchronisieren, 2) Titelbilder laden |
-| `BeratungTab.tsx` | Race-Condition beheben, Titelbilder laden |
-| `InvestmentResultTile.tsx` | Komplettes Redesign: Bild oben, T-Konto unten, Summierung |
+| `src/pages/portal/investments/SucheTab.tsx` | Titelbilder aus document_links laden |
+| `src/pages/portal/investments/InvestmentExposePage.tsx` | Layout für korrektes Sticky-Verhalten |
+| `src/components/investment/Haushaltsrechnung.tsx` | T-Konto mit aligned Summenzeilen |
 
 ---
 
 ## Akzeptanzkriterien
 
-| # | Test | Status |
-|---|------|--------|
-| 1 | Bilder werden in MOD-08 Exposé angezeigt | 🔴 Kaputt |
-| 2 | Bilder werden in MOD-09 Modal angezeigt | 🔴 Kaputt |
-| 3 | Bilder werden in KAUFY Exposé angezeigt | 🟢 OK |
-| 4 | Suchergebnis-Kacheln zeigen Titelbilder | 🔴 Kaputt |
-| 5 | Zinsen/Tilgung zeigen korrekte Werte (nicht 0€) | 🔴 Kaputt |
-| 6 | MOD-09 zeigt Objekte nach "Berechnen" | 🔴 Kaputt |
-| 7 | Google Maps ist ganz unten im Exposé | 🔴 Falsch |
-| 8 | Kachel hat korrektes Layout (Bild oben, T-Konto unten) | 🔴 Falsch |
-| 9 | Monatsbelastung wird korrekt berechnet und angezeigt | 🔴 Kaputt |
-| 10 | Slider-Panel bleibt sticky beim Scrollen | 🟢 OK |
+| # | Test | Erwartung |
+|---|------|-----------|
+| 1 | Suchergebnis-Kacheln zeigen Titelbilder | ✓ Wenn is_title_image=true existiert |
+| 2 | Beim Scrollen bleibt Parameter-Panel rechts fixiert | ✓ Panel scrollt nicht mit |
+| 3 | Σ Einnahmen und Σ Ausgaben sind auf gleicher Höhe | ✓ Horizontale Linie durchgehend |
+| 4 | T-Konto funktioniert auch bei unterschiedlicher Zeilenanzahl | ✓ Flexibles Layout |
 
 ---
 
 ## Zusammenfassung
 
-Die Hauptprobleme sind:
+Die drei Probleme haben klar identifizierbare Ursachen:
 
-1. **Daten-Mapping-Fehler:** `listing.id` wird verwendet wo `property_id` nötig ist
-2. **Async-Timing-Probleme:** Rendering vor Daten-Laden
-3. **UI-Struktur:** Layout entspricht nicht der Spezifikation
+1. **Titelbild:** Query für Titelbilder fehlt komplett
+2. **Sticky:** CSS-Kontext erfordert definierte Höhe oder scroll-Container
+3. **Summen-Strich:** Flexbox mit `mt-auto` oder Grid mit festen Rows
 
-Nach diesen Reparaturen werden alle drei Investment-Ansichten konsistent funktionieren mit korrekten Bildern, Berechnungen und dem gewünschten T-Konto-Layout.
+Nach der Reparatur werden alle drei Ansichten (KAUFY, MOD-08, MOD-09) konsistent und benutzerfreundlich sein.
