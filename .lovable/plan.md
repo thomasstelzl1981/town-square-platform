@@ -170,10 +170,10 @@ Diese werden parallel implementiert:
 
 ## Erfolgskriterien
 
-- [ ] Kaufy-Website zeigt Bilder in der Objekt-Detailseite
-- [ ] Kaufy-Übersicht zeigt Titelbild auf den Karten
-- [ ] Partner-Katalog hat klickbare Detail-Ansicht
-- [ ] Partner-Detailseite zeigt Bildergalerie
-- [ ] Partner-Detailseite zeigt PDF-Unterlagen zum Download
-- [ ] Unterlagen sind NICHT öffentlich zugänglich (nur nach Login)
+- [x] Kaufy-Website zeigt Bilder in der Objekt-Detailseite
+- [x] Kaufy-Übersicht zeigt Titelbild auf den Karten
+- [x] Partner-Katalog hat klickbare Detail-Ansicht
+- [x] Partner-Detailseite zeigt Bildergalerie
+- [x] Partner-Detailseite zeigt PDF-Unterlagen zum Download
+- [x] Unterlagen sind NICHT öffentlich zugänglich (nur nach Login)
 - [ ] Mobile-Darstellung ist optimiert
