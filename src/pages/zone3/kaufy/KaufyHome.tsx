@@ -12,6 +12,7 @@ import { KaufyPropertyCard } from '@/components/zone3/kaufy/KaufyPropertyCard';
 import { PerspektivenAccordion } from '@/components/zone3/kaufy/PerspektivenAccordion';
 import { ZahlenSektion } from '@/components/zone3/kaufy/ZahlenSektion';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 
 interface PropertyData {
   public_id: string;
@@ -76,53 +77,9 @@ export default function KaufyHome() {
 
       if (!listingsData?.length) return [];
 
-      // 3. Fetch hero images for all properties via document_links
+      // 3. Fetch hero images using shared helper (signed URLs for private bucket)
       const propertyIds = listingsData.map((l: any) => l.properties.id).filter(Boolean);
-      
-      let imageMap: Record<string, string> = {};
-      
-      if (propertyIds.length > 0) {
-        // Query document_links for property images
-        const { data: docLinks, error: docLinksError } = await supabase
-          .from('document_links')
-          .select(`
-            object_id,
-            is_title_image,
-            display_order,
-            documents!inner (
-              id, file_path, mime_type
-            )
-          `)
-          .eq('object_type', 'property')
-          .in('object_id', propertyIds)
-          .order('is_title_image', { ascending: false })
-          .order('display_order', { ascending: true });
-
-        if (!docLinksError && docLinks?.length) {
-          // Group by property, pick best image (title image first, then by display_order)
-          const propImageLinks: Record<string, any> = {};
-          for (const link of docLinks) {
-            const doc = (link as any).documents;
-            if (!doc?.file_path || !doc.mime_type?.startsWith('image/')) continue;
-            
-            const propId = link.object_id;
-            // Prefer is_title_image, otherwise take first
-            if (!propImageLinks[propId] || link.is_title_image) {
-              propImageLinks[propId] = doc.file_path;
-            }
-          }
-
-          // Generate public URLs for each image
-          for (const [propId, filePath] of Object.entries(propImageLinks)) {
-            const { data: urlData } = supabase.storage
-              .from('tenant-documents')
-              .getPublicUrl(filePath as string);
-            if (urlData?.publicUrl) {
-              imageMap[propId] = urlData.publicUrl;
-            }
-          }
-        }
-      }
+      const imageMap = await fetchPropertyImages(propertyIds);
 
       // 4. Transform to PropertyData format with image_url
       return (listingsData || []).map((l: any) => ({
@@ -138,7 +95,7 @@ export default function KaufyHome() {
         gross_yield: l.asking_price > 0 
           ? ((l.properties.annual_income || 0) / l.asking_price) * 100 
           : 0,
-        image_url: imageMap[l.properties.id] || undefined,
+        image_url: imageMap.get(l.properties.id) || undefined,
       })) as PropertyData[];
     },
   });
