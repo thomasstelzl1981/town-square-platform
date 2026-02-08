@@ -184,6 +184,18 @@ const LoadingFallback = () => (
 // =============================================================================
 // Component Map for Zone 1
 // =============================================================================
+
+// Armstrong Console Components (Zone 1 Governance)
+import {
+  ArmstrongDashboard,
+  ArmstrongActions,
+  ArmstrongLogs,
+  ArmstrongKnowledge,
+  ArmstrongBilling,
+  ArmstrongPolicies,
+  ArmstrongTestHarness,
+} from '@/pages/admin/armstrong';
+
 const adminComponentMap: Record<string, React.ComponentType> = {
   Dashboard,
   Organizations,
@@ -216,6 +228,15 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
   FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
   Support,
+  
+  // Armstrong Console (Zone 1 Governance Suite)
+  ArmstrongDashboard,
+  ArmstrongActions,
+  ArmstrongLogs,
+  ArmstrongKnowledge,
+  ArmstrongBilling,
+  ArmstrongPolicies,
+  ArmstrongTestHarness,
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)

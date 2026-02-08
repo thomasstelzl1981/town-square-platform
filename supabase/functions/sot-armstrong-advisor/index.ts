@@ -113,10 +113,14 @@ interface UserContext {
 }
 
 // =============================================================================
-// MVP MODULE ALLOWLIST
+// MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
 const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08"];
+
+// Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
+// These intents are allowed in ALL modules (explain, draft, research)
+const GLOBAL_ASSIST_INTENTS: IntentType[] = ["EXPLAIN", "DRAFT"];
 
 // MVP Actions that can be EXECUTED (not just suggested)
 const MVP_EXECUTABLE_ACTIONS = [
@@ -138,6 +142,52 @@ const MVP_EXECUTABLE_ACTIONS = [
   // MOD-08 (Investments) - readonly
   "ARM.MOD08.RUN_SIMULATION",
   "ARM.MOD08.ANALYZE_FAVORITE",
+  
+  // Global Actions (available in all modules)
+  "ARM.GLOBAL.EXPLAIN_TERM",
+  "ARM.GLOBAL.FAQ",
+  "ARM.GLOBAL.WEB_RESEARCH",
+  "ARM.GLOBAL.DRAFT_TEXT",
+];
+
+// Global Actions - available regardless of module context
+const GLOBAL_ACTIONS: ActionDefinition[] = [
+  {
+    action_code: "ARM.GLOBAL.WEB_RESEARCH",
+    title_de: "Web-Recherche",
+    description_de: "Recherchiert aktuelle Informationen mit Quellenangabe",
+    zones: ["Z2"],
+    module: null,
+    risk_level: "low",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["external_web"],
+    data_scopes_write: [],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 10,
+    credits_estimate: 5,
+    status: "active",
+  },
+  {
+    action_code: "ARM.GLOBAL.DRAFT_TEXT",
+    title_de: "Text erstellen",
+    description_de: "Erstellt Textentwürfe (E-Mails, Briefe, Beschreibungen)",
+    zones: ["Z2"],
+    module: null,
+    risk_level: "low",
+    execution_mode: "draft_only",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: [],
+    data_scopes_write: [],
+    side_effects: [],
+    cost_model: "free",
+    cost_hint_cents: null,
+    credits_estimate: 0,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -813,26 +863,57 @@ async function logActionRun(
 async function generateExplainResponse(
   message: string,
   module: Module,
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  isGlobalAssist: boolean = false
 ): Promise<string> {
   const { data: kbItems } = await supabase
     .from("armstrong_knowledge_items")
     .select("title_de, summary_de, content")
     .eq("status", "published")
-    .limit(3);
+    .limit(5);
   
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
-    return `Ich verstehe Ihre Frage zu "${message}". Im aktuellen MVP-Modus kann ich Ihnen allgemeine Informationen geben.`;
+    return `Ich verstehe Ihre Frage zu "${message}". Im aktuellen Modus kann ich Ihnen allgemeine Informationen geben.`;
   }
   
   try {
-    const systemPrompt = `Du bist Armstrong, ein KI-Assistent für Immobilienmanagement bei System of a Town. 
+    // Enhanced system prompt for Global Assist Mode
+    const globalAssistPrompt = `Du bist Armstrong, ein vollwertiger KI-Assistent bei System of a Town.
+
+DEINE FÄHIGKEITEN:
+- Allgemeine Fragen beantworten (wie ChatGPT)
+- Texte schreiben und entwerfen (E-Mails, Briefe, Beschreibungen)
+- Ideen entwickeln und Strategien vorschlagen
+- Zusammenfassungen erstellen
+- Checklisten und Pläne erstellen
+- Bei Immobilien, Finanzierung und Investment beraten
+
+GOVERNANCE-REGELN:
+- Schreibende Aktionen erfordern Bestätigung
+- Web-Recherche ist als separate Action verfügbar (mit Kosten)
+- Keine Rechts-, Steuer- oder Finanzberatung (Hinweis auf Fachberater)
+- Bei sensiblen Themen: Disclaimer verwenden
+
+AKTUELLER KONTEXT:
+- Modul: ${module}
+- Modus: ${isGlobalAssist ? 'Global Assist (modul-agnostisch)' : 'Modul-spezifisch'}
+
+STIL:
+- Deutsch, klar, professionell aber freundlich
+- Proaktiv Hilfe anbieten
+- Bei Unsicherheit: ehrlich sagen`;
+
+    const moduleSpecificPrompt = `Du bist Armstrong, ein KI-Assistent für Immobilienmanagement bei System of a Town. 
 Du hilfst bei Fragen zu Immobilien, Finanzierung und Investment.
 Antworte auf Deutsch, präzise und hilfsbereit.
-Modul-Kontext: ${module}
-${kbItems?.length ? `\nRelevantes Wissen:\n${kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n')}` : ''}`;
+Modul-Kontext: ${module}`;
+
+    const systemPrompt = isGlobalAssist ? globalAssistPrompt : moduleSpecificPrompt;
+    const kbContext = kbItems?.length 
+      ? `\n\nWissenskontext:\n${kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n')}`
+      : '';
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -843,16 +924,16 @@ ${kbItems?.length ? `\nRelevantes Wissen:\n${kbItems.map(k => `- ${k.title_de}: 
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + kbContext },
           { role: "user", content: message },
         ],
-        max_tokens: 500,
+        max_tokens: 800,
       }),
     });
     
     if (!response.ok) {
       console.error("[Armstrong] AI response error:", response.status);
-      return `Ich kann Ihre Frage zu "${message}" im Kontext von ${module} beantworten.`;
+      return `Ich kann Ihre Frage zu "${message}" beantworten. Wie kann ich Ihnen helfen?`;
     }
     
     const data = await response.json();
@@ -860,6 +941,68 @@ ${kbItems?.length ? `\nRelevantes Wissen:\n${kbItems.map(k => `- ${k.title_de}: 
   } catch (err) {
     console.error("[Armstrong] AI generation error:", err);
     return `Entschuldigung, ich konnte die Anfrage nicht verarbeiten.`;
+  }
+}
+
+// =============================================================================
+// DRAFT GENERATION (for Global Assist Mode)
+// =============================================================================
+
+async function generateDraftResponse(
+  message: string,
+  module: Module,
+  supabase: ReturnType<typeof createClient>
+): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    return `Entwurf basierend auf: "${message}"\n\n[Bitte vervollständigen Sie diesen Entwurf manuell]`;
+  }
+  
+  try {
+    const systemPrompt = `Du bist Armstrong, ein professioneller Textassistent bei System of a Town.
+
+AUFGABE: Erstelle einen vollständigen, sofort verwendbaren Entwurf basierend auf der Anfrage.
+
+REGELN:
+- Schreibe in professionellem Deutsch
+- Der Entwurf muss direkt verwendbar sein (nicht nur Platzhalter)
+- Formatiere mit Markdown (Überschriften, Listen, etc.)
+- Bei E-Mails: Betreff, Anrede, Inhalt, Grußformel
+- Bei Briefen: Datum, Adressfeld, Anrede, Inhalt, Unterschrift
+- Bei Beschreibungen: Strukturiert, klar, überzeugend
+
+WICHTIG:
+- Dies ist ein ENTWURF — der Nutzer kann ihn noch anpassen
+- Erfinde keine Fakten, nutze allgemeine Formulierungen
+- Bei persönlichen Daten: Platzhalter wie [Name], [Adresse] verwenden`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Erstelle folgenden Entwurf: ${message}` },
+        ],
+        max_tokens: 1000,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error("[Armstrong] Draft generation error:", response.status);
+      return `Entwurf für: "${message}"\n\n[Konnte keinen automatischen Entwurf erstellen. Bitte manuell verfassen.]`;
+    }
+    
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || `Entwurf basierend auf: "${message}"`;
+  } catch (err) {
+    console.error("[Armstrong] Draft generation error:", err);
+    return `Entwurf für: "${message}"\n\n[Fehler bei der Erstellung]`;
   }
 }
 
@@ -1063,19 +1206,8 @@ serve(async (req) => {
       );
     }
     
-    // Validate module
-    if (!MVP_MODULES.includes(module)) {
-      return new Response(
-        JSON.stringify({
-          type: "EXPLAIN",
-          message: `Das Modul ${module} ist im MVP noch nicht vollständig unterstützt. Ich kann aber allgemeine Fragen beantworten.`,
-          citations: [],
-          suggested_actions: [],
-          next_steps: ["Nutzen Sie Armstrong in MOD-00, MOD-04, MOD-07 oder MOD-08."],
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // NOTE: Module validation is now handled AFTER intent classification
+    // to enable Global Assist Mode (explain/draft work in any module)
     
     // Get user context from JWT
     const authHeader = req.headers.get("Authorization");
@@ -1110,12 +1242,47 @@ serve(async (req) => {
       }
     }
     
-    // Classify intent
+    // Classify intent FIRST to enable Global Assist Mode
     const intent = classifyIntent(message, action_request);
-    console.log(`[Armstrong] Intent: ${intent}`);
+    console.log(`[Armstrong] Intent: ${intent}, Module: ${module}`);
     
-    // Get available actions for context
-    const availableActions = filterActionsForContext(MVP_ACTIONS, zone, module, userContext);
+    // Check if this is a module-specific action request
+    const isModuleSpecificAction = action_request?.action_code && 
+      !action_request.action_code.startsWith("ARM.GLOBAL.");
+    
+    // GLOBAL ASSIST MODE: Allow explain/draft in any module
+    const isGlobalAssistIntent = GLOBAL_ASSIST_INTENTS.includes(intent);
+    const isInMvpModule = MVP_MODULES.includes(module);
+    
+    // Block module-specific actions outside MVP modules
+    if (isModuleSpecificAction && !isInMvpModule) {
+      return new Response(
+        JSON.stringify({
+          type: "EXPLAIN",
+          message: `Modul-spezifische Aktionen sind in ${module} noch nicht verfügbar. Ich kann aber bei allgemeinen Aufgaben helfen — fragen Sie mich gerne!`,
+          citations: [],
+          suggested_actions: GLOBAL_ACTIONS.map(a => ({
+            action_code: a.action_code,
+            title_de: a.title_de,
+            execution_mode: a.execution_mode,
+            risk_level: a.risk_level,
+            cost_model: a.cost_model,
+            credits_estimate: a.credits_estimate || 0,
+            cost_hint_cents: a.cost_hint_cents || 0,
+            side_effects: a.side_effects,
+            why: "Globale Aktion — überall verfügbar",
+          })),
+          next_steps: ["Nutzen Sie globale Aktionen oder stellen Sie eine Frage."],
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Get available actions for context (include global actions for all modules)
+    const allActions = [...MVP_ACTIONS, ...GLOBAL_ACTIONS];
+    const availableActions = isInMvpModule 
+      ? filterActionsForContext(allActions, zone, module, userContext)
+      : GLOBAL_ACTIONS.filter(a => a.zones.includes(zone));
     
     // =======================================================================
     // EXPLICIT ACTION REQUEST HANDLING
@@ -1226,7 +1393,9 @@ serve(async (req) => {
     // =======================================================================
     
     if (intent === "EXPLAIN") {
-      const explanation = await generateExplainResponse(message, module, supabase);
+      // Enable Global Assist Mode when not in MVP module
+      const isGlobalAssist = !isInMvpModule;
+      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist);
       const suggestions = suggestActionsForMessage(message, availableActions);
       
       return new Response(
@@ -1237,23 +1406,30 @@ serve(async (req) => {
           suggested_actions: suggestions,
           next_steps: suggestions.length > 0 
             ? ["Wählen Sie eine der vorgeschlagenen Aktionen aus."]
-            : [],
+            : isGlobalAssist
+              ? ["Ich kann Ihnen bei weiteren Aufgaben helfen — fragen Sie einfach!"]
+              : [],
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
     if (intent === "DRAFT") {
+      // Use AI to generate the actual draft content
+      const isGlobalAssist = !isInMvpModule;
+      const draftContent = await generateDraftResponse(message, module, supabase);
+      
       return new Response(
         JSON.stringify({
           type: "DRAFT",
           draft: {
             title: "Entwurf",
-            content: `Basierend auf Ihrer Anfrage "${message}" erstelle ich einen Entwurf...`,
+            content: draftContent,
             format: "markdown",
           },
+          message: "Hier ist mein Entwurf. Sie können ihn kopieren und anpassen:",
           suggested_actions: suggestActionsForMessage(message, availableActions),
-          next_steps: ["Entwurf überprüfen und anpassen"],
+          next_steps: ["Entwurf überprüfen und anpassen", "Kopieren und verwenden"],
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
