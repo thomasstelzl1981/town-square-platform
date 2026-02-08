@@ -1,69 +1,38 @@
 /**
- * ARMSTRONG MANIFEST — SINGLE SOURCE OF TRUTH
+ * ARMSTRONG MANIFEST — SINGLE SOURCE OF TRUTH (V2)
  * 
+ * Phase 6 Governance Schema with execution_mode, side_effects, and versioning.
  * Defines all Armstrong actions, their permissions, zones, and billing metadata.
- * This manifest drives both Zone 2 (Portal) and Zone 3 (Websites) behavior.
- * Zone 1 (Admin) uses this for the Armstrong Console (read-only viewer).
  * 
  * RULES:
  * 1. All actions must be declared here
  * 2. Zone field determines availability (Z2 = Portal, Z3 = Websites)
- * 3. Confirmation required for all metered/write actions
- * 4. Changes require explicit approval
+ * 3. execution_mode determines confirmation requirements (K3 compliant)
+ * 4. Changes require explicit approval + version bump
+ * 
+ * K3 ENFORCEMENT:
+ * - execution_mode='execute' only allowed if: risk_level='low' AND data_scopes_write=[] AND cost_model='free'
+ * 
+ * K4 ENFORCEMENT:
+ * - execution_mode='draft_only' must not write to SSOT tables directly
  */
 
-// =============================================================================
-// TYPES
-// =============================================================================
+import type {
+  ArmstrongActionV2,
+  ArmstrongZone,
+  ExecutionMode,
+  RiskLevel,
+  CostModel,
+  CostUnit,
+  ActionStatus,
+  validateAllActions,
+} from '@/types/armstrong';
 
-export type ArmstrongZone = 'Z2' | 'Z3';
-export type RiskLevel = 'low' | 'medium' | 'high';
-export type CostModel = 'free' | 'metered' | 'premium';
-export type CostUnit = 'per_call' | 'per_token' | 'per_page' | null;
+// Re-export types for backwards compatibility
+export type { ArmstrongActionV2, ArmstrongZone, ExecutionMode, RiskLevel, CostModel };
 
-export interface ArmstrongAction {
-  // Identification
-  action_code: string;
-  title_de: string;
-  description_de: string;
-  
-  // Zone availability (Z1 removed - no chat in admin)
-  zones: ArmstrongZone[];
-  
-  // Module association (null for global actions)
-  module: string | null;
-  
-  // Security
-  risk_level: RiskLevel;
-  requires_confirmation: boolean;
-  requires_consent_code: string | null;
-  roles_allowed: string[];  // Empty = all authenticated users
-  
-  // Data access scopes
-  data_scopes_read: string[];
-  data_scopes_write: string[];
-  
-  // Billing
-  cost_model: CostModel;
-  cost_unit: CostUnit;
-  cost_hint_cents: number | null;
-  
-  // Technical implementation
-  api_contract: {
-    type: 'edge_function' | 'rpc' | 'internal' | 'tool_call';
-    endpoint: string | null;
-    tool_name?: string;
-  };
-  
-  // UI
-  ui_entrypoints: string[];
-  
-  // Audit
-  audit_event_type: string;
-  
-  // Status
-  status: 'draft' | 'active' | 'deprecated';
-}
+// Legacy type alias for gradual migration
+export type ArmstrongAction = ArmstrongActionV2;
 
 // =============================================================================
 // ZONE 3 ALLOWED ACTIONS (Public/Unauthenticated)
@@ -91,10 +60,10 @@ export const ZONE3_ALLOWED_ACTION_CODES = [
 export type Zone3ActionCode = typeof ZONE3_ALLOWED_ACTION_CODES[number];
 
 // =============================================================================
-// ACTIONS REGISTRY
+// ACTIONS REGISTRY (V2 Schema)
 // =============================================================================
 
-export const armstrongActions: ArmstrongAction[] = [
+export const armstrongActions: ArmstrongActionV2[] = [
   // ===========================================================================
   // GLOBAL ACTIONS (Available in Z2 and Z3)
   // ===========================================================================
@@ -105,11 +74,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -125,11 +96,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -145,11 +118,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['routes_manifest', 'knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -165,11 +140,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: null,
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: ['external_api_call', 'credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 5,
@@ -180,7 +157,7 @@ export const armstrongActions: ArmstrongAction[] = [
   },
 
   // ===========================================================================
-  // PUBLIC ACTIONS (Zone 3 only - Lead Capture)
+  // PUBLIC ACTIONS (Zone 3 - Lead Capture)
   // ===========================================================================
   {
     action_code: 'ARM.PUBLIC.RENDITE_RECHNER',
@@ -189,11 +166,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -209,11 +188,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -229,11 +210,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -249,11 +232,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: 'CONSENT_CONTACT',
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: ['creates_lead_record', 'sends_notification'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -269,11 +254,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: 'CONSENT_NEWSLETTER',
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: ['creates_subscriber_record'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -289,11 +276,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['listings_published'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -309,11 +298,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2', 'Z3'],
     module: null,
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['listings_published'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -333,11 +324,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-02',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['letter_drafts', 'contacts'],
     data_scopes_write: ['letter_sent'],
+    side_effects: ['modifies_letter_sent', 'sends_external_communication'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -357,11 +350,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-03',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['storage_nodes', 'documents'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -377,11 +372,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-03',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -397,11 +394,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-03',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: ['org_admin', 'org_member'],
     data_scopes_read: ['storage_nodes', 'properties'],
     data_scopes_write: ['document_links'],
+    side_effects: ['modifies_document_links'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -417,11 +416,15 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-03',
     risk_level: 'high',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: 'CONSENT_EXTRACTION',
     roles_allowed: ['org_admin'],
     data_scopes_read: ['storage_nodes', 'documents'],
     data_scopes_write: ['extracted_data'],
+    side_effects: ['modifies_extracted_data', 'credits_consumed'],
+    preconditions: ['document_exists', 'document_readable'],
+    postconditions: ['extraction_logged', 'billing_event_created'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_page',
     cost_hint_cents: 2,
@@ -441,11 +444,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -461,11 +466,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['properties', 'units', 'leases'],
     data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 1,
@@ -477,15 +484,19 @@ export const armstrongActions: ArmstrongAction[] = [
   {
     action_code: 'ARM.MOD04.CREATE_PROPERTY',
     title_de: 'Immobilie anlegen',
-    description_de: 'Erstellt einen neuen Immobilien-Datensatz (Draft)',
+    description_de: 'Erstellt einen neuen Immobilien-Datensatz',
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'high',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: ['org_admin'],
     data_scopes_read: [],
     data_scopes_write: ['properties'],
+    side_effects: ['modifies_properties'],
+    preconditions: ['user_is_org_admin'],
+    postconditions: ['property_created', 'audit_logged'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -501,11 +512,15 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'high',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: ['org_admin'],
     data_scopes_read: ['properties'],
     data_scopes_write: ['units'],
+    side_effects: ['modifies_units'],
+    preconditions: ['property_exists', 'user_is_org_admin'],
+    postconditions: ['unit_created', 'audit_logged'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -521,11 +536,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['properties', 'units', 'leases'],
     data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 1,
@@ -541,11 +558,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: ['org_admin', 'org_member'],
     data_scopes_read: ['properties', 'storage_nodes'],
     data_scopes_write: ['document_links'],
+    side_effects: ['modifies_document_links'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -561,11 +580,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-04',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['properties', 'units', 'documents'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -585,11 +606,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-07',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['knowledge_base'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -605,11 +628,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-07',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['applicant_profiles', 'documents'],
     data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -625,11 +650,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-07',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['applicant_profiles', 'documents', 'finance_requests'],
     data_scopes_write: ['export_packages'],
+    side_effects: ['modifies_export_packages'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -645,11 +672,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-07',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['applicant_profiles', 'documents'],
     data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 2,
@@ -669,11 +698,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-08',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['favorites', 'listings'],
     data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 3,
@@ -689,11 +720,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-08',
     risk_level: 'low',
-    requires_confirmation: false,
+    execution_mode: 'readonly',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 2,
@@ -709,11 +742,15 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-08',
     risk_level: 'high',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: ['applicant_profiles'],
     data_scopes_write: ['acq_mandates'],
+    side_effects: ['modifies_acq_mandates'],
+    preconditions: ['user_authenticated'],
+    postconditions: ['mandate_created', 'audit_logged'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -729,11 +766,13 @@ export const armstrongActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-08',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: [],
+    side_effects: ['external_api_call', 'credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 5,
@@ -742,13 +781,10 @@ export const armstrongActions: ArmstrongAction[] = [
     audit_event_type: 'ARM_WEB_RESEARCH',
     status: 'active',
   },
-];
 
-// =============================================================================
-// MOD-00: DASHBOARD WIDGET ACTIONS
-// =============================================================================
-
-export const dashboardWidgetActions: ArmstrongAction[] = [
+  // ===========================================================================
+  // MOD-00: DASHBOARD WIDGET ACTIONS
+  // ===========================================================================
   {
     action_code: 'ARM.MOD00.CREATE_REMINDER',
     title_de: 'Erinnerung erstellen',
@@ -756,11 +792,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -776,11 +814,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -796,11 +836,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -816,11 +858,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -836,11 +880,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets'],
+    version: '1.0.0',
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
@@ -856,11 +902,13 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'medium',
-    requires_confirmation: true,
+    execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
     data_scopes_write: ['widgets'],
+    side_effects: ['modifies_widgets', 'external_api_call', 'credits_consumed'],
+    version: '1.0.0',
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: 5,
@@ -869,10 +917,35 @@ export const dashboardWidgetActions: ArmstrongAction[] = [
     audit_event_type: 'ARM_CREATE_RESEARCH',
     status: 'active',
   },
-]
 
-// Merge dashboard actions into main registry
-armstrongActions.push(...dashboardWidgetActions);
+  // ===========================================================================
+  // KB: KNOWLEDGE BASE ACTIONS (Phase 6.4)
+  // ===========================================================================
+  {
+    action_code: 'ARM.KB.CREATE_RESEARCH_MEMO',
+    title_de: 'Research Memo erstellen',
+    description_de: 'Erstellt ein Recherche-Memo für die Knowledge Base (nur Draft)',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'medium',
+    execution_mode: 'draft_only', // K4: Only creates draft, no SSOT writes
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: [],
+    data_scopes_write: ['armstrong_knowledge_items'], // Draft only
+    side_effects: ['creates_kb_draft', 'credits_consumed'],
+    preconditions: ['user_authenticated'],
+    postconditions: ['kb_draft_created', 'requires_review'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 5,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_KB_RESEARCH_MEMO',
+    status: 'active',
+  },
+];
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -881,7 +954,7 @@ armstrongActions.push(...dashboardWidgetActions);
 /**
  * Get all actions available for a specific zone
  */
-export function getActionsForZone(zone: ArmstrongZone): ArmstrongAction[] {
+export function getActionsForZone(zone: ArmstrongZone): ArmstrongActionV2[] {
   return armstrongActions.filter(action => 
     action.zones.includes(zone) && action.status === 'active'
   );
@@ -890,7 +963,7 @@ export function getActionsForZone(zone: ArmstrongZone): ArmstrongAction[] {
 /**
  * Get all actions for a specific module
  */
-export function getActionsForModule(moduleCode: string): ArmstrongAction[] {
+export function getActionsForModule(moduleCode: string): ArmstrongActionV2[] {
   return armstrongActions.filter(action => 
     action.module === moduleCode && action.status === 'active'
   );
@@ -899,16 +972,18 @@ export function getActionsForModule(moduleCode: string): ArmstrongAction[] {
 /**
  * Get action by code
  */
-export function getAction(actionCode: string): ArmstrongAction | undefined {
+export function getAction(actionCode: string): ArmstrongActionV2 | undefined {
   return armstrongActions.find(action => action.action_code === actionCode);
 }
 
 /**
- * Check if an action requires confirmation
+ * Check if an action requires confirmation based on execution_mode
  */
 export function requiresConfirmation(actionCode: string): boolean {
   const action = getAction(actionCode);
-  return action?.requires_confirmation ?? false;
+  if (!action) return true; // Default to safe
+  return action.execution_mode === 'execute_with_confirmation' || 
+         action.execution_mode === 'draft_only';
 }
 
 /**
@@ -921,7 +996,7 @@ export function isZone3Action(actionCode: string): boolean {
 /**
  * Get all metered actions (for billing dashboard)
  */
-export function getMeteredActions(): ArmstrongAction[] {
+export function getMeteredActions(): ArmstrongActionV2[] {
   return armstrongActions.filter(action => action.cost_model === 'metered');
 }
 
@@ -929,13 +1004,35 @@ export function getMeteredActions(): ArmstrongAction[] {
  * Filter actions by role
  */
 export function filterActionsByRole(
-  actions: ArmstrongAction[], 
+  actions: ArmstrongActionV2[], 
   userRoles: string[]
-): ArmstrongAction[] {
+): ArmstrongActionV2[] {
   return actions.filter(action => {
     // Empty roles_allowed means all authenticated users can access
     if (action.roles_allowed.length === 0) return true;
     // Check if user has any of the required roles
     return action.roles_allowed.some(role => userRoles.includes(role));
   });
+}
+
+/**
+ * Get actions by execution mode
+ */
+export function getActionsByExecutionMode(mode: ExecutionMode): ArmstrongActionV2[] {
+  return armstrongActions.filter(action => action.execution_mode === mode);
+}
+
+/**
+ * Get high-risk actions (for governance review)
+ */
+export function getHighRiskActions(): ArmstrongActionV2[] {
+  return armstrongActions.filter(action => action.risk_level === 'high');
+}
+
+/**
+ * Legacy compatibility: map requires_confirmation to execution_mode
+ * @deprecated Use execution_mode directly
+ */
+export function getRequiresConfirmation(action: ArmstrongActionV2): boolean {
+  return action.execution_mode === 'execute_with_confirmation';
 }
