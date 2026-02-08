@@ -301,9 +301,9 @@ const KatalogTab = () => {
           title="Details"
           onClick={(e) => {
             e.stopPropagation();
-            if (row.public_id) {
-              navigate(`/portal/vertriebspartner/katalog/${row.public_id}`);
-            }
+            // Fallback to id if public_id is not set
+            const identifier = row.public_id || row.id;
+            navigate(`/portal/vertriebspartner/katalog/${identifier}`);
           }}
         >
           <Eye className="h-4 w-4" />
