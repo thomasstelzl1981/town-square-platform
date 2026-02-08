@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.sot-admin-sequence-runner]
 verify_jwt = false
+
+[functions.sot-armstrong-website]
+verify_jwt = false
