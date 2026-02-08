@@ -9908,6 +9908,7 @@ export type Database = {
           dev_project_unit_id: string | null
           doc_type_hint: string | null
           id: string
+          module_code: string | null
           name: string
           node_type: string
           parent_id: string | null
@@ -9926,6 +9927,7 @@ export type Database = {
           dev_project_unit_id?: string | null
           doc_type_hint?: string | null
           id?: string
+          module_code?: string | null
           name: string
           node_type?: string
           parent_id?: string | null
@@ -9944,6 +9946,7 @@ export type Database = {
           dev_project_unit_id?: string | null
           doc_type_hint?: string | null
           id?: string
+          module_code?: string | null
           name?: string
           node_type?: string
           parent_id?: string | null

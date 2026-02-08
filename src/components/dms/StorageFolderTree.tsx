@@ -1,11 +1,12 @@
 /**
  * Recursive Folder Tree for DMS Storage
- * Displays all storage nodes with proper nesting
+ * Displays all storage nodes with proper module-based hierarchy
  */
 import { useState } from 'react';
 import { 
   Folder, FolderOpen, ChevronRight, ChevronDown, Home, Inbox, Archive, 
-  Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal, Image
+  Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal, Image,
+  Car, ShoppingCart, Hammer, FolderHeart
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface StorageNode {
   scope_hint: string | null;
   property_id: string | null;
   unit_id: string | null;
+  module_code: string | null;
   created_at: string;
 }
 
@@ -39,15 +41,29 @@ interface StorageFolderTreeProps {
   onCreateFolder?: () => void;
 }
 
-// System folder definitions with icons
+// Icons for system folders
 const SYSTEM_FOLDER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   'inbox': Inbox,
+  'user_files': FolderHeart,
+  'archive': Archive,
+  'needs_review': AlertCircle,
+  'sonstiges': MoreHorizontal,
+};
+
+// Icons for module root folders
+const MODULE_ROOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  'MOD_04_ROOT': Building2,      // Immobilien
+  'MOD_06_ROOT': ShoppingCart,   // Verkauf
+  'MOD_07_ROOT': Landmark,       // Finanzierung
+  'MOD_16_ROOT': Hammer,         // Sanierung
+  'MOD_17_ROOT': Car,            // Car-Management
+};
+
+// Legacy system folder icons (for backwards compatibility)
+const LEGACY_SYSTEM_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   'immobilien': Building2,
   'finanzierung': Landmark,
   'bonitaetsunterlagen': FileQuestion,
-  'needs_review': AlertCircle,
-  'archive': Archive,
-  'sonstiges': MoreHorizontal,
 };
 
 // Property folder icons based on template/name
@@ -57,9 +73,15 @@ const PROPERTY_FOLDER_ICONS: Record<string, React.ComponentType<{ className?: st
 };
 
 function getNodeIcon(node: StorageNode, isOpen: boolean) {
+  // Module root folders
+  if (node.template_id && MODULE_ROOT_ICONS[node.template_id]) {
+    const Icon = MODULE_ROOT_ICONS[node.template_id];
+    return <Icon className="h-4 w-4 text-primary" />;
+  }
+  
   // System folders
   if (node.node_type === 'system' && node.template_id) {
-    const Icon = SYSTEM_FOLDER_ICONS[node.template_id];
+    const Icon = SYSTEM_FOLDER_ICONS[node.template_id] || LEGACY_SYSTEM_ICONS[node.template_id];
     if (Icon) return <Icon className="h-4 w-4" />;
   }
   
@@ -70,9 +92,19 @@ function getNodeIcon(node: StorageNode, isOpen: boolean) {
     return <Icon className="h-4 w-4" />;
   }
   
-  // Property root folders
-  if (node.property_id && !node.parent_id) {
+  // Property dossier folders
+  if (node.template_id === 'PROPERTY_DOSSIER_V1') {
     return <Building2 className="h-4 w-4" />;
+  }
+  
+  // Vehicle dossier folders
+  if (node.template_id === 'VEHICLE_DOSSIER_V1') {
+    return <Car className="h-4 w-4" />;
+  }
+  
+  // Listing dossier folders
+  if (node.template_id === 'LISTING_DOSSIER_V1') {
+    return <ShoppingCart className="h-4 w-4" />;
   }
   
   // Default folder icon
@@ -102,28 +134,32 @@ function TreeNode({
   const isSelected = selectedNodeId === node.id;
   const isExpanded = expandedNodes.has(node.id);
   
-  // Get child nodes
+  // Get child nodes - simply all nodes with this node as parent
   const childNodes = nodes.filter(n => n.parent_id === node.id);
+  const hasChildren = childNodes.length > 0;
   
-  // For "Immobilien" system folder, also get property root nodes
-  const isImmobilienFolder = node.node_type === 'system' && node.template_id === 'immobilien';
-  const propertyRootNodes = isImmobilienFolder 
-    ? nodes.filter(n => n.property_id && !n.parent_id && n.node_type !== 'system')
-    : [];
-  
-  const allChildren = [...childNodes, ...propertyRootNodes];
-  const hasChildren = allChildren.length > 0;
-  
-  // Get property info for display
-  const getPropertyLabel = (n: StorageNode) => {
+  // Get display label
+  const getDisplayLabel = (n: StorageNode) => {
+    // For property dossiers, show property info if available
     if (n.property_id && properties) {
       const prop = properties.find(p => p.id === n.property_id);
-      if (prop) {
+      if (prop && n.template_id === 'PROPERTY_DOSSIER_V1') {
         return `${prop.code || ''} - ${prop.address}`.trim();
       }
     }
     return n.name;
   };
+  
+  // Sort children: system folders first, then by name
+  const sortedChildren = [...childNodes].sort((a, b) => {
+    // Module roots and system folders first
+    if (a.node_type === 'system' && b.node_type !== 'system') return -1;
+    if (a.node_type !== 'system' && b.node_type === 'system') return 1;
+    if (a.template_id?.endsWith('_ROOT') && !b.template_id?.endsWith('_ROOT')) return -1;
+    if (!a.template_id?.endsWith('_ROOT') && b.template_id?.endsWith('_ROOT')) return 1;
+    // Then by name
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <div>
@@ -147,12 +183,12 @@ function TreeNode({
         )}
         {getNodeIcon(node, isExpanded)}
         <span className="flex-1 text-left truncate">
-          {node.property_id ? getPropertyLabel(node) : node.name}
+          {getDisplayLabel(node)}
         </span>
       </button>
       
       {/* Render children recursively */}
-      {isExpanded && allChildren.map(child => (
+      {isExpanded && sortedChildren.map(child => (
         <TreeNode
           key={child.id}
           node={child}
@@ -187,14 +223,32 @@ export function StorageFolderTree({
     });
   };
   
-  // Get only root-level system nodes (no parent_id and type 'system')
-  const rootNodes = nodes.filter(n => n.parent_id === null && n.node_type === 'system');
+  // Get root-level nodes: only those with parent_id = null
+  // These include system folders and module roots
+  const rootNodes = nodes.filter(n => n.parent_id === null);
   
-  // Sort: system folders first, then by name
+  // Sort roots: Inbox first, then system folders, then module roots, then alphabetically
   const sortedRootNodes = [...rootNodes].sort((a, b) => {
-    // Inbox first
+    // Inbox always first
     if (a.template_id === 'inbox') return -1;
     if (b.template_id === 'inbox') return 1;
+    
+    // User files second
+    if (a.template_id === 'user_files') return -1;
+    if (b.template_id === 'user_files') return 1;
+    
+    // Module roots grouped together
+    const aIsModuleRoot = a.template_id?.endsWith('_ROOT');
+    const bIsModuleRoot = b.template_id?.endsWith('_ROOT');
+    if (aIsModuleRoot && !bIsModuleRoot) return -1;
+    if (!aIsModuleRoot && bIsModuleRoot) return 1;
+    
+    // Archive and Sonstiges last
+    if (a.template_id === 'archive') return 1;
+    if (b.template_id === 'archive') return -1;
+    if (a.template_id === 'sonstiges') return 1;
+    if (b.template_id === 'sonstiges') return -1;
+    
     // Then by name
     return a.name.localeCompare(b.name);
   });
