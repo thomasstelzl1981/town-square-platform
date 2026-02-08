@@ -81,7 +81,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
 
   const riskLevel = actionDef.risk_level;
   const costModel = actionDef.cost_model;
-  const requiresConfirmation = actionDef.requires_confirmation;
+  const requiresConfirmation = actionDef.execution_mode === 'execute_with_confirmation' || actionDef.execution_mode === 'draft_only';
 
   // Format cost estimate
   const formatCost = (cents?: number) => {
