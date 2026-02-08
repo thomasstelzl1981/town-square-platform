@@ -3,17 +3,27 @@
  * MOD-13 PROJEKTE
  */
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Globe, Megaphone, Share2, ExternalLink, Sparkles, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Globe, Megaphone, Share2, ExternalLink, Sparkles, Users, Check, Link2 } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { toast } from 'sonner';
 
 export default function MarketingTab() {
-  const { projects, isLoading } = useDevProjects();
+  const { projects, isLoading, updateProject } = useDevProjects();
+  const [landingpageDialog, setLandingpageDialog] = useState<{ open: boolean; projectId: string | null }>({ 
+    open: false, 
+    projectId: null 
+  });
+  const [landingpageSlug, setLandingpageSlug] = useState('');
 
   if (isLoading) {
     return <LoadingState />;
@@ -30,6 +40,51 @@ export default function MarketingTab() {
     );
   }
 
+  const handleKaufyToggle = async (projectId: string, enabled: boolean) => {
+    try {
+      await updateProject.mutateAsync({ 
+        id: projectId, 
+        kaufy_listed: enabled 
+      });
+      toast.success(enabled ? 'Auf Kaufy gelistet' : 'Von Kaufy entfernt');
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren');
+    }
+  };
+
+  const handleFeaturedToggle = async (projectId: string, enabled: boolean) => {
+    try {
+      await updateProject.mutateAsync({ 
+        id: projectId, 
+        kaufy_featured: enabled 
+      });
+      toast.success(enabled ? 'Premium-Platzierung aktiviert' : 'Premium-Platzierung deaktiviert');
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren');
+    }
+  };
+
+  const handleLandingpageCreate = async () => {
+    if (!landingpageDialog.projectId || !landingpageSlug) return;
+    
+    try {
+      await updateProject.mutateAsync({ 
+        id: landingpageDialog.projectId, 
+        landingpage_slug: landingpageSlug.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+        landingpage_enabled: true,
+      });
+      toast.success('Landingpage erstellt');
+      setLandingpageDialog({ open: false, projectId: null });
+      setLandingpageSlug('');
+    } catch (error) {
+      toast.error('Fehler beim Erstellen der Landingpage');
+    }
+  };
+
+  const activeProjects = projects.filter(p => p.status === 'active');
+  const listedProjects = projects.filter(p => p.kaufy_listed);
+  const featuredProjects = projects.filter(p => p.kaufy_featured);
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -37,6 +92,39 @@ export default function MarketingTab() {
         <p className="text-muted-foreground">
           Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages
         </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Auf Kaufy gelistet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{listedProjects.length}</div>
+            <p className="text-xs text-muted-foreground">von {projects.length} Projekten</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Premium-Platzierung</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{featuredProjects.length}</div>
+            <p className="text-xs text-muted-foreground">Featured Listings</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Landingpages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {projects.filter(p => p.landingpage_enabled).length}
+            </div>
+            <p className="text-xs text-muted-foreground">aktive Projekt-Seiten</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Free Options */}
@@ -52,22 +140,39 @@ export default function MarketingTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {projects.filter(p => p.status === 'active').slice(0, 3).map((project) => (
-            <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-medium">{project.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {project.city} · {project.total_units_count} Einheiten
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Auf Kaufy listen</span>
-                  <Switch />
+          {activeProjects.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Keine aktiven Projekte vorhanden. Aktivieren Sie ein Projekt im Portfolio.
+            </p>
+          ) : (
+            activeProjects.map((project) => (
+              <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{project.name}</p>
+                    {project.kaufy_listed && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <Check className="mr-1 h-3 w-3" />
+                        Gelistet
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {project.city} · {project.total_units_count} Einheiten
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Auf Kaufy listen</span>
+                    <Switch 
+                      checked={project.kaufy_listed || false}
+                      onCheckedChange={(checked) => handleKaufyToggle(project.id, checked)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
           
           {projects.filter(p => p.status !== 'active').length > 0 && (
             <p className="text-sm text-muted-foreground">
@@ -109,10 +214,20 @@ export default function MarketingTab() {
                 Direkter Kontakt-Button
               </li>
             </ul>
-            <Button className="w-full" variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Jetzt aktivieren
-            </Button>
+            
+            {listedProjects.length > 0 && (
+              <div className="pt-4 border-t space-y-2">
+                {listedProjects.map(project => (
+                  <div key={project.id} className="flex items-center justify-between text-sm">
+                    <span>{project.name}</span>
+                    <Switch 
+                      checked={project.kaufy_featured || false}
+                      onCheckedChange={(checked) => handleFeaturedToggle(project.id, checked)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -146,10 +261,38 @@ export default function MarketingTab() {
                 Analytics & Conversion-Tracking
               </li>
             </ul>
-            <Button className="w-full" variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Landingpage erstellen
-            </Button>
+            
+            {activeProjects.length > 0 && (
+              <div className="pt-4 border-t space-y-2">
+                {activeProjects.map(project => (
+                  <div key={project.id} className="flex items-center justify-between text-sm">
+                    <div>
+                      <span>{project.name}</span>
+                      {project.landingpage_slug && (
+                        <span className="ml-2 text-muted-foreground">
+                          <Link2 className="inline h-3 w-3 mr-1" />
+                          {project.landingpage_slug}.kaufy.de
+                        </span>
+                      )}
+                    </div>
+                    {project.landingpage_enabled ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700">Aktiv</Badge>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setLandingpageSlug(project.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+                          setLandingpageDialog({ open: true, projectId: project.id });
+                        }}
+                      >
+                        Erstellen
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -183,6 +326,42 @@ export default function MarketingTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Landingpage Creation Dialog */}
+      <Dialog open={landingpageDialog.open} onOpenChange={(open) => setLandingpageDialog({ ...landingpageDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Projekt-Landingpage erstellen</DialogTitle>
+            <DialogDescription>
+              Wählen Sie eine URL für Ihre Projekt-Landingpage
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>URL-Slug</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={landingpageSlug}
+                  onChange={(e) => setLandingpageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="mein-projekt"
+                />
+                <span className="text-muted-foreground whitespace-nowrap">.kaufy.de</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLandingpageDialog({ open: false, projectId: null })}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleLandingpageCreate} disabled={!landingpageSlug}>
+              Landingpage erstellen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
