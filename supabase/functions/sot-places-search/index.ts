@@ -33,10 +33,16 @@ serve(async (req) => {
   }
 
   try {
-    const GOOGLE_PLACES_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
-    
+    const GOOGLE_PLACES_API_KEY =
+      Deno.env.get('GOOGLE_PLACES_API_KEY') ??
+      Deno.env.get('GOOGLE_MAPS_API_KEY') ??
+      Deno.env.get('VITE_GOOGLE_MAPS_API_KEY') ??
+      '';
+
     if (!GOOGLE_PLACES_API_KEY) {
-      console.warn('GOOGLE_PLACES_API_KEY not configured - returning mock data');
+      console.warn(
+        'No Google API key configured (GOOGLE_PLACES_API_KEY / GOOGLE_MAPS_API_KEY) - returning mock data',
+      );
       // Return mock data for development/testing
       return new Response(
         JSON.stringify({
@@ -76,7 +82,7 @@ serve(async (req) => {
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
