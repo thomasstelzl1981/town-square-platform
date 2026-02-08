@@ -7,11 +7,12 @@
  * - Dot-Indikatoren
  * - Fallback-Icon wenn keine Bilder
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight, Building2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 
 interface ListingImage {
   id: string;
@@ -27,11 +28,11 @@ interface ExposeImageGalleryProps {
   aspectRatio?: 'video' | 'square' | '4/3';
 }
 
-export function ExposeImageGallery({ 
+export function ExposeImageGallery({
   propertyId,
   listingId,
   className,
-  aspectRatio = 'video'
+  aspectRatio = 'video',
 }: ExposeImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -41,7 +42,8 @@ export function ExposeImageGallery({
     queryFn: async () => {
       const { data: links, error } = await supabase
         .from('document_links')
-        .select(`
+        .select(
+          `
           display_order,
           is_title_image,
           documents!inner (
@@ -50,10 +52,19 @@ export function ExposeImageGallery({
             file_path,
             mime_type
           )
-        `)
+        `
+        )
         .eq('object_type', 'property')
         .eq('object_id', propertyId)
-        .like('documents.mime_type', 'image/%')
+        // NOTE: Filter on joined columns is inconsistent with 'like' in PostgREST.
+        // Use explicit allowlist for reliability.
+        .in('documents.mime_type', [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+          'image/jpg',
+        ])
         .order('display_order', { ascending: true });
 
       if (error) {
@@ -64,23 +75,27 @@ export function ExposeImageGallery({
       // Generate signed URLs
       const imagePromises = (links || []).map(async (link: any) => {
         const doc = link.documents;
-        const { data: urlData } = await supabase.storage
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('tenant-documents')
           .createSignedUrl(doc.file_path, 3600);
+
+        if (urlError) {
+          console.warn('Signed URL error:', urlError);
+        }
 
         return {
           id: doc.id,
           name: doc.name,
-          url: urlData?.signedUrl || '',
+          url: resolveStorageSignedUrl(urlData?.signedUrl),
           is_cover: link.is_title_image || false,
-        };
+        } satisfies ListingImage;
       });
 
       const resolvedImages = await Promise.all(imagePromises);
-      
-      // Sort: cover image first, then by display_order
+
+      // Sort: cover image first
       return resolvedImages
-        .filter(img => img.url)
+        .filter((img) => !!img.url)
         .sort((a, b) => {
           if (a.is_cover && !b.is_cover) return -1;
           if (!a.is_cover && b.is_cover) return 1;
@@ -92,22 +107,37 @@ export function ExposeImageGallery({
   });
 
   const goToPrevious = () => {
-    setCurrentIndex(prev => prev === 0 ? images.length - 1 : prev - 1);
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const goToNext = () => {
-    setCurrentIndex(prev => prev === images.length - 1 ? 0 : prev + 1);
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
   const aspectClasses = {
-    'video': 'aspect-video',
-    'square': 'aspect-square',
-    '4/3': 'aspect-[4/3]'
+    video: 'aspect-video',
+    square: 'aspect-square',
+    '4/3': 'aspect-[4/3]',
   };
+
+  const activeImage = images[currentIndex];
+
+  // If current image is missing (e.g., data changed), snap back to 0
+  useEffect(() => {
+    if (currentIndex > 0 && currentIndex >= images.length) {
+      setCurrentIndex(0);
+    }
+  }, [images.length, currentIndex]);
 
   if (isLoading) {
     return (
-      <div className={cn(aspectClasses[aspectRatio], "rounded-xl overflow-hidden bg-muted flex items-center justify-center", className)}>
+      <div
+        className={cn(
+          aspectClasses[aspectRatio],
+          'rounded-xl overflow-hidden bg-muted flex items-center justify-center',
+          className
+        )}
+      >
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -115,34 +145,50 @@ export function ExposeImageGallery({
 
   if (images.length === 0) {
     return (
-      <div className={cn(aspectClasses[aspectRatio], "rounded-xl overflow-hidden bg-muted flex items-center justify-center", className)}>
+      <div
+        className={cn(
+          aspectClasses[aspectRatio],
+          'rounded-xl overflow-hidden bg-muted flex items-center justify-center',
+          className
+        )}
+      >
         <Building2 className="w-16 h-16 text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className={cn(aspectClasses[aspectRatio], "relative rounded-xl overflow-hidden bg-muted group", className)}>
+    <div className={cn(aspectClasses[aspectRatio], 'relative rounded-xl overflow-hidden bg-muted group', className)}>
       {/* Current Image */}
-      <img 
-        src={images[currentIndex]?.url}
-        alt={images[currentIndex]?.name || 'Objektbild'}
+      <img
+        src={activeImage?.url}
+        alt={activeImage?.name || 'Objektbild'}
         className="w-full h-full object-cover"
+        loading="lazy"
+        decoding="async"
       />
 
       {/* Navigation Buttons */}
       {images.length > 1 && (
         <>
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToPrevious(); }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goToPrevious();
+            }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-foreground/40 text-background flex items-center justify-center hover:bg-foreground/55 transition-colors opacity-0 group-hover:opacity-100"
             aria-label="Vorheriges Bild"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToNext(); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goToNext();
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-foreground/40 text-background flex items-center justify-center hover:bg-foreground/55 transition-colors opacity-0 group-hover:opacity-100"
             aria-label="Nächstes Bild"
           >
             <ChevronRight className="w-6 h-6" />
@@ -153,10 +199,14 @@ export function ExposeImageGallery({
             {images.map((_, idx) => (
               <button
                 key={idx}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(idx); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentIndex(idx);
+                }}
                 className={cn(
-                  "w-2 h-2 rounded-full transition-colors",
-                  idx === currentIndex ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
+                  'w-2 h-2 rounded-full transition-colors',
+                  idx === currentIndex ? 'bg-background' : 'bg-background/60 hover:bg-background/80'
                 )}
                 aria-label={`Bild ${idx + 1}`}
               />
@@ -164,7 +214,7 @@ export function ExposeImageGallery({
           </div>
 
           {/* Image Counter */}
-          <div className="absolute top-3 right-3 px-2 py-1 rounded bg-black/50 text-white text-xs">
+          <div className="absolute top-3 right-3 px-2 py-1 rounded bg-foreground/40 text-background text-xs">
             {currentIndex + 1} / {images.length}
           </div>
         </>
