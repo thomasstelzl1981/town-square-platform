@@ -20,12 +20,7 @@ interface SortableWidgetProps {
 export function SortableWidget({ id, children, className }: SortableWidgetProps) {
   const isMobile = useIsMobile();
   
-  // On mobile: Render without drag functionality
-  if (isMobile) {
-    return <div className={className}>{children}</div>;
-  }
-  
-  // Desktop: Full sortable functionality
+  // ALWAYS call useSortable - use disabled flag for mobile
   const {
     attributes,
     listeners,
@@ -33,7 +28,12 @@ export function SortableWidget({ id, children, className }: SortableWidgetProps)
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled: isMobile });
+
+  // On mobile: Render simple div without DnD attributes
+  if (isMobile) {
+    return <div className={className}>{children}</div>;
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
