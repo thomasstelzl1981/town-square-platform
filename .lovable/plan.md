@@ -1,185 +1,242 @@
 
-
-## Automatische Kontaktanreicherung aus E-Mail und Post
+## Zone 1 Admin: Umstrukturierung Sidebar und KI-Office
 
 ### Zusammenfassung
 
-Eine KI-gestuetzte Funktion extrahiert Kontaktdaten aus E-Mail-Signaturen und Post-Absenderinformationen. Bestehende Kontakte werden angereichert, neue mit Kategorie "Offen" angelegt. Die Funktion ist separat fuer E-Mail und Post aktivierbar.
+Die Admin-Sidebar wird reorganisiert. Eine neue Kategorie "KI Office" wird hinzugefuegt, die einen eigenen E-Mail-Client und Kontakte-Manager fuer Zone 1 enthaelt. Die Daten werden strikt getrennt - jedes Modul/Zone hat seinen eigenen Kontaktpool.
 
 ---
 
-### 1. UI-Anpassungen in KontakteTab.tsx
+### 1. Neue Sidebar-Struktur
 
-**Neues Layout der Header-Zeile:**
-
+**Aktuelle Gruppierung:**
 ```text
-+-----------------------------------------------------------+
-|                                                           |
-| [Suche...]           [Auto-Anreicherung Schalter] [+ Neu] |
-|                                                           |
-+-----------------------------------------------------------+
+Master Data:
+  - Kontakte (MasterContacts)
+  - Master-Vorlagen (MasterTemplates)
 ```
 
-**Schalter-Details:**
-- Zwei Toggle-Switches nebeneinander: "E-Mail" und "Post"
-- Jeder Switch zeigt: Label + Mail/FileText Icon + Switch-Komponente
-- Status wird im LocalStorage UND Datenbank (tenant_extraction_settings) gespeichert
-- Abstand nach oben zur Headline mit `pt-2` oder `mt-2`
-
----
-
-### 2. Datenbank-Erweiterung
-
-**Neue Spalten in `tenant_extraction_settings`:**
-
-| Spalte | Typ | Default | Beschreibung |
-|--------|-----|---------|--------------|
-| `auto_enrich_contacts_email` | BOOLEAN | false | E-Mail-Signatur-Parsing aktiv |
-| `auto_enrich_contacts_post` | BOOLEAN | false | Post-Absender-Parsing aktiv |
-
-**Neue Kategorie fuer `contacts.category`:**
-- Wert: `Offen`
-- Farbe: `bg-amber-100 text-amber-800`
-
----
-
-### 3. Edge Function: `sot-contact-enrichment`
-
-**Trigger:** Wird aufgerufen nach E-Mail-Sync oder Post-Verarbeitung
-
-**Logik:**
-1. Pruefe ob Auto-Enrich fuer den Kanal aktiv ist
-2. Extrahiere Kontaktdaten aus Quelle:
-   - **E-Mail:** `from_address`, `from_name`, `body_text` (Signatur-Parsing via KI)
-   - **Post:** `sender_info` JSON aus `inbound_items`
-3. Suche existierenden Kontakt per E-Mail-Adresse
-4. **Falls gefunden:** Update nur NULL-Felder (keine Ueberschreibung)
-5. **Falls nicht gefunden:** Neuen Kontakt mit `category = 'Offen'` anlegen
-
-**Signatur-Parsing Strategie:**
+**Neue Gruppierung:**
 ```text
-E-Mail-Signatur Beispiel:
-"Mit freundlichen Gruessen
-Thomas Stelzl
-Mobil: +49 160 90117358
-Email: thomas.stelzl@example.com"
+Masterdata:
+  - Immobilienakte Vorlage
+  - Selbstauskunft Vorlage
 
-Extrahierte Felder:
-- first_name: "Thomas"
-- last_name: "Stelzl"  
-- phone_mobile: "+49 160 90117358"
-- email: "thomas.stelzl@example.com"
+KI Office:
+  - E-Mail
+  - Kontakte
 ```
 
 ---
 
-### 4. Ablauf-Schema
+### 2. Routen-Aenderungen in routesManifest.ts
 
+**Entfernen:**
+- `{ path: "contacts", component: "MasterContacts", title: "Kontakte" }`
+- `{ path: "master-templates", component: "MasterTemplates", title: "Master-Vorlagen" }`
+
+**Neu hinzufuegen:**
 ```text
-E-Mail/Post eingehend
-        |
-        v
-+------------------+
-| Kanal aktiv?     |---> Nein ---> Ende
-+------------------+
-        |
-        Ja
-        v
-+------------------+
-| Daten extrahieren|
-| (KI fuer E-Mail) |
-+------------------+
-        |
-        v
-+------------------+
-| Kontakt suchen   |
-| (per E-Mail)     |
-+------------------+
-        |
-   +----+----+
-   |         |
-Gefunden   Nicht gefunden
-   |         |
-   v         v
-Update    Neu anlegen
-NULL-     (category:
-Felder    "Offen")
+// Masterdata (direkt, ohne Unterseite)
+{ path: "masterdata/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" }
+{ path: "masterdata/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" }
+
+// KI Office
+{ path: "ki-office", component: "AdminKiOffice", title: "KI Office" }
+{ path: "ki-office/email", component: "AdminEmailTab", title: "E-Mail" }
+{ path: "ki-office/kontakte", component: "AdminKontakteTab", title: "Kontakte" }
 ```
 
 ---
 
-### 5. Betroffene Dateien
+### 3. AdminSidebar.tsx Anpassungen
 
-1. **Migration:** Neue Spalten in `tenant_extraction_settings`
-2. **KontakteTab.tsx:** Header-Bereich mit Schaltern und Abstand
-3. **CATEGORIES-Array:** Neue Kategorie "Offen" hinzufuegen
-4. **Edge Function:** `supabase/functions/sot-contact-enrichment/index.ts`
-5. **E-Mail-Sync:** Trigger nach neuer E-Mail (in `sot-mail-sync`)
+**Neue Gruppen-Konfiguration:**
+```text
+GROUP_CONFIG = {
+  'foundation': { label: 'Tenants & Access', priority: 1 },
+  'masterdata': { label: 'Masterdata', priority: 2 },        // NEU (umbenannt)
+  'ki-office': { label: 'KI Office', priority: 3 },          // NEU
+  'activation': { label: 'Feature Activation', priority: 4 },
+  'backbone': { label: 'Backbone', priority: 5 },
+  'desks': { label: 'Operative Desks', priority: 6 },
+  'agents': { label: 'AI Agents', priority: 7 },
+  'system': { label: 'System', priority: 8 },
+  'platformAdmin': { label: 'Platform Admin', priority: 9 },
+};
+```
+
+**Pfad-zu-Gruppe Mapping:**
+```text
+// Masterdata
+if (path.startsWith('masterdata/')) return 'masterdata';
+
+// KI Office
+if (path.startsWith('ki-office')) return 'ki-office';
+```
 
 ---
 
-### 6. Technische Details
+### 4. Modulgrenze: Kontakte-Trennung
 
-**TypeScript: Schalter-State**
+**Wichtiges Architekturprinzip:** Zone 1 und Zone 2 teilen KEINE Kontaktdaten.
+
+**Aktuelle Struktur:**
+- `contacts` Tabelle hat `tenant_id` Spalte
+- Zone 2 Kontakte gehoeren zum jeweiligen Mandanten (tenant_id = client org)
+
+**Zone 1 Strategie:**
+Option A: Neuer Scope-Marker (empfohlen)
+- Neue Spalte: `scope` (TEXT) - Werte: 'zone1_admin', 'zone2_tenant'
+- Zone 1 Kontakte: `scope = 'zone1_admin'` UND `tenant_id = NULL`
+- Zone 2 Kontakte: `scope = 'zone2_tenant'` UND `tenant_id = <mandant_id>`
+
+**Datenbank-Migration:**
 ```text
-const [emailEnrichEnabled, setEmailEnrichEnabled] = useState(false);
-const [postEnrichEnabled, setPostEnrichEnabled] = useState(false);
-
-// Query zum Laden der Settings
-useQuery(['tenant-enrich-settings'], async () => {
-  const { data } = await supabase
-    .from('tenant_extraction_settings')
-    .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
-    .single();
-  return data;
-});
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS scope TEXT DEFAULT 'zone2_tenant';
+UPDATE contacts SET scope = 'zone2_tenant' WHERE scope IS NULL;
 ```
 
-**Neue Kategorie:**
+---
+
+### 5. Neue Dateien erstellen
+
+**5.1. Admin KI Office Landing Page:**
 ```text
-{ 
-  value: 'Offen', 
-  label: 'Offen', 
-  className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' 
-}
+src/pages/admin/ki-office/index.tsx
+- Dashboard mit Tabs: E-Mail | Kontakte
+- Karten-Uebersicht mit Statistiken
 ```
 
-**Edge Function Payload:**
+**5.2. Admin E-Mail Tab:**
+```text
+src/pages/admin/ki-office/AdminEmailTab.tsx
+- Kopie der Zone 2 EmailTab.tsx
+- Angepasst fuer Platform Admin Kontext
+- Eigene mail_accounts (admin-scope)
+- Kontaktanreicherung aktivierbar
+```
+
+**5.3. Admin Kontakte Tab:**
+```text
+src/pages/admin/ki-office/AdminKontakteTab.tsx
+- Basiert auf Zone 2 KontakteTab.tsx
+- Filter: scope = 'zone1_admin'
+- KEINE Mandanten-Auswahl (ist platform-weit)
+- Alle erweiterten Felder (Anrede, Mobil, Adresse, Kategorie)
+- Auto-Enrichment Schalter (E-Mail/Post)
+```
+
+---
+
+### 6. Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/routesManifest.ts` | Routen anpassen |
+| `src/components/admin/AdminSidebar.tsx` | Gruppen und Mapping anpassen |
+| `src/pages/admin/ki-office/index.tsx` | NEU: Landing Page |
+| `src/pages/admin/ki-office/AdminEmailTab.tsx` | NEU: E-Mail Client |
+| `src/pages/admin/ki-office/AdminKontakteTab.tsx` | NEU: Kontakte |
+| `supabase/migrations/xxx_add_contact_scope.sql` | NEU: scope Spalte |
+| `src/pages/admin/MasterContacts.tsx` | ENTFERNEN (ersetzt) |
+| `src/pages/admin/MasterTemplates.tsx` | ENTFERNEN (nur Redirect) |
+
+---
+
+### 7. Feature: Kontaktanreicherung in Zone 1
+
+Die bestehende Edge Function `sot-contact-enrichment` wird erweitert:
+
+**Neuer Parameter:**
 ```text
 {
   source: 'email' | 'post',
-  tenant_id: string,
-  data: {
-    email?: string,
-    from_name?: string,
-    body_text?: string,      // nur bei E-Mail
-    sender_info?: object     // nur bei Post
-  }
+  scope: 'zone1_admin' | 'zone2_tenant',  // NEU
+  tenant_id: string | null,
+  data: { ... }
 }
 ```
 
+**Logik:**
+- Bei `scope = 'zone1_admin'`: Kontakt ohne tenant_id anlegen/anreichern
+- Bei `scope = 'zone2_tenant'`: Bestehendes Verhalten (mit tenant_id)
+
 ---
 
-### 7. KI-Modell fuer Signatur-Parsing
+### 8. UI-Wireframe Admin KI Office
 
-Verwendung von Lovable AI (google/gemini-3-flash-preview):
-
-**Prompt-Beispiel:**
 ```text
-Extrahiere Kontaktdaten aus dieser E-Mail-Signatur.
-Antworte als JSON mit: first_name, last_name, company, 
-phone_mobile, phone, street, postal_code, city.
-Felder ohne Wert als null.
-
-Signatur:
-{body_text}
++----------------------------------------------------------+
+| KI Office                                                |
++----------------------------------------------------------+
+| [E-Mail]  [Kontakte]                                     |
++----------------------------------------------------------+
+|                                                          |
+|  +------------------+  +------------------+               |
+|  | Verbundene       |  | Kontakte         |               |
+|  | E-Mail-Konten: 2 |  | Gesamt: 156      |               |
+|  +------------------+  +------------------+               |
+|                                                          |
+|  +------------------+  +------------------+               |
+|  | Ungelesene       |  | Kategorie        |               |
+|  | Nachrichten: 12  |  | "Offen": 23      |               |
+|  +------------------+  +------------------+               |
+|                                                          |
++----------------------------------------------------------+
 ```
 
 ---
 
-### 8. Sicherheit
+### 9. Sicherheit und RLS
 
-- RLS-Policies pruefen tenant_id Zugehoerigkeit
-- Nur eigene Kontakte werden angereichert/erstellt
-- Kein Ueberschreiben bestehender Daten (nur NULL-Felder werden gefuellt)
+**Neue RLS-Regeln fuer Zone 1 Kontakte:**
+```text
+CREATE POLICY "Zone 1 admins can manage admin contacts"
+ON contacts
+FOR ALL
+USING (
+  scope = 'zone1_admin' 
+  AND EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE profiles.id = auth.uid() 
+    AND profiles.role = 'platform_admin'
+  )
+);
+```
+
+---
+
+### Technische Details
+
+**Icon Mapping Erweiterungen:**
+```text
+ICON_MAP = {
+  // Masterdata
+  'MasterTemplatesImmobilienakte': Building2,
+  'MasterTemplatesSelbstauskunft': FileText,
+  // KI Office
+  'AdminKiOffice': Sparkles,
+  'AdminEmailTab': Mail,
+  'AdminKontakteTab': Contact,
+}
+```
+
+**shouldShowInNav Anpassung:**
+```text
+// KI Office Sub-Items ausblenden (werden ueber Tab-Navigation erreicht)
+if (path.startsWith('ki-office/')) return false;
+// Masterdata Sub-Items anzeigen (sind eigenstaendige Seiten)
+if (path.startsWith('masterdata/')) return true;
+```
+
+---
+
+### Zusammenfassung der Aenderungen
+
+1. **Sidebar-Reorganisation:** Neue Kategorien "Masterdata" und "KI Office"
+2. **Strikte Datentrennung:** `scope` Spalte in `contacts` Tabelle
+3. **Admin KI Office:** Eigener E-Mail-Client und Kontakte (nicht synchronisiert mit Zone 2)
+4. **Kontaktanreicherung:** Funktioniert auch fuer Zone 1 Kontakte
+5. **Alte Seiten entfernen:** MasterContacts und MasterTemplates Landing werden ersetzt
 
