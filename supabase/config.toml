@@ -1,5 +1,8 @@
 project_id = "ktpvilzjtcaxyuufocrs"
 
+[functions.sot-armstrong-advisor]
+verify_jwt = false
+
 [functions.sot-dms-upload-url]
 verify_jwt = false
 
@@ -30,7 +33,7 @@ verify_jwt = false
 [functions.sot-expose-description]
 verify_jwt = false
 
-[functions.sot-armstrong-advisor]
+[functions.sot-armstrong-voice]
 verify_jwt = false
 
 [functions.sot-document-parser]
@@ -55,9 +58,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sot-renovation-inbound-webhook]
-verify_jwt = false
-
-[functions.sot-armstrong-voice]
 verify_jwt = false
 
 [functions.sot-mail-connect]
