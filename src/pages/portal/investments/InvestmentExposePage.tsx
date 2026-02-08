@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
+import { ExposeLocationMap } from '@/components/verkauf';
 import { 
   MasterGraph, 
   Haushaltsrechnung, 
@@ -277,6 +278,16 @@ export default function InvestmentExposePage() {
                   <p className="text-muted-foreground">{listing.description}</p>
                 </div>
               )}
+
+              {/* Standortkarte (MVP, ohne API-Key) */}
+              <div className="mt-6">
+                <ExposeLocationMap
+                  address={listing.address}
+                  city={listing.city}
+                  postalCode={listing.postal_code}
+                  showExactLocation={false}
+                />
+              </div>
             </div>
 
             {/* MasterGraph - Gemeinsame Komponente */}
