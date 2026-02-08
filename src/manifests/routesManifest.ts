@@ -100,6 +100,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "inbox", component: "Inbox", title: "Posteingang" },
     { path: "leadpool", component: "LeadPool", title: "Lead Pool" },
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
+    { path: "roles", component: "RolesManagement", title: "Rollen & Berechtigungen" },
     { path: "commissions", component: "CommissionApproval", title: "Provisionen" },
     { path: "support", component: "Support", title: "Support" },
     // =========================================================================

@@ -7,7 +7,7 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical
+  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,6 +83,8 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'ArmstrongKnowledge': BookOpen,
   'ArmstrongPolicies': Scale,
   'ArmstrongTestHarness': FlaskConical,
+  // Feature Activation
+  'RolesManagement': Shield,
 };
 
 // Group configuration for grouping routes
@@ -121,8 +123,8 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('armstrong')) {
     return 'armstrong';
   }
-  // Feature Activation (inkl. Partner-Verifizierung)
-  if (path === 'tiles' || path === 'partner-verification') {
+  // Feature Activation (inkl. Partner-Verifizierung und Rollen)
+  if (path === 'tiles' || path === 'partner-verification' || path === 'roles') {
     return 'activation';
   }
   // FutureRoom gehört zu Operative Desks

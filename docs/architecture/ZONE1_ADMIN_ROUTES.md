@@ -79,11 +79,12 @@ KI-Governance und Monitoring für die Armstrong Suite.
 
 ### Gruppe 5: Feature Activation
 
-Modul-Steuerung und Partner-Management.
+Modul-Steuerung, Rollen-Übersicht und Partner-Management.
 
 | Route | Component | Beschreibung |
 |-------|-----------|--------------|
 | `/admin/tiles` | TileCatalog | Modul-Katalog & Aktivierung |
+| `/admin/roles` | RolesManagement | Rollen & Berechtigungen |
 | `/admin/partner-verification` | PartnerVerification | Partner-Prüfung |
 
 **Hinweis:** Tile-Aktivierung wirkt erst bei echten Tenants (Phase 11). Im Entwicklungs-Account sind alle Module sichtbar.
