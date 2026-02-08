@@ -160,7 +160,7 @@ function findActiveModuleCode(pathname: string, tiles: TileDisplay[]): string | 
 
 export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavProps) {
   const location = useLocation();
-  const { activeOrganization, isDevelopmentMode, user } = useAuth();
+  const { activeOrganization, isDevelopmentMode, isPlatformAdmin, user } = useAuth();
   const [activeTileCodes, setActiveTileCodes] = useState<string[] | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
@@ -187,8 +187,8 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
   useEffect(() => {
     async function loadActivations() {
       try {
-        // In development mode, show all tiles
-        if (isDevelopmentMode) {
+        // Superuser/dev: show all tiles (visibility overlay disabled)
+        if (isDevelopmentMode || isPlatformAdmin) {
           setActiveTileCodes(null); // null = show all
           setIsLoading(false);
           return;
@@ -210,7 +210,7 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
     }
 
     loadActivations();
-  }, [activeOrganization?.id, isDevelopmentMode]);
+  }, [activeOrganization?.id, isDevelopmentMode, isPlatformAdmin]);
 
   // P0-FIX: Memoize visible tiles with stable dependencies
   const visibleTiles = useMemo(() => {
@@ -227,15 +227,15 @@ export function PortalNav({ variant = 'sidebar', collapsed = false }: PortalNavP
       
       // Check role-gating (user-specific)
       if (tile.requires_role && tile.requires_role.length > 0) {
-        // In dev mode, show all (for testing)
-        if (isDevelopmentMode) return true;
+        // Superuser/dev: show all (for testing/support)
+        if (isDevelopmentMode || isPlatformAdmin) return true;
         // User must have at least one of the required roles
         const hasRequiredRole = tile.requires_role.some(role => userRoles.includes(role));
         if (!hasRequiredRole) return false;
       }
       return true;
     });
-  }, [manifestTiles, activeTileCodes, isDevelopmentMode, userRoles]);
+  }, [manifestTiles, activeTileCodes, isDevelopmentMode, isPlatformAdmin, userRoles]);
 
   // P0-FIX: Memoize active module code
   const activeModuleCode = useMemo(
