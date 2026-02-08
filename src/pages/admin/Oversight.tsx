@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoldenPathSeeds, SeedResult } from '@/hooks/useGoldenPathSeeds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,16 +32,11 @@ import {
   FileText,
   Banknote,
   Globe,
-  Database,
-  CheckCircle,
-  XCircle,
-  Sparkles,
   AlertTriangle,
-  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 interface OverviewStats {
   organizations: number;
@@ -98,7 +92,7 @@ interface TileActivation {
 }
 
 export default function Oversight() {
-  const { isPlatformAdmin, activeTenantId, activeOrganization, isDevelopmentMode } = useAuth();
+  const { isPlatformAdmin } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<OverviewStats>({
@@ -114,30 +108,9 @@ export default function Oversight() {
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
   const [financePackages, setFinancePackages] = useState<FinancePackageOverview[]>([]);
 
-  // Golden Path Seeds with org context
-  const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(
-    activeTenantId,
-    activeOrganization?.name,
-    activeOrganization?.org_type,
-    isDevelopmentMode
-  );
-
   // Detail dialogs
   const [selectedOrg, setSelectedOrg] = useState<OrgOverview | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyOverview | null>(null);
-
-  const handleRunSeeds = async () => {
-    const result = await runSeeds();
-    
-    if (result.success) {
-      toast.success('Golden Path Seeds erfolgreich erstellt', {
-        description: `Contacts: ${result.after.contacts} | Properties: ${result.after.properties} | Docs: ${result.after.documents}`,
-      });
-      fetchData(); // Refresh stats
-    } else {
-      toast.error('Seed-Fehler: ' + result.error);
-    }
-  };
 
   useEffect(() => {
     if (isPlatformAdmin) {
@@ -269,127 +242,13 @@ export default function Oversight() {
             Systemweite Übersicht über alle Tenants, Immobilien und Module (Read-only)
           </p>
         </div>
+        <Link to="/admin/tiles?tab=testdaten">
+          <Button variant="outline" size="sm" className="gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Testdaten verwalten
+          </Button>
+        </Link>
       </div>
-
-      {/* Golden Path Seeds Card */}
-      <Card className={`border-dashed ${isSeedAllowed ? 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20' : 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20'}`}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            {isSeedAllowed ? (
-              <Sparkles className="h-4 w-4 text-amber-600" />
-            ) : (
-              <ShieldAlert className="h-4 w-4 text-red-600" />
-            )}
-            Golden Path Demo Data
-          </CardTitle>
-          <CardDescription>
-            {isSeedAllowed 
-              ? 'Erstellt Beispieldaten für MOD-04 (Immobilien), MOD-07 (Finanzierung) und MOD-03 (DMS)'
-              : 'Seeds nur im internal Org erlaubt. Bitte Org wechseln.'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Context Info */}
-          <div className="text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded">
-            tenant_id: {activeTenantId?.slice(0, 8)}... | org: {activeOrganization?.name} | type: {activeOrganization?.org_type} | devMode: {isDevelopmentMode ? 'true' : 'false'}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={handleRunSeeds} 
-              disabled={isSeeding || !activeTenantId || !isSeedAllowed}
-              className="gap-2"
-              variant={isSeedAllowed ? 'default' : 'secondary'}
-            >
-              {isSeeding ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Database className="h-4 w-4" />
-              )}
-              Seeds erstellen/aktualisieren
-            </Button>
-            
-            {lastResult && lastResult.success && (
-              <Badge variant="default" className="gap-1">
-                <CheckCircle className="h-3 w-3" /> Seeds erstellt
-              </Badge>
-            )}
-          </div>
-
-          {/* Seed Result Tables */}
-          {lastResult && lastResult.success && (
-            <div className="space-y-4 mt-4">
-              {/* Counts Table - simplified */}
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Table</TableHead>
-                      <TableHead className="text-right">Before</TableHead>
-                      <TableHead className="text-right">After</TableHead>
-                      <TableHead className="text-center">Δ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(['properties', 'units', 'loans', 'leases', 'contacts', 'documents', 'landlord_contexts', 'context_members', 'tile_activations'] as const).map((key) => {
-                      const before = lastResult.before[key] || 0;
-                      const after = lastResult.after[key] || 0;
-                      const delta = after - before;
-                      return (
-                        <TableRow key={key}>
-                          <TableCell className="font-mono text-xs">{key}</TableCell>
-                          <TableCell className="text-right font-mono">{before}</TableCell>
-                          <TableCell className="text-right font-mono">{after}</TableCell>
-                          <TableCell className="text-center">
-                            {delta > 0 ? (
-                              <span className="text-green-600 font-mono">+{delta}</span>
-                            ) : delta === 0 ? (
-                              <span className="text-muted-foreground font-mono">—</span>
-                            ) : (
-                              <span className="text-red-600 font-mono">{delta}</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Summary */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="font-semibold text-sm">Zusammenfassung</div>
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Kontakte:</span>{' '}
-                    <span className="font-mono font-bold">{lastResult.after.contacts}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Immobilien:</span>{' '}
-                    <span className="font-mono font-bold">{lastResult.after.properties}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Module:</span>{' '}
-                    <span className="font-mono font-bold">{lastResult.after.tile_activations}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Dokumente:</span>{' '}
-                    <span className="font-mono font-bold">{lastResult.after.documents}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {lastResult && !lastResult.success && (
-            <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
-              <XCircle className="h-4 w-4" />
-              <span>{lastResult.error}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Global Stats */}
       <div className="grid grid-cols-6 gap-4">
