@@ -1,9 +1,11 @@
 # A2 — ZONE 1: ADMIN / GOVERNANCE
 
-**Version:** A2_Zone1_Admin_Governance_v2.0  
-**Status:** FROZEN  
-**Bezug:** A1_SystemOverview_v2.0 (FROZEN)  
-**Changelog:** v2.0 — 10-Modul-Architektur; Lead Pool Management für MOD-10; Kaufy-Korrektur.
+**Version:** A2_Zone1_Admin_Governance_v3.0  
+**Status:** AKTIV  
+**Bezug:** A1_SystemOverview_v2.0, ZONE1_COMPLETION_ROADMAP.md  
+**Changelog:** 
+- v3.0 — 10-Gruppen-Sidebar; Armstrong Zone 1 Suite; Masterdata als Read-Only; Feature Activation Klarstellung
+- v2.0 — 10-Modul-Architektur; Lead Pool Management für MOD-10; Kaufy-Korrektur
 
 ---
 
@@ -110,10 +112,11 @@ Zone 1 steuert die Verfügbarkeit von Zone-2-Modulen:
 - **Regel:** Kein Modul existiert ohne definierten Tile
 - **Sichtbarkeit vs. Logik:** Zone 1 steuert nur Sichtbarkeit, nicht die Modul-Logik selbst
 
-**10 Module in Zone 2:**
+**21 Module in Zone 2 (inkl. MOD-00):**
 
 | MOD | Name | Sichtbarkeit |
 |-----|------|--------------|
+| 00 | Dashboard | Alle |
 | 01 | Stammdaten | Alle |
 | 02 | KI Office | Alle |
 | 03 | DMS | Alle |
@@ -124,13 +127,16 @@ Zone 1 steuert die Verfügbarkeit von Zone-2-Modulen:
 | 08 | Investment-Suche / Ankauf | Alle |
 | 09 | Vertriebspartner | Kaufy-Registrierte |
 | 10 | Leadgenerierung | Kaufy-Registrierte |
+| 11-20 | Erweiterungsmodule | Variabel |
 
 **Sichtbarkeitsmatrix:**
 
 | Registrierung | Module |
 |---------------|--------|
-| SoT | 1–8 |
-| Kaufy | 1–10 |
+| SoT | 0–8 |
+| Kaufy | 0–10 |
+
+**Entwicklungs-Account:** Im Development-Mode (`isDevelopmentMode = true`) sind ALLE Module sichtbar. `tenant_tile_activation` wird ignoriert.
 
 **Prinzip:** Zone 1 aktiviert Module, Zone 2 führt sie aus.
 
@@ -186,11 +192,40 @@ Zone 3 (Website) → Zone 1 (Lead Pool) → MOD-10 (Partner Inbox)
 
 ---
 
-### 7. Oversight & Monitoring
+### 7. Armstrong Zone 1 Suite (NEU v3.0)
+
+Zone 1 bietet eine vollständige Governance-Ebene für die Armstrong KI:
+
+**7 Module:**
+
+| Modul | Beschreibung |
+|-------|--------------|
+| Console | Dashboard mit KPIs und Aktivitäts-Übersicht |
+| Actions | Katalog aller verfügbaren Armstrong-Actions |
+| Logs | Ausführungs-Protokoll aller Action-Runs |
+| Knowledge | Wissensbasis für Immobilien-Taxonomie |
+| Billing | Credit-Verbrauch und Kosten-Tracking |
+| Policies | Guardrails, Risk-Levels, Rollen-Beschränkungen |
+| Test Harness | Dry-Run Umgebung ohne DB-Writes |
+
+**Datenbank-Tabellen (geplant):**
+
+| Tabelle | Zweck |
+|---------|-------|
+| armstrong_action_runs | Jede Ausführung protokollieren |
+| armstrong_knowledge_items | Wissensbasis-Einträge |
+| armstrong_policies | Guardrails und Policies |
+| armstrong_billing_events | Credit-Verbrauch |
+
+**Prinzip:** Zone 1 überwacht und steuert, Zone 2 (MOD-00 Dashboard) führt aus.
+
+---
+
+### 8. Oversight & Monitoring
 
 Zone 1 bietet plattformweite Transparenz:
 
-- **Read-Only-Zugriff:** Keine Schreiboperationen auf Zone-2-Daten
+- **Read-Only-Zugriff:** Keine Schreiboperationen auf Zone-2-Business-Daten
 - **Plattformweite Sicht:** Über alle Tenants hinweg (nur für Platform Admins)
 - **Kein Eingriff:** Oversight beobachtet, greift nicht in Geschäftsprozesse ein
 - **Audit & Transparenz:** Alle kritischen Aktionen werden in `audit_events` protokolliert
@@ -203,6 +238,7 @@ Zone 1 bietet plattformweite Transparenz:
 - Public Listing Status
 - Commission Pending Count
 - Lead Pool Size
+- Armstrong Action Runs
 
 **Prinzip:** Oversight sieht alles, verändert nichts.
 
@@ -239,7 +275,7 @@ Zone 1 bietet plattformweite Transparenz:
 
 ## Zusammenfassung
 
-**A2 fixiert die Governance-Schicht von „System of a Town":**
+**A2 v3.0 fixiert die Governance-Schicht von „System of a Town":**
 
 1. Zone 1 ist **Source of Truth** für Struktur, Rechte und Aktivierungen
 2. Zone 1 ist **steuernd**, nicht operativ
@@ -248,7 +284,30 @@ Zone 1 bietet plattformweite Transparenz:
 5. Zone 1 kontrolliert die **Integration Registry** für externe Services
 6. Zone 1 bietet **Read-Only Oversight** über die gesamte Plattform
 7. Zone 1 managt den **Lead Pool** für Zone 3 Inbound-Leads
+8. Zone 1 steuert die **Armstrong Suite** via Governance-Module (NEU v3.0)
+
+---
+
+## Sidebar-Struktur (10 Gruppen)
+
+Siehe **ZONE1_ADMIN_ROUTES.md** für die vollständige Route-Dokumentation.
+
+| Gruppe | Beschreibung |
+|--------|--------------|
+| 1. Tenants & Access | Dashboard, Organisationen, Benutzer, Delegationen |
+| 2. Masterdata | Read-Only Vorlagen (SSOT = Zone 2) |
+| 3. KI Office | System-Kommunikation |
+| 4. Armstrong Zone 1 | KI-Governance Suite (7 Module) |
+| 5. Feature Activation | Tile-Katalog, Partner-Verifizierung |
+| 6. Backbone | Vereinbarungen, Posteingang |
+| 7. Operative Desks | FutureRoom, Sales/Finance Desk, Acquiary, LeadPool |
+| 8. AI Agents | Agenten-Governance |
+| 9. System | Integrationen, Oversight, Audit |
+| 10. Platform Admin | Support, Abrechnung (später) |
 
 ---
 
 **Nächster Schritt:** A3 (Zone 2 Modulstruktur) baut verbindlich auf dieser Governance-Definition auf.
+
+**Referenz:** Für den Fertigstellungsplan siehe `ZONE1_COMPLETION_ROADMAP.md`.
+
