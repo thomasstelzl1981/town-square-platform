@@ -4,7 +4,7 @@
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
-import { KontexteTab, PortfolioTab, VertriebTab, MarketingTab, ProjectDetailPage } from './projekte';
+import { KontexteTab, PortfolioTab, VertriebTab, MarketingTab, ProjectDetailPage, UnitDetailPage } from './projekte';
 
 export default function ProjektePage() {
   const content = moduleContents['MOD-13'];
@@ -21,6 +21,9 @@ export default function ProjektePage() {
       
       {/* Project Detail (Projektakte) */}
       <Route path=":projectId" element={<ProjectDetailPage />} />
+      
+      {/* Unit Detail (Einheiten-Akte) */}
+      <Route path=":projectId/einheit/:unitId" element={<UnitDetailPage />} />
       
       {/* Legacy redirects */}
       <Route path="uebersicht" element={<Navigate to="/portal/projekte/portfolio" replace />} />

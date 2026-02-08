@@ -4,3 +4,4 @@ export { default as PortfolioTab } from './PortfolioTab';
 export { default as VertriebTab } from './VertriebTab';
 export { default as MarketingTab } from './MarketingTab';
 export { default as ProjectDetailPage } from './ProjectDetailPage';
+export { default as UnitDetailPage } from './UnitDetailPage';
