@@ -53,6 +53,7 @@ const KatalogDetailPage = () => {
     queryFn: async () => {
       if (!publicId) return null;
 
+      // Query by public_id OR by id (fallback for listings without public_id)
       const { data, error } = await supabase
         .from('listings')
         .select(`
@@ -73,8 +74,9 @@ const KatalogDetailPage = () => {
             annual_income
           )
         `)
-        .eq('public_id', publicId)
-        .single();
+        .or(`public_id.eq.${publicId},id.eq.${publicId}`)
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) {
         console.error('Listing query error:', error);

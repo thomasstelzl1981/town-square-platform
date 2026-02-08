@@ -219,6 +219,28 @@ export function VerkaufsauftragTab({
         listingId = newListing.id;
       }
 
+      // 1b. Generate public_id and create partner_network publication
+      const citySlug = (propertyCity || 'immobilie').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const publicId = `${citySlug}-${listingId!.substring(0, 8)}`;
+      
+      const { error: publicIdError } = await supabase
+        .from('listings')
+        .update({ public_id: publicId })
+        .eq('id', listingId);
+      if (publicIdError) console.warn('public_id update failed:', publicIdError);
+      
+      // Create partner_network publication (makes listing visible in Partner-Katalog)
+      const { error: pubError } = await supabase
+        .from('listing_publications')
+        .upsert({
+          listing_id: listingId!,
+          tenant_id: tenantId,
+          channel: 'partner_network',
+          status: 'active',
+          published_at: new Date().toISOString()
+        }, { onConflict: 'listing_id,channel' });
+      if (pubError) console.warn('partner_network publication failed:', pubError);
+
       // 2. Upsert property feature
       const existingFeature = getFeature('verkaufsauftrag');
       if (existingFeature) {
