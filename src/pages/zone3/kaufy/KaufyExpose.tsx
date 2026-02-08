@@ -75,7 +75,7 @@ export default function KaufyExpose() {
             city,
             postal_code,
             total_area_sqm,
-            construction_year,
+            year_built,
             annual_income
           )
         `)
@@ -101,7 +101,7 @@ export default function KaufyExpose() {
         city: props?.city || '',
         postal_code: props?.postal_code || '',
         total_area_sqm: props?.total_area_sqm || 0,
-        year_built: props?.construction_year || 0,
+        year_built: props?.year_built || 0,
         monthly_rent: Math.round(annualIncome / 12),
         units_count: 0,
       };
