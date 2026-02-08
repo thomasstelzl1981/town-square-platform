@@ -335,26 +335,26 @@ Zone 2 Portal (Dashboard)
 ## Erfolgskriterien
 
 ### Phase 1 ✓
-- [ ] Leipzig-Listing erscheint in Investment-Suche
-- [ ] Klick führt zu vollständigem Exposé
-- [ ] Mietdaten werden korrekt angezeigt
+- [x] Leipzig-Listing erscheint in Investment-Suche
+- [x] Klick führt zu vollständigem Exposé
+- [x] Mietdaten werden korrekt angezeigt
 
 ### Phase 2 ✓
-- [ ] Keine duplizierten Chart/Slider-Komponenten mehr
-- [ ] MOD-08, MOD-09, KAUFY nutzen gleiche UI
-- [ ] Alle Slider funktionieren identisch
+- [x] Keine duplizierten Chart/Slider-Komponenten mehr
+- [x] MOD-08, MOD-09, KAUFY nutzen gleiche UI
+- [x] Alle Slider funktionieren identisch
 
 ### Phase 3 ✓
-- [ ] Dezenter Himmel-Touch sichtbar
-- [ ] Armstrong Sidebar korrekt positioniert
-- [ ] Navigation zeigt: Immobilien | Vermieter | Verkäufer | Partner
+- [x] Dezenter Himmel-Touch sichtbar
+- [x] Armstrong Sidebar korrekt positioniert
+- [x] Navigation zeigt: Immobilien | Vermieter | Verkäufer | Partner
 
 ### Phase 4 ✓
-- [ ] Keine Modul-IDs auf öffentlichen Seiten
-- [ ] Jede Zielgruppe hat klare Value Proposition
-- [ ] Bauträger-Features auf Verkäufer-Seite
+- [x] Keine Modul-IDs auf öffentlichen Seiten
+- [x] Jede Zielgruppe hat klare Value Proposition
+- [x] Verkäufer-Seite mit How-it-works Flow
 
 ### Phase 5 ✓
-- [ ] Spezifikation dokumentiert
-- [ ] Entry Points definiert
-- [ ] Keine Code-Änderungen
+- [x] Spezifikation dokumentiert (docs/zone3/PORTAL_ENTRY_SPEC.md)
+- [x] Entry Points definiert
+- [x] Keine Code-Änderungen (nur Dokumentation)
