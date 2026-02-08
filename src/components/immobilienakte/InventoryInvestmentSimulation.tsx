@@ -192,11 +192,15 @@ export function InventoryInvestmentSimulation({ data }: InventoryInvestmentSimul
         </CardContent>
       </Card>
 
-      {/* Fixed Parameters Info */}
+      {/* Fixed Parameters Info - hide debt-related boxes if property is debt-free */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <InfoBox label="Verkehrswert" value={formatCurrency(data.marketValue)} />
-        <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
-        <InfoBox label="Zinssatz" value={formatPercent(data.interestRatePercent)} />
+        {data.outstandingBalance > 0 && (
+          <InfoBox label="Restschuld" value={formatCurrency(data.outstandingBalance)} />
+        )}
+        {data.interestRatePercent > 0 && (
+          <InfoBox label="Zinssatz" value={formatPercent(data.interestRatePercent)} />
+        )}
         <InfoBox label="AfA-Satz" value={`${data.afaRatePercent}% (${data.afaMethod})`} />
       </div>
 
