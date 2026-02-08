@@ -1,195 +1,200 @@
 
 
-## Bereinigung: Oversight und Testdaten-Konsolidierung
+## Sidebar-Reorganisation: LeadPool, Provisionen und Partner-Verifizierung
 
 ### Zusammenfassung
 
-Oversight und Tile-Katalog haben beide Golden Path Seeds implementiert. Dies fuehrt zu Redundanz und Verwirrung. Die Bereinigung entfernt die Seeds aus Oversight und behaelt es als reines Monitoring-Dashboard.
+Drei Module werden aus der "System"-Gruppe in passendere Kategorien verschoben, basierend auf ihrer tatsaechlichen Funktion.
 
 ---
 
-### Analyse: Die 4 Golden Paths
+### Analyse der drei Module
 
-| Golden Path | Workflow | Seeds-Funktion | Implementierung |
-|-------------|----------|----------------|-----------------|
-| **E2E (MOD-04 Immobilien)** | 10 Phasen von Erfassung bis Verkauf | `seed_golden_path_data` RPC | TestDataManager in Tile-Katalog |
-| **Finanzierung (MOD-07/11)** | Selbstauskunft → FutureRoom → Bank | Teilweise in E2E-Seeds enthalten | Workflow implementiert |
-| **Akquise (MOD-12)** | Mandat → Sourcing → Delivery | Keine eigenen Seeds | Workflow implementiert, keine Testdaten |
-| **Sanierung (MOD-04)** | 8-Schritte Ausschreibung | Keine eigenen Seeds | Workflow implementiert, keine Testdaten |
+| Modul | Aktuelle Gruppe | Funktion | Empfohlene Gruppe |
+|-------|-----------------|----------|-------------------|
+| **LeadPool** | System | Operative Lead-Verwaltung und Partner-Zuweisung | **Operative Desks** |
+| **Provisionen** | System | Operative Provisionsfreigabe und Zahlungsuebersicht | **Operative Desks** |
+| **Partner-Verifizierung** | System | Status-Aktivierung von Partnern (approved/rejected) | **Feature Activation** |
 
 ---
 
-### Aktuelle Duplikation
+### Detailanalyse: Partner-Verifizierung
 
-```text
-/admin/oversight                    /admin/tiles
-├── System-KPIs (Orgs, Users)       ├── Modul-Katalog
-├── Golden Path Seeds ◄──DUPLIKAT──►├── Tab "Testdaten"
-└── Tenant/Property-Listen          │   ├── Golden Path Seeds
-                                    │   ├── Excel-AI-Import
-                                    │   ├── Batch-Loeschung
-                                    │   └── Reset-Funktion
-                                    └── Tenant-Aktivierung
+**Aktuelle Funktion (aus Code-Review):**
+- Zeigt alle Vertriebspartner mit Verifizierungsstatus
+- Status-Workflow: `pending` → `documents_submitted` → `under_review` → `approved` / `rejected`
+- Aktionen: Partner genehmigen oder ablehnen
+- Setzt `verified_at` und aktiviert damit Partner-Funktionen
+
+**Warum Feature Activation:**
+Die Partner-Verifizierung ist KEINE reine Uebersicht. Sie **aktiviert Features** fuer Partner:
+- Ein `approved` Partner kann Listings im Objektkatalog (MOD-09) sehen
+- Ein `rejected` Partner hat keinen Zugang zu Plattform-Features
+- Entspricht dem gleichen Pattern wie Tile-Aktivierung (Modul freischalten)
+
+---
+
+### Detailanalyse: LeadPool
+
+**Aktuelle Funktion (aus Code-Review):**
+- Zentrale Lead-Verwaltung (zone1_pool = true)
+- Lead-Zuweisung an Partner
+- Status-Tracking: new → contacted → qualified → converted
+
+**Warum Operative Desks:**
+Der LeadPool ist eine **operative Workstation** mit aktiven Zuweisungen.
+Vergleichbar mit FutureRoom (Mandatszuweisung) oder Acquiary (Objektzuordnung).
+
+---
+
+### Detailanalyse: Provisionen
+
+**Aktuelle Funktion (aus Code-Review):**
+- Provisionsfreigabe-Workflow: pending → approved → invoiced → paid
+- Aktive Genehmigungsaktionen
+- Zahlungsueberwachung
+
+**Warum Operative Desks:**
+Provisionen sind **operative Finanzvorgaenge** mit Genehmigungsworkflow.
+Gehoert funktional zu Finance Desk oder Sales Desk (plattformweite Provisionen).
+
+---
+
+### Aenderungen in AdminSidebar.tsx
+
+#### 1. getGroupKey erweitern (Zeile 108-149)
+
+**Vorher:**
+```typescript
+if (path === 'integrations' || path === 'oversight' || 
+    path === 'audit' || path === 'leadpool' || path === 'partner-verification' || path === 'commissions') {
+  return 'system';
+}
+```
+
+**Nachher:**
+```typescript
+// Feature Activation
+if (path === 'tiles' || path === 'partner-verification') {
+  return 'activation';
+}
+
+// Operative Desks: LeadPool und Provisionen hinzufuegen
+if (path === 'leadpool' || path === 'commissions') {
+  return 'desks';
+}
+
+// System (bereinigt)
+if (path === 'integrations' || path === 'oversight' || path === 'audit') {
+  return 'system';
+}
 ```
 
 ---
 
-### Bereinigungsplan
-
-#### Schritt 1: Golden Path Seeds aus Oversight entfernen
-
-**Datei:** `src/pages/admin/Oversight.tsx`
-
-**Zu entfernen:**
-- Import: `useGoldenPathSeeds, SeedResult`
-- State: `runSeeds, isSeeding, lastResult, isSeedAllowed`
-- Handler: `handleRunSeeds`
-- UI: Komplette "Golden Path Demo Data" Card (Zeilen 274-392)
-
-**Beizubehalten:**
-- System-KPIs (Organizations, Profiles, Properties, etc.)
-- Tenant-Tabelle
-- Property-Tabelle
-- Finance-Pakete-Tabelle
-- Tile-Aktivierungen-Tabelle
-
----
-
-#### Schritt 2: Oversight-Header aktualisieren
-
-**Neuer Header:**
-```text
-System Oversight
-Systemweite Uebersicht ueber alle Tenants, Immobilien und Module (Read-only)
-```
-
-**Hinweis hinzufuegen:**
-```text
-Testdaten → /admin/tiles → Tab "Testdaten"
-```
-
----
-
-#### Schritt 3: Sidebar-Position beibehalten
-
-Oversight bleibt in der **System-Gruppe** da es:
-- Plattformweite KPIs anzeigt
-- Read-only Monitoring bietet
-- NICHT zur Feature-Aktivierung gehoert
+### Finale Sidebar-Struktur
 
 ```text
-System (9)
+Tenants & Access (1)
+  - Dashboard
+  - Organisationen
+  - Benutzer
+  - Delegationen
+
+Masterdata (2)
+  - Immobilienakte Vorlage
+  - Selbstauskunft Vorlage
+
+KI Office (3)
+  - E-Mail
+  - Kontakte
+  - Kommunikation
+
+Armstrong Zone 1 (4)
+  - Armstrong Console
+  - Actions-Katalog
+  - Action Logs
+  - Knowledge Base
+  - Billing
+  - Policies
+  - Test Harness
+
+Feature Activation (5)
+  - Tile-Katalog
+  - Partner-Verifizierung      ← NEU HIER
+
+Backbone (6)
+  - Vereinbarungen
+  - Posteingang
+
+Operative Desks (7)
+  - FutureRoom
+  - Sales Desk
+  - Finance Desk
+  - Acquiary
+  - Lead Pool                   ← NEU HIER
+  - Provisionen                 ← NEU HIER
+
+AI Agents (8)
+  - Agents
+
+System (9)                      ← BEREINIGT
   - Integrationen
-  - Oversight        ← Bleibt hier
+  - Oversight
   - Audit Log
-  - Lead Pool
-  - Partner-Verifizierung
-  - Provisionen
+
+Platform Admin (10)
+  - Support
 ```
 
 ---
 
-### Finale Struktur
+### Begruendung der Kategorisierung
 
-#### Oversight (bereinigt)
-
-```text
-/admin/oversight
-├── System-KPIs (6 Cards)
-│   ├── Organisationen
-│   ├── Benutzer
-│   ├── Immobilien
-│   ├── Aktive Module
-│   ├── Finance Pakete
-│   └── Public Listings
-│
-└── Tabs
-    ├── Tenants        → Org-Tabelle mit Counts
-    ├── Immobilien     → Property-Tabelle
-    ├── Finance Pakete → Finance-Request-Tabelle
-    └── Module         → Tile-Aktivierungen
-```
-
-**KEINE Seeds mehr!**
+| Gruppe | Kriterium | Module |
+|--------|-----------|--------|
+| **Feature Activation** | Schaltet Funktionen fuer Tenants/Partner EIN/AUS | Tile-Katalog, Partner-Verifizierung |
+| **Operative Desks** | Tagesgeschaeft mit aktiven Workflows | FutureRoom, Sales Desk, Finance Desk, Acquiary, LeadPool, Provisionen |
+| **System** | Read-only Monitoring, Konfiguration | Integrationen, Oversight, Audit Log |
 
 ---
 
-#### Tile-Katalog (unveraendert, bleibt SSOT)
-
-```text
-/admin/tiles
-├── Tab: Modul-Katalog
-│   └── Alle MOD-XX Karten
-│
-├── Tab: Tenant-Aktivierung
-│   └── Switch pro Modul/Tenant
-│
-└── Tab: Testdaten          ← EINZIGER Ort fuer Seeds
-    ├── Golden Path Demo-Daten
-    │   ├── Seeds erstellen
-    │   └── Seeds zuruecksetzen
-    │
-    ├── Excel-AI-Import
-    │   └── KI-gestuetzter Import
-    │
-    └── Test-Batches
-        └── Batch-Loeschung
-```
-
----
-
-### Betroffene Dateien
+### Betroffene Datei
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/admin/Oversight.tsx` | Golden Path UI + Imports entfernen |
+| `src/components/admin/AdminSidebar.tsx` | getGroupKey Funktion anpassen (Zeilen 124-148) |
 
 ---
 
-### Nicht-Aenderungen
+### Technische Umsetzung
 
-| Aspekt | Begruendung |
-|--------|-------------|
-| Sidebar-Position Oversight | Bleibt in System (korrekt) |
-| TestDataManager | Bereits SSOT, keine Aenderung |
-| Akquise/Sanierung-Seeds | Existieren nicht, out of scope |
-
----
-
-### Technische Details
-
-#### Zu entfernende Imports (Oversight.tsx)
+**Zeilen 124-148 in AdminSidebar.tsx ersetzen:**
 
 ```typescript
-// ENTFERNEN:
-import { useGoldenPathSeeds, SeedResult } from '@/hooks/useGoldenPathSeeds';
-import { Sparkles, ShieldAlert } from 'lucide-react';
+// Feature Activation (inkl. Partner-Verifizierung)
+if (path === 'tiles' || path === 'partner-verification') {
+  return 'activation';
+}
+// FutureRoom gehört zu Operative Desks
+if (path.startsWith('futureroom')) {
+  return 'desks';
+}
+// Backbone
+if (path === 'agreements' || path === 'inbox') {
+  return 'backbone';
+}
+// Operative Desks (Desks + LeadPool + Provisionen)
+if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
+    path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions') {
+  return 'desks';
+}
+if (path.startsWith('agents')) {
+  return 'agents';
+}
+// System (bereinigt - nur Read-only Monitoring)
+if (path === 'integrations' || path === 'oversight' || path === 'audit') {
+  return 'system';
+}
 ```
-
-#### Zu entfernende States (Oversight.tsx)
-
-```typescript
-// ENTFERNEN:
-const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(...);
-const handleRunSeeds = async () => { ... };
-```
-
-#### Zu entfernende UI (Oversight.tsx, ca. Zeilen 274-392)
-
-```typescript
-// ENTFERNEN:
-{/* Golden Path Seeds Card */}
-<Card className={...}>
-  ...
-</Card>
-```
-
----
-
-### Zusammenfassung
-
-1. **Duplikation beseitigen:** Golden Path Seeds nur noch im Tile-Katalog
-2. **Oversight bleibt read-only:** Nur KPIs und Tabellen
-3. **Sidebar unveraendert:** Oversight bleibt in System-Gruppe
-4. **Akquise/Sanierung-Seeds:** Nicht vorhanden, keine Aktion erforderlich
 
