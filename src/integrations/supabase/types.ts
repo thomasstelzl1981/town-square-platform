@@ -8317,6 +8317,7 @@ export type Database = {
         Row: {
           activated_at: string
           activated_by: string | null
+          config: Json | null
           created_at: string
           deactivated_at: string | null
           deactivated_by: string | null
@@ -8330,6 +8331,7 @@ export type Database = {
         Insert: {
           activated_at?: string
           activated_by?: string | null
+          config?: Json | null
           created_at?: string
           deactivated_at?: string | null
           deactivated_by?: string | null
@@ -8343,6 +8345,7 @@ export type Database = {
         Update: {
           activated_at?: string
           activated_by?: string | null
+          config?: Json | null
           created_at?: string
           deactivated_at?: string | null
           deactivated_by?: string | null

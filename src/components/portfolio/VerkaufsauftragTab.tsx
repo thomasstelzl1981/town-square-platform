@@ -39,7 +39,7 @@ interface PropertyFeature {
   feature_code: string;
   status: string;
   activated_at: string;
-  config?: Record<string, unknown>;
+  config?: Record<string, unknown> | null;
 }
 
 interface VerkaufsauftragTabProps {
@@ -124,7 +124,11 @@ export function VerkaufsauftragTab({
         .eq('tenant_id', tenantId);
 
       if (fetchError) throw fetchError;
-      setFeatures(data || []);
+      // Cast to ensure type compatibility
+      setFeatures((data || []).map(f => ({
+        ...f,
+        config: f.config as Record<string, unknown> | null
+      })));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Fehler beim Laden';
       setError(message);
@@ -328,16 +332,93 @@ export function VerkaufsauftragTab({
     });
   }
 
+  // Deactivate Verkaufsauftrag - withdraws listing and pauses publications
+  async function deactivateVerkaufsauftrag() {
+    const feature = getFeature('verkaufsauftrag');
+    if (!feature) return;
+
+    setIsActivating(true);
+    try {
+      // 1. Deactivate feature
+      const { error: updateError } = await supabase
+        .from('property_features')
+        .update({
+          status: 'inactive',
+          deactivated_at: new Date().toISOString(),
+          deactivated_by: user?.id || null
+        })
+        .eq('id', feature.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Withdraw listings
+      const { error: listingError } = await supabase
+        .from('listings')
+        .update({ status: 'withdrawn' })
+        .eq('property_id', propertyId)
+        .in('status', ['draft', 'active', 'reserved']);
+
+      if (listingError) throw listingError;
+
+      // 3. Pause all publications
+      const { data: listings } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('property_id', propertyId);
+
+      if (listings?.length) {
+        await supabase
+          .from('listing_publications')
+          .update({ 
+            status: 'paused', 
+            removed_at: new Date().toISOString() 
+          })
+          .in('listing_id', listings.map(l => l.id));
+      }
+
+      // 4. Also deactivate Kaufy visibility if active
+      const kaufyFeature = getFeature('kaufy_sichtbarkeit');
+      if (kaufyFeature && kaufyFeature.status === 'active') {
+        await supabase
+          .from('property_features')
+          .update({
+            status: 'inactive',
+            deactivated_at: new Date().toISOString(),
+            deactivated_by: user?.id || null
+          })
+          .eq('id', kaufyFeature.id);
+      }
+
+      toast.success('Verkaufsauftrag widerrufen – Objekt wurde aus der Vermarktung genommen');
+      await fetchFeatures();
+      queryClient.invalidateQueries({ queryKey: ['listing'] });
+      onUpdate?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Fehler beim Deaktivieren';
+      toast.error(message);
+    }
+    setIsActivating(false);
+  }
+
   function handleFeatureToggle(code: string, isActive: boolean) {
     const config = FEATURE_CONFIG[code];
     if (!config) return;
 
-    if (!isActive && config.requiresAgreement && !config.comingSoon) {
-      // Expand for agreement
+    if (code === 'verkaufsauftrag') {
+      if (isActive) {
+        // Currently active → Deactivate
+        deactivateVerkaufsauftrag();
+      } else {
+        // Currently inactive → Expand agreement panel
+        setExpandedFeature(code);
+        resetAgreementState();
+      }
+    } else if (!isActive && config.requiresAgreement && !config.comingSoon) {
+      // Expand for agreement (other features)
       setExpandedFeature(code);
       resetAgreementState();
     } else if (isActive || !config.requiresAgreement) {
-      // Direct toggle
+      // Direct toggle for simple features
       toggleSimpleFeature(code, isActive);
     }
   }
