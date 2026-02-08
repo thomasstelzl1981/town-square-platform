@@ -69,6 +69,10 @@ import Oversight from '@/pages/admin/Oversight';
 import AuditLog from '@/pages/admin/AuditLog';
 import AdminKiOfficeEmail from '@/pages/admin/ki-office/AdminKiOfficeEmail';
 import AdminKiOfficeKontakte from '@/pages/admin/ki-office/AdminKiOfficeKontakte';
+import AdminKiOfficeDashboard from '@/pages/admin/ki-office/AdminKiOfficeDashboard';
+import AdminKiOfficeSequenzen from '@/pages/admin/ki-office/AdminKiOfficeSequenzen';
+import AdminKiOfficeTemplates from '@/pages/admin/ki-office/AdminKiOfficeTemplates';
+import AdminKiOfficeRecherche from '@/pages/admin/ki-office/AdminKiOfficeRecherche';
 
 import Agreements from '@/pages/admin/Agreements';
 import Inbox from '@/pages/admin/Inbox';
@@ -196,6 +200,10 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AuditLog,
   AdminKiOfficeEmail,
   AdminKiOfficeKontakte,
+  AdminKiOfficeDashboard,
+  AdminKiOfficeSequenzen,
+  AdminKiOfficeTemplates,
+  AdminKiOfficeRecherche,
   
   Agreements,
   Inbox,
