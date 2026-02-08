@@ -121,25 +121,28 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('armstrong')) {
     return 'armstrong';
   }
-  if (path === 'tiles') {
+  // Feature Activation (inkl. Partner-Verifizierung)
+  if (path === 'tiles' || path === 'partner-verification') {
     return 'activation';
   }
-  // FutureRoom gehört zu Operative Desks, nicht Backbone
+  // FutureRoom gehört zu Operative Desks
   if (path.startsWith('futureroom')) {
     return 'desks';
   }
-  // Backbone (billing removed - duplicate of Zone 2)
+  // Backbone
   if (path === 'agreements' || path === 'inbox') {
     return 'backbone';
   }
-  if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || path.startsWith('acquiary')) {
+  // Operative Desks (Desks + LeadPool + Provisionen)
+  if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
+      path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions') {
     return 'desks';
   }
   if (path.startsWith('agents')) {
     return 'agents';
   }
-  if (path === 'integrations' || path === 'oversight' || 
-      path === 'audit' || path === 'leadpool' || path === 'partner-verification' || path === 'commissions') {
+  // System (bereinigt - nur Read-only Monitoring)
+  if (path === 'integrations' || path === 'oversight' || path === 'audit') {
     return 'system';
   }
   if (path === 'support') {
