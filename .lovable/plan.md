@@ -121,14 +121,16 @@ IDLE ──► LOADING ──► RESPONSE_RECEIVED
 
 ## Akzeptanzkriterien
 
-- [ ] User kann Nachricht senden und erhält Antwort
-- [ ] EXPLAIN-Responses werden als Markdown gerendert
-- [ ] SUGGEST_ACTIONS zeigt klickbare Action-Chips
-- [ ] CONFIRM_REQUIRED zeigt ActionCard mit Confirm/Cancel
-- [ ] Nach Confirm wird Action ausgeführt und RESULT angezeigt
-- [ ] Loading-States während API-Calls
-- [ ] Kontext (Module/Entity) wird korrekt übertragen
-- [ ] Nur MVP-Module (00, 04, 07, 08) aktiv
+- [x] User kann Nachricht senden und erhält Antwort
+- [x] EXPLAIN-Responses werden als Markdown gerendert
+- [x] SUGGEST_ACTIONS zeigt klickbare Action-Chips
+- [x] CONFIRM_REQUIRED zeigt ActionCard mit Confirm/Cancel
+- [x] Nach Confirm wird Action ausgeführt und RESULT angezeigt
+- [x] Loading-States während API-Calls
+- [x] Kontext (Module/Entity) wird korrekt übertragen
+- [x] Nur MVP-Module (00, 04, 07, 08) aktiv
+
+## Status: ✅ IMPLEMENTIERT (2026-02-08)
 
 ---
 
