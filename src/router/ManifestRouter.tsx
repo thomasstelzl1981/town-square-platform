@@ -67,6 +67,8 @@ import Integrations from '@/pages/admin/Integrations';
 import CommunicationHub from '@/pages/admin/CommunicationHub';
 import Oversight from '@/pages/admin/Oversight';
 import AuditLog from '@/pages/admin/AuditLog';
+import AdminKiOfficeEmail from '@/pages/admin/ki-office/AdminKiOfficeEmail';
+import AdminKiOfficeKontakte from '@/pages/admin/ki-office/AdminKiOfficeKontakte';
 
 import Agreements from '@/pages/admin/Agreements';
 import Inbox from '@/pages/admin/Inbox';
@@ -192,6 +194,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   CommunicationHub,
   Oversight,
   AuditLog,
+  AdminKiOfficeEmail,
+  AdminKiOfficeKontakte,
   
   Agreements,
   Inbox,
