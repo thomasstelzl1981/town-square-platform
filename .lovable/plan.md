@@ -1,250 +1,174 @@
 
-# MOD-04 Portfolio — UI-Verbesserung: Vermietereinheit-Auswahl
+# Vermietereinheit — UX-Optimierung
 
 ## Zusammenfassung
 
-Die Anforderung ist, den PortfolioTab so umzugestalten, dass die **Vermietereinheit-Auswahl** prominenter und intuitiver wird. Statt eines Dropdown-Menüs sollen die Kontexte als **klickbare Karten** nebeneinander angezeigt werden, bevor das eigentliche Portfolio erscheint.
+Die Analyse bestätigt: **Die Daten sind NICHT hartcodiert** — sie werden korrekt aus der Datenbank geladen (`landlord_contexts` + `context_members`). Das Problem liegt in der **UX-Darstellung**, die optimiert werden soll.
 
 ---
 
-## Aktueller Zustand (IST)
+## Identifizierte Probleme
+
+1. **Modal-Dialog für Bearbeitung** — zu umständlich, Benutzer verliert Kontext
+2. **"+" Karte im Portfolio-Tab** — Doppelte Navigation, soll entfernt werden
+3. **Button-Platzierung** — "Neue Vermietereinheit anlegen" oben rechts ist nicht optimal
+
+---
+
+## Lösungskonzept
+
+### 1. Portfolio-Tab: "+" Karte entfernen
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
+
+Die Navigations-Karte zur Kontext-Erstellung wird entfernt. Vermietereinheiten können nur noch unter dem dedizierten Tab "Vermietereinheit" erstellt werden.
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Immobilienportfolio  [▼ Alle Vermietereinheiten]  [+ Objekt]   │
-├─────────────────────────────────────────────────────────────────┤
-│  [KPI Cards: Einheiten | Verkehrswert | Restschuld | ...]       │
-├─────────────────────────────────────────────────────────────────┤
-│  [Charts: Vermögensentwicklung | Cashflow]                      │
-├─────────────────────────────────────────────────────────────────┤
-│  [Property Table]                                               │
-└─────────────────────────────────────────────────────────────────┘
-```
+VORHER:
+[Alle] [Ehepaar M.] [GmbH] [+]  ← "+" navigiert zu /kontexte
 
-**Problem:**
-- Die Vermietereinheit-Auswahl ist ein kleines Dropdown neben der Überschrift
-- Nicht intuitiv für neue Benutzer
-- Der logische Ablauf (erst Kontext wählen, dann Portfolio sehen) ist nicht klar
+NACHHER:
+[Alle] [Ehepaar M.] [GmbH]      ← Nur Auswahl, keine Erstellung
+```
 
 ---
 
-## Zielzustand (SOLL)
+### 2. KontexteTab: Inline-Editing + Card-Layout
+
+**Datei:** `src/pages/portal/immobilien/KontexteTab.tsx`
+
+#### 2.1 Neue Kartenstruktur
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Wählen Sie Ihre Vermietereinheit                               │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │  [Alle]      │  │ Ehepaar M.   │  │ GmbH & Co KG │  [+]      │
-│  │  12 Objekte  │  │ Privat       │  │ Geschäftlich │           │
-│  │  ✓ aktiv     │  │ 8 Objekte    │  │ 4 Objekte    │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│  Immobilienportfolio — Ehepaar M.                    [+ Objekt] │
-├─────────────────────────────────────────────────────────────────┤
-│  [KPI Cards: Einheiten | Verkehrswert | Restschuld | ...]       │
-├─────────────────────────────────────────────────────────────────┤
-│  [Charts: Vermögensentwicklung | Cashflow]                      │
-├─────────────────────────────────────────────────────────────────┤
-│  [Property Table]                                               │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│ Vermietereinheiten                                                    │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│ ┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────┐ │
+│ │ Familie Mustermann      │  │ Immo-GmbH               │  │   (+)   │ │
+│ │ ────────────────────────│  │ ────────────────────────│  │         │ │
+│ │ [Privat]    42% Grenz.  │  │ [Geschäftl.]   30%      │  │  Neue   │ │
+│ │                         │  │                         │  │  Ver-   │ │
+│ │ zVE: 98.000 €           │  │ GF: M. Mustermann       │  │ mieter- │ │
+│ │ Splitting · 1 Kind      │  │ HRB: 12345 B            │  │ einheit │ │
+│ │ ────────────────────────│  │ USt-ID: DE123456789     │  │         │ │
+│ │ ┌──────────┬──────────┐ │  │ ────────────────────────│  │         │ │
+│ │ │ Max M.   │ Lisa M.  │ │  │ Musterstraße 15         │  │         │ │
+│ │ │ 50% III  │ 50% V    │ │  │ 04103 Leipzig           │  │         │ │
+│ │ └──────────┴──────────┘ │  │                         │  │         │ │
+│ │ ────────────────────────│  │ ────────────────────────│  │         │ │
+│ │ 8 Objekte zugeordnet    │  │ 4 Objekte zugeordnet    │  │         │ │
+│ │                         │  │                         │  │         │ │
+│ │ [Bearbeiten] [Zuordnen] │  │ [Bearbeiten] [Zuordnen] │  │         │ │
+│ └─────────────────────────┘  └─────────────────────────┘  └─────────┘ │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
----
+#### 2.2 Inline-Edit-Modus
 
-## Änderungen im Detail
-
-### 1. Neue Sektion: "Wählen Sie Ihre Vermietereinheit"
-
-**Position:** Ganz oben im PortfolioTab (vor KPIs)
-
-**Komponenten:**
-- Überschrift: `"Wählen Sie Ihre Vermietereinheit"`
-- Horizontal scrollbare Kartenreihe (flexbox/grid)
-- Jede Karte zeigt:
-  - Name der Vermietereinheit
-  - Badge: Privat/Geschäftlich
-  - Anzahl zugeordneter Objekte
-  - Aktiv-Indikator (Checkbox oder Rahmenfarbe)
-
-**Verhalten:**
-- Klick auf Karte → setzt `?context={id}` in URL
-- "Alle"-Karte als erste Option (zeigt Gesamtportfolio)
-- `+` Button am Ende → öffnet `CreateContextDialog`
-
-### 2. Angepasste Portfolio-Überschrift
-
-**Alt:**
-```tsx
-<h2>Immobilienportfolio</h2>
-[DropdownMenu für Kontexte]
-```
-
-**Neu:**
-```tsx
-<h2>Immobilienportfolio — {selectedContextName}</h2>
-```
-
-Das Dropdown wird entfernt, da die Auswahl jetzt über Karten erfolgt.
-
-### 3. Layout-Anpassung
-
-```tsx
-<div className="space-y-6 pt-6">
-  {/* NEUE SEKTION: Vermietereinheit-Auswahl */}
-  <div className="space-y-3">
-    <h2 className="text-lg font-semibold">Wählen Sie Ihre Vermietereinheit</h2>
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {/* "Alle" Karte */}
-      <ContextCard 
-        name="Alle" 
-        count={totalObjectCount} 
-        isActive={!selectedContextId}
-        onClick={() => clearContext()}
-      />
-      {/* Kontext-Karten */}
-      {contexts.map(ctx => (
-        <ContextCard 
-          key={ctx.id}
-          name={ctx.name}
-          type={ctx.context_type}
-          count={propertyCount[ctx.id]}
-          isActive={selectedContextId === ctx.id}
-          onClick={() => setContext(ctx.id)}
-        />
-      ))}
-      {/* + Button für neue Vermietereinheit */}
-      <AddContextCard onClick={() => setShowCreateDialog(true)} />
-    </div>
-  </div>
-
-  {/* Angepasste Portfolio-Überschrift */}
-  <div className="flex items-center justify-between">
-    <h2 className="text-xl font-semibold">
-      Immobilienportfolio{selectedContext ? ` — ${selectedContext.name}` : ''}
-    </h2>
-    <Button onClick={() => setShowCreateDialog(true)}>
-      <Plus className="mr-2 h-4 w-4" />
-      Neues Objekt
-    </Button>
-  </div>
-
-  {/* Rest bleibt unverändert: KPIs, Charts, Table */}
-</div>
-```
-
----
-
-## Technische Details
-
-### Keine Architektur-Änderungen
-- Alle bestehenden Routen bleiben erhalten
-- URL-Parameter `?context=` bleibt identisch
-- Keine neuen Datenbank-Abfragen nötig (nutzt existierende `contexts`-Query)
-- Keine neuen Hooks erforderlich
-
-### Zu ändernde Datei
-
-**`src/pages/portal/immobilien/PortfolioTab.tsx`**
-
-Änderungen:
-1. **Zeile ~602-644**: Ersetze `DropdownMenu` durch horizontale Kartenreihe
-2. **Neu**: Inline-Komponente `ContextCard` für kompakte Darstellung
-3. **Zeile ~607**: Überschrift anpassen mit ausgewähltem Kontext
-
-### Neue Inline-Komponente (innerhalb PortfolioTab)
-
-```tsx
-interface ContextCardProps {
-  name: string;
-  type?: string;
-  count: number;
-  isActive: boolean;
-  onClick: () => void;
-}
-
-const ContextCard = ({ name, type, count, isActive, onClick }: ContextCardProps) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      "flex flex-col gap-1 p-4 rounded-lg border min-w-[140px] text-left transition-colors",
-      isActive 
-        ? "border-primary bg-primary/5 ring-2 ring-primary" 
-        : "border-border hover:border-primary/50 hover:bg-muted/30"
-    )}
-  >
-    <span className="font-medium truncate">{name}</span>
-    {type && (
-      <Badge variant={type === 'PRIVATE' ? 'secondary' : 'default'} className="w-fit text-xs">
-        {type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
-      </Badge>
-    )}
-    <span className="text-xs text-muted-foreground">
-      {count} Objekt{count !== 1 ? 'e' : ''}
-    </span>
-  </button>
-);
-```
-
----
-
-## Visuelle Vorschau
+Klick auf "Bearbeiten" aktiviert den Edit-Modus **direkt auf der Kachel**:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│ Wählen Sie Ihre Vermietereinheit                                    │
-│                                                                     │
-│ ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌───────┐        │
-│ │ ▣ Alle      │  │ Ehepaar     │  │ Immo-GmbH   │  │  (+)  │        │
-│ │             │  │ Mustermann  │  │             │  │       │        │
-│ │ 12 Objekte  │  │ [Privat]    │  │ [Gesch.]    │  │ Neue  │        │
-│ │             │  │ 8 Objekte   │  │ 4 Objekte   │  │       │        │
-│ └─────────────┘  └─────────────┘  └─────────────┘  └───────┘        │
-│      ↑ aktiv                                                        │
-│   (Ring/Border)                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ Familie Mustermann            [Bearbeitung] │
+│ ────────────────────────────────────────────│
+│ Name:    [Familie Mustermann____]           │
+│ zVE:     [98000_______________] €           │
+│ Typ:     (•) Splitting ( ) Einzel           │
+│ Kinder:  [1]  [ ] Kirchensteuer             │
+│ ────────────────────────────────────────────│
+│ Eigentümer 1:                               │
+│ [Max_______] [Mustermann____] Stkl: [III▼]  │
+│ Beruf: [Software-Entwickler___] 72.000 €    │
+│ Eigentümer 2:                               │
+│ [Lisa______] [Mustermann____] Stkl: [V__▼]  │
+│ Beruf: [Marketing-Managerin___] 54.000 €    │
+│ ────────────────────────────────────────────│
+│     [Abbrechen]           [Speichern]       │
+└─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Responsive Verhalten
+### 3. Button-Positionierung
 
-- **Desktop (md+)**: Karten nebeneinander, alle sichtbar
-- **Mobile**: Horizontal scrollbar (overflow-x-auto)
-- **Maximale Anzahl realistisch**: 3-10 Kontexte → passt problemlos
+**Aktuell:** "Vermietereinheit anlegen" Button oben rechts
 
----
-
-## Vorteile der Änderung
-
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Sichtbarkeit | Versteckt im Dropdown | Sofort sichtbar als Karten |
-| Klickpfad | 2 Klicks (Dropdown öffnen + auswählen) | 1 Klick |
-| Kontext | Unklar welche Optionen existieren | Alle Optionen auf einen Blick |
-| UX-Logik | Auswahl neben Überschrift | Klarer Ablauf: erst wählen, dann sehen |
-| Objekt-Überblick | Nicht sichtbar | Objektzahl pro Kontext sichtbar |
+**Neu:** Die Erstellung erfolgt über eine dedizierte "+"-Karte am Ende der Kartenreihe (wie im Mockup). Der separate Button oben rechts wird entfernt.
 
 ---
 
-## Umsetzungsschritte
+## Technische Umsetzung
 
-1. Inline-Komponente `ContextCard` erstellen
-2. Neue Sektion "Wählen Sie Ihre Vermietereinheit" einfügen (vor KPIs)
-3. DropdownMenu für Kontexte entfernen
-4. Überschrift "Immobilienportfolio" anpassen (zeigt aktiven Kontext)
-5. CreateContextDialog-Trigger für `+` Karte hinzufügen
-6. Styling für aktiven Zustand (Ring/Border)
+### Zu ändernde Dateien
 
-**Geschätzte Änderungen:** ~60-80 Zeilen in einer Datei
+| Datei | Änderung |
+|-------|----------|
+| `PortfolioTab.tsx` | Zeilen 676-683: "+"-Karte entfernen |
+| `KontexteTab.tsx` | Komplette Überarbeitung: Inline-Edit statt Modal |
+
+### Neue Komponenten (innerhalb KontexteTab)
+
+1. **`ContextCardView`** — Anzeige-Modus einer Vermietereinheit
+2. **`ContextCardEdit`** — Bearbeitungs-Modus (Inline-Formular)
+3. **`AddContextCard`** — "+"-Karte für Neuanlage
+
+### State-Management
+
+```typescript
+// In KontexteTab.tsx
+const [editingContextId, setEditingContextId] = useState<string | null>(null);
+const [editFormData, setEditFormData] = useState<ContextFormData | null>(null);
+
+// Toggle Edit Mode
+const handleEditClick = (context: LandlordContext) => {
+  setEditingContextId(context.id);
+  setEditFormData({
+    name: context.name,
+    context_type: context.context_type,
+    // ... alle Felder
+  });
+};
+
+// Save Handler
+const handleSave = async () => {
+  await updateContext.mutateAsync({ id: editingContextId, ...editFormData });
+  setEditingContextId(null);
+};
+```
+
+### Datenbank-Interaktion
+
+Keine Änderungen an Queries — die bestehenden `useQuery` und `useMutation` Hooks bleiben identisch.
 
 ---
 
-## Risiken & Absicherung
+## Architektur-Sicherheit
 
-| Risiko | Absicherung |
-|--------|-------------|
-| URL-Routing bricht | Keine Änderung an `?context` Logik |
-| Daten-Filterung | `filteredUnits` bleibt identisch |
-| Kontext-Query | `useQuery` für `landlord_contexts` unverändert |
-| Mobile Overflow | `overflow-x-auto` für horizontales Scrollen |
+| Prüfpunkt | Status | Details |
+|-----------|--------|---------|
+| Routen | Unverändert | `/portal/immobilien/kontexte` bleibt |
+| URL-Parameter | Unverändert | Keine neuen Parameter |
+| Datenbank-Schema | Unverändert | Keine Migration erforderlich |
+| CreateContextDialog | Erhalten | Wird für Neuanlage via "+"-Karte genutzt |
+| RLS Policies | Unverändert | Keine Änderungen |
+
+---
+
+## Erwartetes Ergebnis
+
+1. **Keine doppelten Routen** — Vermietereinheit nur an einer Stelle erstellbar
+2. **Intuitive Darstellung** — Alle Daten auf einen Blick sichtbar
+3. **Schnelles Editing** — Direkt auf der Kachel, kein Modal
+4. **Skalierbar** — Funktioniert für 1-10 Vermietereinheiten
+
+---
+
+## Implementierungs-Reihenfolge
+
+1. **PortfolioTab.tsx**: "+"-Karte entfernen (5 Zeilen)
+2. **KontexteTab.tsx**: Button-Position ändern
+3. **KontexteTab.tsx**: Inline-Edit-Logik implementieren
+4. **KontexteTab.tsx**: "+"-Karte am Ende der Kartenreihe
+5. **Optional**: CreateContextDialog behalten für komplexe Neuanlage (Schritt 2: Eigentümer)
