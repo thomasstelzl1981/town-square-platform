@@ -1,5 +1,5 @@
 /**
- * SoT Module — All Modules Showcase Page
+ * SoT Module Page — Full Module Overview
  */
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -18,15 +18,14 @@ export default function SotModule() {
         <div className="zone3-container relative z-10 text-center">
           <div className={`sot-fade-in ${isVisible ? 'visible' : ''}`} ref={ref}>
             <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
-              Alle Module
+              {SOT_WEBSITE_MODULES.length} Module
             </span>
-            <h1 className="sot-display mb-6">{SOT_WEBSITE_MODULES.length} Module.</h1>
-            <h2 className="sot-headline mb-8" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-              Ein System.
-            </h2>
+            <h1 className="sot-display mb-6">
+              Alles, was Sie brauchen.
+            </h1>
             <p className="sot-subheadline max-w-2xl mx-auto mb-10">
-              Von Stammdaten über Dokumentenmanagement bis zur Finanzierung — 
-              alles in einem Portal, intelligent verknüpft.
+              Von Kontaktmanagement bis Finanzierung — jedes Modul löst ein echtes Problem. 
+              Wählen Sie, was Sie brauchen. Ignorieren Sie den Rest.
             </p>
             <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">
               Kostenlos starten
@@ -36,10 +35,13 @@ export default function SotModule() {
         </div>
       </section>
 
-      {/* Module Categories Grid */}
-      <section className="py-24">
+      {/* Module Showcase - Detailed */}
+      <section className="py-16 lg:py-24">
         <div className="zone3-container">
-          <SotModuleShowcase showCategories />
+          <SotModuleShowcase 
+            showCategories={true} 
+            variant="detailed"
+          />
         </div>
       </section>
 
@@ -65,8 +67,12 @@ export default function SotModule() {
         </div>
       </section>
 
-      {/* CTA */}
-      <SotCTA variant="minimal" />
+      {/* Bottom CTA */}
+      <SotCTA
+        title="Welches Modul passt zu Ihnen?"
+        subtitle="Starten Sie kostenlos und aktivieren Sie nur die Module, die Sie wirklich brauchen."
+        variant="gradient"
+      />
     </div>
   );
 }

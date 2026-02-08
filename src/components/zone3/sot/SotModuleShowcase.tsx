@@ -1,20 +1,22 @@
 /**
- * SoT Module Showcase — Grid Display of All Modules
+ * SoT Module Showcase — Grid Display with Categories
  */
 import { SOT_WEBSITE_MODULES, MODULE_CATEGORIES, SotWebsiteModule } from '@/data/sotWebsiteModules';
 import { SotModuleCard } from './SotModuleCard';
-import { useSotScrollAnimation, useSotStaggerAnimation } from '@/hooks/useSotScrollAnimation';
+import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
 
 interface SotModuleShowcaseProps {
   showCategories?: boolean;
   limit?: number;
   highlightOnly?: boolean;
+  variant?: 'default' | 'compact' | 'detailed';
 }
 
 export function SotModuleShowcase({ 
   showCategories = true, 
   limit,
-  highlightOnly = false 
+  highlightOnly = false,
+  variant = 'default'
 }: SotModuleShowcaseProps) {
   const { ref, isVisible } = useSotScrollAnimation();
   
@@ -26,7 +28,7 @@ export function SotModuleShowcase({
     modules = modules.slice(0, limit);
   }
 
-  if (showCategories) {
+  if (showCategories && !highlightOnly) {
     // Group by category
     const categories = Object.entries(MODULE_CATEGORIES) as [SotWebsiteModule['category'], typeof MODULE_CATEGORIES.foundation][];
     
@@ -39,19 +41,32 @@ export function SotModuleShowcase({
           return (
             <section key={categoryKey}>
               <div className={`mb-8 sot-fade-in ${isVisible ? 'visible' : ''}`}>
-                <h3 className="sot-label mb-2" style={{ color: 'hsl(var(--z3-accent))' }}>
-                  {category.label}
-                </h3>
-                <p className="sot-subheadline">{category.description}</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+                    {category.label}
+                  </h3>
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}
+                  >
+                    {categoryModules.length} Module
+                  </span>
+                </div>
+                <p className="sot-subheadline text-lg">{category.tagline || category.description}</p>
               </div>
               
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className={`grid gap-6 ${
+                variant === 'detailed' 
+                  ? 'md:grid-cols-1 lg:grid-cols-2' 
+                  : 'md:grid-cols-2 lg:grid-cols-3'
+              }`}>
                 {categoryModules.map((module, index) => (
                   <SotModuleCard 
                     key={module.code} 
                     module={module} 
                     index={index}
                     isVisible={isVisible}
+                    variant={variant}
                   />
                 ))}
               </div>
@@ -64,13 +79,23 @@ export function SotModuleShowcase({
 
   // Simple grid without categories
   return (
-    <div ref={ref} className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div 
+      ref={ref} 
+      className={`grid gap-6 ${
+        variant === 'detailed' 
+          ? 'md:grid-cols-1 lg:grid-cols-2' 
+          : variant === 'compact'
+            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+            : 'md:grid-cols-2 lg:grid-cols-3'
+      }`}
+    >
       {modules.map((module, index) => (
         <SotModuleCard 
           key={module.code} 
           module={module} 
           index={index}
           isVisible={isVisible}
+          variant={variant}
         />
       ))}
     </div>

@@ -295,6 +295,51 @@
    RESPONSIVE UTILITIES
    =========================================================================== */
 
+/* Mobile First Adjustments */
+@media (max-width: 640px) {
+  .sot-hero-section {
+    min-height: 85vh;
+    padding-top: 5rem;
+    padding-bottom: 3rem;
+  }
+  
+  .sot-display {
+    font-size: 2rem;
+  }
+  
+  .sot-headline {
+    font-size: 1.5rem;
+  }
+  
+  .sot-module-card,
+  .sot-glass-card {
+    padding: 1.25rem;
+    border-radius: 1rem;
+  }
+  
+  .sot-btn-primary,
+  .sot-btn-secondary {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.8125rem;
+  }
+  
+  .sot-stat-value {
+    font-size: 2rem;
+  }
+  
+  .sot-stat-label {
+    font-size: 0.75rem;
+  }
+  
+  .sot-input-bar {
+    padding: 0.75rem 1rem;
+  }
+  
+  .sot-input-container {
+    padding: 0.375rem 0.75rem;
+  }
+}
+
 @media (max-width: 768px) {
   .sot-hero-section {
     min-height: 90vh;
@@ -303,6 +348,19 @@
   
   .sot-module-card {
     padding: 1.5rem;
+  }
+  
+  /* Fix grid on tablet */
+  .zone3-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1024px) {
+  .sot-display {
+    font-size: 4.5rem;
   }
 }
 
@@ -318,8 +376,9 @@
   padding: 1rem 1.5rem;
   background: hsl(var(--z3-background) / 0.95);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid hsl(var(--z3-border));
-  z-index: 50;
+  z-index: 40;
 }
 
 .sot-input-container {
@@ -351,4 +410,27 @@
 
 .sot-input-container input::placeholder {
   color: hsl(var(--z3-muted-foreground));
+}
+
+/* ===========================================================================
+   MOBILE HEADER FIXES
+   =========================================================================== */
+
+@media (max-width: 640px) {
+  .sot-glass {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* ===========================================================================
+   DARK/LIGHT MODE TRANSITIONS
+   =========================================================================== */
+
+.zone3-page {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.zone3-page * {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
