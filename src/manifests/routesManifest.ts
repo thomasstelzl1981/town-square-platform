@@ -87,6 +87,7 @@ export const zone1Admin: ZoneDefinition = {
     // Masterdata
     { path: "masterdata/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" },
     { path: "masterdata/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" },
+    { path: "master-templates/projektakte", component: "MasterTemplatesProjektakte", title: "Projektakte Vorlage" },
     // KI Office (Marketing Automation Suite)
     { path: "ki-office", component: "AdminKiOfficeDashboard", title: "KI-Office" },
     { path: "ki-office-email", component: "AdminKiOfficeEmail", title: "E-Mail" },

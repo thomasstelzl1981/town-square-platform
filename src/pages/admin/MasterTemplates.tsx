@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, RefreshCw, Percent, Calculator, Building2, FileText, ChevronRight } from 'lucide-react';
+import { Save, RefreshCw, Percent, Calculator, Building2, FileText, ChevronRight, FolderKanban } from 'lucide-react';
 import { toast } from 'sonner';
 import { PdfExportFooter } from '@/components/pdf';
 
@@ -78,7 +78,7 @@ export default function MasterTemplates() {
       </div>
 
       {/* Quick Links to Sub-Templates */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Link to="/admin/master-templates/immobilienakte">
           <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
             <CardHeader>
@@ -108,6 +108,24 @@ export default function MasterTemplates() {
                   <div>
                     <CardTitle className="text-lg">Selbstauskunft</CardTitle>
                     <CardDescription>MOD-07 • 9 Sektionen • 67 Felder</CardDescription>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link to="/admin/master-templates/projektakte">
+          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FolderKanban className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Projektakte</CardTitle>
+                    <CardDescription>MOD-13 • 10 Blöcke (A–J) • 91 Felder</CardDescription>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
