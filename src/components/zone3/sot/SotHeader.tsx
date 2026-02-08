@@ -4,7 +4,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Building2, Sun, Moon, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import { useSotTheme } from '@/hooks/useSotTheme';
 
 const navItems = [
   { href: '/sot/produkt', label: 'Produkt' },
@@ -15,9 +14,13 @@ const navItems = [
   { href: '/sot/faq', label: 'FAQ' },
 ];
 
-export function SotHeader() {
+interface SotHeaderProps {
+  isDark: boolean;
+  onToggleTheme: () => void;
+}
+
+export function SotHeader({ isDark, onToggleTheme }: SotHeaderProps) {
   const location = useLocation();
-  const { isDark, toggleTheme } = useSotTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -26,7 +29,7 @@ export function SotHeader() {
         <nav className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link to="/sot" className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
-            <div 
+            <div
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: 'hsl(var(--z3-accent))' }}
             >
@@ -36,7 +39,7 @@ export function SotHeader() {
               System of a Town
             </span>
           </Link>
-          
+
           {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => (
@@ -44,8 +47,8 @@ export function SotHeader() {
                 key={item.href}
                 to={item.href}
                 className={`sot-btn-ghost ${
-                  location.pathname === item.href 
-                    ? 'text-[hsl(var(--z3-foreground))]' 
+                  location.pathname === item.href
+                    ? 'text-[hsl(var(--z3-foreground))]'
                     : 'text-[hsl(var(--z3-muted-foreground))]'
                 }`}
               >
@@ -53,18 +56,18 @@ export function SotHeader() {
               </Link>
             ))}
           </div>
-          
+
           {/* Right side */}
           <div className="flex items-center gap-3">
             {/* Theme Toggle */}
             <button
-              onClick={toggleTheme}
+              onClick={onToggleTheme}
               className="sot-btn-ghost p-2"
               aria-label="Theme umschalten"
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            
+
             {/* Auth buttons */}
             <Link to="/auth?mode=login" className="sot-btn-ghost hidden sm:block">
               Anmelden
@@ -72,7 +75,7 @@ export function SotHeader() {
             <Link to="/auth?mode=register&source=sot" className="sot-btn-primary text-sm">
               Starten
             </Link>
-            
+
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -83,7 +86,7 @@ export function SotHeader() {
             </button>
           </div>
         </nav>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-[hsl(var(--z3-border))]">
@@ -94,8 +97,8 @@ export function SotHeader() {
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`sot-btn-ghost text-left ${
-                    location.pathname === item.href 
-                      ? 'text-[hsl(var(--z3-foreground))]' 
+                    location.pathname === item.href
+                      ? 'text-[hsl(var(--z3-foreground))]'
                       : 'text-[hsl(var(--z3-muted-foreground))]'
                   }`}
                 >

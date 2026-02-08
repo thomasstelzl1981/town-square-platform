@@ -1,84 +1,68 @@
 /**
- * SoT Preise — Dark Premium Pricing Page
+ * SoT Preise — Pay‑Per‑Use (0€ Software)
  */
 import { Link } from 'react-router-dom';
-import { SotPricingCard, PricingPlan, SotCTA } from '@/components/zone3/sot';
+import { SotPricingCard, type PricingPlan, SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation, useSotStaggerAnimation } from '@/hooks/useSotScrollAnimation';
 import { MessageCircle } from 'lucide-react';
 
 const plans: PricingPlan[] = [
   {
-    name: 'Starter',
-    price: 'Kostenlos',
-    description: 'Für den Einstieg',
+    name: '0€ Software',
+    price: '0 €',
+    period: '',
+    description: 'Kein Abo. Keine Grundgebühr. Die Plattform ist kostenlos.',
     features: [
-      'Bis zu 3 Objekte',
-      'Stammdaten & Kontakte',
-      'Basis-DMS (100 MB)',
-      'KI Office (Grundfunktionen)',
-      'Armstrong Lite',
-      'E-Mail-Support',
+      'Portfolio & Objekte verwalten',
+      'Dokumentenmanagement inkl. digitalem Posteingang',
+      'Stammdaten, Verträge & Aufgaben',
+      'KI‑Office: E‑Mail, Briefgenerator, Vorlagen',
+      'Kontaktverwaltung (inkl. Import/Sync‑Optionen)',
+      'E‑Mail‑Support',
     ],
     cta: 'Kostenlos starten',
     ctaLink: '/auth?mode=register&source=sot',
     featured: false,
   },
   {
-    name: 'Professional',
-    price: 'Auf Anfrage',
-    period: '',
-    description: 'Für wachsende Portfolios',
+    name: 'Armstrong Credits',
+    price: 'Pay‑Per‑Use',
+    period: 'nach Verbrauch',
+    description: 'Sie zahlen nur, wenn KI wirklich arbeitet – transparent pro Aktion.',
     features: [
-      'Unbegrenzte Objekte',
-      'Alle Starter-Features',
-      'Vollständiges DMS',
-      'MSV-Modul',
-      'Finanzierungsmodul',
-      'Investment-Suche',
-      'Armstrong Full',
-      'Team-Zugang (bis 5 Nutzer)',
-      'Prioritäts-Support',
+      'Kontaktanreicherung aus E‑Mail‑Signaturen & Post‑Absendern',
+      'Dokument‑Extraktion, Zusammenfassung & Klassifizierung',
+      'Digitale Post: Zuordnung, Benennung, Ablage‑Vorschläge',
+      'Recherche mit Quellenprotokoll',
+      'Plan → Confirm → Execute für schreibende Aktionen',
+      'Verbrauch & Historie nachvollziehbar',
     ],
-    cta: 'Kontakt aufnehmen',
-    ctaLink: '/sot/kontakt',
+    cta: 'Demo ansehen',
+    ctaLink: '/sot/demo',
     featured: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Individuell',
-    description: 'Für professionelle Verwalter',
-    features: [
-      'Alle Professional-Features',
-      'Unbegrenzte Nutzer',
-      'Verkaufsmodul',
-      'Erweiterte Integrationen',
-      'Dedizierter Support',
-      'Onboarding-Begleitung',
-      'Custom Branding',
-      'SLA verfügbar',
-    ],
-    cta: 'Kontakt aufnehmen',
-    ctaLink: '/sot/kontakt',
-    featured: false,
   },
 ];
 
 const faqs = [
   {
-    question: 'Kann ich jederzeit upgraden?',
-    answer: 'Ja, Sie können jederzeit in ein höheres Paket wechseln. Ihre Daten bleiben vollständig erhalten.',
+    question: 'Ist die Software wirklich kostenlos?',
+    answer:
+      'Ja. Die Nutzung der Plattform ist 0€. Kosten entstehen nur, wenn Sie Armstrong Credits für KI‑Aktionen einsetzen.',
   },
   {
-    question: 'Gibt es eine Mindestlaufzeit?',
-    answer: 'Nein, alle Pakete sind monatlich kündbar. Keine versteckten Kosten.',
+    question: 'Wofür werden Armstrong Credits verwendet?',
+    answer:
+      'Für echte KI‑Office‑Arbeit wie Kontaktanreicherung, Dokument‑Extraktion, digitale Post‑Zuordnung sowie Recherche‑ und Textaufgaben.',
   },
   {
-    question: 'Was passiert mit meinen Daten bei Kündigung?',
-    answer: 'Sie können Ihre Daten jederzeit exportieren. Nach Kündigung werden sie nach 30 Tagen gelöscht.',
+    question: 'Gibt es Abos oder Mindestlaufzeiten?',
+    answer:
+      'Nein. Kein Abo und keine Mindestlaufzeit. Sie laden Credits bei Bedarf nach und nutzen sie nach Verbrauch.',
   },
   {
-    question: 'Bieten Sie Rabatte für gemeinnützige Organisationen?',
-    answer: 'Ja, kontaktieren Sie uns für spezielle Konditionen für NGOs und gemeinnützige Organisationen.',
+    question: 'Kann ich später erweitern (Team, Integrationen, SLA)?',
+    answer:
+      'Ja. Für Teams oder spezielle Anforderungen unterstützen wir bei Rollen, Integrationen, Onboarding und optionalen SLAs.',
   },
 ];
 
@@ -92,16 +76,16 @@ export default function SotPreise() {
       {/* Hero */}
       <section className="py-24 lg:py-32 sot-atmosphere relative">
         <div className="absolute inset-0 sot-grid-pattern opacity-10" />
-        <div 
+        <div
           ref={heroRef}
           className={`zone3-container relative z-10 text-center sot-fade-in ${heroVisible ? 'visible' : ''}`}
         >
           <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
             Preise
           </span>
-          <h1 className="sot-display mb-6">Transparent.</h1>
-          <p className="sot-subheadline max-w-2xl mx-auto">
-            Starten Sie kostenlos — und wählen Sie später das passende Paket für Ihre Anforderungen.
+          <h1 className="sot-display mb-6">0€ Software.</h1>
+          <p className="sot-subheadline max-w-3xl mx-auto">
+            Sie zahlen nur für Armstrong Credits – also nur dann, wenn KI‑Office‑Aufgaben wirklich ausgeführt werden.
           </p>
         </div>
       </section>
@@ -109,17 +93,12 @@ export default function SotPreise() {
       {/* Pricing Cards */}
       <section className="py-24 -mt-12">
         <div className="zone3-container">
-          <div 
+          <div
             ref={plansRef}
-            className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start"
+            className="grid md:grid-cols-2 gap-6 lg:gap-8 items-start max-w-5xl mx-auto"
           >
             {plans.map((plan, index) => (
-              <SotPricingCard
-                key={plan.name}
-                plan={plan}
-                index={index}
-                isVisible={plansVisible[index]}
-              />
+              <SotPricingCard key={plan.name} plan={plan} index={index} isVisible={plansVisible[index]} />
             ))}
           </div>
         </div>
@@ -128,10 +107,7 @@ export default function SotPreise() {
       {/* FAQ Section */}
       <section className="py-24" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
         <div className="zone3-container max-w-3xl">
-          <div 
-            ref={faqRef}
-            className={`text-center mb-12 sot-fade-in ${faqVisible ? 'visible' : ''}`}
-          >
+          <div ref={faqRef} className={`text-center mb-12 sot-fade-in ${faqVisible ? 'visible' : ''}`}>
             <h2 className="sot-headline">Häufige Fragen</h2>
           </div>
 
@@ -164,8 +140,8 @@ export default function SotPreise() {
 
       {/* CTA */}
       <SotCTA
-        title="Starten Sie kostenlos"
-        subtitle="Keine Kreditkarte erforderlich. Jederzeit kündbar."
+        title="Kostenlos starten – Credits nur bei Bedarf"
+        subtitle="0€ Software. Pay‑Per‑Use für KI‑Actions (Armstrong Credits)."
         variant="gradient"
       />
     </div>
