@@ -63,6 +63,10 @@ export default function Organizations() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  
+  // Filter state
+  const [typeFilter, setTypeFilter] = useState<OrgType | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Create form state
   const [newOrg, setNewOrg] = useState({
@@ -158,6 +162,15 @@ export default function Organizations() {
   const selectedParent = newOrg.parent_id 
     ? organizations.find(o => o.id === newOrg.parent_id) 
     : null;
+  
+  // Filtered organizations
+  const filteredOrganizations = organizations.filter(org => {
+    const matchesType = typeFilter === 'all' || org.org_type === typeFilter;
+    const matchesSearch = searchQuery === '' || 
+      org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      org.slug.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesSearch;
+  });
   const allowedTypes = getAllowedChildTypes(selectedParent?.org_type || null);
 
   return (
@@ -282,22 +295,49 @@ export default function Organizations() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Organizations</CardTitle>
-          <CardDescription>
-            {isPlatformAdmin 
-              ? 'Viewing all organizations (Platform Admin)'
-              : 'Viewing organizations you have access to'}
-          </CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>All Organizations</CardTitle>
+              <CardDescription>
+                {isPlatformAdmin 
+                  ? `${filteredOrganizations.length} von ${organizations.length} Organisationen`
+                  : 'Viewing organizations you have access to'}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Suche..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-40"
+              />
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as OrgType | 'all')}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Typ-Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Typen</SelectItem>
+                  <SelectItem value="internal">Internal</SelectItem>
+                  <SelectItem value="partner">Partner</SelectItem>
+                  <SelectItem value="sub_partner">Sub Partner</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="renter">Renter</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : organizations.length === 0 ? (
+          ) : filteredOrganizations.length === 0 ? (
             <div className="text-center py-8">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">No organizations found</p>
+              <p className="mt-2 text-muted-foreground">
+                {organizations.length === 0 ? 'No organizations found' : 'Keine Treffer für Filter'}
+              </p>
             </div>
           ) : (
             <Table>
@@ -312,7 +352,7 @@ export default function Organizations() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {organizations.map((org) => (
+                {filteredOrganizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell className="font-medium">{org.name}</TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">{org.slug}</TableCell>

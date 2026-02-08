@@ -65,14 +65,14 @@ Alle Module sind sichtbar für vollständige Entwicklung.
 ---
 
 ### Phase 2: Tenants & Access (Gruppe 1)
-**Status:** Funktional, Feinarbeit
+**Status:** ✅ Abgeschlossen
 
-| Modul | Aufgabe |
-|-------|---------|
-| Dashboard | KPI-Queries validieren |
-| Organisationen | Typ-Filter hinzufügen |
-| Benutzer | Rollen-Badge prüfen |
-| Delegationen | Filter nach Typ |
+| Modul | Aufgabe | Status |
+|-------|---------|--------|
+| Dashboard | KPI-Queries + Breakdown nach Typ/Rolle | ✅ |
+| Organisationen | Typ-Filter + Suchfeld | ✅ |
+| Benutzer | Rollen-Badge mit Varianten | ✅ |
+| Delegationen | Status-Filter | ✅ |
 
 ---
 
