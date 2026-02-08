@@ -81,6 +81,7 @@ export interface ArmstrongActionV2 {
   cost_model: CostModel;
   cost_unit: CostUnit;
   cost_hint_cents: number | null;
+  credits_estimate?: number; // Credits (1 Credit = 0.50 EUR)
   
   // Technical implementation
   api_contract: ApiContract;
