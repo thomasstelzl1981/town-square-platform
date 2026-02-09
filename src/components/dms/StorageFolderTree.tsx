@@ -1,25 +1,21 @@
 /**
- * Recursive Folder Tree for DMS Storage
- * Displays all storage nodes with proper module-based hierarchy
- * PHASE 4 & 5: Extended with Trash and all module icons
+ * Recursive Folder Tree for DMS Storage — OneDrive Style
+ * Uses STORAGE_MANIFEST as SSOT for all 20 modules with numbering
  */
 import { useState } from 'react';
-import { 
-  Folder, FolderOpen, ChevronRight, ChevronDown, Home, Inbox, Archive, 
-  Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal, Image,
+import {
+  Folder, FolderOpen, ChevronRight, ChevronDown, Home, Inbox, Archive,
+  Building2, Landmark, AlertCircle, FileQuestion, Image, MoreHorizontal,
   Car, ShoppingCart, Hammer, FolderHeart, Trash2, Sparkles, TrendingUp,
-  FolderKanban
+  FolderKanban, BookOpen, Users, UserCheck, Lightbulb, GraduationCap,
+  Wrench, BarChart3, Sun, HomeIcon, Database,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { getSortedModules, getModuleDisplayName } from '@/config/storageManifest';
 
 interface StorageNode {
   id: string;
@@ -50,83 +46,68 @@ interface StorageFolderTreeProps {
   onDeleteFolder?: (nodeId: string) => void;
 }
 
-// Icons for system folders
+// Icons per module code
+const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  MOD_01: Database,
+  MOD_02: Sparkles,
+  MOD_03: FolderOpen,
+  MOD_04: Building2,
+  MOD_05: FileQuestion,
+  MOD_06: ShoppingCart,
+  MOD_07: Landmark,
+  MOD_08: TrendingUp,
+  MOD_09: Users,
+  MOD_10: UserCheck,
+  MOD_11: Lightbulb,
+  MOD_12: FolderKanban,
+  MOD_13: BookOpen,
+  MOD_14: MoreHorizontal,
+  MOD_15: GraduationCap,
+  MOD_16: Wrench,
+  MOD_17: Car,
+  MOD_18: BarChart3,
+  MOD_19: Sun,
+  MOD_20: HomeIcon,
+};
+
 const SYSTEM_FOLDER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  'inbox': Inbox,
-  'user_files': FolderHeart,
-  'archive': Archive,
-  'needs_review': AlertCircle,
-  'sonstiges': MoreHorizontal,
+  inbox: Inbox,
+  user_files: FolderHeart,
+  archive: Archive,
+  needs_review: AlertCircle,
+  sonstiges: MoreHorizontal,
+  TRASH_ROOT: Trash2,
 };
 
-// Icons for module root folders - PHASE 5: Extended
-const MODULE_ROOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  'MOD_02_ROOT': Sparkles,       // KI Office
-  'MOD_03_ROOT': FolderOpen,     // DMS
-  'MOD_04_ROOT': Building2,      // Immobilien
-  'MOD_05_ROOT': FileQuestion,   // MSV
-  'MOD_06_ROOT': ShoppingCart,   // Verkauf
-  'MOD_07_ROOT': Landmark,       // Finanzierung
-  'MOD_08_ROOT': TrendingUp,     // Investments
-  'MOD_13_ROOT': FolderKanban,   // Projekte
-  'MOD_16_ROOT': Hammer,         // Sanierung
-  'MOD_17_ROOT': Car,            // Car-Management
-  'TRASH_ROOT': Trash2,          // Papierkorb
-};
-
-// Legacy system folder icons (for backwards compatibility)
-const LEGACY_SYSTEM_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  'immobilien': Building2,
-  'finanzierung': Landmark,
-  'bonitaetsunterlagen': FileQuestion,
-};
-
-// Property folder icons based on template/name
 const PROPERTY_FOLDER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   '11_Fotos': Image,
-  'Fotos': Image,
+  Fotos: Image,
 };
 
 function getNodeIcon(node: StorageNode, isOpen: boolean) {
-  // Module root folders
-  if (node.template_id && MODULE_ROOT_ICONS[node.template_id]) {
-    const Icon = MODULE_ROOT_ICONS[node.template_id];
+  // Module root — use module icon
+  if (node.template_id?.endsWith('_ROOT') && node.module_code && MODULE_ICONS[node.module_code]) {
+    const Icon = MODULE_ICONS[node.module_code];
     return <Icon className="h-4 w-4 text-primary" />;
   }
-  
+  // Trash
+  if (node.template_id === 'TRASH_ROOT') return <Trash2 className="h-4 w-4 text-muted-foreground" />;
   // System folders
-  if (node.node_type === 'system' && node.template_id) {
-    const Icon = SYSTEM_FOLDER_ICONS[node.template_id] || LEGACY_SYSTEM_ICONS[node.template_id];
-    if (Icon) return <Icon className="h-4 w-4" />;
-  }
-  
-  // Property-specific folders (like Fotos)
-  const propertyIcon = PROPERTY_FOLDER_ICONS[node.name];
-  if (propertyIcon) {
-    const Icon = propertyIcon;
+  if (node.node_type === 'system' && node.template_id && SYSTEM_FOLDER_ICONS[node.template_id]) {
+    const Icon = SYSTEM_FOLDER_ICONS[node.template_id];
     return <Icon className="h-4 w-4" />;
   }
-  
-  // Property dossier folders
-  if (node.template_id === 'PROPERTY_DOSSIER_V1') {
-    return <Building2 className="h-4 w-4" />;
+  // Property-specific
+  if (PROPERTY_FOLDER_ICONS[node.name]) {
+    const Icon = PROPERTY_FOLDER_ICONS[node.name];
+    return <Icon className="h-4 w-4" />;
   }
-  
-  // Vehicle dossier folders
-  if (node.template_id === 'VEHICLE_DOSSIER_V1') {
-    return <Car className="h-4 w-4" />;
-  }
-  
-  // Listing dossier folders
-  if (node.template_id === 'LISTING_DOSSIER_V1') {
-    return <ShoppingCart className="h-4 w-4" />;
-  }
-  
-  // Default folder icon
+  if (node.template_id === 'PROPERTY_DOSSIER_V1') return <Building2 className="h-4 w-4" />;
+  if (node.template_id === 'VEHICLE_DOSSIER_V1') return <Car className="h-4 w-4" />;
+  if (node.template_id === 'LISTING_DOSSIER_V1') return <ShoppingCart className="h-4 w-4" />;
   return isOpen ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />;
 }
 
-// Recursive tree node component
 function TreeNode({
   node,
   nodes,
@@ -137,6 +118,7 @@ function TreeNode({
   level = 0,
   expandedNodes,
   toggleExpanded,
+  displayLabel,
 }: {
   node: StorageNode;
   nodes: StorageNode[];
@@ -147,21 +129,16 @@ function TreeNode({
   level: number;
   expandedNodes: Set<string>;
   toggleExpanded: (nodeId: string) => void;
+  displayLabel?: string;
 }) {
   const isSelected = selectedNodeId === node.id;
   const isExpanded = expandedNodes.has(node.id);
-  
-  // Get child nodes - simply all nodes with this node as parent
   const childNodes = nodes.filter(n => n.parent_id === node.id);
   const hasChildren = childNodes.length > 0;
-  
-  // Check if folder is deletable (not system, not module root, no children)
   const isSystemFolder = node.node_type === 'system' || node.template_id?.endsWith('_ROOT');
   const canDelete = !isSystemFolder && !hasChildren && onDeleteFolder;
-  
-  // Get display label
-  const getDisplayLabel = (n: StorageNode) => {
-    // For property dossiers, show property info if available
+
+  const getLabel = (n: StorageNode) => {
     if (n.property_id && properties) {
       const prop = properties.find(p => p.id === n.property_id);
       if (prop && n.template_id === 'PROPERTY_DOSSIER_V1') {
@@ -170,60 +147,45 @@ function TreeNode({
     }
     return n.name;
   };
-  
-  // Sort children: system folders first, then by name
-  const sortedChildren = [...childNodes].sort((a, b) => {
-    // Module roots and system folders first
-    if (a.node_type === 'system' && b.node_type !== 'system') return -1;
-    if (a.node_type !== 'system' && b.node_type === 'system') return 1;
-    if (a.template_id?.endsWith('_ROOT') && !b.template_id?.endsWith('_ROOT')) return -1;
-    if (!a.template_id?.endsWith('_ROOT') && b.template_id?.endsWith('_ROOT')) return 1;
-    // Then by name
-    return a.name.localeCompare(b.name);
-  });
+
+  const sortedChildren = [...childNodes].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="group">
+    <div className="group/node">
       <div
         className={cn(
-          'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors cursor-pointer',
-          isSelected && 'bg-accent',
+          'w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm hover:bg-accent transition-colors cursor-pointer',
+          isSelected && 'bg-accent font-medium',
         )}
-        style={{ paddingLeft: `${8 + level * 16}px` }}
+        style={{ paddingLeft: `${8 + level * 14}px` }}
         onClick={() => onSelectNode(node.id)}
       >
         {hasChildren ? (
-          <span 
-            onClick={(e) => { e.stopPropagation(); toggleExpanded(node.id); }} 
-            className="cursor-pointer hover:text-primary"
+          <span
+            onClick={(e) => { e.stopPropagation(); toggleExpanded(node.id); }}
+            className="cursor-pointer hover:text-primary shrink-0"
           >
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </span>
         ) : (
-          <span className="w-3" />
+          <span className="w-3 shrink-0" />
         )}
         {getNodeIcon(node, isExpanded)}
-        <span className="flex-1 text-left truncate">
-          {getDisplayLabel(node)}
+        <span className="flex-1 text-left truncate text-xs">
+          {displayLabel || getLabel(node)}
         </span>
-        
-        {/* Delete button - only for non-system folders without children */}
         {canDelete && (
           <button
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              if (confirm(`Ordner "${node.name}" wirklich löschen?`)) {
-                onDeleteFolder(node.id);
-              }
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Ordner "${node.name}" wirklich löschen?`)) onDeleteFolder(node.id);
             }}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-destructive transition-opacity"
+            className="opacity-0 group-hover/node:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-destructive transition-opacity shrink-0"
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
-      
-      {/* Render children recursively */}
       {isExpanded && sortedChildren.map(child => (
         <TreeNode
           key={child.id}
@@ -251,7 +213,7 @@ export function StorageFolderTree({
   onDeleteFolder,
 }: StorageFolderTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  
+
   const toggleExpanded = (nodeId: string) => {
     setExpandedNodes(prev => {
       const next = new Set(prev);
@@ -260,35 +222,35 @@ export function StorageFolderTree({
       return next;
     });
   };
-  
-  // Get root-level nodes: only those with parent_id = null
-  // These include system folders and module roots
+
   const rootNodes = nodes.filter(n => n.parent_id === null);
-  
-  // Sort roots: Inbox first, then system folders, then module roots, then alphabetically
-  const sortedRootNodes = [...rootNodes].sort((a, b) => {
-    // Inbox always first
+
+  // Categorize roots
+  const systemTop = rootNodes.filter(n => n.template_id === 'inbox' || n.template_id === 'user_files');
+  const systemBottom = rootNodes.filter(n =>
+    n.template_id === 'needs_review' ||
+    n.template_id === 'archive' ||
+    n.template_id === 'sonstiges' ||
+    n.template_id === 'TRASH_ROOT'
+  );
+
+  // Module roots — ordered by STORAGE_MANIFEST display_order
+  const sortedModules = getSortedModules();
+  const moduleRoots = sortedModules
+    .map(cfg => rootNodes.find(n => n.template_id === cfg.root_template_id))
+    .filter(Boolean) as StorageNode[];
+
+  // Sort system top: inbox first, user_files second
+  systemTop.sort((a, b) => {
     if (a.template_id === 'inbox') return -1;
     if (b.template_id === 'inbox') return 1;
-    
-    // User files second
-    if (a.template_id === 'user_files') return -1;
-    if (b.template_id === 'user_files') return 1;
-    
-    // Module roots grouped together
-    const aIsModuleRoot = a.template_id?.endsWith('_ROOT');
-    const bIsModuleRoot = b.template_id?.endsWith('_ROOT');
-    if (aIsModuleRoot && !bIsModuleRoot) return -1;
-    if (!aIsModuleRoot && bIsModuleRoot) return 1;
-    
-    // Archive and Sonstiges last
-    if (a.template_id === 'archive') return 1;
-    if (b.template_id === 'archive') return -1;
-    if (a.template_id === 'sonstiges') return 1;
-    if (b.template_id === 'sonstiges') return -1;
-    
-    // Then by name
-    return a.name.localeCompare(b.name);
+    return 0;
+  });
+
+  // Sort system bottom: needs_review, archive, sonstiges, trash
+  const bottomOrder = ['needs_review', 'archive', 'sonstiges', 'TRASH_ROOT'];
+  systemBottom.sort((a, b) => {
+    return (bottomOrder.indexOf(a.template_id || '') - bottomOrder.indexOf(b.template_id || ''));
   });
 
   return (
@@ -302,22 +264,61 @@ export function StorageFolderTree({
         )}
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-2 space-y-0.5">
           {/* All Documents */}
           <button
             className={cn(
-              'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors',
-              selectedNodeId === null && 'bg-accent',
+              'w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm hover:bg-accent transition-colors',
+              selectedNodeId === null && 'bg-accent font-medium',
             )}
             onClick={() => onSelectNode(null)}
           >
             <span className="w-3" />
             <Home className="h-4 w-4 text-primary" />
-            <span>Alle Dokumente</span>
+            <span className="text-xs">Alle Dokumente</span>
           </button>
 
-          {/* Recursive Folder Tree */}
-          {sortedRootNodes.map(node => (
+          {/* System top: Posteingang, Eigene Dateien */}
+          {systemTop.map(node => (
+            <TreeNode
+              key={node.id}
+              node={node}
+              nodes={nodes}
+              properties={properties}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
+              onDeleteFolder={onDeleteFolder}
+              level={0}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+            />
+          ))}
+
+          {/* Separator */}
+          {moduleRoots.length > 0 && <Separator className="my-1.5" />}
+
+          {/* Module roots with numbering */}
+          {moduleRoots.map(node => (
+            <TreeNode
+              key={node.id}
+              node={node}
+              nodes={nodes}
+              properties={properties}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
+              onDeleteFolder={onDeleteFolder}
+              level={0}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+              displayLabel={node.module_code ? getModuleDisplayName(node.module_code) : node.name}
+            />
+          ))}
+
+          {/* Separator */}
+          {systemBottom.length > 0 && <Separator className="my-1.5" />}
+
+          {/* System bottom: Zur Prüfung, Archiv, Sonstiges, Papierkorb */}
+          {systemBottom.map(node => (
             <TreeNode
               key={node.id}
               node={node}
