@@ -91,8 +91,9 @@ const BeratungTab = () => {
   
   // Excluded listings (from catalog)
   const { data: selections = [] } = usePartnerSelections();
+  // is_active=true bedeutet "ausgeblendet" laut Hook-Dokumentation
   const excludedIds = useMemo(() => new Set(
-    selections.filter(s => !s.is_active).map(s => s.listing_id)
+    selections.filter(s => s.is_active).map(s => s.listing_id)
   ), [selections]);
 
   const { calculate, isLoading: isCalculating } = useInvestmentEngine();
