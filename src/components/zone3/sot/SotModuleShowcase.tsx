@@ -12,6 +12,9 @@ interface SotModuleShowcaseProps {
   variant?: 'default' | 'compact' | 'detailed';
 }
 
+// Define category order
+const CATEGORY_ORDER: SotWebsiteModule['category'][] = ['foundation', 'management', 'finance', 'extensions'];
+
 export function SotModuleShowcase({ 
   showCategories = true, 
   limit,
@@ -29,19 +32,17 @@ export function SotModuleShowcase({
   }
 
   if (showCategories && !highlightOnly) {
-    // Group by category
-    const categories = Object.entries(MODULE_CATEGORIES) as [SotWebsiteModule['category'], typeof MODULE_CATEGORIES.foundation][];
-    
     return (
-      <div ref={ref} className="space-y-20">
-        {categories.map(([categoryKey, category]) => {
+      <div ref={ref} className="space-y-16 lg:space-y-20">
+        {CATEGORY_ORDER.map((categoryKey) => {
+          const category = MODULE_CATEGORIES[categoryKey];
           const categoryModules = modules.filter(m => m.category === categoryKey);
           if (categoryModules.length === 0) return null;
           
           return (
             <section key={categoryKey}>
-              <div className={`mb-8 sot-fade-in ${isVisible ? 'visible' : ''}`}>
-                <div className="flex items-center gap-3 mb-2">
+              <div className={`mb-6 lg:mb-8 sot-fade-in ${isVisible ? 'visible' : ''}`}>
+                <div className="flex flex-wrap items-center gap-3 mb-2">
                   <h3 className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
                     {category.label}
                   </h3>
@@ -49,16 +50,16 @@ export function SotModuleShowcase({
                     className="text-xs px-2 py-0.5 rounded-full"
                     style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}
                   >
-                    {categoryModules.length} Module
+                    {categoryModules.length} {categoryModules.length === 1 ? 'Modul' : 'Module'}
                   </span>
                 </div>
-                <p className="sot-subheadline text-lg">{category.tagline || category.description}</p>
+                <p className="sot-subheadline text-base lg:text-lg">{category.tagline || category.description}</p>
               </div>
               
-              <div className={`grid gap-6 ${
+              <div className={`grid gap-4 lg:gap-6 ${
                 variant === 'detailed' 
-                  ? 'md:grid-cols-1 lg:grid-cols-2' 
-                  : 'md:grid-cols-2 lg:grid-cols-3'
+                  ? 'grid-cols-1 lg:grid-cols-2' 
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
               }`}>
                 {categoryModules.map((module, index) => (
                   <SotModuleCard 
@@ -81,12 +82,12 @@ export function SotModuleShowcase({
   return (
     <div 
       ref={ref} 
-      className={`grid gap-6 ${
+      className={`grid gap-4 lg:gap-6 ${
         variant === 'detailed' 
-          ? 'md:grid-cols-1 lg:grid-cols-2' 
+          ? 'grid-cols-1 lg:grid-cols-2' 
           : variant === 'compact'
-            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-            : 'md:grid-cols-2 lg:grid-cols-3'
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
       }`}
     >
       {modules.map((module, index) => (
