@@ -148,7 +148,6 @@ function SortableWidgetItem({ code, enabled, onToggle, onInfoClick }: SortableWi
             <Switch
               checked={enabled}
               onCheckedChange={onToggle}
-              disabled={widget.status === 'stub'}
             />
           </div>
         </CardContent>
