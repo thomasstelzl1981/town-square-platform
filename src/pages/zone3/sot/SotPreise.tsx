@@ -1,41 +1,41 @@
 /**
- * SoT Preise — Pay‑Per‑Use (0€ Software)
+ * SoT Preise — Kostenfrei nutzen mit Pay-per-Use
  */
 import { Link } from 'react-router-dom';
 import { SotPricingCard, type PricingPlan, SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation, useSotStaggerAnimation } from '@/hooks/useSotScrollAnimation';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Check, Sparkles, Zap } from 'lucide-react';
 
 const plans: PricingPlan[] = [
   {
-    name: '0€ Software',
+    name: 'Kostenfrei nutzen',
     price: '0 €',
-    period: '',
-    description: 'Kein Abo. Keine Grundgebühr. Die Plattform ist kostenlos.',
+    period: 'für die Plattform',
+    description: 'Kein Abo. Keine Grundgebühr. Die gesamte Plattform ist kostenfrei nutzbar.',
     features: [
       'Portfolio & Objekte verwalten',
-      'Dokumentenmanagement inkl. digitalem Posteingang',
-      'Stammdaten, Verträge & Aufgaben',
-      'KI‑Office: E‑Mail, Briefgenerator, Vorlagen',
-      'Kontaktverwaltung (inkl. Import/Sync‑Optionen)',
-      'E‑Mail‑Support',
+      'Dokumentenmanagement mit digitalem Posteingang',
+      'Stammdaten, Kontakte & Aufgaben',
+      'Finanzübersicht & Buchhaltung',
+      'Alle Module ohne Einschränkung',
+      'E-Mail-Support',
     ],
     cta: 'Kostenlos starten',
     ctaLink: '/auth?mode=register&source=sot',
     featured: false,
   },
   {
-    name: 'Armstrong Credits',
-    price: 'Pay‑Per‑Use',
-    period: 'nach Verbrauch',
-    description: 'Sie zahlen nur, wenn KI wirklich arbeitet – transparent pro Aktion.',
+    name: 'Pay-per-Use',
+    price: 'Armstrong Credits',
+    period: 'nur bei Nutzung',
+    description: 'Sie zahlen nur, wenn KI wirklich für Sie arbeitet — transparent pro Aktion.',
     features: [
-      'Kontaktanreicherung aus E‑Mail‑Signaturen & Post‑Absendern',
-      'Dokument‑Extraktion, Zusammenfassung & Klassifizierung',
-      'Digitale Post: Zuordnung, Benennung, Ablage‑Vorschläge',
+      'Kontaktanreicherung aus E-Mail-Signaturen',
+      'Dokument-Extraktion & Klassifizierung',
+      'Digitale Post: Zuordnung & Ablage',
       'Recherche mit Quellenprotokoll',
-      'Plan → Confirm → Execute für schreibende Aktionen',
-      'Verbrauch & Historie nachvollziehbar',
+      'Texte, Briefe, E-Mails generieren',
+      'Verbrauch jederzeit einsehbar',
     ],
     cta: 'Demo ansehen',
     ctaLink: '/sot/demo',
@@ -43,38 +43,62 @@ const plans: PricingPlan[] = [
   },
 ];
 
+const howItWorks = [
+  {
+    icon: Check,
+    title: 'Plattform kostenfrei',
+    description: 'Alle Module, alle Funktionen — ohne Abo, ohne Grundgebühr. Einfach nutzen.',
+  },
+  {
+    icon: Sparkles,
+    title: 'KI-Aktionen kosten Credits',
+    description: 'Wenn Armstrong für Sie arbeitet (Texte, Extraktion, Recherche), werden Credits verbraucht.',
+  },
+  {
+    icon: Zap,
+    title: 'Credits bei Bedarf',
+    description: 'Keine Mindestabnahme. Laden Sie Credits, wenn Sie sie brauchen. Volle Kostenkontrolle.',
+  },
+];
+
 const faqs = [
   {
     question: 'Ist die Software wirklich kostenlos?',
     answer:
-      'Ja. Die Nutzung der Plattform ist 0€. Kosten entstehen nur, wenn Sie Armstrong Credits für KI‑Aktionen einsetzen.',
+      'Ja. Die Nutzung aller Module ist kostenfrei. Kosten entstehen nur, wenn Sie Armstrong Credits für KI-Aktionen einsetzen — also wenn KI wirklich für Sie arbeitet.',
   },
   {
-    question: 'Wofür werden Armstrong Credits verwendet?',
+    question: 'Was sind Armstrong Credits?',
     answer:
-      'Für echte KI‑Office‑Arbeit wie Kontaktanreicherung, Dokument‑Extraktion, digitale Post‑Zuordnung sowie Recherche‑ und Textaufgaben.',
+      'Credits sind die Währung für KI-Aktionen: Texte generieren, Dokumente analysieren, Kontakte anreichern, Recherchen durchführen. Jede Aktion hat einen transparenten Credit-Preis.',
   },
   {
     question: 'Gibt es Abos oder Mindestlaufzeiten?',
     answer:
-      'Nein. Kein Abo und keine Mindestlaufzeit. Sie laden Credits bei Bedarf nach und nutzen sie nach Verbrauch.',
+      'Nein. Kein Abo, keine Mindestlaufzeit, keine versteckten Kosten. Sie laden Credits bei Bedarf und nutzen sie, wann Sie wollen.',
   },
   {
-    question: 'Kann ich später erweitern (Team, Integrationen, SLA)?',
+    question: 'Kann ich auch ohne KI arbeiten?',
     answer:
-      'Ja. Für Teams oder spezielle Anforderungen unterstützen wir bei Rollen, Integrationen, Onboarding und optionalen SLAs.',
+      'Absolut. Die Plattform funktioniert vollständig ohne Armstrong. Sie verwalten Dokumente, Objekte und Finanzen — ganz ohne Credits zu verbrauchen.',
+  },
+  {
+    question: 'Für Teams und Unternehmen?',
+    answer:
+      'Ja. Für Teams bieten wir Rollen, gemeinsame Arbeitsbereiche und optionale SLAs. Sprechen Sie uns an für individuelle Lösungen.',
   },
 ];
 
 export default function SotPreise() {
   const { ref: heroRef, isVisible: heroVisible } = useSotScrollAnimation();
   const { containerRef: plansRef, visibleItems: plansVisible } = useSotStaggerAnimation(plans.length, 150);
+  const { ref: howRef, isVisible: howVisible } = useSotScrollAnimation();
   const { ref: faqRef, isVisible: faqVisible } = useSotScrollAnimation();
 
   return (
     <div>
       {/* Hero */}
-      <section className="py-24 lg:py-32 sot-atmosphere relative">
+      <section className="py-20 lg:py-32 sot-atmosphere relative">
         <div className="absolute inset-0 sot-grid-pattern opacity-10" />
         <div
           ref={heroRef}
@@ -83,15 +107,16 @@ export default function SotPreise() {
           <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
             Preise
           </span>
-          <h1 className="sot-display mb-6">0€ Software.</h1>
+          <h1 className="sot-display mb-6">Kostenfrei nutzen.</h1>
           <p className="sot-subheadline max-w-3xl mx-auto">
-            Sie zahlen nur für Armstrong Credits – also nur dann, wenn KI‑Office‑Aufgaben wirklich ausgeführt werden.
+            Die Plattform ist komplett kostenlos. Sie zahlen nur für Armstrong Credits — 
+            also nur, wenn KI wirklich für Sie arbeitet.
           </p>
         </div>
       </section>
 
       {/* Pricing Cards */}
-      <section className="py-24 -mt-12">
+      <section className="py-16 lg:py-24 -mt-8">
         <div className="zone3-container">
           <div
             ref={plansRef}
@@ -104,8 +129,41 @@ export default function SotPreise() {
         </div>
       </section>
 
+      {/* How it Works */}
+      <section className="py-16 lg:py-24" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
+        <div className="zone3-container">
+          <div ref={howRef} className={`text-center mb-12 sot-fade-in ${howVisible ? 'visible' : ''}`}>
+            <h2 className="sot-headline">So funktioniert's</h2>
+            <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
+              Ein einfaches, faires Modell ohne Überraschungen.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-6 lg:gap-8 max-w-4xl mx-auto">
+            {howItWorks.map((item, index) => (
+              <div
+                key={item.title}
+                className={`text-center sot-fade-in ${howVisible ? 'visible' : ''}`}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                <div 
+                  className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
+                >
+                  <item.icon className="w-7 h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
+                </div>
+                <h3 className="font-bold mb-2">{item.title}</h3>
+                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section */}
-      <section className="py-24" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
+      <section className="py-16 lg:py-24">
         <div className="zone3-container max-w-3xl">
           <div ref={faqRef} className={`text-center mb-12 sot-fade-in ${faqVisible ? 'visible' : ''}`}>
             <h2 className="sot-headline">Häufige Fragen</h2>
@@ -116,7 +174,7 @@ export default function SotPreise() {
               <div
                 key={index}
                 className={`sot-glass-card p-6 sot-fade-in ${faqVisible ? 'visible' : ''}`}
-                style={{ transitionDelay: `${index * 100}ms` }}
+                style={{ transitionDelay: `${index * 80}ms` }}
               >
                 <h3 className="font-semibold mb-2">{faq.question}</h3>
                 <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
@@ -140,8 +198,8 @@ export default function SotPreise() {
 
       {/* CTA */}
       <SotCTA
-        title="Kostenlos starten – Credits nur bei Bedarf"
-        subtitle="0€ Software. Pay‑Per‑Use für KI‑Actions (Armstrong Credits)."
+        title="Jetzt kostenfrei starten"
+        subtitle="Alle Module. Keine Grundgebühr. Credits nur bei Bedarf."
         variant="gradient"
       />
     </div>

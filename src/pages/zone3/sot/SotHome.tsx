@@ -1,18 +1,18 @@
 /**
- * SoT Home — SpaceX-Inspired Hero Landing Page
- * Problem-lösungsorientiert mit echten Pain Points
+ * SoT Home — Private Finanz- & Immobilien-Management-Plattform
+ * KI-gestütztes Vermögensmanagement
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Building2, Sparkles, FolderOpen, AlertCircle, Clock, FileQuestion, Calculator, Users } from 'lucide-react';
+import { ArrowRight, Check, Building2, Sparkles, FolderOpen, AlertCircle, Clock, FileQuestion, Calculator, Users, TrendingUp, Wallet, Shield } from 'lucide-react';
 import { SotHeroSection, SotStats, SotModuleShowcase, SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
-import { getFeaturedModules } from '@/data/sotWebsiteModules';
+import { getFeaturedModules, getModuleCount } from '@/data/sotWebsiteModules';
 
 const painPoints = [
   {
     icon: Clock,
     problem: 'Stunden für Papierkram',
-    solution: 'Automatisierte Workflows und KI-Texte in Sekunden.',
+    solution: 'KI-Assistent erledigt Korrespondenz in Sekunden.',
   },
   {
     icon: FileQuestion,
@@ -20,14 +20,37 @@ const painPoints = [
     solution: 'Volltextsuche und intelligente Kategorisierung.',
   },
   {
-    icon: Calculator,
-    problem: 'Mieteingänge manuell prüfen',
-    solution: 'Automatisches Matching mit Kontoauszügen.',
+    icon: TrendingUp,
+    problem: 'Kein Vermögensüberblick',
+    solution: 'Alle Assets, Finanzen und Projekte an einem Ort.',
   },
   {
     icon: Users,
     problem: 'Kontakte überall verstreut',
     solution: 'Ein System — synchronisiert mit Gmail & Outlook.',
+  },
+];
+
+const platformHighlights = [
+  {
+    icon: Sparkles,
+    title: 'KI-Assistenz',
+    description: 'Armstrong schreibt Briefe, beantwortet Fragen und erledigt Recherchen.',
+  },
+  {
+    icon: Building2,
+    title: 'Immobilien-Management',
+    description: 'Portfolio, Mietverwaltung, Projekte — alles digital dokumentiert.',
+  },
+  {
+    icon: Wallet,
+    title: 'Finanzübersicht',
+    description: 'Finanzierung, Buchhaltung, Cashflow — Ihr Vermögen im Blick.',
+  },
+  {
+    icon: Shield,
+    title: 'DSGVO-konform',
+    description: 'Deutsche Server, verschlüsselte Daten, regelmäßige Backups.',
   },
 ];
 
@@ -40,36 +63,83 @@ const trustedFeatures = [
 
 export default function SotHome() {
   const { ref: problemsRef, isVisible: problemsVisible } = useSotScrollAnimation();
+  const { ref: highlightsRef, isVisible: highlightsVisible } = useSotScrollAnimation();
   const { ref: featuredRef, isVisible: featuredVisible } = useSotScrollAnimation();
+  const moduleCount = getModuleCount();
 
   return (
     <div>
       {/* Hero Section */}
       <SotHeroSection
-        title="Immobilienverwaltung. Ohne den Wahnsinn."
-        subtitle="Schluss mit Excel-Chaos, Papierstapeln und verlorenen Dokumenten. System of a Town digitalisiert Ihre Immobilien — mit Armstrong, Ihrem KI-Assistenten."
+        title="Vermögen managen. Mit KI-Unterstützung."
+        subtitle="Die private Finanz- und Immobilien-Plattform für Selbstständige, Vermieter und Unternehmer. Dokumente, Objekte, Finanzen — alles an einem Ort. Mit Armstrong, Ihrem persönlichen KI-Assistenten."
         showDemo={true}
       />
 
       {/* Stats Section */}
       <SotStats />
 
-      {/* Problem → Solution Section */}
-      <section className="py-24">
+      {/* Platform Highlights */}
+      <section className="py-20 lg:py-28">
         <div className="zone3-container">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12 lg:mb-16">
+            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+              Was ist System of a Town?
+            </span>
+            <h2 className="sot-headline mt-4">Mehr als eine Immobiliensoftware.</h2>
+            <p className="sot-subheadline mt-4 max-w-3xl mx-auto">
+              Eine vollständige Plattform für Ihr privates Vermögensmanagement — mit KI-Office, 
+              Dokumenten-Management, Immobilienverwaltung und Finanzübersicht.
+            </p>
+          </div>
+
+          <div 
+            ref={highlightsRef}
+            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
+          >
+            {platformHighlights.map((item, index) => (
+              <div
+                key={item.title}
+                className={`sot-glass-card p-6 text-center sot-fade-in ${highlightsVisible ? 'visible' : ''}`}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                <div 
+                  className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
+                >
+                  <item.icon className="w-7 h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
+                </div>
+                <h3 className="font-bold mb-2">{item.title}</h3>
+                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="zone3-container">
+        <div className="sot-divider" />
+      </div>
+
+      {/* Problem → Solution Section */}
+      <section className="py-20 lg:py-28">
+        <div className="zone3-container">
+          <div className="text-center mb-12 lg:mb-16">
             <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
               Das kennen Sie
             </span>
             <h2 className="sot-headline mt-4">Probleme, die wir lösen.</h2>
             <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-              Jeder Vermieter kennt diese Zeitfresser. Wir haben sie eliminiert.
+              Zeitfresser, die jeder kennt. Wir haben sie automatisiert.
             </p>
           </div>
 
           <div 
             ref={problemsRef}
-            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
           >
             {painPoints.map((item, index) => (
               <div
@@ -85,7 +155,7 @@ export default function SotHome() {
                 </div>
                 
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4" style={{ color: 'hsl(0 70% 60%)' }} />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'hsl(0 70% 60%)' }} />
                   <span className="text-sm font-medium line-through" style={{ color: 'hsl(0 70% 60%)' }}>{item.problem}</span>
                 </div>
                 
@@ -105,9 +175,9 @@ export default function SotHome() {
       </div>
 
       {/* Armstrong Highlight */}
-      <section className="py-24">
+      <section className="py-20 lg:py-28">
         <div className="zone3-container">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
               <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
                 Ihr KI-Assistent
@@ -115,17 +185,17 @@ export default function SotHome() {
               <h2 className="sot-headline mb-6">
                 Lernen Sie Armstrong kennen.
               </h2>
-              <p className="text-lg mb-8" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                Armstrong schreibt Ihre Mieterbriefe, beantwortet Fragen zu Immobilienrecht, 
+              <p className="text-base lg:text-lg mb-8" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                Armstrong schreibt Ihre Korrespondenz, beantwortet Fragen zu Finanzen und Recht, 
                 recherchiert Marktdaten und erstellt professionelle Dokumente. Angetrieben von 
-                den besten KI-Modellen der Welt — Google Gemini und OpenAI GPT.
+                den besten KI-Modellen der Welt.
               </p>
               
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-3 lg:space-y-4 mb-8">
                 {[
                   'E-Mails und Briefe in Sekunden generieren',
-                  'Mietverträge und Dokumente analysieren',
-                  'Marktrecherche mit aktuellen Daten',
+                  'Dokumente analysieren und zusammenfassen',
+                  'Recherche mit aktuellen Daten',
                   'Berechnungen für Rendite, Finanzierung, AfA',
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-3">
@@ -135,7 +205,7 @@ export default function SotHome() {
                     >
                       <Check className="w-3.5 h-3.5" style={{ color: 'hsl(var(--z3-accent))' }} />
                     </div>
-                    <span>{feature}</span>
+                    <span className="text-sm lg:text-base">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -149,17 +219,17 @@ export default function SotHome() {
             {/* Armstrong Visual */}
             <div className="relative">
               <div 
-                className="sot-glass-card p-8 rounded-3xl"
+                className="sot-glass-card p-6 lg:p-8 rounded-3xl"
                 style={{ 
                   background: 'linear-gradient(135deg, hsl(var(--z3-card)) 0%, hsl(var(--z3-secondary)) 100%)',
                 }}
               >
                 <div className="flex items-start gap-4 mb-6">
                   <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.15)' }}
                   >
-                    <Sparkles className="w-7 h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
+                    <Sparkles className="w-6 h-6 lg:w-7 lg:h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
                   </div>
                   <div>
                     <h4 className="font-bold mb-1">Armstrong</h4>
@@ -176,7 +246,7 @@ export default function SotHome() {
                   >
                     <p className="text-sm font-medium mb-2">Sie:</p>
                     <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                      "Schreibe eine freundliche Mahnung für Mieter Müller, der seit 2 Wochen im Rückstand ist."
+                      "Erstelle mir einen Überblick über meine Mieteinnahmen und offenen Positionen."
                     </p>
                   </div>
                   
@@ -186,12 +256,11 @@ export default function SotHome() {
                   >
                     <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--z3-accent))' }}>Armstrong:</p>
                     <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                      "Sehr geehrter Herr Müller, ich hoffe, es geht Ihnen gut. Mir ist aufgefallen, dass die Miete für den laufenden Monat noch nicht eingegangen ist..."
+                      "Basierend auf Ihren 3 Objekten mit 8 Einheiten: Aktuelle Monatsmiete 6.240€, davon 5.890€ eingegangen. Offene Position: Müller (2. OG links), Rückstand seit 14 Tagen..."
                     </p>
-                    <div className="flex gap-2 mt-3">
-                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Kopieren</span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Bearbeiten</span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Senden</span>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Details anzeigen</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Mahnung erstellen</span>
                     </div>
                   </div>
                 </div>
@@ -213,9 +282,9 @@ export default function SotHome() {
       </div>
 
       {/* Featured Modules */}
-      <section className="py-24">
+      <section className="py-20 lg:py-28">
         <div className="zone3-container">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12 lg:mb-16">
             <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
               Die Highlights
             </span>
@@ -229,9 +298,9 @@ export default function SotHome() {
             <SotModuleShowcase highlightOnly showCategories={false} />
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-10 lg:mt-12">
             <Link to="/sot/module" className="sot-btn-secondary">
-              Alle 13 Module entdecken
+              Alle {moduleCount} Module entdecken
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -239,9 +308,9 @@ export default function SotHome() {
       </section>
 
       {/* Trust Section */}
-      <section className="py-16" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
+      <section className="py-12 lg:py-16" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
         <div className="zone3-container">
-          <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16">
+          <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-16">
             {trustedFeatures.map((feature) => (
               <div key={feature} className="flex items-center gap-2">
                 <Check className="w-5 h-5" style={{ color: 'hsl(var(--z3-accent))' }} />
@@ -255,8 +324,8 @@ export default function SotHome() {
       {/* CTA Section */}
       <SotCTA
         variant="gradient"
-        title="Bereit für weniger Chaos?"
-        subtitle="14 Tage kostenlos testen. Keine Kreditkarte. Keine Verpflichtung."
+        title="Bereit für mehr Überblick?"
+        subtitle="Kostenfrei nutzen. Nur für KI-Aktionen zahlen — transparent und fair."
         secondaryCta={{ label: 'Demo ansehen', to: '/sot/demo' }}
       />
     </div>

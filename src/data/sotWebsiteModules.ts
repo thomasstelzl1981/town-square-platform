@@ -1,6 +1,8 @@
 /**
  * SoT Website Module Data — For Marketing Display
  * 
+ * PRIVATE FINANZ- & IMMOBILIEN-MANAGEMENT-PLATTFORM mit KI-Assistenz
+ * 
  * Shows all modules EXCEPT:
  * - MOD-09 Vertriebspartner (KAUFY-specific)
  * - MOD-10 Leads (KAUFY-specific)
@@ -16,20 +18,20 @@ export interface SotWebsiteModule {
   painPoints: string[]; // Real problems we solve
   features: string[];
   icon: string;
-  category: 'foundation' | 'management' | 'transactions' | 'growth';
+  category: 'foundation' | 'management' | 'finance' | 'extensions';
   highlight?: boolean;
 }
 
 export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
-  // FOUNDATION
+  // FOUNDATION — Die Basis für alle Prozesse
   {
     code: 'MOD-01',
     name: 'Stammdaten',
     tagline: 'Alle Kontakte. Ein System.',
-    description: 'Schluss mit Excel-Listen und verstreuten Kontakten. Verwalten Sie Profile, Mieter, Dienstleister und Partner zentral — synchronisiert mit Gmail, IMAP oder Microsoft.',
+    description: 'Schluss mit Excel-Listen und verstreuten Kontakten. Verwalten Sie Profile, Kontakte, Dienstleister und Partner zentral — synchronisiert mit Gmail, IMAP oder Microsoft.',
     painPoints: [
       'Kontakte in 5 verschiedenen Apps verteilt',
-      'Keine Übersicht wer zu welcher Immobilie gehört',
+      'Keine Übersicht wer zu welchem Objekt gehört',
       'Veraltete Telefonnummern und E-Mails',
     ],
     features: ['Profil verwalten', 'Kontakte kategorisieren', 'Team einladen', 'Rollen zuweisen', 'Sync mit Gmail/Outlook'],
@@ -39,10 +41,10 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
   {
     code: 'MOD-02',
     name: 'KI Office',
-    tagline: 'Ihr intelligenter Assistent',
+    tagline: 'Ihr intelligenter Assistent.',
     description: 'Armstrong schreibt Ihre E-Mails, erstellt Briefe, koordiniert Termine und priorisiert Aufgaben. Mit den besten KI-Modellen der Welt — Google Gemini und OpenAI GPT.',
     painPoints: [
-      'Stunden für Mieterbriefe verschwendet',
+      'Stunden für Korrespondenz verschwendet',
       'Termine vergessen oder überlappen',
       'Aufgaben stapeln sich ohne Priorisierung',
     ],
@@ -57,7 +59,7 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     tagline: 'Dokumente finden. Nicht suchen.',
     description: 'Posteingang, automatische Kategorisierung und Volltextsuche. Alle Dokumente strukturiert und in Sekunden auffindbar — nicht in Ordnern vergraben.',
     painPoints: [
-      'Mietverträge in 10 Ordnern verteilt',
+      'Verträge in 10 Ordnern verteilt',
       'Stunden mit Dokumentensuche verloren',
       'Keine Übersicht über eingegangene Post',
     ],
@@ -66,7 +68,7 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     category: 'foundation',
   },
   
-  // MANAGEMENT
+  // MANAGEMENT — Vermögen & Objekte verwalten
   {
     code: 'MOD-04',
     name: 'Immobilien',
@@ -111,35 +113,21 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     category: 'management',
   },
   {
-    code: 'MOD-16',
-    name: 'Buchhaltung',
-    tagline: 'Finanzen im Blick.',
-    description: 'Konten, Buchungen und Auswertungen für Ihre Immobilienbuchhaltung nach SKR04. Export für den Steuerberater in einem Klick.',
+    code: 'MOD-19',
+    name: 'Photovoltaik',
+    tagline: 'Solaranlagen managen.',
+    description: 'Behalten Sie den Überblick über Ihre PV-Anlagen: Erträge, Wartung, Einspeisevergütung und Amortisation — alles dokumentiert und überwacht.',
     painPoints: [
-      'Belege manuell sortieren und zuordnen',
-      'Keine objektbezogene Auswertung',
-      'Steuerberater fragt ständig nach Unterlagen',
+      'Keine Übersicht über Solarerträge',
+      'Wartungstermine werden vergessen',
+      'Amortisation unklar',
     ],
-    features: ['Kontenrahmen SKR04', 'Buchungen', 'Auswertungen', 'Export DATEV', 'Objektzuordnung'],
-    icon: 'Calculator',
+    features: ['Anlagen-Übersicht', 'Ertragsmonitoring', 'Wartungsplanung', 'Amortisationsrechnung', 'Einspeisedaten'],
+    icon: 'Sun',
     category: 'management',
   },
   
-  // TRANSACTIONS
-  {
-    code: 'MOD-06',
-    name: 'Verkauf',
-    tagline: 'Verkaufen ohne Makler.',
-    description: 'Inserate erstellen, Anfragen managen, Reservierungen dokumentieren. Vom ersten Klick bis zum Notartermin — professionell und transparent.',
-    painPoints: [
-      '6% Maklerprovision bei jedem Verkauf',
-      'Unorganisierte Interessentenanfragen',
-      'Keine Übersicht über Verkaufsprozess',
-    ],
-    features: ['Inserate erstellen', 'Portale beliefern', 'Anfragen verwalten', 'Reservierungen', 'Verkaufsdokumentation'],
-    icon: 'Tag',
-    category: 'transactions',
-  },
+  // FINANCE — Finanzen & Transaktionen
   {
     code: 'MOD-07',
     name: 'Finanzierung',
@@ -152,8 +140,50 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     ],
     features: ['Selbstauskunft', 'Dokumentenpaket', 'Anfrage stellen', 'Status verfolgen', 'Konditionsvergleich'],
     icon: 'Landmark',
-    category: 'transactions',
+    category: 'finance',
     highlight: true,
+  },
+  {
+    code: 'MOD-18',
+    name: 'Finanzanalyse',
+    tagline: 'Vermögen verstehen.',
+    description: 'Behalten Sie Ihr gesamtes Vermögen im Blick: Immobilien, Einnahmen, Ausgaben und Entwicklung. Reports und Auswertungen für fundierte Entscheidungen.',
+    painPoints: [
+      'Kein Gesamtüberblick über Vermögen',
+      'Einnahmen und Ausgaben unklar',
+      'Keine Langfrist-Prognosen',
+    ],
+    features: ['Vermögensübersicht', 'Einnahmen/Ausgaben', 'Cashflow-Analyse', 'Prognosen', 'Reports'],
+    icon: 'TrendingUp',
+    category: 'finance',
+  },
+  {
+    code: 'MOD-16',
+    name: 'Buchhaltung',
+    tagline: 'Finanzen im Blick.',
+    description: 'Konten, Buchungen und Auswertungen für Ihre Immobilienbuchhaltung nach SKR04. Export für den Steuerberater in einem Klick.',
+    painPoints: [
+      'Belege manuell sortieren und zuordnen',
+      'Keine objektbezogene Auswertung',
+      'Steuerberater fragt ständig nach Unterlagen',
+    ],
+    features: ['Kontenrahmen SKR04', 'Buchungen', 'Auswertungen', 'Export DATEV', 'Objektzuordnung'],
+    icon: 'Calculator',
+    category: 'finance',
+  },
+  {
+    code: 'MOD-06',
+    name: 'Verkauf',
+    tagline: 'Verkaufen ohne Makler.',
+    description: 'Inserate erstellen, Anfragen managen, Reservierungen dokumentieren. Vom ersten Klick bis zum Notartermin — professionell und transparent.',
+    painPoints: [
+      '6% Maklerprovision bei jedem Verkauf',
+      'Unorganisierte Interessentenanfragen',
+      'Keine Übersicht über Verkaufsprozess',
+    ],
+    features: ['Inserate erstellen', 'Portale beliefern', 'Anfragen verwalten', 'Reservierungen', 'Verkaufsdokumentation'],
+    icon: 'Tag',
+    category: 'finance',
   },
   {
     code: 'MOD-08',
@@ -167,23 +197,23 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     ],
     features: ['Multi-Source-Suche', 'Favoriten', 'Renditeberechnung', 'Suchaufträge', 'Preis-Alerts'],
     icon: 'Search',
-    category: 'transactions',
+    category: 'finance',
   },
   
-  // GROWTH & UTILITIES
+  // EXTENSIONS — Zusatzmodule & Automatisierung
   {
     code: 'MOD-14',
     name: 'Kommunikation Pro',
     tagline: 'Serien-Kommunikation automatisiert.',
-    description: 'E-Mail-Sequenzen für Mieter-Onboarding, Wartungserinnerungen oder Marketing-Kampagnen. Templates nutzen, automatisieren, tracken.',
+    description: 'E-Mail-Sequenzen für Onboarding, Wartungserinnerungen oder Marketing-Kampagnen. Templates nutzen, automatisieren, tracken.',
     painPoints: [
-      'Jede Mieter-E-Mail manuell schreiben',
+      'Jede E-Mail manuell schreiben',
       'Wartungstermine werden vergessen',
       'Keine Übersicht wer was erhalten hat',
     ],
-    features: ['E-Mail-Serien', 'Templates', 'Automatisierung', 'Tracking', 'Mieter-Onboarding'],
+    features: ['E-Mail-Serien', 'Templates', 'Automatisierung', 'Tracking', 'Onboarding'],
     icon: 'Mail',
-    category: 'growth',
+    category: 'extensions',
   },
   {
     code: 'MOD-17',
@@ -197,7 +227,7 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     ],
     features: ['Fahrzeugübersicht', 'Wartung', 'Kosten', 'Termine', 'Versicherungen'],
     icon: 'Car',
-    category: 'growth',
+    category: 'extensions',
   },
   {
     code: 'MOD-20',
@@ -211,7 +241,7 @@ export const SOT_WEBSITE_MODULES: SotWebsiteModule[] = [
     ],
     features: ['Dokumente', 'Anfragen', 'Kommunikation', 'Self-Service', 'Schadensmeldung'],
     icon: 'Home',
-    category: 'growth',
+    category: 'extensions',
   },
 ];
 
@@ -219,22 +249,22 @@ export const MODULE_CATEGORIES = {
   foundation: {
     label: 'Foundation',
     description: 'Die Basis für alle Prozesse',
-    tagline: 'Kontakte, Kommunikation, Dokumente — das Fundament.',
+    tagline: 'Kontakte, KI-Office, Dokumente — Ihr digitales Fundament.',
   },
   management: {
-    label: 'Management',
-    description: 'Immobilien & Projekte verwalten',
-    tagline: 'Objekte, Mieter, Projekte, Finanzen — alles im Griff.',
+    label: 'Vermögen & Objekte',
+    description: 'Portfolio, Projekte und Assets verwalten',
+    tagline: 'Immobilien, Projekte, Anlagen — alles im Griff.',
   },
-  transactions: {
-    label: 'Transaktionen',
-    description: 'Kaufen, Verkaufen, Finanzieren',
-    tagline: 'Deals abschließen — vom ersten Kontakt bis zum Notar.',
+  finance: {
+    label: 'Finanzen & Transaktionen',
+    description: 'Finanzierung, Buchhaltung, Investments',
+    tagline: 'Finanzieren, Analysieren, Handeln — Ihr Vermögen optimieren.',
   },
-  growth: {
+  extensions: {
     label: 'Erweiterungen',
-    description: 'Zusatzmodule & Speziallösungen',
-    tagline: 'Mieterportale, Automatisierung, Fuhrpark — und mehr.',
+    description: 'Zusatzmodule & Automatisierung',
+    tagline: 'Mieterportale, Kommunikation, Fuhrpark — und mehr.',
   },
 };
 
@@ -257,4 +287,11 @@ export function getModulesByCategory(category: SotWebsiteModule['category']): So
  */
 export function getAllPainPoints(): string[] {
   return SOT_WEBSITE_MODULES.flatMap(m => m.painPoints);
+}
+
+/**
+ * Get module count
+ */
+export function getModuleCount(): number {
+  return SOT_WEBSITE_MODULES.length;
 }
