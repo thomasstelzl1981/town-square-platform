@@ -190,9 +190,57 @@ export function useDevProjects(contextId?: string) {
     },
   });
 
-  // Delete project
+  // Delete project including storage files
   const deleteProject = useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('No tenant selected');
+      
+      // 1. Delete files from Storage bucket
+      const storagePath = `projects/${tenantId}/${id}`;
+      
+      try {
+        // List all files in the project folder
+        const { data: files } = await supabase.storage
+          .from('project-documents')
+          .list(storagePath, { limit: 1000 });
+        
+        if (files && files.length > 0) {
+          // List expose subfolder
+          const { data: exposeFiles } = await supabase.storage
+            .from('project-documents')
+            .list(`${storagePath}/expose`);
+          
+          // List pricelist subfolder
+          const { data: pricelistFiles } = await supabase.storage
+            .from('project-documents')
+            .list(`${storagePath}/pricelist`);
+          
+          const filesToDelete: string[] = [];
+          
+          if (exposeFiles) {
+            exposeFiles.forEach(f => filesToDelete.push(`${storagePath}/expose/${f.name}`));
+          }
+          if (pricelistFiles) {
+            pricelistFiles.forEach(f => filesToDelete.push(`${storagePath}/pricelist/${f.name}`));
+          }
+          
+          if (filesToDelete.length > 0) {
+            const { error: deleteStorageError } = await supabase.storage
+              .from('project-documents')
+              .remove(filesToDelete);
+            
+            if (deleteStorageError) {
+              console.error('Storage delete error:', deleteStorageError);
+              // Continue with project deletion even if storage fails
+            }
+          }
+        }
+      } catch (storageError) {
+        console.error('Error cleaning up storage:', storageError);
+        // Continue with project deletion
+      }
+      
+      // 2. Delete project (cascade will handle units, reservations, etc.)
       const { error } = await supabase
         .from('dev_projects')
         .delete()
@@ -202,7 +250,7 @@ export function useDevProjects(contextId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      toast.success('Projekt gelöscht');
+      toast.success('Projekt und Dateien gelöscht');
     },
     onError: (error: Error) => {
       toast.error('Fehler beim Löschen: ' + error.message);
