@@ -479,22 +479,15 @@ export const zone2Portal: ZoneDefinition = {
 // ZONE 3: WEBSITES
 // =============================================================================
 export const zone3Websites: Record<string, WebsiteDefinition> = {
-  kaufy: {
-    base: "/kaufy",
-    layout: "KaufyLayout",
+  kaufy2026: {
+    base: "/kaufy2026",
+    layout: "Kaufy2026Layout",
     routes: [
-      { path: "", component: "KaufyHome", title: "KAUFY Home" },
-      { path: "vermieter", component: "KaufyVermieter", title: "Für Vermieter" },
-      { path: "verkaeufer", component: "KaufyVerkaeufer", title: "Für Verkäufer" },
-      { path: "vertrieb", component: "KaufyVertrieb", title: "Für Vertrieb" },
-      { path: "beratung", component: "KaufyBeratung", title: "Beratung" },
-      { path: "meety", component: "KaufyMeety", title: "Meety" },
-      { path: "module", component: "KaufyModule", title: "Module" },
-      { path: "module/:moduleId", component: "KaufyModuleDetail", title: "Modul-Details", dynamic: true },
-      { path: "immobilien/:publicId", component: "KaufyExpose", title: "Exposé", dynamic: true },
-      { path: "berater", component: "KaufyBerater", title: "Berater finden" },
-      { path: "anbieter", component: "KaufyAnbieter", title: "Anbieter werden" },
-      { path: "faq", component: "KaufyFAQ", title: "FAQ" },
+      { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
+      { path: "vermieter", component: "Kaufy2026Vermieter", title: "Für Vermieter" },
+      { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
+      { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
+      { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
     ],
   },
   miety: {
@@ -534,17 +527,6 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "preise", component: "SotPreise", title: "Preise" },
       { path: "demo", component: "SotDemo", title: "Demo" },
       { path: "faq", component: "SotFAQ", title: "FAQ" },
-    ],
-  },
-  kaufy2026: {
-    base: "/kaufy2026",
-    layout: "Kaufy2026Layout",
-    routes: [
-      { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
-      { path: "vermieter", component: "Kaufy2026Vermieter", title: "Für Vermieter" },
-      { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
-      { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
-      { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
     ],
   },
 };

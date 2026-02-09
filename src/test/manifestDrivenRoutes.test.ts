@@ -133,10 +133,10 @@ describe('Zone 3: Websites', () => {
     expect(Object.keys(zone3Websites).length).toBe(4);
   });
 
-  it('should have Kaufy website', () => {
-    expect(zone3Websites.kaufy).toBeDefined();
-    expect(zone3Websites.kaufy.base).toBe('/kaufy');
-    expect(zone3Websites.kaufy.layout).toBe('KaufyLayout');
+  it('should have Kaufy2026 website', () => {
+    expect(zone3Websites.kaufy2026).toBeDefined();
+    expect(zone3Websites.kaufy2026.base).toBe('/kaufy2026');
+    expect(zone3Websites.kaufy2026.layout).toBe('Kaufy2026Layout');
   });
 
   it('should have Miety website', () => {

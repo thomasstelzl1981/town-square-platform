@@ -124,23 +124,7 @@ const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPag
 const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
 const AreaOverviewPage = React.lazy(() => import('@/pages/portal/AreaOverviewPage'));
 
-// Zone 3: Kaufy Website
-import KaufyLayout from '@/pages/zone3/kaufy/KaufyLayout';
-import KaufyHome from '@/pages/zone3/kaufy/KaufyHome';
-import KaufyVermieter from '@/pages/zone3/kaufy/KaufyVermieter';
-import KaufyVerkaeufer from '@/pages/zone3/kaufy/KaufyVerkaeufer';
-import KaufyVertrieb from '@/pages/zone3/kaufy/KaufyVertrieb';
-import KaufyBeratung from '@/pages/zone3/kaufy/KaufyBeratung';
-import KaufyMeety from '@/pages/zone3/kaufy/KaufyMeety';
-import KaufyModule from '@/pages/zone3/kaufy/KaufyModule';
-import KaufyModuleDetail from '@/pages/zone3/kaufy/KaufyModuleDetail';
-
-import KaufyExpose from '@/pages/zone3/kaufy/KaufyExpose';
-import KaufyBerater from '@/pages/zone3/kaufy/KaufyBerater';
-import KaufyAnbieter from '@/pages/zone3/kaufy/KaufyAnbieter';
-import KaufyFAQ from '@/pages/zone3/kaufy/KaufyFAQ';
-
-// Zone 3: Kaufy2026 Website (NEW)
+// Zone 3: Kaufy2026 Website
 import Kaufy2026Layout from '@/pages/zone3/kaufy2026/Kaufy2026Layout';
 import Kaufy2026Home from '@/pages/zone3/kaufy2026/Kaufy2026Home';
 import Kaufy2026Expose from '@/pages/zone3/kaufy2026/Kaufy2026Expose';
@@ -304,21 +288,14 @@ const portalDynamicComponentMap: Record<string, React.LazyExoticComponent<React.
 };
 
 // =============================================================================
-// Component Map for Zone 3 Kaufy
+// Component Map for Zone 3 Kaufy2026
 // =============================================================================
-const kaufyComponentMap: Record<string, React.ComponentType> = {
-  KaufyHome,
-  KaufyVermieter,
-  KaufyVerkaeufer,
-  KaufyVertrieb,
-  KaufyBeratung,
-  KaufyMeety,
-  KaufyModule,
-  KaufyModuleDetail,
-  KaufyExpose,
-  KaufyBerater,
-  KaufyAnbieter,
-  KaufyFAQ,
+const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
+  Kaufy2026Home,
+  Kaufy2026Expose,
+  Kaufy2026Vermieter,
+  Kaufy2026Verkaeufer,
+  Kaufy2026Vertrieb,
 };
 
 // =============================================================================
@@ -363,26 +340,13 @@ const sotComponentMap: Record<string, React.ComponentType> = {
 // Layout Map for Zone 3
 // =============================================================================
 const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.ReactNode }>> = {
-  KaufyLayout,
   Kaufy2026Layout,
   MietyLayout,
   FutureRoomLayout,
   SotLayout,
 };
 
-// =============================================================================
-// Component Map for Zone 3 Kaufy2026
-// =============================================================================
-const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
-  Kaufy2026Home,
-  Kaufy2026Expose,
-  Kaufy2026Vermieter,
-  Kaufy2026Verkaeufer,
-  Kaufy2026Vertrieb,
-};
-
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
-  kaufy: kaufyComponentMap,
   kaufy2026: kaufy2026ComponentMap,
   miety: mietyComponentMap,
   futureroom: futureroomComponentMap,
