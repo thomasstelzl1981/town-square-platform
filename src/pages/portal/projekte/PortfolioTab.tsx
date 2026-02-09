@@ -18,6 +18,16 @@ import {
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function PortfolioTab() {
   const navigate = useNavigate();
@@ -34,9 +44,19 @@ export default function PortfolioTab() {
   // No longer blocking on missing contexts - Magic Intake will auto-create
   // Context can be created via Dashboard or settings
 
-  const handleDeleteProject = async (id: string) => {
-    if (confirm('Projekt wirklich löschen? Alle zugehörigen Daten werden entfernt.')) {
-      await deleteProject.mutateAsync(id);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+
+  const handleDeleteProject = (id: string) => {
+    setProjectToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (projectToDelete) {
+      await deleteProject.mutateAsync(projectToDelete);
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
     }
   };
 
@@ -104,6 +124,27 @@ export default function PortfolioTab() {
         onSuccess={handleProjectCreated}
         defaultContextId={selectedContextId || defaultContext?.id}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Projekt löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden. Alle Projektdaten, 
+              Einheiten und zugehörigen Dokumente werden dauerhaft entfernt.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Endgültig löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -27,6 +27,29 @@ const MAX_AI_PROCESSING_SIZE = 5 * 1024 * 1024;
 // Max upload size (20MB)
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 
+/**
+ * Sanitize filename for Supabase Storage
+ * Removes special characters, brackets, replaces spaces with underscores
+ */
+function sanitizeFilename(filename: string): string {
+  // Get extension
+  const lastDot = filename.lastIndexOf('.');
+  const ext = lastDot > 0 ? filename.slice(lastDot) : '';
+  const baseName = lastDot > 0 ? filename.slice(0, lastDot) : filename;
+  
+  const sanitized = baseName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics (ä→a, ü→u, etc.)
+    .replace(/[[\](){}]/g, '') // Remove brackets
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace special chars with underscore
+    .replace(/_+/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
+    .substring(0, 80); // Limit length
+  
+  return sanitized + ext.toLowerCase();
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -213,7 +236,10 @@ serve(async (req) => {
 
     if (exposeFile) {
       const exposeBuffer = await exposeFile.arrayBuffer();
-      const exposePath = `${storagePath}/expose/${exposeFile.name}`;
+      const safeExposeName = sanitizeFilename(exposeFile.name);
+      const exposePath = `${storagePath}/expose/${safeExposeName}`;
+      
+      console.log('Uploading expose:', { original: exposeFile.name, sanitized: safeExposeName });
       
       const { error: uploadError } = await supabase.storage
         .from('project-documents')
@@ -227,13 +253,16 @@ serve(async (req) => {
         // Continue anyway - project is created
       } else {
         uploadResults.expose = exposePath;
-        console.log('Uploaded expose:', exposePath);
+        console.log('Uploaded expose successfully:', exposePath);
       }
     }
 
     if (pricelistFile) {
       const pricelistBuffer = await pricelistFile.arrayBuffer();
-      const pricelistPath = `${storagePath}/pricelist/${pricelistFile.name}`;
+      const safePricelistName = sanitizeFilename(pricelistFile.name);
+      const pricelistPath = `${storagePath}/pricelist/${safePricelistName}`;
+      
+      console.log('Uploading pricelist:', { original: pricelistFile.name, sanitized: safePricelistName });
       
       const { error: uploadError } = await supabase.storage
         .from('project-documents')
@@ -247,7 +276,7 @@ serve(async (req) => {
         // Continue anyway - project is created
       } else {
         uploadResults.pricelist = pricelistPath;
-        console.log('Uploaded pricelist:', pricelistPath);
+        console.log('Uploaded pricelist successfully:', pricelistPath);
       }
     }
 
