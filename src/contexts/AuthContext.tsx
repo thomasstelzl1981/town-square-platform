@@ -95,6 +95,7 @@ const DEV_MOCK_PROFILE: Profile = {
   letterhead_iban: null,
   letterhead_bic: null,
   letterhead_website: null,
+  deleted_at: null,
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

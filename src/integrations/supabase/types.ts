@@ -1430,6 +1430,7 @@ export type Database = {
           created_at: string
           current_rent_monthly: number | null
           data_correct_confirmed: boolean | null
+          deleted_at: string | null
           email: string | null
           employed_since: string | null
           employer_in_germany: boolean | null
@@ -1543,6 +1544,7 @@ export type Database = {
           created_at?: string
           current_rent_monthly?: number | null
           data_correct_confirmed?: boolean | null
+          deleted_at?: string | null
           email?: string | null
           employed_since?: string | null
           employer_in_germany?: boolean | null
@@ -1656,6 +1658,7 @@ export type Database = {
           created_at?: string
           current_rent_monthly?: number | null
           data_correct_confirmed?: boolean | null
+          deleted_at?: string | null
           email?: string | null
           employed_since?: string | null
           employer_in_germany?: boolean | null
@@ -3364,6 +3367,39 @@ export type Database = {
           },
         ]
       }
+      consent_templates: {
+        Row: {
+          body_de: string
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          required_for_module: string | null
+          title_de: string
+          version: number
+        }
+        Insert: {
+          body_de: string
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          required_for_module?: string | null
+          title_de: string
+          version?: number
+        }
+        Update: {
+          body_de?: string
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          required_for_module?: string | null
+          title_de?: string
+          version?: number
+        }
+        Relationships: []
+      }
       contact_staging: {
         Row: {
           approved_at: string | null
@@ -3470,6 +3506,7 @@ export type Database = {
           city: string | null
           company: string | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           first_name: string
           google_contact_id: string | null
@@ -3494,6 +3531,7 @@ export type Database = {
           city?: string | null
           company?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           first_name: string
           google_contact_id?: string | null
@@ -3518,6 +3556,7 @@ export type Database = {
           city?: string | null
           company?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           first_name?: string
           google_contact_id?: string | null
@@ -6164,6 +6203,7 @@ export type Database = {
           budget_min: number | null
           contact_id: string | null
           created_at: string | null
+          deleted_at: string | null
           id: string
           interest_type: string | null
           notes: string | null
@@ -6184,6 +6224,7 @@ export type Database = {
           budget_min?: number | null
           contact_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           id?: string
           interest_type?: string | null
           notes?: string | null
@@ -6204,6 +6245,7 @@ export type Database = {
           budget_min?: number | null
           contact_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           id?: string
           interest_type?: string | null
           notes?: string | null
@@ -8166,6 +8208,7 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string | null
           email: string
           email_signature: string | null
@@ -8198,6 +8241,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email: string
           email_signature?: string | null
@@ -8230,6 +8274,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email?: string
           email_signature?: string | null
@@ -9688,6 +9733,7 @@ export type Database = {
       self_disclosures: {
         Row: {
           created_at: string
+          deleted_at: string | null
           disclosure_data: Json
           finance_package_id: string
           id: string
@@ -9698,6 +9744,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           disclosure_data?: Json
           finance_package_id: string
           id?: string
@@ -9708,6 +9755,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           disclosure_data?: Json
           finance_package_id?: string
           id?: string
