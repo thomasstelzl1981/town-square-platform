@@ -1,0 +1,297 @@
+/**
+ * Kaufy2026Home — Homepage with Investment Search
+ * 
+ * Uses MOD-08 InvestmentResultTile for displaying results
+ * Golden Path: Fetches active listings from partner_network channel
+ */
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { Loader2, Building2 } from 'lucide-react';
+import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
+import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
+import { 
+  Kaufy2026Hero, 
+  PerspektivenKarten, 
+  ZahlenSektion,
+  type SearchParams,
+  type ClassicSearchParams,
+} from '@/components/zone3/kaufy2026';
+
+interface PublicListing {
+  listing_id: string;
+  public_id: string;
+  title: string;
+  asking_price: number;
+  property_type: string;
+  address: string;
+  city: string;
+  postal_code: string | null;
+  total_area_sqm: number | null;
+  unit_count: number;
+  monthly_rent_total: number;
+  hero_image_path?: string | null;
+}
+
+interface InvestmentMetrics {
+  monthlyBurden: number;
+  roiAfterTax: number;
+  loanAmount: number;
+  yearlyInterest?: number;
+  yearlyRepayment?: number;
+  yearlyTaxSavings?: number;
+}
+
+export default function Kaufy2026Home() {
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    zvE: 60000,
+    equity: 50000,
+    maritalStatus: 'single',
+    hasChurchTax: false,
+  });
+  const [classicParams, setClassicParams] = useState<ClassicSearchParams>({
+    city: '',
+    maxPrice: null,
+    minArea: null,
+  });
+  const [metricsCache, setMetricsCache] = useState<Record<string, InvestmentMetrics>>({});
+  const [isSearching, setIsSearching] = useState(false);
+
+  const { calculate } = useInvestmentEngine();
+
+  // Fetch listings query
+  const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
+    queryKey: ['kaufy2026-listings', classicParams.city, classicParams.maxPrice],
+    queryFn: async () => {
+      let query = supabase
+        .from('listings')
+        .select(`
+          id,
+          public_id,
+          title,
+          asking_price,
+          properties!inner (
+            id,
+            address,
+            city,
+            postal_code,
+            property_type,
+            total_area_sqm,
+            annual_income
+          )
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Apply filters
+      if (classicParams.city) {
+        query = query.ilike('properties.city', `%${classicParams.city}%`);
+      }
+      if (classicParams.maxPrice) {
+        query = query.lte('asking_price', classicParams.maxPrice);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Listings query error:', error);
+        return [];
+      }
+
+      if (!data || data.length === 0) return [];
+
+      // Get property IDs for image lookup
+      const propertyIds = data
+        .map((item: any) => item.properties?.id)
+        .filter(Boolean) as string[];
+
+      const imageMap = new Map<string, string>();
+
+      if (propertyIds.length > 0) {
+        const { data: imageLinks } = await supabase
+          .from('document_links')
+          .select(`
+            object_id,
+            is_title_image,
+            display_order,
+            documents!inner (file_path, mime_type)
+          `)
+          .in('object_id', propertyIds)
+          .eq('object_type', 'property')
+          .order('is_title_image', { ascending: false })
+          .order('display_order', { ascending: true });
+
+        if (imageLinks) {
+          const bestByProperty = new Map<string, { file_path: string; is_title_image: boolean; display_order: number }>();
+
+          for (const link of imageLinks as any[]) {
+            const doc = link.documents as any;
+            if (!doc?.file_path) continue;
+            if (!String(doc?.mime_type || '').startsWith('image/')) continue;
+
+            const candidate = {
+              file_path: doc.file_path as string,
+              is_title_image: !!link.is_title_image,
+              display_order: typeof link.display_order === 'number' ? link.display_order : 0,
+            };
+
+            const current = bestByProperty.get(link.object_id);
+            if (!current) {
+              bestByProperty.set(link.object_id, candidate);
+              continue;
+            }
+
+            if (candidate.is_title_image && !current.is_title_image) {
+              bestByProperty.set(link.object_id, candidate);
+              continue;
+            }
+
+            if (candidate.is_title_image === current.is_title_image && candidate.display_order < current.display_order) {
+              bestByProperty.set(link.object_id, candidate);
+            }
+          }
+
+          await Promise.all(
+            Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
+              const { data: signedUrlData } = await supabase.storage
+                .from('tenant-documents')
+                .createSignedUrl(best.file_path, 3600);
+
+              if (signedUrlData?.signedUrl) {
+                imageMap.set(objectId, resolveStorageSignedUrl(signedUrlData.signedUrl));
+              }
+            })
+          );
+        }
+      }
+
+      return (data || []).map((item: any) => ({
+        listing_id: item.id,
+        public_id: item.public_id,
+        title: item.title || `${item.properties?.property_type} ${item.properties?.city}`,
+        asking_price: item.asking_price || 0,
+        property_type: item.properties?.property_type || 'Unbekannt',
+        address: item.properties?.address || '',
+        city: item.properties?.city || '',
+        postal_code: item.properties?.postal_code,
+        total_area_sqm: item.properties?.total_area_sqm,
+        unit_count: 1,
+        monthly_rent_total: item.properties?.annual_income ? item.properties.annual_income / 12 : 0,
+        hero_image_path: imageMap.get(item.properties?.id) || null,
+      })) as PublicListing[];
+    },
+    enabled: hasSearched,
+  });
+
+  // Investment search handler
+  const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
+    setSearchParams(params);
+    setIsSearching(true);
+
+    const { data: freshListings } = await refetch();
+    const listingsToProcess = (freshListings || []).slice(0, 20);
+
+    if (listingsToProcess.length === 0) {
+      setHasSearched(true);
+      setIsSearching(false);
+      return;
+    }
+
+    const newCache: Record<string, InvestmentMetrics> = {};
+
+    await Promise.all(listingsToProcess.map(async (listing: PublicListing) => {
+      const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
+
+      const input: CalculationInput = {
+        ...defaultInput,
+        purchasePrice: listing.asking_price,
+        monthlyRent,
+        equity: params.equity,
+        taxableIncome: params.zvE,
+        maritalStatus: params.maritalStatus,
+        hasChurchTax: params.hasChurchTax,
+      };
+
+      const result = await calculate(input);
+      if (result) {
+        newCache[listing.listing_id] = {
+          monthlyBurden: result.summary.monthlyBurden,
+          roiAfterTax: result.summary.roiAfterTax,
+          loanAmount: result.summary.loanAmount,
+          yearlyInterest: result.summary.yearlyInterest,
+          yearlyRepayment: result.summary.yearlyRepayment,
+          yearlyTaxSavings: result.summary.yearlyTaxSavings,
+        };
+      }
+    }));
+
+    setMetricsCache(newCache);
+    setHasSearched(true);
+    setIsSearching(false);
+  }, [calculate, refetch]);
+
+  // Classic search handler
+  const handleClassicSearch = useCallback(async (params: ClassicSearchParams) => {
+    setClassicParams(params);
+    setHasSearched(true);
+    await refetch();
+  }, [refetch]);
+
+  return (
+    <div>
+      {/* Hero with Floating Search */}
+      <Kaufy2026Hero
+        onInvestmentSearch={handleInvestmentSearch}
+        onClassicSearch={handleClassicSearch}
+        isLoading={isSearching || isLoadingListings}
+      />
+
+      {/* Results Section */}
+      {hasSearched && (
+        <section className="py-12 px-6 lg:px-10">
+          <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6">
+            Passende Kapitalanlage-Objekte
+            {listings.length > 0 && (
+              <span className="text-base font-normal text-[hsl(215,16%,47%)] ml-2">
+                ({listings.length} Ergebnisse)
+              </span>
+            )}
+          </h2>
+
+          {isSearching || isLoadingListings ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" />
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="text-center py-12 bg-[hsl(210,30%,97%)] rounded-2xl">
+              <Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" />
+              <p className="text-[hsl(215,16%,47%)]">
+                Keine Objekte gefunden. Passen Sie Ihre Suchkriterien an.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map((listing) => (
+                <InvestmentResultTile
+                  key={listing.listing_id}
+                  listing={listing}
+                  metrics={metricsCache[listing.listing_id] || null}
+                  linkPrefix="/kaufy2026/immobilien"
+                  showProvision={false}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Perspektiven Cards */}
+      <PerspektivenKarten />
+
+      {/* Zahlen Section */}
+      <ZahlenSektion />
+    </div>
+  );
+}

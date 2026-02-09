@@ -536,6 +536,17 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "SotFAQ", title: "FAQ" },
     ],
   },
+  kaufy2026: {
+    base: "/kaufy2026",
+    layout: "Kaufy2026Layout",
+    routes: [
+      { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
+      { path: "vermieter", component: "Kaufy2026Vermieter", title: "Für Vermieter" },
+      { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
+      { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
+      { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
+    ],
+  },
 };
 
 // =============================================================================
