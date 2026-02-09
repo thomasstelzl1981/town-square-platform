@@ -1,348 +1,247 @@
 
-# Systemwidgets: Analyse & Implementierungsplan
 
-## Teil 1: Root Cause Analyse — Warum Toggle bei neuen Widgets nicht funktioniert
+# Systemwidgets Live-Anbindung — Implementierungsplan
 
-### Befund: UI-Blockade (NICHT DB-Problem)
+## Zusammenfassung
 
-**Evidence:**
-- Die Datenbank zeigt alle 7 Widget-Preferences korrekt (alle widget_codes sind eingetragen)
-- RLS-Policies sind vollständig konfiguriert (SELECT, INSERT, UPDATE, DELETE erlaubt für eigene Daten)
-- Unique Constraint auf `(user_id, widget_code)` existiert und Upsert funktioniert
+Die Widgets werden zwar angezeigt, zeigen aber nur Demo-Daten mit "Coming Soon"-Badge, weil:
+1. **Keine Hooks existieren** — es fehlen `useQuote.ts`, `useRadio.ts`, `useSpaceAPOD.ts` etc.
+2. **Widget-Komponenten sind Stubs** — zeigen hardcodierte Demo-Daten mit `blur-[1px] opacity-60`
+3. **Status in Config ist `stub`** — muss auf `live` gesetzt werden nach Implementierung
 
-**Root Cause identifiziert in `SystemWidgetsTab.tsx` Zeile 151:**
-```tsx
-<Switch
-  checked={enabled}
-  onCheckedChange={onToggle}
-  disabled={widget.status === 'stub'}  // ← PROBLEM!
-/>
-```
+### Was funktioniert bereits
 
-**Ergebnis:** Der Switch ist für alle Widgets mit `status: 'stub'` **UI-seitig deaktiviert**. Das ist kein DB-Fehler, sondern ein bewusstes Design — **aber der Fehler liegt darin, dass der Nutzer erwartet, dass er toggeln kann**.
+| Widget | Status | Grund |
+|--------|--------|-------|
+| **Wetter** | ✅ Live | `useWeather.ts` Hook + Open-Meteo API (kein Key) |
+| **Globus** | ✅ Live | Edge Function + Google Maps Key |
 
-### Lösungsoption
+### Was noch Stubs sind
 
-Die Stub-Widgets sollten togglebar sein (ON/OFF für die Position im Dashboard), auch wenn sie nur einen "Coming Soon"-Platzhalter zeigen. Der User soll die Reihenfolge vorbereiten können.
-
----
-
-## Teil 2: Technisches Fix-Konzept
-
-### Änderung A: Switch freischalten (P0)
-
-**Datei:** `src/pages/portal/office/SystemWidgetsTab.tsx`
-
-```tsx
-// Vorher (Zeile 151):
-disabled={widget.status === 'stub'}
-
-// Nachher:
-// disabled entfernen oder auf false setzen
-// Alternativ: Nur live-Widgets togglebar, aber dann klare Kommunikation
-```
-
-**Empfehlung:** Switch aktivieren + Badge "Coming Soon" als Info beibehalten.
-
-### Änderung B: Persistenzmodell bestätigt (bereits korrekt)
-
-| Aspekt | Status |
-|--------|--------|
-| Tabelle `widget_preferences` | ✅ existiert |
-| Unique Key `(user_id, widget_code)` | ✅ korrekt |
-| Upsert mit `onConflict` | ✅ im Hook implementiert |
-| RLS Policies | ✅ vollständig |
-| Defaults (sort_order, config_json) | ✅ korrekt |
-
-### Änderung C: MOD-00 Rendering (bereits korrekt)
-
-Das Dashboard rendert bereits alle enabled Widgets über den `enabledWidgets`-Array und das `WIDGET_CODE_TO_ID`-Mapping. Keine Änderung erforderlich.
-
-### Zusammenfassung der Änderungen
-
-| # | Datei | Änderung |
-|---|-------|----------|
-| 1 | `src/pages/portal/office/SystemWidgetsTab.tsx` | `disabled`-Prop vom Switch entfernen |
+| Widget | API | API-Key nötig? | Schwierigkeit |
+|--------|-----|----------------|---------------|
+| **Quote** | ZenQuotes | ❌ Nein | Einfach |
+| **Radio** | Radio Browser | ❌ Nein | Mittel |
+| **Space** | NASA APOD | ✅ Ja (kostenlos) | Einfach |
+| **Finance** | Finnhub | ✅ Ja (kostenpflichtig für Realtime) | Komplex |
+| **News** | RSS/NewsAPI | Variiert | Mittel |
 
 ---
 
-## Teil 3: Zone 1 — Integrations-Dokumentation
+## Implementierungsplan
 
-### Neue Governance-Regel (als Armstrong Policy)
+### Phase 1: Sofort umsetzbar (kein API-Key nötig)
 
-**Policy-Code:** `POL.GUARD.EXT_INTEGRATION_DOC`  
-**Kategorie:** `guardrail`  
-**Titel:** Externe Integrations-Dokumentationspflicht
+#### 1.1 Quote Widget (ZenQuotes API)
 
-**Inhalt (Content):**
-```
-REGEL (verbindlich):
-
-Jede neue externe Quelle (API, RSS, Connector, SDK) die für Systemwidgets, Armstrong oder 
-andere Plattform-Features verwendet wird, MUSS vor Produktivschaltung in der Zone 1 
-Integration Registry dokumentiert werden.
-
-PFLICHTFELDER:
-- integration_code (eindeutig, z.B. "FINNHUB", "NASA_APOD")
-- name (Anzeigename)
-- type (api | rss | connector | sdk)
-- base_url (Basis-URL der API)
-- auth_type (none | api_key | oauth | bearer)
-- data_scope (markets | news | space | audio | quotes | geo | documents)
-- caching_policy (TTL in Minuten)
-- rate_limit_notes (Rate-Limit-Hinweise)
-- cost_model (free | metered | premium)
-- status (planned | stub | active | deprecated)
-- owner (system | tenant)
-- risks (PII-Risiko, Datenschutz-Hinweise)
-- guardrails (z.B. "no-autoplay", "no-clickbait")
-- last_reviewed_at (Datum der letzten Prüfung)
-
-AUSNAHMEN:
-Keine. Auch "free" APIs müssen dokumentiert werden.
-
-GOVERNANCE:
-Zone 1 Admins können den Status von "planned" auf "active" ändern.
-Ohne "active"-Status darf eine Integration nicht in Produktion genutzt werden.
+**Neuer Hook:** `src/hooks/useQuote.ts`
+```typescript
+// ZenQuotes API: https://zenquotes.io/api/today
+// Keine Auth, CORS-freundlich, 24h Cache
 ```
 
-### Integrations Registry Schema (erweitertes JSON-Beispiel)
+**Änderungen an:** `src/components/dashboard/widgets/QuoteWidget.tsx`
+- Hook einbinden
+- Demo-Daten durch echte ersetzen
+- Blur/Opacity entfernen
+- "Coming Soon" Badge entfernen
 
-Für die neuen Widget-APIs wird die bestehende `integration_registry`-Tabelle erweitert:
-
-```json
-[
-  {
-    "code": "FINNHUB",
-    "name": "Finnhub Markets API",
-    "type": "api",
-    "description": "Echtzeit-Finanzdaten für DAX, S&P 500, Währungen, Krypto",
-    "base_url": "https://finnhub.io/api/v1",
-    "auth_type": "api_key",
-    "data_scope": "markets",
-    "caching_policy": 30,
-    "rate_limit_notes": "60 calls/min (free tier)",
-    "cost_model": "free",
-    "cost_hint": "Premium ab $50/mo für Realtime",
-    "status": "planned",
-    "owner": "system",
-    "risks": "Keine PII",
-    "guardrails": "no-trading-advice, display-only",
-    "widget_code": "SYS.FIN.MARKETS"
-  },
-  {
-    "code": "NASA_APOD",
-    "name": "NASA Astronomy Picture of the Day",
-    "type": "api",
-    "description": "Tägliches Astronomiebild mit Erklärung",
-    "base_url": "https://api.nasa.gov/planetary/apod",
-    "auth_type": "api_key",
-    "data_scope": "space",
-    "caching_policy": 1440,
-    "rate_limit_notes": "1000 calls/h (mit Key)",
-    "cost_model": "free",
-    "cost_hint": null,
-    "status": "planned",
-    "owner": "system",
-    "risks": "Keine PII",
-    "guardrails": "cache-aggressive, single-daily-fetch",
-    "widget_code": "SYS.SPACE.DAILY"
-  },
-  {
-    "code": "RADIO_BROWSER",
-    "name": "Radio Browser API",
-    "type": "api",
-    "description": "Internet-Radio-Streams weltweit",
-    "base_url": "https://de1.api.radio-browser.info",
-    "auth_type": "none",
-    "data_scope": "audio",
-    "caching_policy": 60,
-    "rate_limit_notes": "Keine harten Limits, Fair Use",
-    "cost_model": "free",
-    "cost_hint": null,
-    "status": "planned",
-    "owner": "system",
-    "risks": "Keine PII, externe Stream-URLs",
-    "guardrails": "no-autoplay, user-initiated-playback-only",
-    "widget_code": "SYS.AUDIO.RADIO"
-  },
-  {
-    "code": "ZENQUOTES",
-    "name": "ZenQuotes API",
-    "type": "api",
-    "description": "Inspirierende Zitate",
-    "base_url": "https://zenquotes.io/api",
-    "auth_type": "none",
-    "data_scope": "quotes",
-    "caching_policy": 1440,
-    "rate_limit_notes": "5 calls/30sec (free tier)",
-    "cost_model": "free",
-    "cost_hint": null,
-    "status": "planned",
-    "owner": "system",
-    "risks": "Keine PII",
-    "guardrails": "no-clickbait, professional-quotes-only",
-    "widget_code": "SYS.MINDSET.QUOTE"
-  },
-  {
-    "code": "OPEN_METEO",
-    "name": "Open-Meteo Weather API",
-    "type": "api",
-    "description": "Wetterdaten ohne API-Key",
-    "base_url": "https://api.open-meteo.com/v1",
-    "auth_type": "none",
-    "data_scope": "geo",
-    "caching_policy": 30,
-    "rate_limit_notes": "Keine Limits für non-commercial",
-    "cost_model": "free",
-    "cost_hint": null,
-    "status": "active",
-    "owner": "system",
-    "risks": "Nutzt Geolocation (Browser-Permission)",
-    "guardrails": "location-permission-required",
-    "widget_code": "SYS.WEATHER.SUMMARY"
-  }
-]
-```
-
-### SSOT-Speicherort
-
-**Option A (empfohlen für MVP):** Bestehende `integration_registry`-Tabelle erweitern
-
-Neue Spalten hinzufügen:
-- `base_url` (text)
-- `auth_type` (text)
-- `data_scope` (text)
-- `caching_policy_min` (integer)
-- `rate_limit_notes` (text)
-- `cost_hint` (text)
-- `risks` (text)
-- `guardrails` (text)
-- `widget_code` (text, nullable — Link zu Systemwidget)
-- `last_reviewed_at` (timestamptz)
-
-**Option B:** Separate Konfigurationsdatei `src/config/integrationRegistry.ts`
-
-Für MVP kann die Registry auch als statische TypeScript-Datei geführt werden (ähnlich wie `systemWidgets.ts`).
-
-### Zone 1 UI-Anpassung
-
-Die bestehende `ArmstrongIntegrations.tsx` zeigt bereits die Widget-Registry. Für vollständige Integrations-Dokumentation:
-
-1. Tab hinzufügen: "Externe APIs" neben "Widget-Registry"
-2. Tabelle mit allen `integration_registry`-Einträgen
-3. Filter nach `status` (planned | stub | active | deprecated)
-4. Badge-Anzeige für Guardrails
+**Config Update:** `src/config/systemWidgets.ts`
+- `SYS.MINDSET.QUOTE`: `status: 'stub'` → `status: 'live'`
 
 ---
 
-## Teil 4: Design-Guidelines für Systemwidgets
+#### 1.2 Radio Widget (Radio Browser API)
 
-### Widget Container (Standard)
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  [Icon] Titel                          [Badge]      │  ← Header
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│                  Content Area                       │  ← Flex-1
-│              (Zahlen, Charts, Text)                 │
-│                                                     │
-├─────────────────────────────────────────────────────┤
-│  Meta: Quelle · Letzte Aktualisierung               │  ← Footer
-└─────────────────────────────────────────────────────┘
+**Neuer Hook:** `src/hooks/useRadio.ts`
+```typescript
+// Radio Browser API: https://de1.api.radio-browser.info/json/stations/topvote/10
+// Keine Auth, CORS-freundlich
+// WICHTIG: Kein Autoplay! User muss klicken
 ```
 
-### Komponenten-Wiederverwendung
+**Änderungen an:** `src/components/dashboard/widgets/RadioWidget.tsx`
+- Hook für Sender-Liste
+- Audio-Element mit User-Interaktion (Play/Pause/Stop)
+- Volume-Slider
+- Sender-Auswahl (Dropdown oder Carousel)
 
-| Komponente | Verwendung |
-|------------|------------|
-| `Card` | Container für jedes Widget |
-| `CardContent` | Padding und Layout |
-| `Badge` | Status (Live/Coming Soon), Trend-Indikatoren |
-| `Skeleton` | Loading State |
-| `IconButton` | Refresh (optional), Settings |
-| Theme Tokens | `text-foreground`, `text-muted-foreground`, `bg-muted` |
-
-### Farben & Dark Mode
-
-- **Keine hardcodierten Farben** — nur Gradient-Klassen aus dem Design-System
-- Positive Trends: `text-green-500` (subtil)
-- Negative Trends: `text-red-500` (subtil)
-- Neutral: `text-muted-foreground`
-
-### Layout-Grid (bereits implementiert)
-
-```tsx
-// DashboardGrid.tsx
-<div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-  {/* Widgets */}
-</div>
-```
-
-### Error/Empty States
-
-**API nicht erreichbar:**
-```tsx
-<div className="text-center py-4">
-  <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-  <p className="text-sm text-muted-foreground">Quelle temporär nicht verfügbar</p>
-  <Button variant="ghost" size="sm" onClick={refetch}>
-    <RefreshCw className="h-4 w-4 mr-2" />
-    Erneut versuchen
-  </Button>
-</div>
-```
-
-**Widget deaktiviert:**
-- Widget wird einfach nicht gerendert (kein Platzhalter)
-
-### Radio-Widget Besonderheit
-
-```tsx
-<div className="text-center">
-  <Button onClick={handlePlay} disabled={isLoading}>
-    <Play className="h-5 w-5 mr-2" />
-    Abspielen
-  </Button>
-  <p className="text-[10px] text-muted-foreground mt-2">
-    Startet erst nach Klick
-  </p>
-</div>
-```
-
-**Kein Autoplay** — explizit dokumentiert in Governance.
+**Config Update:** `src/config/systemWidgets.ts`
+- `SYS.AUDIO.RADIO`: `status: 'stub'` → `status: 'live'`
 
 ---
 
-## Teil 5: Akzeptanzkriterien
+### Phase 2: API-Key erforderlich (kostenlos)
 
-### P0 (Kritisch)
+#### 2.1 Space Widget (NASA APOD)
+
+**Edge Function:** `supabase/functions/sot-nasa-apod/index.ts`
+```typescript
+// NASA APOD API: https://api.nasa.gov/planetary/apod
+// API Key: DEMO_KEY (30 req/h) oder eigener Key (1000 req/h)
+// 24h Cache aggressiv
+```
+
+**Neuer Hook:** `src/hooks/useSpaceAPOD.ts`
+
+**Änderungen an:** `src/components/dashboard/widgets/SpaceWidget.tsx`
+- Tägliches Astronomie-Bild anzeigen
+- Titel + kurze Erklärung
+- Link zu NASA
+
+**Config Update:** `src/config/systemWidgets.ts`
+- `SYS.SPACE.DAILY`: `status: 'stub'` → `status: 'live'`
+
+**Integration Registry Update:** 
+- `NASA_APOD`: `status: pending_setup` → `status: active`
+
+---
+
+### Phase 3: Premium/Komplexer (später)
+
+#### 3.1 Finance Widget (Finnhub)
+
+**Problem:** Finnhub Free-Tier hat Einschränkungen:
+- Keine EU-Indizes (DAX) im Free-Tier
+- 60 API-Calls/Minute
+- Realtime nur für US-Märkte
+
+**Alternative:** Alpha Vantage (kostenlos, aber langsamer)
+
+**Empfehlung:** Vorerst als Stub lassen oder alternative Datenquelle evaluieren.
+
+#### 3.2 News Widget
+
+**Optionen:**
+- RSS-Feeds (kostenlos, aber Parsing nötig)
+- NewsAPI (60.000 req/mo kostenlos)
+- GNews API
+
+**Empfehlung:** RSS-basiert für Wirtschafts-Headlines (kein API-Key).
+
+---
+
+## Dateiübersicht
+
+| # | Datei | Aktion | Priorität |
+|---|-------|--------|-----------|
+| 1 | `src/hooks/useQuote.ts` | NEU erstellen | P0 |
+| 2 | `src/components/dashboard/widgets/QuoteWidget.tsx` | Refactor (Hook einbinden) | P0 |
+| 3 | `src/hooks/useRadio.ts` | NEU erstellen | P1 |
+| 4 | `src/components/dashboard/widgets/RadioWidget.tsx` | Refactor (Audio-Player) | P1 |
+| 5 | `supabase/functions/sot-nasa-apod/index.ts` | NEU erstellen | P1 |
+| 6 | `src/hooks/useSpaceAPOD.ts` | NEU erstellen | P1 |
+| 7 | `src/components/dashboard/widgets/SpaceWidget.tsx` | Refactor (APOD anzeigen) | P1 |
+| 8 | `src/config/systemWidgets.ts` | Status updaten | P0 |
+| 9 | DB: `integration_registry` | Status auf `active` setzen | P1 |
+| 10 | `supabase/config.toml` | Neue Edge Function registrieren | P1 |
+
+---
+
+## Technische Details
+
+### useQuote.ts (ZenQuotes)
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+
+interface Quote {
+  quote: string;
+  author: string;
+}
+
+export function useQuote() {
+  return useQuery<Quote>({
+    queryKey: ['daily-quote'],
+    queryFn: async () => {
+      // ZenQuotes hat CORS-Issues, daher Proxy oder cached Edge Function
+      const response = await fetch('https://zenquotes.io/api/today');
+      const data = await response.json();
+      return {
+        quote: data[0].q,
+        author: data[0].a,
+      };
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24h Cache
+    retry: 1,
+  });
+}
+```
+
+**CORS-Problem:** ZenQuotes blockiert Browser-Requests. Lösung: Edge Function als Proxy.
+
+### useRadio.ts (Radio Browser)
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+
+interface RadioStation {
+  stationuuid: string;
+  name: string;
+  url_resolved: string;
+  favicon: string;
+  country: string;
+  tags: string;
+}
+
+export function useRadioStations(limit = 10) {
+  return useQuery<RadioStation[]>({
+    queryKey: ['radio-stations', limit],
+    queryFn: async () => {
+      const response = await fetch(
+        `https://de1.api.radio-browser.info/json/stations/topvote/${limit}`
+      );
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 60, // 1h Cache
+  });
+}
+```
+
+### NASA APOD Edge Function
+
+```typescript
+// supabase/functions/sot-nasa-apod/index.ts
+// Verwendet NASA_APOD_API_KEY Secret oder DEMO_KEY
+// Cached Antwort für 24h
+```
+
+---
+
+## Akzeptanzkriterien
+
+### P0 (Sofort)
 
 | # | Test | Erwartung |
 |---|------|-----------|
-| 1 | Neue Systemwidgets (Finance, News, Space, Quote, Radio) toggeln | ✅ Kein Fehler, Toggle funktioniert |
-| 2 | Toggle-Status wird persistiert | ✅ Nach Reload korrekt |
-| 3 | MOD-00 zeigt enabled Stub-Widgets | ✅ "Coming Soon" Card wird angezeigt |
-| 4 | Keine RLS/Constraint Fehler in Console | ✅ Keine Errors |
+| 1 | Quote Widget zeigt echtes Zitat | ✅ Kein "Coming Soon", echte Daten |
+| 2 | Kein Blur/Opacity auf Content | ✅ Klare Lesbarkeit |
+| 3 | 24h Cache funktioniert | ✅ Nur 1 API-Call pro Tag |
 
-### P1 (Wichtig)
+### P1 (Diese Woche)
 
 | # | Test | Erwartung |
 |---|------|-----------|
-| 5 | Zone 1 Integration Registry enthält neue APIs | ✅ Finnhub, NASA, Radio, ZenQuotes dokumentiert |
-| 6 | Armstrong Policy für Integrations-Dokumentation | ✅ Guardrail erstellt |
-| 7 | Widget Cards optisch konsistent (Light/Dark) | ✅ Theme Tokens verwendet |
-| 8 | Error States in Stub-Widgets | ✅ Eleganter "Coming Soon" Platzhalter |
+| 4 | Radio Widget zeigt Sender-Liste | ✅ Top 10 Sender |
+| 5 | Play-Button startet Stream | ✅ Audio spielt (kein Autoplay!) |
+| 6 | Space Widget zeigt APOD-Bild | ✅ Tägliches NASA-Bild |
+| 7 | Integration Registry Status = active | ✅ Für alle aktiven APIs |
+
+### P2 (Später)
+
+| # | Test | Erwartung |
+|---|------|-----------|
+| 8 | Finance Widget mit echten Daten | ⏳ Evaluierung Datenquelle |
+| 9 | News Widget mit Headlines | ⏳ RSS-Parsing |
 
 ---
 
-## Zusammenfassung: Änderungen
+## Risiken & Mitigationen
 
-| # | Datei/Bereich | Änderung | Priorität |
-|---|---------------|----------|-----------|
-| 1 | `SystemWidgetsTab.tsx` | `disabled`-Prop vom Switch entfernen | P0 |
-| 2 | `integration_registry` (DB) | 5 neue Einträge für Widget-APIs | P1 |
-| 3 | `armstrong_policies` (DB) | Neue Guardrail-Policy einfügen | P1 |
-| 4 | `ArmstrongIntegrations.tsx` | Tab "Externe APIs" hinzufügen (optional) | P2 |
+| Risiko | Mitigation |
+|--------|------------|
+| **CORS-Blockade** (ZenQuotes) | Edge Function als Proxy |
+| **NASA Rate Limits** (DEMO_KEY: 30/h) | Aggressives Caching (24h) |
+| **Radio-Stream Autoplay** | Browser blockiert; User-Click erforderlich |
+| **Finnhub EU-Daten** | Alternative API oder nur US-Märkte zeigen |
 
