@@ -1,99 +1,147 @@
 
 
-# Governance: Automatische Index-Prüfung
+# DSGVO / Enterprise-Readiness: Analyse und Empfehlung
 
-## Problem
+---
 
-Aktuell gibt es keinen Mechanismus, der sicherstellt, dass neue Tabellen automatisch mit den richtigen Indizes angelegt werden. Bei 46+ Migrationsdateien und wachsendem System passiert es leicht, dass ein Index vergessen wird.
+## 1. Ist-Zustand: Was bereits vorhanden ist
 
-## Loesung: Zwei Massnahmen
+| Baustein | Status | Details |
+|----------|--------|---------|
+| **RLS auf allen Tabellen** | Vorhanden | Tenant-Isolation funktioniert, K7-Regel definiert |
+| **Audit Events** | Tabelle vorhanden | `audit_events` mit actor, target_org, event_type, payload — aber noch leer (0 Eintraege) |
+| **User Consents** | Tabelle vorhanden | `user_consents` mit template_id, version, status, ip_address, user_agent — gut strukturiert |
+| **PII-Markierung** | Teilweise | `armstrong_action_runs` hat `pii_present` + `retention_days` — nur fuer Armstrong |
+| **Soft Delete** | Minimal | `documents.deleted_at` existiert, sonst nirgends |
+| **K6 Governance-Regel** | Definiert | PII-Regeln in KB.SYSTEM.006 formuliert, aber nicht systemweit implementiert |
+| **DSGVO-Marketing** | Vorhanden | Zone 3 SoT-Website bewirbt "DSGVO-konform, Deutsche Server" |
 
-### Massnahme 1: Governance-Regel (KB.SYSTEM.007)
+---
 
-Eine neue Knowledge-Base-Regel wird erstellt, die als Checkliste fuer jede neue Tabelle dient:
+## 2. Was FEHLT fuer DSGVO-Konformitaet
 
-**Datei:** `src/data/kb-seeds/v1/KB.SYSTEM.007.md`
+### Kritisch (muss irgendwann vorhanden sein)
 
-Inhalt:
-- Jede neue Tabelle mit `tenant_id` MUSS einen Index auf `tenant_id` enthalten
-- Jede Foreign-Key-Spalte MUSS einen eigenen Index bekommen
-- Tabellen mit `status`-Spalte MUESSEN einen Composite-Index `(tenant_id, status)` bekommen
-- Tabellen mit `created_at` MUESSEN einen Composite-Index `(tenant_id, created_at)` bekommen
+| Anforderung | DSGVO-Artikel | Status |
+|-------------|---------------|--------|
+| **Recht auf Loeschung** (Kontaktdaten anonymisieren) | Art. 17 | Nicht implementiert |
+| **Recht auf Datenauskunft** (Export aller personenbezogenen Daten) | Art. 15 | Nicht implementiert |
+| **Consent Templates** (versionierte Einwilligungsvorlagen) | Art. 7 | Tabelle `user_consents` referenziert `template_id`, aber keine `consent_templates`-Tabelle existiert |
+| **Verarbeitungsverzeichnis** (welche Daten wofuer verarbeitet werden) | Art. 30 | Nicht vorhanden |
+| **Datenminimierung** (Retention Policies fuer alte Daten) | Art. 5(1)(e) | Nur bei Armstrong, nicht bei Kontakten/Dokumenten |
 
-Diese Regel wird Teil der Must-Not-Break Regeln (wie K1-K7 in KB.SYSTEM.006).
+### Wichtig, aber nicht blockierend
 
-### Massnahme 2: SQL-Validierungsfunktion
+| Anforderung | Status |
+|-------------|--------|
+| **Audit Trail aktiv nutzen** | Tabelle vorhanden, aber 0 Events — noch nicht in Workflows integriert |
+| **Soft Delete fuer PII-Tabellen** | Nur `documents`, nicht bei `contacts`, `applicant_profiles`, `self_disclosures` |
+| **Datenweitergabe-Protokoll** (wer hat welche Daten an wen gegeben) | Nicht vorhanden |
 
-Eine Datenbank-Funktion `public.check_missing_indexes()`, die jederzeit aufgerufen werden kann und eine Liste aller Tabellen zurueckgibt, denen ein Index fehlt.
+---
 
-**Was sie prueft:**
-1. Alle Tabellen mit `tenant_id` ohne Index darauf
-2. Alle Foreign-Key-Spalten ohne Index
-3. Alle `status`-Spalten ohne Composite-Index mit `tenant_id`
+## 3. Meine Empfehlung: JETZT die Grundstruktur anlegen, SPAETER befuellen
 
-**Wie sie genutzt wird:**
-```sql
-SELECT * FROM public.check_missing_indexes();
+### Warum jetzt?
+
+Wenn ihr die Grundstruktur (Tabellen, Spalten, Governance-Regeln) **jetzt** anlegt, passiert Folgendes:
+- Jedes neue Feature wird automatisch gegen diese Struktur gebaut
+- Ihr muesst spaeter nicht 159 Tabellen nachtraeglich umbauen
+- Die Regeln wachsen organisch mit
+
+### Warum nicht alles jetzt?
+
+Die eigentliche Logik (Export-Funktion, Anonymisierungs-Workflows, Consent-UI) kann warten. Die braucht ihr erst beim Go-Live. **Jetzt nur die Fundamente.**
+
+---
+
+## 4. Was konkret gemacht werden sollte (ohne die Entwicklung zu behindern)
+
+### Massnahme A: Consent Templates Tabelle
+
+Die `user_consents`-Tabelle referenziert bereits eine `template_id`, aber die Tabelle `consent_templates` existiert nicht. Das ist eine Luecke.
+
+```
+consent_templates
+├── id (UUID)
+├── code (TEXT, z.B. "SALES_MANDATE", "SCHUFA_CONSENT")
+├── version (INT)
+├── title_de (TEXT)
+├── body_de (TEXT, Markdown)
+├── required_for_module (TEXT, z.B. "MOD-06")
+├── is_active (BOOLEAN)
+├── created_at (TIMESTAMPTZ)
 ```
 
-Gibt eine Tabelle zurueck mit:
-| table_name | column_name | issue |
-|------------|-------------|-------|
-| neue_tabelle | tenant_id | Kein Index auf tenant_id |
-| neue_tabelle | contact_id | Kein Index auf FK-Spalte |
+Das passt zu den 9 Consent Codes aus der SOFTWARE_FOUNDATION (SALES_MANDATE, SCOUT24_CREDITS, etc.).
 
-Wenn die Abfrage keine Zeilen zurueckgibt, ist alles in Ordnung.
+### Massnahme B: Governance-Regel KB.SYSTEM.008 (DSGVO-Checkliste)
 
-### Massnahme 3: Migrations-Template
+Eine neue KB-Regel als Checkliste fuer alle Entwicklungen:
 
-Ein dokumentiertes Template, das als Vorlage fuer jede neue Migration dient:
+- K9: Jede Tabelle mit personenbezogenen Daten MUSS `deleted_at TIMESTAMPTZ NULL` haben
+- K10: Datenexport-Funktion MUSS alle PII-Tabellen abdecken
+- K11: Consent Templates MUESSEN versioniert sein
+- K12: Audit Events MUESSEN bei schreibenden Operationen auf PII-Daten geschrieben werden
 
-```sql
--- Tabelle erstellen
-CREATE TABLE public.neue_tabelle (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  -- weitere Spalten...
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### Massnahme C: `deleted_at`-Spalte auf PII-Tabellen
 
--- PFLICHT: Indizes direkt miterstellen
-CREATE INDEX idx_neue_tabelle_tenant ON public.neue_tabelle (tenant_id);
-CREATE INDEX idx_neue_tabelle_tenant_created ON public.neue_tabelle (tenant_id, created_at);
--- Falls FK-Spalten vorhanden:
--- CREATE INDEX idx_neue_tabelle_[fk_spalte] ON public.neue_tabelle ([fk_spalte]);
-```
+Folgende Tabellen enthalten personenbezogene Daten und brauchen eine `deleted_at`-Spalte fuer spaeteres Soft-Delete/Anonymisierung:
 
-## Technische Details
+| Tabelle | PII-Daten |
+|---------|-----------|
+| `contacts` | Name, Adresse, Telefon, E-Mail |
+| `applicant_profiles` | Einkommen, Vermoegen, Arbeitgeber |
+| `self_disclosures` | Komplette Selbstauskunft |
+| `profiles` | Name, Adresse, Steuernummer |
+| `leads` | Name, E-Mail, Telefon |
 
-### KB.SYSTEM.007 Datei
-- Wird als neue Markdown-Datei im KB-Seed-Verzeichnis angelegt
-- Folgt dem bestehenden Format (Frontmatter + Checkliste)
-- Wird als K8-Regel in die Must-Not-Break Kette eingereiht
+**Nur die Spalte hinzufuegen.** Kein Code aendert sich, keine bestehende Query bricht.
 
-### SQL-Funktion check_missing_indexes()
-- Wird als Datenbank-Migration angelegt
-- Nutzt `pg_catalog` und `pg_indexes` System-Views
-- Prueft nur Tabellen im `public` Schema
-- Gibt `TABLE (table_name TEXT, column_name TEXT, issue TEXT)` zurueck
-- Kann jederzeit manuell oder automatisiert aufgerufen werden
+### Was NICHT gemacht wird
 
-### Aenderungen am bestehenden Code
-- Kein Frontend-Code wird geaendert
-- Keine Routen werden geaendert
-- Keine bestehenden Tabellen werden modifiziert
-- Es werden nur 1 neue Datei (KB-Regel) und 1 DB-Funktion erstellt
+- Keine Export-UI (kommt spaeter)
+- Keine Anonymisierungs-Logik (kommt spaeter)
+- Keine Consent-UI (kommt spaeter)
+- Keine Aenderung an bestehenden Workflows
+- Keine neuen Routen
+- Keine Code-Aenderungen in src/
 
-## Risiko
+---
 
-Null. Eine KB-Datei und eine reine Lese-Funktion haben keinen Einfluss auf bestehende Funktionalitaet.
+## 5. Risikoanalyse
 
-## Ergebnis
+| Massnahme | Risiko | Aufwand |
+|-----------|--------|---------|
+| consent_templates Tabelle | Null (neue Tabelle, beeinflusst nichts) | 1 Migration |
+| KB.SYSTEM.008 Datei | Null (nur eine Markdown-Datei) | 1 Datei |
+| deleted_at Spalten | Null (nullable Spalte, bestehende Queries ignorieren sie) | 1 Migration |
 
-Nach der Implementierung habt ihr:
-1. Eine dokumentierte Regel, die bei jeder neuen Tabelle gilt
-2. Ein Pruef-Tool, das fehlende Indizes sofort aufdeckt
-3. Ein Template, das die korrekte Struktur vorgibt
+**Gesamtrisiko: Null.** Alles additiv, nichts bricht.
 
-Damit kann bei keiner zukuenftigen Erweiterung ein Index vergessen werden — und falls doch, wird es sofort erkannt.
+---
+
+## 6. Was spaeter kommt (nach Entwicklungs-Fertigstellung)
+
+Diese Punkte werden erst relevant beim Go-Live oder Enterprise-Kunden:
+
+1. **Datenexport-Edge-Function** (Art. 15 — Auskunftsrecht)
+2. **Anonymisierungs-Edge-Function** (Art. 17 — Recht auf Loeschung)
+3. **Consent-UI in Zone 2** (Einwilligungen einholen und verwalten)
+4. **Retention-Policy Cron-Job** (alte Daten automatisch anonymisieren)
+5. **Audit-Trail Integration** (Events bei jedem schreibenden Zugriff auf PII)
+6. **Datenschutzerklaerung** (Zone 3 Websites)
+7. **Auftragsverarbeitungsvertrag (AVV)** (fuer Enterprise-Kunden)
+
+---
+
+## 7. Zusammenfassung
+
+| Frage | Antwort |
+|-------|---------|
+| **Jetzt oder spaeter?** | Grundstruktur jetzt, Logik spaeter |
+| **Behindert es die Entwicklung?** | Nein — nur additive DB-Aenderungen und 1 KB-Datei |
+| **Was genau wird gemacht?** | 1 neue Tabelle, 5 neue Spalten, 1 Governance-Regel |
+| **Was wird NICHT gemacht?** | Keine UI, keine Workflows, keine Code-Aenderungen |
+| **Enterprise-Faehigkeit?** | Die Grundstruktur macht das System "enterprise-ready vorbereitet", die Logik folgt spaeter |
 
