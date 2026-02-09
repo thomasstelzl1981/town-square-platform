@@ -180,7 +180,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-3">
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/kaufy')}
+                onClick={() => navigate('/kaufy2026')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
