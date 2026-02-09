@@ -31,6 +31,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -106,6 +107,9 @@ export default function ProjekteDashboard() {
     multiple: false,
   });
 
+  // Universal upload hook for stable direct-to-storage uploads
+  const { upload: universalUpload } = useUniversalUpload();
+
   const handleMagicIntake = async () => {
     if (!exposeFile && !pricelistFile) {
       setError('Bitte laden Sie mindestens eine Datei hoch.');
@@ -116,18 +120,35 @@ export default function ProjekteDashboard() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      if (exposeFile) {
-        formData.append('expose', exposeFile);
-      }
-      if (pricelistFile) {
-        formData.append('pricelist', pricelistFile);
-      }
-      // No contextId - edge function will auto-create if needed
-      formData.append('autoCreateContext', 'true');
+      // Step 1: Upload files directly to storage (no FormData to Edge Function)
+      const storagePaths: { expose?: string; pricelist?: string } = {};
 
+      if (exposeFile) {
+        const result = await universalUpload(exposeFile, {
+          moduleCode: 'MOD_13',
+          docTypeHint: 'expose',
+          source: 'project_intake',
+        });
+        if (result.error) throw new Error(result.error);
+        storagePaths.expose = result.storagePath;
+      }
+
+      if (pricelistFile) {
+        const result = await universalUpload(pricelistFile, {
+          moduleCode: 'MOD_13',
+          docTypeHint: 'pricelist',
+          source: 'project_intake',
+        });
+        if (result.error) throw new Error(result.error);
+        storagePaths.pricelist = result.storagePath;
+      }
+
+      // Step 2: Call Edge Function with storage paths only (JSON mode, no file content)
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
-        body: formData,
+        body: {
+          storagePaths,
+          autoCreateContext: true,
+        },
       });
 
       if (fnError) throw fnError;
