@@ -6,9 +6,11 @@
  * - Haushaltsrechnung
  * - InvestmentSliderPanel
  * - DetailTable40Jahre
+ * 
+ * PHASE 2 FIX: Reads zvE/equity/maritalStatus from URL params
  */
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Heart,
@@ -41,6 +43,7 @@ interface ListingData {
   title: string;
   description: string;
   asking_price: number;
+  sale_price_fixed: number | null;
   property_type: string;
   address: string;
   address_house_no?: string | null;
@@ -58,16 +61,31 @@ interface ListingData {
 export default function Kaufy2026Expose() {
   const { publicId } = useParams<{ publicId: string }>();
   const navigate = useNavigate();
+  const [urlParams] = useSearchParams();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
-  const [params, setParams] = useState<CalculationInput>({
-    ...defaultInput,
-    purchasePrice: 250000,
-    monthlyRent: 800,
-  });
+  // PHASE 2: Read search params from URL (persisted from Kaufy2026Home)
+  const initialParams = useMemo(() => {
+    const zvE = parseInt(urlParams.get('zvE') || '60000', 10);
+    const equity = parseInt(urlParams.get('equity') || '50000', 10);
+    const maritalStatus = (urlParams.get('status') as 'single' | 'married') || 'single';
+    const hasChurchTax = urlParams.get('kirchensteuer') === '1';
+    
+    return {
+      ...defaultInput,
+      taxableIncome: zvE,
+      equity,
+      maritalStatus,
+      hasChurchTax,
+      purchasePrice: 250000,
+      monthlyRent: 800,
+    };
+  }, [urlParams]);
 
-  // Fetch listing data
+  const [params, setParams] = useState<CalculationInput>(initialParams);
+
+  // Fetch listing data - PHASE 3: Use sale_price_fixed if available
   const { data: listing, isLoading } = useQuery({
     queryKey: ['kaufy2026-listing', publicId],
     queryFn: async () => {
@@ -81,6 +99,7 @@ export default function Kaufy2026Expose() {
           title,
           description,
           asking_price,
+          sale_price_fixed,
           property_id,
           properties!inner (
             id,
@@ -109,6 +128,7 @@ export default function Kaufy2026Expose() {
             title,
             description,
             asking_price,
+            sale_price_fixed,
             property_id,
             properties!inner (
               id,
@@ -136,6 +156,9 @@ export default function Kaufy2026Expose() {
 
       const props = data.properties as any;
       const annualIncome = props?.annual_income || 0;
+      
+      // PHASE 3: Use sale_price_fixed if set, otherwise asking_price
+      const effectivePrice = (data as any).sale_price_fixed || data.asking_price || 0;
 
       return {
         id: data.id,
@@ -143,7 +166,8 @@ export default function Kaufy2026Expose() {
         property_id: (data as any).property_id || props?.id,
         title: data.title || 'Immobilie',
         description: data.description || '',
-        asking_price: data.asking_price || 0,
+        asking_price: effectivePrice,
+        sale_price_fixed: (data as any).sale_price_fixed || null,
         property_type: props?.property_type || 'apartment',
         address: props?.address || '',
         address_house_no: props?.address_house_no || null,

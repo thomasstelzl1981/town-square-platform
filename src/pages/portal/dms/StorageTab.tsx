@@ -66,13 +66,19 @@ const SYSTEM_FOLDERS = [
   { key: 'sonstiges', name: 'Sonstiges' },
 ];
 
-// Module root folders (now handled by DB trigger)
+// Module root folders - PHASE 5: Extended with all modules
 const MODULE_ROOT_FOLDERS = [
+  { key: 'MOD_02_ROOT', name: 'KI Office', module_code: 'MOD_02' },
+  { key: 'MOD_03_ROOT', name: 'DMS', module_code: 'MOD_03' },
   { key: 'MOD_04_ROOT', name: 'Immobilien', module_code: 'MOD_04' },
+  { key: 'MOD_05_ROOT', name: 'MSV', module_code: 'MOD_05' },
   { key: 'MOD_06_ROOT', name: 'Verkauf', module_code: 'MOD_06' },
   { key: 'MOD_07_ROOT', name: 'Finanzierung', module_code: 'MOD_07' },
+  { key: 'MOD_08_ROOT', name: 'Investments', module_code: 'MOD_08' },
+  { key: 'MOD_13_ROOT', name: 'Projekte', module_code: 'MOD_13' },
   { key: 'MOD_16_ROOT', name: 'Sanierung', module_code: 'MOD_16' },
   { key: 'MOD_17_ROOT', name: 'Car-Management', module_code: 'MOD_17' },
+  { key: 'TRASH_ROOT', name: 'Papierkorb', module_code: 'SYSTEM' },
 ];
 
 export function StorageTab() {
