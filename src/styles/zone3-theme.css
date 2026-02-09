@@ -250,7 +250,8 @@ html.theme-sot-dark {
   background: #ffffff;
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  overflow-x: clip;      /* Horizontal für border-radius */
+  overflow-y: visible;   /* Vertikal für sticky-Support */
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
 }
