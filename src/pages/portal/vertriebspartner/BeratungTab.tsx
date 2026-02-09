@@ -1,10 +1,10 @@
 /**
  * BeratungTab — MOD-09 Vertriebspartner Investment-Beratung
  * 
- * "Geldmaschinen-Flow" — Das Kerngeschäft:
- * 1. Eingabe: zVE, Eigenkapital, Güterstand, Kirche
- * 2. Grid: Property-Kacheln mit berechneten Metrics
- * 3. Detail: Interaktives Exposé mit Slidern (Modal)
+ * REFAKTORISIERT: Nutzt jetzt InvestmentResultTile (wie MOD-08)
+ * - Keine Provisions-Anzeige (showProvision=false)
+ * - Metrics-Struktur wie MOD-08
+ * - Navigation zu Full-Page Exposé
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -12,17 +12,70 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Building2 } from 'lucide-react';
 
-import {
-  PartnerSearchForm,
-  PartnerPropertyGrid,
-  PartnerExposeModal,
-  type PartnerSearchParams,
-  type ListingWithMetrics,
-} from '@/components/vertriebspartner';
-
+import { PartnerSearchForm, type PartnerSearchParams } from '@/components/vertriebspartner';
+import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
+
+// Interface for fetched listings
+interface RawListing {
+  id: string;
+  public_id: string | null;
+  title: string;
+  asking_price: number;
+  commission_rate: number | null;
+  property_address: string;
+  property_city: string;
+  property_type: string | null;
+  total_area_sqm: number | null;
+  annual_rent: number;
+  hero_image_path: string | null;
+}
+
+// Interface matching InvestmentResultTile's PublicListing
+interface PublicListing {
+  listing_id: string;
+  public_id: string;
+  title: string;
+  asking_price: number;
+  property_type: string;
+  address: string;
+  city: string;
+  postal_code: string | null;
+  total_area_sqm: number | null;
+  unit_count: number;
+  monthly_rent_total: number;
+  hero_image_path?: string | null;
+  partner_commission_rate?: number | null;
+}
+
+// Metrics interface matching InvestmentResultTile
+interface InvestmentMetrics {
+  monthlyBurden: number;
+  roiAfterTax: number;
+  loanAmount: number;
+  yearlyInterest?: number;
+  yearlyRepayment?: number;
+  yearlyTaxSavings?: number;
+}
+
+// Transform raw listing to PublicListing format
+const transformToPublicListing = (listing: RawListing): PublicListing => ({
+  listing_id: listing.id,
+  public_id: listing.public_id || '',
+  title: listing.title,
+  asking_price: listing.asking_price,
+  property_type: listing.property_type || 'apartment',
+  address: listing.property_address,
+  city: listing.property_city,
+  postal_code: null,
+  total_area_sqm: listing.total_area_sqm,
+  unit_count: 1,
+  monthly_rent_total: listing.annual_rent / 12,
+  hero_image_path: listing.hero_image_path,
+  // NOTE: Keine partner_commission_rate hier, da showProvision=false
+});
 
 const BeratungTab = () => {
   // Search parameters
@@ -34,14 +87,7 @@ const BeratungTab = () => {
   });
   
   const [hasSearched, setHasSearched] = useState(false);
-  const [metricsCache, setMetricsCache] = useState<Record<string, {
-    cashFlowBeforeTax: number;
-    taxSavings: number;
-    netBurden: number;
-  }>>({});
-  
-  // Selected listing for modal
-  const [selectedListing, setSelectedListing] = useState<ListingWithMetrics | null>(null);
+  const [metricsCache, setMetricsCache] = useState<Record<string, InvestmentMetrics>>({});
   
   // Excluded listings (from catalog)
   const { data: selections = [] } = usePartnerSelections();
@@ -89,14 +135,12 @@ const BeratungTab = () => {
       return listingsData.map((l: any) => {
         const props = l.properties;
         const annualRent = props?.annual_income || 0;
-        const price = l.asking_price || 0;
-        const grossYield = price > 0 ? (annualRent / price) * 100 : null;
         
         return {
           id: l.id,
           public_id: l.public_id,
           title: l.title || 'Objekt',
-          asking_price: price,
+          asking_price: l.asking_price || 0,
           commission_rate: l.commission_rate,
           property_address: props?.address || '',
           property_city: props?.city || '',
@@ -104,16 +148,12 @@ const BeratungTab = () => {
           total_area_sqm: props?.total_area_sqm,
           annual_rent: annualRent,
           hero_image_path: imageMap.get(props.id) || null,
-          grossYield,
-          cashFlowBeforeTax: null,
-          taxSavings: null,
-          netBurden: null,
-        } as ListingWithMetrics;
+        } as RawListing;
       });
     },
   });
 
-  // Calculate metrics for all listings - FIX: use fresh data from refetch
+  // Calculate metrics for all listings (like MOD-08)
   const handleSearch = useCallback(async () => {
     // First fetch fresh listings
     const { data: freshListings } = await refetch();
@@ -124,10 +164,10 @@ const BeratungTab = () => {
       return;
     }
 
-    const newCache: Record<string, any> = {};
+    const newCache: Record<string, InvestmentMetrics> = {};
     
     // Calculate metrics for ALL listings in parallel
-    await Promise.all(listingsToProcess.map(async (listing: any) => {
+    await Promise.all(listingsToProcess.map(async (listing: RawListing) => {
       const monthlyRent = listing.annual_rent / 12;
       if (monthlyRent <= 0 || listing.asking_price <= 0) return;
       
@@ -143,13 +183,15 @@ const BeratungTab = () => {
 
       const result = await calculate(input);
       if (result) {
-        const yearlyRent = listing.annual_rent;
-        const yearlyRate = result.summary.yearlyInterest + result.summary.yearlyRepayment;
-        const cashFlowBeforeTax = (yearlyRent - yearlyRate) / 12;
-        const taxSavings = result.summary.yearlyTaxSavings / 12;
-        const netBurden = result.summary.monthlyBurden;
-        
-        newCache[listing.id] = { cashFlowBeforeTax, taxSavings, netBurden };
+        // Metrics-Struktur wie MOD-08
+        newCache[listing.id] = {
+          monthlyBurden: result.summary.monthlyBurden,
+          roiAfterTax: result.summary.roiAfterTax,
+          loanAmount: result.summary.loanAmount,
+          yearlyInterest: result.summary.yearlyInterest,
+          yearlyRepayment: result.summary.yearlyRepayment,
+          yearlyTaxSavings: result.summary.yearlyTaxSavings,
+        };
       }
     }));
 
@@ -158,18 +200,10 @@ const BeratungTab = () => {
     setHasSearched(true);
   }, [searchParams, calculate, refetch]);
 
-  // Merge cached metrics into listings
-  const listingsWithMetrics = useMemo(() => {
-    return rawListings.map(listing => ({
-      ...listing,
-      ...metricsCache[listing.id],
-    }));
-  }, [rawListings, metricsCache]);
-
   // Filter out excluded listings for display
   const visibleListings = useMemo(() => {
-    return listingsWithMetrics.filter(l => !excludedIds.has(l.id));
-  }, [listingsWithMetrics, excludedIds]);
+    return rawListings.filter(l => !excludedIds.has(l.id));
+  }, [rawListings, excludedIds]);
 
   const isLoading = isLoadingListings || isCalculating;
 
@@ -193,7 +227,7 @@ const BeratungTab = () => {
         )}
       </div>
 
-      {/* Compact Search Form */}
+      {/* Compact Search Form (wie MOD-08) */}
       <PartnerSearchForm
         value={searchParams}
         onChange={setSearchParams}
@@ -201,14 +235,28 @@ const BeratungTab = () => {
         isLoading={isLoading}
       />
 
-      {/* Property Grid */}
+      {/* Property Grid - InvestmentResultTile (wie MOD-08) */}
       {hasSearched && (
-        <PartnerPropertyGrid
-          listings={visibleListings}
-          onSelect={(listing) => setSelectedListing(listing)}
-          isLoading={isLoading}
-          emptyMessage="Keine Objekte im Partner-Netzwerk verfügbar"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleListings.length === 0 ? (
+            <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
+              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                Keine Objekte im Partner-Netzwerk verfügbar
+              </p>
+            </div>
+          ) : (
+            visibleListings.map((listing) => (
+              <InvestmentResultTile
+                key={listing.id}
+                listing={transformToPublicListing(listing)}
+                metrics={metricsCache[listing.id] || null}
+                showProvision={false}
+                linkPrefix="/portal/vertriebspartner/beratung/objekt"
+              />
+            ))
+          )}
+        </div>
       )}
 
       {/* Initial State */}
@@ -216,21 +264,13 @@ const BeratungTab = () => {
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
           <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground">
-            Geben Sie die Kundendaten ein und klicken Sie auf "Berechnen"
+            Geben Sie die Kundendaten ein und klicken Sie auf "Ergebnisse anzeigen"
           </p>
           <p className="text-sm text-muted-foreground mt-1">
             Die Netto-Belastung wird für jedes Objekt individuell berechnet
           </p>
         </div>
       )}
-
-      {/* Expose Modal */}
-      <PartnerExposeModal
-        listing={selectedListing}
-        isOpen={!!selectedListing}
-        onClose={() => setSelectedListing(null)}
-        initialParams={searchParams}
-      />
     </div>
   );
 };
