@@ -9,6 +9,8 @@ import {
 import { FileUploader } from '@/components/shared/FileUploader';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import type { UploadedFileInfo } from '@/hooks/useUniversalUpload';
+import { UploadResultList } from '@/components/shared/UploadResultCard';
 
 interface DocumentUploadSectionProps {
   requestId: string;
@@ -78,6 +80,7 @@ const DOCUMENT_CATEGORIES: DocumentCategory[] = [
 
 export function DocumentUploadSection({ requestId, storageFolderId, readOnly = false }: DocumentUploadSectionProps) {
   const [uploadingCategory, setUploadingCategory] = React.useState<string | null>(null);
+  const [uploadedFilesByCategory, setUploadedFilesByCategory] = React.useState<Record<string, UploadedFileInfo[]>>({});
   const { upload: universalUpload } = useUniversalUpload();
 
   const handleUpload = async (categoryId: string, files: File[]) => {
@@ -94,9 +97,15 @@ export function DocumentUploadSection({ requestId, storageFolderId, readOnly = f
           objectId: requestId,
           parentNodeId: storageFolderId || undefined,
           docTypeHint: categoryId,
-          triggerAI: true,
+          triggerAI: false,
           parseMode: 'financing',
           source: 'document_checklist',
+          onFileUploaded: (fileInfo) => {
+            setUploadedFilesByCategory(prev => ({
+              ...prev,
+              [categoryId]: [...(prev[categoryId] || []), fileInfo],
+            }));
+          },
         });
 
         if (result.error) throw new Error(result.error);
@@ -145,9 +154,10 @@ export function DocumentUploadSection({ requestId, storageFolderId, readOnly = f
       {/* Document Categories */}
       <div className="grid gap-4">
         {DOCUMENT_CATEGORIES.map((category) => {
-          const uploadedCount = category.files.filter(f => f.uploaded).length;
+          const categoryUploadedFiles = uploadedFilesByCategory[category.id] || [];
+          const uploadedCount = categoryUploadedFiles.length;
           const totalCount = category.files.length;
-          const isComplete = uploadedCount === totalCount;
+          const isComplete = uploadedCount >= totalCount;
           const isUploading = uploadingCategory === category.id;
 
           return (
@@ -201,6 +211,13 @@ export function DocumentUploadSection({ requestId, storageFolderId, readOnly = f
                     hint="PDF, JPG oder PNG (max. 10MB pro Datei)"
                     maxSize={10 * 1024 * 1024}
                     disabled={isUploading}
+                  />
+                )}
+                {categoryUploadedFiles.length > 0 && (
+                  <UploadResultList
+                    files={categoryUploadedFiles}
+                    status="uploaded"
+                    compact
                   />
                 )}
               </CardContent>

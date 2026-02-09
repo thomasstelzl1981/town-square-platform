@@ -1,13 +1,14 @@
 /**
  * Quick Intake Uploader - Upload Exposé + Preisliste for AI-powered project creation
- * MOD-13 PROJEKTE - Phase E
+ * MOD-13 PROJEKTE
  * 
  * Multi-step workflow:
- * 1. UPLOAD - Files selected locally
- * 2. UPLOADING - Files being uploaded to storage
- * 3. ANALYZING - AI extraction in progress
- * 4. REVIEW - User reviews/edits extracted data
- * 5. CREATING - Project being created
+ * 1. IDLE - Files selected locally via dropzones
+ * 2. UPLOADING - Files being uploaded via useUniversalUpload (Phase 1)
+ * 3. UPLOADED - Files persisted, UploadResultCards shown with preview links
+ * 4. ANALYZING - AI extraction in progress (user-triggered)
+ * 5. REVIEW - User reviews/edits extracted data
+ * 6. CREATING - Project being created
  */
 
 import { useState, useCallback } from 'react';
@@ -24,12 +25,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import type { UploadedFileInfo } from '@/hooks/useUniversalUpload';
+import { UploadResultCard } from '@/components/shared/UploadResultCard';
 
 interface QuickIntakeUploaderProps {
   onSuccess?: (projectId: string) => void;
 }
 
-type UploadPhase = 'idle' | 'uploading' | 'analyzing' | 'review' | 'creating';
+type UploadPhase = 'idle' | 'uploading' | 'uploaded' | 'analyzing' | 'review' | 'creating';
 
 interface ExtractedData {
   projectName: string;
@@ -47,11 +51,6 @@ interface ExtractedData {
   }>;
 }
 
-interface UploadedStoragePath {
-  expose?: string;
-  pricelist?: string;
-}
-
 export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
   const [open, setOpen] = useState(false);
   const [exposeFile, setExposeFile] = useState<File | null>(null);
@@ -60,9 +59,13 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
   const [phase, setPhase] = useState<UploadPhase>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [storagePaths, setStoragePaths] = useState<UploadedStoragePath>({});
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   
+  // Uploaded file info from Phase 1
+  const [uploadedExpose, setUploadedExpose] = useState<UploadedFileInfo | null>(null);
+  const [uploadedPricelist, setUploadedPricelist] = useState<UploadedFileInfo | null>(null);
+  
+  const { upload: universalUpload } = useUniversalUpload();
   const { contexts, defaultContext, isLoading: loadingContexts } = useDeveloperContexts();
 
   // Expose dropzone
@@ -75,9 +78,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
 
   const { getRootProps: getExposeRootProps, getInputProps: getExposeInputProps, isDragActive: isExposeDragActive } = useDropzone({
     onDrop: onDropExpose,
-    accept: {
-      'application/pdf': ['.pdf'],
-    },
+    accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
     multiple: false,
     disabled: phase !== 'idle',
@@ -104,7 +105,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     disabled: phase !== 'idle',
   });
 
-  // Step 1: Upload files to storage
+  // Step 1: Upload files via useUniversalUpload (Phase 1 only)
   const handleUploadFiles = async () => {
     if (!exposeFile && !pricelistFile) {
       setError('Bitte laden Sie mindestens eine Datei hoch.');
@@ -122,77 +123,42 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     setUploadProgress(0);
 
     try {
-      const paths: UploadedStoragePath = {};
-      const timestamp = Date.now();
       const totalFiles = (exposeFile ? 1 : 0) + (pricelistFile ? 1 : 0);
       let uploadedCount = 0;
 
-      // Upload expose with explicit MIME type (PHASE 6: Magic Intake Fix)
       if (exposeFile) {
-        console.log('[QuickIntake] Uploading expose:', {
-          name: exposeFile.name,
-          type: exposeFile.type,
-          size: exposeFile.size,
+        const result = await universalUpload(exposeFile, {
+          moduleCode: 'MOD_13',
+          entityId: contextId,
+          docTypeHint: 'expose',
+          source: 'quick_intake',
+          triggerAI: false,
+          onFileUploaded: (info) => setUploadedExpose(info),
         });
-        
-        const exposePath = `intake/${contextId}/${timestamp}_expose_${exposeFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('project-documents')
-          .upload(exposePath, exposeFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: exposeFile.type || 'application/pdf',
-          });
-
-        if (uploadError) {
-          console.error('[QuickIntake] Expose upload error:', uploadError);
-          throw new Error(`Exposé-Upload fehlgeschlagen: ${uploadError.message}`);
-        }
-        paths.expose = exposePath;
+        if (result.error) throw new Error(result.error);
         uploadedCount++;
         setUploadProgress((uploadedCount / totalFiles) * 100);
       }
 
-      // Upload pricelist with explicit MIME type (PHASE 6)
       if (pricelistFile) {
-        console.log('[QuickIntake] Uploading pricelist:', {
-          name: pricelistFile.name,
-          type: pricelistFile.type,
-          size: pricelistFile.size,
+        const result = await universalUpload(pricelistFile, {
+          moduleCode: 'MOD_13',
+          entityId: contextId,
+          docTypeHint: 'pricelist',
+          source: 'quick_intake',
+          triggerAI: false,
+          onFileUploaded: (info) => setUploadedPricelist(info),
         });
-        
-        const pricelistPath = `intake/${contextId}/${timestamp}_pricelist_${pricelistFile.name}`;
-        const mimeType = pricelistFile.type || 
-          (pricelistFile.name.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
-           pricelistFile.name.endsWith('.xls') ? 'application/vnd.ms-excel' :
-           pricelistFile.name.endsWith('.csv') ? 'text/csv' : 'application/pdf');
-        
-        const { error: uploadError } = await supabase.storage
-          .from('project-documents')
-          .upload(pricelistPath, pricelistFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: mimeType,
-          });
-
-        if (uploadError) {
-          console.error('[QuickIntake] Pricelist upload error:', uploadError);
-          throw new Error(`Preislisten-Upload fehlgeschlagen: ${uploadError.message}`);
-        }
-        paths.pricelist = pricelistPath;
+        if (result.error) throw new Error(result.error);
         uploadedCount++;
         setUploadProgress((uploadedCount / totalFiles) * 100);
       }
 
-      setStoragePaths(paths);
       setUploadProgress(100);
+      setPhase('uploaded');
       toast.success('Dateien hochgeladen', {
         description: 'Bereit für die KI-Analyse.',
       });
-      
-      // Auto-start analysis after successful upload
-      setTimeout(() => handleStartAnalysis(paths, contextId), 500);
-      
     } catch (err) {
       console.error('Upload error:', err);
       setError(err instanceof Error ? err.message : 'Fehler beim Hochladen');
@@ -200,18 +166,24 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     }
   };
 
-  // Step 2: Start AI analysis
-  const handleStartAnalysis = async (paths: UploadedStoragePath, contextId: string) => {
+  // Step 2: Start AI analysis (user-triggered)
+  const handleStartAnalysis = async () => {
+    const contextId = selectedContextId || defaultContext?.id;
+    if (!contextId) return;
+
+    const storagePaths: Record<string, string> = {};
+    if (uploadedExpose?.storagePath) storagePaths.expose = uploadedExpose.storagePath;
+    if (uploadedPricelist?.storagePath) storagePaths.pricelist = uploadedPricelist.storagePath;
+
     setPhase('analyzing');
     setError(null);
 
     try {
-      // Call edge function with storage paths instead of raw files
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
         body: {
-          storagePaths: paths,
+          storagePaths,
           contextId,
-          mode: 'analyze', // Only analyze, don't create project yet
+          mode: 'analyze',
         },
       });
 
@@ -225,24 +197,19 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
         });
       } else if (data?.error) {
         throw new Error(data.error);
+      } else if (data?.projectId) {
+        toast.success('Projekt erstellt');
+        setOpen(false);
+        resetForm();
+        onSuccess?.(data.projectId);
+        return;
       } else {
-        // If the edge function created the project directly (legacy mode)
-        if (data?.projectId) {
-          toast.success('Projekt erstellt', {
-            description: 'Sie werden zur Projektakte weitergeleitet.',
-          });
-          setOpen(false);
-          resetForm();
-          onSuccess?.(data.projectId);
-          return;
-        }
         throw new Error('Keine Daten von der Analyse erhalten');
       }
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'Fehler bei der Analyse');
-      // Allow retry from upload phase
-      setPhase('idle');
+      setPhase('uploaded'); // Back to uploaded, allow retry
     }
   };
 
@@ -258,6 +225,10 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
       setError('Keine Verkäufer-Gesellschaft ausgewählt.');
       return;
     }
+
+    const storagePaths: Record<string, string> = {};
+    if (uploadedExpose?.storagePath) storagePaths.expose = uploadedExpose.storagePath;
+    if (uploadedPricelist?.storagePath) storagePaths.pricelist = uploadedPricelist.storagePath;
 
     setPhase('creating');
     setError(null);
@@ -287,7 +258,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     } catch (err) {
       console.error('Create error:', err);
       setError(err instanceof Error ? err.message : 'Fehler beim Erstellen des Projekts');
-      setPhase('review'); // Back to review
+      setPhase('review');
     }
   };
 
@@ -298,13 +269,13 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     setPhase('idle');
     setUploadProgress(0);
     setError(null);
-    setStoragePaths({});
     setExtractedData(null);
+    setUploadedExpose(null);
+    setUploadedPricelist(null);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && phase !== 'idle' && phase !== 'review') {
-      // Prevent closing during processing
+    if (!newOpen && phase !== 'idle' && phase !== 'uploaded' && phase !== 'review') {
       return;
     }
     setOpen(newOpen);
@@ -318,7 +289,6 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     setExtractedData({ ...extractedData, [field]: value });
   };
 
-  // Render phase-specific content
   const renderPhaseContent = () => {
     switch (phase) {
       case 'uploading':
@@ -335,6 +305,33 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
               <Progress value={uploadProgress} className="w-full max-w-xs" />
               <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
             </div>
+          </div>
+        );
+
+      case 'uploaded':
+        return (
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 text-green-700">
+              <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium">Dateien erfolgreich hochgeladen</span>
+            </div>
+            
+            <div className="space-y-2">
+              {uploadedExpose && (
+                <UploadResultCard file={uploadedExpose} status="uploaded" />
+              )}
+              {uploadedPricelist && (
+                <UploadResultCard file={uploadedPricelist} status="uploaded" />
+              )}
+            </div>
+
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Prüfen Sie die Dateien über die Vorschau-Links. Starten Sie dann die KI-Analyse.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -572,7 +569,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
             <Card className="bg-muted/50">
               <CardContent className="pt-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Neuer Workflow:</strong> 1. Dateien hochladen → 2. KI analysiert → 3. Sie prüfen die Daten → 4. Projekt wird erstellt
+                  <strong>Workflow:</strong> 1. Dateien hochladen → 2. Vorschau prüfen → 3. KI-Analyse starten → 4. Daten prüfen → 5. Projekt erstellen
                 </p>
               </CardContent>
             </Card>
@@ -585,6 +582,19 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     const isProcessing = phase === 'uploading' || phase === 'analyzing' || phase === 'creating';
 
     switch (phase) {
+      case 'uploaded':
+        return (
+          <>
+            <Button variant="outline" onClick={resetForm}>
+              Zurück
+            </Button>
+            <Button onClick={handleStartAnalysis} className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              KI-Analyse starten
+            </Button>
+          </>
+        );
+
       case 'review':
         return (
           <>
@@ -610,7 +620,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
               className="gap-2"
             >
               <Upload className="h-4 w-4" />
-              Dateien hochladen & analysieren
+              Dateien hochladen
             </Button>
           </>
         );
@@ -642,6 +652,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
           <DialogDescription>
             {phase === 'idle' && 'Laden Sie Exposé und/oder Preisliste hoch.'}
             {phase === 'uploading' && 'Dateien werden in den Speicher übertragen...'}
+            {phase === 'uploaded' && 'Dateien hochgeladen — prüfen Sie die Vorschau.'}
             {phase === 'analyzing' && 'KI extrahiert Projektdaten und Einheiten...'}
             {phase === 'review' && 'Überprüfen und korrigieren Sie die extrahierten Daten.'}
             {phase === 'creating' && 'Projekt wird mit den bestätigten Daten erstellt...'}

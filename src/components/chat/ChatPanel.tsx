@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileUploader } from "@/components/shared/FileUploader";
+import { UploadResultCard } from "@/components/shared/UploadResultCard";
 import { VoiceButton } from "@/components/armstrong/VoiceButton";
 import { useArmstrongVoice } from "@/hooks/useArmstrongVoice";
 import { useArmstrongAdvisor } from "@/hooks/useArmstrongAdvisor";
 import { MessageRenderer } from "@/components/chat/MessageRenderer";
+import { useUniversalUpload } from "@/hooks/useUniversalUpload";
+import type { UploadedFileInfo } from "@/hooks/useUniversalUpload";
 import { 
   Send, 
   X, 
@@ -52,6 +55,15 @@ export interface ChatPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   isMinimized?: boolean;
 }
 
+const MODULE_MAP: Record<string, string> = {
+  'Portfolio': 'MOD_04',
+  'Immobilien': 'MOD_04',
+  'Finanzierung': 'MOD_07',
+  'Projekte': 'MOD_13',
+  'Pv': 'MOD_14',
+  'Services': 'MOD_16',
+};
+
 const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
   (
     {
@@ -71,7 +83,9 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     ref
   ) => {
     const [input, setInput] = React.useState("");
-    const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
+    
+    // Universal upload hook
+    const { upload: universalUpload, uploadedFiles, clearUploadedFiles, isUploading } = useUniversalUpload();
     
     // Armstrong Advisor integration
     const advisor = useArmstrongAdvisor();
@@ -87,13 +101,18 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       }
     }, [voice]);
 
-    const handleFilesSelected = (files: File[]) => {
-      setUploadedFiles(prev => [...prev, ...files]);
+    const handleFilesSelected = async (files: File[]) => {
+      const moduleCode = context?.module ? MODULE_MAP[context.module] : undefined;
+      
+      for (const file of files) {
+        await universalUpload(file, {
+          moduleCode,
+          source: 'armstrong_chat',
+          triggerAI: false,
+        });
+      }
+      
       onFileUpload?.(files);
-    };
-
-    const removeFile = (index: number) => {
-      setUploadedFiles(prev => prev.filter((_, i) => i !== index));
     };
     
     const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -106,7 +125,6 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
 
     const handleSend = () => {
       if (input.trim()) {
-        // Use advisor if no external handler provided
         if (externalOnSend) {
           externalOnSend(input.trim());
         } else {
@@ -130,12 +148,10 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       fullscreen: "fixed inset-0 z-50",
     };
 
-    // Context breadcrumb
     const contextPath = [context?.zone, context?.module, context?.entity]
       .filter(Boolean)
       .join(" > ");
 
-    // Use internal messages from advisor, or external if provided
     const displayMessages = externalMessages || advisor.messages;
 
     return (
@@ -170,7 +186,6 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {/* Clear conversation button */}
               {displayMessages.length > 0 && (
                 <Button 
                   variant="ghost" 
@@ -294,27 +309,40 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
             accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
             multiple
             className="text-xs"
+            disabled={isUploading}
           >
             <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer py-1">
-              <Upload className="h-3.5 w-3.5" />
-              <span>Upload</span>
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Wird hochgeladen...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Upload</span>
+                </>
+              )}
             </div>
           </FileUploader>
           {uploadedFiles.length > 0 && (
             <div className="mt-2 space-y-1">
-              {uploadedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1">
-                  <span className="truncate max-w-[100px]">{file.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0"
-                    onClick={() => removeFile(index)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
+              {uploadedFiles.map((file) => (
+                <UploadResultCard
+                  key={file.documentId}
+                  file={file}
+                  status="uploaded"
+                  compact
+                />
               ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-6 w-full"
+                onClick={clearUploadedFiles}
+              >
+                Liste leeren
+              </Button>
             </div>
           )}
         </div>
@@ -322,7 +350,6 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
         {/* Input - Floating iOS Style with Voice Button */}
         <div className="p-3">
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/50 backdrop-blur-sm">
-            {/* Voice Button - Prominent Left Position */}
             <VoiceButton
               isListening={voice.isListening}
               isProcessing={voice.isProcessing}
