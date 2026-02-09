@@ -10471,6 +10471,485 @@ export type Database = {
           },
         ]
       }
+      social_assets: {
+        Row: {
+          asset_type: string
+          created_at: string
+          document_id: string
+          id: string
+          owner_user_id: string
+          sort_order: number
+          tags: string[] | null
+          tenant_id: string
+        }
+        Insert: {
+          asset_type?: string
+          created_at?: string
+          document_id: string
+          id?: string
+          owner_user_id: string
+          sort_order?: number
+          tags?: string[] | null
+          tenant_id: string
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          owner_user_id?: string
+          sort_order?: number
+          tags?: string[] | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_assets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_drafts: {
+        Row: {
+          assets_used: string[] | null
+          carousel: Json | null
+          content_facebook: string | null
+          content_instagram: string | null
+          content_linkedin: string | null
+          created_at: string
+          draft_title: string | null
+          generation_metadata: Json | null
+          id: string
+          inbound_item_id: string | null
+          inspiration_source_ids: string[] | null
+          origin: string
+          owner_user_id: string
+          planned_at: string | null
+          platform_targets: string[] | null
+          posted_at: string | null
+          status: string
+          storyboard: Json | null
+          tenant_id: string
+          topic_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assets_used?: string[] | null
+          carousel?: Json | null
+          content_facebook?: string | null
+          content_instagram?: string | null
+          content_linkedin?: string | null
+          created_at?: string
+          draft_title?: string | null
+          generation_metadata?: Json | null
+          id?: string
+          inbound_item_id?: string | null
+          inspiration_source_ids?: string[] | null
+          origin?: string
+          owner_user_id: string
+          planned_at?: string | null
+          platform_targets?: string[] | null
+          posted_at?: string | null
+          status?: string
+          storyboard?: Json | null
+          tenant_id: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assets_used?: string[] | null
+          carousel?: Json | null
+          content_facebook?: string | null
+          content_instagram?: string | null
+          content_linkedin?: string | null
+          created_at?: string
+          draft_title?: string | null
+          generation_metadata?: Json | null
+          id?: string
+          inbound_item_id?: string | null
+          inspiration_source_ids?: string[] | null
+          origin?: string
+          owner_user_id?: string
+          planned_at?: string | null
+          platform_targets?: string[] | null
+          posted_at?: string | null
+          status?: string
+          storyboard?: Json | null
+          tenant_id?: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_drafts_inbound_item_id_fkey"
+            columns: ["inbound_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_inbound_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_drafts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "social_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_inbound_items: {
+        Row: {
+          created_at: string
+          desired_effect: string | null
+          id: string
+          media_document_ids: string[] | null
+          moment_voice_text: string | null
+          one_liner: string | null
+          owner_user_id: string
+          personal_level: number | null
+          source: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          desired_effect?: string | null
+          id?: string
+          media_document_ids?: string[] | null
+          moment_voice_text?: string | null
+          one_liner?: string | null
+          owner_user_id: string
+          personal_level?: number | null
+          source?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          desired_effect?: string | null
+          id?: string
+          media_document_ids?: string[] | null
+          moment_voice_text?: string | null
+          one_liner?: string | null
+          owner_user_id?: string
+          personal_level?: number | null
+          source?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_inbound_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_inspiration_samples: {
+        Row: {
+          content_text: string | null
+          created_at: string
+          document_id: string | null
+          extracted_patterns: Json | null
+          id: string
+          sample_type: string
+          source_id: string
+          tenant_id: string
+        }
+        Insert: {
+          content_text?: string | null
+          created_at?: string
+          document_id?: string | null
+          extracted_patterns?: Json | null
+          id?: string
+          sample_type?: string
+          source_id: string
+          tenant_id: string
+        }
+        Update: {
+          content_text?: string | null
+          created_at?: string
+          document_id?: string | null
+          extracted_patterns?: Json | null
+          id?: string
+          sample_type?: string
+          source_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_inspiration_samples_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "social_inspiration_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_inspiration_samples_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_inspiration_sources: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          owner_user_id: string
+          platform: string
+          profile_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          owner_user_id: string
+          platform?: string
+          profile_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          owner_user_id?: string
+          platform?: string
+          profile_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_inspiration_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_metrics: {
+        Row: {
+          clicks: number | null
+          collected_at: string
+          comments: number | null
+          created_at: string
+          draft_id: string
+          id: string
+          impressions: number | null
+          likes: number | null
+          platform: string
+          saves: number | null
+          tenant_id: string
+        }
+        Insert: {
+          clicks?: number | null
+          collected_at?: string
+          comments?: number | null
+          created_at?: string
+          draft_id: string
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          platform?: string
+          saves?: number | null
+          tenant_id: string
+        }
+        Update: {
+          clicks?: number | null
+          collected_at?: string
+          comments?: number | null
+          created_at?: string
+          draft_id?: string
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          platform?: string
+          saves?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_metrics_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "social_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_personality_profiles: {
+        Row: {
+          answers_raw: Json | null
+          audit_version: number
+          created_at: string
+          id: string
+          owner_user_id: string
+          personality_vector: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers_raw?: Json | null
+          audit_version?: number
+          created_at?: string
+          id?: string
+          owner_user_id: string
+          personality_vector?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers_raw?: Json | null
+          audit_version?: number
+          created_at?: string
+          id?: string
+          owner_user_id?: string
+          personality_vector?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_personality_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_topics: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          owner_user_id: string
+          priority: number
+          tenant_id: string
+          topic_briefing: Json | null
+          topic_label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_user_id: string
+          priority?: number
+          tenant_id: string
+          topic_briefing?: Json | null
+          topic_label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_user_id?: string
+          priority?: number
+          tenant_id?: string
+          topic_briefing?: Json | null
+          topic_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_video_jobs: {
+        Row: {
+          created_at: string
+          draft_id: string
+          id: string
+          input_payload: Json | null
+          job_type: string
+          provider: string
+          result_document_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          id?: string
+          input_payload?: Json | null
+          job_type?: string
+          provider?: string
+          result_document_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          id?: string
+          input_payload?: Json | null
+          job_type?: string
+          provider?: string
+          result_document_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_video_jobs_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "social_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_video_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       storage_nodes: {
         Row: {
           auto_created: boolean | null
