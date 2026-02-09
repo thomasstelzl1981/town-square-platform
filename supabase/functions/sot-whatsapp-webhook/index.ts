@@ -170,19 +170,16 @@ serve(async (req) => {
 
           if (!storedMsg) continue;
 
-          // Update unread count
-          await supabase.rpc("increment_field", {
-            row_id: conv.id,
-            table_name: "whatsapp_conversations",
-            field_name: "unread_count",
-            increment_by: 1,
-          }).then(() => {}).catch(() => {
-            // Fallback: direct update if RPC doesn't exist
-            supabase
-              .from("whatsapp_conversations")
-              .update({ unread_count: (conv as any).unread_count ? (conv as any).unread_count + 1 : 1 })
-              .eq("id", conv.id);
-          });
+          // Update unread count — atomic increment
+          const { data: currentConv } = await supabase
+            .from("whatsapp_conversations")
+            .select("unread_count")
+            .eq("id", conv.id)
+            .single();
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ unread_count: (currentConv?.unread_count ?? 0) + 1 })
+            .eq("id", conv.id);
 
           // Handle media (trigger download if media present)
           if (mediaCount > 0 && msg[msgType]?.id) {

@@ -90,7 +90,12 @@ Der Plan erwaehnt `deleted_at` Spalten fuer GDPR auf `whatsapp_messages` und `wh
 
 ---
 
-## Umsetzungsplan (2 Schritte)
+## Hinweis: deleted_at Spalten (Phase 3+)
+Die GDPR-Spalten `deleted_at` auf `whatsapp_messages` und `whatsapp_accounts` werden in Phase 3+ nachgetragen. Aktuell nicht in der Migration enthalten.
+
+---
+
+## Umsetzungsplan (2 Schritte) — ERLEDIGT
 
 ### Schritt 1: config.toml aktualisieren
 3 Function-Eintraege ergaenzen (verify_jwt = false fuer alle 3 WhatsApp Functions).
