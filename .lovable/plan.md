@@ -1,126 +1,160 @@
 
-# Magic Intake Fix: RLS-Problem und mehrstufiger Upload-Workflow
+# Konsolidierter Gesamtplan: Finanzierungskachel, Query-Fixes und Zinsbindung
 
-## Problem-Analyse
+## Uebersicht
 
-### Symptome
-1. Benutzer lädt Exposé + Preisliste hoch
-2. Button "KI arbeitet..." dreht sich, dann Weiterleitung
-3. "Projekt nicht gefunden" wird angezeigt
-4. Projekt existiert aber in der Datenbank (ID: 83217321-e881-43a2-8822-630a35bc6096)
+Drei Arbeitspakete in einer zusammenhaengenden Implementierung:
 
-### Ursache identifiziert
-Die Edge Function `sot-project-intake` verwendet den **Service Role Key** (umgeht RLS), aber der Frontend-Client verwendet RLS-geschützte Queries. Die RLS-Policy:
+| Paket | Beschreibung | Dateien |
+|-------|-------------|---------|
+| A | Default Zinsbindung auf 10 Jahre + Dropdown im SliderPanel | 2 |
+| B | Query-Fixes: `units_count` aus DB statt hardcoded | 5 |
+| C | Neue Komponente `FinanzierungSummary` + Integration | 6 |
 
-```sql
-tenant_id = (SELECT profiles.active_tenant_id FROM profiles WHERE profiles.id = auth.uid())
-```
+Gesamt: **1 neue Datei**, **12 editierte Dateien**, **0 Migrationen**, **0 Edge-Function-Aenderungen**
 
-Diese Unterabfrage auf `profiles` wird aufgrund der RLS-Policies auf `profiles` nicht korrekt aufgelöst. Das Projekt wird erstellt, ist aber für den Client unsichtbar.
+---
 
-## Lösung: Zwei-Phasen-Ansatz
+## Paket A: Zinsbindung-Korrektur
 
-### Phase 1: RLS-Policy Fix (kritisch)
-Die RLS-Policy muss vereinfacht werden, um die Unterabfrage zu vermeiden:
+### A1 -- Default von 15 auf 10 Jahre
+**Datei:** `src/hooks/useInvestmentEngine.ts`
 
-```sql
--- Neue Policy mit SECURITY DEFINER Funktion
-CREATE OR REPLACE FUNCTION public.get_user_tenant_id()
-RETURNS uuid
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT active_tenant_id FROM profiles WHERE id = auth.uid()
-$$;
+Zeile 60: `termYears: 15` wird zu `termYears: 10`
 
--- RLS-Policy aktualisieren
-DROP POLICY IF EXISTS dev_projects_tenant_access ON dev_projects;
-CREATE POLICY dev_projects_tenant_access ON dev_projects
-  FOR ALL
-  USING (tenant_id = public.get_user_tenant_id())
-  WITH CHECK (tenant_id = public.get_user_tenant_id());
-```
+Wirkt sich automatisch auf alle Stellen aus, die `defaultInput` verwenden (MOD-08, MOD-09, Zone 3).
 
-### Phase 2: Mehrstufiger Workflow (UX-Verbesserung)
+### A2 -- Zinsbindung-Dropdown im SliderPanel
+**Datei:** `src/components/investment/InvestmentSliderPanel.tsx`
 
-Der Benutzer hat richtig erkannt, dass der aktuelle Workflow "zu viel Magic auf einmal" macht. Neuer Ablauf:
+Neues Select-Dropdown "Zinsbindung" mit Optionen 5, 10, 15, 20, 25, 30 Jahre. Position: zwischen Eigenkapital-Slider und Tilgungsrate-Slider. Nutzt die bestehende `update('termYears', value)` Logik.
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    NEUER MAGIC INTAKE WORKFLOW                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Schritt 1: UPLOAD                                                   │
-│  ───────────────────                                                  │
-│  • Dateien in lokalen State (wie jetzt)                              │
-│  • Button: "Dateien hochladen" (nicht "Projekt erstellen")           │
-│  • Fortschrittsanzeige für jeden Upload                              │
-│  • Status: "Hochgeladen" mit Häkchen                                 │
-│                                                                       │
-│  Schritt 2: ANALYSE                                                   │
-│  ───────────────────                                                  │
-│  • Button erscheint erst nach erfolgreichem Upload                   │
-│  • "KI-Analyse starten"                                              │
-│  • Statusanzeige: "Dokumente werden analysiert..."                   │
-│  • Timeout-Handling für große Dateien                                │
-│                                                                       │
-│  Schritt 3: REVIEW                                                    │
-│  ───────────────────                                                  │
-│  • Extrahierte Daten werden inline angezeigt                         │
-│  • Benutzer kann korrigieren BEVOR Projekt erstellt wird             │
-│  • "Projekt anlegen" Button                                          │
-│                                                                       │
-│  Schritt 4: PROJEKT                                                   │
-│  ───────────────────                                                  │
-│  • Projekt wird mit bestätigten Daten erstellt                       │
-│  • Weiterleitung zur Projektakte                                     │
-│  • Query-Cache wird invalidiert                                      │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
+Label: "Zinsbindung"          Wert: [10 Jahre v]
+Optionen: 5 | 10 | 15 | 20 | 25 | 30
 ```
 
-## Technische Änderungen
+---
 
-### 1. Datenbank-Migration
-Neue SECURITY DEFINER Funktion erstellen, die RLS auf `profiles` umgeht:
+## Paket B: Query-Fixes (units_count)
 
-- Funktion `get_user_tenant_id()` mit SECURITY DEFINER
-- Anpassung aller tenant-basierten RLS-Policies
+### Problem
+`units_count` ist in 5 Dateien auf `1` hardcoded. Die tatsaechliche Anzahl muss per COUNT auf die `units`-Tabelle ermittelt werden.
 
-### 2. Frontend-Änderungen
+### Loesung
+Nach dem bestehenden Listing-Query wird ein Subquery eingefuegt:
 
-**ProjekteDashboard.tsx**:
-- State-Erweiterung um `uploadPhase: 'idle' | 'uploading' | 'analyzing' | 'review' | 'creating'`
-- Separater Upload-Handler für Storage-Upload
-- Review-Card mit extrahierten Daten
-- Verzögertes `navigate()` mit Query-Invalidation
+```typescript
+const { count: unitsCount } = await supabase
+  .from('units')
+  .select('id', { count: 'exact', head: true })
+  .eq('property_id', property.id);
 
-**QuickIntakeUploader.tsx**:
-- Gleiche Änderungen für Dialog-Variante
+// Fallback auf 1 bei NULL/0
+units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1
+```
 
-### 3. Edge Function Split (optional)
+### Betroffene Dateien
 
-Aufteilung der Edge Function in zwei:
-- `sot-project-upload`: Nur Datei-Upload in Storage
-- `sot-project-analyze`: KI-Analyse + Projekt-Erstellung
+| # | Datei | Kontext |
+|---|-------|---------|
+| B1 | `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | Zone 3 Expose |
+| B2 | `src/pages/portal/investments/InvestmentExposePage.tsx` | MOD-08 Expose |
+| B3 | `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` | MOD-09 Expose |
+| B4 | `src/pages/portal/investments/SucheTab.tsx` | MOD-08 Suchliste |
+| B5 | `src/pages/portal/vertriebspartner/BeratungTab.tsx` | MOD-09 Beratungsliste |
+
+Fuer B4/B5 (Listen): Property-IDs werden gebuendelt und per `.in('property_id', ids)` mit Gruppierung abgefragt.
+
+---
+
+## Paket C: Neue Komponente "FinanzierungSummary"
+
+### C1 -- Komponente erstellen
+**Neue Datei:** `src/components/investment/FinanzierungSummary.tsx`
+
+Props:
+```typescript
+interface FinanzierungSummaryProps {
+  purchasePrice: number;
+  equity: number;
+  result: CalculationResult;
+  transferTaxRate?: number;  // Default 6.5%
+  notaryRate?: number;       // Default 2.0%
+  className?: string;
+}
+```
+
+**Sektion 1 -- Kaufpreisaufschluesselung:**
+
+```text
+Kaufpreis                    250.000 EUR
++ Grunderwerbsteuer (6,5%)    16.250 EUR
++ Notar & Grundbuch (2,0%)     5.000 EUR
+----------------------------------------------
+= Gesamtinvestition           271.250 EUR
+- Eigenkapital                 50.000 EUR
+----------------------------------------------
+= Finanzierungsbedarf         221.250 EUR
+```
+
+**Sektion 2 -- Darlehen:**
+
+```text
+Darlehensbetrag              221.250 EUR
+Zinssatz (nominal)              3,80%
+Zinssatz (effektiv)             3,95%
+Zinsen p.a.                    8.408 EUR
+Tilgung p.a.                   4.425 EUR
+Rate p.a.                     12.833 EUR
+Rate / Monat                   1.069 EUR
+Tilgungssatz                    2,00%
+```
+
+Effektiver Zinssatz: Naeherungsformel `nominal * (1 + nominal / 200)`.
+
+### C2 -- Export registrieren
+**Datei:** `src/components/investment/index.ts`
+
+Neue Zeile: `export { FinanzierungSummary } from './FinanzierungSummary';`
+
+### C3 -- Integration in Expose-Seiten
+Platzierung: zwischen `Haushaltsrechnung` und `DetailTable40Jahre`.
+
+| # | Datei |
+|---|-------|
+| C3a | `src/components/investment/InvestmentExposeView.tsx` |
+| C3b | `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` |
+| C3c | `src/pages/portal/investments/InvestmentExposePage.tsx` |
+| C3d | `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` |
+
+Pattern (identisch ueberall):
+```tsx
+{calcResult && (
+  <FinanzierungSummary
+    purchasePrice={listing.asking_price}
+    equity={params.equity}
+    result={calcResult}
+  />
+)}
+```
+
+---
 
 ## Implementierungsreihenfolge
 
-1. **RLS-Fix zuerst** (behebt das sofortige Problem)
-2. **Frontend-Workflow** (verbessert UX und Robustheit)
-3. **Edge Function Split** (optional, für besseres Error-Handling)
+1. **Paket A** zuerst (2 Dateien) -- setzt den korrekten Default, bevor die Engine aufgerufen wird
+2. **Paket C1-C2** (neue Komponente + Export) -- muss existieren, bevor sie integriert wird
+3. **Paket B + C3** parallel (Query-Fixes und Komponenten-Integration in denselben Dateien)
 
-## Risiken und Mitigationen
+---
 
-| Risiko | Mitigation |
-|--------|------------|
-| RLS-Policy-Änderung könnte andere Queries brechen | Testen aller Projekt-bezogenen Features nach Migration |
-| Große Dateien (>5MB) werden nicht KI-analysiert | Bereits implementiert: Benutzer bearbeitet manuell |
-| Timeout bei sehr großen Dateien | Progressives Upload mit Chunks erwägen |
+## Risikobewertung
 
-## Zeithorizont
-
-- Phase 1 (RLS-Fix): 10-15 Minuten
-- Phase 2 (Workflow): 30-45 Minuten
+| Aspekt | Risiko | Begruendung |
+|--------|--------|-------------|
+| Investment Engine | Keins | Keine Aenderung an Edge Function oder Berechnungslogik |
+| MasterGraph / Haushaltsrechnung | Keins | Bestehende Komponenten bleiben unangetastet |
+| MOD-04 Portfolio | Keins | Verwendet eigene Simulation, nicht betroffen |
+| Datenintegritaet | Minimal | units_count-Fallback auf 1 sichert Abwaertskompatibilitaet |
+| Rendering | Minimal | FinanzierungSummary rendert nur bei vorhandenem calcResult |
