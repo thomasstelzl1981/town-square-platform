@@ -44,6 +44,8 @@ export function ArmstrongContainer() {
   const voice = useArmstrongVoice();
   
   // Draggable integration for orb positioning
+  // IMPORTANT: This hook MUST be called unconditionally (Rules of Hooks)
+  // Use disabled flag instead of conditional hook call
   const { 
     position, 
     isDragging, 
@@ -51,7 +53,7 @@ export function ArmstrongContainer() {
     dragStyle,
     dragState,
   } = useDraggable({
-    storageKey: 'armstrong-orb-position-v2', // New key to clear old invalid values
+    storageKey: 'armstrong-orb-position-v2',
     containerSize: { width: 160, height: 160 },
     boundaryPadding: 20,
     bottomOffset: 20,
@@ -59,6 +61,7 @@ export function ArmstrongContainer() {
     disabled: isMobile || voice.isListening || armstrongExpanded,
   });
 
+  // Mount effect - MUST be before early return
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -73,7 +76,7 @@ export function ArmstrongContainer() {
     };
   };
 
-  // File drag handlers
+  // File drag handlers - ALL useCallback hooks MUST be before early return
   const handleFileDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -94,13 +97,11 @@ export function ArmstrongContainer() {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       toggleArmstrongExpanded();
-      // Future: Pass dropped file to ChatPanel for context
     }
   }, [toggleArmstrongExpanded]);
 
   // Orb click handler - expands the panel (only if not dragging)
   const handleOrbClick = useCallback((e: React.MouseEvent) => {
-    // Consume didDrag - if a drag just occurred, don't expand
     if (dragState.consumeDidDrag() || isDragging) {
       e.preventDefault();
       return;
@@ -120,6 +121,12 @@ export function ArmstrongContainer() {
   const handleMicMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
   }, []);
+
+  // CRITICAL: All hooks must be called BEFORE this early return
+  // This ensures consistent hook order across renders (Rules of Hooks)
+  if (!armstrongVisible || isMobile || !mounted) {
+    return null;
+  }
 
   if (!armstrongVisible || isMobile || !mounted) {
     return null;
