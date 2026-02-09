@@ -15,6 +15,7 @@ import {
   X, Loader2, Sparkles 
 } from 'lucide-react';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { UploadResultList } from '@/components/shared/UploadResultCard';
 import { toast } from 'sonner';
 import {
   Select,
@@ -50,7 +51,7 @@ export function FinanceUploadZone({
   onComplete,
 }: FinanceUploadZoneProps) {
   const { activeTenantId } = useAuth();
-  const { upload, progress, reset } = useUniversalUpload();
+  const { upload, progress, reset, uploadedFiles, clearUploadedFiles } = useUniversalUpload();
   const [manualDocType, setManualDocType] = useState<string>(selectedDocType || '');
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
 
@@ -154,8 +155,9 @@ export function FinanceUploadZone({
     }
   };
 
-  const isUploading = progress.status === 'uploading' || progress.status === 'analyzing';
+  const isUploading = progress.status === 'uploading' || progress.status === 'linking';
   const showDocTypeSelector = uploadQueue.length > 0 && !manualDocType;
+  const uploadStatus = progress.status === 'analyzing' ? 'analyzing' : progress.status === 'done' ? 'done' : 'uploaded';
 
   return (
     <Card className="border-dashed border-2 border-border/50 bg-muted/20">
@@ -246,6 +248,14 @@ export function FinanceUploadZone({
             </Badge>
           )}
         </div>
+
+        {/* Uploaded Files List */}
+        <UploadResultList
+          files={uploadedFiles}
+          status={uploadStatus}
+          onClear={clearUploadedFiles}
+          compact
+        />
 
         {/* Quick Doc Type Buttons */}
         <div className="flex flex-wrap gap-2 mt-4 justify-center">
