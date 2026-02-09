@@ -1,9 +1,9 @@
 /**
  * Social Content Creation — Draft Editor + Copywriter Tools
- * Phase 8: 3-step generator, platform tabs, copywriter toolbar
+ * Enhanced: Platform badges, char counters, filters, visual draft cards
  */
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { PenTool, Sparkles, Loader2, Copy, ArrowRight, Trash2, Video } from 'lucide-react';
+import { PenTool, Sparkles, Loader2, Copy, ArrowRight, Trash2, Video, Linkedin, Instagram, Facebook, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -43,6 +43,25 @@ const COPYWRITER_ACTIONS = [
   { code: 'hook_better', label: 'Besserer Hook', emoji: '🪝' },
 ];
 
+const PLATFORM_LIMITS: Record<string, number> = {
+  linkedin: 3000,
+  instagram: 2200,
+  facebook: 63206,
+};
+
+const PLATFORM_META = {
+  linkedin: { label: 'LinkedIn', icon: Linkedin, color: 'bg-[#0A66C2] text-white' },
+  instagram: { label: 'Instagram', icon: Instagram, color: 'bg-gradient-to-r from-[#833AB4] to-[#FD1D1D] text-white' },
+  facebook: { label: 'Facebook', icon: Facebook, color: 'bg-[#1877F2] text-white' },
+};
+
+const STATUS_CONFIG: Record<string, { label: string; variant: 'outline' | 'secondary' | 'default'; className?: string }> = {
+  draft: { label: 'Entwurf', variant: 'outline' },
+  ready: { label: 'Fertig', variant: 'secondary' },
+  planned: { label: 'Geplant', variant: 'default', className: 'bg-blue-500 text-white' },
+  posted_manual: { label: 'Gepostet', variant: 'default', className: 'bg-green-600 text-white' },
+};
+
 export function CreatePage() {
   const { activeOrganization, user } = useAuth();
   const queryClient = useQueryClient();
@@ -53,6 +72,8 @@ export function CreatePage() {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [newForm, setNewForm] = useState({ topic: '', angle: '', format: 'linkedin_post' });
   const [editContent, setEditContent] = useState({ linkedin: '', instagram: '', facebook: '' });
+  const [filterPlatform, setFilterPlatform] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   const { data: drafts = [] } = useQuery({
     queryKey: ['social-drafts', activeOrganization?.id],
@@ -68,19 +89,18 @@ export function CreatePage() {
     enabled: !!activeOrganization?.id,
   });
 
-  const { data: topics = [] } = useQuery({
-    queryKey: ['social-topics-list', activeOrganization?.id],
-    queryFn: async () => {
-      if (!activeOrganization?.id) return [];
-      const { data } = await supabase
-        .from('social_topics')
-        .select('id, topic_label')
-        .eq('tenant_id', activeOrganization.id)
-        .order('priority');
-      return data || [];
-    },
-    enabled: !!activeOrganization?.id,
-  });
+  const filteredDrafts = useMemo(() => {
+    return drafts.filter((d) => {
+      if (filterStatus !== 'all' && d.status !== filterStatus) return false;
+      if (filterPlatform !== 'all') {
+        const hasContent = filterPlatform === 'linkedin' ? d.content_linkedin
+          : filterPlatform === 'instagram' ? d.content_instagram
+          : d.content_facebook;
+        if (!hasContent) return false;
+      }
+      return true;
+    });
+  }, [drafts, filterPlatform, filterStatus]);
 
   const generateDraft = async () => {
     if (!activeOrganization?.id) return;
@@ -99,6 +119,7 @@ export function CreatePage() {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['social-drafts'] });
       setShowNewDialog(false);
+      setNewForm({ topic: '', angle: '', format: 'linkedin_post' });
       toast({ title: 'Draft generiert' });
     } catch {
       toast({ title: 'Fehler', variant: 'destructive' });
@@ -171,8 +192,14 @@ export function CreatePage() {
     toast({ title: 'Kopiert!' });
   };
 
-  const statusColor: Record<string, string> = { draft: 'outline', ready: 'secondary', planned: 'default', posted_manual: 'default' };
-  const statusLabel: Record<string, string> = { draft: 'Entwurf', ready: 'Fertig', planned: 'Geplant', posted_manual: 'Gepostet' };
+  // Helper to determine which platforms have content
+  const getPlatformBadges = (draft: Draft) => {
+    const platforms: string[] = [];
+    if (draft.content_linkedin) platforms.push('linkedin');
+    if (draft.content_instagram) platforms.push('instagram');
+    if (draft.content_facebook) platforms.push('facebook');
+    return platforms;
+  };
 
   // Editor view
   if (editingDraft) {
@@ -184,6 +211,9 @@ export function CreatePage() {
             <h1 className="text-xl font-bold mt-1">{editingDraft.draft_title || 'Unbenannter Draft'}</h1>
           </div>
           <div className="flex gap-2">
+            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteDraft.mutate(editingDraft.id)}>
+              <Trash2 className="h-4 w-4 mr-1" /> Löschen
+            </Button>
             <Button variant="outline" size="sm" onClick={saveDraft}>Speichern</Button>
             <Button size="sm" onClick={() => markReady(editingDraft.id)}>Als fertig markieren</Button>
           </div>
@@ -191,44 +221,58 @@ export function CreatePage() {
 
         <Tabs defaultValue="linkedin">
           <TabsList>
-            <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
-            <TabsTrigger value="instagram">Instagram</TabsTrigger>
-            <TabsTrigger value="facebook">Facebook</TabsTrigger>
+            <TabsTrigger value="linkedin" className="gap-1.5">
+              <Linkedin className="h-3.5 w-3.5" /> LinkedIn
+            </TabsTrigger>
+            <TabsTrigger value="instagram" className="gap-1.5">
+              <Instagram className="h-3.5 w-3.5" /> Instagram
+            </TabsTrigger>
+            <TabsTrigger value="facebook" className="gap-1.5">
+              <Facebook className="h-3.5 w-3.5" /> Facebook
+            </TabsTrigger>
           </TabsList>
-          {(['linkedin', 'instagram', 'facebook'] as const).map((platform) => (
-            <TabsContent key={platform} value={platform} className="space-y-3">
-              <Textarea
-                rows={10}
-                value={editContent[platform]}
-                onChange={(e) => setEditContent((prev) => ({ ...prev, [platform]: e.target.value }))}
-                className="font-mono text-sm"
-              />
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="gap-1" onClick={() => copyToClipboard(editContent[platform])}>
-                  <Copy className="h-3 w-3" /> Kopieren
-                </Button>
-                <span className="text-xs text-muted-foreground ml-2">{editContent[platform].length} Zeichen</span>
-              </div>
-              {/* Copywriter toolbar */}
-              <div className="flex flex-wrap gap-1.5">
-                {COPYWRITER_ACTIONS.map((a) => (
-                  <Button
-                    key={a.code}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs gap-1 h-7"
-                    onClick={() => handleCopywriterAction(a.code, platform)}
-                    disabled={!!rewriting}
-                  >
-                    {rewriting === a.code ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>{a.emoji}</span>}
-                    {a.label}
+          {(['linkedin', 'instagram', 'facebook'] as const).map((platform) => {
+            const charCount = editContent[platform].length;
+            const limit = PLATFORM_LIMITS[platform];
+            const overLimit = charCount > limit;
+            return (
+              <TabsContent key={platform} value={platform} className="space-y-3">
+                <Textarea
+                  rows={10}
+                  value={editContent[platform]}
+                  onChange={(e) => setEditContent((prev) => ({ ...prev, [platform]: e.target.value }))}
+                  className={`font-mono text-sm ${overLimit ? 'border-destructive' : ''}`}
+                />
+                {/* Char counter */}
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => copyToClipboard(editContent[platform])}>
+                    <Copy className="h-3 w-3" /> Kopieren
                   </Button>
-                ))}
-                {/* HeyGen Video Stub */}
-                <HeyGenVideoStub draftId={editingDraft.id} tenantId={activeOrganization?.id} />
-              </div>
-            </TabsContent>
-          ))}
+                  <span className={`text-xs ml-auto ${overLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                    {charCount} / {limit.toLocaleString()} Zeichen
+                    {overLimit && ' ⚠️ Limit überschritten'}
+                  </span>
+                </div>
+                {/* Copywriter toolbar */}
+                <div className="flex flex-wrap gap-1.5">
+                  {COPYWRITER_ACTIONS.map((a) => (
+                    <Button
+                      key={a.code}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs gap-1 h-7"
+                      onClick={() => handleCopywriterAction(a.code, platform)}
+                      disabled={!!rewriting}
+                    >
+                      {rewriting === a.code ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>{a.emoji}</span>}
+                      {a.label}
+                    </Button>
+                  ))}
+                  <HeyGenVideoStub draftId={editingDraft.id} tenantId={activeOrganization?.id} />
+                </div>
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </div>
     );
@@ -236,7 +280,7 @@ export function CreatePage() {
 
   // Draft list
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6 max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Content Creation</h1>
@@ -283,29 +327,87 @@ export function CreatePage() {
         </Dialog>
       </div>
 
-      {drafts.length > 0 ? (
-        <div className="space-y-3">
-          {drafts.map((draft) => (
-            <Card key={draft.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => openEditor(draft)}>
-              <CardContent className="py-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-sm">{draft.draft_title || 'Unbenannt'}</span>
-                    <Badge variant={(statusColor[draft.status] as any) || 'outline'} className="text-xs">
-                      {statusLabel[draft.status] || draft.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-1">
-                    {draft.content_linkedin?.slice(0, 100) || 'Kein Inhalt'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Filters */}
+      {drafts.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Status</SelectItem>
+              <SelectItem value="draft">Entwurf</SelectItem>
+              <SelectItem value="ready">Fertig</SelectItem>
+              <SelectItem value="planned">Geplant</SelectItem>
+              <SelectItem value="posted_manual">Gepostet</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue placeholder="Plattform" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Plattformen</SelectItem>
+              <SelectItem value="linkedin">LinkedIn</SelectItem>
+              <SelectItem value="instagram">Instagram</SelectItem>
+              <SelectItem value="facebook">Facebook</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground ml-auto">
+            {filteredDrafts.length} von {drafts.length} Entwürfen
+          </span>
         </div>
+      )}
+
+      {filteredDrafts.length > 0 ? (
+        <div className="space-y-3">
+          {filteredDrafts.map((draft) => {
+            const platforms = getPlatformBadges(draft);
+            const statusCfg = STATUS_CONFIG[draft.status] || STATUS_CONFIG.draft;
+            return (
+              <Card key={draft.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => openEditor(draft)}>
+                <CardContent className="py-4 px-4 flex items-center gap-4">
+                  {/* Thumbnail placeholder */}
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <PenTool className="h-5 w-5 text-muted-foreground/50" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm truncate">{draft.draft_title || 'Unbenannt'}</span>
+                      <Badge variant={statusCfg.variant} className={`text-[10px] ${statusCfg.className || ''}`}>
+                        {statusCfg.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {draft.content_linkedin?.slice(0, 120) || 'Kein Inhalt'}
+                    </p>
+                    {/* Platform badges */}
+                    <div className="flex items-center gap-1 mt-1.5">
+                      {platforms.map((p) => {
+                        const meta = PLATFORM_META[p as keyof typeof PLATFORM_META];
+                        if (!meta) return null;
+                        return (
+                          <Badge key={p} variant="outline" className="text-[10px] gap-1 px-1.5 py-0">
+                            <meta.icon className="h-2.5 w-2.5" />
+                            {meta.label}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : drafts.length > 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            Keine Entwürfe für diesen Filter.
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center text-center py-12 space-y-4">
@@ -345,13 +447,7 @@ function HeyGenVideoStub({ draftId, tenantId }: { draftId: string; tenantId?: st
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-xs gap-1 h-7 opacity-60"
-        onClick={() => setOpen(true)}
-        disabled
-      >
+      <Button variant="outline" size="sm" className="text-xs gap-1 h-7 opacity-60" onClick={() => setOpen(true)} disabled>
         <Video className="h-3 w-3" />
         Video (HeyGen) — bald verfügbar
       </Button>
