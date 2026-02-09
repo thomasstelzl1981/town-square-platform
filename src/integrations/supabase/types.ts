@@ -11304,6 +11304,14 @@ export type Database = {
       }
     }
     Functions: {
+      check_missing_indexes: {
+        Args: never
+        Returns: {
+          column_name: string
+          issue: string
+          table_name: string
+        }[]
+      }
       cleanup_golden_path_data: { Args: never; Returns: Json }
       delete_test_batch: {
         Args: { p_batch_id: string }
