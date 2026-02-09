@@ -1,160 +1,288 @@
 
-# Konsolidierter Gesamtplan: Finanzierungskachel, Query-Fixes und Zinsbindung
 
-## Uebersicht
+# Audit Hub: Reports + Prompt Templates + In-App Audit Run
 
-Drei Arbeitspakete in einer zusammenhaengenden Implementierung:
+## Zusammenfassung
 
-| Paket | Beschreibung | Dateien |
-|-------|-------------|---------|
-| A | Default Zinsbindung auf 10 Jahre + Dropdown im SliderPanel | 2 |
-| B | Query-Fixes: `units_count` aus DB statt hardcoded | 5 |
-| C | Neue Komponente `FinanzierungSummary` + Integration | 6 |
-
-Gesamt: **1 neue Datei**, **12 editierte Dateien**, **0 Migrationen**, **0 Edge-Function-Aenderungen**
+Die bestehende `/admin/audit` Seite (aktuell nur ein Audit-Event-Log) wird zu einem vollstaendigen **Audit Hub** mit 3 Tabs erweitert. Zusaetzlich werden 3 neue DB-Tabellen, ein Storage-Bucket und ein Default-Prompt-Template angelegt.
 
 ---
 
-## Paket A: Zinsbindung-Korrektur
+## Teil 1: Datenbank (3 Tabellen + Storage Bucket)
 
-### A1 -- Default von 15 auf 10 Jahre
-**Datei:** `src/hooks/useInvestmentEngine.ts`
+### Migration 1: `audit_reports`
 
-Zeile 60: `termYears: 15` wird zu `termYears: 10`
+```sql
+create table public.audit_reports (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  created_by uuid references public.profiles(id),
+  title text not null,
+  scope jsonb default '{"zones":["zone1","zone2","zone3"],"excluded":["/kaufy"]}',
+  status text not null default 'PASS' check (status in ('PASS','PASS_WITH_FIXES','FAIL')),
+  counts jsonb default '{"p0":0,"p1":0,"p2":0}',
+  tags text[] default '{}',
+  repo_ref text,
+  pr_url text,
+  content_md text not null,
+  content_html text,
+  artifacts jsonb default '{}',
+  module_coverage jsonb default '{}',
+  is_pinned boolean default false
+);
 
-Wirkt sich automatisch auf alle Stellen aus, die `defaultInput` verwenden (MOD-08, MOD-09, Zone 3).
+alter table public.audit_reports enable row level security;
+create policy "Admin full access on audit_reports"
+  on public.audit_reports for all
+  using (
+    exists (
+      select 1 from public.memberships
+      where memberships.user_id = auth.uid()
+      and memberships.role = 'platform_admin'
+    )
+  );
+```
 
-### A2 -- Zinsbindung-Dropdown im SliderPanel
-**Datei:** `src/components/investment/InvestmentSliderPanel.tsx`
+### Migration 2: `audit_prompt_templates`
 
-Neues Select-Dropdown "Zinsbindung" mit Optionen 5, 10, 15, 20, 25, 30 Jahre. Position: zwischen Eigenkapital-Slider und Tilgungsrate-Slider. Nutzt die bestehende `update('termYears', value)` Logik.
+```sql
+create table public.audit_prompt_templates (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  title text not null,
+  description text default '',
+  content_txt text not null,
+  version int default 1,
+  is_default boolean default false,
+  tags text[] default '{}'
+);
 
-```text
-Label: "Zinsbindung"          Wert: [10 Jahre v]
-Optionen: 5 | 10 | 15 | 20 | 25 | 30
+alter table public.audit_prompt_templates enable row level security;
+create policy "Admin full access on audit_prompt_templates"
+  on public.audit_prompt_templates for all
+  using (
+    exists (
+      select 1 from public.memberships
+      where memberships.user_id = auth.uid()
+      and memberships.role = 'platform_admin'
+    )
+  );
+```
+
+### Migration 3: `audit_jobs`
+
+```sql
+create table public.audit_jobs (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  status text not null default 'queued' check (status in ('queued','running','succeeded','failed')),
+  job_type text not null default 'IN_APP' check (job_type in ('IN_APP','CI_REPO')),
+  triggered_by uuid references public.profiles(id),
+  repo_ref text,
+  logs jsonb,
+  audit_report_id uuid references public.audit_reports(id)
+);
+
+alter table public.audit_jobs enable row level security;
+create policy "Admin full access on audit_jobs"
+  on public.audit_jobs for all
+  using (
+    exists (
+      select 1 from public.memberships
+      where memberships.user_id = auth.uid()
+      and memberships.role = 'platform_admin'
+    )
+  );
+```
+
+### Migration 4: Default Prompt Template Seed
+
+```sql
+insert into public.audit_prompt_templates (title, description, content_txt, version, is_default, tags)
+values (
+  'Full System Audit & Repair Run (No Drift)',
+  'Standard-Audit-Prompt fuer vollstaendigen System-Audit mit automatischen Fixes.',
+  E'<<GESAMTER PROMPT-TEXT AUS ABSCHNITT 7 DES BRIEFINGS>>',
+  1,
+  true,
+  '{audit,full-system,repair}'
+);
+```
+
+### Migration 5: Storage Bucket
+
+```sql
+insert into storage.buckets (id, name, public) values ('audit-reports', 'audit-reports', false);
+
+create policy "Admin upload audit reports"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'audit-reports'
+    and exists (
+      select 1 from public.memberships
+      where memberships.user_id = auth.uid()
+      and memberships.role = 'platform_admin'
+    )
+  );
+
+create policy "Admin read audit reports"
+  on storage.objects for select
+  using (
+    bucket_id = 'audit-reports'
+    and exists (
+      select 1 from public.memberships
+      where memberships.user_id = auth.uid()
+      and memberships.role = 'platform_admin'
+    )
+  );
 ```
 
 ---
 
-## Paket B: Query-Fixes (units_count)
+## Teil 2: Neuer Audit Hub (UI)
 
-### Problem
-`units_count` ist in 5 Dateien auf `1` hardcoded. Die tatsaechliche Anzahl muss per COUNT auf die `units`-Tabelle ermittelt werden.
+### Dateistruktur
 
-### Loesung
-Nach dem bestehenden Listing-Query wird ein Subquery eingefuegt:
+```text
+src/pages/admin/audit/
+  AuditHub.tsx           -- Haupt-Container mit 3 Tabs
+  AuditReportsTab.tsx    -- Tab 1: Report-Liste + Detail
+  AuditReportDetail.tsx  -- Report-Detailansicht (Markdown-Rendering)
+  AuditPromptTab.tsx     -- Tab 2: Template-Verwaltung + Copy
+  AuditRunTab.tsx        -- Tab 3: Jobs + "Run In-App Audit"
+  useAuditReports.ts     -- React Query Hooks fuer Reports
+  useAuditTemplates.ts   -- React Query Hooks fuer Templates
+  useAuditJobs.ts        -- React Query Hooks fuer Jobs
+  inAppAuditRunner.ts    -- In-App Audit Logik (Route-Checks etc.)
+```
 
+Die bisherige `src/pages/admin/AuditLog.tsx` bleibt als "Audit Events" Unter-Tab im Reports-Tab erhalten (eingebettet, nicht geloescht).
+
+### AuditHub.tsx (Haupt-Container)
+
+- 3 Tabs via Radix `Tabs`: "Reports", "Audit Prompt (Copy)", "Run / Jobs"
+- Mobile-first: Cards statt Tabellen fuer Reports-Liste
+- Standard-Route `/admin/audit` zeigt Tab 1 (Reports)
+- Sub-Route `/admin/audit/:auditId` zeigt Report-Detail
+
+### Tab 1: Reports
+
+**Liste:**
+- Card-Layout (mobile-first): Titel, Datum, Status-Badge (PASS/PASS_WITH_FIXES/FAIL), P0/P1/P2 Counts, Scope, Repo-Ref
+- Filter: Status-Dropdown, Freitext-Suche
+- Pin-Toggle (is_pinned)
+- "Oeffnen" Button -> Report-Detail
+
+**Detail-Ansicht (`AuditReportDetail.tsx`):**
+- Markdown-Rendering via `react-markdown` (bereits installiert)
+- Einklappbares Inhaltsverzeichnis (generiert aus H2/H3 Headings)
+- Meta-Header: Status-Badge, Datum, Scope, Repo-Ref, PR-Link
+- Sekundaer: "Audit Events"-Ansicht (bisherige AuditLog-Tabelle, eingebettet)
+
+### Tab 2: Audit Prompt (Copy)
+
+- Dropdown: Template-Auswahl (mit Default markiert)
+- Grosses Textarea (read-only, content_txt)
+- Buttons:
+  - **Copy to Clipboard** (navigator.clipboard.writeText + Toast)
+  - **Duplicate** (erstellt Kopie mit version+1)
+  - **Save** (speichert Aenderungen, setzt updated_at)
+  - **Set Default** (setzt is_default=true, alle anderen auf false)
+  - **Export .txt** (Blob-Download)
+
+### Tab 3: Run / Jobs
+
+- **"Run In-App Audit"** Button:
+  - Erstellt `audit_jobs` Eintrag (status=queued)
+  - Fuehrt clientseitige Checks aus (siehe inAppAuditRunner.ts)
+  - Erstellt `audit_reports` Eintrag mit Ergebnis-Markdown
+  - Laedt report.md in Storage hoch
+  - Aktualisiert Job-Status auf succeeded/failed
+
+- **Job-Liste**: Karten mit Status, Typ, Dauer, Link zum Report
+
+**In-App Audit Scope (inAppAuditRunner.ts):**
+- Route-Existenz: Prueft ob alle Manifest-Routen zu importierten Komponenten aufloesen
+- Tile-Catalog-Konsistenz: Vergleicht manifest tiles mit tile_catalog DB-Eintraegen
+- Basis-Health-Checks: Fetch auf Schluessel-Routen (/admin, /portal) -- Status-Code-Pruefung
+- Ergebnis: Generiert Markdown-Report nach der vorgegebenen Struktur
+
+---
+
+## Teil 3: Routing-Anpassung
+
+### routesManifest.ts
+
+Zeile 102 aendern:
 ```typescript
-const { count: unitsCount } = await supabase
-  .from('units')
-  .select('id', { count: 'exact', head: true })
-  .eq('property_id', property.id);
-
-// Fallback auf 1 bei NULL/0
-units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1
+{ path: "audit", component: "AuditHub", title: "Audit Hub" },
+{ path: "audit/:auditId", component: "AuditReportDetail", title: "Audit Report", dynamic: true },
 ```
 
-### Betroffene Dateien
+### ManifestRouter.tsx
 
-| # | Datei | Kontext |
-|---|-------|---------|
-| B1 | `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | Zone 3 Expose |
-| B2 | `src/pages/portal/investments/InvestmentExposePage.tsx` | MOD-08 Expose |
-| B3 | `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` | MOD-09 Expose |
-| B4 | `src/pages/portal/investments/SucheTab.tsx` | MOD-08 Suchliste |
-| B5 | `src/pages/portal/vertriebspartner/BeratungTab.tsx` | MOD-09 Beratungsliste |
+- Import `AuditHub` statt `AuditLog`
+- Import `AuditReportDetail` fuer die dynamische Route
+- Komponentenzuordnung anpassen
 
-Fuer B4/B5 (Listen): Property-IDs werden gebuendelt und per `.in('property_id', ids)` mit Gruppierung abgefragt.
+### AdminSidebar.tsx
+
+Icon-Mapping aktualisieren:
+```typescript
+'AuditHub': FileText,
+'AuditReportDetail': FileText,
+```
 
 ---
 
-## Paket C: Neue Komponente "FinanzierungSummary"
+## Teil 4: Unveraenderte Bereiche
 
-### C1 -- Komponente erstellen
-**Neue Datei:** `src/components/investment/FinanzierungSummary.tsx`
-
-Props:
-```typescript
-interface FinanzierungSummaryProps {
-  purchasePrice: number;
-  equity: number;
-  result: CalculationResult;
-  transferTaxRate?: number;  // Default 6.5%
-  notaryRate?: number;       // Default 2.0%
-  className?: string;
-}
-```
-
-**Sektion 1 -- Kaufpreisaufschluesselung:**
-
-```text
-Kaufpreis                    250.000 EUR
-+ Grunderwerbsteuer (6,5%)    16.250 EUR
-+ Notar & Grundbuch (2,0%)     5.000 EUR
-----------------------------------------------
-= Gesamtinvestition           271.250 EUR
-- Eigenkapital                 50.000 EUR
-----------------------------------------------
-= Finanzierungsbedarf         221.250 EUR
-```
-
-**Sektion 2 -- Darlehen:**
-
-```text
-Darlehensbetrag              221.250 EUR
-Zinssatz (nominal)              3,80%
-Zinssatz (effektiv)             3,95%
-Zinsen p.a.                    8.408 EUR
-Tilgung p.a.                   4.425 EUR
-Rate p.a.                     12.833 EUR
-Rate / Monat                   1.069 EUR
-Tilgungssatz                    2,00%
-```
-
-Effektiver Zinssatz: Naeherungsformel `nominal * (1 + nominal / 200)`.
-
-### C2 -- Export registrieren
-**Datei:** `src/components/investment/index.ts`
-
-Neue Zeile: `export { FinanzierungSummary } from './FinanzierungSummary';`
-
-### C3 -- Integration in Expose-Seiten
-Platzierung: zwischen `Haushaltsrechnung` und `DetailTable40Jahre`.
-
-| # | Datei |
-|---|-------|
-| C3a | `src/components/investment/InvestmentExposeView.tsx` |
-| C3b | `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` |
-| C3c | `src/pages/portal/investments/InvestmentExposePage.tsx` |
-| C3d | `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` |
-
-Pattern (identisch ueberall):
-```tsx
-{calcResult && (
-  <FinanzierungSummary
-    purchasePrice={listing.asking_price}
-    equity={params.equity}
-    result={calcResult}
-  />
-)}
-```
+| Bereich | Status |
+|---------|--------|
+| Zone 3 /kaufy | NICHT ANGEFASST |
+| Bestehende audit_events Tabelle | BLEIBT (wird im Reports-Tab eingebettet) |
+| Investment Engine / FinanzierungSummary | NICHT BETROFFEN |
+| ManifestRouter Kernlogik | NICHT BETROFFEN |
 
 ---
 
 ## Implementierungsreihenfolge
 
-1. **Paket A** zuerst (2 Dateien) -- setzt den korrekten Default, bevor die Engine aufgerufen wird
-2. **Paket C1-C2** (neue Komponente + Export) -- muss existieren, bevor sie integriert wird
-3. **Paket B + C3** parallel (Query-Fixes und Komponenten-Integration in denselben Dateien)
+1. **DB-Migrationen** (5 Migrationen: 3 Tabellen + 1 Seed + 1 Storage Bucket)
+2. **Hooks** (useAuditReports, useAuditTemplates, useAuditJobs)
+3. **inAppAuditRunner.ts** (Audit-Logik)
+4. **UI-Komponenten** (AuditHub + 3 Tabs + Detail)
+5. **Routing** (Manifest + ManifestRouter + Sidebar)
 
 ---
 
-## Risikobewertung
+## Technische Details
 
-| Aspekt | Risiko | Begruendung |
-|--------|--------|-------------|
-| Investment Engine | Keins | Keine Aenderung an Edge Function oder Berechnungslogik |
-| MasterGraph / Haushaltsrechnung | Keins | Bestehende Komponenten bleiben unangetastet |
-| MOD-04 Portfolio | Keins | Verwendet eigene Simulation, nicht betroffen |
-| Datenintegritaet | Minimal | units_count-Fallback auf 1 sichert Abwaertskompatibilitaet |
-| Rendering | Minimal | FinanzierungSummary rendert nur bei vorhandenem calcResult |
+### Betroffene Dateien
+
+| Aktion | Datei |
+|--------|-------|
+| NEU | `src/pages/admin/audit/AuditHub.tsx` |
+| NEU | `src/pages/admin/audit/AuditReportsTab.tsx` |
+| NEU | `src/pages/admin/audit/AuditReportDetail.tsx` |
+| NEU | `src/pages/admin/audit/AuditPromptTab.tsx` |
+| NEU | `src/pages/admin/audit/AuditRunTab.tsx` |
+| NEU | `src/pages/admin/audit/useAuditReports.ts` |
+| NEU | `src/pages/admin/audit/useAuditTemplates.ts` |
+| NEU | `src/pages/admin/audit/useAuditJobs.ts` |
+| NEU | `src/pages/admin/audit/inAppAuditRunner.ts` |
+| EDIT | `src/manifests/routesManifest.ts` |
+| EDIT | `src/router/ManifestRouter.tsx` |
+| EDIT | `src/components/admin/AdminSidebar.tsx` |
+
+Die alte `src/pages/admin/AuditLog.tsx` bleibt bestehen und wird in den Reports-Tab importiert.
+
+### Keine Edge Functions noetig
+Alle Audit-Checks laufen clientseitig. Reports werden per Supabase JS SDK in DB + Storage geschrieben.
+
+### Default Template
+Der vollstaendige Prompt-Text aus Abschnitt 7 des Briefings wird 1:1 als `content_txt` in der Seed-Migration gespeichert (~3000 Zeichen). Platzhalter `{{today}}` bleibt als String erhalten -- wird beim Copy in der UI durch das aktuelle Datum ersetzt.
+
