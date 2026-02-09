@@ -1,12 +1,14 @@
 /**
  * Recursive Folder Tree for DMS Storage
  * Displays all storage nodes with proper module-based hierarchy
+ * PHASE 4 & 5: Extended with Trash and all module icons
  */
 import { useState } from 'react';
 import { 
   Folder, FolderOpen, ChevronRight, ChevronDown, Home, Inbox, Archive, 
   Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal, Image,
-  Car, ShoppingCart, Hammer, FolderHeart, Trash2
+  Car, ShoppingCart, Hammer, FolderHeart, Trash2, Sparkles, TrendingUp,
+  FolderKanban
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -57,13 +59,19 @@ const SYSTEM_FOLDER_ICONS: Record<string, React.ComponentType<{ className?: stri
   'sonstiges': MoreHorizontal,
 };
 
-// Icons for module root folders
+// Icons for module root folders - PHASE 5: Extended
 const MODULE_ROOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  'MOD_02_ROOT': Sparkles,       // KI Office
+  'MOD_03_ROOT': FolderOpen,     // DMS
   'MOD_04_ROOT': Building2,      // Immobilien
+  'MOD_05_ROOT': FileQuestion,   // MSV
   'MOD_06_ROOT': ShoppingCart,   // Verkauf
   'MOD_07_ROOT': Landmark,       // Finanzierung
+  'MOD_08_ROOT': TrendingUp,     // Investments
+  'MOD_13_ROOT': FolderKanban,   // Projekte
   'MOD_16_ROOT': Hammer,         // Sanierung
   'MOD_17_ROOT': Car,            // Car-Management
+  'TRASH_ROOT': Trash2,          // Papierkorb
 };
 
 // Legacy system folder icons (for backwards compatibility)

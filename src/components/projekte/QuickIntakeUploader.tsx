@@ -127,33 +127,58 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
       const totalFiles = (exposeFile ? 1 : 0) + (pricelistFile ? 1 : 0);
       let uploadedCount = 0;
 
-      // Upload expose
+      // Upload expose with explicit MIME type (PHASE 6: Magic Intake Fix)
       if (exposeFile) {
+        console.log('[QuickIntake] Uploading expose:', {
+          name: exposeFile.name,
+          type: exposeFile.type,
+          size: exposeFile.size,
+        });
+        
         const exposePath = `intake/${contextId}/${timestamp}_expose_${exposeFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from('project-documents')
           .upload(exposePath, exposeFile, {
             cacheControl: '3600',
             upsert: false,
+            contentType: exposeFile.type || 'application/pdf',
           });
 
-        if (uploadError) throw new Error(`Exposé-Upload fehlgeschlagen: ${uploadError.message}`);
+        if (uploadError) {
+          console.error('[QuickIntake] Expose upload error:', uploadError);
+          throw new Error(`Exposé-Upload fehlgeschlagen: ${uploadError.message}`);
+        }
         paths.expose = exposePath;
         uploadedCount++;
         setUploadProgress((uploadedCount / totalFiles) * 100);
       }
 
-      // Upload pricelist
+      // Upload pricelist with explicit MIME type (PHASE 6)
       if (pricelistFile) {
+        console.log('[QuickIntake] Uploading pricelist:', {
+          name: pricelistFile.name,
+          type: pricelistFile.type,
+          size: pricelistFile.size,
+        });
+        
         const pricelistPath = `intake/${contextId}/${timestamp}_pricelist_${pricelistFile.name}`;
+        const mimeType = pricelistFile.type || 
+          (pricelistFile.name.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+           pricelistFile.name.endsWith('.xls') ? 'application/vnd.ms-excel' :
+           pricelistFile.name.endsWith('.csv') ? 'text/csv' : 'application/pdf');
+        
         const { error: uploadError } = await supabase.storage
           .from('project-documents')
           .upload(pricelistPath, pricelistFile, {
             cacheControl: '3600',
             upsert: false,
+            contentType: mimeType,
           });
 
-        if (uploadError) throw new Error(`Preislisten-Upload fehlgeschlagen: ${uploadError.message}`);
+        if (uploadError) {
+          console.error('[QuickIntake] Pricelist upload error:', uploadError);
+          throw new Error(`Preislisten-Upload fehlgeschlagen: ${uploadError.message}`);
+        }
         paths.pricelist = pricelistPath;
         uploadedCount++;
         setUploadProgress((uploadedCount / totalFiles) * 100);

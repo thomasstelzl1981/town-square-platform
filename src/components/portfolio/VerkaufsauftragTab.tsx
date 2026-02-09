@@ -191,17 +191,20 @@ export function VerkaufsauftragTab({
 
       if (existingListing) {
         listingId = existingListing.id;
-        // Update listing to active
+        // Update listing to active + fix price (PHASE 3: sale_price_fixed)
         const { error: updateError } = await supabase
           .from('listings')
           .update({ 
             status: 'active',
-            commission_rate: agreementState.commissionRate[0]
+            commission_rate: agreementState.commissionRate[0],
+            sale_price_fixed: askingPrice || null,
+            sale_price_fixed_at: new Date().toISOString(),
+            sale_price_fixed_by: user?.id || null,
           })
           .eq('id', listingId);
         if (updateError) throw updateError;
       } else {
-        // Create new listing
+        // Create new listing with fixed price (PHASE 3)
         const { data: newListing, error: insertError } = await supabase
           .from('listings')
           .insert({
@@ -211,6 +214,9 @@ export function VerkaufsauftragTab({
             title: `${propertyAddress}, ${propertyCity}`.trim() || 'Immobilie',
             status: 'active',
             asking_price: askingPrice || null,
+            sale_price_fixed: askingPrice || null,
+            sale_price_fixed_at: new Date().toISOString(),
+            sale_price_fixed_by: user?.id || null,
             commission_rate: agreementState.commissionRate[0]
           })
           .select('id')

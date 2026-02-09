@@ -24,6 +24,7 @@ interface VoiceButtonProps {
   isSpeaking: boolean;
   isConnected: boolean;
   error: string | null;
+  useBrowserFallback?: boolean;
   onToggle: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
@@ -36,6 +37,7 @@ export function VoiceButton({
   isSpeaking,
   isConnected,
   error,
+  useBrowserFallback = false,
   onToggle,
   className,
   size = 'md',
@@ -57,8 +59,8 @@ export function VoiceButton({
     if (error) return `Fehler: ${error}`;
     if (isSpeaking) return 'Armstrong spricht...';
     if (isProcessing) return 'Verarbeite...';
-    if (isListening) return 'Mikrofon aktiv — Klicken zum Beenden';
-    return 'Spracheingabe starten';
+    if (isListening) return `Mikrofon aktiv${useBrowserFallback ? ' (Browser)' : ''} — Klicken zum Beenden`;
+    return `Spracheingabe starten${useBrowserFallback ? ' (Browser-Modus)' : ''}`;
   };
 
   const getIcon = () => {
@@ -116,6 +118,11 @@ export function VoiceButton({
             <span className="relative z-10 flex items-center justify-center">
               {getIcon()}
             </span>
+            
+            {/* Browser fallback indicator */}
+            {useBrowserFallback && isListening && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" title="Browser-Modus" />
+            )}
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">

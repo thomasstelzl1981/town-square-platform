@@ -17,7 +17,7 @@
  * │  MONATSBELASTUNG: +€24/Mo ✓         │
  * └─────────────────────────────────────┘
  */
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MapPin, Building2, TrendingUp } from 'lucide-react';
@@ -65,6 +65,10 @@ export function InvestmentResultTile({
   showProvision = false,
   linkPrefix = '/portal/investments/objekt'
 }: InvestmentResultTileProps) {
+  // PHASE 2: Preserve search params in link
+  const [urlParams] = useSearchParams();
+  const linkUrl = `${linkPrefix}/${listing.public_id || listing.listing_id}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 
@@ -95,7 +99,7 @@ export function InvestmentResultTile({
   }[listing.property_type] || listing.property_type;
 
   return (
-    <Link to={`${linkPrefix}/${listing.public_id || listing.listing_id}`}>
+    <Link to={linkUrl}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
         {/* Bild OBEN (ca. 40% Höhe) */}
         <div className="aspect-[16/9] bg-muted flex items-center justify-center relative overflow-hidden">

@@ -4495,6 +4495,8 @@ export type Database = {
         Row: {
           ai_summary: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           detected_type: string | null
           doc_type: string | null
           extracted_json_path: string | null
@@ -4504,6 +4506,7 @@ export type Database = {
           match_confidence: number | null
           mime_type: string
           name: string
+          original_node_id: string | null
           public_id: string
           review_state: string | null
           scope: string | null
@@ -4517,6 +4520,8 @@ export type Database = {
         Insert: {
           ai_summary?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           detected_type?: string | null
           doc_type?: string | null
           extracted_json_path?: string | null
@@ -4526,6 +4531,7 @@ export type Database = {
           match_confidence?: number | null
           mime_type: string
           name: string
+          original_node_id?: string | null
           public_id: string
           review_state?: string | null
           scope?: string | null
@@ -4539,6 +4545,8 @@ export type Database = {
         Update: {
           ai_summary?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           detected_type?: string | null
           doc_type?: string | null
           extracted_json_path?: string | null
@@ -4548,6 +4556,7 @@ export type Database = {
           match_confidence?: number | null
           mime_type?: string
           name?: string
+          original_node_id?: string | null
           public_id?: string
           review_state?: string | null
           scope?: string | null
@@ -6607,6 +6616,9 @@ export type Database = {
           public_id: string | null
           published_at: string | null
           reserved_at: string | null
+          sale_price_fixed: number | null
+          sale_price_fixed_at: string | null
+          sale_price_fixed_by: string | null
           sales_mandate_consent_id: string | null
           sold_at: string | null
           status: Database["public"]["Enums"]["listing_status"] | null
@@ -6631,6 +6643,9 @@ export type Database = {
           public_id?: string | null
           published_at?: string | null
           reserved_at?: string | null
+          sale_price_fixed?: number | null
+          sale_price_fixed_at?: string | null
+          sale_price_fixed_by?: string | null
           sales_mandate_consent_id?: string | null
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
@@ -6655,6 +6670,9 @@ export type Database = {
           public_id?: string | null
           published_at?: string | null
           reserved_at?: string | null
+          sale_price_fixed?: number | null
+          sale_price_fixed_at?: string | null
+          sale_price_fixed_by?: string | null
           sales_mandate_consent_id?: string | null
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
@@ -10913,6 +10931,10 @@ export type Database = {
           deleted_count: number
           entity_type: string
         }[]
+      }
+      ensure_module_root_folders: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
       generate_correlation_key: {
         Args: { p_entity_id: string; p_entity_type: string }

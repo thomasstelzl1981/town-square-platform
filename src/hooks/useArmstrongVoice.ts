@@ -6,6 +6,7 @@
  * - WebSocket connection to sot-armstrong-voice
  * - Audio playback of responses
  * - VAD-based turn detection
+ * - Browser Speech API fallback when WebSocket fails
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -18,6 +19,7 @@ interface VoiceState {
   error: string | null;
   transcript: string;
   assistantTranscript: string;
+  useBrowserFallback: boolean;
 }
 
 interface UseArmstrongVoiceReturn extends VoiceState {
@@ -157,7 +159,12 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     error: null,
     transcript: '',
     assistantTranscript: '',
+    useBrowserFallback: false,
   });
+
+  // Browser Speech API fallback
+  const browserRecognitionRef = useRef<any>(null);
+  const useBrowserFallbackRef = useRef(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
