@@ -1,393 +1,276 @@
 
-# Kaufy 2026 — Kompletter Neuaufbau
 
-## Analyse-Ergebnis
+# Phase 5: Design-Feinschliff — Präzise Anpassungen an die Vorlage
 
-### 1. Was gelöscht werden muss (`/kaufy/*`)
+## Analyse: Aktueller Stand vs. Design-Vorlage (Screenshots)
 
-**13 Seiten-Dateien:**
-```
-src/pages/zone3/kaufy/
-├── KaufyHome.tsx          ← alte Seite
-├── KaufyLayout.tsx        ← Layout (behalten, aber umziehen)
-├── KaufyExpose.tsx
-├── KaufyVermieter.tsx
-├── KaufyVerkaeufer.tsx
-├── KaufyVertrieb.tsx
-├── KaufyBeratung.tsx
-├── KaufyModule.tsx
-├── KaufyModuleDetail.tsx
-├── KaufyBerater.tsx
-├── KaufyAnbieter.tsx
-├── KaufyMeety.tsx
-└── KaufyFAQ.tsx
-```
+Ich habe den aktuellen Screenshot von `/kaufy2026` mit deinen hochgeladenen Design-Screenshots verglichen. Hier sind die exakten Unterschiede:
 
-**6 Komponenten-Dateien:**
-```
-src/components/zone3/kaufy/
-├── ArmstrongSidebar.tsx
-├── InvestmentSearchCard.tsx  ← ALTE Suche (wird ersetzt)
-├── KaufyInputBar.tsx
-├── KaufyPropertyCard.tsx     ← ALTE Kachel (wird ersetzt)
-├── PerspektivenAccordion.tsx
-├── ZahlenSektion.tsx
-└── index.ts
-```
-
-### 2. Golden Path — Datenfluss Zone 3
-
-| Schritt | Quelle | Daten |
-|---------|--------|-------|
-| 1 | Zone 2 MOD-04 | Eigentümer aktiviert Verkaufsauftrag |
-| 2 | Zone 2 MOD-06 | Listing erstellt (`status: active`) |
-| 3 | Zone 2 MOD-06 | `public_id` generiert (z.B. `berlin-a1b2c3d4`) |
-| 4 | Zone 2 MOD-06 | `listing_publications` Eintrag `channel: partner_network, status: active` |
-| 5 | Zone 1 Admin | Sales Desk zeigt aktive Listings |
-| 6 | Zone 3 Kaufy | Query: `listings.status = 'active'` mit `listing_publications` |
-
-**Korrekte Query für Zone 3:**
-```sql
-SELECT * FROM listings 
-WHERE status = 'active'
-AND EXISTS (
-  SELECT 1 FROM listing_publications lp 
-  WHERE lp.listing_id = listings.id 
-  AND lp.channel = 'partner_network' 
-  AND lp.status = 'active'
-)
-```
-
-### 3. MOD-08 Komponenten (KORREKT — zu verwenden)
-
-| Komponente | Pfad | Funktion |
-|------------|------|----------|
-| `InvestmentResultTile` | `src/components/investment/` | T-Konto Kachel (Einnahmen/Ausgaben) |
-| `MasterGraph` | `src/components/investment/` | 40-Jahres-Chart |
-| `Haushaltsrechnung` | `src/components/investment/` | Cashflow-Tabelle |
-| `InvestmentSliderPanel` | `src/components/investment/` | Interaktive Regler |
-| `DetailTable40Jahre` | `src/components/investment/` | Excel-Projektion |
-| `ExposeImageGallery` | `src/components/investment/` | Bildergalerie |
-| `ExposeDocuments` | `src/components/investment/` | Dokumenten-Liste |
-
-### 4. Engine-Parameter (MOD-08 Standard)
-
-```typescript
-interface SearchParams {
-  taxableIncome: number;        // zVE
-  equity: number;               // Eigenkapital
-  maritalStatus: 'single' | 'married';  // Familienstand
-  hasChurchTax: boolean;        // Kirchensteuer
-  churchTaxState?: string;      // Bundesland (BY, BW = 8%, Rest = 9%)
-}
-```
+| # | Element | Aktuell | Vorlage (Soll) |
+|---|---------|---------|----------------|
+| 1 | **Search-Card Position** | `bottom: -40px` (ragt unter Hero heraus) | `bottom: 80px` (schwebt INNERHALB des Hero) |
+| 2 | **Search-Card Inhalt** | Tab-Leiste oben zentriert | Kein Tab, nur kompakte Cue-Bar |
+| 3 | **Search-Felder** | Labels über Inputs, große Input-Boxen | Labels + Input INLINE in einer Zeile |
+| 4 | **Expand-Bereich** | Buttons (Ledig/Verheiratet) | Toggle-Text: `Ledig · Verheiratet` |
+| 5 | **Hero-Wrapper** | `height: 620px` | Korrekt, aber overflow klipping |
+| 6 | **Perspektiven-Karten** | Icon links, Titel "Für Vermieter" | Icon oben rechts, Titel "VERMIETER" (Großbuchstaben) |
+| 7 | **Perspektiven-Untertitel** | Beschreibungstext | Slogan: "Vermieten. Verstehen. Optimieren." |
+| 8 | **Akkordeon-Sektion** | Fehlt komplett | 4-Panel Akkordeon mit Bild rechts |
+| 9 | **Zahlen-Sektion** | Große Zahlen (500+, €250M+) | Minimales Table-Layout: `Cashflow | monatlich` |
+| 10 | **Footer** | 5-Spalten Grid | 4-Spalten: Logo+Claim, Plattform, Für wen, Unternehmen |
 
 ---
 
-## Phasenplan — Step-by-Step
+## Lösung — Schritt für Schritt
 
-### Phase 1: Aufräumen (Vorbereitung)
+### 1. Search-Card Positionierung korrigieren
 
-**1.1 Alte Route deaktivieren**
-- `routesManifest.ts`: Kaufy-Block auf `kaufy2026` umleiten
-- Alte `/kaufy` Routen bleiben vorerst für Fallback
+**Problem:** Die Suchleiste ragt aktuell unter den Hero-Bereich.
+**Lösung:** `bottom: 80px` statt `-40px`, Hero-Wrapper overflow anpassen.
 
-**1.2 Neue Route registrieren**
+**Datei:** `src/styles/zone3-theme.css`
 
-Änderung in `src/manifests/routesManifest.ts`:
-```typescript
-kaufy2026: {
-  base: "/kaufy2026",
-  layout: "Kaufy2026Layout",
-  routes: [
-    { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
-    { path: "vermieter", component: "Kaufy2026Vermieter", title: "Für Vermieter" },
-    { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
-    { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
-    { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
-  ],
-},
-```
-
----
-
-### Phase 2: Layout & Struktur (Design-System)
-
-**2.1 Neues Layout erstellen**
-
-Datei: `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`
-
-Struktur gemäß hochgeladenem HTML:
-- Header: Logo links, Nav mittig, Auth-Buttons rechts
-- Main: Outlet
-- Footer: 5-Spalten-Grid (Plattform, Für wen, Unternehmen, etc.)
-
-**2.2 CSS-Klassen erweitern**
-
-In `src/styles/zone3-theme.css` ergänzen:
 ```css
-/* Kaufy 2026 — Schwebende Suchleiste */
-.kaufy-hero-wrapper {
-  position: relative;
-  width: calc(100% - 120px);
-  margin: 0 60px;
-  border-radius: 20px;
-  overflow: visible;
-}
-
-.kaufy-search-card {
+/* VORHER */
+.kaufy2026-search-card {
   position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 92%;
-  max-width: 1100px;
-  background: hsl(var(--z3-secondary));
-  border-radius: 24px;
-  padding: 16px 28px;
+  bottom: -40px;
+  ...
+}
+
+/* NACHHER */
+.kaufy2026-search-card {
+  position: absolute;
+  bottom: 80px;  /* Innerhalb des Hero-Bildes */
+  ...
 }
 ```
 
----
+### 2. Tabs dezenter gestalten (User-Wahl)
 
-### Phase 3: Suchkomponente (Investment-Suche)
+**Lösung:** Tabs bleiben, aber werden als kleine Pill-Buttons oben rechts in der Search-Card positioniert.
 
-**3.1 Neue Suchkomponente**
+**Datei:** `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx`
 
-Datei: `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx`
+Änderungen:
+- Tabs nach rechts oben verschieben
+- Kleinere Font-Größe (10px)
+- Ohne explizite Labels (nur Icons oder dezente Umschalter)
 
-Struktur (gemäß Design):
+### 3. Search-Felder als Inline-Cue-Bar
+
+**Problem:** Aktuell: Labels über Inputs, separate Zeilen.
+**Vorlage:** Labels + Input in einer horizontalen Zeile, mit `·` Trennzeichen.
+
+**Struktur (gemäß Vorlage):**
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│  [Einkommen (zvE)]  [Eigenkapital]  [Ergebnisse →] [⌄]      │
-├─────────────────────────────────────────────────────────────┤
-│  Familienstand: Ledig · Verheiratet                         │
-│  KiSt: Nein · Ja                                            │
-│  Bundesland: [Dropdown]                                     │
+│  Einkommen (zvE) [____]  │  Eigenkapital [____]  │  [Ergebnisse →]  [↓]  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Props:
-```typescript
-interface Kaufy2026SearchBarProps {
-  onSearch: (params: {
-    zvE: number;
-    equity: number;
-    maritalStatus: 'single' | 'married';
-    hasChurchTax: boolean;
-    churchTaxState?: string;
-  }) => void;
-  isLoading?: boolean;
-  defaultExpanded?: boolean;
-}
-```
+**Datei:** `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx`
 
-**3.2 Klassische Suche (Tab 2)**
+Änderungen:
+- Flex-Layout ohne Wrapping
+- Label + Input in gleichem Container
+- Input ohne sichtbaren Rahmen (nur Hintergrund leicht grau)
 
+### 4. Expand-Optionen als Text-Toggles
+
+**Problem:** Aktuell: Große Pill-Buttons (Ledig | Verheiratet).
+**Vorlage:** Dezente Text-Toggles: `Ledig · Verheiratet`
+
+**CSS-Änderungen:**
+- `.cue-toggle`: Kein Hintergrund, nur Schriftfarbe wechselt
+- Aktiver Zustand: `color: #111; font-weight: 500`
+- Inaktiver Zustand: `color: #999`
+
+### 5. Perspektiven-Karten umgestalten
+
+**Vorlage-Struktur:**
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  [Stadt/PLZ]  [Max. Preis]  [Min. Fläche]  [Suchen →]       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  ┌──────────────────────────┐  🏠   │  ← Icon oben rechts
+│  │  VERMIETER               │       │  ← Kategorie (Großbuchstaben)
+│  │                          │       │
+│  │  Vermieten. Verstehen.   │       │  ← Slogan (mehrzeilig)
+│  │  Optimieren.             │       │
+│  │                          │       │
+│  │  Alles, was zählt –      │       │  ← Beschreibung
+│  │  auf einen Blick.        │       │
+│  └──────────────────────────┘       │
+└─────────────────────────────────────┘
 ```
 
----
+**Datei:** `src/components/zone3/kaufy2026/PerspektivenKarten.tsx`
 
-### Phase 4: Homepage (Kaufy2026Home.tsx)
+Änderungen:
+- Icon-Position: `position: absolute; top: 16px; right: 16px`
+- Kategorie-Label: `VERMIETER` (uppercase, kleiner font)
+- Slogan-Zeile hinzufügen: "Vermieten. Verstehen. Optimieren."
+- Card klickbar machen (kein separater Link-Button)
 
-**4.1 Hero-Sektion**
+### 6. Akkordeon-Sektion hinzufügen (NEUE KOMPONENTE)
 
-Datei: `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx`
+**Vorlage zeigt 4 Panels:**
+1. **Vermieter** — Kaufy macht aus Bestand eine steuerbare Anlage.
+2. **Anbieter** — Kapitalanlageobjekte treffen auf den richtigen Markt.
+3. **Vertrieb** — Beratung, die sich rechnen lässt – für Kunde und Vertrieb.
+4. **Automationen & KI** — Im Hintergrund intelligent. Im Alltag spürbar.
 
+**Layout:**
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  ╭───────────────────────────────────────────────────────╮  │
-│  │                                                       │  │
-│  │  [HERO BILD - Hero_Background-2.png]                  │  │
-│  │                                                       │  │
-│  │  "Die KI-Plattform für Kapitalanlageimmobilien."      │  │
-│  │  "Marktplatz & digitale Mietsonderverwaltung"         │  │
-│  │                                                       │  │
-│  │  [Kostenlos registrieren]                             │  │
-│  │                                                       │  │
-│  │  ┌──────────────────────────────────────────────┐     │  │
-│  │  │  [zvE] | [Eigenkapital] | [Ergebnisse →] [⌄]│     │  │
-│  │  └──────────────────────────────────────────────┘     │  │
-│  ╰───────────────────────────────────────────────────────╯  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  Eine Plattform. Drei Perspektiven.                                   │
+│  Kaufy passt sich deiner Rolle an – nicht umgekehrt.                  │
+│                                                                       │
+│  ┌────────────────────────────────────┐   ┌─────────────────────────┐ │
+│  │  1  Vermieter            ⌵         │   │                         │ │
+│  │     Kaufy macht aus Bestand...     │   │   [PERSPEKTIVEN-BILD]   │ │
+│  ├────────────────────────────────────┤   │                         │ │
+│  │  2  Anbieter             ⌵         │   │                         │ │
+│  │     Kapitalanlageobjekte...        │   │                         │ │
+│  ├────────────────────────────────────┤   └─────────────────────────┘ │
+│  │  3  Vertrieb             ⌵         │                               │
+│  │     Beratung, die sich...          │                               │
+│  ├────────────────────────────────────┤                               │
+│  │  4  Automationen & KI    ⌵         │                               │
+│  │     Im Hintergrund...              │                               │
+│  └────────────────────────────────────┘                               │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-**4.2 Ergebnis-Sektion (erscheint nach Suche)**
+**NEUE Datei:** `src/components/zone3/kaufy2026/PerspektivenAkkordeon.tsx`
 
-```typescript
-{hasSearched && (
-  <section className="zone3-section">
-    <div className="zone3-container">
-      <h2>Passende Kapitalanlage-Objekte</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {calculatedProperties.map(prop => (
-          <InvestmentResultTile 
-            key={prop.listing_id}
-            listing={prop}
-            metrics={metricsCache[prop.listing_id]}
-            linkPrefix="/kaufy2026/immobilien"
-          />
-        ))}
-      </div>
-    </div>
-  </section>
-)}
+Verwendet Radix UI `Accordion` mit custom Styling.
+
+### 7. Zahlen-Sektion umgestalten
+
+**Problem:** Aktuell: Große Zahlen-Grid (500+, €250M+).
+**Vorlage:** Minimales Table-Layout mit linkem Accent.
+
+**Vorlage-Struktur:**
+```text
+┌───────────────────────────────────────────────────────────────────────┐
+│                  Immobilien sind Zahlen.                              │
+│                  Kaufy macht sie verständlich.                        │
+│                                                                       │
+│     │ Cashflow          │ Schulden         │ Zinsbindung │ Netto-Bel. │
+│     │ monatlich         │ strukturiert     │ transparent │ entscheid. │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-**4.3 Weitere Sektionen (aus Design)**
+**Datei:** `src/components/zone3/kaufy2026/ZahlenSektion.tsx`
 
-1. **Perspektiven-Karten** (Vermieter, Verkäufer, Vertriebe)
-2. **Akkordeon** "Eine Plattform. Drei Perspektiven."
-3. **Zahlen-Sektion** (dunkler Hintergrund)
+Änderungen:
+- Dunkler Hintergrund (wie Vorlage)
+- 4-Spalten-Grid mit vertikalem Accent-Strich
+- Headline in 2 Zeilen (erste fett, zweite leichter)
+
+### 8. Footer anpassen
+
+**Vorlage-Struktur:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│  KAUFY                    PLATTFORM        FÜR WEN         UNTERNEHMEN │
+│                                                                         │
+│  Die KI-Plattform für     Überblick        Für Vermieter   Über kaufy  │
+│  Kapitalanlage.           Funktionen       Für Anbieter    Kontakt     │
+│                           Immo-Wallet      Für Vertriebs.  Karriere    │
+│  Vermarktung, Beratung    Vertriebs...     Für Investoren  Partner     │
+│  und Verwaltung...        Automationen     Demo anfragen   Presse      │
+│                           Mieti                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│  © 2025 kaufy GmbH                         Impressum · Datenschutz · AGB│
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Datei:** `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`
+
+Änderungen:
+- 4-Spalten-Layout (Logo+Claim breit, 3 Link-Spalten)
+- Footer-Bottom-Bar mit Copyright links, Legal-Links rechts
+- Mobile: Akkordeon-Struktur
 
 ---
 
-### Phase 5: Exposé-Seite
-
-**5.1 Exposé wiederverwenden**
-
-Datei: `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx`
-
-Basiert auf `InvestmentExposePage.tsx` aus MOD-08:
-- Gleiche Struktur
-- Gleiche Komponenten (`MasterGraph`, `Haushaltsrechnung`, etc.)
-- Angepasste Navigation (zurück zu `/kaufy2026`)
-
-```typescript
-import {
-  MasterGraph,
-  Haushaltsrechnung,
-  InvestmentSliderPanel,
-  DetailTable40Jahre,
-  ExposeImageGallery,
-  ExposeDocuments,
-} from '@/components/investment';
-```
-
----
-
-### Phase 6: Datenabfrage (Golden Path)
-
-**6.1 Listings-Query für Zone 3**
-
-```typescript
-const { data: listings } = await supabase
-  .from('listings')
-  .select(`
-    id,
-    public_id,
-    title,
-    asking_price,
-    properties!inner (
-      id,
-      property_type,
-      address,
-      city,
-      postal_code,
-      total_area_sqm,
-      annual_income
-    )
-  `)
-  .eq('status', 'active')
-  .order('created_at', { ascending: false })
-  .limit(50);
-```
-
-**6.2 Investment-Engine Aufruf**
-
-```typescript
-const handleInvestmentSearch = async (params: SearchParams) => {
-  const { data } = await supabase.functions.invoke('sot-investment-engine', {
-    body: {
-      purchasePrice: listing.asking_price,
-      monthlyRent: listing.monthly_rent,
-      equity: params.equity,
-      taxableIncome: params.zvE,
-      maritalStatus: params.maritalStatus,
-      hasChurchTax: params.hasChurchTax,
-      churchTaxState: params.churchTaxState,
-      termYears: 15,
-      repaymentRate: 2,
-      afaModel: 'linear',
-      buildingShare: 0.8,
-      managementCostMonthly: 25,
-      valueGrowthRate: 2,
-      rentGrowthRate: 1.5,
-    },
-  });
-  
-  return data; // { summary, projection, inputs }
-};
-```
-
----
-
-### Phase 7: Asset-Upload
-
-**7.1 Bilder kopieren**
-
-Die hochgeladenen Bilder werden nach `src/assets/kaufy2026/` kopiert:
-- `Hero_Background-2.png` → Hero-Bild
-- `Objekt_1-2.png`, `Objekt_2-2.png` → Fallback-Bilder
-- `Vermieter_hero-2.jpg` → Vermieter-Seite
-- `Perspektiven-2.png` → Zahlen-Sektion
-
----
-
-### Phase 8: Routing & Manifest
-
-**8.1 Manifest aktualisieren**
-
-```typescript
-// routesManifest.ts
-kaufy2026: {
-  base: "/kaufy2026",
-  layout: "Kaufy2026Layout",
-  routes: [
-    { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
-    { path: "vermieter", component: "Kaufy2026Vermieter", title: "Für Vermieter" },
-    { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
-    { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
-    { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
-  ],
-},
-```
-
-**8.2 Armstrong-Context aktualisieren**
-
-In `useArmstrongContext.ts`:
-```typescript
-if (pathname.startsWith('/kaufy2026')) return 'kaufy';
-```
-
----
-
-## Datei-Erstellungsplan
+## Dateien-Änderungsplan
 
 | # | Datei | Aktion | Beschreibung |
 |---|-------|--------|--------------|
-| 1 | `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | NEU | Layout mit Header/Footer |
-| 2 | `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | NEU | Homepage mit Hero + Suche |
-| 3 | `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | NEU | Exposé (basiert auf MOD-08) |
-| 4 | `src/pages/zone3/kaufy2026/Kaufy2026Vermieter.tsx` | NEU | Vermieter-Seite |
-| 5 | `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | NEU | Verkäufer-Seite |
-| 6 | `src/pages/zone3/kaufy2026/Kaufy2026Vertrieb.tsx` | NEU | Partner-Seite |
-| 7 | `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx` | NEU | Investment-Suche |
-| 8 | `src/components/zone3/kaufy2026/Kaufy2026ClassicSearch.tsx` | NEU | Klassische Suche |
-| 9 | `src/components/zone3/kaufy2026/Kaufy2026Hero.tsx` | NEU | Hero mit Floating Search |
-| 10 | `src/components/zone3/kaufy2026/PerspektivenKarten.tsx` | NEU | 3er-Grid |
-| 11 | `src/components/zone3/kaufy2026/PerspektivenAkkordeon.tsx` | NEU | Akkordeon |
-| 12 | `src/components/zone3/kaufy2026/ZahlenSektion.tsx` | NEU | Dunkle Sektion |
-| 13 | `src/components/zone3/kaufy2026/index.ts` | NEU | Barrel-Export |
-| 14 | `src/manifests/routesManifest.ts` | ÄNDERN | kaufy2026 hinzufügen |
-| 15 | `src/styles/zone3-theme.css` | ÄNDERN | Kaufy2026-Styles |
-| 16 | `src/assets/kaufy2026/*` | NEU | Bilder kopieren |
+| 1 | `src/styles/zone3-theme.css` | ÄNDERN | Search-Card `bottom: 80px`, Hero-Wrapper overflow |
+| 2 | `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx` | ÄNDERN | Inline Cue-Bar, dezente Tabs, Text-Toggles |
+| 3 | `src/components/zone3/kaufy2026/PerspektivenKarten.tsx` | ÄNDERN | Icon rechts oben, Slogan, klickbare Card |
+| 4 | `src/components/zone3/kaufy2026/PerspektivenAkkordeon.tsx` | NEU | 4-Panel Akkordeon mit Bild |
+| 5 | `src/components/zone3/kaufy2026/ZahlenSektion.tsx` | ÄNDERN | Table-Layout mit Accent-Strich |
+| 6 | `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | ÄNDERN | Footer 4-Spalten + Bottom-Bar |
+| 7 | `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | ÄNDERN | PerspektivenAkkordeon einbinden |
+| 8 | `src/components/zone3/kaufy2026/index.ts` | ÄNDERN | Export PerspektivenAkkordeon |
+
+---
+
+## Visuelle Vorschau der Änderungen
+
+### Search-Card (Vorher → Nachher)
+
+**Vorher:**
+```text
+              ┌──────────────────────────────────────┐
+              │     [Investment] [Klassisch]         │
+              │                                      │
+              │  Einkommen (zvE)    Eigenkapital     │
+              │  ┌───────────┐      ┌───────────┐    │
+              │  │  60000    │      │  50000    │    │
+              │  └───────────┘      └───────────┘    │
+              │                                      │
+              │  [Ergebnisse →]               [↓]    │
+              └──────────────────────────────────────┘
+                         ↑ Ragt unter Hero heraus
+```
+
+**Nachher:**
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Einkommen (zvE) [____]  Eigenkapital [____]  [Ergebnisse →] [↓]│  │
+│  │  ─────────────────────────────────────────────────────────────  │  │
+│  │  Familienstand: Ledig · Verheiratet     KiSt: Nein · Ja        │  │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                    ↑ Schwebt INNERHALB des Hero (bottom: 80px)      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Perspektiven-Karten (Vorher → Nachher)
+
+**Vorher:**
+```text
+┌─────────────────────┐
+│ [🏠]                │
+│                     │
+│ Für Vermieter       │
+│                     │
+│ Beschreibungstext   │
+│                     │
+│ Mehr erfahren →     │
+└─────────────────────┘
+```
+
+**Nachher:**
+```text
+┌─────────────────────┐
+│                [🏠] │
+│ VERMIETER           │
+│                     │
+│ Vermieten.          │
+│ Verstehen.          │
+│ Optimieren.         │
+│                     │
+│ Alles, was zählt –  │
+│ auf einen Blick.    │
+└─────────────────────┘
+```
 
 ---
 
@@ -395,37 +278,14 @@ if (pathname.startsWith('/kaufy2026')) return 'kaufy';
 
 | # | Test | Erwartung |
 |---|------|-----------|
-| 1 | `/kaufy2026` aufrufen | Hero mit Floating-Suchleiste |
-| 2 | Suchleiste sichtbar | zvE, Eigenkapital, Ergebnisse-Button |
-| 3 | Expand-Toggle klicken | Familienstand, KiSt, Bundesland erscheinen |
-| 4 | "Ergebnisse →" klicken | Listings laden, Engine berechnet |
-| 5 | Ergebnis-Kacheln | `InvestmentResultTile` mit T-Konto |
-| 6 | Kachel klicken | Navigation zu `/kaufy2026/immobilien/{publicId}` |
-| 7 | Exposé-Seite | MasterGraph, Haushaltsrechnung, Slider |
-| 8 | Zurück-Button | Navigation zu `/kaufy2026` |
-| 9 | Responsive (Mobile) | Suche + Kacheln funktional |
-| 10 | Footer | 5-Spalten-Grid mit Links |
+| 1 | Search-Card Position | Schwebt innerhalb Hero (nicht darunter) |
+| 2 | Tabs | Dezent, klein, nicht dominant |
+| 3 | Inline-Inputs | Label + Input in einer Zeile |
+| 4 | Toggle-Buttons | Text-Toggles ohne Hintergrund |
+| 5 | Perspektiven-Karten | Icon rechts oben, Slogan sichtbar |
+| 6 | Akkordeon | 4 Panels mit Bild rechts |
+| 7 | Zahlen-Sektion | Table-Layout, dunkler Hintergrund |
+| 8 | Footer | 4-Spalten + Bottom-Bar |
+| 9 | Ergebnis-Kacheln | MOD-08 Grid beibehalten (wie gewählt) |
+| 10 | Responsive | Funktional auf Mobile und Desktop |
 
----
-
-## Bestätigung: Zone-Trennung
-
-| Zone | Rolle | Kaufy2026-Bezug |
-|------|-------|-----------------|
-| Zone 1 | Admin | Sales Desk überwacht Listings (Read-Only) |
-| Zone 2 | Portal | MOD-04 aktiviert Verkaufsauftrag, MOD-06 erstellt Listing |
-| Zone 3 | Website | Liest `listings` + `listing_publications`, zeigt Investment-Engine |
-
-**Zone 2 hat KEINE direkte Verbindung zu Zone 3.**
-Daten fließen über die Datenbank (Listings mit `status: active`).
-
----
-
-## Nächste Schritte nach Freigabe
-
-1. Assets kopieren (Bilder)
-2. Neue Dateien erstellen (Layout, Home, Komponenten)
-3. Manifest aktualisieren
-4. CSS erweitern
-5. Manueller Test aller Flows
-6. Alte `/kaufy` Route als Fallback behalten
