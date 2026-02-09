@@ -171,12 +171,7 @@ export const zone2Portal: ZoneDefinition = {
       icon: "LayoutDashboard",
       display_order: 0,
       visibility: { default: true, org_types: ["client", "partner", "subpartner"] },
-      tiles: [
-        { path: "widgets", component: "DashboardWidgets", title: "Widgets", default: true },
-        { path: "shortcuts", component: "DashboardShortcuts", title: "Shortcuts" },
-        { path: "aktivitaet", component: "DashboardAktivitaet", title: "Aktivität" },
-        { path: "einstellungen", component: "DashboardEinstellungen", title: "Einstellungen" },
-      ],
+      tiles: [],
     },
     "MOD-01": {
       name: "Stammdaten",
