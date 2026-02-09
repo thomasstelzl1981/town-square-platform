@@ -4,7 +4,7 @@
  * 
  * Primary landing page with:
  * - Magic Intake: Upload Exposé + Wohnungsliste → Auto-create project
- * - Recent projects list
+ * - Recent projects list with delete functionality
  */
 
 import { useState, useCallback } from 'react';
@@ -26,13 +26,17 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useDevProjects } from '@/hooks/useDevProjects';
+import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { formatCurrency } from '@/lib/formatters';
+import { ProjectDeleteDialog, type DeletionProtocol } from '@/components/projekte/ProjectDeleteDialog';
+import type { ProjectPortfolioRow } from '@/types/projekte';
 import {
   Table,
   TableBody,
@@ -44,12 +48,28 @@ import {
 
 export default function ProjekteDashboard() {
   const navigate = useNavigate();
-  const { portfolioRows, isLoadingPortfolio } = useDevProjects();
+  const { profile } = useAuth();
+  const tenantId = profile?.active_tenant_id;
+  const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
   
   const [exposeFile, setExposeFile] = useState<File | null>(null);
   const [pricelistFile, setPricelistFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<ProjectPortfolioRow | null>(null);
+
+  const handleDeleteClick = (project: ProjectPortfolioRow) => {
+    setProjectToDelete(project);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async (projectId: string): Promise<DeletionProtocol> => {
+    const result = await deleteProject.mutateAsync(projectId);
+    return result;
+  };
 
   // Expose dropzone
   const onDropExpose = useCallback((acceptedFiles: File[]) => {
@@ -404,7 +424,7 @@ export default function ProjekteDashboard() {
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Einheiten</TableHead>
                   <TableHead className="text-right">Fortschritt</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -436,7 +456,21 @@ export default function ProjekteDashboard() {
                       <span className="font-medium">{project.progress_percent}%</span>
                     </TableCell>
                     <TableCell>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(project);
+                          }}
+                          title="Projekt löschen"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -445,6 +479,15 @@ export default function ProjekteDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Dialog */}
+      <ProjectDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        project={projectToDelete}
+        tenantId={tenantId}
+        onConfirmDelete={handleConfirmDelete}
+      />
     </div>
   );
 }
