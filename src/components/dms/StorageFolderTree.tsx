@@ -6,12 +6,18 @@ import { useState } from 'react';
 import { 
   Folder, FolderOpen, ChevronRight, ChevronDown, Home, Inbox, Archive, 
   Building2, Landmark, AlertCircle, FileQuestion, MoreHorizontal, Image,
-  Car, ShoppingCart, Hammer, FolderHeart
+  Car, ShoppingCart, Hammer, FolderHeart, Trash2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface StorageNode {
   id: string;
@@ -39,6 +45,7 @@ interface StorageFolderTreeProps {
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
   onCreateFolder?: () => void;
+  onDeleteFolder?: (nodeId: string) => void;
 }
 
 // Icons for system folders
@@ -118,6 +125,7 @@ function TreeNode({
   properties,
   selectedNodeId,
   onSelectNode,
+  onDeleteFolder,
   level = 0,
   expandedNodes,
   toggleExpanded,
@@ -127,6 +135,7 @@ function TreeNode({
   properties?: PropertyInfo[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
+  onDeleteFolder?: (nodeId: string) => void;
   level: number;
   expandedNodes: Set<string>;
   toggleExpanded: (nodeId: string) => void;
@@ -137,6 +146,10 @@ function TreeNode({
   // Get child nodes - simply all nodes with this node as parent
   const childNodes = nodes.filter(n => n.parent_id === node.id);
   const hasChildren = childNodes.length > 0;
+  
+  // Check if folder is deletable (not system, not module root, no children)
+  const isSystemFolder = node.node_type === 'system' || node.template_id?.endsWith('_ROOT');
+  const canDelete = !isSystemFolder && !hasChildren && onDeleteFolder;
   
   // Get display label
   const getDisplayLabel = (n: StorageNode) => {
@@ -162,10 +175,10 @@ function TreeNode({
   });
 
   return (
-    <div>
-      <button
+    <div className="group">
+      <div
         className={cn(
-          'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors',
+          'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors cursor-pointer',
           isSelected && 'bg-accent',
         )}
         style={{ paddingLeft: `${8 + level * 16}px` }}
@@ -185,7 +198,22 @@ function TreeNode({
         <span className="flex-1 text-left truncate">
           {getDisplayLabel(node)}
         </span>
-      </button>
+        
+        {/* Delete button - only for non-system folders without children */}
+        {canDelete && (
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (confirm(`Ordner "${node.name}" wirklich löschen?`)) {
+                onDeleteFolder(node.id);
+              }
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-destructive transition-opacity"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
       
       {/* Render children recursively */}
       {isExpanded && sortedChildren.map(child => (
@@ -196,6 +224,7 @@ function TreeNode({
           properties={properties}
           selectedNodeId={selectedNodeId}
           onSelectNode={onSelectNode}
+          onDeleteFolder={onDeleteFolder}
           level={level + 1}
           expandedNodes={expandedNodes}
           toggleExpanded={toggleExpanded}
@@ -211,6 +240,7 @@ export function StorageFolderTree({
   selectedNodeId,
   onSelectNode,
   onCreateFolder,
+  onDeleteFolder,
 }: StorageFolderTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   
@@ -287,6 +317,7 @@ export function StorageFolderTree({
               properties={properties}
               selectedNodeId={selectedNodeId}
               onSelectNode={onSelectNode}
+              onDeleteFolder={onDeleteFolder}
               level={0}
               expandedNodes={expandedNodes}
               toggleExpanded={toggleExpanded}
