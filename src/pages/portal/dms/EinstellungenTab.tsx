@@ -20,10 +20,10 @@ export function EinstellungenTab() {
 
   // Mock connectors - in real app, fetch from integration_registry
   const connectors: Connector[] = [
+    { id: 'posteingang', name: 'Posteingang (E-Mail)', icon: '📬', status: 'connected', lastSync: '2026-01-26T10:00:00Z' },
     { id: 'dropbox', name: 'Dropbox', icon: '📦', status: 'disconnected' },
     { id: 'gdrive', name: 'Google Drive', icon: '📁', status: 'disconnected' },
     { id: 'onedrive', name: 'OneDrive', icon: '☁️', status: 'disconnected' },
-    { id: 'caya', name: 'Caya Post', icon: '📬', status: 'connected', lastSync: '2026-01-26T10:00:00Z' },
   ];
 
   const handleConnectorToggle = (connectorId: string) => {

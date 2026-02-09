@@ -130,7 +130,7 @@ flowchart TB
         direction LR
         E_RESEND["📧 Resend<br/><i>System Mail</i>"]
         E_STRIPE["💳 Stripe<br/><i>Billing</i>"]
-        E_CAYA["📬 Caya<br/><i>Post Inbound</i>"]
+        E_CAYA["📬 Posteingang<br/><i>E-Mail Inbound</i>"]
         E_AI["🧠 Lovable AI<br/><i>Gateway</i>"]
         E_META["📢 Meta Ads<br/><i>Campaigns</i>"]
     end
@@ -180,7 +180,7 @@ export const MODULE_DEPENDENCIES_CHART = `
 flowchart LR
     subgraph INPUT["Eingang"]
         LEAD["🎯 Lead<br/>Zone 3"]
-        POST["📬 Post<br/>Caya"]
+        POST["📬 Post<br/>Posteingang"]
     end
 
     subgraph CORE["Core Modules"]

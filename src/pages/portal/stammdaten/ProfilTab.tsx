@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Info } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Info, Mail, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProfileFormData {
@@ -634,6 +634,9 @@ export function ProfilTab() {
         </CardContent>
       </Card>
 
+      {/* Upload-E-Mail (Posteingang) */}
+      <UploadEmailSection />
+
       {/* WhatsApp Business Settings */}
       <WhatsAppSettingsSection userId={user?.id} isDevelopmentMode={isDevelopmentMode} />
 
@@ -648,6 +651,74 @@ export function ProfilTab() {
         </Button>
       </div>
     </form>
+  );
+}
+
+// =============================================================================
+// Upload Email Section
+// =============================================================================
+
+function UploadEmailSection() {
+  const { user } = useAuth();
+
+  const { data: mailboxAddress } = useQuery({
+    queryKey: ['inbound-mailbox-profil'],
+    queryFn: async () => {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) return null;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-inbound-receive?action=mailbox`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      );
+      if (!res.ok) return null;
+      const result = await res.json();
+      return result.address as string;
+    },
+    enabled: !!user,
+  });
+
+  const copyAddress = () => {
+    if (mailboxAddress) {
+      navigator.clipboard.writeText(mailboxAddress);
+      toast.success('E-Mail-Adresse kopiert');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Deine Upload-E-Mail
+        </CardTitle>
+        <CardDescription>
+          Sende PDFs an diese Adresse. Anhänge landen automatisch im DMS-Posteingang und im Storage.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3">
+          <code className="flex-1 px-3 py-2 bg-muted rounded-lg font-mono text-sm">
+            {mailboxAddress || 'Wird geladen...'}
+          </code>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={copyAddress}
+            disabled={!mailboxAddress}
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            Kopieren
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

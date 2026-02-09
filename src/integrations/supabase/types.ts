@@ -5467,6 +5467,133 @@ export type Database = {
           },
         ]
       }
+      inbound_attachments: {
+        Row: {
+          created_at: string
+          document_id: string | null
+          filename: string
+          id: string
+          inbound_email_id: string
+          is_pdf: boolean
+          mime_type: string
+          size_bytes: number | null
+          storage_path: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id?: string | null
+          filename: string
+          id?: string
+          inbound_email_id: string
+          is_pdf?: boolean
+          mime_type?: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string | null
+          filename?: string
+          id?: string
+          inbound_email_id?: string
+          is_pdf?: boolean
+          mime_type?: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_attachments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_attachments_inbound_email_id_fkey"
+            columns: ["inbound_email_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_emails: {
+        Row: {
+          attachment_count: number
+          created_at: string
+          error_message: string | null
+          from_email: string
+          id: string
+          mailbox_id: string
+          pdf_count: number
+          provider: string
+          provider_email_id: string
+          received_at: string
+          status: string
+          subject: string | null
+          tenant_id: string
+          to_email: string
+        }
+        Insert: {
+          attachment_count?: number
+          created_at?: string
+          error_message?: string | null
+          from_email: string
+          id?: string
+          mailbox_id: string
+          pdf_count?: number
+          provider?: string
+          provider_email_id: string
+          received_at?: string
+          status?: string
+          subject?: string | null
+          tenant_id: string
+          to_email: string
+        }
+        Update: {
+          attachment_count?: number
+          created_at?: string
+          error_message?: string | null
+          from_email?: string
+          id?: string
+          mailbox_id?: string
+          pdf_count?: number
+          provider?: string
+          provider_email_id?: string
+          received_at?: string
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_emails_mailbox_id_fkey"
+            columns: ["mailbox_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_mailboxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_emails_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_items: {
         Row: {
           assigned_at: string | null
@@ -5552,6 +5679,44 @@ export type Database = {
           {
             foreignKeyName: "inbound_items_assigned_tenant_id_fkey"
             columns: ["assigned_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_mailboxes: {
+        Row: {
+          address_domain: string
+          address_local_part: string
+          created_at: string
+          id: string
+          is_active: boolean
+          provider: string
+          tenant_id: string
+        }
+        Insert: {
+          address_domain?: string
+          address_local_part: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          tenant_id: string
+        }
+        Update: {
+          address_domain?: string
+          address_local_part?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_mailboxes_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
