@@ -190,67 +190,151 @@ export function useDevProjects(contextId?: string) {
     },
   });
 
-  // Delete project including storage files
-  const deleteProject = useMutation({
-    mutationFn: async (id: string) => {
-      if (!tenantId) throw new Error('No tenant selected');
-      
-      // 1. Delete files from Storage bucket
-      const storagePath = `projects/${tenantId}/${id}`;
+  // Delete project including storage files - returns detailed protocol
+  const deleteProjectWithProtocol = async (id: string): Promise<{
+    projectId: string;
+    projectName: string;
+    projectCode: string;
+    storageFilesFound: string[];
+    storageFilesDeleted: string[];
+    storageErrors: string[];
+    dbRecordsDeleted: {
+      units: number;
+      reservations: number;
+      documents: number;
+    };
+    success: boolean;
+    timestamp: string;
+  }> => {
+    if (!tenantId) throw new Error('No tenant selected');
+    
+    const protocol = {
+      projectId: id,
+      projectName: '',
+      projectCode: '',
+      storageFilesFound: [] as string[],
+      storageFilesDeleted: [] as string[],
+      storageErrors: [] as string[],
+      dbRecordsDeleted: {
+        units: 0,
+        reservations: 0,
+        documents: 0,
+      },
+      success: false,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Get project info for protocol
+    const { data: project } = await supabase
+      .from('dev_projects')
+      .select('name, project_code')
+      .eq('id', id)
+      .single();
+    
+    if (project) {
+      protocol.projectName = project.name || '';
+      protocol.projectCode = project.project_code || '';
+    }
+
+    // Count records before deletion for protocol
+    const { count: unitCount } = await supabase
+      .from('dev_project_units')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id);
+    protocol.dbRecordsDeleted.units = unitCount || 0;
+
+    const { count: reservationCount } = await supabase
+      .from('dev_project_reservations')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id);
+    protocol.dbRecordsDeleted.reservations = reservationCount || 0;
+
+    const { count: docCount } = await supabase
+      .from('dev_project_documents')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id);
+    protocol.dbRecordsDeleted.documents = docCount || 0;
+    
+    // 1. Recursively collect all storage files
+    const storagePath = `projects/${tenantId}/${id}`;
+    
+    const collectFiles = async (folderPath: string): Promise<string[]> => {
+      const files: string[] = [];
       
       try {
-        // List all files in the project folder
-        const { data: files } = await supabase.storage
+        const { data: items } = await supabase.storage
           .from('project-documents')
-          .list(storagePath, { limit: 1000 });
+          .list(folderPath, { limit: 1000 });
         
-        if (files && files.length > 0) {
-          // List expose subfolder
-          const { data: exposeFiles } = await supabase.storage
-            .from('project-documents')
-            .list(`${storagePath}/expose`);
-          
-          // List pricelist subfolder
-          const { data: pricelistFiles } = await supabase.storage
-            .from('project-documents')
-            .list(`${storagePath}/pricelist`);
-          
-          const filesToDelete: string[] = [];
-          
-          if (exposeFiles) {
-            exposeFiles.forEach(f => filesToDelete.push(`${storagePath}/expose/${f.name}`));
-          }
-          if (pricelistFiles) {
-            pricelistFiles.forEach(f => filesToDelete.push(`${storagePath}/pricelist/${f.name}`));
-          }
-          
-          if (filesToDelete.length > 0) {
-            const { error: deleteStorageError } = await supabase.storage
-              .from('project-documents')
-              .remove(filesToDelete);
+        if (items) {
+          for (const item of items) {
+            const fullPath = `${folderPath}/${item.name}`;
             
-            if (deleteStorageError) {
-              console.error('Storage delete error:', deleteStorageError);
-              // Continue with project deletion even if storage fails
+            if (item.id === null) {
+              // Folder - recurse
+              const subFiles = await collectFiles(fullPath);
+              files.push(...subFiles);
+            } else {
+              // File
+              files.push(fullPath);
             }
           }
         }
-      } catch (storageError) {
-        console.error('Error cleaning up storage:', storageError);
-        // Continue with project deletion
+      } catch (err) {
+        console.error('Error listing folder:', folderPath, err);
       }
       
-      // 2. Delete project (cascade will handle units, reservations, etc.)
-      const { error } = await supabase
-        .from('dev_projects')
-        .delete()
-        .eq('id', id);
+      return files;
+    };
+
+    try {
+      protocol.storageFilesFound = await collectFiles(storagePath);
       
-      if (error) throw error;
-    },
-    onSuccess: () => {
+      // 2. Delete all files in batches
+      if (protocol.storageFilesFound.length > 0) {
+        // Supabase storage remove can handle up to 100 files at once
+        const batchSize = 100;
+        for (let i = 0; i < protocol.storageFilesFound.length; i += batchSize) {
+          const batch = protocol.storageFilesFound.slice(i, i + batchSize);
+          
+          const { data: deleted, error: deleteError } = await supabase.storage
+            .from('project-documents')
+            .remove(batch);
+          
+          if (deleteError) {
+            protocol.storageErrors.push(`Batch ${i / batchSize + 1}: ${deleteError.message}`);
+          } else if (deleted) {
+            protocol.storageFilesDeleted.push(...batch);
+          }
+        }
+      }
+    } catch (storageError) {
+      console.error('Error cleaning up storage:', storageError);
+      protocol.storageErrors.push(storageError instanceof Error ? storageError.message : 'Unknown error');
+    }
+    
+    // 3. Delete project (cascade will handle units, reservations, documents, etc.)
+    const { error } = await supabase
+      .from('dev_projects')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      protocol.storageErrors.push(`DB: ${error.message}`);
+      throw error;
+    }
+    
+    protocol.success = true;
+    return protocol;
+  };
+
+  const deleteProject = useMutation({
+    mutationFn: deleteProjectWithProtocol,
+    onSuccess: (protocol) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      toast.success('Projekt und Dateien gelöscht');
+      toast.success('Projekt und Dateien gelöscht', {
+        description: `${protocol.storageFilesDeleted.length} Dateien entfernt`,
+      });
     },
     onError: (error: Error) => {
       toast.error('Fehler beim Löschen: ' + error.message);
