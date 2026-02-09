@@ -2,9 +2,11 @@
  * Projekte Dashboard - Magic Intake Entry Point
  * MOD-13 PROJEKTE
  * 
- * Primary landing page with:
- * - Magic Intake: Upload Exposé + Wohnungsliste → Auto-create project
- * - Recent projects list with delete functionality
+ * 4-Step Workflow:
+ * 1. Drop files → local preview
+ * 2. Upload → tenant-documents + UploadResultCard
+ * 3. AI Analysis → sot-project-intake(mode='analyze') → Review form
+ * 4. Create → sot-project-intake(mode='create') → Navigate to project
  */
 
 import { useState, useCallback } from 'react';
@@ -13,6 +15,8 @@ import { useDropzone } from 'react-dropzone';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Upload, 
   FileText, 
@@ -27,11 +31,13 @@ import {
   AlertCircle,
   CheckCircle2,
   Trash2,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { useUniversalUpload, type UploadedFileInfo } from '@/hooks/useUniversalUpload';
+import { UploadResultCard } from '@/components/shared/UploadResultCard';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -47,20 +53,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+interface ExtractedProjectData {
+  projectName: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  unitsCount: number;
+  totalArea: number;
+  priceRange: string;
+  description?: string;
+  projectType?: 'neubau' | 'aufteilung';
+}
+
+type IntakeStep = 'upload' | 'review' | 'creating';
+
 export default function ProjekteDashboard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const tenantId = profile?.active_tenant_id;
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
   
+  // File selection state (before upload)
   const [exposeFile, setExposeFile] = useState<File | null>(null);
   const [pricelistFile, setPricelistFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 4-step workflow state
+  const [step, setStep] = useState<IntakeStep>('upload');
+  const [uploadedExpose, setUploadedExpose] = useState<UploadedFileInfo | null>(null);
+  const [uploadedPricelist, setUploadedPricelist] = useState<UploadedFileInfo | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedProjectData | null>(null);
   
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<ProjectPortfolioRow | null>(null);
+
+  const { upload: universalUpload } = useUniversalUpload();
 
   const handleDeleteClick = (project: ProjectPortfolioRow) => {
     setProjectToDelete(project);
@@ -85,6 +115,7 @@ export default function ProjekteDashboard() {
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
     multiple: false,
+    disabled: !!uploadedExpose,
   });
 
   // Pricelist dropzone
@@ -105,32 +136,40 @@ export default function ProjekteDashboard() {
     },
     maxFiles: 1,
     multiple: false,
+    disabled: !!uploadedPricelist,
   });
 
-  // Universal upload hook for stable direct-to-storage uploads
-  const { upload: universalUpload } = useUniversalUpload();
-
-  const handleMagicIntake = async () => {
+  // ── Step 2: Upload files to storage ────────────────────────────────
+  const handleUploadFiles = async () => {
     if (!exposeFile && !pricelistFile) {
       setError('Bitte laden Sie mindestens eine Datei hoch.');
       return;
     }
 
-    setIsProcessing(true);
+    setIsUploading(true);
     setError(null);
 
     try {
-      // Step 1: Upload files directly to storage (no FormData to Edge Function)
-      const storagePaths: { expose?: string; pricelist?: string } = {};
-
       if (exposeFile) {
         const result = await universalUpload(exposeFile, {
           moduleCode: 'MOD_13',
           docTypeHint: 'expose',
           source: 'project_intake',
+          onFileUploaded: (info) => setUploadedExpose(info),
         });
         if (result.error) throw new Error(result.error);
-        storagePaths.expose = result.storagePath;
+        // Set from result if callback didn't fire
+        if (!uploadedExpose && result.documentId) {
+          setUploadedExpose({
+            documentId: result.documentId,
+            storagePath: result.storagePath || '',
+            storageNodeId: result.storageNodeId,
+            fileName: exposeFile.name,
+            fileSize: exposeFile.size,
+            mimeType: exposeFile.type,
+            previewUrl: result.previewUrl || null,
+          });
+        }
       }
 
       if (pricelistFile) {
@@ -138,45 +177,115 @@ export default function ProjekteDashboard() {
           moduleCode: 'MOD_13',
           docTypeHint: 'pricelist',
           source: 'project_intake',
+          onFileUploaded: (info) => setUploadedPricelist(info),
         });
         if (result.error) throw new Error(result.error);
-        storagePaths.pricelist = result.storagePath;
+        if (!uploadedPricelist && result.documentId) {
+          setUploadedPricelist({
+            documentId: result.documentId,
+            storagePath: result.storagePath || '',
+            storageNodeId: result.storageNodeId,
+            fileName: pricelistFile.name,
+            fileSize: pricelistFile.size,
+            mimeType: pricelistFile.type,
+            previewUrl: result.previewUrl || null,
+          });
+        }
       }
 
-      // Step 2: Call Edge Function with storage paths only (JSON mode, no file content)
+      toast.success('Dateien erfolgreich hochgeladen');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
+      setError(message);
+      toast.error('Upload fehlgeschlagen', { description: message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ── Step 3: Start AI analysis ──────────────────────────────────────
+  const handleStartAnalysis = async () => {
+    const storagePaths: { expose?: string; pricelist?: string } = {};
+    if (uploadedExpose) storagePaths.expose = uploadedExpose.storagePath;
+    if (uploadedPricelist) storagePaths.pricelist = uploadedPricelist.storagePath;
+
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
         body: {
           storagePaths,
+          mode: 'analyze',
+        },
+      });
+
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.extractedData) {
+        setExtractedData(data.extractedData);
+        setStep('review');
+        toast.success('Analyse abgeschlossen', { description: 'Bitte prüfen Sie die extrahierten Daten.' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Analyse fehlgeschlagen';
+      setError(message);
+      toast.error('KI-Analyse fehlgeschlagen', { description: message });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // ── Step 4: Create project ─────────────────────────────────────────
+  const handleCreateProject = async () => {
+    if (!extractedData) return;
+
+    const storagePaths: { expose?: string; pricelist?: string } = {};
+    if (uploadedExpose) storagePaths.expose = uploadedExpose.storagePath;
+    if (uploadedPricelist) storagePaths.pricelist = uploadedPricelist.storagePath;
+
+    setStep('creating');
+    setError(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
+        body: {
+          storagePaths,
+          mode: 'create',
+          reviewedData: extractedData,
           autoCreateContext: true,
         },
       });
 
       if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
 
       if (data?.projectId) {
-        toast.success('Projekt wird erstellt', {
-          description: 'Die KI analysiert Ihre Dokumente. Sie werden zur Projektakte weitergeleitet.',
-        });
+        toast.success('Projekt erstellt', { description: `Projektcode: ${data.projectCode}` });
         resetForm();
         navigate(`/portal/projekte/${data.projectId}`);
-      } else if (data?.error) {
-        throw new Error(data.error);
       }
     } catch (err) {
-      console.error('Magic intake error:', err);
-      const message = err instanceof Error ? err.message : 'Fehler beim Starten des Imports';
+      const message = err instanceof Error ? err.message : 'Projekt konnte nicht erstellt werden';
       setError(message);
-      toast.error('Fehler beim Import', { description: message });
-    } finally {
-      setIsProcessing(false);
+      setStep('review');
+      toast.error('Fehler beim Erstellen', { description: message });
     }
   };
 
   const resetForm = () => {
     setExposeFile(null);
     setPricelistFile(null);
+    setUploadedExpose(null);
+    setUploadedPricelist(null);
+    setExtractedData(null);
+    setStep('upload');
     setError(null);
   };
+
+  const hasUploadedFiles = !!uploadedExpose || !!uploadedPricelist;
+  const hasSelectedFiles = !!exposeFile || !!pricelistFile;
 
   // Stats from portfolio
   const stats = {
@@ -213,99 +322,283 @@ export default function ProjekteDashboard() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Exposé Upload */}
-            <div
-              {...getExposeRootProps()}
-              className={cn(
-                "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
-                isExposeDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-                exposeFile && "border-primary bg-primary/5"
-              )}
-            >
-              <input {...getExposeInputProps()} />
-              {exposeFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <div className="text-left">
-                      <p className="font-medium text-sm">{exposeFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {Math.round(exposeFile.size / 1024)} KB
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExposeFile(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-muted">
-                    <FileText className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Projekt-Exposé</p>
-                    <p className="text-sm text-muted-foreground">PDF hier ablegen</p>
-                  </div>
-                </div>
-              )}
+          {/* Step indicator */}
+          {step !== 'upload' && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              <Badge variant="outline" className={step === 'review' ? 'bg-primary/10 text-primary' : 'bg-muted'}>
+                Schritt {step === 'review' ? '3: Review' : '4: Erstellen'}
+              </Badge>
+              <Button variant="ghost" size="sm" className="text-xs h-6" onClick={resetForm}>
+                Zurücksetzen
+              </Button>
             </div>
+          )}
 
-            {/* Pricelist Upload */}
-            <div
-              {...getPricelistRootProps()}
-              className={cn(
-                "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
-                isPricelistDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-                pricelistFile && "border-primary bg-primary/5"
-              )}
-            >
-              <input {...getPricelistInputProps()} />
-              {pricelistFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <div className="text-left">
-                      <p className="font-medium text-sm">{pricelistFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {Math.round(pricelistFile.size / 1024)} KB
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPricelistFile(null);
-                    }}
+          {/* ── Upload Phase (Steps 1-2) ─────────────────────────── */}
+          {step === 'upload' && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Exposé Upload / Result */}
+                {uploadedExpose ? (
+                  <UploadResultCard
+                    file={uploadedExpose}
+                    status={isAnalyzing ? 'analyzing' : 'uploaded'}
+                  />
+                ) : (
+                  <div
+                    {...getExposeRootProps()}
+                    className={cn(
+                      "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
+                      isExposeDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+                      exposeFile && "border-primary bg-primary/5"
+                    )}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-muted">
-                    <Table2 className="h-6 w-6 text-muted-foreground" />
+                    <input {...getExposeInputProps()} />
+                    {exposeFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <p className="font-medium text-sm">{exposeFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {Math.round(exposeFile.size / 1024)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExposeFile(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="p-3 rounded-full bg-muted">
+                          <FileText className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Projekt-Exposé</p>
+                          <p className="text-sm text-muted-foreground">PDF hier ablegen</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <p className="font-medium">Wohnungsliste / Preisliste</p>
-                    <p className="text-sm text-muted-foreground">XLSX, CSV oder PDF</p>
+                )}
+
+                {/* Pricelist Upload / Result */}
+                {uploadedPricelist ? (
+                  <UploadResultCard
+                    file={uploadedPricelist}
+                    status={isAnalyzing ? 'analyzing' : 'uploaded'}
+                  />
+                ) : (
+                  <div
+                    {...getPricelistRootProps()}
+                    className={cn(
+                      "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
+                      isPricelistDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+                      pricelistFile && "border-primary bg-primary/5"
+                    )}
+                  >
+                    <input {...getPricelistInputProps()} />
+                    {pricelistFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <p className="font-medium text-sm">{pricelistFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {Math.round(pricelistFile.size / 1024)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPricelistFile(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="p-3 rounded-full bg-muted">
+                          <Table2 className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Wohnungsliste / Preisliste</p>
+                          <p className="text-sm text-muted-foreground">XLSX, CSV oder PDF</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
+
+              {/* Action Buttons for Upload Phase */}
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-sm text-muted-foreground">
+                  <Sparkles className="inline h-3 w-3 mr-1" />
+                  {hasUploadedFiles
+                    ? 'Dateien hochgeladen — starten Sie die KI-Analyse'
+                    : 'KI extrahiert automatisch Projektdaten, Einheiten & Preise'}
+                </p>
+                <div className="flex gap-2">
+                  {(hasSelectedFiles || hasUploadedFiles) && (
+                    <Button variant="ghost" onClick={resetForm} disabled={isUploading || isAnalyzing}>
+                      Zurücksetzen
+                    </Button>
+                  )}
+
+                  {/* Button: Upload (before files are in storage) */}
+                  {!hasUploadedFiles && (
+                    <Button
+                      onClick={handleUploadFiles}
+                      disabled={isUploading || !hasSelectedFiles}
+                      className="gap-2"
+                      size="lg"
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Wird hochgeladen…
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Dateien hochladen
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Button: Start AI Analysis (after upload) */}
+                  {hasUploadedFiles && (
+                    <Button
+                      onClick={handleStartAnalysis}
+                      disabled={isAnalyzing}
+                      className="gap-2"
+                      size="lg"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          KI analysiert…
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4" />
+                          KI-Analyse starten
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
+            </>
+          )}
+
+          {/* ── Review Phase (Step 3) ────────────────────────────── */}
+          {step === 'review' && extractedData && (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="projectName">Projektname</Label>
+                  <Input
+                    id="projectName"
+                    value={extractedData.projectName}
+                    onChange={(e) => setExtractedData({ ...extractedData, projectName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="projectType">Projekttyp</Label>
+                  <Input
+                    id="projectType"
+                    value={extractedData.projectType || 'neubau'}
+                    onChange={(e) => setExtractedData({ ...extractedData, projectType: e.target.value as 'neubau' | 'aufteilung' })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">Stadt</Label>
+                  <Input
+                    id="city"
+                    value={extractedData.city}
+                    onChange={(e) => setExtractedData({ ...extractedData, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode">PLZ</Label>
+                  <Input
+                    id="postalCode"
+                    value={extractedData.postalCode}
+                    onChange={(e) => setExtractedData({ ...extractedData, postalCode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Adresse</Label>
+                  <Input
+                    id="address"
+                    value={extractedData.address}
+                    onChange={(e) => setExtractedData({ ...extractedData, address: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unitsCount">Einheiten</Label>
+                  <Input
+                    id="unitsCount"
+                    type="number"
+                    value={extractedData.unitsCount}
+                    onChange={(e) => setExtractedData({ ...extractedData, unitsCount: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalArea">Gesamtfläche (m²)</Label>
+                  <Input
+                    id="totalArea"
+                    type="number"
+                    value={extractedData.totalArea}
+                    onChange={(e) => setExtractedData({ ...extractedData, totalArea: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priceRange">Preisspanne</Label>
+                  <Input
+                    id="priceRange"
+                    value={extractedData.priceRange}
+                    onChange={(e) => setExtractedData({ ...extractedData, priceRange: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" onClick={resetForm}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleCreateProject} className="gap-2" size="lg">
+                  <Sparkles className="h-4 w-4" />
+                  Projekt anlegen
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── Creating Phase (Step 4) ──────────────────────────── */}
+          {step === 'creating' && (
+            <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Projekt wird erstellt…
+            </div>
+          )}
 
           {/* Error Display */}
           {error && (
@@ -314,39 +607,6 @@ export default function ProjekteDashboard() {
               {error}
             </div>
           )}
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-2">
-            <p className="text-sm text-muted-foreground">
-              <Sparkles className="inline h-3 w-3 mr-1" />
-              KI extrahiert automatisch Projektdaten, Einheiten & Preise
-            </p>
-            <div className="flex gap-2">
-              {(exposeFile || pricelistFile) && (
-                <Button variant="ghost" onClick={resetForm} disabled={isProcessing}>
-                  Zurücksetzen
-                </Button>
-              )}
-              <Button 
-                onClick={handleMagicIntake}
-                disabled={isProcessing || (!exposeFile && !pricelistFile)}
-                className="gap-2"
-                size="lg"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    KI arbeitet...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Projekt automatisch anlegen
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

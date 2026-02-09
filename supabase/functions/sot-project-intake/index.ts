@@ -181,7 +181,7 @@ async function handleAnalyzeMode(
     try {
       // Download file from storage
       const { data: fileData, error: downloadError } = await supabase.storage
-        .from('project-documents')
+        .from('tenant-documents')
         .download(storagePaths.expose);
 
       if (downloadError) {
@@ -379,12 +379,12 @@ async function handleCreateMode(
         const newPath = `${projectStoragePath}/expose/${fileName}`;
         
         const { error: copyError } = await supabase.storage
-          .from('project-documents')
+          .from('tenant-documents')
           .copy(storagePaths.expose, newPath);
         
         if (!copyError) {
           // Delete original
-          await supabase.storage.from('project-documents').remove([storagePaths.expose]);
+          await supabase.storage.from('tenant-documents').remove([storagePaths.expose]);
           console.log('Moved expose to project folder');
         }
       } catch (err) {
@@ -399,11 +399,11 @@ async function handleCreateMode(
         const newPath = `${projectStoragePath}/pricelist/${fileName}`;
         
         const { error: copyError } = await supabase.storage
-          .from('project-documents')
+          .from('tenant-documents')
           .copy(storagePaths.pricelist, newPath);
         
         if (!copyError) {
-          await supabase.storage.from('project-documents').remove([storagePaths.pricelist]);
+          await supabase.storage.from('tenant-documents').remove([storagePaths.pricelist]);
           console.log('Moved pricelist to project folder');
         }
       } catch (err) {
