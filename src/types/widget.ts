@@ -57,6 +57,18 @@ export interface Widget {
 // WIDGET CONFIGURATION
 // =============================================================================
 
+/**
+ * TASK WIDGET DESIGN SPEC:
+ * - Container: aspect-square, glass-card style
+ * - Header: Icon + type label + risk badge
+ * - Content: Title + description (line-clamp)
+ * - Footer: Meta info + TWO ROUND GLASS BUTTONS (no text labels)
+ *   - Left button: X icon (cancel) - outline, hover destructive
+ *   - Right button: ✓ icon (confirm) - primary tint, glass effect
+ * - Button size: h-10 w-10 rounded-full
+ * - Glass effect: backdrop-blur-sm, bg-background/60 or bg-primary/10
+ */
+
 export interface WidgetConfig {
   type: WidgetType;
   icon: string;

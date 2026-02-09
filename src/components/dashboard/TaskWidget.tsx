@@ -1,11 +1,16 @@
 /**
  * TaskWidget — Square widget card for Armstrong task actions
  * 
- * Displays task info with approve/cancel buttons in a compact square layout.
+ * DESIGN SPEC:
+ * - Displays task info in a compact square layout (aspect-square)
+ * - Actions: Two round glass buttons at bottom center
+ *   - Left: X (cancel/reject) - outline style, hover destructive
+ *   - Right: ✓ (approve/confirm) - primary tint, glass effect
+ * - No text labels on buttons, only icons
+ * - Glass morphism: backdrop-blur-sm, semi-transparent backgrounds
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Mail, 
@@ -131,47 +136,56 @@ export function TaskWidget({
         </div>
         
         {/* Footer */}
-        <div className="mt-auto pt-2 space-y-2">
+        <div className="mt-auto pt-2">
           {/* Meta Info */}
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-3">
             <span>{timeAgo}</span>
             <Badge variant="secondary" className="text-[9px] h-4 px-1.5">
               {COST_LABELS[widget.cost_model]}
             </Badge>
           </div>
           
-          {/* Action Buttons - Stack vertically */}
-          <div className="flex flex-col gap-1.5">
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfirm(widget.id);
-              }}
-              disabled={isExecuting}
-              className="h-7 text-xs gap-1"
-            >
-              {isExecuting ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Check className="h-3 w-3" />
-              )}
-              Freigeben
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
+          {/* Action Buttons - Two round glass buttons */}
+          <div className="flex items-center justify-center gap-4">
+            {/* Cancel Button */}
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 onCancel(widget.id);
               }}
               disabled={isExecuting}
-              className="h-7 text-xs gap-1"
+              className={cn(
+                "h-10 w-10 rounded-full flex items-center justify-center transition-all",
+                "bg-background/60 backdrop-blur-sm border border-muted-foreground/20",
+                "hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+              aria-label="Abbrechen"
             >
-              <X className="h-3 w-3" />
-              Abbrechen
-            </Button>
+              <X className="h-5 w-5" />
+            </button>
+            
+            {/* Confirm Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfirm(widget.id);
+              }}
+              disabled={isExecuting}
+              className={cn(
+                "h-10 w-10 rounded-full flex items-center justify-center transition-all",
+                "bg-primary/10 backdrop-blur-sm border border-primary/30",
+                "hover:bg-primary/20 hover:border-primary/50 text-primary",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+              aria-label="Freigeben"
+            >
+              {isExecuting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Check className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
       </CardContent>
