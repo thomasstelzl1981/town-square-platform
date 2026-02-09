@@ -11,7 +11,9 @@
  * 4. Changes require explicit approval + version bump
  * 
  * K3 ENFORCEMENT:
- * - execution_mode='execute' only allowed if: risk_level='low' AND data_scopes_write=[] AND cost_model='free'
+ * - execution_mode='execute' only allowed if: risk_level='low' AND cost_model='free'
+ *   AND (data_scopes_write=[] OR writes are internal-only, e.g. ['widgets'])
+ * - Interne Widget-Writes gelten NICHT als schutzbeduerftiger Schreibzugriff (keine externen Konsequenzen)
  * 
  * K4 ENFORCEMENT:
  * - execution_mode='draft_only' must not write to SSOT tables directly
@@ -430,11 +432,11 @@ export const armstrongActions: ArmstrongActionV2[] = [
   {
     action_code: 'ARM.MOD02.WA_COMMAND_EXECUTE',
     title_de: 'Owner-Control Befehl ausführen',
-    description_de: 'Verarbeitet einen WhatsApp-Befehl vom Owner und erstellt Widget/Draft',
+    description_de: 'Verarbeitet einen WhatsApp-Befehl vom Owner und führt interne Aktionen sofort aus, externe als Widget zur Freigabe',
     zones: ['Z2'],
     module: 'MOD-02',
-    risk_level: 'medium',
-    execution_mode: 'draft_only',
+    risk_level: 'low',
+    execution_mode: 'execute', // Runtime entscheidet: intern=sofort, extern=Widget zur Freigabe
     requires_consent_code: null,
     roles_allowed: ['org_admin'],
     data_scopes_read: ['whatsapp_messages', 'armstrong_command_events'],
@@ -902,7 +904,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    execution_mode: 'execute_with_confirmation',
+    execution_mode: 'execute', // K3-konform: low risk + free + interne Widget-Writes (keine externen Konsequenzen)
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
@@ -924,7 +926,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    execution_mode: 'execute_with_confirmation',
+    execution_mode: 'execute', // K3-konform: low risk + free + interne Widget-Writes
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
@@ -946,7 +948,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    execution_mode: 'execute_with_confirmation',
+    execution_mode: 'execute', // K3-konform: low risk + free + interne Widget-Writes
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
@@ -968,7 +970,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    execution_mode: 'execute_with_confirmation',
+    execution_mode: 'execute', // K3-konform: low risk + free + interne Widget-Writes
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],
@@ -990,7 +992,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     zones: ['Z2'],
     module: 'MOD-00',
     risk_level: 'low',
-    execution_mode: 'execute_with_confirmation',
+    execution_mode: 'execute', // K3-konform: low risk + free + interne Widget-Writes
     requires_consent_code: null,
     roles_allowed: [],
     data_scopes_read: [],

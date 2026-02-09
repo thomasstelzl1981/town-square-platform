@@ -10644,6 +10644,71 @@ export type Database = {
           },
         ]
       }
+      task_widgets: {
+        Row: {
+          action_code: string | null
+          completed_at: string | null
+          cost_model: string
+          created_at: string
+          description: string | null
+          id: string
+          parameters: Json | null
+          risk_level: string
+          source: string
+          source_ref: string | null
+          status: string
+          tenant_id: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_code?: string | null
+          completed_at?: string | null
+          cost_model?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parameters?: Json | null
+          risk_level?: string
+          source?: string
+          source_ref?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_code?: string | null
+          completed_at?: string | null
+          cost_model?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parameters?: Json | null
+          risk_level?: string
+          source?: string
+          source_ref?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_widgets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_parameters: {
         Row: {
           category: string
@@ -11766,6 +11831,10 @@ export type Database = {
       }
       increment_thread_message_count: {
         Args: { p_thread_id: string }
+        Returns: undefined
+      }
+      increment_unread: {
+        Args: { conversation_uuid: string }
         Returns: undefined
       }
       is_akquise_manager: { Args: { _user_id: string }; Returns: boolean }
