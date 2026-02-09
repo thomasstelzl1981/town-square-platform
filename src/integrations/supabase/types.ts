@@ -5321,55 +5321,91 @@ export type Database = {
       }
       integration_registry: {
         Row: {
+          auth_type: string | null
+          base_url: string | null
+          caching_policy_min: number | null
           code: string
           config_schema: Json
+          cost_hint: string | null
+          cost_model: string | null
           created_at: string
           created_by: string | null
+          data_scope: string | null
           default_config: Json
           description: string | null
           documentation_url: string | null
+          guardrails: string | null
           id: string
+          last_reviewed_at: string | null
           name: string
+          owner: string | null
           public_id: string
+          rate_limit_notes: string | null
+          risks: string | null
           status: Database["public"]["Enums"]["integration_status"]
           tenant_id: string | null
           type: Database["public"]["Enums"]["integration_type"]
           updated_at: string
           version: string
+          widget_code: string | null
         }
         Insert: {
+          auth_type?: string | null
+          base_url?: string | null
+          caching_policy_min?: number | null
           code: string
           config_schema?: Json
+          cost_hint?: string | null
+          cost_model?: string | null
           created_at?: string
           created_by?: string | null
+          data_scope?: string | null
           default_config?: Json
           description?: string | null
           documentation_url?: string | null
+          guardrails?: string | null
           id?: string
+          last_reviewed_at?: string | null
           name: string
+          owner?: string | null
           public_id: string
+          rate_limit_notes?: string | null
+          risks?: string | null
           status?: Database["public"]["Enums"]["integration_status"]
           tenant_id?: string | null
           type: Database["public"]["Enums"]["integration_type"]
           updated_at?: string
           version?: string
+          widget_code?: string | null
         }
         Update: {
+          auth_type?: string | null
+          base_url?: string | null
+          caching_policy_min?: number | null
           code?: string
           config_schema?: Json
+          cost_hint?: string | null
+          cost_model?: string | null
           created_at?: string
           created_by?: string | null
+          data_scope?: string | null
           default_config?: Json
           description?: string | null
           documentation_url?: string | null
+          guardrails?: string | null
           id?: string
+          last_reviewed_at?: string | null
           name?: string
+          owner?: string | null
           public_id?: string
+          rate_limit_notes?: string | null
+          risks?: string | null
           status?: Database["public"]["Enums"]["integration_status"]
           tenant_id?: string | null
           type?: Database["public"]["Enums"]["integration_type"]
           updated_at?: string
           version?: string
+          widget_code?: string | null
         }
         Relationships: [
           {
