@@ -1,17 +1,22 @@
 /**
  * RadioWidget — Internet radio player
  * 
- * IMPORTANT: No autoplay! User must click to start.
+ * DESIGN SPEC:
+ * - Small round glass button for play/stop (no text labels)
+ * - Subtle/muted volume slider
+ * - No autoplay! User must click to start.
+ * 
  * Data source: Radio Browser API
  */
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Radio, Play, Square, Volume2, VolumeX, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Radio, Play, Square, Volume2, VolumeX, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 import { useRadioStations, useRadioPlayer } from '@/hooks/useRadio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export function RadioWidget() {
   const { data: stations, isLoading, error, refetch } = useRadioStations(10);
@@ -64,9 +69,8 @@ export function RadioWidget() {
         <div className="flex-1 flex flex-col items-center justify-center text-center">
           {isLoading ? (
             <div className="w-full space-y-3">
-              <Skeleton className="h-12 w-12 rounded-full mx-auto" />
+              <Skeleton className="h-10 w-10 rounded-full mx-auto" />
               <Skeleton className="h-4 w-3/4 mx-auto" />
-              <Skeleton className="h-8 w-20 mx-auto" />
             </div>
           ) : error ? (
             <div className="text-center">
@@ -85,19 +89,20 @@ export function RadioWidget() {
           ) : currentStationFromList ? (
             <>
               {/* Sound Visualization */}
-              <div className="flex items-end gap-1 h-8 mb-3">
+              <div className="flex items-end gap-1 h-6 mb-2">
                 {[...Array(5)].map((_, i) => (
                   <div
                     key={i}
-                    className={`w-2 rounded-full transition-all duration-150 ${
+                    className={cn(
+                      "w-1.5 rounded-full transition-all duration-150",
                       isCurrentPlaying 
-                        ? 'bg-cyan-500 animate-pulse' 
-                        : 'bg-cyan-500/30'
-                    }`}
+                        ? "bg-cyan-500/70 animate-pulse" 
+                        : "bg-muted-foreground/20"
+                    )}
                     style={{
                       height: isCurrentPlaying 
-                        ? `${12 + Math.sin(Date.now() / 200 + i) * 10 + 10}px` 
-                        : '8px',
+                        ? `${10 + Math.sin(Date.now() / 200 + i) * 8 + 6}px` 
+                        : '6px',
                       animationDelay: `${i * 0.1}s`,
                     }}
                   />
@@ -105,28 +110,24 @@ export function RadioWidget() {
               </div>
 
               {/* Station Name */}
-              <div className="flex items-center gap-2 w-full mb-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0"
+              <div className="flex items-center gap-1 w-full mb-1">
+                <button
                   onClick={handlePrevStation}
                   disabled={isBuffering}
+                  className="h-6 w-6 shrink-0 flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
                 <p className="text-xs font-medium truncate flex-1 min-w-0">
                   {currentStationFromList.name}
                 </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0"
+                <button
                   onClick={handleNextStation}
                   disabled={isBuffering}
+                  className="h-6 w-6 shrink-0 flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
               </div>
 
               {/* Country/Tags */}
@@ -135,11 +136,8 @@ export function RadioWidget() {
                 {currentStationFromList.tags && ` • ${currentStationFromList.tags.split(',')[0]}`}
               </p>
 
-              {/* Play/Stop Button */}
-              <Button
-                variant={isCurrentPlaying ? "destructive" : "default"}
-                size="sm"
-                className="mb-3"
+              {/* Play/Stop Button - Small round glass button */}
+              <button
                 onClick={() => {
                   if (isCurrentPlaying) {
                     stop();
@@ -148,38 +146,38 @@ export function RadioWidget() {
                   }
                 }}
                 disabled={isBuffering}
+                className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center transition-all mb-3",
+                  "backdrop-blur-sm border",
+                  isCurrentPlaying 
+                    ? "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20" 
+                    : "bg-background/60 border-muted-foreground/20 hover:bg-primary/10 hover:border-primary/30 hover:text-primary",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+                aria-label={isCurrentPlaying ? "Stopp" : "Abspielen"}
               >
                 {isBuffering ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Lädt...
-                  </>
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : isCurrentPlaying ? (
-                  <>
-                    <Square className="h-4 w-4 mr-2" />
-                    Stopp
-                  </>
+                  <Square className="h-4 w-4" />
                 ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Abspielen
-                  </>
+                  <Play className="h-5 w-5 ml-0.5" />
                 )}
-              </Button>
+              </button>
 
-              {/* Volume Slider */}
-              <div className="flex items-center gap-2 w-full max-w-[140px]">
+              {/* Volume Slider - Muted/subtle styling */}
+              <div className="flex items-center gap-2 w-full max-w-[120px]">
                 {volume === 0 ? (
-                  <VolumeX className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <VolumeX className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                 ) : (
-                  <Volume2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <Volume2 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                 )}
                 <Slider
                   value={[volume * 100]}
                   onValueChange={([val]) => updateVolume(val / 100)}
                   max={100}
                   step={1}
-                  className="w-full"
+                  className="w-full [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:bg-muted-foreground/40 [&_[role=slider]]:border-0 [&_.bg-primary]:bg-muted-foreground/30"
                 />
               </div>
 
@@ -192,9 +190,9 @@ export function RadioWidget() {
         </div>
 
         {/* Footer */}
-        <div className="mt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">
-            Kein Autoplay — nur auf Klick
+        <div className="mt-2 text-center">
+          <p className="text-[10px] text-muted-foreground/60">
+            Kein Autoplay
           </p>
         </div>
       </CardContent>
