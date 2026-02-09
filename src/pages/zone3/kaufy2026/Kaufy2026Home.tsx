@@ -4,7 +4,8 @@
  * Uses MOD-08 InvestmentResultTile for displaying results
  * Golden Path: Fetches active listings from partner_network channel
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
@@ -45,13 +46,20 @@ interface InvestmentMetrics {
 }
 
 export default function Kaufy2026Home() {
-  const [hasSearched, setHasSearched] = useState(false);
-  const [searchParams, setSearchParams] = useState<SearchParams>({
-    zvE: 60000,
-    equity: 50000,
-    maritalStatus: 'single',
-    hasChurchTax: false,
-  });
+  // URL-based state for search parameters
+  const [urlParams, setUrlParams] = useSearchParams();
+
+  // Derive search params from URL
+  const searchParams = useMemo<SearchParams>(() => ({
+    zvE: parseInt(urlParams.get('zvE') || '60000', 10),
+    equity: parseInt(urlParams.get('equity') || '50000', 10),
+    maritalStatus: (urlParams.get('status') as 'single' | 'married') || 'single',
+    hasChurchTax: urlParams.get('kirchensteuer') === '1',
+  }), [urlParams]);
+
+  // Has searched is derived from URL
+  const hasSearched = urlParams.get('searched') === '1';
+
   const [classicParams, setClassicParams] = useState<ClassicSearchParams>({
     city: '',
     maxPrice: null,
@@ -188,14 +196,21 @@ export default function Kaufy2026Home() {
 
   // Investment search handler
   const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
-    setSearchParams(params);
+    // Save parameters to URL
+    setUrlParams({
+      zvE: params.zvE.toString(),
+      equity: params.equity.toString(),
+      status: params.maritalStatus,
+      kirchensteuer: params.hasChurchTax ? '1' : '0',
+      searched: '1',
+    });
+
     setIsSearching(true);
 
     const { data: freshListings } = await refetch();
     const listingsToProcess = (freshListings || []).slice(0, 20);
 
     if (listingsToProcess.length === 0) {
-      setHasSearched(true);
       setIsSearching(false);
       return;
     }
@@ -229,16 +244,19 @@ export default function Kaufy2026Home() {
     }));
 
     setMetricsCache(newCache);
-    setHasSearched(true);
     setIsSearching(false);
-  }, [calculate, refetch]);
+  }, [calculate, refetch, setUrlParams]);
 
   // Classic search handler
   const handleClassicSearch = useCallback(async (params: ClassicSearchParams) => {
     setClassicParams(params);
-    setHasSearched(true);
+    // Set URL searched flag for classic search too
+    setUrlParams(prev => {
+      prev.set('searched', '1');
+      return prev;
+    });
     await refetch();
-  }, [refetch]);
+  }, [refetch, setUrlParams]);
 
   return (
     <div>

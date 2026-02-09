@@ -8,7 +8,7 @@
  * - DetailTable40Jahre
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Heart,
@@ -57,6 +57,7 @@ interface ListingData {
 
 export default function Kaufy2026Expose() {
   const { publicId } = useParams<{ publicId: string }>();
+  const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
@@ -224,13 +225,13 @@ export default function Kaufy2026Expose() {
       {/* Header Navigation */}
       <div className="border-b bg-white sticky top-0 z-10">
         <div className="px-6 py-4 flex items-center justify-between">
-          <Link
-            to="/kaufy2026"
+          <button
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-sm text-[hsl(215,16%,47%)] hover:text-[hsl(220,20%,10%)] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Zurück zur Suche
-          </Link>
+          </button>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={toggleFavorite}>
               <Heart className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
