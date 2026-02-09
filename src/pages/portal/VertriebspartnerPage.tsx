@@ -10,6 +10,7 @@ import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks
 const KatalogTab = lazy(() => import('./vertriebspartner/KatalogTab'));
 const KatalogDetailPage = lazy(() => import('./vertriebspartner/KatalogDetailPage'));
 const BeratungTab = lazy(() => import('./vertriebspartner/BeratungTab'));
+const PartnerExposePage = lazy(() => import('./vertriebspartner/PartnerExposePage'));
 const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
 const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
 
@@ -25,6 +26,7 @@ const VertriebspartnerPage = () => {
       <Route path="katalog" element={<KatalogTab />} />
       <Route path="katalog/:publicId" element={<KatalogDetailPage />} />
       <Route path="beratung" element={<BeratungTab />} />
+      <Route path="beratung/objekt/:publicId" element={<PartnerExposePage />} />
       <Route path="kunden" element={<KundenTab />} />
       <Route path="network" element={<NetworkTab />} />
       
