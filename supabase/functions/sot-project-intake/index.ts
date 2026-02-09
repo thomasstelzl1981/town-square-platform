@@ -1,9 +1,10 @@
 /**
  * SOT Project Intake - AI-powered project and unit extraction
- * MOD-13 PROJEKTE - Phase E
+ * MOD-13 PROJEKTE - Magic Intake
  * 
  * Receives Exposé (PDF) and/or Pricelist (XLSX/CSV/PDF) and uses AI to extract:
  * - Project metadata (name, city, description, type)
+ * - Seller company data (auto-create if needed)
  * - Unit list (unitNo, type, area, price)
  */
 
@@ -25,6 +26,17 @@ interface ExtractedProject {
   needs_review: boolean;
 }
 
+interface ExtractedCompany {
+  name: string;
+  legal_form: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  managing_director: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 interface ExtractedUnit {
   unit_number: string;
   floor: number | null;
@@ -37,6 +49,7 @@ interface ExtractedUnit {
 
 interface IntakeResult {
   project: ExtractedProject;
+  company: ExtractedCompany | null;
   units: ExtractedUnit[];
   confidence: number;
 }
@@ -94,14 +107,8 @@ serve(async (req) => {
     const formData = await req.formData();
     const exposeFile = formData.get('expose') as File | null;
     const pricelistFile = formData.get('pricelist') as File | null;
-    const contextId = formData.get('contextId') as string;
-
-    if (!contextId) {
-      return new Response(JSON.stringify({ error: 'Missing contextId' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const contextId = formData.get('contextId') as string | null;
+    const autoCreateContext = formData.get('autoCreateContext') === 'true';
 
     if (!exposeFile && !pricelistFile) {
       return new Response(JSON.stringify({ error: 'At least one file required' }), {
@@ -114,6 +121,7 @@ serve(async (req) => {
       hasExpose: !!exposeFile,
       hasPricelist: !!pricelistFile,
       contextId,
+      autoCreateContext,
       tenantId,
     });
 
@@ -128,12 +136,56 @@ serve(async (req) => {
     const nextNum = (count || 0) + 1;
     const projectCode = `BT-${year}-${String(nextNum).padStart(3, '0')}`;
 
+    // Get or create developer context
+    let developerContextId = contextId;
+    
+    if (!developerContextId) {
+      // Check if any context exists
+      const { data: existingContexts } = await supabase
+        .from('developer_contexts')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .limit(1);
+
+      if (existingContexts && existingContexts.length > 0) {
+        developerContextId = existingContexts[0].id;
+      } else if (autoCreateContext) {
+        // Auto-create a default context
+        console.log('Auto-creating developer context...');
+        const { data: newContext, error: contextError } = await supabase
+          .from('developer_contexts')
+          .insert({
+            tenant_id: tenantId,
+            name: 'Meine Gesellschaft',
+            legal_form: 'GmbH',
+            is_default: true,
+          })
+          .select()
+          .single();
+
+        if (contextError) {
+          console.error('Error creating context:', contextError);
+          return new Response(JSON.stringify({ error: 'Failed to create developer context' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        developerContextId = newContext.id;
+        console.log('Created default developer context:', developerContextId);
+      } else {
+        return new Response(JSON.stringify({ error: 'No developer context available. Please create one first.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Create draft project with intake status
     const { data: project, error: projectError } = await supabase
       .from('dev_projects')
       .insert({
         tenant_id: tenantId,
-        developer_context_id: contextId,
+        developer_context_id: developerContextId,
         project_code: projectCode,
         name: `Import ${projectCode}`,
         status: 'draft_intake',
@@ -155,15 +207,7 @@ serve(async (req) => {
 
     console.log('Created draft project:', project.id);
 
-    // Process files with AI (async - will update project when done)
-    // For now, we create the project and let the user edit it
-    // In a full implementation, we would:
-    // 1. Upload files to storage
-    // 2. Call AI extraction
-    // 3. Update project with extracted data
-    // 4. Create units from pricelist
-
-    // Simplified: Extract basic info if we have files
+    // Process files with AI
     let extractedData: Partial<IntakeResult> = { confidence: 0.5 };
 
     if (exposeFile) {
@@ -187,29 +231,55 @@ serve(async (req) => {
                 {
                   role: 'system',
                   content: `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere:
-- Projektname
+
+1. Projektdaten:
+- Projektname (z.B. "Residenz am Park")
 - Stadt/Ort
 - PLZ
 - Adresse
 - Kurzbeschreibung (max 200 Zeichen)
 - Projekttyp: "neubau" oder "aufteilung"
 
+2. Bauträger/Verkäufer-Firma (falls erkennbar):
+- Firmenname
+- Rechtsform (GmbH, KG, AG, etc.)
+- Adresse
+- Stadt
+- PLZ
+- Geschäftsführer
+- Telefon
+- E-Mail
+
 Antworte NUR mit einem JSON-Objekt im Format:
 {
-  "name": "Projektname",
-  "city": "Stadt",
-  "postal_code": "12345",
-  "address": "Straße 1",
-  "description": "Kurzbeschreibung",
-  "project_type": "neubau"
-}`
+  "project": {
+    "name": "Projektname",
+    "city": "Stadt",
+    "postal_code": "12345",
+    "address": "Straße 1",
+    "description": "Kurzbeschreibung",
+    "project_type": "neubau"
+  },
+  "company": {
+    "name": "Firma GmbH",
+    "legal_form": "GmbH",
+    "address": "Firmenstraße 1",
+    "city": "Stadt",
+    "postal_code": "12345",
+    "managing_director": "Max Mustermann",
+    "phone": "+49 123 456789",
+    "email": "info@firma.de"
+  }
+}
+
+Falls Firma nicht erkennbar, setze "company": null`
                 },
                 {
                   role: 'user',
                   content: [
                     {
                       type: 'text',
-                      text: 'Extrahiere die Projektdaten aus diesem Immobilien-Exposé:'
+                      text: 'Extrahiere die Projekt- und Firmendaten aus diesem Immobilien-Exposé:'
                     },
                     {
                       type: 'image_url',
@@ -220,7 +290,7 @@ Antworte NUR mit einem JSON-Objekt im Format:
                   ]
                 }
               ],
-              max_tokens: 500,
+              max_tokens: 1000,
             }),
           });
 
@@ -235,14 +305,24 @@ Antworte NUR mit einem JSON-Objekt im Format:
                   const parsed = JSON.parse(jsonMatch[0]);
                   extractedData = {
                     project: {
-                      name: parsed.name || `Import ${projectCode}`,
-                      city: parsed.city || null,
-                      postal_code: parsed.postal_code || null,
-                      address: parsed.address || null,
-                      description: parsed.description || null,
-                      project_type: parsed.project_type === 'neubau' ? 'neubau' : 'aufteilung',
+                      name: parsed.project?.name || `Import ${projectCode}`,
+                      city: parsed.project?.city || null,
+                      postal_code: parsed.project?.postal_code || null,
+                      address: parsed.project?.address || null,
+                      description: parsed.project?.description || null,
+                      project_type: parsed.project?.project_type === 'neubau' ? 'neubau' : 'aufteilung',
                       needs_review: true,
                     },
+                    company: parsed.company ? {
+                      name: parsed.company.name,
+                      legal_form: parsed.company.legal_form || null,
+                      address: parsed.company.address || null,
+                      city: parsed.company.city || null,
+                      postal_code: parsed.company.postal_code || null,
+                      managing_director: parsed.company.managing_director || null,
+                      phone: parsed.company.phone || null,
+                      email: parsed.company.email || null,
+                    } : null,
                     units: [],
                     confidence: 0.7,
                   };
@@ -251,6 +331,9 @@ Antworte NUR mit einem JSON-Objekt im Format:
                 console.error('Error parsing AI response:', parseErr);
               }
             }
+          } else {
+            const errorText = await aiResponse.text();
+            console.error('AI response error:', aiResponse.status, errorText);
           }
         } catch (aiErr) {
           console.error('AI extraction error:', aiErr);
@@ -274,6 +357,7 @@ Antworte NUR mit einem JSON-Objekt im Format:
             ...project.intake_data,
             extracted_at: new Date().toISOString(),
             confidence: extractedData.confidence,
+            extracted_company: extractedData.company,
           },
         })
         .eq('id', project.id);
@@ -283,10 +367,43 @@ Antworte NUR mit einem JSON-Objekt im Format:
       }
     }
 
+    // Update developer context with extracted company data if available
+    if (extractedData.company && developerContextId) {
+      const { data: currentContext } = await supabase
+        .from('developer_contexts')
+        .select('name')
+        .eq('id', developerContextId)
+        .single();
+
+      // Only update if context has default name
+      if (currentContext?.name === 'Meine Gesellschaft') {
+        const { error: contextUpdateError } = await supabase
+          .from('developer_contexts')
+          .update({
+            name: extractedData.company.name,
+            legal_form: extractedData.company.legal_form,
+            street: extractedData.company.address,
+            city: extractedData.company.city,
+            postal_code: extractedData.company.postal_code,
+            managing_director: extractedData.company.managing_director,
+            phone: extractedData.company.phone,
+            email: extractedData.company.email,
+          })
+          .eq('id', developerContextId);
+
+        if (contextUpdateError) {
+          console.error('Error updating developer context:', contextUpdateError);
+        } else {
+          console.log('Updated developer context with extracted company data');
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       projectId: project.id,
       projectCode,
+      contextId: developerContextId,
       message: 'Projekt erstellt. Bitte überprüfen Sie die Daten.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

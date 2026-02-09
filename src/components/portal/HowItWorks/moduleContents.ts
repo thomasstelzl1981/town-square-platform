@@ -466,34 +466,34 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-13': {
     moduleCode: 'MOD-13',
     title: 'Projekte',
-    oneLiner: 'Bauträger- und Aufteiler-Projekte: Von der Akquisition bis zum Abverkauf strukturiert managen.',
+    oneLiner: 'Bauträger- und Aufteiler-Projekte: Exposé hochladen – KI erstellt Projekt automatisch.',
     benefits: [
-      'Verkäufer-Gesellschaften (Kontexte) zentral verwalten — GmbH, KG oder Privat.',
+      'Magic Intake: Exposé + Wohnungsliste hochladen → Projekt wird automatisch erstellt.',
       'Portfolio-Übersicht mit Aufteiler-KPIs: Einheitenstatus, Umsatz, Marge auf einen Blick.',
       'Reservierungs- und Vertriebsworkflow mit Partner-Attribution und Provisionsberechnung.',
       'Marketing-Integration: Kaufy-Marktplatz, Premium-Platzierung, automatische Landingpages.',
     ],
     whatYouDo: [
-      'Verkäufer-Gesellschaften (Kontexte) für Projekte anlegen',
-      'Projekte mit Einheiten und Preislisten erfassen',
+      'Exposé + Wohnungsliste hochladen — KI erstellt Projekt',
+      'Projekte und Einheiten im Portfolio verwalten',
       'Reservierungen und Verkaufsstatus pro Einheit verwalten',
       'Partner-Performance und Provisionen nachverfolgen',
       'Marketing-Kanäle aktivieren: Kaufy, Landingpages',
     ],
     flows: [
       {
-        title: 'Projekt aufnehmen',
-        steps: ['Kontext (Gesellschaft) wählen', 'Projekt anlegen', 'Einheiten + Preisliste erfassen', 'Vertriebsstart'],
+        title: 'Projekt starten (Magic Intake)',
+        steps: ['Exposé hochladen', 'Wohnungsliste hochladen', 'KI extrahiert Daten', 'Prüfen & bestätigen'],
       },
       {
         title: 'Einheit verkaufen',
         steps: ['Reservierung erfassen', 'Notartermin planen', 'Verkauf abschließen', 'Provision vorbereiten'],
       },
     ],
-    cta: 'Portfolio öffnen – und starten Sie Ihr erstes Aufteiler-Projekt.',
+    cta: 'Dashboard öffnen – und starten Sie Ihr erstes Projekt mit KI-Import.',
     subTiles: [
-      { title: 'Kontexte', route: '/portal/projekte/kontexte', icon: Building2 },
-      { title: 'Portfolio', route: '/portal/projekte/portfolio', icon: FolderKanban },
+      { title: 'Dashboard', route: '/portal/projekte/dashboard', icon: FolderKanban },
+      { title: 'Projekte', route: '/portal/projekte/projekte', icon: Building2 },
       { title: 'Vertrieb', route: '/portal/projekte/vertrieb', icon: Users },
       { title: 'Marketing', route: '/portal/projekte/marketing', icon: Globe },
     ],

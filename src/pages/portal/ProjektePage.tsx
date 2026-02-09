@@ -1,23 +1,36 @@
 /**
  * Projekte Page (MOD-13) - Developer/Aufteiler Project Management
  * Full Golden Path Implementation
+ * 
+ * Navigation: Dashboard / Projekte / Vertrieb / Marketing
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
-import { KontexteTab, PortfolioTab, VertriebTab, MarketingTab, ProjectDetailPage, UnitDetailPage } from './projekte';
+import { 
+  ProjekteDashboard, 
+  PortfolioTab, 
+  VertriebTab, 
+  MarketingTab, 
+  ProjectDetailPage, 
+  UnitDetailPage,
+  KontexteTab, 
+} from './projekte';
 
 export default function ProjektePage() {
   const content = moduleContents['MOD-13'];
   return (
     <Routes>
-      {/* How It Works landing */}
+      {/* How It Works landing (first visit) */}
       <Route index element={<ModuleHowItWorks content={content} />} />
       
-      {/* Tile routes - 4-Tile Pattern */}
-      <Route path="kontexte" element={<KontexteTab />} />
-      <Route path="portfolio" element={<PortfolioTab />} />
+      {/* Main Tile routes - 4-Tile Pattern */}
+      <Route path="dashboard" element={<ProjekteDashboard />} />
+      <Route path="projekte" element={<PortfolioTab />} />
       <Route path="vertrieb" element={<VertriebTab />} />
       <Route path="marketing" element={<MarketingTab />} />
+      
+      {/* Hidden route for managing developer contexts (accessible via settings/Projektakte) */}
+      <Route path="kontexte" element={<KontexteTab />} />
       
       {/* Project Detail (Projektakte) */}
       <Route path=":projectId" element={<ProjectDetailPage />} />
@@ -25,12 +38,13 @@ export default function ProjektePage() {
       {/* Unit Detail (Einheiten-Akte) */}
       <Route path=":projectId/einheit/:unitId" element={<UnitDetailPage />} />
       
-      {/* Legacy redirects */}
-      <Route path="uebersicht" element={<Navigate to="/portal/projekte/portfolio" replace />} />
-      <Route path="timeline" element={<Navigate to="/portal/projekte/portfolio" replace />} />
-      <Route path="dokumente" element={<Navigate to="/portal/projekte/portfolio" replace />} />
+      {/* Legacy redirects - old routes redirect to new structure */}
+      <Route path="portfolio" element={<Navigate to="/portal/projekte/projekte" replace />} />
+      <Route path="uebersicht" element={<Navigate to="/portal/projekte/dashboard" replace />} />
+      <Route path="timeline" element={<Navigate to="/portal/projekte/projekte" replace />} />
+      <Route path="dokumente" element={<Navigate to="/portal/projekte/projekte" replace />} />
       <Route path="einstellungen" element={<Navigate to="/portal/projekte/kontexte" replace />} />
-      <Route path="neu" element={<Navigate to="/portal/projekte/portfolio?create=1" replace />} />
+      <Route path="neu" element={<Navigate to="/portal/projekte/dashboard?create=1" replace />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/projekte" replace />} />
