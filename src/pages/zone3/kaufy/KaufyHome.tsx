@@ -216,14 +216,6 @@ export default function KaufyHome() {
                 </p>
               )}
             </div>
-            {properties.length > 0 && (
-              <Link 
-                to="/kaufy/immobilien" 
-                className="zone3-btn-secondary text-sm"
-              >
-                Alle anzeigen →
-              </Link>
-            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

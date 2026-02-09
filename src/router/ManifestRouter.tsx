@@ -134,7 +134,7 @@ import KaufyBeratung from '@/pages/zone3/kaufy/KaufyBeratung';
 import KaufyMeety from '@/pages/zone3/kaufy/KaufyMeety';
 import KaufyModule from '@/pages/zone3/kaufy/KaufyModule';
 import KaufyModuleDetail from '@/pages/zone3/kaufy/KaufyModuleDetail';
-import KaufyImmobilien from '@/pages/zone3/kaufy/KaufyImmobilien';
+
 import KaufyExpose from '@/pages/zone3/kaufy/KaufyExpose';
 import KaufyBerater from '@/pages/zone3/kaufy/KaufyBerater';
 import KaufyAnbieter from '@/pages/zone3/kaufy/KaufyAnbieter';
@@ -307,7 +307,6 @@ const kaufyComponentMap: Record<string, React.ComponentType> = {
   KaufyMeety,
   KaufyModule,
   KaufyModuleDetail,
-  KaufyImmobilien,
   KaufyExpose,
   KaufyBerater,
   KaufyAnbieter,

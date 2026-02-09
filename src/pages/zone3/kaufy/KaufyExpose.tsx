@@ -181,7 +181,7 @@ export default function KaufyExpose() {
     return (
       <div className="zone3-container py-8 text-center">
         <p>Objekt nicht gefunden</p>
-        <Link to="/kaufy/immobilien" className="zone3-btn-primary mt-4 inline-block">
+        <Link to="/kaufy" className="zone3-btn-primary mt-4 inline-block">
           Zurück zur Übersicht
         </Link>
       </div>
@@ -217,12 +217,12 @@ export default function KaufyExpose() {
       <div className="border-b" style={{ borderColor: 'hsl(var(--z3-border))' }}>
         <div className="zone3-container py-4 flex items-center justify-between">
           <Link 
-            to="/kaufy/immobilien" 
+            to="/kaufy" 
             className="flex items-center gap-2 text-sm hover:underline"
             style={{ color: 'hsl(var(--z3-muted-foreground))' }}
           >
             <ArrowLeft className="w-4 h-4" />
-            Zurück zur Suche
+            Zurück zur Übersicht
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={toggleFavorite}>

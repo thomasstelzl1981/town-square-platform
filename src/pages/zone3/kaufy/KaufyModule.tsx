@@ -125,7 +125,7 @@ export default function KaufyModule() {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link 
-              to="/kaufy/immobilien" 
+              to="/kaufy" 
               className="zone3-btn-secondary"
               style={{ borderColor: 'hsl(var(--z3-background) / 0.3)', color: 'hsl(var(--z3-background))' }}
             >

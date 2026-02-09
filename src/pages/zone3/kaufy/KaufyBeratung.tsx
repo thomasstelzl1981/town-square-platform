@@ -246,7 +246,7 @@ export default function KaufyBeratung() {
                 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link 
-                    to={`/kaufy/immobilien?maxPrice=${input.purchasePrice}`}
+                    to={`/kaufy?maxPrice=${input.purchasePrice}`}
                     className="zone3-btn-primary inline-flex items-center justify-center gap-2"
                   >
                     <Search className="w-4 h-4" />
