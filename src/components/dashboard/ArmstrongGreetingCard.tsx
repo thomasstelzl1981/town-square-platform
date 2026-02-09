@@ -153,7 +153,10 @@ export function ArmstrongGreetingCard({
   }
 
   return (
-    <Card className="glass-card border-primary/20 aspect-square relative overflow-hidden">
+    <Card 
+      className="glass-card border-primary/20 aspect-square relative overflow-hidden cursor-pointer transition-all hover:border-primary/40 hover:shadow-lg"
+      onClick={handleOpenChat}
+    >
       {/* Subtle gradient overlay */}
       <div 
         className="absolute inset-0 opacity-30 pointer-events-none"
@@ -204,21 +207,6 @@ export function ArmstrongGreetingCard({
                 +{todayEvents.length - 2}
               </span>
             )}
-          </div>
-        )}
-
-        {/* Action Button - Hidden on mobile since input bar exists */}
-        {!isTyping && !isMobile && (
-          <div className="mt-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleOpenChat}
-              className="gap-1.5 h-7 text-xs w-full"
-            >
-              Chat öffnen
-              <ArrowRight className="h-3 w-3" />
-            </Button>
           </div>
         )}
       </CardContent>
