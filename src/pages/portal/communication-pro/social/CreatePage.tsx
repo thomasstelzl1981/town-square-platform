@@ -3,7 +3,7 @@
  * Phase 8: 3-step generator, platform tabs, copywriter toolbar
  */
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { PenTool, Sparkles, Loader2, Copy, ArrowRight, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { PenTool, Sparkles, Loader2, Copy, ArrowRight, Trash2, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -224,6 +224,8 @@ export function CreatePage() {
                     {a.label}
                   </Button>
                 ))}
+                {/* HeyGen Video Stub */}
+                <HeyGenVideoStub draftId={editingDraft.id} tenantId={activeOrganization?.id} />
               </div>
             </TabsContent>
           ))}
@@ -320,5 +322,77 @@ export function CreatePage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/** Phase 11: HeyGen Video Stub — disabled button + config modal */
+function HeyGenVideoStub({ draftId, tenantId }: { draftId: string; tenantId?: string }) {
+  const [open, setOpen] = useState(false);
+
+  const createStubJob = async () => {
+    if (!tenantId) return;
+    await supabase.from('social_video_jobs').insert({
+      tenant_id: tenantId,
+      draft_id: draftId,
+      provider: 'stub',
+      job_type: 'hook_video',
+      input_payload: { aspect_ratio: '9:16', voice: 'auto', output_type: 'hook_video' },
+      status: 'queued',
+    });
+    toast({ title: 'Video-Job erstellt (Stub)', description: 'HeyGen-Integration wird in einem zukünftigen Update verfügbar.' });
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs gap-1 h-7 opacity-60"
+        onClick={() => setOpen(true)}
+        disabled
+      >
+        <Video className="h-3 w-3" />
+        Video (HeyGen) — bald verfügbar
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Video aus Draft erstellen</DialogTitle>
+            <DialogDescription>HeyGen-Integration — Konfiguration (Coming Soon)</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <Label>Video-Typ</Label>
+              <Select defaultValue="hook_video">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hook_video">Hook-Video (15s)</SelectItem>
+                  <SelectItem value="story_video">Story-Video (60s)</SelectItem>
+                  <SelectItem value="reel_script">Reel-Script</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Aspect Ratio</Label>
+              <Select defaultValue="9:16">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="9:16">9:16 (Story/Reel)</SelectItem>
+                  <SelectItem value="1:1">1:1 (Feed)</SelectItem>
+                  <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Diese Funktion wird mit der HeyGen-API-Integration verfügbar. Der Job wird als Stub gespeichert.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={createStubJob} variant="outline">Job erstellen (Stub)</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

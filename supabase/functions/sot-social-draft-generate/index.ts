@@ -14,34 +14,51 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { inbound_item_id, tenant_id } = await req.json();
-    if (!inbound_item_id || !tenant_id) {
-      return new Response(JSON.stringify({ error: "Missing params" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { inbound_item_id, tenant_id, topic, angle, format, owner_user_id } = await req.json();
+    if (!tenant_id) {
+      return new Response(JSON.stringify({ error: "Missing tenant_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch inbound item
-    const { data: item } = await supabase.from("social_inbound_items").select("*").eq("id", inbound_item_id).single();
-    if (!item) throw new Error("Item not found");
+    // Determine source: inbound item or direct creation
+    let momentText = "";
+    let headline = "";
+    let desiredEffect = "authority";
+    let personalLevel = 5;
+    let itemOwner = owner_user_id || "unknown";
+
+    if (inbound_item_id) {
+      const { data: item } = await supabase.from("social_inbound_items").select("*").eq("id", inbound_item_id).single();
+      if (!item) throw new Error("Item not found");
+      momentText = item.moment_voice_text || "";
+      headline = item.one_liner || "";
+      desiredEffect = item.desired_effect || "authority";
+      personalLevel = item.personal_level || 5;
+      itemOwner = item.owner_user_id;
+    } else {
+      headline = topic || "Allgemeiner Post";
+      momentText = angle || "";
+    }
 
     // Fetch personality + topics
-    const [{ data: profile }, { data: topics }] = await Promise.all([
+    const [{ data: profile }, { data: topics_db }] = await Promise.all([
       supabase.from("social_personality_profiles").select("personality_vector").eq("tenant_id", tenant_id).limit(1).maybeSingle(),
       supabase.from("social_topics").select("topic_label").eq("tenant_id", tenant_id).order("priority").limit(5),
     ]);
 
     const personality = profile?.personality_vector || {};
-    const topicLabels = (topics || []).map((t: any) => t.topic_label);
+    const topicLabels = (topics_db || []).map((t: any) => t.topic_label);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("AI not configured");
 
     const prompt = `Erstelle Social-Media-Posts basierend auf diesem Moment:
-Headline: "${item.one_liner || ''}"
-Story: "${item.moment_voice_text || ''}"
-Gewünschter Effekt: ${item.desired_effect || 'authority'}
-Persönlichkeitsgrad: ${item.personal_level || 5}/10
+Headline: "${headline}"
+Story: "${momentText}"
+Gewünschter Effekt: ${desiredEffect}
+Persönlichkeitsgrad: ${personalLevel}/10
+${format ? `Format: ${format}` : ""}
 
 Persönlichkeitsprofil: ${JSON.stringify(personality)}
 Themen-Fokus: ${topicLabels.join(', ') || 'allgemein'}
@@ -95,16 +112,16 @@ Nutze das Tool "draft_result".`;
     // Save draft
     await supabase.from("social_drafts").insert({
       tenant_id,
-      owner_user_id: item.owner_user_id,
-      inbound_item_id,
+      owner_user_id: itemOwner,
+      inbound_item_id: inbound_item_id || null,
       draft_title: draft.draft_title,
       content_linkedin: draft.content_linkedin,
       content_instagram: draft.content_instagram,
       content_facebook: draft.content_facebook,
-      origin: "inbound",
+      origin: inbound_item_id ? "inbound" : "creation",
       status: "draft",
       platform_targets: ["linkedin", "instagram", "facebook"],
-      generation_metadata: { model: "gemini-3-flash", source: "inbound" },
+      generation_metadata: { model: "gemini-3-flash", source: inbound_item_id ? "inbound" : "direct", format: format || null },
     });
 
     return new Response(JSON.stringify({ success: true, draft }), {
