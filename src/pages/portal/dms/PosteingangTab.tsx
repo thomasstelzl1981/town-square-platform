@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataTable, StatusBadge, EmptyState, type Column } from '@/components/shared';
+import { StatusBadge } from '@/components/shared';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Mail, Copy, FileText, Download, AlertCircle, CheckCircle, Clock, Loader2, Inbox } from 'lucide-react';
+import { Table, TableHeader, TableHead, TableRow, TableCell, TableBody } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Mail, Copy, FileText, Download, AlertCircle, CheckCircle, Clock, Loader2, Inbox, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -44,13 +46,6 @@ export function PosteingangTab() {
   const { data: mailboxAddress } = useQuery({
     queryKey: ['inbound-mailbox'],
     queryFn: async () => {
-      const { data } = await supabase.functions.invoke('sot-inbound-receive', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        body: undefined,
-      });
-      // Edge function GET with ?action=mailbox
-      // We need to call via fetch directly for GET with query params
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
       if (!token) return null;
@@ -148,80 +143,36 @@ export function PosteingangTab() {
     }
   };
 
-  const columns: Column<InboundEmail>[] = [
-    {
-      key: 'received_at',
-      header: 'Datum',
-      render: (_, item) => (
-        <span className="text-sm">
-          {format(new Date(item.received_at), 'dd.MM.yyyy HH:mm', { locale: de })}
-        </span>
-      ),
-    },
-    {
-      key: 'from_email',
-      header: 'Von',
-      render: (_, item) => (
-        <span className="font-medium truncate max-w-[200px] block">{item.from_email}</span>
-      ),
-    },
-    {
-      key: 'subject',
-      header: 'Betreff',
-      render: (_, item) => (
-        <span className="truncate max-w-[250px] block">{item.subject || '(Kein Betreff)'}</span>
-      ),
-    },
-    {
-      key: 'pdf_count',
-      header: 'PDFs',
-      render: (_, item) => (
-        <div className="flex items-center gap-1">
-          <FileText className="h-4 w-4 text-red-500" />
-          <span>{item.pdf_count}</span>
-          {item.attachment_count > item.pdf_count && (
-            <span className="text-muted-foreground text-xs">
-              (+{item.attachment_count - item.pdf_count})
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (_, item) => getStatusBadge(item.status),
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (_, item) => (
-        <Button variant="ghost" size="sm" onClick={() => setSelectedEmail(item)}>
-          Details
-        </Button>
-      ),
-    },
-  ];
-
   const pendingCount = emails.filter(e => e.status === 'received' || e.status === 'processing').length;
   const errorCount = emails.filter(e => e.status === 'error').length;
+  const readyCount = emails.filter(e => e.status === 'ready').length;
+
+  const SKELETON_ROWS = 10;
 
   return (
     <div className="space-y-4">
       {/* Upload Email Card */}
-      <Card>
+      <Card className="border-primary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mail className="h-5 w-5" />
-            Deine Upload-E-Mail
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              Deine Upload-E-Mail
+            </CardTitle>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground">Aktiv</span>
+            </div>
+          </div>
           <CardDescription>
             Sende PDFs an diese Adresse. Anhänge landen automatisch hier und im Storage.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
-            <code className="flex-1 px-3 py-2 bg-muted rounded-lg font-mono text-sm">
+            <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
               {mailboxAddress || 'Wird geladen...'}
             </code>
             <Button
@@ -237,43 +188,113 @@ export function PosteingangTab() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="flex items-center gap-4">
+      {/* Stats — always visible */}
+      <div className="grid grid-cols-4 gap-3">
         <div className="bg-card border rounded-lg px-4 py-3">
           <div className="text-2xl font-bold">{emails.length}</div>
-          <div className="text-sm text-muted-foreground">Gesamt</div>
+          <div className="text-xs text-muted-foreground">Gesamt</div>
+        </div>
+        <div className="bg-card border rounded-lg px-4 py-3">
+          <div className="text-2xl font-bold text-green-600">{readyCount}</div>
+          <div className="text-xs text-muted-foreground">Bereit</div>
         </div>
         <div className="bg-card border rounded-lg px-4 py-3">
           <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
-          <div className="text-sm text-muted-foreground">Ausstehend</div>
+          <div className="text-xs text-muted-foreground">Ausstehend</div>
         </div>
-        {errorCount > 0 && (
-          <div className="bg-card border rounded-lg px-4 py-3">
-            <div className="text-2xl font-bold text-destructive">{errorCount}</div>
-            <div className="text-sm text-muted-foreground">Fehler</div>
-          </div>
-        )}
+        <div className="bg-card border rounded-lg px-4 py-3">
+          <div className="text-2xl font-bold text-destructive">{errorCount}</div>
+          <div className="text-xs text-muted-foreground">Fehler</div>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg bg-card">
-        {emails.length === 0 && !isLoading ? (
-          <EmptyState
-            icon={Inbox}
-            title="Noch keine PDFs eingegangen"
-            description={
-              mailboxAddress
-                ? `Sende PDFs an ${mailboxAddress} — sie erscheinen automatisch hier.`
-                : 'Deine Upload-E-Mail wird eingerichtet...'
-            }
-          />
-        ) : (
-          <DataTable
-            data={emails}
-            columns={columns}
-            isLoading={isLoading}
-            onRowClick={(item) => setSelectedEmail(item)}
-          />
+      {/* Table — always visible */}
+      <div className="border rounded-lg bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead className="w-[140px]">Datum</TableHead>
+              <TableHead className="w-[200px]">Von</TableHead>
+              <TableHead>Betreff</TableHead>
+              <TableHead className="w-[80px] text-center">PDFs</TableHead>
+              <TableHead className="w-[120px]">Status</TableHead>
+              <TableHead className="w-[80px] text-right">Aktionen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              // Loading skeleton rows
+              Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-full max-w-[200px]" /></TableCell>
+                  <TableCell className="text-center"><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-7 w-16 ml-auto rounded" /></TableCell>
+                </TableRow>
+              ))
+            ) : emails.length > 0 ? (
+              emails.map((email) => (
+                <TableRow
+                  key={email.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedEmail(email)}
+                >
+                  <TableCell className="text-sm tabular-nums">
+                    {format(new Date(email.received_at), 'dd.MM.yy HH:mm', { locale: de })}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium truncate max-w-[180px] block text-sm">{email.from_email}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="truncate max-w-[250px] block text-sm">{email.subject || '(Kein Betreff)'}</span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <FileText className="h-3.5 w-3.5 text-red-500" />
+                      <span className="text-sm font-medium">{email.pdf_count}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(email.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelectedEmail(email); }}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              // Empty state: 10 placeholder rows with subtle dashes
+              <>
+                {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+                  <TableRow key={`empty-${i}`} className="hover:bg-transparent">
+                    <TableCell className="text-muted-foreground/30 text-sm">––.––.–– ––:––</TableCell>
+                    <TableCell><div className="h-3 w-28 bg-muted/20 rounded" /></TableCell>
+                    <TableCell><div className="h-3 bg-muted/20 rounded" style={{ width: `${50 + Math.random() * 40}%` }} /></TableCell>
+                    <TableCell className="text-center text-muted-foreground/30">–</TableCell>
+                    <TableCell><div className="h-5 w-16 bg-muted/20 rounded-full" /></TableCell>
+                    <TableCell />
+                  </TableRow>
+                ))}
+              </>
+            )}
+          </TableBody>
+        </Table>
+
+        {/* Hint below table when empty */}
+        {!isLoading && emails.length === 0 && (
+          <div className="border-t px-4 py-4 text-center">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Inbox className="h-4 w-4" />
+              <span>Noch keine E-Mails eingegangen</span>
+            </div>
+            {mailboxAddress && (
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Sende PDFs an <strong>{mailboxAddress}</strong> — sie erscheinen automatisch hier.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -285,7 +306,6 @@ export function PosteingangTab() {
           </DialogHeader>
           {selectedEmail && (
             <div className="space-y-4">
-              {/* Metadata */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Von</span>
@@ -314,7 +334,6 @@ export function PosteingangTab() {
                 )}
               </div>
 
-              {/* Attachments */}
               <div>
                 <h4 className="font-medium mb-2">Anhänge ({selectedEmail.attachment_count})</h4>
                 {attachmentsLoading ? (
@@ -326,10 +345,7 @@ export function PosteingangTab() {
                 ) : (
                   <div className="space-y-2">
                     {attachments.map((att) => (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between p-2 border rounded-lg"
-                      >
+                      <div key={att.id} className="flex items-center justify-between p-2 border rounded-lg">
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText className={`h-4 w-4 shrink-0 ${att.is_pdf ? 'text-red-500' : 'text-muted-foreground'}`} />
                           <div className="min-w-0">
@@ -341,11 +357,7 @@ export function PosteingangTab() {
                           </div>
                         </div>
                         {att.document_id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownload(att)}
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => handleDownload(att)}>
                             <Download className="h-4 w-4" />
                           </Button>
                         )}

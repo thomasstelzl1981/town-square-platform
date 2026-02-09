@@ -47,15 +47,34 @@ Deno.serve(async (req) => {
       }
 
       const sbAdmin = createClient(supabaseUrl, serviceKey);
-      const { data: mailbox } = await sbAdmin
+      let { data: mailbox } = await sbAdmin
         .from("inbound_mailboxes")
         .select("*")
         .eq("tenant_id", profile.active_tenant_id)
         .eq("is_active", true)
         .maybeSingle();
 
+      // Lazy provisioning: create mailbox using User-ID if none exists
       if (!mailbox) {
-        return json({ error: "No mailbox configured" }, 404);
+        const shortId = user.id.split("-")[0]; // first segment of UUID
+        const { data: newMailbox, error: createErr } = await sbAdmin
+          .from("inbound_mailboxes")
+          .insert({
+            tenant_id: profile.active_tenant_id,
+            address_local_part: shortId,
+            address_domain: "inbound.systemofatown.com",
+            provider: "resend",
+            is_active: true,
+          })
+          .select("*")
+          .single();
+
+        if (createErr) {
+          console.error("Mailbox provisioning failed:", createErr);
+          return json({ error: "Could not create mailbox" }, 500);
+        }
+        mailbox = newMailbox;
+        console.log(`Lazy-provisioned mailbox: ${shortId}@inbound.systemofatown.com for tenant ${profile.active_tenant_id}`);
       }
 
       return json({
