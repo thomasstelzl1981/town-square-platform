@@ -294,7 +294,7 @@ export function StorageTab() {
     onError: () => toast.error('Download fehlgeschlagen'),
   });
 
-  // Delete mutation
+  // Delete document mutation
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
       const { error } = await supabase.from('documents').delete().eq('id', documentId);
@@ -307,6 +307,37 @@ export function StorageTab() {
       setSelectedDocument(null);
     },
     onError: () => toast.error('Löschen fehlgeschlagen'),
+  });
+
+  // Delete folder mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (nodeId: string) => {
+      // First check if folder has any linked documents
+      const { data: links } = await supabase
+        .from('document_links')
+        .select('id')
+        .eq('node_id', nodeId)
+        .limit(1);
+      
+      if (links && links.length > 0) {
+        throw new Error('Ordner enthält noch Dokumente');
+      }
+      
+      const { error } = await supabase
+        .from('storage_nodes')
+        .delete()
+        .eq('id', nodeId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      toast.success('Ordner gelöscht');
+      if (selectedNodeId) {
+        setSelectedNodeId(null);
+      }
+    },
+    onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
 
   const handleFileSelect = (files: File[]) => {
@@ -398,6 +429,7 @@ export function StorageTab() {
           properties={properties}
           selectedNodeId={selectedNodeId}
           onSelectNode={setSelectedNodeId}
+          onDeleteFolder={(nodeId) => deleteFolderMutation.mutate(nodeId)}
         />
       </div>
 
