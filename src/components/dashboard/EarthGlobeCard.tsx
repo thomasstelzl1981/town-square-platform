@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Globe, Loader2, Navigation, ZoomIn } from "lucide-react";
+import { AlertCircle, Globe, Loader2, ZoomIn } from "lucide-react";
 import { CSSGlobeFallback } from "@/components/dashboard/earth-globe/CSSGlobeFallback";
 import { getGoogleMapsApiKey } from "@/components/dashboard/earth-globe/getGoogleMapsApiKey";
 
@@ -88,12 +88,23 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
   const handleZoomIn = useCallback(() => {
     const map = mapRef.current;
-    if (!map || latitude === null || longitude === null) return;
+    console.log('handleZoomIn called', { map: !!map, latitude, longitude });
+    
+    if (!map) {
+      console.warn('Map not ready for zoom');
+      return;
+    }
+    
+    if (latitude === null || longitude === null) {
+      console.warn('No coordinates available for zoom', { latitude, longitude });
+      return;
+    }
 
     try {
       map.stopCameraAnimation?.();
       setIsZoomedIn(true);
 
+      console.log('Flying to coordinates:', { latitude, longitude });
       map.flyCameraTo({
         endCamera: {
           center: { lat: latitude, lng: longitude, altitude: 0 },
@@ -239,27 +250,16 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         </div>
       )}
 
-      {/* Overlay content */}
+      {/* Overlay content - minimal, only coordinates */}
       <CardContent className="relative z-20 p-4 h-full flex flex-col justify-between pointer-events-none">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary drop-shadow-lg" />
-          <span className="text-[10px] uppercase tracking-wider text-white/80 drop-shadow-md font-medium">
-            Dein Standort
-          </span>
         </div>
 
-        <div className="space-y-2">
-          <div className="space-y-1">
-            {city && (
-              <div className="flex items-center gap-2">
-                <Navigation className="h-3.5 w-3.5 text-primary drop-shadow-lg" />
-                <span className="text-sm font-semibold text-white drop-shadow-md">{city}</span>
-              </div>
-            )}
-            <div className="flex flex-col gap-0.5 text-[10px] font-mono text-white/70 drop-shadow-md">
-              <span>LAT: {formatCoord(latitude, "lat")}</span>
-              <span>LNG: {formatCoord(longitude, "lng")}</span>
-            </div>
+        <div className="space-y-1">
+          <div className="flex flex-col gap-0.5 text-[10px] font-mono text-white/70 drop-shadow-md">
+            <span>LAT: {formatCoord(latitude, "lat")}</span>
+            <span>LNG: {formatCoord(longitude, "lng")}</span>
           </div>
         </div>
       </CardContent>
