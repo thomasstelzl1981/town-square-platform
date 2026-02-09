@@ -544,7 +544,7 @@ export function EmailTab() {
 
   // Email Client UI - ALWAYS visible, connection via button
   return (
-    <div className="space-y-4">
+    <div>
       {/* Connection Dialog */}
       <ConnectionDialog
         open={showConnectionDialog}
@@ -567,9 +567,10 @@ export function EmailTab() {
       />
 
       {/* 3-Panel Email Client Layout */}
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-280px)]">
+      <Card className="glass-card overflow-hidden">
+        <div className="grid grid-cols-12 h-[calc(100vh-220px)]">
         {/* Left Sidebar - Folders */}
-        <div className="col-span-2 border rounded-lg p-3 space-y-2">
+        <div className="col-span-2 border-r p-3 space-y-2">
           <Button 
             className="w-full gap-2" 
             size="sm" 
@@ -609,7 +610,7 @@ export function EmailTab() {
         </div>
 
         {/* Middle - Email List */}
-        <div className="col-span-4 border rounded-lg flex flex-col">
+        <div className="col-span-4 border-r flex flex-col">
           <div className="p-3 border-b">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -706,7 +707,7 @@ export function EmailTab() {
         </div>
 
         {/* Right - Email Detail / Preview */}
-        <div className="col-span-6 border rounded-lg flex flex-col overflow-hidden">
+        <div className="col-span-6 flex flex-col overflow-hidden">
           {selectedEmail && messages.length > 0 ? (
             (() => {
               const email = messages.find((m: any) => m.id === selectedEmail);
@@ -829,6 +830,7 @@ export function EmailTab() {
           )}
         </div>
       </div>
+      </Card>
     </div>
   );
 }

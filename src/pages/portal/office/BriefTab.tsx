@@ -292,7 +292,7 @@ ${senderLine}`);
     <div className="grid grid-cols-12 gap-6">
       {/* Main Form */}
       <div className="col-span-8 space-y-6">
-        <Card>
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -516,7 +516,7 @@ ${senderLine}`);
 
       {/* Sidebar - Recent Drafts */}
       <div className="col-span-4 space-y-4">
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <History className="h-4 w-4" />
@@ -555,7 +555,7 @@ ${senderLine}`);
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4" />

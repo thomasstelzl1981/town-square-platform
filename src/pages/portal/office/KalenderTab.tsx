@@ -310,7 +310,7 @@ export function KalenderTab() {
     <div className="grid grid-cols-12 gap-6">
       {/* Calendar View */}
       <div className="col-span-8">
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={goToPrevMonth}>
@@ -479,7 +479,7 @@ export function KalenderTab() {
 
       {/* Selected Day Details */}
       <div className="col-span-4 space-y-4">
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarIcon className="h-4 w-4" />
@@ -552,7 +552,7 @@ export function KalenderTab() {
         </Card>
 
         {/* Quick Actions */}
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Schnellzugriff</CardTitle>
           </CardHeader>
