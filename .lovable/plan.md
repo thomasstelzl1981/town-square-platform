@@ -1,156 +1,115 @@
 
 
-# Enterprise-Readiness Analyse v3: Post-Hardening Audit
+# Definitiver Fix-Plan: Alle offenen Befunde abschliessen
 
-Stand nach Enterprise-Hardening Migration v2.
-
----
-
-## STATUS-UEBERSICHT
-
-| Dimension | Status | Delta zur letzten Analyse |
-|-----------|--------|--------------------------|
-| Routing / Manifest SSOT | Stabil | MOD-00 jetzt in Manifest + areaConfig + portalModulePageMap |
-| Zonen-Architektur (1/2/3) | Stabil | Keine Aenderung |
-| Akten-Standard (KB.SYSTEM.009) | Stabil | Keine Aenderung |
-| ID-System (public_id) | Vollstaendig | self_disclosures (SD) jetzt migriert |
-| Golden Path Dokumentation | Vollstaendig | 4 neue Docs erstellt (Akquise, Lead, Vermietung, Projekte) |
-| Camunda ActionKeys | Vollstaendig | 12 ActionKeys registriert |
-| GDPR deleted_at | Vollstaendig | 9 PII-Tabellen abgedeckt (communication_events existiert nicht) |
-| useSmartUpload (toter Code) | Geloescht | Bereinigt |
-| RolesManagement Mapping | Gefixt | Import + adminComponentMap Eintrag vorhanden |
-| masterdata Index-Route | Gefixt | Route im Manifest vorhanden |
-| DB FK-Indizes | Teilweise gefixt | 65 erstellt, aber **116 fehlen noch** |
-| SECURITY DEFINER Views | Nicht gefixt | ALTER VIEW SET hat nicht gewirkt — Views muessen neu erstellt werden |
-| Functions search_path | Teilweise gefixt | 5 von 8 gefixt, **3 + 5 Trigger-Funktionen fehlen noch** |
-| RLS Hardening | Gefixt | knowledge_base + listing_views eingeschraenkt |
+Dieser Plan nutzt eine **Checklisten-Methode**: Jeder Befund bekommt eine eindeutige ID, einen konkreten Fix, und wird nach Umsetzung abgehakt. Nichts wird vergessen.
 
 ---
 
-## OFFENE BEFUNDE (Priorisiert)
+## Aktuelle Lage (verifiziert durch DB-Abfragen)
 
-### Prioritaet 1: DB-Sicherheit (Migration noetig)
+| Befund-ID | Problem | Status | Verifiziert |
+|-----------|---------|--------|-------------|
+| DB-01 | 48 fehlende Composite-Indizes (tenant_id, status) | OFFEN | check_missing_indexes() liefert exakt 48 Tabellen |
+| DB-02 | 4 Views ohne security_invoker=on | OFFEN | reloptions ist NULL bei allen 4 Views |
+| DB-03 | Functions ohne search_path | ERLEDIGT | Alle 31 Functions haben search_path=public |
+| AUTH-01 | OTP Expiry zu lang | OFFEN | Linter-Warnung aktiv |
+| AUTH-02 | Leaked Password Protection deaktiviert | OFFEN | Linter-Warnung aktiv |
+| EXT-01 | pg_trgm in public Schema | AKZEPTIERT | Supabase-internes Detail, kein Fix moeglich |
+| CODE-01 | MOD-00 als PortalDashboard-Alias | ERLEDIGT | portalModulePageMap + areaConfig + Doku vorhanden |
 
-#### P1.1 — 2 Armstrong Views noch SECURITY DEFINER
-
-Die Migration nutzte `ALTER VIEW SET (security_invoker = on)`, aber das ueberschreibt nicht den DEFINER-Modus bei Views, die mit `WITH (security_definer = true)` erstellt wurden. Die Views muessen mit `CREATE OR REPLACE VIEW` neu erstellt werden, um den DEFINER-Modus zu entfernen.
-
-Betroffen:
-- `v_armstrong_costs_daily`
-- `v_armstrong_dashboard_kpis`
-
-(Die Zone-3-Views `v_public_listings` und `v_public_knowledge` behalten absichtlich DEFINER fuer oeffentlichen Zugriff.)
-
-#### P1.2 — 8 Functions ohne search_path (DB Linter)
-
-Der Linter meldet weiterhin 8 Warnungen. 3 davon sind eigene Funktionen, 5 sind public_id Trigger-Funktionen aus aelteren Migrationen:
-
-| Funktion | Typ |
-|----------|-----|
-| `generate_claim_public_id` | Generator |
-| `generate_property_code` | Generator |
-| `generate_vehicle_public_id` | Generator |
-| `set_applicant_profiles_public_id` | Trigger |
-| `set_dev_project_units_public_id` | Trigger |
-| `set_dev_projects_public_id` | Trigger |
-| `set_leases_public_id` | Trigger |
-| `set_pv_plants_public_id` | Trigger |
-
-(Die restlichen Linter-Warnungen betreffen pg_trgm Extension-Funktionen — nicht aenderbar.)
-
-#### P1.3 — 116 fehlende FK-Indizes
-
-Die erste Migration erstellte 65 Indizes, aber `check_missing_indexes()` meldet weiterhin **116 fehlende**. Darunter:
-- `valuation_credits.invoice_id`
-- `rent_payments.lease_id`
-- `rent_reminders` (4 FK-Spalten)
-- `rental_listings` (3 FK-Spalten)
-- `cases.created_by`
-- `case_events.actor_user_id`
-- `acq_inbound_messages` (2 FK-Spalten)
-- `service_cases` (6 FK-Spalten)
-- `properties` (3 FK-Spalten)
-- `customer_projects` (2 FK-Spalten)
-- und viele weitere
-
-**Massnahme:** Alle 116 verbleibenden Indizes in einer einzelnen Migration erstellen.
-
-### Prioritaet 2: Auth-Sicherheit (Konfiguration)
-
-#### P2.1 — OTP Expiry zu lang
-
-Der Linter warnt, dass die OTP-Ablaufzeit den empfohlenen Schwellenwert uebersteigt. Fuer Enterprise sollte dies auf max. 300 Sekunden (5 Min) gesetzt werden.
-
-#### P2.2 — Leaked Password Protection deaktiviert
-
-Die Pruefung auf kompromittierte Passwoerter ist nicht aktiviert. Fuer Enterprise-Kunden ein Muss.
-
-### Prioritaet 3: Code-Konsistenz
-
-#### P3.1 — MOD-00 Dashboard: Kein eigenes Page-Modul
-
-`portalModulePageMap` mappt `dashboard` auf `PortalDashboard` (Zeile 265-268 in ManifestRouter.tsx). Das bedeutet: `/portal/dashboard/widgets` rendert dasselbe wie `/portal` — es gibt kein eigenstaendiges Dashboard-Modul mit Tile-Routing. Die 4 deklarierten Tiles (widgets, shortcuts, aktivitaet, einstellungen) haben keine eigene Routing-Logik.
-
-**Empfehlung:** Entweder eine eigene `DashboardPage.tsx` mit internem Tile-Routing erstellen (wie alle anderen Module), oder MOD-00 als "Special Module" dokumentieren, das bewusst auf den Portal-Index zeigt.
-
-#### P3.2 — Fehlende MOD-00 Dokumentation
-
-`docs/modules/` enthaelt 20 MOD-Docs (MOD-01 bis MOD-20), aber kein `MOD-00_DASHBOARD.md`. Es existiert nur ein Memory-Eintrag (`features/mod-00-dashboard-spec-v2-0`), aber kein Markdown-Dokument im Repository.
-
-#### P3.3 — Extension in Public Schema
-
-Der Linter warnt, dass eine Extension (pg_trgm) im `public` Schema installiert ist. Best Practice waere ein eigenes `extensions` Schema, aber das ist ein Supabase-internes Setup-Detail und kein Blocker.
+**Wichtige Korrektur:** Fruehere Analysen meldeten "116 fehlende Indizes" und "8 Functions ohne search_path". Die tatsaechlichen Zahlen sind **48 fehlende Indizes** und **0 offene Functions**. Die vorherigen Migrationen haben mehr gefixt als dokumentiert.
 
 ---
 
-## WAS IST JETZT STABIL UND KORREKT
+## Schritt 1: DB-Migration (1 einzige Migration)
 
-| Bereich | Status |
-|---------|--------|
-| 21 Module in routesManifest.ts | Korrekt (MOD-00 bis MOD-20) |
-| areaConfig.ts: 21 Module in 4 Areas | Korrekt (MOD-00 in Base) |
-| portalModulePageMap: 21 Eintraege | Korrekt (alle Module gemappt) |
-| adminComponentMap: Alle Manifest-Routen gemappt | Korrekt (inkl. RolesManagement, MasterTemplates) |
-| Zone-Trennung (1/2/3) | Sauber, keine Cross-Zone-Leaks |
-| Camunda ActionKeys | 12/12 vollstaendig |
-| Golden Path Dokumentation | 7/7 vollstaendig |
-| GDPR deleted_at | 9/9 PII-Tabellen abgedeckt |
-| ID-System (public_id) | 18 Prefixe vollstaendig |
-| Consent-System | Funktional |
-| DMS-Struktur | Stabil |
-| RLS knowledge_base + listing_views | Gehaertet |
+### 1a) 48 Composite-Indizes (tenant_id, status)
+
+Alle 48 Tabellen aus `check_missing_indexes()` erhalten einen Index:
+
+```text
+access_grants, acq_mandates, ad_campaigns, cars_claims, cars_financing,
+cars_insurances, cars_logbook_connections, cars_vehicles, cases, commissions,
+contact_staging, customer_projects, dev_project_reservations, dev_project_units,
+extractions, finance_cases, finance_mandates, finance_packages, finance_requests,
+integration_registry, investment_favorites, invoices, letter_drafts,
+listing_inquiries, listing_publications, msv_bank_accounts, msv_enrollments,
+msv_readiness_items, nk_periods, postings, properties, property_features,
+property_valuations, pv_plants, rent_payments, rent_reminders, rental_listings,
+rental_publications, renter_invites, reservations, sale_transactions, scraper_jobs,
+service_case_inbound, service_case_offers, service_case_outbound, subscriptions,
+tenant_tile_activation, user_consents
+```
+
+SQL-Muster fuer jede Tabelle:
+```sql
+CREATE INDEX IF NOT EXISTS idx_{table}_tenant_status
+ON public.{table}(tenant_id, status);
+```
+
+Fuer Tabellen ohne `status`-Spalte wird nur `tenant_id` indexiert. Die Migration prueft vorab mit `information_schema.columns`, ob die Spalte `status` existiert.
+
+### 1b) 2 Armstrong Views auf SECURITY INVOKER umstellen
+
+Die vorherige Migration mit `ALTER VIEW SET (security_invoker = on)` hat nicht gewirkt, weil `reloptions` immer noch NULL ist. Der korrekte Weg:
+
+```sql
+DROP VIEW IF EXISTS v_armstrong_costs_daily;
+CREATE VIEW v_armstrong_costs_daily
+  WITH (security_invoker = on)
+  AS SELECT ... (bestehende Query);
+
+DROP VIEW IF EXISTS v_armstrong_dashboard_kpis;
+CREATE VIEW v_armstrong_dashboard_kpis
+  WITH (security_invoker = on)
+  AS SELECT ... (bestehende Query);
+```
+
+Die Zone-3-Views (`v_public_listings`, `v_public_knowledge`) bleiben bewusst im DEFINER-Modus, da sie oeffentliche Daten fuer unauthentifizierte Besucher bereitstellen muessen.
+
+### Risiko-Bewertung
+
+- Indizes: Null Risiko (rein additiv, CREATE IF NOT EXISTS)
+- Views: Sehr niedrig (DROP + CREATE mit identischer Query, nur security_invoker Property aendert sich)
 
 ---
 
-## UMSETZUNGSPLAN
+## Schritt 2: plan.md aktualisieren
 
-### Schritt 1: DB-Migration (1 einzige Migration)
-
-1. **116 fehlende FK-Indizes** — Alle aus `check_missing_indexes()` erzeugen
-2. **2 Armstrong Views** — Mit `CREATE OR REPLACE VIEW` neu erstellen (ohne SECURITY DEFINER)
-3. **8 Functions** — `SET search_path = public` auf die 3 Generatoren + 5 Trigger-Funktionen
-
-**Risiko:** Null (rein additiv: Indizes, View-Properties, Function-Properties)
-
-### Schritt 2: MOD-00 Dokumentation
-
-- `docs/modules/MOD-00_DASHBOARD.md` erstellen (basierend auf bestehendem Memory-Eintrag)
-
-### Schritt 3: MOD-00 DashboardPage Entscheidung
-
-- Option A: Eigene `DashboardPage.tsx` mit Tile-Routing (wie alle anderen Module)
-- Option B: MOD-00 als "Portal Index Alias" belassen und dokumentieren
-
-**Empfehlung:** Option A, um die 4-Tile-Architektur konsistent zu halten.
+Nach erfolgreicher Migration wird `.lovable/plan.md` auf den neuen Stand gebracht — alle erledigten Punkte als ERLEDIGT markiert, verbleibende Punkte (AUTH-01, AUTH-02, EXT-01) mit Status-Erklaerung.
 
 ---
 
-## GESAMTBEWERTUNG
+## Was NICHT in dieser Migration enthalten ist (und warum)
 
-Die Architektur ist Enterprise-faehig. Die verbleibenden Punkte sind:
-- **116 fehlende DB-Indizes** (Performance bei 100.000+ Tenants)
-- **2 Views + 8 Functions** (Security-Hygiene)
-- **MOD-00 Dokumentation** (Vollstaendigkeit)
+| Befund | Grund |
+|--------|-------|
+| AUTH-01 (OTP Expiry) | Konfigurationsaenderung im Auth-Dashboard, keine Migration |
+| AUTH-02 (Leaked Passwords) | Konfigurationsaenderung im Auth-Dashboard, keine Migration |
+| EXT-01 (pg_trgm in public) | Von der Plattform verwaltet, nicht aenderbar |
+| DB-03 (Functions search_path) | Bereits erledigt — alle 31 Functions haben search_path=public |
 
-Alle Fixes sind rein additiv. Kein Risiko fuer bestehende Funktionalitaet.
+---
+
+## Verifikations-Checkliste (nach Umsetzung)
+
+Nach der Migration werden folgende Pruefungen ausgefuehrt:
+
+1. `SELECT count(*) FROM public.check_missing_indexes()` muss **0** ergeben
+2. `SELECT relname, reloptions FROM pg_class WHERE relname LIKE 'v_armstrong%'` muss `security_invoker=on` zeigen
+3. DB-Linter erneut ausfuehren: Armstrong-Views duerfen nicht mehr als SECURITY DEFINER erscheinen
+4. Die 2 Zone-3-Views erscheinen weiterhin als DEFINER (akzeptiert)
+
+---
+
+## Technische Details
+
+Die Migration ist eine einzige SQL-Datei mit drei Bloecken:
+
+1. **Block 1:** 48x `CREATE INDEX IF NOT EXISTS` fuer die Composite-Indizes
+2. **Block 2:** `DROP VIEW` + `CREATE VIEW ... WITH (security_invoker = on)` fuer die 2 Armstrong-Views
+3. **Block 3:** Kommentar-Block mit Begruendung fuer die bewusst beibehaltenen DEFINER-Views
+
+Geschaetzte Ausfuehrungszeit: unter 10 Sekunden (leere Tabellen im Development-Account).
 
