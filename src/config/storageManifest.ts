@@ -7,6 +7,40 @@
  *
  * Naming convention: module_code always uses UNDERSCORE (MOD_13, not MOD-13).
  * Blob-storage path:  {tenant_id}/{module_code}/{entity_id}/{filename}
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UPLOAD CONTRACT — Binding Rules for ALL Upload Implementations
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Every upload in this system MUST use `useUniversalUpload` and follow the
+ * 2-Phase architecture:
+ *
+ * PHASE 1 — Upload + Register (ALWAYS runs):
+ *   1. Upload file to Storage (UPLOAD_BUCKET)    → status: 'uploading'
+ *   2. Create `documents` record                 → status: 'linking'
+ *   3. Create `document_links` (if context given)→ status: 'linking'
+ *   4. Create `storage_nodes` file-node          → status: 'uploaded' ← PAUSE
+ *      → Returns UploadedFileInfo { documentId, storagePath, previewUrl }
+ *      → User sees the file immediately (UploadResultCard component)
+ *
+ * PHASE 2 — AI Analysis (OPTIONAL, only if triggerAI=true):
+ *   5. Call sot-document-parser (storagePath only, NEVER file content)
+ *   6. Store extraction results                  → status: 'done'
+ *
+ * RULES:
+ *   ✓ User MUST see the uploaded file BEFORE any analysis starts
+ *   ✓ All uploads go to UPLOAD_BUCKET ('tenant-documents')
+ *   ✓ All paths built via buildStoragePath()
+ *   ✓ Never send file content (base64) to Edge Functions
+ *   ✓ Phase 2 can be triggered separately via analyzeDocument()
+ *   ✓ Use UploadResultCard / UploadResultList for upload feedback UI
+ *   ✗ Do NOT use useSmartUpload (deprecated re-export)
+ *   ✗ Do NOT create custom upload logic outside useUniversalUpload
+ *   ✗ Do NOT upload to Edge Functions directly (5MB limit)
+ *
+ * @see src/hooks/useUniversalUpload.ts — The canonical upload hook
+ * @see src/components/shared/UploadResultCard.tsx — Upload feedback UI
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 // ── Types ────────────────────────────────────────────────────────────────────

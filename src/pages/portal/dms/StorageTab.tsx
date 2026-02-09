@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { UploadResultList } from '@/components/shared/UploadResultCard';
 
 interface StorageNode {
   id: string;
@@ -239,7 +240,7 @@ export function StorageTab() {
   });
 
   // Universal upload (direct to storage, no Edge Function roundtrip)
-  const { upload: universalUpload } = useUniversalUpload();
+  const { upload: universalUpload, uploadedFiles, clearUploadedFiles, progress: uploadProgress } = useUniversalUpload();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -437,6 +438,18 @@ export function StorageTab() {
               </Button>
             </FileUploader>
           </div>
+
+          {/* Uploaded Files Feedback */}
+          {uploadedFiles.length > 0 && (
+            <div className="px-3 pb-2">
+              <UploadResultList
+                files={uploadedFiles}
+                status={uploadProgress.status === 'analyzing' ? 'analyzing' : uploadProgress.status === 'done' ? 'done' : 'uploaded'}
+                onClear={clearUploadedFiles}
+                compact
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-auto">
