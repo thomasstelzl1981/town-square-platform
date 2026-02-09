@@ -371,11 +371,14 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 13,
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
-        // P0-FIX: Aligned to target structure: uebersicht / timeline / dokumente / einstellungen
-        { path: "uebersicht", component: "ProjekteUebersicht", title: "Übersicht" },
-        { path: "timeline", component: "ProjekteTimeline", title: "Timeline" },
-        { path: "dokumente", component: "ProjekteDokumente", title: "Dokumente" },
-        { path: "einstellungen", component: "ProjekteEinstellungen", title: "Einstellungen" },
+        { path: "kontexte", component: "KontexteTab", title: "Kontexte" },
+        { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
+        { path: "vertrieb", component: "VertriebTab", title: "Vertrieb" },
+        { path: "marketing", component: "MarketingTab", title: "Marketing" },
+      ],
+      dynamic_routes: [
+        { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true },
+        { path: ":projectId/einheit/:unitId", component: "UnitDetailPage", title: "Einheitenakte", dynamic: true },
       ],
     },
     "MOD-14": {

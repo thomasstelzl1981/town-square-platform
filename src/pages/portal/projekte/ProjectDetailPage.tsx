@@ -30,6 +30,15 @@ import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
 import type { ProjectStatus } from '@/types/projekte';
 
 const STATUS_CONFIG: Record<ProjectStatus, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+  // New Aufteiler lifecycle statuses
+  draft_intake: { label: 'KI-Import', variant: 'outline' },
+  draft_ready: { label: 'Bereit', variant: 'outline' },
+  in_sales_setup: { label: 'Vorbereitung', variant: 'secondary' },
+  in_distribution: { label: 'Im Vertrieb', variant: 'default' },
+  sellout_in_progress: { label: 'Abverkauf', variant: 'default' },
+  sold_out: { label: 'Ausverkauft', variant: 'secondary' },
+  closed: { label: 'Geschlossen', variant: 'outline' },
+  // Legacy statuses (backward compatibility)
   draft: { label: 'Entwurf', variant: 'outline' },
   active: { label: 'Aktiv', variant: 'default' },
   paused: { label: 'Pausiert', variant: 'secondary' },
