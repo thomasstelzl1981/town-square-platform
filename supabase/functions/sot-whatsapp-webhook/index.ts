@@ -170,38 +170,13 @@ serve(async (req) => {
 
           if (!storedMsg) continue;
 
-          // Update unread count — atomic increment
-          const { data: currentConv } = await supabase
-            .from("whatsapp_conversations")
-            .select("unread_count")
-            .eq("id", conv.id)
-            .single();
-          await supabase
-            .from("whatsapp_conversations")
-            .update({ unread_count: (currentConv?.unread_count ?? 0) + 1 })
-            .eq("id", conv.id);
+          // Update unread count — atomic increment via RPC
+          await supabase.rpc("increment_unread", { conversation_uuid: conv.id });
 
-          // Handle media (trigger download if media present)
-          if (mediaCount > 0 && msg[msgType]?.id) {
-            // Async media download — fire and forget
-            try {
-              await supabase.functions.invoke("sot-whatsapp-media", {
-                body: {
-                  wa_media_id: msg[msgType].id,
-                  tenant_id: tenantId,
-                  message_id: storedMsg.id,
-                  mime_type: msg[msgType]?.mime_type ?? "application/octet-stream",
-                  file_name: msg[msgType]?.filename ?? `whatsapp_${msgType}_${Date.now()}`,
-                },
-              });
-            } catch (e) {
-              console.error("[WhatsApp Webhook] Media download trigger failed:", e);
-            }
-          }
-
-          // Owner-Control: Log command event
+          // Owner-Control: Log command + create task widget
           if (isOwnerControl && bodyText) {
-            await supabase
+            // Log command event
+            const { data: cmdEvent } = await supabase
               .from("armstrong_command_events")
               .insert({
                 tenant_id: tenantId,
@@ -209,10 +184,46 @@ serve(async (req) => {
                 source: "whatsapp",
                 source_message_id: storedMsg.id,
                 action_code: "ARM.MOD02.WA_COMMAND_EXECUTE",
-                status: "planned",
+                status: "completed",
+              })
+              .select("id")
+              .single();
+
+            // Determine widget type from message content (simple heuristic)
+            // Armstrong Command Pipeline will refine this later
+            const lowerBody = bodyText.toLowerCase();
+            let widgetType = "task";
+            if (lowerBody.includes("erinnerung") || lowerBody.includes("erinner")) widgetType = "reminder";
+            else if (lowerBody.includes("notiz") || lowerBody.includes("note")) widgetType = "note";
+            else if (lowerBody.includes("idee") || lowerBody.includes("idea")) widgetType = "idea";
+            else if (lowerBody.includes("projekt") || lowerBody.includes("project")) widgetType = "project";
+            else if (lowerBody.includes("brief") || lowerBody.includes("letter")) widgetType = "letter";
+            else if (lowerBody.includes("email") || lowerBody.includes("e-mail")) widgetType = "email";
+            else if (lowerBody.includes("recherche") || lowerBody.includes("research")) widgetType = "research";
+
+            // Check if action has external side effects
+            const externalTypes = ["letter", "email"];
+            const isExternal = externalTypes.includes(widgetType);
+
+            // Create task widget
+            await supabase
+              .from("task_widgets")
+              .insert({
+                tenant_id: tenantId,
+                user_id: ownerSettings!.user_id,
+                type: widgetType,
+                title: bodyText.length > 80 ? bodyText.substring(0, 77) + "..." : bodyText,
+                description: bodyText.length > 80 ? bodyText : null,
+                status: isExternal ? "pending" : "completed",
+                risk_level: isExternal ? "medium" : "low",
+                cost_model: "free",
+                action_code: `ARM.MOD00.CREATE_${widgetType.toUpperCase()}`,
+                source: "whatsapp",
+                source_ref: cmdEvent?.id ?? null,
+                completed_at: isExternal ? null : new Date().toISOString(),
               });
 
-            console.log("[WhatsApp Webhook] Owner-Control command logged for processing");
+            console.log(`[WhatsApp Webhook] Owner-Control: ${isExternal ? "Widget pending approval" : "Action executed instantly"} (${widgetType})`);
           }
 
           // Auto-Reply for non-owner messages

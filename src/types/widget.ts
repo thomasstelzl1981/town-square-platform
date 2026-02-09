@@ -176,32 +176,5 @@ export function getWidgetConfig(type: WidgetType): WidgetConfig {
   return WIDGET_CONFIGS[type];
 }
 
-// =============================================================================
-// DEMO DATA (for development)
-// =============================================================================
-
-export const DEMO_TASK_WIDGETS: Widget[] = [
-  {
-    id: 'demo-letter-1',
-    type: 'letter',
-    title: 'Brief an Max Müller',
-    description: 'Mieterhöhung zum 01.04.2026',
-    status: 'pending',
-    risk_level: 'medium',
-    cost_model: 'free',
-    parameters: { recipient: 'Max Müller', channel: 'email' },
-    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    action_code: 'ARM.MOD02.SEND_LETTER',
-  },
-  {
-    id: 'demo-reminder-1',
-    type: 'reminder',
-    title: 'Vertrag prüfen',
-    description: 'Mietvertrag Hauptstr. 5 endet am 31.03',
-    status: 'pending',
-    risk_level: 'low',
-    cost_model: 'free',
-    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    action_code: 'ARM.MOD00.CREATE_REMINDER',
-  },
-];
+// DEMO_TASK_WIDGETS removed — task widgets are now persisted in the task_widgets DB table.
+// See useTaskWidgets hook for CRUD + Realtime.
