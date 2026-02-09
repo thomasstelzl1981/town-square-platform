@@ -119,6 +119,20 @@ export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
     privacy_note: 'Stream-URLs werden bei Wiedergabe geladen',
     default_enabled: false,
   },
+  {
+    code: 'SYS.PV.LIVE',
+    name_de: 'PV Live',
+    description_de: 'Echtzeit-Monitoring Ihrer Photovoltaik-Anlagen mit Live-Leistung und Tagesertrag.',
+    icon: 'Sun',
+    gradient: 'from-yellow-500/10 to-orange-600/5',
+    data_source: 'PV Demo / SMA / Solar-Log',
+    cache_interval_min: 0,
+    cost_model: 'free',
+    status: 'live',
+    has_autoplay: false,
+    privacy_note: 'Zeigt PV-Anlagendaten aus Ihrem Konto',
+    default_enabled: false,
+  },
 ];
 
 // Helper to get widget by code

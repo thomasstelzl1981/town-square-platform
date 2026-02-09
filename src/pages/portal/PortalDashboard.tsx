@@ -28,6 +28,7 @@ import { NewsWidget } from '@/components/dashboard/widgets/NewsWidget';
 import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
 import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
 import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
+import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings2, Inbox } from 'lucide-react';
@@ -48,6 +49,7 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.SPACE.DAILY': 'system_space',
   'SYS.MINDSET.QUOTE': 'system_quote',
   'SYS.AUDIO.RADIO': 'system_radio',
+  'SYS.PV.LIVE': 'system_pv_live',
 };
 
 export default function PortalDashboard() {
@@ -179,6 +181,10 @@ export default function PortalDashboard() {
     
     if (widgetId === 'system_radio') {
       return <RadioWidget />;
+    }
+    
+    if (widgetId === 'system_pv_live') {
+      return <PVLiveWidget />;
     }
     
     // Task widgets

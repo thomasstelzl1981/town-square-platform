@@ -8752,6 +8752,224 @@ export type Database = {
           },
         ]
       }
+      pv_connectors: {
+        Row: {
+          config_json: Json | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          provider: string
+          pv_plant_id: string
+          status: string
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          provider: string
+          pv_plant_id: string
+          status?: string
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          provider?: string
+          pv_plant_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pv_connectors_pv_plant_id_fkey"
+            columns: ["pv_plant_id"]
+            isOneToOne: false
+            referencedRelation: "pv_plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pv_measurements: {
+        Row: {
+          current_power_w: number | null
+          energy_month_kwh: number | null
+          energy_today_kwh: number | null
+          id: string
+          pv_plant_id: string
+          source: string
+          ts: string
+        }
+        Insert: {
+          current_power_w?: number | null
+          energy_month_kwh?: number | null
+          energy_today_kwh?: number | null
+          id?: string
+          pv_plant_id: string
+          source?: string
+          ts?: string
+        }
+        Update: {
+          current_power_w?: number | null
+          energy_month_kwh?: number | null
+          energy_today_kwh?: number | null
+          id?: string
+          pv_plant_id?: string
+          source?: string
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pv_measurements_pv_plant_id_fkey"
+            columns: ["pv_plant_id"]
+            isOneToOne: false
+            referencedRelation: "pv_plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pv_plants: {
+        Row: {
+          battery_kwh: number | null
+          city: string | null
+          commissioning_date: string | null
+          consumption_meter_no: string | null
+          consumption_meter_operator: string | null
+          consumption_start_reading: number | null
+          created_at: string
+          customer_reference: string | null
+          data_quality: string | null
+          dms_root_node_id: string | null
+          energy_supplier: string | null
+          feed_in_meter_no: string | null
+          feed_in_meter_operator: string | null
+          feed_in_start_reading: number | null
+          grid_operator: string | null
+          has_battery: boolean | null
+          house_number: string | null
+          id: string
+          kwp: number | null
+          last_sync_at: string | null
+          location_notes: string | null
+          mastr_account_present: boolean | null
+          mastr_plant_id: string | null
+          mastr_status: string | null
+          mastr_unit_id: string | null
+          name: string
+          owner_org_id: string | null
+          owner_user_id: string | null
+          postal_code: string | null
+          provider: string
+          status: string
+          street: string | null
+          tenant_id: string
+          updated_at: string
+          wr_manufacturer: string | null
+          wr_model: string | null
+        }
+        Insert: {
+          battery_kwh?: number | null
+          city?: string | null
+          commissioning_date?: string | null
+          consumption_meter_no?: string | null
+          consumption_meter_operator?: string | null
+          consumption_start_reading?: number | null
+          created_at?: string
+          customer_reference?: string | null
+          data_quality?: string | null
+          dms_root_node_id?: string | null
+          energy_supplier?: string | null
+          feed_in_meter_no?: string | null
+          feed_in_meter_operator?: string | null
+          feed_in_start_reading?: number | null
+          grid_operator?: string | null
+          has_battery?: boolean | null
+          house_number?: string | null
+          id?: string
+          kwp?: number | null
+          last_sync_at?: string | null
+          location_notes?: string | null
+          mastr_account_present?: boolean | null
+          mastr_plant_id?: string | null
+          mastr_status?: string | null
+          mastr_unit_id?: string | null
+          name: string
+          owner_org_id?: string | null
+          owner_user_id?: string | null
+          postal_code?: string | null
+          provider?: string
+          status?: string
+          street?: string | null
+          tenant_id: string
+          updated_at?: string
+          wr_manufacturer?: string | null
+          wr_model?: string | null
+        }
+        Update: {
+          battery_kwh?: number | null
+          city?: string | null
+          commissioning_date?: string | null
+          consumption_meter_no?: string | null
+          consumption_meter_operator?: string | null
+          consumption_start_reading?: number | null
+          created_at?: string
+          customer_reference?: string | null
+          data_quality?: string | null
+          dms_root_node_id?: string | null
+          energy_supplier?: string | null
+          feed_in_meter_no?: string | null
+          feed_in_meter_operator?: string | null
+          feed_in_start_reading?: number | null
+          grid_operator?: string | null
+          has_battery?: boolean | null
+          house_number?: string | null
+          id?: string
+          kwp?: number | null
+          last_sync_at?: string | null
+          location_notes?: string | null
+          mastr_account_present?: boolean | null
+          mastr_plant_id?: string | null
+          mastr_status?: string | null
+          mastr_unit_id?: string | null
+          name?: string
+          owner_org_id?: string | null
+          owner_user_id?: string | null
+          postal_code?: string | null
+          provider?: string
+          status?: string
+          street?: string | null
+          tenant_id?: string
+          updated_at?: string
+          wr_manufacturer?: string | null
+          wr_model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pv_plants_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pv_plants_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pv_plants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rent_payments: {
         Row: {
           amount: number
@@ -10131,6 +10349,7 @@ export type Database = {
           node_type: string
           parent_id: string | null
           property_id: string | null
+          pv_plant_id: string | null
           scope_hint: string | null
           sort_index: number | null
           template_id: string | null
@@ -10150,6 +10369,7 @@ export type Database = {
           node_type?: string
           parent_id?: string | null
           property_id?: string | null
+          pv_plant_id?: string | null
           scope_hint?: string | null
           sort_index?: number | null
           template_id?: string | null
@@ -10169,6 +10389,7 @@ export type Database = {
           node_type?: string
           parent_id?: string | null
           property_id?: string | null
+          pv_plant_id?: string | null
           scope_hint?: string | null
           sort_index?: number | null
           template_id?: string | null
@@ -10203,6 +10424,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_nodes_pv_plant_id_fkey"
+            columns: ["pv_plant_id"]
+            isOneToOne: false
+            referencedRelation: "pv_plants"
             referencedColumns: ["id"]
           },
           {

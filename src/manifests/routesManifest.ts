@@ -453,10 +453,14 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 19,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        { path: "angebot", component: "PVAngebot", title: "Angebot" },
-        { path: "checkliste", component: "PVCheckliste", title: "Checkliste" },
-        { path: "projekt", component: "PVProjekt", title: "Projekt" },
-        { path: "settings", component: "PVSettings", title: "Einstellungen" },
+        { path: "anlagen", component: "PVAnlagen", title: "Anlagen", default: true },
+        { path: "monitoring", component: "PVMonitoring", title: "Monitoring" },
+        { path: "dokumente", component: "PVDokumente", title: "Dokumente" },
+        { path: "einstellungen", component: "PVEinstellungen", title: "Einstellungen" },
+      ],
+      dynamic_routes: [
+        { path: "neu", component: "PVCreateWizard", title: "Neue PV-Anlage" },
+        { path: ":pvPlantId", component: "PVPlantDetail", title: "PV-Akte", dynamic: true },
       ],
     },
     "MOD-20": {
