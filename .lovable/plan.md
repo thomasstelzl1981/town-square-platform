@@ -1,133 +1,124 @@
 
+# KI-Office Designanalyse — Homogenisierungsplan
 
-# Armstrong WhatsApp-Befehlsausfuehrung — Korrekturplan
+## Ist-Zustand: 6 verschiedene Designs in einem Modul
+
+Jeder Tab im KI-Office sieht anders aus. Hier die konkreten Unterschiede:
+
+### Analyse pro Tab
+
+| Tab | Aeusserer Container | Hintergrund | Hoehe | Layout-Typ |
+|-----|---------------------|-------------|-------|------------|
+| **E-Mail** | Kein Card-Wrapper, rohe `div` + `border rounded-lg` | `bg-background` (opak) | `h-[calc(100vh-280px)]` | 3-Panel Grid (12-col) |
+| **WhatsApp** | Kein Card-Wrapper, rohe `div` + `border rounded-lg` | `bg-background` (opak) | `h-[calc(100vh-200px)]` | 2-Panel Flex |
+| **Brief** | Mehrere `<Card>` Kacheln | Card-Standard (backdrop-blur) | Natuerlich (kein feste Hoehe) | Grid 12-col (8+4) |
+| **Kontakte** | DataTable (eigenes Pattern) | Kein Wrapper | Natuerlich | Vollbreite Tabelle |
+| **Kalender** | `<Card>` Kacheln | Card-Standard | Natuerlich | Grid 12-col (8+4) |
+| **Widgets** | Mischung: `glass-card` + TabsList | Teils glass-card, teils nackt | Natuerlich | Listen |
+
+### Konkrete Inkonsistenzen
+
+**1. Container-Strategie (3 verschiedene)**
+- E-Mail + WhatsApp: Rohe `div` mit `border rounded-lg` — kein `<Card>`, kein Glassmorphism
+- Brief + Kalender: `<Card>` Komponenten mit Standard-Styling (hat backdrop-blur via card.tsx)
+- Kontakte: Gar kein aeusserer Container, nur DataTable
+- Widgets: `glass-card` Klasse (extra CSS aus index.css)
+
+**2. Hoehenberechnung (3 verschiedene)**
+- E-Mail: `calc(100vh - 280px)`
+- WhatsApp: `calc(100vh - 200px)`
+- Alle anderen: Natuerliche Hoehe (kein calc)
+
+**3. Padding / Spacing**
+- Widgets: `p-4 md:p-6 lg:p-8` (responsive)
+- Brief: Kein aeusseres Padding (Cards haben eigenes p-6)
+- E-Mail: `space-y-4` als aeusserer Wrapper
+- WhatsApp: Kein aeusseres Padding
+- Kontakte: Eigenes EmptyState-Pattern
+
+**4. Farben und Hintergruende**
+- `glass-card` (Widgets): Explizites `backdrop-filter: blur(12px)` + card-bg
+- Standard `<Card>`: `backdrop-blur-sm` (dezenter)
+- E-Mail/WhatsApp: Reines `bg-background` — kein Blur-Effekt, wirkt "flach"
 
 ---
 
-## Befund: 3 Probleme identifiziert
+## Ziel-Design: Einheitliches Kommunikations-Layout
 
-### Problem 1: MOD-00 Widget-Actions fordern unnoetig Bestaetigung
+Alle 6 Tabs sollen dem gleichen visuellen Pattern folgen:
 
-Alle 5 Dashboard-Widget-Actions (`CREATE_REMINDER`, `CREATE_NOTE`, `CREATE_IDEA`, `CREATE_PROJECT`, `CREATE_TASK`) haben aktuell `execution_mode: 'execute_with_confirmation'`.
-
-Das widerspricht der Anforderung: **Interne Aktionen sollen sofort ausgefuehrt werden, ohne Bestaetigung.** Eine Notiz erstellen, eine Erinnerung anlegen — das sind risikolose interne Operationen. Armstrong soll das einfach tun.
-
-**Fix:** Diese 5 Actions auf `execution_mode: 'execute'` aendern. Das ist K3-konform, weil:
-- `risk_level: 'low'` (erfuellt)
-- `cost_model: 'free'` (erfuellt)
-- `data_scopes_write: ['widgets']` — technisch ein Write, aber rein intern. Keine externen Konsequenzen.
-
-Die K3-Regel wird um einen Kommentar ergaenzt: interne Widget-Writes gelten nicht als schutzbeduerftiger Schreibzugriff.
-
-### Problem 2: `WA_COMMAND_EXECUTE` hat `execution_mode: 'draft_only'`
-
-Das bedeutet: Armstrong darf via WhatsApp **nur Entwuerfe erstellen, nie ausfuehren**. Das ist zu restriktiv.
-
-**Fix:** `execution_mode` auf `'execute'` aendern und `risk_level` auf `'low'`. Die Logik wird stattdessen im Runtime entschieden:
-- Befehl ergibt interne Aktion (Widget, Notiz, Erinnerung)? → **Sofort ausfuehren**
-- Befehl ergibt externe Aktion (Brief senden, E-Mail schicken)? → **Widget/Aufgabe erstellen zur manuellen Freigabe im Portal**
-
-Die Entscheidung trifft nicht der Manifest-Eintrag, sondern die Armstrong Command Pipeline anhand der `side_effects` der Ziel-Aktion.
-
-### Problem 3: Dashboard-Widgets sind Demodaten ohne DB-Persistenz
-
-`PortalDashboard.tsx` (Zeile 68) verwendet `useState(DEMO_TASK_WIDGETS)` — hardcodierte Testdaten. Es gibt **keine `task_widgets` Tabelle** in der Datenbank. Nur `widget_preferences` (fuer System-Widgets wie Wetter/Globus).
-
-Das bedeutet: Selbst wenn Armstrong via WhatsApp einen Befehl bekommt und ein Widget erstellen will, gibt es keinen Ort, um es zu persistieren. Nach einem Page-Refresh waeren alle erstellten Widgets weg.
-
-**Fix:** Neue Tabelle `task_widgets` erstellen:
+### Design-Standard
 
 ```text
-task_widgets
-├── id (uuid, PK)
-├── tenant_id (uuid, FK tenants)
-├── user_id (uuid, FK auth.users)
-├── type (text: letter|email|reminder|task|research|note|project|idea)
-├── title (text)
-├── description (text, nullable)
-├── status (text: pending|executing|completed|cancelled)
-├── risk_level (text: low|medium|high)
-├── cost_model (text: free|metered|premium)
-├── action_code (text, nullable — Referenz auf armstrongManifest)
-├── parameters (jsonb, nullable)
-├── source (text: chat|whatsapp|system)
-├── source_ref (uuid, nullable — z.B. armstrong_command_events.id)
-├── completed_at (timestamptz, nullable)
-├── created_at (timestamptz)
-└── updated_at (timestamptz)
++------------------------------------------------------------------+
+| [glass-card Container, volle Breite]                             |
+|                                                                    |
+|   Inhalt des Tabs (je nach Typ):                                  |
+|   - Messenger: 2-3 Panel Layout                                  |
+|   - Formular: Card-Grid (8+4)                                    |
+|   - Tabelle: DataTable mit Card-Wrapper                          |
+|   - Archiv: Filterliste                                          |
+|                                                                    |
++------------------------------------------------------------------+
 ```
 
-RLS: Tenant-Isolation via `get_user_tenant_id()` + Realtime fuer Live-Updates auf dem Dashboard.
+### Vereinheitlichungsregeln
+
+1. **Gleicher aeusserer Container**: Alle Tabs bekommen einen `<Card className="glass-card">` als aeusseren Wrapper
+2. **Gleiche Hoehe fuer Messenger-Tabs**: E-Mail und WhatsApp nutzen beide `h-[calc(100vh-220px)]`
+3. **Gleiche innere Panel-Borders**: Statt `border rounded-lg` auf rohen divs werden innere Trennungen mit `<Separator>` oder `border-r` / `border-l` gemacht
+4. **Einheitliches Padding**: Alle Tabs nutzen `p-0` im Card (Content fuellt Card komplett), innere Bereiche steuern eigenes Padding
+5. **Header-Pattern**: Jeder Tab hat einen einheitlichen Header-Bereich innerhalb des Cards mit Icon + Titel + Aktionsbuttons
 
 ---
 
-## Aenderungsplan (4 Schritte)
+## Aenderungsplan (6 Dateien)
 
-### Schritt 1: DB-Migration — `task_widgets` Tabelle
+### Schritt 1: EmailTab.tsx — Card-Wrapper + Hoehe angleichen
 
-Neue Tabelle mit RLS-Policies (tenant_isolation + user-level fuer eigene Widgets), Indizes, und Realtime.
+- Aeusseren `div.space-y-4` durch `<Card className="glass-card overflow-hidden">` ersetzen
+- Innere Panel-Divs (`border rounded-lg`) ersetzen durch rahmenlose Bereiche mit `border-r` Trennern
+- Hoehe von `calc(100vh-280px)` auf `calc(100vh-220px)` angleichen
 
-### Schritt 2: armstrongManifest.ts — execution_mode korrigieren
+### Schritt 2: WhatsAppTab.tsx — Card-Wrapper + gleiches Pattern
 
-| Action | Vorher | Nachher |
-|--------|--------|---------|
-| `ARM.MOD00.CREATE_REMINDER` | `execute_with_confirmation` | `execute` |
-| `ARM.MOD00.CREATE_NOTE` | `execute_with_confirmation` | `execute` |
-| `ARM.MOD00.CREATE_IDEA` | `execute_with_confirmation` | `execute` |
-| `ARM.MOD00.CREATE_PROJECT` | `execute_with_confirmation` | `execute` |
-| `ARM.MOD00.CREATE_TASK` | `execute_with_confirmation` | `execute` |
-| `ARM.MOD02.WA_COMMAND_EXECUTE` | `draft_only` | `execute` |
+- Aeusseren `div` mit `border rounded-lg bg-background` durch `<Card className="glass-card overflow-hidden">` ersetzen
+- Hoehe von `calc(100vh-200px)` auf `calc(100vh-220px)` angleichen
+- Innere Trennungen bleiben (border-r ist bereits korrekt)
 
-Zusaetzlich: K3-Kommentar aktualisieren, dass interne Widget-Writes erlaubt sind.
+### Schritt 3: BriefTab.tsx — Glass-Card auf Hauptkarte
 
-### Schritt 3: PortalDashboard.tsx — DB statt Demodaten
+- Aeussere `<Card>` Instanzen mit `glass-card` Klasse versehen
+- Sidebar-Card (letzte Entwuerfe) ebenfalls `glass-card` hinzufuegen
+- Layout 8+4 bleibt erhalten (ist korrekt)
 
-- `DEMO_TASK_WIDGETS` entfernen
-- Neuer Hook `useTaskWidgets()` der aus `task_widgets` Tabelle liest
-- Realtime-Subscription fuer neue Widgets (Armstrong erstellt Widget → erscheint sofort auf Dashboard)
-- `handleConfirm` und `handleCancel` schreiben in die DB statt in lokalen State
+### Schritt 4: KontakteTab.tsx — Card-Wrapper um DataTable
 
-### Schritt 4: Webhook Command Pipeline — Sofort-Ausfuehrung
+- Gesamten Inhalt in `<Card className="glass-card overflow-hidden">` wrappen
+- Header-Bereich (Suche + Buttons) in `CardHeader` verschieben
+- DataTable erhaelt einheitliches Padding
 
-Im `sot-whatsapp-webhook` den `armstrong_command_events`-Insert ergaenzen:
-- Bei internen Actions (keine `sends_external_communication` in side_effects): Status direkt auf `'completed'` setzen + Widget in `task_widgets` erstellen
-- Bei externen Actions: Status auf `'planned'` + Widget mit `status: 'pending'` erstellen (erfordert manuelle Freigabe im Portal)
+### Schritt 5: KalenderTab.tsx — Glass-Card auf bestehende Cards
 
----
+- Bestehende `<Card>` Instanzen mit `glass-card` Klasse versehen
+- Kalender-Card (col-span-8) und Sidebar-Card (col-span-4) gleichmaessig stylen
 
-## Entscheidungslogik (Runtime)
+### Schritt 6: WidgetsTab.tsx — Bereits nahe am Ziel
 
-```text
-WhatsApp Owner-Control Nachricht eingehend
-    │
-    ▼
-Armstrong erkennt Intent → mappt auf action_code
-    │
-    ▼
-Lookup action in armstrongManifest
-    │
-    ├── side_effects enthält 'sends_external_communication'?
-    │       │
-    │       ├── JA → Widget mit status='pending' erstellen
-    │       │         (User muss im Portal bestaetigen)
-    │       │
-    │       └── NEIN → Widget mit status='completed' erstellen
-    │                   (sofort ausgefuehrt, Armstrong meldet Erfolg via WhatsApp)
-    │
-    ▼
-armstrong_command_events loggen (Audit/Billing)
-```
+- Container-Padding vereinheitlichen
+- `glass-card` auf leeren State und Widget-Items ist korrekt, nur Konsistenz mit den TabsList pruefen
 
 ---
 
-## Dateien die geaendert werden
+## Zusammenfassung der Aenderungen
 
-| Datei | Aktion |
-|-------|--------|
-| DB Migration (neu) | `task_widgets` Tabelle + RLS + Indizes + Realtime |
-| `src/manifests/armstrongManifest.ts` | 6 Actions execution_mode aendern |
-| `src/pages/portal/PortalDashboard.tsx` | DB-Hook statt DEMO_TASK_WIDGETS |
-| `src/hooks/useTaskWidgets.ts` | NEU: CRUD + Realtime fuer task_widgets |
-| `src/types/widget.ts` | DEMO_TASK_WIDGETS entfernen |
-| `supabase/functions/sot-whatsapp-webhook/index.ts` | Command Pipeline mit Sofort-Ausfuehrung |
+| Datei | Aenderung | Aufwand |
+|-------|-----------|---------|
+| `EmailTab.tsx` | Card-Wrapper, Hoehe, Panel-Borders | Mittel |
+| `WhatsAppTab.tsx` | Card-Wrapper, Hoehe | Klein |
+| `BriefTab.tsx` | glass-card Klasse auf Cards | Klein |
+| `KontakteTab.tsx` | Card-Wrapper um Tabelle | Klein |
+| `KalenderTab.tsx` | glass-card auf Cards | Klein |
+| `WidgetsTab.tsx` | Padding-Anpassung | Minimal |
 
+Ergebnis: Alle 6 Tabs haben den gleichen Glassmorphism-Effekt, einheitliche Hintergruende und harmonische Proportionen.
