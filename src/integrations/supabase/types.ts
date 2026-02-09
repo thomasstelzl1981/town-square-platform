@@ -4930,6 +4930,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           id: string
           is_active: boolean | null
           max_loan_amount: number | null
@@ -4948,6 +4949,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           is_active?: boolean | null
           max_loan_amount?: number | null
@@ -4966,6 +4968,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           is_active?: boolean | null
           max_loan_amount?: number | null
@@ -7837,6 +7840,7 @@ export type Database = {
           contact_id: string | null
           created_at: string | null
           deal_value: number | null
+          deleted_at: string | null
           expected_close_date: string | null
           id: string
           lead_id: string | null
@@ -7852,6 +7856,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string | null
           deal_value?: number | null
+          deleted_at?: string | null
           expected_close_date?: string | null
           id?: string
           lead_id?: string | null
@@ -7867,6 +7872,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string | null
           deal_value?: number | null
+          deleted_at?: string | null
           expected_close_date?: string | null
           id?: string
           lead_id?: string | null
@@ -9367,6 +9373,7 @@ export type Database = {
           contact_id: string
           created_at: string
           created_by: string
+          deleted_at: string | null
           email: string
           expires_at: string
           id: string
@@ -9383,6 +9390,7 @@ export type Database = {
           contact_id: string
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           email: string
           expires_at?: string
           id?: string
@@ -9399,6 +9407,7 @@ export type Database = {
           contact_id?: string
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           email?: string
           expires_at?: string
           id?: string
@@ -9762,6 +9771,7 @@ export type Database = {
           disclosure_data: Json
           finance_package_id: string
           id: string
+          public_id: string | null
           submitted_at: string | null
           submitted_by: string | null
           tenant_id: string
@@ -9773,6 +9783,7 @@ export type Database = {
           disclosure_data?: Json
           finance_package_id: string
           id?: string
+          public_id?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
           tenant_id: string
@@ -9784,6 +9795,7 @@ export type Database = {
           disclosure_data?: Json
           finance_package_id?: string
           id?: string
+          public_id?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
           tenant_id?: string

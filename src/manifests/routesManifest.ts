@@ -85,6 +85,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "users", component: "Users", title: "Benutzer" },
     { path: "delegations", component: "Delegations", title: "Delegationen" },
     // Masterdata
+    { path: "masterdata", component: "MasterTemplates", title: "Stammdaten-Vorlagen" },
     { path: "masterdata/immobilienakte", component: "MasterTemplatesImmobilienakte", title: "Immobilienakte Vorlage" },
     { path: "masterdata/selbstauskunft", component: "MasterTemplatesSelbstauskunft", title: "Selbstauskunft Vorlage" },
     { path: "masterdata/projektakte", component: "MasterTemplatesProjektakte", title: "Projektakte Vorlage" },

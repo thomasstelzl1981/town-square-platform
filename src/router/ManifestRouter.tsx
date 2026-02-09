@@ -62,6 +62,7 @@ import Users from '@/pages/admin/Users';
 import Delegations from '@/pages/admin/Delegations';
 import Support from '@/pages/admin/Support';
 import MasterContacts from '@/pages/admin/MasterContacts';
+import RolesManagement from '@/pages/admin/RolesManagement';
 import TileCatalog from '@/pages/admin/TileCatalog';
 import Integrations from '@/pages/admin/Integrations';
 import CommunicationHub from '@/pages/admin/CommunicationHub';
@@ -226,6 +227,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   LeadPool,
   PartnerVerification,
   CommissionApproval,
+  RolesManagement,
   AdminFutureRoomLayout,
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
   FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
@@ -260,7 +262,10 @@ const FutureRoomMonitoring = React.lazy(() => import('@/pages/admin/futureroom/F
 // =============================================================================
 // Component Map for Zone 2 Module Pages (with internal routing)
 // =============================================================================
+const DashboardPage = React.lazy(() => import('@/pages/portal/PortalDashboard'));
+
 const portalModulePageMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  dashboard: DashboardPage,
   stammdaten: StammdatenPage,
   office: OfficePage,
   dms: DMSPage,
