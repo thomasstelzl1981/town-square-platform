@@ -1404,6 +1404,19 @@ serve(async (req) => {
       }
     }
     
+    // ===================================================================
+    // FLOW HANDLER — intercept before normal intent routing
+    // ===================================================================
+    if (flow?.flow_type === "social_audit") {
+      return await handleSocialAuditFlow(
+        flow,
+        message,
+        body.conversation?.last_messages || [],
+        userContext,
+        supabase
+      );
+    }
+
     // Classify intent FIRST to enable Global Assist Mode
     const intent = classifyIntent(message, action_request);
     console.log(`[Armstrong] Intent: ${intent}, Module: ${module}`);
