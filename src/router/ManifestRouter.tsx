@@ -159,6 +159,7 @@ import SotModule from '@/pages/zone3/sot/SotModule';
 import SotModuleDetail from '@/pages/zone3/sot/SotModuleDetail';
 import SotUseCases from '@/pages/zone3/sot/SotUseCases';
 import SotPreise from '@/pages/zone3/sot/SotPreise';
+import SotDemo from '@/pages/zone3/sot/SotDemo';
 import SotFAQ from '@/pages/zone3/sot/SotFAQ';
 
 // 404
@@ -333,6 +334,7 @@ const sotComponentMap: Record<string, React.ComponentType> = {
   SotModuleDetail,
   SotUseCases,
   SotPreise,
+  SotDemo,
   SotFAQ,
 };
 
