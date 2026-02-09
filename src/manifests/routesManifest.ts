@@ -371,8 +371,8 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 13,
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
-        { path: "kontexte", component: "KontexteTab", title: "Kontexte" },
-        { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
+        { path: "dashboard", component: "ProjekteDashboard", title: "Dashboard", default: true },
+        { path: "projekte", component: "PortfolioTab", title: "Projekte" },
         { path: "vertrieb", component: "VertriebTab", title: "Vertrieb" },
         { path: "marketing", component: "MarketingTab", title: "Marketing" },
       ],

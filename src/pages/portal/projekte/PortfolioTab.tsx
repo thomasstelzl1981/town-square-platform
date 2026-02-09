@@ -31,26 +31,8 @@ export default function PortfolioTab() {
 
   const isLoading = loadingContexts || isLoadingPortfolio;
 
-  // If no contexts exist, show create context prompt
-  if (!loadingContexts && contexts.length === 0) {
-    return (
-      <div className="p-6">
-        <EmptyState
-          title="Keine Verkäufer-Gesellschaft"
-          description="Legen Sie zuerst eine Gesellschaft an, bevor Sie Projekte erstellen können."
-          action={{ label: 'Gesellschaft anlegen', onClick: () => setCreateContextOpen(true) }}
-        />
-        <CreateDeveloperContextDialog 
-          open={createContextOpen} 
-          onOpenChange={setCreateContextOpen}
-          onSuccess={() => {
-            setCreateContextOpen(false);
-            setCreateProjectOpen(true);
-          }}
-        />
-      </div>
-    );
-  }
+  // No longer blocking on missing contexts - Magic Intake will auto-create
+  // Context can be created via Dashboard or settings
 
   const handleDeleteProject = async (id: string) => {
     if (confirm('Projekt wirklich löschen? Alle zugehörigen Daten werden entfernt.')) {
