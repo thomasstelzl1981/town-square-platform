@@ -32,12 +32,19 @@ interface SearchParams {
   state: string;
 }
 
+interface ClassicSearchParams {
+  city: string;
+  maxPrice: number | null;
+  minArea: number | null;
+}
+
 interface InvestmentSearchCardProps {
   onSearch: (params: SearchParams) => void;
+  onClassicSearch?: (params: ClassicSearchParams) => void;
   isLoading?: boolean;
 }
 
-export function InvestmentSearchCard({ onSearch, isLoading }: InvestmentSearchCardProps) {
+export function InvestmentSearchCard({ onSearch, onClassicSearch, isLoading }: InvestmentSearchCardProps) {
   const [activeTab, setActiveTab] = useState<'investment' | 'classic'>('investment');
   const [expanded, setExpanded] = useState(false);
   
@@ -62,14 +69,11 @@ export function InvestmentSearchCard({ onSearch, isLoading }: InvestmentSearchCa
         hasChurchTax,
         state,
       });
-    } else {
-      // Classic search - for now just trigger with defaults
-      onSearch({
-        zvE: 60000,
-        equity: 50000,
-        maritalStatus: 'single',
-        hasChurchTax: false,
-        state: 'BY',
+    } else if (onClassicSearch) {
+      onClassicSearch({
+        city,
+        maxPrice: maxPrice ? parseInt(maxPrice) : null,
+        minArea: minArea ? parseInt(minArea) : null,
       });
     }
   };
