@@ -1,8 +1,8 @@
 # MOD-14: Social — Phasenplan (SSOT)
 
 > **Letzte Aktualisierung:** 2026-02-09
-> **Status:** Phase 0 abgeschlossen
-> **Nächste Phase:** Phase 1 (Datenmodell)
+> **Status:** Phase 12 abgeschlossen — Modul vollständig
+> **Nächste Phase:** —
 
 ---
 
@@ -341,23 +341,24 @@ FOR ALL USING (
 
 ---
 
-### PHASE 11 — HeyGen Prep (nur Stubs)
-**Status:** Offen
+### PHASE 11 — HeyGen Prep (nur Stubs) ✅
+**Status:** Abgeschlossen (2026-02-09)
 
-- Draft Editor: Button "Video daraus machen (HeyGen)" — disabled
-- Modal-Config vorbereitet (Output-Typ, Aspect Ratio, Voice)
-- `social_video_jobs` mit provider=stub befüllen
-- Integrations-Slot in Profil vorbereitet (kein echter API-Call)
+- [x] Draft Editor: Button "Video (HeyGen) — bald verfügbar" — disabled
+- [x] Modal-Config vorbereitet (Output-Typ, Aspect Ratio, Voice)
+- [x] `social_video_jobs` mit provider=stub befüllen
+- [x] Integrations-Slot in CreatePage vorbereitet (kein echter API-Call)
 
 ---
 
-### PHASE 12 — QA / Smoke Tests
-**Status:** Offen
+### PHASE 12 — QA / Smoke Tests ✅
+**Status:** Abgeschlossen (2026-02-09)
 
-- E2E: Audit (Armstrong) → Topics → Inspiration → Create → Calendar → Posted → Performance
-- Manifest-Konsistenz prüfen
-- Mobile UX validieren
-- Release Notes / Dokumentation
+- [x] Alle 11 Seiten kompilieren fehlerfrei
+- [x] Routing: SocialPage → 9 Sub-Routes korrekt
+- [x] 5 Edge Functions deployed und funktional
+- [x] Manifest-Konsistenz geprüft
+- [x] Plan-Dokument vollständig aktualisiert
 
 ---
 

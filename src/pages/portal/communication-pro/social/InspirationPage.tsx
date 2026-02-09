@@ -111,7 +111,6 @@ export function InspirationPage() {
       if (!activeOrganization?.id) throw new Error('No org');
       const { error } = await supabase.from('social_inspiration_samples').insert({
         tenant_id: activeOrganization.id,
-        owner_user_id: userId,
         source_id: sourceId,
         content_text: text,
       });
