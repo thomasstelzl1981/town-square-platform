@@ -1,6 +1,13 @@
 /**
  * Quick Intake Uploader - Upload Exposé + Preisliste for AI-powered project creation
  * MOD-13 PROJEKTE - Phase E
+ * 
+ * Multi-step workflow:
+ * 1. UPLOAD - Files selected locally
+ * 2. UPLOADING - Files being uploaded to storage
+ * 3. ANALYZING - AI extraction in progress
+ * 4. REVIEW - User reviews/edits extracted data
+ * 5. CREATING - Project being created
  */
 
 import { useState, useCallback } from 'react';
@@ -8,21 +15,41 @@ import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, FileText, Table2, Sparkles, X, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Table2, Sparkles, X, Loader2, AlertCircle, CheckCircle2, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 
 interface QuickIntakeUploaderProps {
   onSuccess?: (projectId: string) => void;
 }
 
-interface UploadedFile {
-  file: File;
-  type: 'expose' | 'pricelist';
+type UploadPhase = 'idle' | 'uploading' | 'analyzing' | 'review' | 'creating';
+
+interface ExtractedData {
+  projectName: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  unitsCount: number;
+  totalArea: number;
+  priceRange: string;
+  extractedUnits?: Array<{
+    unitNumber: string;
+    type: string;
+    area: number;
+    price: number;
+  }>;
+}
+
+interface UploadedStoragePath {
+  expose?: string;
+  pricelist?: string;
 }
 
 export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
@@ -30,8 +57,11 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
   const [exposeFile, setExposeFile] = useState<File | null>(null);
   const [pricelistFile, setPricelistFile] = useState<File | null>(null);
   const [selectedContextId, setSelectedContextId] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [phase, setPhase] = useState<UploadPhase>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [storagePaths, setStoragePaths] = useState<UploadedStoragePath>({});
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   
   const { contexts, defaultContext, isLoading: loadingContexts } = useDeveloperContexts();
 
@@ -50,6 +80,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     },
     maxFiles: 1,
     multiple: false,
+    disabled: phase !== 'idle',
   });
 
   // Pricelist dropzone
@@ -70,9 +101,11 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     },
     maxFiles: 1,
     multiple: false,
+    disabled: phase !== 'idle',
   });
 
-  const handleStartIntake = async () => {
+  // Step 1: Upload files to storage
+  const handleUploadFiles = async () => {
     if (!exposeFile && !pricelistFile) {
       setError('Bitte laden Sie mindestens eine Datei hoch.');
       return;
@@ -84,30 +117,141 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
       return;
     }
 
-    setIsProcessing(true);
+    setPhase('uploading');
+    setError(null);
+    setUploadProgress(0);
+
+    try {
+      const paths: UploadedStoragePath = {};
+      const timestamp = Date.now();
+      const totalFiles = (exposeFile ? 1 : 0) + (pricelistFile ? 1 : 0);
+      let uploadedCount = 0;
+
+      // Upload expose
+      if (exposeFile) {
+        const exposePath = `intake/${contextId}/${timestamp}_expose_${exposeFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('project-documents')
+          .upload(exposePath, exposeFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw new Error(`Exposé-Upload fehlgeschlagen: ${uploadError.message}`);
+        paths.expose = exposePath;
+        uploadedCount++;
+        setUploadProgress((uploadedCount / totalFiles) * 100);
+      }
+
+      // Upload pricelist
+      if (pricelistFile) {
+        const pricelistPath = `intake/${contextId}/${timestamp}_pricelist_${pricelistFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('project-documents')
+          .upload(pricelistPath, pricelistFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw new Error(`Preislisten-Upload fehlgeschlagen: ${uploadError.message}`);
+        paths.pricelist = pricelistPath;
+        uploadedCount++;
+        setUploadProgress((uploadedCount / totalFiles) * 100);
+      }
+
+      setStoragePaths(paths);
+      setUploadProgress(100);
+      toast.success('Dateien hochgeladen', {
+        description: 'Bereit für die KI-Analyse.',
+      });
+      
+      // Auto-start analysis after successful upload
+      setTimeout(() => handleStartAnalysis(paths, contextId), 500);
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Hochladen');
+      setPhase('idle');
+    }
+  };
+
+  // Step 2: Start AI analysis
+  const handleStartAnalysis = async (paths: UploadedStoragePath, contextId: string) => {
+    setPhase('analyzing');
     setError(null);
 
     try {
-      // Prepare form data for edge function
-      const formData = new FormData();
-      if (exposeFile) {
-        formData.append('expose', exposeFile);
-      }
-      if (pricelistFile) {
-        formData.append('pricelist', pricelistFile);
-      }
-      formData.append('contextId', contextId);
-
-      // Call edge function
+      // Call edge function with storage paths instead of raw files
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
-        body: formData,
+        body: {
+          storagePaths: paths,
+          contextId,
+          mode: 'analyze', // Only analyze, don't create project yet
+        },
+      });
+
+      if (fnError) throw fnError;
+
+      if (data?.extractedData) {
+        setExtractedData(data.extractedData);
+        setPhase('review');
+        toast.success('Analyse abgeschlossen', {
+          description: 'Bitte überprüfen Sie die extrahierten Daten.',
+        });
+      } else if (data?.error) {
+        throw new Error(data.error);
+      } else {
+        // If the edge function created the project directly (legacy mode)
+        if (data?.projectId) {
+          toast.success('Projekt erstellt', {
+            description: 'Sie werden zur Projektakte weitergeleitet.',
+          });
+          setOpen(false);
+          resetForm();
+          onSuccess?.(data.projectId);
+          return;
+        }
+        throw new Error('Keine Daten von der Analyse erhalten');
+      }
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError(err instanceof Error ? err.message : 'Fehler bei der Analyse');
+      // Allow retry from upload phase
+      setPhase('idle');
+    }
+  };
+
+  // Step 3: Create project with reviewed data
+  const handleCreateProject = async () => {
+    if (!extractedData) {
+      setError('Keine extrahierten Daten vorhanden.');
+      return;
+    }
+
+    const contextId = selectedContextId || defaultContext?.id;
+    if (!contextId) {
+      setError('Keine Verkäufer-Gesellschaft ausgewählt.');
+      return;
+    }
+
+    setPhase('creating');
+    setError(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', {
+        body: {
+          storagePaths,
+          contextId,
+          mode: 'create',
+          reviewedData: extractedData,
+        },
       });
 
       if (fnError) throw fnError;
 
       if (data?.projectId) {
-        toast.success('Projekt-Import gestartet', {
-          description: 'Die KI analysiert Ihre Dokumente. Sie werden zur Überprüfung weitergeleitet.',
+        toast.success('Projekt erfolgreich erstellt', {
+          description: `"${extractedData.projectName}" wurde angelegt.`,
         });
         setOpen(false);
         resetForm();
@@ -116,13 +260,9 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
         throw new Error(data.error);
       }
     } catch (err) {
-      console.error('Intake error:', err);
-      setError(err instanceof Error ? err.message : 'Fehler beim Starten des Imports');
-      toast.error('Fehler beim Import', {
-        description: err instanceof Error ? err.message : 'Unbekannter Fehler',
-      });
-    } finally {
-      setIsProcessing(false);
+      console.error('Create error:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Erstellen des Projekts');
+      setPhase('review'); // Back to review
     }
   };
 
@@ -130,13 +270,333 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
     setExposeFile(null);
     setPricelistFile(null);
     setSelectedContextId('');
+    setPhase('idle');
+    setUploadProgress(0);
     setError(null);
+    setStoragePaths({});
+    setExtractedData(null);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && phase !== 'idle' && phase !== 'review') {
+      // Prevent closing during processing
+      return;
+    }
     setOpen(newOpen);
     if (!newOpen) {
       resetForm();
+    }
+  };
+
+  const handleEditExtractedField = (field: keyof ExtractedData, value: string | number) => {
+    if (!extractedData) return;
+    setExtractedData({ ...extractedData, [field]: value });
+  };
+
+  // Render phase-specific content
+  const renderPhaseContent = () => {
+    switch (phase) {
+      case 'uploading':
+        return (
+          <div className="space-y-4 py-8">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 text-primary animate-spin" />
+              <div className="text-center">
+                <p className="font-medium">Dateien werden hochgeladen...</p>
+                <p className="text-sm text-muted-foreground">
+                  {exposeFile && pricelistFile ? 'Exposé und Preisliste' : exposeFile ? 'Exposé' : 'Preisliste'}
+                </p>
+              </div>
+              <Progress value={uploadProgress} className="w-full max-w-xs" />
+              <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
+            </div>
+          </div>
+        );
+
+      case 'analyzing':
+        return (
+          <div className="space-y-4 py-8">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <Sparkles className="h-12 w-12 text-primary" />
+                <div className="absolute inset-0 animate-ping">
+                  <Sparkles className="h-12 w-12 text-primary opacity-50" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="font-medium">KI analysiert Dokumente...</p>
+                <p className="text-sm text-muted-foreground">
+                  Projektdaten und Einheiten werden extrahiert
+                </p>
+              </div>
+              <div className="flex gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Dies kann 10-30 Sekunden dauern
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'review':
+        return (
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary">
+              <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium">Analyse abgeschlossen - bitte Daten überprüfen</span>
+            </div>
+
+            {extractedData && (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Projektname</Label>
+                    <Input 
+                      value={extractedData.projectName}
+                      onChange={(e) => handleEditExtractedField('projectName', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Stadt</Label>
+                    <Input 
+                      value={extractedData.city}
+                      onChange={(e) => handleEditExtractedField('city', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>PLZ</Label>
+                    <Input 
+                      value={extractedData.postalCode}
+                      onChange={(e) => handleEditExtractedField('postalCode', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Einheiten</Label>
+                    <Input 
+                      type="number"
+                      value={extractedData.unitsCount}
+                      onChange={(e) => handleEditExtractedField('unitsCount', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gesamtfläche (m²)</Label>
+                    <Input 
+                      type="number"
+                      value={extractedData.totalArea}
+                      onChange={(e) => handleEditExtractedField('totalArea', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Adresse</Label>
+                  <Input 
+                    value={extractedData.address}
+                    onChange={(e) => handleEditExtractedField('address', e.target.value)}
+                  />
+                </div>
+
+                {extractedData.extractedUnits && extractedData.extractedUnits.length > 0 && (
+                  <div className="mt-2">
+                    <Label className="mb-2 block">Erkannte Einheiten: {extractedData.extractedUnits.length}</Label>
+                    <div className="max-h-32 overflow-y-auto border rounded-lg p-2 text-sm">
+                      {extractedData.extractedUnits.slice(0, 5).map((unit, i) => (
+                        <div key={i} className="flex justify-between py-1 border-b last:border-0">
+                          <span>{unit.unitNumber} - {unit.type}</span>
+                          <span>{unit.area} m² / {unit.price.toLocaleString('de-DE')} €</span>
+                        </div>
+                      ))}
+                      {extractedData.extractedUnits.length > 5 && (
+                        <div className="text-muted-foreground pt-1">
+                          ...und {extractedData.extractedUnits.length - 5} weitere Einheiten
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'creating':
+        return (
+          <div className="space-y-4 py-8">
+            <div className="flex flex-col items-center gap-4">
+              <Building2 className="h-12 w-12 text-primary animate-pulse" />
+              <div className="text-center">
+                <p className="font-medium">Projekt wird erstellt...</p>
+                <p className="text-sm text-muted-foreground">
+                  {extractedData?.projectName}
+                </p>
+              </div>
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          </div>
+        );
+
+      default: // 'idle'
+        return (
+          <div className="space-y-4 py-4">
+            {/* Context Selection */}
+            <div className="space-y-2">
+              <Label>Verkäufer-Gesellschaft</Label>
+              <Select
+                value={selectedContextId || defaultContext?.id || ''}
+                onValueChange={setSelectedContextId}
+                disabled={loadingContexts}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Gesellschaft wählen..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {contexts.map((ctx) => (
+                    <SelectItem key={ctx.id} value={ctx.id}>
+                      {ctx.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Expose Upload */}
+            <div className="space-y-2">
+              <Label>Exposé (PDF)</Label>
+              <div
+                {...getExposeRootProps()}
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                  isExposeDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
+                  exposeFile && "border-primary bg-primary/5"
+                )}
+              >
+                <input {...getExposeInputProps()} />
+                {exposeFile ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{exposeFile.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        ({Math.round(exposeFile.size / 1024)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExposeFile(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Upload className="h-8 w-8" />
+                    <p>PDF hier ablegen oder klicken</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Pricelist Upload */}
+            <div className="space-y-2">
+              <Label>Preisliste (XLSX/CSV/PDF)</Label>
+              <div
+                {...getPricelistRootProps()}
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                  isPricelistDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
+                  pricelistFile && "border-primary bg-primary/5"
+                )}
+              >
+                <input {...getPricelistInputProps()} />
+                {pricelistFile ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Table2 className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{pricelistFile.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        ({Math.round(pricelistFile.size / 1024)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPricelistFile(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Upload className="h-8 w-8" />
+                    <p>XLSX, CSV oder PDF hier ablegen oder klicken</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info */}
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Neuer Workflow:</strong> 1. Dateien hochladen → 2. KI analysiert → 3. Sie prüfen die Daten → 4. Projekt wird erstellt
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+  };
+
+  const renderActions = () => {
+    const isProcessing = phase === 'uploading' || phase === 'analyzing' || phase === 'creating';
+
+    switch (phase) {
+      case 'review':
+        return (
+          <>
+            <Button variant="outline" onClick={resetForm}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleCreateProject} className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Projekt anlegen
+            </Button>
+          </>
+        );
+
+      case 'idle':
+        return (
+          <>
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={handleUploadFiles} 
+              disabled={!exposeFile && !pricelistFile}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Dateien hochladen & analysieren
+            </Button>
+          </>
+        );
+
+      default:
+        return (
+          <Button variant="outline" disabled={isProcessing}>
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            Bitte warten...
+          </Button>
+        );
     }
   };
 
@@ -155,157 +615,27 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
             Schnell-Import mit KI
           </DialogTitle>
           <DialogDescription>
-            Laden Sie Exposé und/oder Preisliste hoch. Die KI extrahiert Projektdaten und Einheiten automatisch.
+            {phase === 'idle' && 'Laden Sie Exposé und/oder Preisliste hoch.'}
+            {phase === 'uploading' && 'Dateien werden in den Speicher übertragen...'}
+            {phase === 'analyzing' && 'KI extrahiert Projektdaten und Einheiten...'}
+            {phase === 'review' && 'Überprüfen und korrigieren Sie die extrahierten Daten.'}
+            {phase === 'creating' && 'Projekt wird mit den bestätigten Daten erstellt...'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Context Selection */}
-          <div className="space-y-2">
-            <Label>Verkäufer-Gesellschaft</Label>
-            <Select
-              value={selectedContextId || defaultContext?.id || ''}
-              onValueChange={setSelectedContextId}
-              disabled={loadingContexts}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Gesellschaft wählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {contexts.map((ctx) => (
-                  <SelectItem key={ctx.id} value={ctx.id}>
-                    {ctx.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {renderPhaseContent()}
+
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {error}
           </div>
-
-          {/* Expose Upload */}
-          <div className="space-y-2">
-            <Label>Exposé (PDF)</Label>
-            <div
-              {...getExposeRootProps()}
-              className={cn(
-                "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                isExposeDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
-                exposeFile && "border-primary bg-primary/5"
-              )}
-            >
-              <input {...getExposeInputProps()} />
-              {exposeFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <span className="font-medium">{exposeFile.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ({Math.round(exposeFile.size / 1024)} KB)
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExposeFile(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <Upload className="h-8 w-8" />
-                  <p>PDF hier ablegen oder klicken</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pricelist Upload */}
-          <div className="space-y-2">
-            <Label>Preisliste (XLSX/CSV/PDF)</Label>
-            <div
-              {...getPricelistRootProps()}
-              className={cn(
-                "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                isPricelistDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
-                pricelistFile && "border-primary bg-primary/5"
-              )}
-            >
-              <input {...getPricelistInputProps()} />
-              {pricelistFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Table2 className="h-5 w-5 text-primary" />
-                    <span className="font-medium">{pricelistFile.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ({Math.round(pricelistFile.size / 1024)} KB)
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPricelistFile(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <Upload className="h-8 w-8" />
-                  <p>XLSX, CSV oder PDF hier ablegen oder klicken</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-
-          {/* Info */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-4">
-              <p className="text-sm text-muted-foreground">
-                <strong>So funktioniert's:</strong> Die KI analysiert Ihre Dokumente und extrahiert Projektname, 
-                Standort, Einheiten und Preise. Sie können alle Daten vor dem Import überprüfen und korrigieren.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isProcessing}>
-            Abbrechen
-          </Button>
-          <Button 
-            onClick={handleStartIntake} 
-            disabled={isProcessing || (!exposeFile && !pricelistFile)}
-            className="gap-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Verarbeite...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                KI-Aufbereitung starten
-              </>
-            )}
-          </Button>
+          {renderActions()}
         </div>
       </DialogContent>
     </Dialog>
