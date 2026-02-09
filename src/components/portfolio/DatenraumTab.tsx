@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { UploadResultList } from '@/components/shared/UploadResultCard';
 
 interface StorageNode {
   id: string;
@@ -134,7 +135,7 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
   };
 
   // Universal upload hook (direct to storage, no Edge Function roundtrip)
-  const { upload: universalUpload } = useUniversalUpload();
+  const { upload: universalUpload, uploadedFiles, clearUploadedFiles } = useUniversalUpload();
 
   // Handle file upload
   const handleUpload = async (files: File[]) => {
@@ -319,6 +320,14 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
                 )}
               </div>
             </FileUploader>
+            {uploadedFiles.length > 0 && (
+              <UploadResultList
+                files={uploadedFiles}
+                status="uploaded"
+                onClear={clearUploadedFiles}
+                compact
+              />
+            )}
           </CardContent>
         </Card>
 
