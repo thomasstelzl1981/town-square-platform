@@ -371,6 +371,19 @@ export function StorageTab() {
           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setSelectedDocument(doc); setIsDrawerOpen(true); }}>
             <Eye className="h-4 w-4" />
           </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (confirm('Dokument wirklich löschen?')) {
+                deleteMutation.mutate(doc.id); 
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
