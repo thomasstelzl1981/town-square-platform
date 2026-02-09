@@ -47,7 +47,22 @@ export interface CreateDeveloperContextInput {
 // Dev Projects
 // ============================================================================
 
-export type ProjectStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';
+// Extended project status for Aufteiler lifecycle
+export type ProjectStatus = 
+  // New Aufteiler lifecycle statuses
+  | 'draft_intake'        // KI-Import läuft
+  | 'draft_ready'         // Import bestätigt, bereit zur Aktivierung
+  | 'in_sales_setup'      // Vertrieb wird vorbereitet
+  | 'in_distribution'     // Aktiv im Verkauf
+  | 'sellout_in_progress' // Abverkauf läuft (>50% verkauft)
+  | 'sold_out'            // Alle Einheiten verkauft
+  | 'closed'              // Archiviert/Abgeschlossen
+  // Legacy values (for backward compatibility)
+  | 'draft'
+  | 'active'
+  | 'paused'
+  | 'completed'
+  | 'archived';
 
 export interface DevProject {
   id: string;
@@ -295,6 +310,8 @@ export interface ProjectPortfolioRow {
   project_code: string;
   name: string;
   city: string | null;
+  postal_code: string | null;
+  project_type: string | null; // 'neubau' | 'aufteilung'
   status: ProjectStatus;
   total_units_count: number;
   units_available: number;
@@ -302,8 +319,13 @@ export interface ProjectPortfolioRow {
   units_sold: number;
   purchase_price: number | null;
   total_sale_target: number | null;
+  sale_revenue_actual: number | null; // Sum of sold units × price
   profit_margin_percent: number | null;
   progress_percent: number;
+  // Marketing flags
+  kaufy_listed: boolean;
+  kaufy_featured: boolean;
+  landingpage_enabled: boolean;
 }
 
 export interface ProjectDossierData {

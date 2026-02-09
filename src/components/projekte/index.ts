@@ -4,6 +4,7 @@ export { CreateProjectDialog } from './CreateProjectDialog';
 export { CreateReservationDialog } from './CreateReservationDialog';
 export { ProjectPortfolioTable } from './ProjectPortfolioTable';
 export { UnitStatusBadge, UnitStatusDot } from './UnitStatusBadge';
+export { QuickIntakeUploader } from './QuickIntakeUploader';
 
 // Block Components
 export { ProjectPricingBlock } from './blocks/ProjectPricingBlock';

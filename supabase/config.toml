@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.sot-nasa-apod]
 verify_jwt = false
+
+[functions.sot-project-intake]
+verify_jwt = false

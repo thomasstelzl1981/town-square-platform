@@ -4064,14 +4064,17 @@ export type Database = {
           developer_context_id: string
           holding_period_months: number | null
           id: string
+          intake_data: Json | null
           kaufy_featured: boolean | null
           kaufy_listed: boolean | null
           landingpage_enabled: boolean | null
           landingpage_slug: string | null
           name: string
+          needs_review: boolean | null
           postal_code: string | null
           project_code: string
           project_start_date: string | null
+          project_type: string | null
           purchase_price: number | null
           renovation_budget: number | null
           state: string | null
@@ -4095,14 +4098,17 @@ export type Database = {
           developer_context_id: string
           holding_period_months?: number | null
           id?: string
+          intake_data?: Json | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           name: string
+          needs_review?: boolean | null
           postal_code?: string | null
           project_code: string
           project_start_date?: string | null
+          project_type?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           state?: string | null
@@ -4126,14 +4132,17 @@ export type Database = {
           developer_context_id?: string
           holding_period_months?: number | null
           id?: string
+          intake_data?: Json | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           name?: string
+          needs_review?: boolean | null
           postal_code?: string | null
           project_code?: string
           project_start_date?: string | null
+          project_type?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           state?: string | null

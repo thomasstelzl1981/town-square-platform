@@ -6,10 +6,15 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Building2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
-import { CreateProjectDialog, ProjectPortfolioTable, CreateDeveloperContextDialog } from '@/components/projekte';
+import { 
+  CreateProjectDialog, 
+  ProjectPortfolioTable, 
+  CreateDeveloperContextDialog,
+  QuickIntakeUploader,
+} from '@/components/projekte';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -84,6 +89,10 @@ export default function PortfolioTab() {
               ))}
             </SelectContent>
           </Select>
+          
+          <QuickIntakeUploader 
+            onSuccess={(projectId) => navigate(`/portal/projekte/${projectId}`)} 
+          />
           
           <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />

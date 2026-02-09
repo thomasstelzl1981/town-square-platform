@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { DevProject, CreateProjectInput, ProjectPortfolioRow } from '@/types/projekte';
+import type { DevProject, CreateProjectInput, ProjectPortfolioRow, ProjectStatus } from '@/types/projekte';
 
 const QUERY_KEY = 'dev-projects';
 
@@ -42,7 +42,7 @@ export function useDevProjects(contextId?: string) {
     enabled: !!tenantId,
   });
 
-  // Fetch portfolio view with unit aggregation
+  // Fetch portfolio view with unit aggregation and extended KPIs
   const { data: portfolioRows = [], isLoading: isLoadingPortfolio } = useQuery({
     queryKey: [QUERY_KEY, 'portfolio', tenantId, contextId],
     queryFn: async () => {
@@ -62,31 +62,42 @@ export function useDevProjects(contextId?: string) {
       const { data: projectsData, error: projectsError } = await projectQuery;
       if (projectsError) throw projectsError;
       
-      // Fetch all units for these projects
+      // Fetch all units for these projects with list_price for revenue calculation
       const projectIds = projectsData.map(p => p.id);
       if (projectIds.length === 0) return [];
       
       const { data: unitsData, error: unitsError } = await supabase
         .from('dev_project_units')
-        .select('project_id, status')
+        .select('project_id, status, list_price')
         .in('project_id', projectIds);
       
       if (unitsError) throw unitsError;
       
       // Aggregate units per project
-      const unitsByProject: Record<string, { available: number; reserved: number; sold: number }> = {};
+      const unitsByProject: Record<string, { 
+        available: number; 
+        reserved: number; 
+        sold: number;
+        revenueActual: number; // Sum of sold units × list_price
+      }> = {};
+      
       unitsData.forEach(unit => {
         if (!unitsByProject[unit.project_id]) {
-          unitsByProject[unit.project_id] = { available: 0, reserved: 0, sold: 0 };
+          unitsByProject[unit.project_id] = { available: 0, reserved: 0, sold: 0, revenueActual: 0 };
         }
-        if (unit.status === 'available') unitsByProject[unit.project_id].available++;
-        else if (unit.status === 'reserved') unitsByProject[unit.project_id].reserved++;
-        else if (unit.status === 'sold') unitsByProject[unit.project_id].sold++;
+        if (unit.status === 'available') {
+          unitsByProject[unit.project_id].available++;
+        } else if (unit.status === 'reserved') {
+          unitsByProject[unit.project_id].reserved++;
+        } else if (unit.status === 'sold') {
+          unitsByProject[unit.project_id].sold++;
+          unitsByProject[unit.project_id].revenueActual += unit.list_price || 0;
+        }
       });
       
-      // Build portfolio rows
+      // Build portfolio rows with extended KPIs
       return projectsData.map(p => {
-        const units = unitsByProject[p.id] || { available: 0, reserved: 0, sold: 0 };
+        const units = unitsByProject[p.id] || { available: 0, reserved: 0, sold: 0, revenueActual: 0 };
         const totalUnits = units.available + units.reserved + units.sold;
         const progressPercent = totalUnits > 0 ? Math.round((units.sold / totalUnits) * 100) : 0;
         
@@ -102,15 +113,22 @@ export function useDevProjects(contextId?: string) {
           project_code: p.project_code,
           name: p.name,
           city: p.city,
-          status: p.status,
+          postal_code: p.postal_code || null,
+          project_type: (p as any).project_type || null, // May not exist in older rows
+          status: p.status as ProjectStatus,
           total_units_count: totalUnits,
           units_available: units.available,
           units_reserved: units.reserved,
           units_sold: units.sold,
           purchase_price: p.purchase_price,
           total_sale_target: p.total_sale_target,
+          sale_revenue_actual: units.revenueActual || null,
           profit_margin_percent: marginPercent,
           progress_percent: progressPercent,
+          // Marketing flags
+          kaufy_listed: p.kaufy_listed || false,
+          kaufy_featured: p.kaufy_featured || false,
+          landingpage_enabled: p.landingpage_enabled || false,
         } as ProjectPortfolioRow;
       });
     },
