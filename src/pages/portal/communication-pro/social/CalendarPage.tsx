@@ -1,12 +1,12 @@
 /**
  * Social Calendar — Planning & Manual Posted
- * Phase 9: Week view + list, plan drafts, status workflow
+ * Enhanced: Platform badges, status colors, improved layout
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Check, Clock, Eye } from 'lucide-react';
+import { Calendar as CalendarIcon, Check, Clock, Linkedin, Instagram, Facebook } from 'lucide-react';
 import { format, startOfWeek, addDays, isToday, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,11 +18,31 @@ interface Draft {
   id: string;
   draft_title: string | null;
   content_linkedin: string | null;
+  content_instagram: string | null;
+  content_facebook: string | null;
   status: string;
   planned_at: string | null;
   posted_at: string | null;
   platform_targets: string[] | null;
 }
+
+const PLATFORM_ICONS: Record<string, typeof Linkedin> = {
+  linkedin: Linkedin,
+  instagram: Instagram,
+  facebook: Facebook,
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  ready: 'bg-muted border-muted-foreground/20',
+  planned: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
+  posted_manual: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
+};
+
+const STATUS_DOT: Record<string, string> = {
+  ready: 'bg-muted-foreground',
+  planned: 'bg-blue-500',
+  posted_manual: 'bg-green-500',
+};
 
 export function CalendarPage() {
   const { activeOrganization } = useAuth();
@@ -75,15 +95,28 @@ export function CalendarPage() {
   const getDraftsForDay = (date: Date) =>
     drafts.filter((d) => d.planned_at && isSameDay(new Date(d.planned_at), date));
 
-  const statusIcon: Record<string, typeof Check> = { planned: Clock, posted_manual: Check };
+  const getPlatforms = (draft: Draft) => {
+    const p: string[] = [];
+    if (draft.content_linkedin) p.push('linkedin');
+    if (draft.content_instagram) p.push('instagram');
+    if (draft.content_facebook) p.push('facebook');
+    return p;
+  };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold">Kalender & Planung</h1>
         <p className="text-muted-foreground mt-1">
           Plane deine Drafts und markiere sie als gepostet.
         </p>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-muted-foreground" /> Fertig</span>
+        <span className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Geplant</span>
+        <span className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-green-500" /> Gepostet</span>
       </div>
 
       {/* Week navigation */}
@@ -105,23 +138,43 @@ export function CalendarPage() {
           return (
             <div
               key={day.toISOString()}
-              className={`border rounded-lg p-2 min-h-[120px] ${isToday(day) ? 'border-primary bg-primary/5' : ''}`}
+              className={`border rounded-lg p-2 min-h-[140px] ${isToday(day) ? 'border-primary bg-primary/5' : ''}`}
             >
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                {format(day, 'EEE dd.', { locale: de })}
+              <div className={`text-xs font-medium mb-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}>
+                {format(day, 'EEE', { locale: de })}
+                <span className={`ml-1 ${isToday(day) ? 'bg-primary text-primary-foreground rounded-full px-1.5 py-0.5' : ''}`}>
+                  {format(day, 'dd.')}
+                </span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {dayDrafts.map((d) => {
-                  const Icon = statusIcon[d.status] || Clock;
+                  const platforms = getPlatforms(d);
+                  const dotColor = STATUS_DOT[d.status] || STATUS_DOT.ready;
                   return (
-                    <div key={d.id} className="text-xs bg-card border rounded px-1.5 py-1 flex items-center gap-1">
-                      <Icon className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{d.draft_title || 'Draft'}</span>
-                      {d.status === 'planned' && (
-                        <Button variant="ghost" size="icon" className="h-4 w-4 ml-auto shrink-0" onClick={() => markPosted(d.id)}>
-                          <Check className="h-3 w-3" />
-                        </Button>
-                      )}
+                    <div
+                      key={d.id}
+                      className={`text-xs border rounded px-2 py-1.5 space-y-1 ${STATUS_COLORS[d.status] || ''}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <div className={`h-1.5 w-1.5 rounded-full ${dotColor} shrink-0`} />
+                        <span className="truncate font-medium">{d.draft_title || 'Draft'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {platforms.map((p) => {
+                          const Icon = PLATFORM_ICONS[p];
+                          return Icon ? <Icon key={p} className="h-2.5 w-2.5 text-muted-foreground" /> : null;
+                        })}
+                        {d.status === 'planned' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 ml-auto shrink-0"
+                            onClick={() => markPosted(d.id)}
+                          >
+                            <Check className="h-3 w-3 text-green-600" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -133,22 +186,39 @@ export function CalendarPage() {
 
       {/* Unplanned drafts */}
       {unplanned.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Fertige Drafts (unverplant)</h3>
-          {unplanned.map((d) => (
-            <Card key={d.id}>
-              <CardContent className="py-3 flex items-center gap-3">
-                <span className="flex-1 text-sm font-medium">{d.draft_title || 'Unbenannt'}</span>
-                <div className="flex gap-1">
-                  {weekDays.slice(0, 5).map((day) => (
-                    <Button key={day.toISOString()} variant="outline" size="sm" className="text-xs h-7 px-2" onClick={() => planDraft(d.id, day)}>
-                      {format(day, 'EEE', { locale: de })}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Fertige Drafts — zum Einplanen
+          </h3>
+          {unplanned.map((d) => {
+            const platforms = getPlatforms(d);
+            return (
+              <Card key={d.id}>
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    {platforms.map((p) => {
+                      const Icon = PLATFORM_ICONS[p];
+                      return Icon ? <Icon key={p} className="h-3.5 w-3.5 text-muted-foreground" /> : null;
+                    })}
+                  </div>
+                  <span className="flex-1 text-sm font-medium truncate">{d.draft_title || 'Unbenannt'}</span>
+                  <div className="flex gap-1">
+                    {weekDays.slice(0, 5).map((day) => (
+                      <Button
+                        key={day.toISOString()}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 px-2"
+                        onClick={() => planDraft(d.id, day)}
+                      >
+                        {format(day, 'EEE', { locale: de })}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

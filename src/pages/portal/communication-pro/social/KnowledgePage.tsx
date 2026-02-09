@@ -1,21 +1,17 @@
 /**
  * Social Knowledge Base — Editorial Focus Topics
- * Phase 4: Topic chips (max 10), priority drag/drop, AI briefing generation
+ * Enhanced: Aufklappbare Briefings, Post-Shortcut
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Sparkles, Trash2, GripVertical, Loader2, X } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BookOpen, Plus, Sparkles, Trash2, GripVertical, Loader2, ChevronDown, PenTool } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Helper to get user id (dev mode fallback)
-function useUserId() {
-  const { user } = useAuth();
-  return user?.id || 'dev-user';
-}
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -48,13 +44,17 @@ function SortableTopicItem({
   onDelete,
   onGenerateBriefing,
   isGenerating,
+  onCreatePost,
 }: {
   topic: Topic;
   onDelete: (id: string) => void;
   onGenerateBriefing: (id: string) => void;
   isGenerating: boolean;
+  onCreatePost: (label: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: topic.id });
+  const [briefingOpen, setBriefingOpen] = useState(false);
+  const briefing = topic.topic_briefing;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -62,34 +62,109 @@ function SortableTopicItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 p-3 bg-card border rounded-lg group">
-      <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <Badge variant="outline" className="shrink-0 text-xs">{topic.priority}</Badge>
-      <span className="flex-1 font-medium text-sm">{topic.topic_label}</span>
-      {topic.topic_briefing ? (
-        <Badge variant="secondary" className="text-xs">Briefing ✓</Badge>
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs gap-1 opacity-0 group-hover:opacity-100"
-          onClick={() => onGenerateBriefing(topic.id)}
-          disabled={isGenerating}
-        >
-          {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-          Briefing
-        </Button>
+    <div ref={setNodeRef} style={style} className="bg-card border rounded-lg group">
+      <div className="flex items-center gap-3 p-3">
+        <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <Badge variant="outline" className="shrink-0 text-xs">{topic.priority}</Badge>
+        <span className="flex-1 font-medium text-sm">{topic.topic_label}</span>
+        
+        <div className="flex items-center gap-1">
+          {briefing ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1 h-7"
+              onClick={() => setBriefingOpen(!briefingOpen)}
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform ${briefingOpen ? 'rotate-180' : ''}`} />
+              Briefing
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1 opacity-0 group-hover:opacity-100 h-7"
+              onClick={() => onGenerateBriefing(topic.id)}
+              disabled={isGenerating}
+            >
+              {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Briefing
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs gap-1 opacity-0 group-hover:opacity-100 h-7"
+            onClick={() => onCreatePost(topic.topic_label)}
+          >
+            <PenTool className="h-3 w-3" />
+            Post
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100"
+            onClick={() => onDelete(topic.id)}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Expandable briefing content */}
+      {briefing && briefingOpen && (
+        <div className="px-3 pb-3 pt-0 border-t mx-3 mt-0 space-y-2">
+          {briefing.hooks && Array.isArray(briefing.hooks) && (
+            <div className="pt-2">
+              <span className="text-xs font-medium text-muted-foreground">Hook-Vorschläge</span>
+              <ul className="text-xs mt-1 space-y-0.5">
+                {(briefing.hooks as string[]).slice(0, 3).map((h, i) => (
+                  <li key={i} className="text-muted-foreground">• {h}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {briefing.arguments && Array.isArray(briefing.arguments) && (
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Kernargumente</span>
+              <ul className="text-xs mt-1 space-y-0.5">
+                {(briefing.arguments as string[]).slice(0, 3).map((a, i) => (
+                  <li key={i} className="text-muted-foreground">• {a}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {briefing.ctas && Array.isArray(briefing.ctas) && (
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">CTA-Vorschläge</span>
+              <ul className="text-xs mt-1 space-y-0.5">
+                {(briefing.ctas as string[]).slice(0, 3).map((c, i) => (
+                  <li key={i} className="text-muted-foreground">• {c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {briefing.summary && (
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Zusammenfassung</span>
+              <p className="text-xs text-muted-foreground mt-1">{String(briefing.summary)}</p>
+            </div>
+          )}
+          {/* Fallback: show raw keys if no structured data */}
+          {!briefing.hooks && !briefing.arguments && !briefing.ctas && !briefing.summary && (
+            <div className="pt-2 space-y-1">
+              {Object.entries(briefing).map(([key, val]) => (
+                <div key={key} className="text-xs">
+                  <span className="font-medium text-muted-foreground capitalize">{key}: </span>
+                  <span className="text-muted-foreground">{typeof val === 'string' ? val : JSON.stringify(val)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100"
-        onClick={() => onDelete(topic.id)}
-      >
-        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-      </Button>
     </div>
   );
 }
@@ -97,9 +172,11 @@ function SortableTopicItem({
 export function KnowledgePage() {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [newTopic, setNewTopic] = useState('');
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const userId = useUserId();
+  const { user } = useAuth();
+  const userId = user?.id || 'dev-user';
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -136,7 +213,7 @@ export function KnowledgePage() {
       queryClient.invalidateQueries({ queryKey: ['social-topics'] });
       setNewTopic('');
     },
-    onError: () => toast({ title: 'Fehler', description: 'Thema konnte nicht hinzugefügt werden.', variant: 'destructive' }),
+    onError: () => toast({ title: 'Fehler', variant: 'destructive' }),
   });
 
   const deleteTopicMutation = useMutation({
@@ -180,17 +257,16 @@ export function KnowledgePage() {
   const handleGenerateBriefing = async (topicId: string) => {
     const topic = topics.find((t) => t.id === topicId);
     if (!topic || !activeOrganization?.id) return;
-
     setGeneratingId(topicId);
     try {
       const { data, error } = await supabase.functions.invoke('sot-social-generate-briefing', {
         body: { topic_id: topicId, topic_label: topic.topic_label, tenant_id: activeOrganization.id },
       });
       if (error) throw error;
-      toast({ title: 'Briefing generiert', description: `Briefing für "${topic.topic_label}" erstellt.` });
+      toast({ title: 'Briefing generiert' });
       queryClient.invalidateQueries({ queryKey: ['social-topics'] });
     } catch {
-      toast({ title: 'Fehler', description: 'Briefing konnte nicht generiert werden.', variant: 'destructive' });
+      toast({ title: 'Fehler', variant: 'destructive' });
     } finally {
       setGeneratingId(null);
     }
@@ -207,6 +283,11 @@ export function KnowledgePage() {
     }
   };
 
+  const handleCreatePost = (topicLabel: string) => {
+    // Navigate to create page — the topic will be pre-filled via URL state
+    navigate('../create', { state: { topic: topicLabel } });
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 flex items-center gap-2 text-muted-foreground">
@@ -215,8 +296,10 @@ export function KnowledgePage() {
     );
   }
 
+  const briefingCount = topics.filter((t) => t.topic_briefing).length;
+
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6 max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Knowledge Base</h1>
@@ -225,7 +308,12 @@ export function KnowledgePage() {
           </p>
         </div>
         {topics.length > 0 && (
-          <Badge variant="outline">{topics.length}/10</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{topics.length}/10 Themen</Badge>
+            {briefingCount > 0 && (
+              <Badge variant="secondary">{briefingCount} Briefings</Badge>
+            )}
+          </div>
         )}
       </div>
 
@@ -259,6 +347,7 @@ export function KnowledgePage() {
                     onDelete={(id) => deleteTopicMutation.mutate(id)}
                     onGenerateBriefing={handleGenerateBriefing}
                     isGenerating={generatingId === topic.id}
+                    onCreatePost={handleCreatePost}
                   />
                 ))}
               </div>
