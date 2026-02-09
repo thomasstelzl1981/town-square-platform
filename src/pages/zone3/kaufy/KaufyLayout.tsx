@@ -12,7 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import '@/styles/zone3-theme.css';
 
 const navItems = [
-  { href: '/kaufy/immobilien', label: 'Immobilien' },
+  { href: '/kaufy', label: 'Immobilien' },
   { href: '/kaufy/vermieter', label: 'Vermieter' },
   { href: '/kaufy/verkaeufer', label: 'Verkäufer' },
   { href: '/kaufy/vertrieb', label: 'Partner' },
@@ -140,7 +140,7 @@ export default function KaufyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Plattform</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/kaufy/immobilien" className="hover:underline">Immobilien</Link></li>
+                <li><Link to="/kaufy" className="hover:underline">Immobilien</Link></li>
                 <li><Link to="/kaufy/module" className="hover:underline">Funktionen</Link></li>
                 <li><Link to="/kaufy/faq" className="hover:underline">FAQ</Link></li>
               </ul>

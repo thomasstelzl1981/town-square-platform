@@ -491,7 +491,6 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "meety", component: "KaufyMeety", title: "Meety" },
       { path: "module", component: "KaufyModule", title: "Module" },
       { path: "module/:moduleId", component: "KaufyModuleDetail", title: "Modul-Details", dynamic: true },
-      { path: "immobilien", component: "KaufyImmobilien", title: "Immobilien" },
       { path: "immobilien/:publicId", component: "KaufyExpose", title: "Exposé", dynamic: true },
       { path: "berater", component: "KaufyBerater", title: "Berater finden" },
       { path: "anbieter", component: "KaufyAnbieter", title: "Anbieter werden" },
