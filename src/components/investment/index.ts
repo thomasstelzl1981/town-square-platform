@@ -10,3 +10,4 @@ export { InvestmentResultTile } from './InvestmentResultTile';
 export { ExposeImageGallery } from './ExposeImageGallery';
 export { InvestmentExposeView } from './InvestmentExposeView';
 export { ExposeDocuments } from './ExposeDocuments';
+export { FinanzierungSummary } from './FinanzierungSummary';
