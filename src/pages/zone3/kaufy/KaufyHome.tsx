@@ -1,6 +1,7 @@
 /**
  * KaufyHome — Phase 3 Update
  * Hero-Texte optimiert: "Finden Sie Ihre Rendite-Immobilie" + "Steueroptimiert kaufen. Digital verwalten."
+ * Harmonisiert mit MOD-08: InvestmentResultTile + vollständige Engine-Parameter
  */
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -8,11 +9,19 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Building2, Users, Briefcase } from 'lucide-react';
 import HeroBackground from '@/assets/kaufy/Hero_Background.png';
 import { InvestmentSearchCard } from '@/components/zone3/kaufy/InvestmentSearchCard';
-import { KaufyPropertyCard } from '@/components/zone3/kaufy/KaufyPropertyCard';
+import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { PerspektivenAccordion } from '@/components/zone3/kaufy/PerspektivenAccordion';
 import { ZahlenSektion } from '@/components/zone3/kaufy/ZahlenSektion';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
+
+interface SearchParamsState {
+  zvE: number;
+  equity: number;
+  maritalStatus: 'single' | 'married';
+  hasChurchTax: boolean;
+  churchTaxState?: string;
+}
 
 interface PropertyData {
   public_id: string;
@@ -29,12 +38,15 @@ interface PropertyData {
   cashFlowBeforeTax?: number;
   taxSavings?: number;
   netBurden?: number;
+  yearlyInterest?: number;
+  yearlyRepayment?: number;
+  loanAmount?: number;
 }
 
 export default function KaufyHome() {
   const [calculatedProperties, setCalculatedProperties] = useState<PropertyData[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [searchParams, setSearchParams] = useState<{ zvE: number; equity: number } | null>(null);
+  const [searchParams, setSearchParams] = useState<SearchParamsState | null>(null);
 
   // Fetch real listings from database
   const { data: dbListings = [], isLoading: isLoadingListings } = useQuery({
@@ -110,14 +122,27 @@ export default function KaufyHome() {
 
   const isLoading = isLoadingListings || isCalculating;
 
-  const handleSearch = async (params: { zvE: number; equity: number }) => {
+  const handleSearch = async (params: { 
+    zvE: number; 
+    equity: number;
+    maritalStatus: 'single' | 'married';
+    hasChurchTax: boolean;
+    state: string;
+  }) => {
     setIsCalculating(true);
-    setSearchParams(params);
+    setSearchParams({
+      zvE: params.zvE,
+      equity: params.equity,
+      maritalStatus: params.maritalStatus,
+      hasChurchTax: params.hasChurchTax,
+      churchTaxState: params.state,
+    });
 
     // Calculate investment metrics for each property from DB
     const updatedProperties = await Promise.all(
       dbListings.map(async (prop) => {
         try {
+          const loanAmount = (prop.asking_price - params.equity) * 0.9;
           const { data } = await supabase.functions.invoke('sot-investment-engine', {
             body: {
               purchasePrice: prop.asking_price,
@@ -126,8 +151,9 @@ export default function KaufyHome() {
               termYears: 15,
               repaymentRate: 2,
               taxableIncome: params.zvE,
-              maritalStatus: 'single',
-              hasChurchTax: false,
+              maritalStatus: params.maritalStatus,
+              hasChurchTax: params.hasChurchTax,
+              churchTaxState: params.state,
               afaModel: 'linear',
               buildingShare: 0.8,
               managementCostMonthly: 25,
@@ -142,6 +168,9 @@ export default function KaufyHome() {
               cashFlowBeforeTax: Math.round((data.projection[0]?.cashFlowBeforeTax || 0) / 12),
               taxSavings: Math.round((data.summary.yearlyTaxSavings || 0) / 12),
               netBurden: data.summary.monthlyBurden,
+              yearlyInterest: data.projection[0]?.interest || loanAmount * 0.035,
+              yearlyRepayment: data.projection[0]?.repayment || loanAmount * 0.02,
+              loanAmount: loanAmount,
             };
           }
         } catch (err) {
@@ -153,6 +182,25 @@ export default function KaufyHome() {
 
     setCalculatedProperties(updatedProperties);
     setIsCalculating(false);
+  };
+
+  const handleClassicSearch = (params: { city: string; maxPrice: number | null; minArea: number | null }) => {
+    // Client-side filtering for classic search
+    const filtered = dbListings.filter((prop) => {
+      if (params.city && !prop.city.toLowerCase().includes(params.city.toLowerCase()) && 
+          !prop.postal_code?.includes(params.city)) {
+        return false;
+      }
+      if (params.maxPrice && prop.asking_price > params.maxPrice) {
+        return false;
+      }
+      if (params.minArea && (prop.total_area_sqm || 0) < params.minArea) {
+        return false;
+      }
+      return true;
+    });
+    setCalculatedProperties(filtered);
+    setSearchParams(null); // keine Investment-Metriken bei klassischer Suche
   };
 
   return (
@@ -197,7 +245,11 @@ export default function KaufyHome() {
             </p>
 
             {/* Search Card */}
-            <InvestmentSearchCard onSearch={handleSearch} isLoading={isLoading} />
+            <InvestmentSearchCard 
+              onSearch={handleSearch} 
+              onClassicSearch={handleClassicSearch}
+              isLoading={isLoading} 
+            />
           </div>
         </div>
       </section>
@@ -218,12 +270,33 @@ export default function KaufyHome() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {properties.map((prop) => (
-              <KaufyPropertyCard 
-                key={prop.public_id} 
-                property={prop}
-                showInvestmentMetrics={!!searchParams}
+              <InvestmentResultTile 
+                key={prop.public_id}
+                listing={{
+                  listing_id: prop.public_id,
+                  public_id: prop.public_id,
+                  title: prop.title,
+                  asking_price: prop.asking_price,
+                  property_type: prop.property_type || 'apartment',
+                  address: '',
+                  city: prop.city,
+                  postal_code: prop.postal_code || null,
+                  total_area_sqm: prop.total_area_sqm || null,
+                  unit_count: 1,
+                  monthly_rent_total: prop.monthly_rent || 0,
+                  hero_image_path: prop.image_url,
+                }}
+                metrics={searchParams ? {
+                  monthlyBurden: prop.netBurden || 0,
+                  roiAfterTax: prop.gross_yield || 0,
+                  loanAmount: prop.loanAmount || (prop.asking_price - (searchParams.equity || 50000)) * 0.9,
+                  yearlyInterest: prop.yearlyInterest,
+                  yearlyRepayment: prop.yearlyRepayment,
+                  yearlyTaxSavings: (prop.taxSavings || 0) * 12,
+                } : null}
+                linkPrefix="/kaufy/immobilien"
               />
             ))}
           </div>
