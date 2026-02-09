@@ -77,62 +77,119 @@ export default function MasterTemplates() {
         </div>
       </div>
 
-      {/* Quick Links to Sub-Templates */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link to="/admin/master-templates/immobilienakte">
-          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
+      {/* Master Data — Erfassungsakten */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">Master Data — Erfassungsakten</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Link to="/admin/masterdata/immobilienakte">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Immobilienakte</CardTitle>
+                      <CardDescription>MOD-04 • 10 Blöcke (A–J) • 106 Felder</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Immobilienakte</CardTitle>
-                    <CardDescription>MOD-04 • 10 Blöcke (A–J) • 106 Felder</CardDescription>
-                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link to="/admin/master-templates/selbstauskunft">
-          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-primary" />
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/admin/masterdata/selbstauskunft">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Selbstauskunft</CardTitle>
+                      <CardDescription>MOD-07 • 9 Sektionen • 67 Felder</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Selbstauskunft</CardTitle>
-                    <CardDescription>MOD-07 • 9 Sektionen • 67 Felder</CardDescription>
-                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link to="/admin/master-templates/projektakte">
-          <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FolderKanban className="h-5 w-5 text-primary" />
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/admin/masterdata/projektakte">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FolderKanban className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Projektakte</CardTitle>
+                      <CardDescription>MOD-13 • 10 Blöcke (A–J) • 91 Felder</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Projektakte</CardTitle>
-                    <CardDescription>MOD-13 • 10 Blöcke (A–J) • 91 Felder</CardDescription>
-                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/admin/masterdata/fahrzeugakte">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.3 1 12.1 1 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Fahrzeugakte</CardTitle>
+                      <CardDescription>MOD-17 • 9 Blöcke (A–I) • 47 Felder</CardDescription>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/admin/masterdata/photovoltaikakte">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Photovoltaikakte</CardTitle>
+                      <CardDescription>MOD-19 • 7 Blöcke (A–G) • 45 Felder</CardDescription>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/admin/masterdata/finanzierungsakte">
+            <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Finanzierungsakte</CardTitle>
+                      <CardDescription>MOD-11 • 8 Blöcke (A–H) • 55 Felder</CardDescription>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+        </div>
       </div>
 
       <Tabs defaultValue="interest" className="space-y-4">

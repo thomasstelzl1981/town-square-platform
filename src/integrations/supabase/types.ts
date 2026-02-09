@@ -1453,6 +1453,7 @@ export type Database = {
           last_name: string | null
           last_synced_from_finapi_at: string | null
           life_insurance_value: number | null
+          linked_primary_profile_id: string | null
           living_expenses_monthly: number | null
           loan_amount_requested: number | null
           marginal_tax_rate: number | null
@@ -1483,6 +1484,7 @@ export type Database = {
           probation_until: string | null
           profile_type: string
           property_separation: boolean | null
+          public_id: string | null
           purchase_price: number | null
           purpose: string | null
           rental_income_monthly: number | null
@@ -1567,6 +1569,7 @@ export type Database = {
           last_name?: string | null
           last_synced_from_finapi_at?: string | null
           life_insurance_value?: number | null
+          linked_primary_profile_id?: string | null
           living_expenses_monthly?: number | null
           loan_amount_requested?: number | null
           marginal_tax_rate?: number | null
@@ -1597,6 +1600,7 @@ export type Database = {
           probation_until?: string | null
           profile_type?: string
           property_separation?: boolean | null
+          public_id?: string | null
           purchase_price?: number | null
           purpose?: string | null
           rental_income_monthly?: number | null
@@ -1681,6 +1685,7 @@ export type Database = {
           last_name?: string | null
           last_synced_from_finapi_at?: string | null
           life_insurance_value?: number | null
+          linked_primary_profile_id?: string | null
           living_expenses_monthly?: number | null
           loan_amount_requested?: number | null
           marginal_tax_rate?: number | null
@@ -1711,6 +1716,7 @@ export type Database = {
           probation_until?: string | null
           profile_type?: string
           property_separation?: boolean | null
+          public_id?: string | null
           purchase_price?: number | null
           purpose?: string | null
           rental_income_monthly?: number | null
@@ -1739,6 +1745,13 @@ export type Database = {
             columns: ["finance_request_id"]
             isOneToOne: false
             referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_profiles_linked_primary_profile_id_fkey"
+            columns: ["linked_primary_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -4160,6 +4173,7 @@ export type Database = {
           parking_type: string | null
           price_per_sqm: number | null
           project_id: string
+          public_id: string | null
           rent_net: number | null
           rent_nk: number | null
           rooms_count: number | null
@@ -4187,6 +4201,7 @@ export type Database = {
           parking_type?: string | null
           price_per_sqm?: number | null
           project_id: string
+          public_id?: string | null
           rent_net?: number | null
           rent_nk?: number | null
           rooms_count?: number | null
@@ -4214,6 +4229,7 @@ export type Database = {
           parking_type?: string | null
           price_per_sqm?: number | null
           project_id?: string
+          public_id?: string | null
           rent_net?: number | null
           rent_nk?: number | null
           rooms_count?: number | null
@@ -4266,6 +4282,7 @@ export type Database = {
           project_code: string
           project_start_date: string | null
           project_type: string | null
+          public_id: string | null
           purchase_price: number | null
           renovation_budget: number | null
           state: string | null
@@ -4300,6 +4317,7 @@ export type Database = {
           project_code: string
           project_start_date?: string | null
           project_type?: string | null
+          public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           state?: string | null
@@ -4334,6 +4352,7 @@ export type Database = {
           project_code?: string
           project_start_date?: string | null
           project_type?: string | null
+          public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           state?: string | null
@@ -6299,6 +6318,7 @@ export type Database = {
           nk_advance_eur: number | null
           notice_date: string | null
           payment_due_day: number | null
+          public_id: string | null
           rent_cold_eur: number | null
           rent_increase: string | null
           rent_model: string | null
@@ -6328,6 +6348,7 @@ export type Database = {
           nk_advance_eur?: number | null
           notice_date?: string | null
           payment_due_day?: number | null
+          public_id?: string | null
           rent_cold_eur?: number | null
           rent_increase?: string | null
           rent_model?: string | null
@@ -6357,6 +6378,7 @@ export type Database = {
           nk_advance_eur?: number | null
           notice_date?: string | null
           payment_due_day?: number | null
+          public_id?: string | null
           rent_cold_eur?: number | null
           rent_increase?: string | null
           rent_model?: string | null
@@ -8908,6 +8930,7 @@ export type Database = {
           owner_user_id: string | null
           postal_code: string | null
           provider: string
+          public_id: string | null
           status: string
           street: string | null
           tenant_id: string
@@ -8946,6 +8969,7 @@ export type Database = {
           owner_user_id?: string | null
           postal_code?: string | null
           provider?: string
+          public_id?: string | null
           status?: string
           street?: string | null
           tenant_id: string
@@ -8984,6 +9008,7 @@ export type Database = {
           owner_user_id?: string | null
           postal_code?: string | null
           provider?: string
+          public_id?: string | null
           status?: string
           street?: string | null
           tenant_id?: string

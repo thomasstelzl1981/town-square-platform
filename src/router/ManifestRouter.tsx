@@ -84,6 +84,9 @@ import MasterTemplates from '@/pages/admin/MasterTemplates';
 import MasterTemplatesImmobilienakte from '@/pages/admin/MasterTemplatesImmobilienakte';
 import MasterTemplatesSelbstauskunft from '@/pages/admin/MasterTemplatesSelbstauskunft';
 import MasterTemplatesProjektakte from '@/pages/admin/MasterTemplatesProjektakte';
+import MasterTemplatesFahrzeugakte from '@/pages/admin/MasterTemplatesFahrzeugakte';
+import MasterTemplatesPhotovoltaikakte from '@/pages/admin/MasterTemplatesPhotovoltaikakte';
+import MasterTemplatesFinanzierungsakte from '@/pages/admin/MasterTemplatesFinanzierungsakte';
 import AdminFutureRoomLayout from '@/pages/admin/futureroom/FutureRoomLayout';
 import { AdminStubPage } from '@/pages/admin/stub';
 import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
@@ -202,6 +205,9 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   MasterTemplatesImmobilienakte,
   MasterTemplatesSelbstauskunft,
   MasterTemplatesProjektakte,
+  MasterTemplatesFahrzeugakte,
+  MasterTemplatesPhotovoltaikakte,
+  MasterTemplatesFinanzierungsakte,
   TileCatalog,
   Integrations,
   CommunicationHub,
