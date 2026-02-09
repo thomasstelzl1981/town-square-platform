@@ -121,56 +121,66 @@ export default function Kaufy2026Layout() {
         {/* Footer */}
         <footer className="kaufy2026-footer">
           <div className="px-6 lg:px-10 py-12">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              {/* Logo + Claim */}
+              <div className="md:col-span-1">
+                <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">KAUFY</span>
+                <p className="mt-3 text-sm text-[hsl(215,16%,47%)] leading-relaxed">
+                  Die KI-Plattform für Kapitalanlage.
+                </p>
+                <p className="mt-2 text-sm text-[hsl(215,16%,47%)] leading-relaxed">
+                  Vermarktung, Beratung und Verwaltung – auf einer Plattform.
+                </p>
+              </div>
+
               {/* Plattform */}
               <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4">Plattform</h4>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Plattform</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)]">Investment-Suche</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)]">Marktplatz</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)]">Investment-Engine</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Überblick</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Funktionen</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Immo-Wallet</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Vertriebstools</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Automationen</Link></li>
                 </ul>
               </div>
 
               {/* Für wen */}
               <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4">Für wen?</h4>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Für wen</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><Link to="/kaufy2026/vermieter" className="hover:text-[hsl(220,20%,10%)]">Vermieter</Link></li>
-                  <li><Link to="/kaufy2026/verkaeufer" className="hover:text-[hsl(220,20%,10%)]">Verkäufer</Link></li>
-                  <li><Link to="/kaufy2026/vertrieb" className="hover:text-[hsl(220,20%,10%)]">Partner</Link></li>
+                  <li><Link to="/kaufy2026/vermieter" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vermieter</Link></li>
+                  <li><Link to="/kaufy2026/verkaeufer" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Anbieter</Link></li>
+                  <li><Link to="/kaufy2026/vertrieb" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vertriebspartner</Link></li>
+                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Investoren</Link></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Demo anfragen</a></li>
                 </ul>
               </div>
 
               {/* Unternehmen */}
               <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4">Unternehmen</h4>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Unternehmen</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">Über uns</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">Karriere</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">Presse</a></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Über kaufy</a></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Kontakt</a></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Karriere</a></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Partner</a></li>
+                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Presse</a></li>
                 </ul>
               </div>
+            </div>
 
-              {/* Rechtliches */}
-              <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4">Rechtliches</h4>
-                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">Impressum</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">Datenschutz</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)]">AGB</a></li>
-                </ul>
-              </div>
-
-              {/* Logo */}
-              <div className="col-span-2 md:col-span-1">
-                <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">KAUFY</span>
-                <p className="mt-2 text-sm text-[hsl(215,16%,47%)]">
-                  Die KI-Plattform für Kapitalanlageimmobilien.
-                </p>
-                <p className="mt-4 text-xs text-[hsl(215,16%,47%)]">
-                  © {new Date().getFullYear()} KAUFY. Alle Rechte vorbehalten.
-                </p>
+            {/* Footer Bottom Bar */}
+            <div className="mt-12 pt-6 border-t border-[hsl(210,20%,90%)] flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-[hsl(215,16%,47%)]">
+                © {new Date().getFullYear()} kaufy GmbH
+              </p>
+              <div className="flex items-center gap-4 text-xs text-[hsl(215,16%,47%)]">
+                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</a>
+                <span className="text-[hsl(210,20%,85%)]">·</span>
+                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</a>
+                <span className="text-[hsl(210,20%,85%)]">·</span>
+                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">AGB</a>
               </div>
             </div>
           </div>
