@@ -1,11 +1,13 @@
 /**
  * Communication Pro Page (MOD-14) - Blueprint Ready
+ * UPDATED: Social tile → SocialPage with internal sidebar + routes
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { Mail, Search, Share2, Bot, Plus, Send } from 'lucide-react';
+import { SocialPage } from './communication-pro/social/SocialPage';
 
 function SerienEmailsTile() {
   return (
@@ -51,26 +53,6 @@ function RechercheTile() {
   );
 }
 
-function SocialTile() {
-  return (
-    <ModuleTilePage
-      title="Social"
-      description="Verwalten Sie Ihre Social-Media-Präsenz"
-      icon={Share2}
-      moduleBase="communication-pro"
-      status="empty"
-      emptyTitle="Keine Beiträge"
-      emptyDescription="Planen und veröffentlichen Sie Social-Media-Beiträge."
-      emptyIcon={Share2}
-      primaryAction={{
-        label: 'Beitrag erstellen',
-        icon: Send,
-        onClick: () => console.log('Beitrag'),
-      }}
-    />
-  );
-}
-
 function AgentenTile() {
   return (
     <ModuleTilePage
@@ -99,7 +81,7 @@ export default function CommunicationProPage() {
       <Route index element={<ModuleHowItWorks content={content} />} />
       <Route path="serien-emails" element={<SerienEmailsTile />} />
       <Route path="recherche" element={<RechercheTile />} />
-      <Route path="social" element={<SocialTile />} />
+      <Route path="social/*" element={<SocialPage />} />
       <Route path="agenten" element={<AgentenTile />} />
       <Route path="*" element={<Navigate to="/portal/communication-pro" replace />} />
     </Routes>

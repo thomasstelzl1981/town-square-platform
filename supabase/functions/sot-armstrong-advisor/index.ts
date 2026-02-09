@@ -51,7 +51,6 @@ interface ActionRequest {
   params: Record<string, unknown>;
 }
 
-// MVP Request Body
 interface RequestBody {
   zone: Zone;
   module: Module;
@@ -62,6 +61,10 @@ interface RequestBody {
     last_messages: Message[];
   };
   action_request?: ActionRequest;
+  flow?: {
+    flow_type: string;
+    flow_state?: Record<string, unknown>;
+  } | null;
 }
 
 // Legacy Request (backward compatibility)
@@ -1167,6 +1170,165 @@ async function handleLegacyRequest(
 }
 
 // =============================================================================
+// SOCIAL AUDIT FLOW HANDLER
+// =============================================================================
+
+const SOCIAL_AUDIT_QUESTIONS = [
+  { block: "Identität & Selbstbild", q: "Worauf bist du beruflich wirklich stolz – und warum?" },
+  { block: "Identität & Selbstbild", q: "Wie möchtest du wahrgenommen werden, wenn du nicht im Raum bist?" },
+  { block: "Identität & Selbstbild", q: "Welche drei Worte beschreiben dich – ehrlich, nicht Marketing?" },
+  { block: "Haltung & Meinung", q: "Welche These vertrittst du, die viele in deiner Branche falsch sehen?" },
+  { block: "Haltung & Meinung", q: "Was nervt dich in deiner Branche – und was würdest du anders machen?" },
+  { block: "Haltung & Meinung", q: "Wofür würdest du öffentlich einstehen, auch wenn's Gegenwind gibt?" },
+  { block: "Sprache & Stil", q: "Erzähl eine kurze Story aus deinem Alltag, die dich geprägt hat." },
+  { block: "Sprache & Stil", q: "Magst du kurze Sätze oder lieber ausführlich? Warum?" },
+  { block: "Sprache & Stil", q: "Wie direkt darf ein Call-to-Action sein? (soft / klar / gar nicht)" },
+  { block: "Sprache & Stil", q: "Wie stehst du zu Emojis? (nie / dezent / gerne)" },
+  { block: "Grenzen & Output-Ziele", q: "Welche Themen sind tabu?" },
+  { block: "Grenzen & Output-Ziele", q: "Welche Tonalität willst du niemals? (z.B. cringe, zu salesy, zu hart)" },
+  { block: "Grenzen & Output-Ziele", q: "Welche Art Posts willst du vermeiden? (Listenposts, Motivationssprüche, etc.)" },
+  { block: "Grenzen & Output-Ziele", q: "Was soll Social für dich bewirken? (Authority, Leads, Recruiting, Sympathie)" },
+  { block: "Grenzen & Output-Ziele", q: "Wie oft willst du realistisch posten? (pro Woche) und auf welchen Plattformen?" },
+];
+
+async function handleSocialAuditFlow(
+  flow: { flow_type: string; flow_state?: Record<string, unknown> },
+  message: string,
+  conversation: Message[],
+  userContext: UserContext,
+  supabase: ReturnType<typeof createClient>
+): Promise<Response> {
+  const step = (flow.flow_state?.step as number) || 0;
+  const totalSteps = SOCIAL_AUDIT_QUESTIONS.length;
+
+  // Flow start (step 0)
+  if (message === "__flow_start__" || step === 0) {
+    const firstQ = SOCIAL_AUDIT_QUESTIONS[0];
+    return new Response(JSON.stringify({
+      type: "EXPLAIN",
+      message: `🎙️ **Social Personality Audit**\n\nHi! Ich bin Armstrong und führe dich jetzt durch dein Persönlichkeits-Audit. 15 Fragen in 4 Blöcken — du kannst per Sprache oder Text antworten.\n\n**Block 1: ${firstQ.block}**\n\n**Frage 1 von ${totalSteps}:**\n${firstQ.q}`,
+      flow_state: { step: 1, total_steps: totalSteps, status: "active" },
+      suggested_actions: [],
+      next_steps: [],
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Answers arrive as messages; step indicates which question was just answered
+  const answeredStep = step; // User just answered question N
+  const nextStep = answeredStep + 1;
+
+  // All questions answered — generate personality vector
+  if (nextStep > totalSteps) {
+    // Collect all user answers from conversation
+    const answers = conversation
+      .filter(m => m.role === "user")
+      .map((m, i) => ({ question: SOCIAL_AUDIT_QUESTIONS[i]?.q || `Frage ${i+1}`, answer: m.content }));
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    let personalityVector: Record<string, unknown> = {};
+    let samplePost = "";
+
+    if (LOVABLE_API_KEY) {
+      try {
+        const analysisPrompt = `Analysiere die folgenden Audit-Antworten einer Person und erstelle daraus:
+1) Einen "personality_vector" als JSON mit: tone, sentence_length, formality, emotion_level, opinion_strength, cta_style, emoji_level, preferred_formats (array), taboo_topics (array), taboo_tones (array), avoided_formats (array), goals (array), posting_frequency (object mit per_week und platforms array)
+2) Einen Beispiel-LinkedIn-Post der exakt zum ermittelten Stil passt.
+
+Antworten:
+${answers.map((a, i) => `Q${i+1}: ${a.question}\nA: ${a.answer}`).join("\n\n")}
+
+Antworte mit dem Tool "audit_result".`;
+
+        const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: "Du bist ein Social-Media-Personality-Analyst. Analysiere Audit-Antworten und erstelle ein Personality Profile." },
+              { role: "user", content: analysisPrompt },
+            ],
+            tools: [{
+              type: "function",
+              function: {
+                name: "audit_result",
+                description: "Return the personality vector and a sample post.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    personality_vector: { type: "object" },
+                    sample_post: { type: "string", description: "A sample LinkedIn post matching the personality." },
+                  },
+                  required: ["personality_vector", "sample_post"],
+                  additionalProperties: false,
+                },
+              },
+            }],
+            tool_choice: { type: "function", function: { name: "audit_result" } },
+          }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+          if (toolCall?.function?.arguments) {
+            const parsed = JSON.parse(toolCall.function.arguments);
+            personalityVector = parsed.personality_vector || {};
+            samplePost = parsed.sample_post || "";
+          }
+        }
+      } catch (err) {
+        console.error("[Armstrong] Audit analysis error:", err);
+      }
+    }
+
+    // Save to database
+    if (userContext.org_id) {
+      try {
+        await supabase.from("social_personality_profiles").upsert({
+          tenant_id: userContext.org_id,
+          owner_user_id: userContext.user_id,
+          answers_raw: { answers },
+          personality_vector: personalityVector,
+          audit_version: 1,
+        }, { onConflict: "tenant_id,owner_user_id" }).select();
+      } catch (err) {
+        console.error("[Armstrong] Failed to save audit:", err);
+      }
+    }
+
+    const resultMessage = samplePost
+      ? `✅ **Audit abgeschlossen!**\n\nDeine Social DNA wurde gespeichert. Hier ein Beispiel-Post in deinem Stil:\n\n---\n\n${samplePost}\n\n---\n\nGehe jetzt zur **Knowledge Base**, um deine Themen zu definieren.`
+      : `✅ **Audit abgeschlossen!**\n\nDeine Social DNA wurde gespeichert. Du kannst jetzt zur Knowledge Base wechseln und deine Themen definieren.`;
+
+    return new Response(JSON.stringify({
+      type: "RESULT",
+      action_run_id: crypto.randomUUID(),
+      status: "completed",
+      message: resultMessage,
+      output: { personality_vector: personalityVector, sample_post: samplePost },
+      flow_state: { step: totalSteps, total_steps: totalSteps, status: "completed", result: personalityVector },
+      next_steps: ["Knowledge Base öffnen", "Themen definieren"],
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Next question
+  const nextQ = SOCIAL_AUDIT_QUESTIONS[nextStep - 1];
+  const prevBlock = SOCIAL_AUDIT_QUESTIONS[answeredStep - 1]?.block;
+  const blockChanged = prevBlock !== nextQ.block;
+  const blockHeader = blockChanged ? `\n\n**Block: ${nextQ.block}**\n` : "";
+  const ack = "👍 Danke für deine Antwort!\n";
+
+  return new Response(JSON.stringify({
+    type: "EXPLAIN",
+    message: `${ack}${blockHeader}\n**Frage ${nextStep} von ${totalSteps}:**\n${nextQ.q}`,
+    flow_state: { step: nextStep, total_steps: totalSteps, status: "active" },
+    suggested_actions: [],
+    next_steps: [],
+  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -1188,9 +1350,9 @@ serve(async (req) => {
     
     // MVP Request handling
     const body = rawBody as RequestBody;
-    const { zone, module, route, entity, message, action_request } = body;
+    const { zone, module, route, entity, message, action_request, flow } = body;
     
-    console.log(`[Armstrong] MVP Request: zone=${zone}, module=${module}, route=${route}`);
+    console.log(`[Armstrong] MVP Request: zone=${zone}, module=${module}, route=${route}, flow=${flow?.flow_type || 'none'}`);
     
     // Validate zone
     if (zone !== "Z2") {

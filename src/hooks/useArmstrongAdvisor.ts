@@ -91,6 +91,10 @@ interface AdvisorRequest {
     confirmed: boolean;
     params?: Record<string, unknown>;
   } | null;
+  flow?: {
+    flow_type: string;
+    flow_state?: Record<string, unknown>;
+  } | null;
 }
 
 interface AdvisorResponse {
@@ -104,6 +108,12 @@ interface AdvisorResponse {
   output?: Record<string, unknown>;
   reason_code?: string;
   next_steps?: string[];
+  flow_state?: {
+    step: number;
+    total_steps: number;
+    status: 'active' | 'completed';
+    result?: Record<string, unknown>;
+  };
 }
 
 // =============================================================================
@@ -119,12 +129,21 @@ const MVP_MODULES = ['MOD-00', 'MOD-04', 'MOD-07', 'MOD-08'];
 // HOOK
 // =============================================================================
 
+export interface FlowState {
+  flow_type: string;
+  step: number;
+  total_steps: number;
+  status: 'active' | 'completed' | 'cancelled';
+  result?: Record<string, unknown>;
+}
+
 export function useArmstrongAdvisor() {
   const context = useArmstrongContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [activeFlow, setActiveFlow] = useState<FlowState | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
 
   /**
@@ -150,7 +169,8 @@ export function useArmstrongAdvisor() {
    */
   const buildRequest = useCallback((
     message: string,
-    actionRequest?: AdvisorRequest['action_request']
+    actionRequest?: AdvisorRequest['action_request'],
+    flow?: AdvisorRequest['flow']
   ): AdvisorRequest => {
     const z2ctx = context as Zone2Context;
     
@@ -164,11 +184,12 @@ export function useArmstrongAdvisor() {
       },
       message,
       conversation: {
-        last_messages: conversationRef.current.slice(-10), // Keep last 10 messages
+        last_messages: conversationRef.current.slice(-10),
       },
       action_request: actionRequest || null,
+      flow: flow || (activeFlow ? { flow_type: activeFlow.flow_type, flow_state: { step: activeFlow.step } } : null),
     };
-  }, [context, getCurrentModule]);
+  }, [context, getCurrentModule, activeFlow]);
 
   /**
    * Add message to state
@@ -182,6 +203,21 @@ export function useArmstrongAdvisor() {
    * Process advisor response
    */
   const processResponse = useCallback((response: AdvisorResponse): ChatMessage => {
+    // Update flow state if present in response
+    if (response.flow_state) {
+      setActiveFlow({
+        flow_type: activeFlow?.flow_type || 'unknown',
+        step: response.flow_state.step,
+        total_steps: response.flow_state.total_steps,
+        status: response.flow_state.status,
+        result: response.flow_state.result,
+      });
+      // If flow completed, clear active flow after a moment
+      if (response.flow_state.status === 'completed') {
+        setTimeout(() => setActiveFlow(null), 500);
+      }
+    }
+
     const baseMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -242,7 +278,7 @@ export function useArmstrongAdvisor() {
       default:
         return baseMessage;
     }
-  }, []);
+  }, [activeFlow]);
 
   /**
    * Send a message to the advisor
@@ -447,7 +483,73 @@ export function useArmstrongAdvisor() {
     setMessages([]);
     conversationRef.current = [];
     setPendingAction(null);
+    setActiveFlow(null);
   }, []);
+
+  /**
+   * Start a guided flow (e.g., Social Audit)
+   * Opens Armstrong with a special context that triggers the flow handler
+   */
+  const startFlow = useCallback(async (flowType: string, flowConfig?: Record<string, unknown>) => {
+    // Set flow state
+    setActiveFlow({
+      flow_type: flowType,
+      step: 0,
+      total_steps: flowType === 'social_audit' ? 15 : 0,
+      status: 'active',
+    });
+
+    // Clear conversation for fresh flow
+    setMessages([]);
+    conversationRef.current = [];
+    setPendingAction(null);
+    setIsLoading(true);
+
+    try {
+      const request = buildRequest(
+        '__flow_start__',
+        null,
+        { flow_type: flowType, flow_state: { step: 0, ...flowConfig } }
+      );
+
+      const { data, error } = await supabase.functions.invoke('sot-armstrong-advisor', {
+        body: request,
+      });
+
+      if (error) throw error;
+
+      const assistantMessage = processResponse(data);
+      addMessage(assistantMessage);
+    } catch (err) {
+      console.error('Armstrong flow start error:', err);
+      setActiveFlow(null);
+      const errorMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Das Audit konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
+        timestamp: new Date(),
+        responseType: 'BLOCKED',
+        blocked: { reason_code: 'ERROR', message: err instanceof Error ? err.message : 'Unbekannter Fehler' },
+      };
+      addMessage(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [buildRequest, processResponse, addMessage]);
+
+  /**
+   * Cancel active flow
+   */
+  const cancelFlow = useCallback(() => {
+    setActiveFlow(null);
+    const msg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: 'Audit abgebrochen. Du kannst es jederzeit neu starten.',
+      timestamp: new Date(),
+    };
+    addMessage(msg);
+  }, [addMessage]);
 
   return {
     // State
@@ -457,6 +559,7 @@ export function useArmstrongAdvisor() {
     isExecuting,
     isInMvpScope: isInMvpScope(),
     currentModule: getCurrentModule(),
+    activeFlow,
     
     // Actions
     sendMessage,
@@ -464,5 +567,7 @@ export function useArmstrongAdvisor() {
     cancelAction,
     selectAction,
     clearConversation,
+    startFlow,
+    cancelFlow,
   };
 }
