@@ -2122,6 +2122,158 @@ export type Database = {
           },
         ]
       }
+      audit_jobs: {
+        Row: {
+          audit_report_id: string | null
+          created_at: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          logs: Json | null
+          repo_ref: string | null
+          started_at: string | null
+          status: string
+          triggered_by: string | null
+        }
+        Insert: {
+          audit_report_id?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          logs?: Json | null
+          repo_ref?: string | null
+          started_at?: string | null
+          status?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          audit_report_id?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          logs?: Json | null
+          repo_ref?: string | null
+          started_at?: string | null
+          status?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_jobs_audit_report_id_fkey"
+            columns: ["audit_report_id"]
+            isOneToOne: false
+            referencedRelation: "audit_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_jobs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_prompt_templates: {
+        Row: {
+          content_txt: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          content_txt: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          content_txt?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
+      audit_reports: {
+        Row: {
+          artifacts: Json | null
+          content_html: string | null
+          content_md: string
+          counts: Json | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_pinned: boolean | null
+          module_coverage: Json | null
+          pr_url: string | null
+          repo_ref: string | null
+          scope: Json | null
+          status: string
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          artifacts?: Json | null
+          content_html?: string | null
+          content_md: string
+          counts?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          module_coverage?: Json | null
+          pr_url?: string | null
+          repo_ref?: string | null
+          scope?: Json | null
+          status?: string
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          artifacts?: Json | null
+          content_html?: string | null
+          content_md?: string
+          counts?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          module_coverage?: Json | null
+          pr_url?: string | null
+          repo_ref?: string | null
+          scope?: Json | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transactions: {
         Row: {
           account_ref: string
