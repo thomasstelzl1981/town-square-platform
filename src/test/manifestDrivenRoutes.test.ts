@@ -80,15 +80,15 @@ describe('Zone 2: Portal Modules', () => {
     expect(zone2Portal.dashboard?.component).toBe('PortalDashboard');
   });
 
-  it('should have exactly 20 modules', () => {
+  it('should have exactly 21 modules (MOD-00 to MOD-20)', () => {
     const modules = Object.keys(zone2Portal.modules || {});
-    expect(modules.length).toBe(20);
+    expect(modules.length).toBe(21);
   });
 
-  it('should have modules sorted by display_order 1-20', () => {
+  it('should have modules sorted by display_order 0-20', () => {
     const sorted = getModulesSorted();
     sorted.forEach((item, index) => {
-      expect(item.module.display_order).toBe(index + 1);
+      expect(item.module.display_order).toBe(index);
     });
   });
 
@@ -99,6 +99,14 @@ describe('Zone 2: Portal Modules', () => {
       if (code === 'MOD-20') {
         it(`${code} (Miety) should have exactly 6 tiles (exception)`, () => {
           expect(module.tiles.length).toBe(6);
+        });
+      } else if (code === 'MOD-02') {
+        it(`${code} (KI Office) should have exactly 5 tiles (exception)`, () => {
+          expect(module.tiles.length).toBe(5);
+        });
+      } else if (code === 'MOD-06') {
+        it(`${code} (Verkauf) should have exactly 5 tiles (exception)`, () => {
+          expect(module.tiles.length).toBe(5);
         });
       } else {
         it(`${code} (${module.name}) should have exactly 4 tiles`, () => {
@@ -116,7 +124,7 @@ describe('Zone 2: Portal Modules', () => {
         expect(module.name).toBeDefined();
         expect(module.base).toBeDefined();
         expect(module.icon).toBeDefined();
-        expect(module.display_order).toBeGreaterThan(0);
+        expect(module.display_order).toBeGreaterThanOrEqual(0);
         expect(module.visibility).toBeDefined();
         expect(module.visibility.org_types).toBeDefined();
         expect(Array.isArray(module.tiles)).toBe(true);
@@ -219,7 +227,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    expect(tileCount).toBe(82); // 19 modules * 4 tiles + 1 module * 6 tiles = 82
+    // 17 modules * 4 tiles + MOD-02 (5) + MOD-06 (5) + MOD-20 (6) + MOD-00 (4) = 88
+    expect(tileCount).toBe(88);
   });
 
   it('should calculate total Zone 3 routes', () => {

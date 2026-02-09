@@ -157,13 +157,26 @@ export const zone1Admin: ZoneDefinition = {
 };
 
 // =============================================================================
-// ZONE 2: USER PORTAL — 20 MODULE ARCHITECTURE
+// ZONE 2: USER PORTAL — 21 MODULE ARCHITECTURE (MOD-00 to MOD-20)
 // =============================================================================
 export const zone2Portal: ZoneDefinition = {
   base: "/portal",
   layout: "PortalLayout",
   dashboard: { path: "", component: "PortalDashboard", title: "Portal Home" },
   modules: {
+    "MOD-00": {
+      name: "Dashboard",
+      base: "dashboard",
+      icon: "LayoutDashboard",
+      display_order: 0,
+      visibility: { default: true, org_types: ["client", "partner", "subpartner"] },
+      tiles: [
+        { path: "widgets", component: "DashboardWidgets", title: "Widgets", default: true },
+        { path: "shortcuts", component: "DashboardShortcuts", title: "Shortcuts" },
+        { path: "aktivitaet", component: "DashboardAktivitaet", title: "Aktivität" },
+        { path: "einstellungen", component: "DashboardEinstellungen", title: "Einstellungen" },
+      ],
+    },
     "MOD-01": {
       name: "Stammdaten",
       base: "stammdaten",
