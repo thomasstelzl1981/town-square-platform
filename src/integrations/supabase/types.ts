@@ -10926,6 +10926,7 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      get_user_tenant_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
