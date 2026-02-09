@@ -14,7 +14,7 @@ import {
   Upload, FileText, CheckCircle2, AlertCircle, 
   X, Loader2, Sparkles 
 } from 'lucide-react';
-import { useSmartUpload } from '@/hooks/useSmartUpload';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { toast } from 'sonner';
 import {
   Select,
@@ -50,7 +50,7 @@ export function FinanceUploadZone({
   onComplete,
 }: FinanceUploadZoneProps) {
   const { activeTenantId } = useAuth();
-  const { upload, progress, reset } = useSmartUpload();
+  const { upload, progress, reset } = useUniversalUpload();
   const [manualDocType, setManualDocType] = useState<string>(selectedDocType || '');
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
 
@@ -97,13 +97,16 @@ export function FinanceUploadZone({
       return;
     }
 
-    // Upload files
+    // Upload files via useUniversalUpload
     for (const file of acceptedFiles) {
       await upload(file, {
-        parseMode: 'financing',
-        objectType: target.objectType as any,
+        moduleCode: 'MOD_07',
+        objectType: target.objectType,
         objectId: target.objectId,
         docTypeHint: docType,
+        triggerAI: true,
+        parseMode: 'financing',
+        source: 'finance_upload',
       });
     }
 
@@ -135,10 +138,13 @@ export function FinanceUploadZone({
 
       for (const file of uploadQueue) {
         await upload(file, {
-          parseMode: 'financing',
-          objectType: target.objectType as any,
+          moduleCode: 'MOD_07',
+          objectType: target.objectType,
           objectId: target.objectId,
           docTypeHint: docType,
+          triggerAI: true,
+          parseMode: 'financing',
+          source: 'finance_upload',
         });
       }
 

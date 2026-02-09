@@ -11,6 +11,7 @@ import { Loader2, Folder, FolderOpen, FileText, Upload, Download, Trash2, Chevro
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
 interface StorageNode {
   id: string;
@@ -132,6 +133,9 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
     });
   };
 
+  // Universal upload hook (direct to storage, no Edge Function roundtrip)
+  const { upload: universalUpload } = useUniversalUpload();
+
   // Handle file upload
   const handleUpload = async (files: File[]) => {
     if (!activeOrganization) return;
@@ -141,63 +145,16 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
 
     for (const file of files) {
       try {
-        // Get selected folder name for subfolder path
-        const selectedNode = selectedNodeId ? nodes?.find(n => n.id === selectedNodeId) : null;
-        const subfolder = selectedNode?.name;
-
-        // Get upload URL from edge function
-        const { data: session } = await supabase.auth.getSession();
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-dms-upload-url`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.session?.access_token}`,
-            },
-            body: JSON.stringify({
-              filename: file.name,
-              mime_type: file.type,
-              size_bytes: file.size,
-              // Use new structured path if propertyCode available
-              ...(propertyCode ? {
-                property_code: propertyCode,
-                subfolder: subfolder,
-              } : {
-                folder: `immobilien/${propertyId}`,
-              }),
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Upload URL konnte nicht erstellt werden');
-        }
-
-        const { upload_url, document_id, token } = await response.json();
-
-        // Upload file to signed URL
-        const uploadResponse = await fetch(upload_url, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': file.type,
-          },
-          body: file,
+        const result = await universalUpload(file, {
+          moduleCode: 'MOD_04',
+          entityId: propertyId,
+          objectType: 'property',
+          objectId: propertyId,
+          parentNodeId: selectedNodeId || undefined,
+          source: 'datenraum',
         });
 
-        if (!uploadResponse.ok) {
-          throw new Error('Datei-Upload fehlgeschlagen');
-        }
-
-        // Create document link
-        await supabase.from('document_links').insert({
-          tenant_id: tenantId,
-          document_id: document_id,
-          node_id: selectedNodeId,
-          object_id: propertyId,
-          object_type: 'property',
-        });
-
+        if (result.error) throw new Error(result.error);
         successCount++;
       } catch (error) {
         console.error('Upload error:', error);
@@ -210,6 +167,7 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
     if (successCount > 0) {
       toast.success(`${successCount} Datei(en) hochgeladen`);
       queryClient.invalidateQueries({ queryKey: ['document-links', propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes', propertyId] });
     }
   };
 

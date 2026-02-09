@@ -16,6 +16,7 @@ import { File, Plus, Download, Eye, Link2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
 interface StorageNode {
   id: string;
@@ -237,48 +238,27 @@ export function StorageTab() {
     enabled: !!activeTenantId,
   });
 
-  // Upload mutation
+  // Universal upload (direct to storage, no Edge Function roundtrip)
+  const { upload: universalUpload } = useUniversalUpload();
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error('Not authenticated');
-
       const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
-      
-      const response = await supabase.functions.invoke('sot-dms-upload-url', {
-        body: {
-          filename: file.name,
-          mime_type: file.type,
-          size_bytes: file.size,
-          folder: selectedNode?.template_id || undefined,
-        },
+      const moduleCode = selectedNode?.module_code || 'MOD_03';
+
+      const result = await universalUpload(file, {
+        moduleCode,
+        parentNodeId: selectedNodeId || undefined,
+        source: 'dms',
       });
 
-      if (response.error) throw response.error;
-      const { upload_url, document_id } = response.data;
-
-      const uploadResponse = await fetch(upload_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
-
-      if (!uploadResponse.ok) throw new Error('Upload failed');
-
-      // Create document link if folder is selected
-      if (selectedNodeId && document_id) {
-        await supabase.from('document_links').insert({
-          tenant_id: activeTenantId,
-          document_id: document_id,
-          node_id: selectedNodeId,
-        });
-      }
-
-      return response.data;
+      if (result.error) throw new Error(result.error);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['document-links'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
       toast.success('Dokument hochgeladen');
     },
     onError: (error) => {

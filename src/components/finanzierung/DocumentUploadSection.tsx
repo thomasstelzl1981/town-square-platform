@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { toast } from 'sonner';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
 interface DocumentUploadSectionProps {
   requestId: string;
@@ -77,6 +78,7 @@ const DOCUMENT_CATEGORIES: DocumentCategory[] = [
 
 export function DocumentUploadSection({ requestId, storageFolderId, readOnly = false }: DocumentUploadSectionProps) {
   const [uploadingCategory, setUploadingCategory] = React.useState<string | null>(null);
+  const { upload: universalUpload } = useUniversalUpload();
 
   const handleUpload = async (categoryId: string, files: File[]) => {
     if (files.length === 0) return;
@@ -84,14 +86,21 @@ export function DocumentUploadSection({ requestId, storageFolderId, readOnly = f
     setUploadingCategory(categoryId);
     
     try {
-      // In a real implementation, this would:
-      // 1. Upload files to Supabase Storage
-      // 2. Create document records in the documents table
-      // 3. Link documents to the finance request
-      // 4. Trigger the document parser for auto-extraction
-      
-      // For now, simulate upload
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      for (const file of files) {
+        const result = await universalUpload(file, {
+          moduleCode: 'MOD_07',
+          entityId: requestId,
+          objectType: 'finance_request',
+          objectId: requestId,
+          parentNodeId: storageFolderId || undefined,
+          docTypeHint: categoryId,
+          triggerAI: true,
+          parseMode: 'financing',
+          source: 'document_checklist',
+        });
+
+        if (result.error) throw new Error(result.error);
+      }
       
       toast.success(`${files.length} Datei(en) hochgeladen`);
     } catch (error) {
