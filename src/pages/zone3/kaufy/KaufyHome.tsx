@@ -112,13 +112,21 @@ export default function KaufyHome() {
     },
   });
 
-  // Properties to display: calculated results if search was done, otherwise raw DB listings
+  // Track if user has searched - only show results AFTER search
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Properties to display: ONLY after search
   const properties = useMemo(() => {
+    if (!hasSearched) return [];
     if (searchParams && calculatedProperties.length > 0) {
       return calculatedProperties;
     }
-    return dbListings;
-  }, [searchParams, calculatedProperties, dbListings]);
+    // Classic search without investment metrics
+    if (calculatedProperties.length > 0) {
+      return calculatedProperties;
+    }
+    return [];
+  }, [hasSearched, searchParams, calculatedProperties]);
 
   const isLoading = isLoadingListings || isCalculating;
 
@@ -130,6 +138,7 @@ export default function KaufyHome() {
     state: string;
   }) => {
     setIsCalculating(true);
+    setHasSearched(true);
     setSearchParams({
       zvE: params.zvE,
       equity: params.equity,
@@ -185,6 +194,7 @@ export default function KaufyHome() {
   };
 
   const handleClassicSearch = (params: { city: string; maxPrice: number | null; minArea: number | null }) => {
+    setHasSearched(true);
     // Client-side filtering for classic search
     const filtered = dbListings.filter((prop) => {
       if (params.city && !prop.city.toLowerCase().includes(params.city.toLowerCase()) && 
@@ -254,67 +264,80 @@ export default function KaufyHome() {
         </div>
       </section>
 
-      {/* Results Section */}
-      <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-background))' }}>
-        <div className="zone3-container">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="zone3-heading-2 mb-2">
-                {searchParams ? 'Passende Kapitalanlage-Objekte' : 'Aktuelle Angebote'}
-              </h2>
-              {searchParams && (
-                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                  {properties.length} Objekte · berechnet für {searchParams.zvE.toLocaleString('de-DE')} € zvE · {searchParams.equity.toLocaleString('de-DE')} € EK
-                </p>
-              )}
+      {/* Results Section - Only show after search */}
+      {hasSearched && (
+        <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-background))' }}>
+          <div className="zone3-container">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="zone3-heading-2 mb-2">
+                  Passende Kapitalanlage-Objekte
+                </h2>
+                {searchParams && (
+                  <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                    {properties.length} Objekte · berechnet für {searchParams.zvE.toLocaleString('de-DE')} € zvE · {searchParams.equity.toLocaleString('de-DE')} € EK
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {properties.map((prop) => (
-              <InvestmentResultTile 
-                key={prop.public_id}
-                listing={{
-                  listing_id: prop.public_id,
-                  public_id: prop.public_id,
-                  title: prop.title,
-                  asking_price: prop.asking_price,
-                  property_type: prop.property_type || 'apartment',
-                  address: '',
-                  city: prop.city,
-                  postal_code: prop.postal_code || null,
-                  total_area_sqm: prop.total_area_sqm || null,
-                  unit_count: 1,
-                  monthly_rent_total: prop.monthly_rent || 0,
-                  hero_image_path: prop.image_url,
+            {properties.length === 0 ? (
+              <div 
+                className="zone3-card p-12 text-center"
+                style={{ backgroundColor: 'hsl(var(--z3-card))' }}
+              >
+                <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" style={{ color: 'hsl(var(--z3-muted-foreground))' }} />
+                <p style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Keine Objekte gefunden</p>
+                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>Passen Sie Ihre Suchkriterien an</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {properties.map((prop) => (
+                  <InvestmentResultTile 
+                    key={prop.public_id}
+                    listing={{
+                      listing_id: prop.public_id,
+                      public_id: prop.public_id,
+                      title: prop.title,
+                      asking_price: prop.asking_price,
+                      property_type: prop.property_type || 'apartment',
+                      address: '',
+                      city: prop.city,
+                      postal_code: prop.postal_code || null,
+                      total_area_sqm: prop.total_area_sqm || null,
+                      unit_count: 1,
+                      monthly_rent_total: prop.monthly_rent || 0,
+                      hero_image_path: prop.image_url,
+                    }}
+                    metrics={searchParams ? {
+                      monthlyBurden: prop.netBurden || 0,
+                      roiAfterTax: prop.gross_yield || 0,
+                      loanAmount: prop.loanAmount || (prop.asking_price - (searchParams.equity || 50000)) * 0.9,
+                      yearlyInterest: prop.yearlyInterest,
+                      yearlyRepayment: prop.yearlyRepayment,
+                      yearlyTaxSavings: (prop.taxSavings || 0) * 12,
+                    } : null}
+                    linkPrefix="/kaufy/immobilien"
+                  />
+                ))}
+              </div>
+            )}
+
+            {searchParams && properties.length > 0 && (
+              <div 
+                className="mt-6 p-4 rounded-lg text-sm"
+                style={{ 
+                  backgroundColor: 'hsl(var(--z3-secondary))',
+                  color: 'hsl(var(--z3-muted-foreground))',
                 }}
-                metrics={searchParams ? {
-                  monthlyBurden: prop.netBurden || 0,
-                  roiAfterTax: prop.gross_yield || 0,
-                  loanAmount: prop.loanAmount || (prop.asking_price - (searchParams.equity || 50000)) * 0.9,
-                  yearlyInterest: prop.yearlyInterest,
-                  yearlyRepayment: prop.yearlyRepayment,
-                  yearlyTaxSavings: (prop.taxSavings || 0) * 12,
-                } : null}
-                linkPrefix="/kaufy/immobilien"
-              />
-            ))}
+              >
+                <strong>Hinweis:</strong> Die Netto-Belastung wird individuell basierend auf Ihren Angaben berechnet. 
+                Klicken Sie auf ein Objekt für die detaillierte Analyse.
+              </div>
+            )}
           </div>
-
-          {searchParams && (
-            <div 
-              className="mt-6 p-4 rounded-lg text-sm"
-              style={{ 
-                backgroundColor: 'hsl(var(--z3-secondary))',
-                color: 'hsl(var(--z3-muted-foreground))',
-              }}
-            >
-              <strong>Hinweis:</strong> Die Netto-Belastung wird individuell basierend auf Ihren Angaben berechnet. 
-              Klicken Sie auf ein Objekt für die detaillierte Analyse.
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Role Cards */}
       <section className="zone3-section" style={{ backgroundColor: 'hsl(var(--z3-secondary))' }}>
