@@ -1,15 +1,13 @@
 /**
  * Portfolio Table for Developer Projects with Aufteiler KPIs
- * MOD-13 PROJEKTE - Extended 14-Column Layout
+ * MOD-13 PROJEKTE - Simplified Layout with visible actions
  */
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Eye, MoreHorizontal, Pencil, Trash2, Globe, Star, FileText } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { ProjectPortfolioRow, ProjectStatus } from '@/types/projekte';
 
@@ -83,8 +81,7 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
   const overallProgress = totalUnits > 0 ? Math.round((totalSold / totalUnits) * 100) : 0;
 
   return (
-    <TooltipProvider>
-      <div className="rounded-lg border bg-card overflow-x-auto">
+    <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -100,9 +97,7 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
               <TableHead className="w-[100px]">Fortschritt</TableHead>
               <TableHead className="text-right w-[110px]">Umsatz SOLL</TableHead>
               <TableHead className="text-right w-[110px]">Umsatz IST</TableHead>
-              <TableHead className="text-right w-[80px]">Marge</TableHead>
-              <TableHead className="text-center w-[70px]">Flags</TableHead>
-              <TableHead className="w-[50px]" />
+              <TableHead className="sticky right-0 bg-card w-[80px] text-center">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -185,78 +180,28 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
                     {formatCurrency(row.sale_revenue_actual)}
                   </TableCell>
                   
-                  {/* 13. Marge SOLL */}
-                  <TableCell className="text-right">
-                    {row.profit_margin_percent !== null ? (
-                      <span className={row.profit_margin_percent >= 20 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
-                        {row.profit_margin_percent}%
-                      </span>
-                    ) : '—'}
-                  </TableCell>
-                  
-                  {/* 14. Flags (Kaufy/Featured/Landingpage) */}
-                  <TableCell className="text-center">
+                  {/* Actions - sticky right */}
+                  <TableCell className="sticky right-0 bg-card">
                     <div className="flex items-center justify-center gap-1">
-                      {row.kaufy_listed && (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Globe className="h-3.5 w-3.5 text-primary" />
-                          </TooltipTrigger>
-                          <TooltipContent>Kaufy gelistet</TooltipContent>
-                        </Tooltip>
-                      )}
-                      {row.kaufy_featured && (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Star className="h-3.5 w-3.5 text-amber-500" />
-                          </TooltipTrigger>
-                          <TooltipContent>Premium-Platzierung</TooltipContent>
-                        </Tooltip>
-                      )}
-                      {row.landingpage_enabled && (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <FileText className="h-3.5 w-3.5 text-sky-500" />
-                          </TooltipTrigger>
-                          <TooltipContent>Landingpage aktiv</TooltipContent>
-                        </Tooltip>
-                      )}
-                      {!row.kaufy_listed && !row.kaufy_featured && !row.landingpage_enabled && (
-                        <span className="text-muted-foreground text-xs">—</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/portal/projekte/${row.id}`); }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {onDelete && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => { e.stopPropagation(); onDelete(row.id); }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                  </TableCell>
-                  
-                  {/* Actions */}
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/portal/projekte/${row.id}`); }}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Öffnen
-                        </DropdownMenuItem>
-                        {onEdit && (
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Bearbeiten
-                          </DropdownMenuItem>
-                        )}
-                        {onDelete && (
-                          <DropdownMenuItem 
-                            onClick={(e) => { e.stopPropagation(); onDelete(row.id); }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Löschen
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );
@@ -291,10 +236,9 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
                 <span className="text-muted-foreground">Fortschritt: </span>
                 <span className="font-medium">{overallProgress}%</span>
               </div>
-            </div>
           </div>
         </div>
       </div>
-    </TooltipProvider>
+    </div>
   );
 }
