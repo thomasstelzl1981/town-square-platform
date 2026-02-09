@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.sot-whatsapp-media]
 verify_jwt = false
+
+[functions.sot-inbound-receive]
+verify_jwt = false

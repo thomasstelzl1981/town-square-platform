@@ -57,7 +57,7 @@ import { de } from 'date-fns/locale';
 
 interface InboundItem {
   id: string;
-  source: 'caya' | 'email' | 'upload' | 'api';
+  source: 'caya' | 'email' | 'upload' | 'api' | string;
   external_id: string | null;
   sender_info: unknown;
   recipient_info: unknown;
@@ -151,8 +151,8 @@ export default function InboxPage() {
   const getSourceIcon = (source: string) => {
     switch (source) {
       case 'caya':
-        return <Mail className="h-4 w-4" />;
       case 'email':
+      case 'posteingang':
         return <Mail className="h-4 w-4" />;
       case 'upload':
         return <Upload className="h-4 w-4" />;
@@ -271,7 +271,7 @@ export default function InboxPage() {
       <div>
         <h1 className="text-2xl font-bold">Post & Documents</h1>
         <p className="text-muted-foreground">
-          Eingehende Dokumente verwalten und zuweisen (Caya, Email, Upload)
+          Eingehende Dokumente verwalten und zuweisen (Posteingang, Email, Upload)
         </p>
       </div>
 
@@ -365,7 +365,7 @@ export default function InboxPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Alle</SelectItem>
-                      <SelectItem value="caya">Caya</SelectItem>
+                      <SelectItem value="caya">Post</SelectItem>
                       <SelectItem value="email">Email</SelectItem>
                       <SelectItem value="upload">Upload</SelectItem>
                       <SelectItem value="api">API</SelectItem>
