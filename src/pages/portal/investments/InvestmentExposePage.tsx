@@ -31,6 +31,7 @@ import {
   DetailTable40Jahre,
   ExposeImageGallery,
   ExposeDocuments,
+  FinanzierungSummary,
 } from '@/components/investment';
 import { ExposeLocationMap } from '@/components/verkauf';
 
@@ -141,10 +142,17 @@ export default function InvestmentExposePage() {
       const props = data.properties as any;
       const annualIncome = props?.annual_income || 0;
 
+      // Query units_count from DB
+      const propertyId = (data as any).property_id || props?.id;
+      const { count: unitsCount } = await supabase
+        .from('units')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_id', propertyId);
+
       return {
         id: data.id,
         public_id: data.public_id,
-        property_id: (data as any).property_id || props?.id,
+        property_id: propertyId,
         title: data.title || 'Immobilie',
         description: data.description || '',
         asking_price: data.asking_price || 0,
@@ -159,7 +167,7 @@ export default function InvestmentExposePage() {
         energy_source: props?.energy_source ?? null,
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
-        units_count: 1,
+        units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
       } satisfies ListingData;
     },
     enabled: !!publicId,
@@ -339,6 +347,15 @@ export default function InvestmentExposePage() {
                 result={calcResult} 
                 variant="ledger"
                 showMonthly={true}
+              />
+            )}
+
+            {/* FinanzierungSummary */}
+            {calcResult && (
+              <FinanzierungSummary
+                purchasePrice={listing.asking_price}
+                equity={params.equity}
+                result={calcResult}
               />
             )}
 

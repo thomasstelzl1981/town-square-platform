@@ -57,7 +57,7 @@ export const defaultInput: CalculationInput = {
   purchasePrice: 250000,
   monthlyRent: 800,
   equity: 50000,
-  termYears: 15,
+  termYears: 10,
   repaymentRate: 2,
   taxableIncome: 60000,
   maritalStatus: 'single',

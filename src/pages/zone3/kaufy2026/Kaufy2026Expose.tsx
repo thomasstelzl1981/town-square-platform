@@ -33,6 +33,7 @@ import {
   DetailTable40Jahre,
   ExposeImageGallery,
   ExposeDocuments,
+  FinanzierungSummary,
 } from '@/components/investment';
 import { ExposeLocationMap } from '@/components/verkauf';
 
@@ -160,10 +161,17 @@ export default function Kaufy2026Expose() {
       // PHASE 3: Use sale_price_fixed if set, otherwise asking_price
       const effectivePrice = (data as any).sale_price_fixed || data.asking_price || 0;
 
+      // Query units_count from DB
+      const propertyId = (data as any).property_id || props?.id;
+      const { count: unitsCount } = await supabase
+        .from('units')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_id', propertyId);
+
       return {
         id: data.id,
         public_id: data.public_id,
-        property_id: (data as any).property_id || props?.id,
+        property_id: propertyId,
         title: data.title || 'Immobilie',
         description: data.description || '',
         asking_price: effectivePrice,
@@ -179,7 +187,7 @@ export default function Kaufy2026Expose() {
         energy_source: props?.energy_source ?? null,
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
-        units_count: 1,
+        units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
       } satisfies ListingData;
     },
     enabled: !!publicId,
@@ -355,6 +363,14 @@ export default function Kaufy2026Expose() {
             )}
 
             {/* Detail Table */}
+            {calcResult && (
+              <FinanzierungSummary
+                purchasePrice={listing.asking_price}
+                equity={params.equity}
+                result={calcResult}
+              />
+            )}
+
             {calcResult && (
               <DetailTable40Jahre
                 projection={calcResult.projection}

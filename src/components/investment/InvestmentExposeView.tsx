@@ -34,6 +34,7 @@ import { MasterGraph } from './MasterGraph';
 import { Haushaltsrechnung } from './Haushaltsrechnung';
 import { InvestmentSliderPanel } from './InvestmentSliderPanel';
 import { DetailTable40Jahre } from './DetailTable40Jahre';
+import { FinanzierungSummary } from './FinanzierungSummary';
 import { ExposeLocationMap } from '@/components/verkauf';
 import type { CalculationResult, CalculationInput } from '@/hooks/useInvestmentEngine';
 
@@ -179,6 +180,15 @@ export function InvestmentExposeView({
             result={calcResult} 
             variant="ledger"
             showMonthly={true}
+          />
+        )}
+
+        {/* FinanzierungSummary */}
+        {calcResult && (
+          <FinanzierungSummary
+            purchasePrice={listing.asking_price}
+            equity={params.equity}
+            result={calcResult}
           />
         )}
 

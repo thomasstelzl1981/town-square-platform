@@ -31,7 +31,11 @@ interface RawListing {
   total_area_sqm: number | null;
   annual_rent: number;
   hero_image_path: string | null;
+  property_id: string;
+  unit_count: number;
 }
+
+
 
 // Interface matching InvestmentResultTile's PublicListing
 interface PublicListing {
@@ -71,10 +75,9 @@ const transformToPublicListing = (listing: RawListing): PublicListing => ({
   city: listing.property_city,
   postal_code: null,
   total_area_sqm: listing.total_area_sqm,
-  unit_count: 1,
+  unit_count: listing.unit_count,
   monthly_rent_total: listing.annual_rent / 12,
   hero_image_path: listing.hero_image_path,
-  // NOTE: Keine partner_commission_rate hier, da showProvision=false
 });
 
 const BeratungTab = () => {
@@ -133,6 +136,21 @@ const BeratungTab = () => {
       const propertyIds = listingsData.map((l: any) => l.properties.id).filter(Boolean);
       const imageMap = await fetchPropertyImages(propertyIds);
 
+      // Query unit counts per property
+      const unitCountMap = new Map<string, number>();
+      if (propertyIds.length > 0) {
+        const { data: unitRows } = await supabase
+          .from('units')
+          .select('property_id')
+          .in('property_id', propertyIds);
+
+        if (unitRows) {
+          for (const row of unitRows) {
+            unitCountMap.set(row.property_id, (unitCountMap.get(row.property_id) || 0) + 1);
+          }
+        }
+      }
+
       return listingsData.map((l: any) => {
         const props = l.properties;
         const annualRent = props?.annual_income || 0;
@@ -149,6 +167,8 @@ const BeratungTab = () => {
           total_area_sqm: props?.total_area_sqm,
           annual_rent: annualRent,
           hero_image_path: imageMap.get(props.id) || null,
+          property_id: props?.id || '',
+          unit_count: unitCountMap.get(props?.id) || 1,
         } as RawListing;
       });
     },

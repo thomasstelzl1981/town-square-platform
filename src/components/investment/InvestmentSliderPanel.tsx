@@ -86,6 +86,29 @@ export function InvestmentSliderPanel({
           />
         </div>
 
+        {/* 1b. Zinsbindung */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <Label>Zinsbindung</Label>
+            <span className="font-medium">{value.termYears} Jahre</span>
+          </div>
+          <Select
+            value={String(value.termYears)}
+            onValueChange={(v) => update('termYears', Number(v))}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[5, 10, 15, 20, 25, 30].map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y} Jahre
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* 2. Tilgungsrate */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
