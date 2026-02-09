@@ -1,0 +1,77 @@
+
+-- BLOCK 1: tenant_id Indizes (38 Tabellen)
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_tenant ON public.ad_campaigns USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_applicant_liabilities_tenant ON public.applicant_liabilities USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_claims_tenant ON public.cars_claims USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_financing_tenant ON public.cars_financing USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_insurances_tenant ON public.cars_insurances USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_logbook_connections_tenant ON public.cars_logbook_connections USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_offers_tenant ON public.cars_offers USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_cars_trips_tenant ON public.cars_trips USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_context_members_tenant ON public.context_members USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_credibility_flags_tenant ON public.credibility_flags USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_documents_tenant ON public.dev_project_documents USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_reservations_tenant ON public.dev_project_reservations USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_units_tenant ON public.dev_project_units USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_document_checklist_items_tenant ON public.document_checklist_items USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_document_links_tenant ON public.document_links USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_finance_documents_tenant ON public.finance_documents USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_landlord_contexts_tenant ON public.landlord_contexts USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_lead_activities_tenant ON public.lead_activities USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_listing_activities_tenant ON public.listing_activities USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_listing_inquiries_tenant ON public.listing_inquiries USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_listing_partner_terms_tenant ON public.listing_partner_terms USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_listing_publications_tenant ON public.listing_publications USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_msv_communication_prefs_tenant ON public.msv_communication_prefs USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_msv_enrollments_tenant ON public.msv_enrollments USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_msv_readiness_items_tenant ON public.msv_readiness_items USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_msv_templates_tenant ON public.msv_templates USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_property_valuations_tenant ON public.property_valuations USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_pv_plants_tenant ON public.pv_plants USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_tenant ON public.rent_payments USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_rent_reminders_tenant ON public.rent_reminders USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_tenant ON public.reservations USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sale_transactions_tenant ON public.sale_transactions USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_scraper_jobs_tenant ON public.scraper_jobs USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_scraper_results_tenant ON public.scraper_results USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_self_disclosures_tenant ON public.self_disclosures USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_service_case_offers_tenant ON public.service_case_offers USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_service_case_outbound_tenant ON public.service_case_outbound USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_valuation_credits_tenant ON public.valuation_credits USING btree (tenant_id);
+
+-- BLOCK 2: FK Indizes
+CREATE INDEX IF NOT EXISTS idx_ad_campaign_leads_campaign ON public.ad_campaign_leads USING btree (campaign_id);
+CREATE INDEX IF NOT EXISTS idx_ad_campaign_leads_lead ON public.ad_campaign_leads USING btree (lead_id);
+CREATE INDEX IF NOT EXISTS idx_applicant_liabilities_profile ON public.applicant_liabilities USING btree (applicant_profile_id);
+CREATE INDEX IF NOT EXISTS idx_context_members_context ON public.context_members USING btree (context_id);
+CREATE INDEX IF NOT EXISTS idx_credibility_flags_document ON public.credibility_flags USING btree (source_document_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_documents_document ON public.dev_project_documents USING btree (document_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_documents_storage ON public.dev_project_documents USING btree (storage_node_id);
+CREATE INDEX IF NOT EXISTS idx_dev_project_reservations_buyer ON public.dev_project_reservations USING btree (buyer_contact_id);
+CREATE INDEX IF NOT EXISTS idx_document_links_unit ON public.document_links USING btree (unit_id);
+CREATE INDEX IF NOT EXISTS idx_documents_uploaded_by ON public.documents USING btree (uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_extractions_document ON public.extractions USING btree (document_id);
+CREATE INDEX IF NOT EXISTS idx_finance_packages_contact ON public.finance_packages USING btree (contact_id);
+CREATE INDEX IF NOT EXISTS idx_finance_requests_property ON public.finance_requests USING btree (property_id);
+CREATE INDEX IF NOT EXISTS idx_finance_requests_folder ON public.finance_requests USING btree (storage_folder_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_contact ON public.calendar_events USING btree (contact_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_property ON public.calendar_events USING btree (property_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_created_by ON public.calendar_events USING btree (created_by);
+CREATE INDEX IF NOT EXISTS idx_cars_trips_connection ON public.cars_trips USING btree (connection_id);
+CREATE INDEX IF NOT EXISTS idx_mail_messages_account ON public.mail_messages USING btree (account_id);
+CREATE INDEX IF NOT EXISTS idx_commissions_contact ON public.commissions USING btree (contact_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_items_contact ON public.inbound_items USING btree (assigned_contact_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_items_property ON public.inbound_items USING btree (assigned_property_id);
+CREATE INDEX IF NOT EXISTS idx_listing_inquiries_listing ON public.listing_inquiries USING btree (listing_id);
+CREATE INDEX IF NOT EXISTS idx_listing_inquiries_contact ON public.listing_inquiries USING btree (contact_id);
+CREATE INDEX IF NOT EXISTS idx_listing_publications_listing ON public.listing_publications USING btree (listing_id);
+
+-- BLOCK 3: Composite Indizes (verifizierte Spalten)
+CREATE INDEX IF NOT EXISTS idx_documents_tenant_created ON public.documents USING btree (tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_leads_tenant_status ON public.leads USING btree (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_listings_tenant_status ON public.listings USING btree (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_tenant_start ON public.calendar_events USING btree (tenant_id, start_at);
+CREATE INDEX IF NOT EXISTS idx_contacts_tenant_category ON public.contacts USING btree (tenant_id, category);
+CREATE INDEX IF NOT EXISTS idx_storage_nodes_tenant_parent ON public.storage_nodes USING btree (tenant_id, parent_id);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_tenant_due ON public.rent_payments USING btree (tenant_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_listing_activities_tenant_created ON public.listing_activities USING btree (tenant_id, created_at);
