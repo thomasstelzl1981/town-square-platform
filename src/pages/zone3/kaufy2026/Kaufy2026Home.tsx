@@ -14,6 +14,7 @@ import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hook
 import { 
   Kaufy2026Hero, 
   PerspektivenKarten, 
+  PerspektivenAkkordeon,
   ZahlenSektion,
   type SearchParams,
   type ClassicSearchParams,
@@ -289,6 +290,9 @@ export default function Kaufy2026Home() {
 
       {/* Perspektiven Cards */}
       <PerspektivenKarten />
+
+      {/* Perspektiven Akkordeon */}
+      <PerspektivenAkkordeon />
 
       {/* Zahlen Section */}
       <ZahlenSektion />
