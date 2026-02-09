@@ -10,11 +10,18 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type ActionKey = 
-  | 'FIN_SUBMIT'        // Finanzierung einreichen
-  | 'MANDATE_DELEGATE'  // Mandat delegieren
-  | 'SALE_START'        // Verkauf starten
-  | 'RENTAL_START'      // Vermietung starten
-  | 'SERVICE_REQUEST';  // Service anfragen
+  | 'FIN_SUBMIT'           // Finanzierung einreichen
+  | 'MANDATE_DELEGATE'     // Mandat delegieren
+  | 'SALE_START'           // Verkauf starten
+  | 'RENTAL_START'         // Vermietung starten
+  | 'SERVICE_REQUEST'      // Service anfragen
+  | 'ACQ_MANDATE_CREATE'   // Suchmandat erstellen (MOD-08)
+  | 'ACQ_MANDATE_ACCEPT'   // Mandat akzeptieren (MOD-12)
+  | 'LEAD_ASSIGN'          // Lead zuweisen (Zone 1)
+  | 'LISTING_PUBLISH'      // Listing veröffentlichen (MOD-06)
+  | 'LISTING_WITHDRAW'     // Listing zurückziehen (MOD-06)
+  | 'PV_COMMISSION'        // PV-Anlage in Betrieb nehmen (MOD-19)
+  | 'PROJECT_PHASE_CHANGE'; // Projekt-Phasenwechsel (MOD-13)
 
 export interface ActionPayload {
   actionKey: ActionKey;
@@ -29,6 +36,10 @@ export interface ActionPayload {
       requestId?: string;
       serviceId?: string;
       caseId?: string;
+      listingId?: string;
+      leadId?: string;
+      plantId?: string;
+      projectId?: string;
     };
     timestamp: string;
   };
@@ -75,6 +86,41 @@ const ACTION_CONFIGS: Record<ActionKey, ActionConfig> = {
     toastDescription: 'Ihre Anfrage wurde erstellt.',
     redirectTo: '/portal/services/auftraege',
   },
+  ACQ_MANDATE_CREATE: {
+    toastMessage: 'Suchmandat erstellt',
+    toastDescription: 'Ihr Suchmandat wurde an den Akquise-Service übergeben.',
+    redirectTo: '/portal/investments/mandat',
+  },
+  ACQ_MANDATE_ACCEPT: {
+    toastMessage: 'Mandat akzeptiert',
+    toastDescription: 'Das Mandat ist jetzt aktiv.',
+    redirectTo: '/portal/akquise-manager/mandate',
+  },
+  LEAD_ASSIGN: {
+    toastMessage: 'Lead zugewiesen',
+    toastDescription: 'Der Lead wurde dem Partner zugewiesen.',
+    redirectTo: '/admin/leadpool',
+  },
+  LISTING_PUBLISH: {
+    toastMessage: 'Listing veröffentlicht',
+    toastDescription: 'Das Objekt ist jetzt auf dem Marktplatz sichtbar.',
+    redirectTo: '/portal/verkauf/objekte',
+  },
+  LISTING_WITHDRAW: {
+    toastMessage: 'Listing zurückgezogen',
+    toastDescription: 'Das Objekt wurde vom Marktplatz entfernt.',
+    redirectTo: '/portal/verkauf/objekte',
+  },
+  PV_COMMISSION: {
+    toastMessage: 'PV-Anlage in Betrieb genommen',
+    toastDescription: 'Die Anlage ist jetzt aktiv.',
+    redirectTo: '/portal/photovoltaik/anlagen',
+  },
+  PROJECT_PHASE_CHANGE: {
+    toastMessage: 'Projektphase aktualisiert',
+    toastDescription: 'Die neue Phase wurde gesetzt.',
+    redirectTo: '/portal/projekte/uebersicht',
+  },
 };
 
 export function useActionHandoff() {
@@ -96,7 +142,9 @@ export function useActionHandoff() {
     // Determine entity ID for correlation key
     const primaryEntityId = entityIds?.requestId || entityIds?.mandateId || 
                             entityIds?.propertyId || entityIds?.serviceId || 
-                            entityIds?.caseId;
+                            entityIds?.caseId || entityIds?.listingId ||
+                            entityIds?.leadId || entityIds?.plantId ||
+                            entityIds?.projectId;
     
     // Generate correlation key for Camunda
     const correlationKey = generateCorrelationKey(
@@ -148,6 +196,27 @@ export function useActionHandoff() {
   const requestService = (serviceId?: string) => 
     triggerAction('SERVICE_REQUEST', 'MOD-16', { serviceId });
 
+  const createAcqMandate = (mandateId?: string) =>
+    triggerAction('ACQ_MANDATE_CREATE', 'MOD-08', { mandateId });
+
+  const acceptAcqMandate = (mandateId?: string) =>
+    triggerAction('ACQ_MANDATE_ACCEPT', 'MOD-12', { mandateId });
+
+  const assignLead = (leadId?: string) =>
+    triggerAction('LEAD_ASSIGN', 'ZONE-1', { leadId });
+
+  const publishListing = (listingId?: string) =>
+    triggerAction('LISTING_PUBLISH', 'MOD-06', { listingId });
+
+  const withdrawListing = (listingId?: string) =>
+    triggerAction('LISTING_WITHDRAW', 'MOD-06', { listingId });
+
+  const commissionPV = (plantId?: string) =>
+    triggerAction('PV_COMMISSION', 'MOD-19', { plantId });
+
+  const changeProjectPhase = (projectId?: string) =>
+    triggerAction('PROJECT_PHASE_CHANGE', 'MOD-13', { projectId });
+
   return {
     triggerAction,
     submitFinancing,
@@ -155,5 +224,12 @@ export function useActionHandoff() {
     startSale,
     startRental,
     requestService,
+    createAcqMandate,
+    acceptAcqMandate,
+    assignLead,
+    publishListing,
+    withdrawListing,
+    commissionPV,
+    changeProjectPhase,
   };
 }
