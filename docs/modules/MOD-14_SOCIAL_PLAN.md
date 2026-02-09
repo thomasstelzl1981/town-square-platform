@@ -31,8 +31,8 @@ Der User klickt "Audit starten", Armstrong öffnet sich und führt das strukturi
 
 ---
 
-### PHASE 1 — Datenmodell (SQL Migrations)
-**Status:** Offen
+### PHASE 1 — Datenmodell (SQL Migrations) ✅
+**Status:** Abgeschlossen (2026-02-09)
 
 **9 Tabellen (alle tenant-scoped, RLS über `profiles.active_tenant_id`):**
 
