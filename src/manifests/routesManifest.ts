@@ -203,6 +203,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kontakte", component: "KontakteTab", title: "Kontakte" },
         { path: "kalender", component: "KalenderTab", title: "Kalender" },
         { path: "widgets", component: "WidgetsTab", title: "Widgets" },
+        { path: "whatsapp", component: "WhatsAppTab", title: "WhatsApp" },
       ],
     },
     "MOD-03": {

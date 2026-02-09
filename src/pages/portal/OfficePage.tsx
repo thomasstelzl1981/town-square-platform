@@ -15,6 +15,7 @@ import { BriefTab } from './office/BriefTab';
 import { KontakteTab } from './office/KontakteTab';
 import { KalenderTab } from './office/KalenderTab';
 import { WidgetsTab } from './office/WidgetsTab';
+import { WhatsAppTab } from './office/WhatsAppTab';
 
 // Mobile guard wrapper - redirects desktop-only tabs to Brief on mobile
 function MobileGuard({ children, allowedOnMobile = false }: { 
@@ -52,9 +53,10 @@ const OfficePage = () => {
           <KalenderTab />
         </MobileGuard>
       } />
-      {/* Mobile + Desktop: Brief, Widgets */}
+      {/* Mobile + Desktop: Brief, Widgets, WhatsApp */}
       <Route path="brief" element={<BriefTab />} />
       <Route path="widgets" element={<WidgetsTab />} />
+      <Route path="whatsapp" element={<WhatsAppTab />} />
       <Route path="*" element={<Navigate to="/portal/office" replace />} />
     </Routes>
   );
