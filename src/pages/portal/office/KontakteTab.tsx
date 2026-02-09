@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -590,9 +591,9 @@ export function KontakteTab() {
   );
 
   return (
-    <div className="space-y-4 pt-2">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+    <Card className="glass-card overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -664,11 +665,12 @@ export function KontakteTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
       {/* Contacts Table */}
       {contacts.length === 0 ? (
-        <EmptyContacts onAdd={() => setCreateDialogOpen(true)} />
+        <div className="p-6"><EmptyContacts onAdd={() => setCreateDialogOpen(true)} /></div>
       ) : (
         <DataTable
           data={filteredContacts}
@@ -676,6 +678,7 @@ export function KontakteTab() {
           onRowClick={handleRowClick}
         />
       )}
+      </CardContent>
 
       {/* Contact Detail Drawer */}
       <DetailDrawer
@@ -829,6 +832,6 @@ export function KontakteTab() {
           </div>
         )}
       </DetailDrawer>
-    </div>
+    </Card>
   );
 }

@@ -261,6 +261,7 @@ export function WidgetsTab() {
   const isMobile = useIsMobile();
 
   return (
+    <Card className="glass-card overflow-hidden">
     <Tabs defaultValue="system" className="w-full">
       <div className={cn(
         "border-b",
@@ -286,5 +287,6 @@ export function WidgetsTab() {
         <TaskWidgetsContent />
       </TabsContent>
     </Tabs>
+    </Card>
   );
 }

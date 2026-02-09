@@ -188,7 +188,7 @@ export function WhatsAppTab() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-200px)] gap-0 border rounded-lg overflow-hidden bg-background">
+    <Card className="glass-card overflow-hidden flex h-[calc(100vh-220px)]">
       {/* Left: Conversation List */}
       <div className="w-80 border-r flex flex-col">
         <div className="p-4 border-b">
@@ -389,6 +389,6 @@ export function WhatsAppTab() {
           </>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
