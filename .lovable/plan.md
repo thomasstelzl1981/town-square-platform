@@ -1,179 +1,117 @@
 
-# Storage-Architektur: Einheitlicher Menuebaum + Upload-Manifest
 
-## Zusammenfassung
+# Storage Cleanup: Entity-Analyse + Risikofreie Migration
 
-Das Storage-System hat bereits eine solide Grundlage (storage_nodes, module_code, ensure_module_root_folders), aber es gibt **kritische Luecken und Inkonsistenzen**, die zuerst behoben werden muessen, bevor ein einheitlicher Upload funktioniert.
+## Komplette Entity-Inventur
+
+### Bestehende Entities mit IDs
+
+| Entity | Tabelle | ID | Code/Name | Storage-Verknuepfung |
+|--------|---------|-----|-----------|---------------------|
+| **Immobilie Leipzig** | `properties` | `00000000-...-000001` | DEMO-001, Blochmannstr. 31, Leipzig | Korrekt: Dossier unter MOD_04 Root mit `property_id` gesetzt, 18 Unterordner, 10 Dokumente via `document_links` verknuepft |
+| **Porsche 911** | `cars_vehicles` | `00000000-...-000301` | B-P911 | Korrekt: Dossier unter MOD_17 > Fahrzeuge mit 7 Unterordnern + 3 Dokumente |
+| **BMW M5** | `cars_vehicles` | `00000000-...-000302` | M-M5005 | Korrekt: Dossier unter MOD_17 > Fahrzeuge mit 7 Unterordnern + 3 Dokumente |
+| **Akquise-Mandat Rendsburg** | `acq_mandates` | `e0000000-...-000001` | ACQ-2026-00001, Schleswig-Holstein | Kein Storage-Node, kein `data_room_folder_id` gesetzt |
+| **Akquise-Angebot Rendsburg** | `acq_offers` | `f0000000-...-000001` | Rotklinkeranlage 40 Einheiten, Rendsburg | `data_room_folder_id = NULL`, Expose-Daten nur in `extracted_data` JSON, kein File im Storage |
+| **Projekt Menden** | `dev_projects` | `3babfce6-...` | BT-2026-001, Menden | Dateien im `project-documents` Bucket vorhanden (Expose + Preisliste), Storage-Node existiert mit `dev_project_id` korrekt gesetzt |
+
+### Risikobewertung: Was ist gefaehrdet?
+
+| Entity | Risiko | Detail |
+|--------|--------|--------|
+| **Immobilie Leipzig** | **KEIN Risiko** | Dossier ist korrekt unter MOD_04 Root `4e1c6b44` eingehaengt, `property_id` gesetzt, alle `document_links` zeigen auf die richtigen `storage_nodes`. Wird nicht angefasst. |
+| **Porsche + BMW** | **KEIN Risiko** | Dossiers sind korrekt unter MOD_17 Root `e49690ca` > Fahrzeuge `ee83a5a4` eingehaengt. Alle 7 Unterordner + Dokumente intakt. Wird nicht angefasst. |
+| **Projekt BT-2026-001** | **MITTEL** | 3 Kopien des Dossiers (02:22, 02:44, 15:13). Nur die juengste (15:13, ID `a33c4587`) hat `dev_project_id` korrekt gesetzt und ist mit dem echten Projekt verknuepft. Die zwei aelteren sind Waisen. Plus: Die 2 Dateien liegen im `project-documents` Bucket statt `tenant-documents`. |
+| **Projekt BT-2026-002** | **GERING** | 2 Kopien, aber es gibt kein echtes `dev_projects` Entity mit Code BT-2026-002. Das sind verwaiste Test-Dossiers ohne echte Daten. |
+| **Akquise Rendsburg** | **KEIN Risiko beim Cleanup** | Hat aktuell keinen Storage-Node. Die Daten sind in `acq_offers.extracted_data` sicher. Das Expose kam per E-Mail (MailParser), nicht per Upload. Es existiert kein File im Storage. |
+
+### Expose Rendsburg: Wo ist es?
+
+Das Rendsburg-Expose wurde via **E-Mail-Forwarding** (MailParser) erfasst, nicht als Datei-Upload:
+- `source_type: 'inbound_email'`
+- `extracted_data` enthaelt: Faktor 14.7, Dr. Hofeditz, 40 Einheiten, Provision 6.25%
+- Es gibt **keine Datei** in `acq-documents` oder `tenant-documents` Bucket
+- Es gibt **keinen** `acq_offer_documents` Record
+- Die extrahierten Daten sind sicher in der DB, aber das Original-PDF fehlt im Storage
 
 ---
 
-## IST-Zustand: Was bereits existiert
+## Cleanup-Migration: Praeziser Plan
 
-### Gut
+### Was wird GELOESCHT (nur leere Duplikate)
 
-- `storage_nodes`-Tabelle als Ordner-Baum (parent_id → Hierarchie)
-- `module_code`-Spalte fuer Modul-Zuordnung
-- DB-Trigger `seed_tenant_storage_roots()` erzeugt bei Tenant-Erstellung automatisch:
-  - 5 System-Ordner: Posteingang, Eigene Dateien, Archiv, Zur Pruefung, Sonstiges
-  - 5 Modul-Roots: MOD_04, MOD_06, MOD_07, MOD_16, MOD_17
-- Trigger `create_property_folder_structure()` erzeugt Property-Dossier unter MOD_04_ROOT
-- Trigger `create_vehicle_folder_structure()` erzeugt Fahrzeug-Dossier unter MOD_17_ROOT
-- Funktion `ensure_module_root_folders()` kennt 10 Module + TRASH_ROOT (11 Roots)
-- `useSmartUpload.ts` funktioniert stabil (direkter Upload in `tenant-documents` Bucket)
+**9 Backfill-Duplikate** (alle vom 16:48, alle haben `older_count > 0`, alle haben 0 Kinder):
 
-### Probleme
+| ID | Modul | Name | Begruendung |
+|----|-------|------|-------------|
+| `c8ca13c4` | MOD_02 | KI Office | Duplikat von `73ad44a9` (14:34) |
+| `5daa71d5` | MOD_03 | DMS | Duplikat von `6669dd2d` (14:34) |
+| `49db5aa8` | MOD_04 | Immobilien | Duplikat von `4e1c6b44` (19:58, hat Kinder!) |
+| `6b956c32` | MOD_05 | MSV | Duplikat von `38906652` (14:34) |
+| `6404b6ad` | MOD_06 | Verkauf | Duplikat von `2f1c235d` (19:58, hat Kinder!) |
+| `aac99988` | MOD_07 | Finanzierung | Duplikat von `839b6a03` (19:58, hat Kinder!) |
+| `17693dc0` | MOD_08 | Investments | Duplikat von `d5f61d84` (14:34) |
+| `683413ac` | MOD_17 | Car-Management | Duplikat von `e49690ca` (19:58, hat Kinder!) |
+| `0cba7668` | SYSTEM | Papierkorb | Duplikat von `0e6a526d` (14:34) |
 
-| # | Problem | Auswirkung |
-|---|---------|------------|
-| 1 | **module_code CHECK Constraint zu restriktiv** | Erlaubt nur MOD_03-MOD_08, MOD_16, MOD_17, SYSTEM. MOD_01, MOD_02, MOD_09-MOD_15, MOD_18-MOD_20 fehlen |
-| 2 | **Inkonsistente Namensgebung** | Constraint erlaubt `MOD_13` (Unterstrich), aber PV-Code schreibt `MOD-13` (Bindestrich). 40 Rows mit `MOD-13` existieren in der DB |
-| 3 | **seed_tenant_storage_roots nur 5 Module** | Nur MOD_04, MOD_06, MOD_07, MOD_16, MOD_17 werden bei Tenant-Erstellung erzeugt. MOD_01-MOD_03, MOD_05, MOD_08-MOD_20 fehlen |
-| 4 | **ensure_module_root_folders kennt 10 Module** | Aber nicht alle 20 (es fehlen MOD_09-MOD_12, MOD_14, MOD_15, MOD_18-MOD_20) |
-| 5 | **3 separate Storage-Buckets** | `tenant-documents`, `project-documents`, `acq-documents` — keine einheitliche Struktur |
-| 6 | **Upload-Pfade nicht Storage-Node-gekoppelt** | `useSmartUpload` schreibt in `tenant-documents/{tenantId}/raw/...` — der Pfad hat keinen Bezug zu storage_nodes |
-| 7 | **StorageTab nutzt Edge Function fuer Upload** | 2-Roundtrip (Signed URL), statt direktem `supabase.storage.upload()` |
-| 8 | **ProjekteDashboard sendet FormData an Edge Function** | Memory-Limit bei grossen Dateien — Hauptgrund fuer Upload-Fehler |
+**1 MOD_16 Duplikat** ("Services" `a2c923a2` loeschen, "Sanierung" `284d458b` behalten und in "Services" umbenennen)
 
----
+**1 MOD_13 Duplikat** (Projekte `064c2c35` loeschen, Original `4e5900e9` behalten)
 
-## SOLL-Zustand: Vollstaendiger Menuebaum
+**2 verwaiste BT-2026-001 Dossiers** (IDs `45e4d0d1` und `96c0f37e`, je 7 Kinder = 16 Nodes):
+- Beide haben `dev_project_id = NULL` und keine `document_links`
+- Das echte Dossier `a33c4587` (15:13) hat `dev_project_id` korrekt gesetzt → wird behalten
 
-### Prinzip: 1 Tenant = 1 kompletter DMS-Baum
+**2 verwaiste BT-2026-002 Dossiers** (IDs `9efb52bf` und `c681b089`, je 7 Kinder = 16 Nodes):
+- Es gibt kein `dev_projects` Entity mit Code BT-2026-002 → beide sind Testdaten
 
-Bei Erstellung eines Tenants (Organization) wird folgender Baum automatisch erzeugt:
+### Was wird BEHALTEN und REPARIERT
 
-```text
-ROOT (tenant_id)
-+-- Posteingang                    (SYSTEM, inbox)
-+-- Eigene Dateien                 (SYSTEM, user_files)
-+-- Archiv                         (SYSTEM, archive)
-+-- Zur Pruefung                   (SYSTEM, needs_review)
-+-- Sonstiges                      (SYSTEM, sonstiges)
-+-- Papierkorb                     (SYSTEM, TRASH_ROOT)
-|
-+-- Stammdaten                     (MOD_01, MOD_01_ROOT)
-+-- KI Office                      (MOD_02, MOD_02_ROOT)
-+-- DMS                            (MOD_03, MOD_03_ROOT)
-+-- Immobilien                     (MOD_04, MOD_04_ROOT)
-|   +-- [Property Dossier] ...     (auto bei Property-Anlage)
-+-- MSV                            (MOD_05, MOD_05_ROOT)
-+-- Verkauf                        (MOD_06, MOD_06_ROOT)
-+-- Finanzierung                   (MOD_07, MOD_07_ROOT)
-|   +-- [Finance Request] ...      (auto bei Finanzierungsanfrage)
-+-- Investments                    (MOD_08, MOD_08_ROOT)
-+-- Vertriebspartner               (MOD_09, MOD_09_ROOT)
-+-- Leads                          (MOD_10, MOD_10_ROOT)
-+-- Finanzierungsmanager           (MOD_11, MOD_11_ROOT)
-+-- Akquise-Manager                (MOD_12, MOD_12_ROOT)
-+-- Projekte                       (MOD_13, MOD_13_ROOT)
-|   +-- [Projekt Dossier] ...      (auto bei Projekt-Anlage)
-+-- Communication Pro              (MOD_14, MOD_14_ROOT)
-+-- Fortbildung                    (MOD_15, MOD_15_ROOT)
-+-- Services                       (MOD_16, MOD_16_ROOT)
-+-- Car-Management                 (MOD_17, MOD_17_ROOT)
-|   +-- Fahrzeuge/                 (auto)
-|       +-- [Fahrzeug Dossier] ... (auto bei Fahrzeug-Anlage)
-+-- Finanzanalyse                  (MOD_18, MOD_18_ROOT)
-+-- Photovoltaik                   (MOD_19, MOD_19_ROOT)
-|   +-- [PV-Anlage Dossier] ...    (auto bei PV-Anlage)
-+-- Miety                          (MOD_20, MOD_20_ROOT)
+| Aktion | Node | Detail |
+|--------|------|--------|
+| **BEHALTEN** | `a33c4587` BT-2026-001 | Echtes Projekt-Dossier mit `dev_project_id = 3babfce6` → wird unter Projekte-Root `4e5900e9` eingehaengt |
+| **UPDATE** | `a33c4587` → `parent_id = 4e5900e9` | Projekt-Dossier unter "Projekte" Root einordnen |
+| **UPDATE** | `284d458b` MOD_16 → name = 'Services' | Namenskorrektur laut storageManifest |
+
+### Was wird NEU angelegt (Module ohne aelteres Original)
+
+Diese 11 Roots vom Backfill (16:48) haben `older_count = 0` → sind die **einzigen** Instanzen und werden **behalten**:
+- MOD_01 Stammdaten, MOD_09 Vertriebspartner, MOD_10 Leads, MOD_11 Finanzierungsmanager
+- MOD_12 Akquise-Manager, MOD_14 Communication Pro, MOD_15 Fortbildung
+- MOD_18 Finanzanalyse, MOD_19 Photovoltaik, MOD_20 Miety
+
+### UNIQUE Constraints
+
+```sql
+-- Verhindert kuenftige Root-Duplikate
+CREATE UNIQUE INDEX idx_storage_nodes_unique_root
+  ON storage_nodes (tenant_id, module_code, template_id)
+  WHERE parent_id IS NULL AND template_id IS NOT NULL;
+
+-- Verhindert kuenftige Kind-Duplikate
+CREATE UNIQUE INDEX idx_storage_nodes_unique_child
+  ON storage_nodes (tenant_id, parent_id, name)
+  WHERE parent_id IS NOT NULL;
 ```
 
-### Sub-Trees bei Entity-Erstellung
-
-Wenn ein User eine Immobilie, ein Projekt, ein Fahrzeug oder eine PV-Anlage anlegt, wird automatisch ein Sub-Tree unter dem jeweiligen Modul-Root erstellt. Beispiel PV-Anlage:
-
-```text
-Photovoltaik (MOD_19_ROOT)
-+-- "Thomas EFH 9,8 kWp"
-    +-- 01_Stammdaten
-    +-- 02_MaStR_BNetzA
-    +-- 03_Netzbetreiber
-    +-- 04_Zaehler
-    +-- 05_Wechselrichter_und_Speicher
-    +-- 06_Versicherung
-    +-- 07_Steuer_USt_BWA
-    +-- 08_Wartung_Service
-```
-
-### Upload-Pfad-Konvention (Blob Storage)
-
-Einheitlicher Pfad fuer alle Dateien im `tenant-documents` Bucket:
-
-```text
-{tenant_id}/{module_code}/{entity_id}/{dateiname}
-```
-
-Beispiele:
-- `abc123/MOD_04/prop-456/Grundbuch_Auszug.pdf`
-- `abc123/MOD_07/req-789/Gehaltsnachweis.pdf`
-- `abc123/MOD_13/proj-012/Expose_Projekt.pdf`
-- `abc123/MOD_19/pv-345/Inbetriebnahmeprotokoll.pdf`
-- `abc123/INBOX/unknown_file.pdf` (nicht zuordenbar)
-
 ---
 
-## Implementierung: 3 Schritte
+## Zusammenfassung: Vorher → Nachher
 
-### Step 1: DB-Migration — Constraint + Trigger erweitern
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Gesamte Nodes | 140 | ~97 |
+| MOD_13 Root-Nodes (Projekte) | 2x Projekte + 3x BT-001 + 2x BT-002 = 7 | 1x Projekte mit 1x BT-001 darunter = 2 |
+| MOD_16 Root-Nodes | 2 (Sanierung + Services) | 1 (Services) |
+| MOD_17 Root-Nodes | 2 (beide "Car-Management") | 1 (mit Fahrzeuge + Porsche + BMW) |
+| Duplikat-Root-Nodes gesamt | 11 | 0 |
+| UNIQUE Constraints | 0 | 2 |
+| Immobilie DEMO-001 | Intakt | Intakt (nicht angefasst) |
+| Porsche + BMW | Intakt | Intakt (nicht angefasst) |
+| Projekt BT-2026-001 | Intakt, aber Root-Node | Intakt, unter "Projekte" eingeordnet |
+| Akquise Rendsburg | Keine Aenderung | Keine Aenderung (Daten in DB sicher) |
 
-1. **module_code CHECK Constraint updaten**: Alle 20 Module + SYSTEM erlauben
-2. **Bestehende `MOD-13` Daten migrieren**: `MOD-13` → `MOD_13` (Unterstrich-Standard)
-3. **`seed_tenant_storage_roots()` erweitern**: Alle 20 Module bei Tenant-Erstellung
-4. **`ensure_module_root_folders()` erweitern**: Alle 20 Module
-5. **Bestehende Tenants nachruesten**: Fehlende Modul-Roots fuer existierende Tenants erstellen
-6. **PV-Trigger erstellen**: `create_pv_plant_folder_structure()` analog Property/Vehicle
+### Bezueglich Posteingang / E-Mail-Inbox
 
-### Step 2: `useUniversalUpload` Hook + Storage-Manifest
+Die System-Nodes "Posteingang" (`2a74f4c0`) und "Eigene Dateien" (`ab6f325c`) existieren bereits korrekt. Fuer die E-Mail-zu-Posteingang-Funktion (Resend Inbound Webhook → Storage Node) ist ein separater Implementierungsschritt noetig, der ueber den Cleanup hinausgeht. Das wird als eigenes Feature nach dem Cleanup geplant.
 
-1. **Neuer Hook `useUniversalUpload.ts`** als einheitlicher Entry-Point:
-   - Basiert auf bewaehrtem `useSmartUpload.ts`
-   - Einheitlicher Pfad: `{tenantId}/{moduleCode}/{entityId}/{filename}`
-   - Automatisch `documents` Record + `document_links` Record
-   - Optional AI-Extraktion (nur Pfad uebergeben, nie Datei-Inhalt)
-   - Automatisch `storage_nodes` File-Node unter korrektem Parent erzeugen
-   - Fallback auf INBOX-Ordner wenn keine Zuordnung moeglich
-
-2. **Storage-Manifest** (`src/config/storageManifest.ts`):
-   - Definiert pro Modul: module_code, root_name, sub-folder Templates, required_docs
-   - Wird von `useUniversalUpload` und DMS-UI konsumiert
-   - SSOT fuer Ordnerstrukturen und Pflichtdokumente
-
-### Step 3: Upload-Felder umstellen
-
-Alle bestehenden Upload-Implementierungen auf `useUniversalUpload` umstellen:
-- `StorageTab.tsx` (MOD-03): Edge Function → direkt
-- `DatenraumTab.tsx` (MOD-04): Edge Function → direkt
-- `ProjekteDashboard.tsx` (MOD-13): FormData → direkt + JSON-Modus Edge Fn
-- `QuickIntakeUploader.tsx` (MOD-13): Bucket vereinheitlichen
-- `FinanceUploadZone.tsx` (MOD-07): useSmartUpload → useUniversalUpload
-- `DocumentUploadSection.tsx` (MOD-07): Stub → echt
-- `useAcqOffers.ts` (MOD-12): acq-documents → tenant-documents
-- `PVDmsTree.tsx` (MOD-19): usePvDMS → useUniversalUpload
-
----
-
-## Betroffene Dateien
-
-| Aktion | Datei |
-|--------|-------|
-| NEU | `src/config/storageManifest.ts` (SSOT fuer Ordnerstrukturen) |
-| NEU | `src/hooks/useUniversalUpload.ts` (einheitlicher Upload-Hook) |
-| DB | Migration: module_code Constraint + seed_tenant_storage_roots + ensure_module_root_folders + PV-Trigger |
-| EDIT | `src/pages/portal/dms/StorageTab.tsx` (Edge Fn → direkter Upload) |
-| EDIT | `src/components/portfolio/DatenraumTab.tsx` (Edge Fn → direkter Upload) |
-| EDIT | `src/pages/portal/projekte/ProjekteDashboard.tsx` (FormData → useUniversalUpload) |
-| EDIT | `src/components/projekte/QuickIntakeUploader.tsx` (Bucket + Pfad vereinheitlichen) |
-| EDIT | `src/components/finanzierung/FinanceUploadZone.tsx` (useSmartUpload → useUniversalUpload) |
-| EDIT | `src/components/finanzierung/DocumentUploadSection.tsx` (Stub → echt) |
-| EDIT | `src/hooks/useAcqOffers.ts` (acq-documents → tenant-documents) |
-| EDIT | `src/hooks/usePvDMS.ts` (Pfad vereinheitlichen) |
-| BEHALTEN | `src/hooks/useSmartUpload.ts` (Re-Export als Alias auf useUniversalUpload) |
-
-### Implementierungsreihenfolge
-
-1. DB-Migration (Step 1) — constraint fix, trigger update, backfill
-2. `storageManifest.ts` + `useUniversalUpload.ts` (Step 2) — neue Dateien
-3. StorageTab + DatenraumTab fixen (Step 3a) — hoechste Stabilitaetspriorität
-4. ProjekteDashboard fixen (Step 3b) — gemeldeter Bug
-5. Restliche Module umstellen (Step 3c)
