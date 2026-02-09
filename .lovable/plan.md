@@ -1,54 +1,132 @@
 
-# Posteingang UI-Ueberarbeitung + User-ID Mailbox Fix
+# DMS Storage — OneDrive-Style Dateimanager mit Modulnummerierung
 
-## Problem 1: Leere Seite ohne Struktur
+## Zusammenfassung
 
-Aktuell zeigt der Posteingang bei 0 E-Mails nur einen EmptyState-Platzhalter. Der User sieht keine Tabelle, keine Spalten, kein Gefuehl fuer die Funktion.
+Kompletter Umbau der Storage-Seite zu einem modernen Dateimanager im OneDrive-Stil mit:
+- Modulnummern im Ordnerbaum (z.B. "03 — DMS", "04 — Immobilien")
+- Alle 20 Module aus dem `STORAGE_MANIFEST` als SSOT
+- Verbessertes Layout mit Toolbar, Breadcrumb-Navigation, Kontextmenue
+- Drag & Drop Upload direkt in Ordner
+- Detail-Panel rechts (statt Drawer)
+- Bulk-Aktionen (Mehrfachauswahl, Download, Loeschen)
 
-### Loesung:
-- Tabelle wird IMMER angezeigt — auch bei 0 Eintraegen
-- Bei leerem Zustand: 10 leere Zeilen (Skeleton-Rows) mit dezenten Strichen als Platzhalter
-- Spaltenkoepfe klar sichtbar: **Datum | Von | Betreff | PDFs | Status | Aktionen**
-- Unter der Tabelle: dezenter Hinweis "Noch keine E-Mails eingegangen — sende PDFs an deine Upload-Adresse"
+---
 
-## Problem 2: Mailbox-Adresse nutzt Org-Slug statt User-ID
+## Was sich aendert
 
-Laut Architekturvorgabe (User-ID-Invariante und Posteingang-Spec) soll die Adresse die User-ID enthalten, nicht den Org-Slug. Aktuell: `sot-internal@inbound.systemofatown.com`.
+### 1. Ordnerbaum: STORAGE_MANIFEST als SSOT + Modulnummern
 
-### Loesung:
-- Migration: `address_local_part` des bestehenden Mailbox-Records auf die User-ID des Entwicklers setzen
-- Auto-Provisioning-Trigger anpassen: bei neuen Mailboxen die User-ID des erstellenden Users verwenden (statt org.slug)
-- Ergebnis: `d028bc99@inbound.systemofatown.com`
+Aktuell sind nur 10 Module hardcoded in `MODULE_ROOT_FOLDERS`. Neu: Alle 20 Module kommen direkt aus `STORAGE_MANIFEST`, sortiert nach `display_order`, mit Nummerierung:
 
-## Problem 3: Mehr visuelle Struktur auf der Seite
+```text
+Alle Dokumente
+Posteingang
+Eigene Dateien
+────────────────
+01 — Stammdaten
+02 — KI Office
+03 — DMS
+04 — Immobilien
+  ├── Musterstr. 5
+  │   ├── 01_Grunddaten
+  │   ├── 02_Grundbuch
+  │   └── ...
+05 — MSV
+06 — Verkauf
+07 — Finanzierung
+08 — Investments
+09 — Vertriebspartner
+10 — Leads
+11 — Finanzierungsmanager
+12 — Akquise-Manager
+13 — Projekte
+14 — Communication Pro
+15 — Fortbildung
+16 — Services
+17 — Car-Management
+18 — Finanzanalyse
+19 — Photovoltaik
+20 — Miety
+────────────────
+Zur Pruefung
+Archiv
+Sonstiges
+Papierkorb
+```
 
-### Zusaetzliche Verbesserungen:
-- Upload-E-Mail Card bekommt einen visuellen Rahmen mit Mail-Icon und Statusanzeige (aktiv/inaktiv)
-- Stats-Kacheln werden immer gezeigt (auch mit 0-Werten) — nicht nur bei vorhandenen Fehlern
-- Resend-Webhook-URL als Info-Hinweis fuer Admins andeuten (ohne technische Details)
+### 2. Layout: OneDrive-Stil
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ Toolbar: [Breadcrumb: DMS > Immobilien > Musterstr. 5]     │
+│          [Upload] [Neuer Ordner] [Ansicht: Liste/Grid]      │
+├──────────┬──────────────────────────────┬───────────────────┤
+│ Ordner   │ Dateien                      │ Detail-Panel      │
+│ (Tree)   │ ┌────┬──────┬────┬────┬────┐ │ (bei Auswahl)     │
+│          │ │ ✓  │ Name │ Typ│Size│Date│ │                   │
+│ 01 Stamm │ │ □  │ expo │PDF │2MB │3d  │ │ Dateiname.pdf     │
+│ 02 KI    │ │ □  │ grun │PDF │1MB │5d  │ │ 2.3 MB            │
+│ 03 DMS   │ │ □  │      │    │    │    │ │ Hochgeladen: ...  │
+│ 04 Immo  │ │    │      │    │    │    │ │ [Download]        │
+│  > Must  │ │    │      │    │    │    │ │ [Loeschen]        │
+│ ...      │ │    │      │    │    │    │ │                   │
+│ Papierko │ │    │      │    │    │    │ │                   │
+└──────────┴──────────────────────────────┴───────────────────┘
+```
+
+- **Breadcrumb-Navigation**: Zeigt den aktuellen Pfad, klickbar
+- **Toolbar**: Upload-Button, Neuer Ordner, Ansichtswechsel (spaeter Grid)
+- **Detail-Panel**: Rechts eingeblendet bei Dateiauswahl (statt Drawer/Overlay)
+- **Checkbox-Spalte**: Fuer Mehrfachauswahl + Bulk-Aktionen
+
+### 3. Drag & Drop Zone
+
+- Der gesamte Dateibereich ist eine Drop-Zone
+- Visueller Feedback: blauer Rahmen + "Dateien hier ablegen" Overlay
+- Drop laedt direkt in den aktuell gewaehlten Ordner hoch
+
+### 4. Kontextmenue (Rechtsklick)
+
+Auf Dateien:
+- Herunterladen
+- Umbenennen (spaeter)
+- Verschieben (spaeter)
+- Loeschen
+
+Auf Ordner (im Tree):
+- Neuer Unterordner
+- Loeschen (nur wenn leer + nicht System)
+
+### 5. Bulk-Aktionen
+
+Bei Mehrfachauswahl erscheint eine Aktionsleiste:
+- "X Dateien ausgewaehlt"
+- [Herunterladen] [Loeschen]
 
 ---
 
 ## Technische Umsetzung
 
-### Datei: `src/pages/portal/dms/PosteingangTab.tsx`
-- EmptyState-Fallback entfernen
-- Tabelle immer rendern mit `columns` Header
-- Bei `emails.length === 0`: 10 Skeleton-Rows rendern (leere Zellen mit `h-4 bg-muted/30 rounded` Platzhaltern)
-- Stats-Kacheln: Fehler-Kachel immer zeigen (auch bei 0)
-- Hinweistext unter Tabelle bei leerem Zustand
+### Dateien (neu):
+- `src/components/dms/StorageBreadcrumb.tsx` — Breadcrumb-Pfad-Navigation
+- `src/components/dms/FileDetailPanel.tsx` — Rechtes Detail-Panel (ersetzt DetailDrawer)
+- `src/components/dms/FileDropZone.tsx` — Drag & Drop Overlay-Wrapper
+- `src/components/dms/BulkActionBar.tsx` — Aktionsleiste bei Mehrfachauswahl
 
-### Migration: Mailbox User-ID Fix
-```sql
-UPDATE inbound_mailboxes
-SET address_local_part = 'd028bc99'
-WHERE tenant_id = 'a0000000-0000-4000-a000-000000000001';
-```
+### Dateien (geaendert):
+- `src/pages/portal/dms/StorageTab.tsx` — Komplett neues Layout (3-Panel: Tree | Files | Detail)
+- `src/components/dms/StorageFolderTree.tsx` — Modulnummern aus STORAGE_MANIFEST, alle 20 Module, Separator-Linien, Icons
+- `src/config/storageManifest.ts` — Neue Hilfsfunktion `getModuleDisplayName()` die "XX — Name" zurueckgibt
 
-### Trigger-Anpassung
-Der Auto-Provisioning-Trigger `auto_create_mailbox` muss angepasst werden, sodass er die User-ID des aufrufenden Users nutzt statt `NEW.slug`. Da Trigger auf `organizations` keinen direkten Zugriff auf `auth.uid()` haben, wird die Adresse stattdessen beim ersten Login/Profilzugriff erstellt — als Lazy-Provisioning in der Edge Function.
+### Ablauf:
+1. `StorageFolderTree.tsx` anpassen: STORAGE_MANIFEST importieren, Modulnummer vor den Namen setzen, alle 20 Module anzeigen, Sortierung nach `display_order`
+2. `StorageTab.tsx` umbauen: 3-Panel-Layout, Breadcrumb, Drop-Zone, Checkbox-Selection, Detail-Panel statt Drawer
+3. Neue Komponenten: Breadcrumb, FileDetailPanel, FileDropZone, BulkActionBar
+4. storageManifest.ts: Helper `getModuleDisplayName(moduleCode)` => `"04 — Immobilien"`
 
-### Dateien die geaendert werden:
-1. `src/pages/portal/dms/PosteingangTab.tsx` — Tabelle immer sichtbar, Skeleton-Rows, bessere Stats
-2. SQL-Migration — Mailbox-Adresse auf User-ID umstellen
-3. `supabase/functions/sot-inbound-receive/index.ts` — Lazy-Provisioning: wenn kein Mailbox fuer User existiert, automatisch erstellen bei GET ?action=mailbox
+### Besonderheiten:
+- `MODULE_ROOT_FOLDERS` in StorageTab.tsx wird durch `STORAGE_MANIFEST` ersetzt (SSOT)
+- Die Seeding-Logik bleibt kompatibel — sie prueft weiterhin `template_id` Matches
+- System-Ordner (Posteingang, Eigene Dateien, etc.) bleiben hardcoded — sie haben kein Modul
+- `react-dropzone` ist bereits installiert und wird fuer die Drop-Zone genutzt
