@@ -86,3 +86,9 @@ verify_jwt = false
 
 [functions.sot-armstrong-website]
 verify_jwt = false
+
+[functions.sot-zenquotes-proxy]
+verify_jwt = false
+
+[functions.sot-nasa-apod]
+verify_jwt = false
