@@ -13,15 +13,16 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Slider } from '@/components/ui/slider';
 import { 
   Calculator, Loader2, Upload, Building2, Scissors,
-  TrendingUp, Wallet, Percent, PiggyBank, Info
+  Info
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/formatters';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUniversalUpload, type UploadedFileInfo } from '@/hooks/useUniversalUpload';
+import { UploadResultCard } from '@/components/shared/UploadResultCard';
 import { BestandCalculation } from './BestandCalculation';
 import { AufteilerCalculation } from './AufteilerCalculation';
 
@@ -36,10 +37,14 @@ interface ExtractedValues {
 
 export function StandaloneCalculatorPanel() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { activeTenantId } = useAuth();
+  const { upload, progress, uploadedFiles, clearUploadedFiles } = useUniversalUpload();
   const [activeCalc, setActiveCalc] = React.useState<'bestand' | 'aufteiler'>('bestand');
   const [isDragging, setIsDragging] = React.useState(false);
   const [isExtracting, setIsExtracting] = React.useState(false);
   const [hasCalculated, setHasCalculated] = React.useState(false);
+  const [uploadedFile, setUploadedFile] = React.useState<UploadedFileInfo | null>(null);
+  const [uploadStatus, setUploadStatus] = React.useState<'uploaded' | 'analyzing' | 'done' | 'error'>('uploaded');
   
   // Input values (manual or from extraction)
   const [values, setValues] = React.useState<ExtractedValues>({
@@ -86,24 +91,37 @@ export function StandaloneCalculatorPanel() {
       return;
     }
 
+    if (!activeTenantId) {
+      toast.error('Kein aktiver Tenant');
+      return;
+    }
+
     try {
       setIsExtracting(true);
+      setUploadStatus('uploaded');
 
-      // Upload to temporary location
-      const fileName = `temp/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
-        .upload(fileName, file, { upsert: true });
+      // Phase 1: Upload via useUniversalUpload
+      const result = await upload(file, {
+        moduleCode: 'MOD_12',
+        source: 'standalone_calc',
+        triggerAI: false,
+        onFileUploaded: (fileInfo) => {
+          setUploadedFile(fileInfo);
+        },
+      });
 
-      if (uploadError) throw uploadError;
+      if (result?.error || !result?.storagePath) {
+        throw new Error(result?.error || 'Upload fehlgeschlagen');
+      }
 
-      // Call extraction function for standalone mode
+      // Phase 2: Extract data using the storagePath
+      setUploadStatus('analyzing');
+
       const { data: extractResult, error: extractError } = await supabase.functions
         .invoke('sot-acq-offer-extract', {
           body: {
-            documentPath: uploadData.path,
-            standaloneMode: true, // Don't save to DB
+            documentPath: result.storagePath,
+            standaloneMode: true,
           },
         });
 
@@ -125,13 +143,12 @@ export function StandaloneCalculatorPanel() {
         factor: parseFloat(factor.toFixed(1)),
       });
 
+      setUploadStatus('done');
       toast.success('Werte aus Exposé extrahiert');
-
-      // Cleanup temp file
-      await supabase.storage.from('acq-documents').remove([uploadData.path]);
 
     } catch (error: any) {
       console.error('Extraction error:', error);
+      setUploadStatus('error');
       toast.error('Fehler bei der Extraktion: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsExtracting(false);
@@ -217,6 +234,18 @@ export function StandaloneCalculatorPanel() {
             disabled={isExtracting}
           />
         </div>
+
+        {/* Upload Result Card */}
+        {uploadedFile && (
+          <UploadResultCard
+            file={uploadedFile}
+            status={uploadStatus}
+            onRemove={() => {
+              setUploadedFile(null);
+              setUploadStatus('uploaded');
+            }}
+          />
+        )}
 
         {/* Calculator Type Tabs */}
         <Tabs value={activeCalc} onValueChange={(v) => setActiveCalc(v as 'bestand' | 'aufteiler')}>

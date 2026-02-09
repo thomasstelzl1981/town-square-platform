@@ -105,7 +105,7 @@ export function FinanceUploadZone({
         objectType: target.objectType,
         objectId: target.objectId,
         docTypeHint: docType,
-        triggerAI: true,
+        triggerAI: false,
         parseMode: 'financing',
         source: 'finance_upload',
       });
@@ -143,7 +143,7 @@ export function FinanceUploadZone({
           objectType: target.objectType,
           objectId: target.objectId,
           docTypeHint: docType,
-          triggerAI: true,
+          triggerAI: false,
           parseMode: 'financing',
           source: 'finance_upload',
         });
