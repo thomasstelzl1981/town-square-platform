@@ -99,7 +99,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "integrations", component: "Integrations", title: "Integrationen" },
     { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
     { path: "oversight", component: "Oversight", title: "Oversight" },
-    { path: "audit", component: "AuditLog", title: "Audit Log" },
+    { path: "audit", component: "AuditHub", title: "Audit Hub" },
     
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
     { path: "inbox", component: "Inbox", title: "Posteingang" },

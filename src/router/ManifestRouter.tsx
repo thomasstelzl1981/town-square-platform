@@ -67,6 +67,7 @@ import Integrations from '@/pages/admin/Integrations';
 import CommunicationHub from '@/pages/admin/CommunicationHub';
 import Oversight from '@/pages/admin/Oversight';
 import AuditLog from '@/pages/admin/AuditLog';
+const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
 import AdminKiOfficeEmail from '@/pages/admin/ki-office/AdminKiOfficeEmail';
 import AdminKiOfficeKontakte from '@/pages/admin/ki-office/AdminKiOfficeKontakte';
 import AdminKiOfficeDashboard from '@/pages/admin/ki-office/AdminKiOfficeDashboard';
@@ -206,6 +207,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   CommunicationHub,
   Oversight,
   AuditLog,
+  AuditHub,
   AdminKiOfficeEmail,
   AdminKiOfficeKontakte,
   AdminKiOfficeDashboard,

@@ -45,6 +45,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'Integrations': Plug,
   'Oversight': Eye,
   'AuditLog': FileText,
+  'AuditHub': FileText,
   'Agreements': FileCheck,
   'Inbox': Inbox,
   'LeadPool': Target,
