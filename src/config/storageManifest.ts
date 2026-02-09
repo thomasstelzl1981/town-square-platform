@@ -357,6 +357,22 @@ export function getModuleConfig(moduleCode: string): ModuleStorageConfig | undef
 }
 
 /**
+ * Returns a display name with zero-padded module number.
+ * e.g. getModuleDisplayName('MOD_04') => "04 — Immobilien"
+ */
+export function getModuleDisplayName(moduleCode: string): string {
+  const config = STORAGE_MANIFEST[moduleCode];
+  if (!config) return moduleCode;
+  const num = String(config.display_order).padStart(2, '0');
+  return `${num} — ${config.root_name}`;
+}
+
+/** All module configs sorted by display_order */
+export function getSortedModules(): ModuleStorageConfig[] {
+  return Object.values(STORAGE_MANIFEST).sort((a, b) => a.display_order - b.display_order);
+}
+
+/**
  * Build the canonical blob-storage path for a file upload.
  *
  * Pattern: {tenantId}/{moduleCode}/{entityId}/{filename}
