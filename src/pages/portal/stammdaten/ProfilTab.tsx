@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2 } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProfileFormData {
@@ -631,6 +634,9 @@ export function ProfilTab() {
         </CardContent>
       </Card>
 
+      {/* WhatsApp Business Settings */}
+      <WhatsAppSettingsSection userId={user?.id} isDevelopmentMode={isDevelopmentMode} />
+
       <div className="flex justify-end">
         <Button type="submit" disabled={updateProfile.isPending}>
           {updateProfile.isPending ? (
@@ -642,5 +648,198 @@ export function ProfilTab() {
         </Button>
       </div>
     </form>
+  );
+}
+
+// =============================================================================
+// WhatsApp Settings Section (separate component for clean separation)
+// =============================================================================
+
+function WhatsAppSettingsSection({ userId, isDevelopmentMode }: { userId?: string; isDevelopmentMode: boolean }) {
+  const queryClient = useQueryClient();
+
+  // Fetch WhatsApp user settings
+  const { data: waSettings, isLoading: waLoading } = useQuery({
+    queryKey: ['whatsapp-user-settings', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from('whatsapp_user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  // Fetch WhatsApp account (tenant level)
+  const { data: waAccount } = useQuery({
+    queryKey: ['whatsapp-account'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('whatsapp_accounts')
+        .select('system_phone_e164, status')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const [ownerControlE164, setOwnerControlE164] = React.useState('');
+  const [autoReplyEnabled, setAutoReplyEnabled] = React.useState(false);
+  const [autoReplyText, setAutoReplyText] = React.useState(
+    'Vielen Dank für Ihre Nachricht. Wir melden uns in Kürze.'
+  );
+
+  React.useEffect(() => {
+    if (waSettings) {
+      setOwnerControlE164(waSettings.owner_control_e164 || '');
+      setAutoReplyEnabled(waSettings.auto_reply_enabled || false);
+      setAutoReplyText(waSettings.auto_reply_text || 'Vielen Dank für Ihre Nachricht. Wir melden uns in Kürze.');
+    }
+  }, [waSettings]);
+
+  const saveWaSettings = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error('Not authenticated');
+
+      // Get tenant_id via RPC
+      const { data: tenantId } = await supabase.rpc('get_user_tenant_id');
+      if (!tenantId) throw new Error('No organization found');
+
+      const payload = {
+        tenant_id: tenantId,
+        user_id: userId,
+        owner_control_e164: ownerControlE164 || null,
+        auto_reply_enabled: autoReplyEnabled,
+        auto_reply_text: autoReplyText,
+      };
+
+      const { error } = await supabase
+        .from('whatsapp_user_settings')
+        .upsert(payload, { onConflict: 'tenant_id,user_id' });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-user-settings'] });
+      toast.success('WhatsApp-Einstellungen gespeichert');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+
+  const statusColor = waAccount?.status === 'connected' ? 'text-green-600' : 
+    waAccount?.status === 'error' ? 'text-destructive' : 'text-yellow-600';
+  const statusLabel = waAccount?.status === 'connected' ? 'Verbunden' :
+    waAccount?.status === 'error' ? 'Fehler' : 'Ausstehend';
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          WhatsApp Business
+          {waAccount && (
+            <Badge variant="outline" className={statusColor}>
+              ● {statusLabel}
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>
+          Verbindungseinstellungen für WhatsApp Business und Armstrong-Steuerung.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* System Number (read-only) */}
+        {waAccount && (
+          <FormSection>
+            <FormInput
+              label="Systemnummer (WhatsApp Business)"
+              name="system_phone"
+              value={waAccount.system_phone_e164}
+              disabled
+              hint="Die WhatsApp Business Nummer Ihres Systems"
+            />
+          </FormSection>
+        )}
+
+        {!waAccount && (
+          <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+            <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p>WhatsApp Business ist noch nicht konfiguriert.</p>
+            <p className="text-xs mt-1">Kontaktieren Sie den Administrator für die Einrichtung.</p>
+          </div>
+        )}
+
+        {/* Owner-Control Number */}
+        <div className="space-y-2">
+          <FormSection>
+            <FormInput
+              label="Owner-Control Nummer"
+              name="owner_control_e164"
+              type="tel"
+              value={ownerControlE164}
+              onChange={(e) => setOwnerControlE164(e.target.value)}
+              placeholder="+49 170 1234567"
+              hint="Ihre persönliche Nummer für Armstrong-Befehle via WhatsApp"
+            />
+          </FormSection>
+          <div className="flex items-start gap-2 p-3 rounded-md bg-primary/5 border border-primary/10">
+            <Bot className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Armstrong reagiert <strong>nur</strong> auf Nachrichten von dieser Nummer.
+              Alle anderen WhatsApp-Chats sind normaler Messenger-Verkehr ohne KI-Verarbeitung.
+            </p>
+          </div>
+        </div>
+
+        {/* Auto-Reply */}
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Auto-Reply</Label>
+              <p className="text-xs text-muted-foreground">
+                Automatische Antwort auf eingehende Nachrichten (nicht für Owner-Control).
+              </p>
+            </div>
+            <Switch
+              checked={autoReplyEnabled}
+              onCheckedChange={setAutoReplyEnabled}
+            />
+          </div>
+          {autoReplyEnabled && (
+            <Textarea
+              value={autoReplyText}
+              onChange={(e) => setAutoReplyText(e.target.value)}
+              placeholder="Vielen Dank für Ihre Nachricht..."
+              rows={3}
+              className="text-sm"
+            />
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => saveWaSettings.mutate()}
+            disabled={saveWaSettings.isPending}
+          >
+            {saveWaSettings.isPending ? (
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-3 w-3" />
+            )}
+            WhatsApp-Einstellungen speichern
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

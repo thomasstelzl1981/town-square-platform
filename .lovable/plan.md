@@ -1,84 +1,66 @@
 
+# Armstrong × WhatsApp Business Integration — MVP
 
-# Ehrliche Einschaetzung: Noch eine Analyse — Ja oder Nein?
-
----
-
-## Das Ergebnis meiner Pruefung gerade eben
-
-Ich habe soeben alle relevanten Dimensionen eures Projekts geprueft. Hier ist der aktuelle Zustand:
-
-| Dimension | Status | Details |
-|-----------|--------|---------|
-| Fehlende DB-Indizes | ERLEDIGT | check_missing_indexes() = 0 |
-| Armstrong Views | ERLEDIGT | security_invoker=on korrekt gesetzt |
-| Zone-3 Views (public) | KORREKT | Bewusst DEFINER, kein Fix noetig |
-| RLS aktiviert | KORREKT | Alle 160 Tabellen haben RLS |
-| RLS-Policies vorhanden | KORREKT | 556 Policies auf 160 Tabellen |
-| Functions search_path | ERLEDIGT | Linter meldet keine eigenen Functions mehr |
-| Keine @ts-ignore im Code | KORREKT | 0 Treffer |
-| CORS-Headers auf Edge Functions | KORREKT | Alle 50 Functions haben CORS |
-| Kein toter Code (useSmartUpload) | ERLEDIGT | Geloescht |
-| MOD-00 Dokumentation | ERLEDIGT | docs/modules/MOD-00_DASHBOARD.md vorhanden |
-| Golden Path Docs | ERLEDIGT | 7/7 vorhanden |
+## Status: Phase 1 IMPLEMENTIERT ✅
 
 ---
 
-## Was NICHT perfekt ist, aber KEIN Blocker
+## Was wurde gebaut
 
-### 1. ~195 console.log() im Frontend-Code
-Das sind Debug-Ausgaben. Manche sind gewollt (Armstrong-Logs mit Prefix `[Armstrong]`), andere sind Platzhalter (`onClick: () => console.log('Katalog')`). Das ist normal fuer ein Projekt in aktiver Entwicklung. **Aufraeum-Aktion moeglich, aber nicht dringend.**
+### Datenbank (6 Tabellen)
+| Tabelle | RLS | Realtime | Status |
+|---------|-----|----------|--------|
+| whatsapp_accounts | ✅ Tenant-Isolation | — | ✅ |
+| whatsapp_user_settings | ✅ User+Tenant | — | ✅ |
+| whatsapp_conversations | ✅ Tenant-Isolation | — | ✅ |
+| whatsapp_messages | ✅ Tenant-Isolation | ✅ | ✅ |
+| whatsapp_attachments | ✅ Tenant-Isolation | — | ✅ |
+| armstrong_command_events | ✅ Tenant-Isolation | — | ✅ |
 
-### 2. ~65 TODO-Kommentare
-Offene Implementierungspunkte wie "TODO: Save offer amount" oder "TODO: Navigate to scope definition". Das sind Feature-Markierungen — kein technisches Problem. **Sie verschwinden automatisch, wenn die Features implementiert werden.**
+### Edge Functions (3 deployed)
+| Function | Zweck | Status |
+|----------|-------|--------|
+| sot-whatsapp-webhook | Meta WABA Webhook (Verify + Receive + Owner-Control Gate + Auto-Reply) | ✅ |
+| sot-whatsapp-send | Outbound Messages via Meta API | ✅ |
+| sot-whatsapp-media | Media Download + DMS Storage (WhatsApp Eingang/YYYY-MM-DD/) | ✅ |
 
-### 3. ~147 Dateien mit `any`-Typ
-TypeScript-Stellen wo der Typ nicht exakt definiert ist (z.B. `catch (err: any)`). Das ist gaengige Praxis und kein Sicherheitsrisiko. **Kann schrittweise verbessert werden, aber nicht in einem grossen Cleanup.**
+### UI
+| Screen | Ort | Status |
+|--------|-----|--------|
+| WhatsApp Messenger | MOD-02 KI Office → Tile 6 "WhatsApp" | ✅ |
+| WhatsApp Settings | MOD-01 Stammdaten → Profil → WhatsApp Business | ✅ |
 
-### 4. 27 SECURITY DEFINER Functions
-Das sind interne System-Funktionen (z.B. `handle_new_user`, `is_platform_admin`, `get_user_tenant_id`). Diese MUESSEN DEFINER sein, weil sie auf Daten zugreifen, die der aufrufende User nicht direkt sehen darf. **Das ist korrekt so.**
-
----
-
-## Meine ehrliche Empfehlung
-
-**Nein, keine weitere Analyse-Runde starten.**
-
-Gruende:
-
-1. **Alle kritischen Befunde sind behoben.** Die drei Analyse-Runden haben alles Wichtige gefunden und gefixt: fehlende Indizes, View-Sicherheit, Function-Hardening, RLS-Policies, toter Code, fehlende Dokumentation.
-
-2. **Die verbleibenden Punkte sind Feature-Arbeit, keine Reparatur.** console.log-Aufraeuemen und TODO-Abarbeiten passiert natuerlich beim Weiterbauen.
-
-3. **Weitere Analysen finden nur noch Kleinstprobleme.** Das Verhaeltnis von Aufwand zu Nutzen sinkt stark. Die Architektur ist stabil, die Sicherheit ist gehaertet.
-
-4. **Das Risiko von "Ueberoptimierung" steigt.** Jede unnoetige Aenderung kann neue Probleme einfuehren. Euer Projekt hat 160 Tabellen, 556 RLS-Policies, 50 Edge Functions und 21 Module — das ist ein komplexes System, das jetzt gut funktioniert.
-
----
-
-## Was stattdessen sinnvoll ist
-
-### Bei jedem neuen Feature automatisch pruefen
-
-Wenn wir das naechste Feature bauen, pruefe ich automatisch:
-- Neue Tabelle? → RLS-Policy, Index, public_id Trigger
-- Neue Edge Function? → CORS, Auth-Check, Error-Handling
-- Neues Modul? → Manifest-Eintrag, areaConfig, Dokumentation
-
-Das ist der nachhaltige Weg: **Qualitaet als Teil des Entwicklungsprozesses**, nicht als separate Analyse-Runde.
-
-### Einzige Ausnahme: Vor einem Go-Live
-
-Wenn das Projekt live geht (echte Nutzer, echte Daten), dann lohnt sich ein finaler Security-Audit. Aber dafuer ist es jetzt zu frueh — ihr baut noch aktiv Features.
+### Manifest
+| Eintrag | Status |
+|---------|--------|
+| routesManifest.ts: MOD-02 Tile "whatsapp" | ✅ |
+| armstrongManifest.ts: ARM.MOD02.WA_SEND_REPLY | ✅ |
+| armstrongManifest.ts: ARM.MOD02.WA_COMMAND_EXECUTE | ✅ |
 
 ---
 
-## Zusammenfassung
+## Noch nicht implementiert (Phase 2+3)
 
-| Frage | Antwort |
-|-------|---------|
-| Ist die Architektur sicher? | Ja — 160 Tabellen mit RLS, 556 Policies, alle Views korrekt |
-| Gibt es kritische Code-Fehler? | Nein — alle gefundenen Fehler wurden behoben |
-| Sollen wir weiter analysieren? | Nein — weiterarbeiten ist produktiver |
-| Wann naechste Analyse? | Vor dem Go-Live oder nach einem grossen Feature-Block |
+### Phase 2: Armstrong Command Pipeline
+- Intent-Erkennung via LLM fuer Owner-Control Nachrichten
+- Widget-/Draft-Erstellung aus WhatsApp-Befehlen
+- Armstrong-Feedback im Owner-Control Chat (Links zu Widgets)
 
+### Phase 3: Verfeinerung
+- Kontakt-Matching (WhatsApp-Nummer → contacts Tabelle)
+- Message Templates (fuer proaktive Nachrichten nach 24h)
+- Geschaeftszeiten-Logik fuer Auto-Reply
+- Read Receipts Synchronisation
+
+---
+
+## Secrets (noch einzutragen)
+
+| Secret | Beschreibung | Status |
+|--------|-------------|--------|
+| WHATSAPP_ACCESS_TOKEN | Meta WABA API Token | ⏳ Warten auf Verifizierung |
+| WHATSAPP_VERIFY_TOKEN | Webhook Verify Token | ⏳ Frei waehlbar bei Setup |
+| WHATSAPP_PHONE_NUMBER_ID | Phone Number ID | ⏳ Aus Meta Dashboard |
+
+Sobald die Meta Business Verifizierung abgeschlossen ist, koennen die Secrets
+ueber Lovable Cloud eingetragen werden.
