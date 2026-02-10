@@ -103,10 +103,10 @@ export const AKQUISE_WORKFLOW_STEPS: WorkflowStep[] = [
 ];
 
 export const SERVICES_WORKFLOW_STEPS: WorkflowStep[] = [
-  { id: 'katalog', label: 'Auswahl', path: 'katalog' },
-  { id: 'anfragen', label: 'Anfrage', path: 'anfragen' },
-  { id: 'auftraege', label: 'Bearbeitung', path: 'auftraege' },
-  { id: 'settings', label: 'Abnahme', path: 'settings' },
+  { id: 'amazon', label: 'Amazon', path: 'amazon' },
+  { id: 'otto-office', label: 'OTTO Office', path: 'otto-office' },
+  { id: 'miete24', label: 'Miete24', path: 'miete24' },
+  { id: 'bestellungen', label: 'Bestellungen', path: 'bestellungen' },
 ];
 
 export const PV_WORKFLOW_STEPS: WorkflowStep[] = [
