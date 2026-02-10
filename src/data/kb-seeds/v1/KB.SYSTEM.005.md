@@ -2,98 +2,74 @@
 item_code: KB.SYSTEM.005
 category: system
 content_type: article
-title_de: "Rollenmodell: platform_admin, org_admin, org_member, agent roles"
-summary_de: "Übersicht aller Rollen im System und ihrer Berechtigungen."
-version: "1.0.0"
+title_de: "Rollenmodell: 6 aktive Rollen + Tile-Steuerung"
+summary_de: "Konsolidiertes Rollenmodell mit membership_role als SSOT für Tile-Aktivierung."
+version: "2.0.0"
 status: "published"
 scope: "global"
 confidence: "verified"
 valid_until: null
-sources: []
+sources:
+  - "src/constants/rolesMatrix.ts (Code-SSOT)"
+  - "spec/current/01_platform/ACCESS_MATRIX.md"
 ---
 
 # Rollenmodell im System of a Town
 
-## Hierarchie der Rollen
+**SSOT:** `src/constants/rolesMatrix.ts`  
+**DB-Funktion:** `get_tiles_for_role(membership_role)`
+
+## Zwei Rollen-Systeme
+
+| System | Tabelle | Zweck |
+|--------|---------|-------|
+| `membership_role` | `memberships` | Tenant-bezogen, steuert Tile-Aktivierung |
+| `app_role` | `user_roles` | Global, steuert Zone-1-Zugang und Overrides |
+
+---
+
+## 6 Aktive Rollen
+
+| Rolle | membership_role | app_role | Module |
+|-------|----------------|----------|--------|
+| Platform Admin | `platform_admin` | `platform_admin` | Alle 21 |
+| Super-User | `org_admin` | `super_user` | Alle 21 |
+| Standardkunde | `org_admin` | — | 14 Basis |
+| Akquise-Manager | `akquise_manager` | `akquise_manager` | 14 + MOD-12 |
+| Finanzierungsmanager | `finance_manager` | `finance_manager` | 14 + MOD-11 |
+| Vertriebspartner | `sales_partner` | `sales_partner` | 14 + MOD-09/10 |
+
+---
+
+## Tile-Steuerung
+
+Die membership_role bestimmt automatisch die freigeschalteten Module:
 
 ```
-platform_admin
-    └── org_admin
-            └── org_member
-                    └── (agent_roles)
+org_admin        → 14 Basis-Module
+sales_partner    → 14 Basis + MOD-09, MOD-10
+finance_manager  → 14 Basis + MOD-11
+akquise_manager  → 14 Basis + MOD-12
+platform_admin   → Alle 21 Module
 ```
 
----
-
-## platform_admin
-
-**Scope:** Systemweit (Zone 1)
-
-**Berechtigungen:**
-- Zugriff auf Armstrong Console
-- Globale Action-Overrides
-- Knowledge Base: Alle Items publishen
-- Policies erstellen und aktivieren
-- Alle Organisationen einsehen (Governance)
-- Billing-Übersicht gesamt
-
-**Kann NICHT:**
-- Auf Kundendaten zugreifen (RLS)
-- Im Namen von Nutzern handeln
-
----
-
-## org_admin
-
-**Scope:** Eigene Organisation (Zone 2)
-
-**Berechtigungen:**
-- Vollzugriff auf alle Org-Daten
-- Nutzer einladen und verwalten
-- Immobilien anlegen/bearbeiten
-- Finanzierungen verwalten
-- Dokumente hochladen/verknüpfen
-- KB Items für Org publishen
-
-**Armstrong:** Alle Actions der Org
-
----
-
-## org_member
-
-**Scope:** Eigene Organisation, eingeschränkt (Zone 2)
-
-**Berechtigungen:**
-- Eigenes Profil verwalten
-- Dokumente hochladen
-- Favoriten verwalten
-- Finanzierung vorbereiten
-- Dashboard nutzen
-
-**Kann NICHT:**
-- Andere Nutzer verwalten
-- Immobilien-Stammdaten ändern
-- Mandanten-weite Einstellungen
-
----
-
-## Agent Roles (Spezialisiert)
-
-| Rolle | Beschreibung |
-|-------|--------------|
-| acq_manager | Akquise-Manager für Mandate |
-| finance_advisor | Finanzierungsberater |
-| property_manager | Objektverwalter |
-| support_agent | Support-Mitarbeiter |
-
-Diese Rollen ergänzen die Basisrollen um modulspezifische Berechtigungen.
+**Super-User:** membership_role bleibt `org_admin`, aber `user_roles.role = super_user` schaltet alle 21 Module frei.
 
 ---
 
 ## Rollenzuweisung
 
-Rollen werden zugewiesen über:
-1. `organization_members.role` (Basis)
-2. `profile_roles` Junction-Table (Spezialisiert)
+1. `memberships.role` — Tenant-bezogene Basis-Rolle
+2. `user_roles.role` — Globale Spezialrechte (Zone 1, Super-User)
 
-Armstrong prüft bei jeder Action: `roles_allowed` vs. User-Rollen
+Armstrong prüft bei jeder Action: `roles_allowed` vs. User-Rollen.
+
+---
+
+## Legacy-Rollen (im Enum, nicht aktiv)
+
+- `internal_ops` — Legacy
+- `renter_user` — Legacy
+- `future_room_web_user_lite` — Legacy
+
+Diese Werte verbleiben im Enum (Postgres erlaubt kein Entfernen), werden aber nicht mehr vergeben.

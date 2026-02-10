@@ -52,6 +52,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { PdfExportFooter } from '@/components/pdf';
+import { ROLES_CATALOG } from '@/constants/rolesMatrix';
 
 type Membership = Tables<'memberships'>;
 type Organization = Tables<'organizations'>;
@@ -62,17 +63,32 @@ interface MembershipWithOrg extends Membership {
 }
 
 // ============================================================================
-// P0-ROLE-AUDIT: All defined roles per ACCESS_MATRIX + membership_role enum
-// Roles: platform_admin, org_admin, internal_ops, sales_partner, renter_user, finance_manager
+// ROLES — abgeleitet aus SSOT (rolesMatrix.ts) + Legacy-Werte aus membership_role Enum
 // ============================================================================
+const LEGACY_MEMBERSHIP_ROLES: { value: MembershipRole; label: string }[] = [
+  { value: 'internal_ops', label: 'Internal Ops (Legacy)' },
+  { value: 'renter_user', label: 'Mieter (Legacy)' },
+  { value: 'future_room_web_user_lite', label: 'Web User Lite (Legacy)' },
+];
+
 const ROLES: { value: MembershipRole; label: string; restricted?: boolean; description?: string; variant?: 'default' | 'secondary' | 'outline' | 'destructive' }[] = [
-  { value: 'platform_admin', label: 'Platform Admin', restricted: true, description: 'God Mode, Zugriff auf alle Tenants', variant: 'default' },
-  { value: 'org_admin', label: 'Org Admin', description: 'Voller Zugriff auf eigenen Tenant', variant: 'secondary' },
-  { value: 'internal_ops', label: 'Internal User', description: 'Operativer Mitarbeiter', variant: 'outline' },
-  { value: 'sales_partner', label: 'Sales Partner', description: 'Vertriebspartner (MOD-08/09/10)', variant: 'outline' },
-  { value: 'renter_user', label: 'Mieter (Lite)', description: 'Mieter (Miety Andockpunkt)', variant: 'outline' },
-  { value: 'finance_manager', label: 'Finanzierungsmanager', description: 'Manager (MOD-11)', variant: 'secondary' },
-  { value: 'akquise_manager', label: 'Akquise-Manager', description: 'Manager (MOD-12)', variant: 'secondary' },
+  ...ROLES_CATALOG
+    .filter(r => !r.isLegacy)
+    .map(r => ({
+      value: r.membershipRole as MembershipRole,
+      label: r.label,
+      restricted: r.isSystem,
+      description: r.description,
+      variant: (r.isSystem ? 'default' : r.code === 'client_user' || r.code === 'super_user' ? 'secondary' : 'outline') as 'default' | 'secondary' | 'outline' | 'destructive',
+    }))
+    // Deduplicate by membershipRole (super_user + client_user both map to org_admin)
+    .filter((role, index, self) => self.findIndex(r => r.value === role.value) === index),
+  ...LEGACY_MEMBERSHIP_ROLES.map(r => ({
+    ...r,
+    restricted: false,
+    description: 'Legacy — nicht mehr aktiv vergeben',
+    variant: 'outline' as const,
+  })),
 ];
 
 export default function UsersPage() {

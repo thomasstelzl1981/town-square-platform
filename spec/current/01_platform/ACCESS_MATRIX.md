@@ -1,94 +1,74 @@
 # ACCESS MATRIX
 
-**Version:** v1.0  
-**Datum:** 2026-01-26
+**Version:** v2.0  
+**Datum:** 2026-02-10  
+**SSOT:** `src/constants/rolesMatrix.ts` (Code-SSOT für Rollen und Tile-Mapping)
 
 ---
 
-## Rollen-Übersicht
+## Rollen-Übersicht (6 aktive Rollen)
 
-| Rolle | Zone | Beschreibung |
-|-------|------|--------------|
-| `platform_admin` | Zone 1 | God Mode, voller Zugriff auf alle Tenants |
-| `org_admin` | Zone 2 | Tenant-Admin, voller Zugriff auf eigenen Tenant |
-| `internal_ops` | Zone 2 | Operativer Mitarbeiter |
-| `sales_partner` | Zone 2 | Vertriebspartner (MOD-09/10) |
-| `renter_user` | Zone 2 | Mieter (Miety Andockpunkt) |
+| Rolle | membership_role | app_role | Zone | Module | Beschreibung |
+|-------|----------------|----------|------|--------|--------------|
+| Platform Admin | `platform_admin` | `platform_admin` | Zone 1 | Alle 21 | God Mode, Zugriff auf alle Tenants |
+| Super-User | `org_admin` | `super_user` | Zone 2 | Alle 21 | Vollzugriff durch app_role Override |
+| Standardkunde | `org_admin` | — | Zone 2 | 14 Basis | Automatisch bei Signup |
+| Akquise-Manager | `akquise_manager` | `akquise_manager` | Zone 2 | 14 + MOD-12 | Akquise-Spezialist |
+| Finanzierungsmanager | `finance_manager` | `finance_manager` | Zone 2 | 14 + MOD-11 | Finanzierungsspezialist |
+| Vertriebspartner | `sales_partner` | `sales_partner` | Zone 2 | 14 + MOD-09/10 | Partner mit Lead-Zugang |
+
+### Legacy-Rollen (im Enum, nicht aktiv vergeben)
+
+| membership_role | Status |
+|----------------|--------|
+| `internal_ops` | Legacy — nicht verwendet |
+| `renter_user` | Legacy — nicht verwendet |
+| `future_room_web_user_lite` | Legacy — nicht verwendet |
 
 ---
 
 ## Modul-Zugriff nach Rolle
 
-| Modul | platform_admin | org_admin | internal_ops | sales_partner | renter_user |
-|-------|---------------|-----------|--------------|---------------|-------------|
-| MOD-01 Stammdaten | ✓ | ✓ | ✓ (read) | ✓ (own) | ✓ (own) |
-| MOD-02 KI Office | ✓ | ✓ | ✓ | ✓ | — |
-| MOD-03 DMS | ✓ | ✓ | ✓ | ✓ (limited) | ✓ (limited) |
-| MOD-04 Immobilien | ✓ | ✓ | ✓ | — | — |
-| MOD-05 MSV | ✓ | ✓ | ✓ | — | ✓ (own unit) |
-| MOD-06 Verkauf | ✓ | ✓ | ✓ | — | — |
-| MOD-07 Finanzierung | ✓ | ✓ | ✓ | — | — |
-| MOD-08 Investment-Suche | ✓ | ✓ | ✓ | ✓ | — |
-| MOD-09 Vertriebspartner | ✓ | — | — | ✓ | — |
-| MOD-10 Leadgenerierung | ✓ | — | — | ✓ | — |
+### 14 Basis-Module (alle Rollen)
+
+MOD-00 Dashboard, MOD-01 Stammdaten, MOD-02 KI Office, MOD-03 DMS,
+MOD-04 Immobilien, MOD-05 MSV, MOD-06 Verkauf, MOD-07 Finanzierung,
+MOD-08 Investment-Suche, MOD-15 Fortbildung, MOD-16 Services,
+MOD-17 Car-Management, MOD-18 Finanzanalyse, MOD-20 Miety
+
+### 7 Spezial-Module
+
+| Modul | platform_admin | super_user | client_user | akquise_manager | finance_manager | sales_partner |
+|-------|:-:|:-:|:-:|:-:|:-:|:-:|
+| MOD-09 Vertriebspartner | ✓ | ✓ | — | — | — | ✓ |
+| MOD-10 Leads | ✓ | ✓ | — | — | — | ✓ |
+| MOD-11 Finanzierungsmanager | ✓ | ✓ | — | — | ✓ | — |
+| MOD-12 Akquise-Manager | ✓ | ✓ | — | ✓ | — | — |
+| MOD-13 Projekte | ✓ | ✓ | — | — | — | — |
+| MOD-14 Communication Pro | ✓ | ✓ | — | — | — | — |
+| MOD-19 Photovoltaik | ✓ | ✓ | — | — | — | — |
 
 ---
 
-## Modul-Sichtbarkeit nach Registrierung
+## Tile-Steuerung
 
-| Registrierungsweg | Sichtbare Module |
-|-------------------|------------------|
-| SoT (System of a Town) | MOD-01 bis MOD-08 |
-| Kaufy (Marktplatz) | MOD-01 bis MOD-10 |
+Die Tile-Aktivierung wird durch die DB-Funktion `get_tiles_for_role(membership_role)` gesteuert.
+Bei Signup ruft `handle_new_user()` diese Funktion auf.
+
+Für Super-User: `membership_role = org_admin` + Eintrag in `user_roles` mit `app_role = super_user` → alle 21 Module.
 
 ---
 
 ## Zone 1 Admin-Funktionen
 
-| Funktion | platform_admin | org_admin |
-|----------|---------------|-----------|
-| Organizations CRUD | ✓ | — |
-| User Management | ✓ | — |
-| Tile Catalog | ✓ | — |
-| Integrations Registry | ✓ | — |
-| Oversight (alle Tenants) | ✓ | — |
-| Lead Pool | ✓ | — |
-| Partner Verification | ✓ | — |
-| Commission Approval | ✓ | — |
-| Audit Log (global) | ✓ | — |
-
----
-
-## Daten-Zugriff nach Rolle
-
-### Properties/Units
-
-| Aktion | platform_admin | org_admin | internal_ops | sales_partner |
-|--------|---------------|-----------|--------------|---------------|
-| List (own tenant) | ✓ | ✓ | ✓ | — |
-| Create | ✓ | ✓ | — | — |
-| Update | ✓ | ✓ | ✓ | — |
-| Delete | ✓ | ✓ | — | — |
-
-### Listings (MOD-06)
-
-| Aktion | platform_admin | org_admin | internal_ops | sales_partner |
-|--------|---------------|-----------|--------------|---------------|
-| List (own tenant) | ✓ | ✓ | ✓ | — |
-| List (partner-visible) | — | — | — | ✓ |
-| Create | ✓ | ✓ | — | — |
-| Update | ✓ | ✓ | ✓ | — |
-| Publish | ✓ | ✓ | — | — |
-
-### Leads (MOD-10)
-
-| Aktion | platform_admin | org_admin | sales_partner |
-|--------|---------------|-----------|---------------|
-| Pool (all) | ✓ | — | — |
-| Assign | ✓ | — | — |
-| Own Leads | — | — | ✓ |
-| Accept/Reject | — | — | ✓ |
-| Deal CRUD | — | — | ✓ |
+| Funktion | Nur platform_admin |
+|----------|--------------------|
+| Organizations CRUD | ✓ |
+| User Management | ✓ |
+| Tile Catalog | ✓ |
+| Knowledge Base (global) | ✓ |
+| Policies | ✓ |
+| Audit Log (global) | ✓ |
 
 ---
 
@@ -110,24 +90,7 @@ FOR ALL
 USING (public.is_platform_admin());
 ```
 
-### Partner-Visibility (Listings)
-
-```sql
--- Partner sieht nur freigegebene Listings
-CREATE POLICY "partner_listings" ON listings
-FOR SELECT
-USING (
-  partner_visibility = 'all'
-  OR EXISTS (
-    SELECT 1 FROM listing_partner_visibility lpv
-    WHERE lpv.listing_id = listings.id
-    AND lpv.partner_org_id IN (
-      SELECT tenant_id FROM memberships WHERE user_id = auth.uid()
-    )
-  )
-);
-```
-
 ---
 
-*Dieses Dokument definiert die Zugriffskontrolle für das gesamte System.*
+*Dieses Dokument wird automatisch aus `src/constants/rolesMatrix.ts` abgeleitet.  
+Code-SSOT → Spec-Dokumentation → KB-Seed.*
