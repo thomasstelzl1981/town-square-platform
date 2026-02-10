@@ -5607,11 +5607,13 @@ export type Database = {
           file_path: string | null
           file_size_bytes: number | null
           id: string
+          mandate_id: string | null
           metadata: Json
           mime_type: string | null
           notes: string | null
           processed_at: string | null
           recipient_info: Json
+          routed_to_zone2_at: string | null
           sender_info: Json
           source: Database["public"]["Enums"]["inbound_source"]
           status: Database["public"]["Enums"]["inbound_item_status"]
@@ -5629,11 +5631,13 @@ export type Database = {
           file_path?: string | null
           file_size_bytes?: number | null
           id?: string
+          mandate_id?: string | null
           metadata?: Json
           mime_type?: string | null
           notes?: string | null
           processed_at?: string | null
           recipient_info?: Json
+          routed_to_zone2_at?: string | null
           sender_info?: Json
           source: Database["public"]["Enums"]["inbound_source"]
           status?: Database["public"]["Enums"]["inbound_item_status"]
@@ -5651,11 +5655,13 @@ export type Database = {
           file_path?: string | null
           file_size_bytes?: number | null
           id?: string
+          mandate_id?: string | null
           metadata?: Json
           mime_type?: string | null
           notes?: string | null
           processed_at?: string | null
           recipient_info?: Json
+          routed_to_zone2_at?: string | null
           sender_info?: Json
           source?: Database["public"]["Enums"]["inbound_source"]
           status?: Database["public"]["Enums"]["inbound_item_status"]
@@ -5681,6 +5687,13 @@ export type Database = {
             columns: ["assigned_tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_items_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "postservice_mandates"
             referencedColumns: ["id"]
           },
         ]
@@ -5732,9 +5745,12 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          mandate_id: string | null
           match_conditions: Json
           name: string
           priority: number
+          target_module: string | null
+          target_tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -5745,9 +5761,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          mandate_id?: string | null
           match_conditions?: Json
           name: string
           priority?: number
+          target_module?: string | null
+          target_tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -5758,12 +5777,30 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          mandate_id?: string | null
           match_conditions?: Json
           name?: string
           priority?: number
+          target_module?: string | null
+          target_tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inbound_routing_rules_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "postservice_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_routing_rules_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       integration_registry: {
         Row: {
@@ -8440,6 +8477,53 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      postservice_mandates: {
+        Row: {
+          contract_terms: Json
+          created_at: string
+          id: string
+          notes: string | null
+          payload_json: Json
+          requested_by_user_id: string
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          contract_terms?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payload_json?: Json
+          requested_by_user_id: string
+          status?: string
+          tenant_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          contract_terms?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payload_json?: Json
+          requested_by_user_id?: string
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postservice_mandates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
