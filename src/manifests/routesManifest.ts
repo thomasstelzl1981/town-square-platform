@@ -122,6 +122,15 @@ export const zone1Admin: ZoneDefinition = {
     { path: "futureroom/finanzierungsmanager", component: "FutureRoomManagers", title: "Finanzierungsmanager" },
     { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
     { path: "futureroom/monitoring", component: "FutureRoomMonitoring", title: "Monitoring" },
+    // Social Media (Kaufy Publishing + Partner-Mandatsverwaltung)
+    { path: "social-media", component: "SocialMediaDashboard", title: "Social Media" },
+    { path: "social-media/kampagnen", component: "SocialMediaKampagnen", title: "Kampagnen" },
+    { path: "social-media/creator", component: "SocialMediaCreator", title: "Creator" },
+    { path: "social-media/vertrieb", component: "SocialMediaVertrieb", title: "Social Vertrieb" },
+    { path: "social-media/vertrieb/:id", component: "SocialMediaVertriebDetail", title: "Mandat Detail", dynamic: true },
+    { path: "social-media/leads", component: "SocialMediaLeads", title: "Leads & Routing" },
+    { path: "social-media/templates", component: "SocialMediaTemplates", title: "Templates & CI" },
+    { path: "social-media/abrechnung", component: "SocialMediaAbrechnung", title: "Abrechnung" },
     // Agents
     { path: "agents", component: "AgentsDashboard", title: "Agents" },
     { path: "agents/catalog", component: "AgentsCatalog", title: "Agenten-Katalog" },
@@ -333,6 +342,13 @@ export const zone2Portal: ZoneDefinition = {
         { path: "meine", component: "MeineTab", title: "Meine Leads" },
         { path: "pipeline", component: "PipelineTab", title: "Pipeline" },
         { path: "werbung", component: "WerbungTab", title: "Werbung" },
+        // Selfie Ads Studio (Kaufy Social Media Partner-Beauftragung)
+        { path: "selfie-ads", component: "SelfieAdsStudio", title: "Selfie Ads Studio" },
+        { path: "selfie-ads-planen", component: "SelfieAdsPlanen", title: "Kampagne planen" },
+        { path: "selfie-ads-summary", component: "SelfieAdsSummary", title: "Mandat Zusammenfassung" },
+        { path: "selfie-ads-kampagnen", component: "SelfieAdsKampagnen", title: "Meine Kampagnen" },
+        { path: "selfie-ads-performance", component: "SelfieAdsPerformance", title: "Performance" },
+        { path: "selfie-ads-abrechnung", component: "SelfieAdsAbrechnung", title: "Abrechnung" },
       ],
     },
     // =========================================================================

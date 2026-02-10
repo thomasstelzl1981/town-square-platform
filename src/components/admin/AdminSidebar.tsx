@@ -7,7 +7,8 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield
+  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield,
+  Megaphone, Share2
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,6 +90,15 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'ArmstrongTestHarness': FlaskConical,
   // Feature Activation
   'RolesManagement': Shield,
+  // Social Media
+  'SocialMediaDashboard': Megaphone,
+  'SocialMediaKampagnen': Share2,
+  'SocialMediaCreator': Sparkles,
+  'SocialMediaVertrieb': Briefcase,
+  'SocialMediaVertriebDetail': Briefcase,
+  'SocialMediaLeads': Target,
+  'SocialMediaTemplates': FileText,
+  'SocialMediaAbrechnung': CreditCard,
 };
 
 // Group configuration for grouping routes
@@ -101,13 +111,14 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
   'foundation': { label: 'Tenants & Access', priority: 1 },
   'masterdata': { label: 'Masterdata', priority: 2 },
   'ki-office': { label: 'KI Office', priority: 3 },
-  'armstrong': { label: 'Armstrong Zone 1', priority: 4 },
-  'activation': { label: 'Feature Activation', priority: 5 },
-  'backbone': { label: 'Backbone', priority: 6 },
-  'desks': { label: 'Operative Desks', priority: 7 },
-  'agents': { label: 'AI Agents', priority: 8 },
-  'system': { label: 'System', priority: 9 },
-  'platformAdmin': { label: 'Platform Admin', priority: 10 },
+  'social-media': { label: 'Social Media', priority: 4 },
+  'armstrong': { label: 'Armstrong Zone 1', priority: 5 },
+  'activation': { label: 'Feature Activation', priority: 6 },
+  'backbone': { label: 'Backbone', priority: 7 },
+  'desks': { label: 'Operative Desks', priority: 8 },
+  'agents': { label: 'AI Agents', priority: 9 },
+  'system': { label: 'System', priority: 10 },
+  'platformAdmin': { label: 'Platform Admin', priority: 11 },
 };
 
 // Route to group mapping via prefix
@@ -128,6 +139,10 @@ function getGroupKey(path: string, component: string): string {
   // Armstrong Zone 1
   if (path.startsWith('armstrong')) {
     return 'armstrong';
+  }
+  // Social Media
+  if (path.startsWith('social-media')) {
+    return 'social-media';
   }
   // Feature Activation (inkl. Partner-Verifizierung und Rollen)
   if (path === 'tiles' || path === 'partner-verification' || path === 'roles') {
@@ -190,6 +205,17 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('acquiary/') ||
     path.startsWith('agents/')
   )) {
+    return false;
+  }
+  // Social Media - show dashboard + all sub-items
+  if (path === 'social-media' || 
+      path === 'social-media/kampagnen' || path === 'social-media/creator' ||
+      path === 'social-media/vertrieb' || path === 'social-media/leads' ||
+      path === 'social-media/templates' || path === 'social-media/abrechnung') {
+    return true;
+  }
+  // Social Media detail routes - hide
+  if (path.startsWith('social-media/vertrieb/')) {
     return false;
   }
   // FutureRoom sub-items are accessed via internal tabs, NOT sidebar
