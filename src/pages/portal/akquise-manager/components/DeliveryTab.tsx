@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { 
   Send, FileText, Building2, Loader2, CheckCircle2, 
   Clock, Eye, Download, ThumbsUp, ThumbsDown, Package
@@ -238,7 +239,10 @@ export function DeliveryTab({ mandateId, mandateCode, clientName }: DeliveryTabP
               </Card>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notizen zur Präsentation (optional)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Notizen zur Präsentation (optional)</label>
+                  <DictationButton onTranscript={(text) => setPresentationNotes(prev => prev + (prev ? ' ' : '') + text)} />
+                </div>
                 <Textarea 
                   value={presentationNotes}
                   onChange={e => setPresentationNotes(e.target.value)}

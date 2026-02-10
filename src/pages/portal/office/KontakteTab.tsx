@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -579,7 +580,10 @@ export function KontakteTab() {
 
       {/* Section 4: Notizen */}
       <div className="space-y-2">
-        <Label htmlFor="notes">Notizen</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notes">Notizen</Label>
+          <DictationButton onTranscript={(text) => setFormData(prev => ({ ...prev, notes: (prev.notes || '') + ((prev.notes || '') ? ' ' : '') + text }))} />
+        </div>
         <Textarea
           id="notes"
           value={formData.notes}
