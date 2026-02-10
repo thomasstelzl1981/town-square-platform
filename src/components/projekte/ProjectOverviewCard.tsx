@@ -1,11 +1,24 @@
 /**
- * ProjectOverviewCard — Bilder oben, Facts links + Text rechts
+ * ProjectOverviewCard — 2-Column: Slideshow + Facts left, Description right
  */
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, MapPin, Home, Car, Ruler, Calendar, Flame, Zap } from 'lucide-react';
+import { MapPin, Home, Car, Ruler, Calendar, Flame, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DEMO_PROJECT_DESCRIPTION } from './demoProjectData';
+import { DEMO_PROJECT_DESCRIPTION, DEMO_PROJECT_IMAGES } from './demoProjectData';
+
+import demoExterior from '@/assets/demo-project-exterior.jpg';
+import demoLivingroom from '@/assets/demo-project-livingroom.jpg';
+import demoKitchen from '@/assets/demo-project-kitchen.jpg';
+import demoBathroom from '@/assets/demo-project-bathroom.jpg';
+
+const IMAGE_MAP: Record<string, string> = {
+  exterior: demoExterior,
+  livingroom: demoLivingroom,
+  kitchen: demoKitchen,
+  bathroom: demoBathroom,
+};
 
 interface ProjectOverviewCardProps {
   isDemo?: boolean;
@@ -18,6 +31,11 @@ function eur(v: number) {
 
 export function ProjectOverviewCard({ isDemo, projectData }: ProjectOverviewCardProps) {
   const data = projectData || DEMO_PROJECT_DESCRIPTION;
+  const [activeIdx, setActiveIdx] = useState(0);
+  const images = DEMO_PROJECT_IMAGES;
+
+  const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));
+  const next = () => setActiveIdx((i) => (i === images.length - 1 ? 0 : i + 1));
 
   const keyFacts = [
     { icon: Home, label: 'Wohneinheiten', value: `${data.total_units} WE` },
@@ -50,40 +68,67 @@ export function ProjectOverviewCard({ isDemo, projectData }: ProjectOverviewCard
           <Badge variant="outline" className="text-[10px] italic text-muted-foreground">Musterdaten</Badge>
         )}
 
-        {/* 4 Image Thumbnails */}
-        <div className="grid grid-cols-4 gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="relative bg-muted/30 rounded-lg h-[140px] flex items-center justify-center"
-            >
-              <Building2 className="h-8 w-8 text-muted-foreground/30" />
-              {isDemo && i === 0 && (
-                <span className="absolute bottom-1.5 left-1.5 text-[9px] text-muted-foreground/40">Beispiel</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Facts left + Description right */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 border-t">
-          {/* Left: Key Facts */}
-          <div className="space-y-2">
-            {keyFacts.map((fact) => (
-              <div key={fact.label} className="flex items-center gap-2.5 py-1">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <fact.icon className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[11px] text-muted-foreground">{fact.label}</p>
-                  <p className="text-xs font-medium">{fact.value}</p>
-                </div>
+        {/* 2-Column: Left (Slideshow + Facts) | Right (Description) */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 pt-2 border-t">
+          {/* Left column — 2/5 */}
+          <div className="md:col-span-2 space-y-4">
+            {/* Slideshow */}
+            <div className="relative rounded-xl overflow-hidden bg-muted/30">
+              <img
+                src={IMAGE_MAP[images[activeIdx].importKey]}
+                alt={images[activeIdx].label}
+                className="w-full h-[200px] object-cover"
+              />
+              {/* Label */}
+              <span className="absolute top-2 left-2 bg-background/70 backdrop-blur-sm text-xs font-medium px-2 py-0.5 rounded-md">
+                {images[activeIdx].label}
+              </span>
+              {/* Arrows */}
+              <button
+                onClick={prev}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center hover:bg-background/80 transition"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={next}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center hover:bg-background/80 transition"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              {/* Dots */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIdx(i)}
+                    className={cn(
+                      'w-2 h-2 rounded-full transition',
+                      i === activeIdx ? 'bg-primary' : 'bg-background/60'
+                    )}
+                  />
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Key Facts 2x3 grid */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {keyFacts.map((fact) => (
+                <div key={fact.label} className="flex items-center gap-2 py-1">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <fact.icon className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">{fact.label}</p>
+                    <p className="text-xs font-medium">{fact.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Right: Description */}
-          <div className="md:col-span-2 space-y-2.5 text-sm text-muted-foreground leading-relaxed">
+          {/* Right column — 3/5: Description full height */}
+          <div className="md:col-span-3 space-y-2.5 text-sm text-muted-foreground leading-relaxed">
             {data.description.map((para, i) => (
               <p key={i}>{para}</p>
             ))}

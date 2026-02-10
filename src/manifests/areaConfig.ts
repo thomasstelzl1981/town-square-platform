@@ -33,7 +33,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Operations',
     labelShort: 'Ops',
     icon: 'Settings',
-    modules: ['MOD-12', 'MOD-11', 'MOD-13', 'MOD-09', 'MOD-10'],
+    modules: ['MOD-09', 'MOD-13', 'MOD-10', 'MOD-11', 'MOD-12'],
   },
   {
     key: 'base',

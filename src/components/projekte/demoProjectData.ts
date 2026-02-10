@@ -159,6 +159,19 @@ export const DEMO_PROJECT_DESCRIPTION = {
   images_count: 4,
 };
 
+// ── Demo Project Images ─────────────────────────────────────────────────
+export interface DemoProjectImage {
+  label: string;
+  importKey: 'exterior' | 'livingroom' | 'kitchen' | 'bathroom';
+}
+
+export const DEMO_PROJECT_IMAGES: DemoProjectImage[] = [
+  { label: 'Außenansicht', importKey: 'exterior' },
+  { label: 'Wohnzimmer', importKey: 'livingroom' },
+  { label: 'Küche', importKey: 'kitchen' },
+  { label: 'Badezimmer', importKey: 'bathroom' },
+];
+
 // ── Demo Portfolio Row (for table) ──────────────────────────────────────
 // Re-export as array for direct table consumption
 export const DEMO_PORTFOLIO_ROWS: ProjectPortfolioRow[] = [DEMO_PROJECT];
