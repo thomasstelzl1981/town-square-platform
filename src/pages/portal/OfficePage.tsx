@@ -6,7 +6,6 @@
  * MOBILE: E-Mail, Kontakte, Kalender are hidden on mobile (redirects to Brief)
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Direct imports for instant sub-tab navigation
@@ -32,11 +31,9 @@ function MobileGuard({ children, allowedOnMobile = false }: {
 }
 
 const OfficePage = () => {
-  const content = moduleContents['MOD-02'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="email" replace />} />
       {/* Desktop-only tabs: E-Mail, Kontakte, Kalender */}
       <Route path="email" element={
         <MobileGuard allowedOnMobile={false}>

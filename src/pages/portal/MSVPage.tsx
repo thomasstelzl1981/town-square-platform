@@ -4,7 +4,7 @@
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 
 // Lazy load sub-page components
 const ObjekteTab = lazy(() => import('./msv/ObjekteTab'));
@@ -14,12 +14,9 @@ const EinstellungenTab = lazy(() => import('./msv/EinstellungenTab'));
 const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
 
 const MSVPage = () => {
-  const content = moduleContents['MOD-05'];
-
   return (
     <Routes>
-      {/* How It Works as index */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="objekte" replace />} />
       
       {/* Tile routes */}
       <Route path="objekte" element={<ObjekteTab />} />

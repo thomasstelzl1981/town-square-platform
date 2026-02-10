@@ -5,7 +5,7 @@
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 
 // Direct imports for instant sub-tab navigation
 import SelbstauskunftTab from './finanzierung/SelbstauskunftTab';
@@ -17,12 +17,9 @@ import StatusTab from './finanzierung/StatusTab';
 const AnfrageDetailPage = lazy(() => import('./finanzierung/AnfrageDetailPage'));
 
 const FinanzierungPage = () => {
-  const content = moduleContents['MOD-07'];
-
   return (
     <Routes>
-      {/* How It Works as index */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="selbstauskunft" replace />} />
       
       {/* Tile routes */}
       <Route path="selbstauskunft" element={<SelbstauskunftTab />} />

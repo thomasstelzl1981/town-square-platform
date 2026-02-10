@@ -1,4 +1,23 @@
-import { HowItWorksContent } from './ModuleHowItWorks';
+import { LucideIcon } from 'lucide-react';
+
+export interface HowItWorksContent {
+  moduleCode: string;
+  title: string;
+  oneLiner: string;
+  benefits: string[];
+  whatYouDo: string[];
+  flows: {
+    title: string;
+    steps: string[];
+  }[];
+  cta: string;
+  hint?: string;
+  subTiles: {
+    title: string;
+    route: string;
+    icon?: LucideIcon;
+  }[];
+}
 import {
   User, Building, CreditCard, Shield,
   Mail, FileText, Users, Calendar, Layers,

@@ -2,7 +2,7 @@
  * Investments Page (MOD-08) - Routes Pattern with How It Works
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import MandatTab from './investments/MandatTab';
 import MandatCreateWizard from './investments/MandatCreateWizard';
 import MandatDetail from './investments/MandatDetail';
@@ -12,12 +12,9 @@ import SimulationTab from './investments/SimulationTab';
 import InvestmentExposePage from './investments/InvestmentExposePage';
 
 const InvestmentsPage = () => {
-  const content = moduleContents['MOD-08'];
-
   return (
     <Routes>
-      {/* How It Works as index */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="suche" replace />} />
       
       {/* Tile routes */}
       <Route path="suche" element={<SucheTab />} />

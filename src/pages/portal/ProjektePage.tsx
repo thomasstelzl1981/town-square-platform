@@ -5,7 +5,7 @@
  * Navigation: Dashboard / Projekte / Vertrieb / Marketing
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { 
   ProjekteDashboard, 
   PortfolioTab, 
@@ -17,11 +17,9 @@ import {
 } from './projekte';
 
 export default function ProjektePage() {
-  const content = moduleContents['MOD-13'];
   return (
     <Routes>
-      {/* How It Works landing (first visit) */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="dashboard" replace />} />
       
       {/* Main Tile routes - 4-Tile Pattern */}
       <Route path="dashboard" element={<ProjekteDashboard />} />

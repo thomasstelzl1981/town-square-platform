@@ -10,8 +10,6 @@
  * OPTIMIZED: Direct imports for sub-tabs (parent is already lazy-loaded)
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
-
 // Direct imports for instant sub-tab navigation (module is already lazy-loaded)
 import { ProfilTab } from './stammdaten/ProfilTab';
 import { VertraegeTab } from './stammdaten/VertraegeTab';
@@ -19,11 +17,9 @@ import { AbrechnungTab } from './stammdaten/AbrechnungTab';
 import { SicherheitTab } from './stammdaten/SicherheitTab';
 
 const StammdatenPage = () => {
-  const content = moduleContents['MOD-01'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="profil" replace />} />
       <Route path="profil" element={<ProfilTab />} />
       <Route path="vertraege" element={<VertraegeTab />} />
       <Route path="abrechnung" element={<AbrechnungTab />} />

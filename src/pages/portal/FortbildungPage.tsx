@@ -3,7 +3,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { BookOpen, GraduationCap, Award, Settings, Play } from 'lucide-react';
 
@@ -82,11 +82,9 @@ function EinstellungenTile() {
 }
 
 export default function FortbildungPage() {
-  const content = moduleContents['MOD-15'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="katalog" replace />} />
       <Route path="katalog" element={<KatalogTile />} />
       <Route path="meine-kurse" element={<MeineKurseTile />} />
       <Route path="zertifikate" element={<ZertifikateTile />} />

@@ -4,7 +4,7 @@
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 
 // Lazy load sub-pages
 const KatalogTab = lazy(() => import('./vertriebspartner/KatalogTab'));
@@ -15,12 +15,9 @@ const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
 const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
 
 const VertriebspartnerPage = () => {
-  const content = moduleContents['MOD-09'];
-
   return (
     <Routes>
-      {/* How It Works as index */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="katalog" replace />} />
       
       {/* Tile routes */}
       <Route path="katalog" element={<KatalogTab />} />

@@ -12,7 +12,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
-import { HowItWorksContent } from '@/components/portal/HowItWorks/ModuleHowItWorks';
+import { HowItWorksContent } from '@/components/portal/HowItWorks/moduleContents';
 import { getModuleDisplayLabel } from '@/manifests/areaConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 
