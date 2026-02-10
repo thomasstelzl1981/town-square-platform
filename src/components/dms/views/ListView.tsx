@@ -1,8 +1,9 @@
-import { Folder, File, FileText, Image, FileSpreadsheet, ChevronUp, ChevronDown } from 'lucide-react';
+import { Folder, File, ChevronUp, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getFileIcon, formatFileSize, formatDate, formatType } from '@/components/dms/storageHelpers';
 import type { SortField, SortDir } from '@/components/dms/StorageToolbar';
 
 export interface FileManagerItem {
@@ -36,44 +37,6 @@ interface ListViewProps {
   onNewSubfolder: (parentNodeId: string) => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
-}
-
-function getFileIcon(mime?: string) {
-  if (!mime) return File;
-  if (mime.startsWith('image/')) return Image;
-  if (mime.includes('pdf')) return FileText;
-  if (mime.includes('sheet') || mime.includes('excel')) return FileSpreadsheet;
-  return File;
-}
-
-function formatFileSize(bytes?: number) {
-  if (!bytes || bytes === 0) return '—';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
-
-function formatType(mime?: string) {
-  if (!mime) return '—';
-  return mime;
-}
-
-function formatShortType(mime?: string) {
-  if (!mime) return '';
-  if (mime.includes('pdf')) return 'PDF';
-  if (mime.startsWith('image/')) return mime.split('/')[1]?.toUpperCase() || 'Bild';
-  if (mime.includes('sheet') || mime.includes('excel')) return 'Excel';
-  if (mime.includes('word') || mime.includes('document')) return 'Word';
-  return mime.split('/')[1]?.toUpperCase() || '';
 }
 
 interface SortHeaderProps {
@@ -134,13 +97,13 @@ export function ListView({
             items.map(item => {
               const IconComponent = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
               const meta = item.type === 'file'
-                ? [formatFileSize(item.size), formatShortType(item.mimeType), formatDate(item.createdAt)].filter(Boolean).join(' · ')
-                : item.childCount !== undefined ? `${item.childCount} Elemente` : '';
+                ? [formatFileSize(item.size), formatType(item.mimeType), formatDate(item.createdAt)].filter(v => v !== '—').join(' · ')
+                : '';
 
               return (
                 <div
                   key={item.id}
-                  className="group/row flex items-center gap-3 px-4 py-3 border-b border-border/50 active:bg-muted/50 transition-colors cursor-pointer"
+                  className="group/row flex items-center gap-3 px-4 py-3 border-b border-border/30 active:bg-muted/30 transition-colors cursor-pointer"
                   onClick={() => {
                     if (item.type === 'folder' && item.nodeId) {
                       onNavigateFolder(item.nodeId);
@@ -178,7 +141,7 @@ export function ListView({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="grid grid-cols-[40px_1fr_100px_140px_120px_40px] items-center px-4 py-2 bg-muted/30 border-b gap-2">
+      <div className="grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-2 bg-muted/20 border-b border-border/30 gap-2">
         <Checkbox
           checked={allSelected}
           onCheckedChange={onToggleSelectAll}
@@ -187,7 +150,7 @@ export function ListView({
         <SortHeader label="Name" field="name" currentField={sortField} currentDir={sortDir} onClick={onSortChange} />
         <SortHeader label="Größe" field="size" currentField={sortField} currentDir={sortDir} onClick={onSortChange} />
         <SortHeader label="Typ" field="type" currentField={sortField} currentDir={sortDir} onClick={onSortChange} />
-        <SortHeader label="Erstellt am" field="created_at" currentField={sortField} currentDir={sortDir} onClick={onSortChange} />
+        <SortHeader label="Erstellt" field="created_at" currentField={sortField} currentDir={sortDir} onClick={onSortChange} />
         <span />
       </div>
 
@@ -208,7 +171,7 @@ export function ListView({
               <div
                 key={item.id}
                 className={cn(
-                  'group/row grid grid-cols-[40px_1fr_100px_140px_120px_40px] items-center px-4 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer gap-2',
+                  'group/row grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-2 border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer gap-2',
                   isSelected && 'bg-primary/5',
                 )}
                 onClick={() => {
@@ -229,8 +192,8 @@ export function ListView({
                   <IconComponent className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="text-sm truncate">{item.name}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{formatFileSize(item.size)}</span>
-                <span className="text-sm text-muted-foreground truncate">{formatType(item.mimeType)}</span>
+                <span className="text-sm text-muted-foreground">{item.type === 'file' ? formatFileSize(item.size) : '—'}</span>
+                <span className="text-sm text-muted-foreground truncate">{item.type === 'file' ? formatType(item.mimeType) : 'Ordner'}</span>
                 <span className="text-sm text-muted-foreground">{formatDate(item.createdAt)}</span>
                 <FileRowMenu
                   type={item.type}
