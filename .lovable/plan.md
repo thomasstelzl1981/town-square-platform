@@ -1,95 +1,55 @@
 
 
-# MIETY Komplett-Ueberarbeitung — Vorbereitete Vertraege + Lebendige Tabs
+# Profil-Speichern Fix + MIETY Adressuebernahme
 
-## Kernproblem
+## Fehler-Analyse
 
-Alle 5 Tiles (ausser Uebersicht) zeigen nur "Legen Sie zuerst ein Zuhause an" — ein Fullscreen-Blocker (`NoHomesState`). Selbst im Dossier fehlen vorbereitete Kacheln fuer alle Mindestvertraege. Die Adresse aus den Profildaten wird nicht uebernommen.
+In `src/pages/portal/stammdaten/ProfilTab.tsx` Zeilen 167-183 speichert die `updateProfile`-Mutation nur diese Felder:
+- `display_name`
+- `avatar_url`
+- `email_signature`
+- `letterhead_*` (6 Felder)
+- `updated_at`
 
-## Loesung: 4 Aenderungspakete
+**Es fehlen komplett:**
+- `first_name`, `last_name`
+- `street`, `house_number`, `postal_code`, `city`, `country`
+- `phone_landline`, `phone_mobile`, `phone_whatsapp`
+- `tax_number`, `tax_id`
 
-### Paket 1: Profil-Prefill im Create-Formular
+Das heisst: Der User gibt Daten ein, drueckt Speichern, es kommt "Profil gespeichert" — aber die Adresse, Telefonnummern etc. werden nie an die Datenbank gesendet.
 
-**Datei:** `src/pages/portal/miety/components/MietyCreateHomeForm.tsx`
+## Loesung
 
-Beim Laden werden `profiles.street`, `house_number`, `postal_code`, `city` abgefragt und als Defaults gesetzt. Der User sieht ein vorausgefuelltes Formular, kann aber aendern.
+### Aenderung 1: Update-Mutation vervollstaendigen
 
-### Paket 2: Tab-Reihenfolge aendern
+**Datei:** `src/pages/portal/stammdaten/ProfilTab.tsx`
 
-**Datei:** `src/manifests/routesManifest.ts`
+Die `.update()`-Payload um alle fehlenden Felder erweitern:
 
-Neue Reihenfolge der tiles im MOD-20 Block:
-1. Uebersicht
-2. Kommunikation
-3. Zaehlerstaende
-4. Versorgung
-5. Versicherungen
-6. Dokumente
+```
+first_name, last_name,
+street, house_number, postal_code, city, country,
+phone_landline, phone_mobile, phone_whatsapp,
+tax_number, tax_id
+```
 
-Dieselbe Reihenfolge in den Routes in `MietyPortalPage.tsx`.
-
-### Paket 3: Alle Tiles mit permanenten Kacheln (KERN)
+### Aenderung 2: MIETY auto-Adressuebernahme
 
 **Datei:** `src/pages/portal/MietyPortalPage.tsx`
 
-Komplette Ueberarbeitung: `NoHomesState` wird entfernt. Jeder Tab zeigt IMMER vorbereitete Kacheln — egal ob ein Home existiert oder nicht. Wenn kein Home existiert, oeffnet der "+ Anlegen" Button das Create-Formular inline.
+In der UebersichtTile: Wenn kein Home existiert aber Profildaten vorhanden sind, wird das Create-Formular mit vorausgefuellter Adresse angezeigt. Die Adresse soll als Default-Wert sichtbar sein, nicht erst nach Klick auf "Anlegen".
 
-**UebersichtTile:**
-- Bleibt wie bisher (Home-Liste + Create), plus 4 Schnellzugriff-Kacheln (Strom, Internet, Hausrat, Zaehlerstaende) als Status-Cards
+Das `MietyCreateHomeForm` hat den Prefill bereits implementiert (wurde im letzten Update eingebaut) — es liest `profiles.street/house_number/postal_code/city`. Sobald der Profil-Speichern-Bug gefixt ist, funktioniert die Kette:
 
-**KommunikationTile (Position 2):**
-- Vermieter-Verlinkungskachel mit Einladungscode-Feld
-- Schadensmeldung-Kachel (Platzhalter mit CTA)
-- Dokumente-Bereich (Platzhalter "Korrespondenz")
+1. User gibt Adresse im Profil ein → Speichern funktioniert
+2. MIETY liest Profildaten → Formular ist vorausgefuellt
 
-**ZaehlerstaendeTile:**
-- IMMER 4 Kacheln: Strom, Gas, Wasser, Heizung — mit "Erfassen" Button
-- Kein NoHomesState Blocker
-
-**VersorgungTile:**
-- IMMER 4 vorbereitete Vertragskacheln:
-  - Stromvertrag (Zap-Icon)
-  - Gasvertrag (Flame-Icon)
-  - Wasservertrag (Droplets-Icon)
-  - Internet/Telefon (Wifi-Icon)
-- Jede Kachel: Icon, Label, Anbieter/Kosten oder "Kein Vertrag hinterlegt", "+ Vertrag anlegen"
-- "+ Weiteren Vertrag hinzufuegen" Button
-
-**VersicherungenTile:**
-- IMMER 2 vorbereitete Kacheln:
-  - Hausratversicherung (Shield-Icon)
-  - Haftpflichtversicherung (Shield-Icon)
-- Jede Kachel mit Status oder "Nicht hinterlegt", "+ Hinzufuegen"
-- "+ Weitere Versicherung" Button
-
-**DokumenteTile (Position 6):**
-- 6 Ordner-Kacheln als Vorschau (Vertraege, Zaehler, Versicherungen, Versorgung, Kommunikation, Sonstiges)
-- Dokumenten-Zaehler + Upload-Hinweis
-
-### Paket 4: Erweiterte Placeholder-Karten im Dossier + ContractDrawer defaultCategory
-
-**Datei:** `src/pages/portal/miety/components/MietyContractsSection.tsx`
-
-PLACEHOLDER_CARDS erweitern von 3 auf 7 Eintraege:
-- strom, gas, wasser, internet, hausrat, haftpflicht, miete
-
-Wenn `filterCategories` gesetzt ist, werden nur passende Placeholders gezeigt (z.B. bei Versicherungen nur hausrat + haftpflicht).
-
-**Datei:** `src/pages/portal/miety/components/ContractDrawer.tsx`
-
-Neue optionale Prop `defaultCategory?: string`. Wenn gesetzt, wird die Kategorie beim Oeffnen vorausgewaehlt.
-
-## Dateien-Uebersicht
+## Technische Details
 
 | Datei | Aenderung |
 |---|---|
-| `src/manifests/routesManifest.ts` | Tiles-Reihenfolge in MOD-20: Kommunikation auf Pos 2, Dokumente auf Pos 6 |
-| `src/pages/portal/MietyPortalPage.tsx` | Komplett-Rewrite aller 6 Tile-Funktionen: NoHomesState weg, permanente Kacheln, ContractDrawer/MeterReadingDrawer inline, Kommunikation mit Vermieter-Kachel |
-| `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` | Profildaten-Prefill aus `profiles` Tabelle |
-| `src/pages/portal/miety/components/MietyContractsSection.tsx` | PLACEHOLDER_CARDS auf 7 erweitern (alle Mindestvertraege) |
-| `src/pages/portal/miety/components/ContractDrawer.tsx` | Neue Prop `defaultCategory` fuer Vorauswahl |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | Update-Mutation um 12 fehlende Felder erweitern (Zeilen 169-180) |
 
-## Keine Datenbank-Aenderungen
-
-Alle Tabellen existieren bereits. `profiles` wird nur gelesen (SELECT).
+Keine Datenbank-Aenderungen noetig — die Spalten existieren bereits in der `profiles`-Tabelle.
 
