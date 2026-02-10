@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MietyCreateHomeForm } from './miety/components/MietyCreateHomeForm';
@@ -22,7 +23,7 @@ import {
   ArrowRight, Flame, Droplets, Wifi, Thermometer, FolderOpen, Upload,
   Users, AlertTriangle, Mail, CheckCircle2, Camera, Globe, Copy, Send,
   Languages, Phone, Settings, ShoppingCart, TrendingDown, ExternalLink,
-  Eye, Video,
+  Eye, Video, Link2,
 } from 'lucide-react';
 import React from 'react';
 
@@ -778,6 +779,38 @@ function SmartHomeTile() {
           </Card>
         ))}
       </div>
+
+      {/* Arlo Konto verbinden */}
+      <Card className="glass-card border-primary/20">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2.5 rounded-xl bg-primary/10">
+              <Link2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Arlo Konto verbinden</h3>
+              <p className="text-xs text-muted-foreground">Melden Sie sich mit Ihrem Arlo-Konto an, um Ihre Kameras zu verwalten.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1.5 block">E-Mail-Adresse</Label>
+              <Input type="email" placeholder="ihre@email.de" />
+            </div>
+            <div>
+              <Label className="text-xs mb-1.5 block">Passwort</Label>
+              <Input type="password" placeholder="••••••••" />
+            </div>
+            <Button className="w-full mt-1">
+              <Link2 className="h-4 w-4 mr-2" />
+              Verbindung herstellen
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Ihre Zugangsdaten werden verschlüsselt gespeichert und nur für die API-Verbindung verwendet.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </TileShell>
   );
 }
