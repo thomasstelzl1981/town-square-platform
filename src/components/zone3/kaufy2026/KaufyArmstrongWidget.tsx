@@ -7,15 +7,18 @@
  * - localStorage persistence for toggle/open state
  * - Quick replies for Kaufy-specific topics
  * - Streaming chat via sot-armstrong-advisor (legacy mode)
+ * - Voice input (STT) + Voice output (TTS) via useArmstrongVoice
  * - Mobile: full-width bottom sheet
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, X, Send, Sparkles, ArrowRight } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, ArrowRight, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
+import { VoiceButton } from '@/components/armstrong/VoiceButton';
 
 // ============================================================================
 // TYPES
@@ -68,9 +71,16 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasGreetedRef = useRef(false);
+  const lastTranscriptRef = useRef('');
+  const streamDoneRef = useRef(false);
+  const latestAssistantContentRef = useRef('');
+
+  // Voice hook
+  const voice = useArmstrongVoice();
 
   // Scroll to bottom
   useEffect(() => {
@@ -87,14 +97,11 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     const greeted = sessionStorage.getItem(SESSION_KEY);
     
     if (savedOpen === 'false') {
-      // User previously closed it
       setIsOpen(false);
     } else {
-      // Default: OPEN
       setIsOpen(true);
     }
     
-    // Auto-greet once per session
     if (!greeted && !hasGreetedRef.current) {
       hasGreetedRef.current = true;
       sessionStorage.setItem(SESSION_KEY, 'true');
@@ -119,11 +126,41 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   }, [isOpen]);
 
   // ========================================================================
+  // VOICE: Auto-send when transcript changes and listening stops
+  // ========================================================================
+  useEffect(() => {
+    if (voice.transcript && voice.transcript !== lastTranscriptRef.current) {
+      // Update input field with live transcript
+      setInput(voice.transcript);
+    }
+  }, [voice.transcript]);
+
+  // When listening stops and we have a transcript, auto-send
+  useEffect(() => {
+    if (!voice.isListening && lastTranscriptRef.current !== voice.transcript && voice.transcript.trim()) {
+      lastTranscriptRef.current = voice.transcript;
+      const msg = voice.transcript.trim();
+      setInput('');
+      setVoiceActive(true);
+      streamChat(msg);
+    }
+  }, [voice.isListening, voice.transcript]);
+
+  // Show interim transcript in input
+  useEffect(() => {
+    if (voice.assistantTranscript) {
+      setInput(voice.transcript + (voice.transcript ? ' ' : '') + voice.assistantTranscript);
+    }
+  }, [voice.assistantTranscript]);
+
+  // ========================================================================
   // STREAMING CHAT
   // ========================================================================
 
   const streamChat = useCallback(async (userMessage: string) => {
     setIsLoading(true);
+    streamDoneRef.current = false;
+    latestAssistantContentRef.current = '';
 
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: userMessage };
     const currentMessages = [...messages, userMsg];
@@ -164,7 +201,6 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
       const decoder = new TextDecoder();
       let textBuffer = '';
 
-      // Add empty assistant message
       setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
 
       while (true) {
@@ -190,6 +226,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
+              latestAssistantContentRef.current = assistantContent;
               setMessages(prev =>
                 prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m)
               );
@@ -200,6 +237,12 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
           }
         }
       }
+
+      // Stream done — auto-TTS if voice was active
+      streamDoneRef.current = true;
+      if (voiceActive && assistantContent.trim()) {
+        voice.speakResponse(assistantContent);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Ein Fehler ist aufgetreten';
       setMessages(prev => {
@@ -209,12 +252,13 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages]);
+  }, [messages, voiceActive, voice]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
     const msg = input.trim();
     setInput('');
+    setVoiceActive(false); // text input = no auto-TTS
     streamChat(msg);
   };
 
@@ -223,6 +267,14 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleVoiceToggle = () => {
+    if (voice.isSpeaking) {
+      voice.stopSpeaking();
+      return;
+    }
+    voice.toggleVoice();
   };
 
   if (!enabled) return null;
@@ -249,11 +301,9 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
           'bg-[hsl(220,20%,10%)] text-white',
           isMobile ? 'h-14 w-14' : 'h-16 w-16'
         )}>
-          {/* Pulse ring */}
           <div className="absolute inset-0 rounded-full bg-[hsl(210,80%,55%)] opacity-20 animate-ping" />
           <MessageCircle className={isMobile ? 'h-6 w-6' : 'h-7 w-7'} />
         </div>
-        {/* Label tooltip (desktop only) */}
         {!isMobile && (
           <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-[hsl(220,20%,10%)] text-white text-sm font-medium px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
             Armstrong – KI-Berater
@@ -283,35 +333,51 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
         boxShadow: '0 25px 60px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)',
       }}
     >
-      {/* ================================================================
-          HEADER
-          ================================================================ */}
+      {/* HEADER */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[hsl(210,20%,93%)] bg-gradient-to-r from-[hsl(220,20%,10%)] to-[hsl(220,25%,18%)] rounded-t-2xl">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(210,80%,55%)] to-[hsl(200,85%,45%)] flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className={cn(
+              "h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(210,80%,55%)] to-[hsl(200,85%,45%)] flex items-center justify-center",
+              voice.isSpeaking && "ring-2 ring-[hsl(210,80%,55%)] ring-offset-2 ring-offset-[hsl(220,20%,10%)] animate-pulse"
+            )}>
+              {voice.isSpeaking ? (
+                <Volume2 className="h-5 w-5 text-white animate-pulse" />
+              ) : (
+                <Sparkles className="h-5 w-5 text-white" />
+              )}
             </div>
-            {/* Online dot */}
             <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-[hsl(220,20%,10%)]" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white tracking-tight">Armstrong</h3>
-            <p className="text-xs text-white/60">KI-Immobilienberater</p>
+            <p className="text-xs text-white/60">
+              {voice.isSpeaking ? 'Spricht...' : voice.isListening ? 'Hört zu...' : 'KI-Immobilienberater'}
+            </p>
           </div>
         </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="h-8 w-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          aria-label="Schließen"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Stop speaking button */}
+          {voice.isSpeaking && (
+            <button
+              onClick={() => voice.stopSpeaking()}
+              className="h-8 w-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="Sprachausgabe stoppen"
+            >
+              <VolumeX className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="h-8 w-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Schließen"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* ================================================================
-          MESSAGES
-          ================================================================ */}
+      {/* MESSAGES */}
       <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((msg) => (
@@ -343,7 +409,6 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             </div>
           ))}
 
-          {/* Loading indicator */}
           {isLoading && messages[messages.length - 1]?.role === 'user' && (
             <div className="flex justify-start">
               <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[hsl(210,80%,55%)] to-[hsl(200,85%,45%)] flex items-center justify-center shrink-0 mr-2 mt-1">
@@ -365,9 +430,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
         </div>
       </ScrollArea>
 
-      {/* ================================================================
-          QUICK REPLIES
-          ================================================================ */}
+      {/* QUICK REPLIES */}
       {showQuickReplies && (
         <div className="px-4 pb-2">
           <div className="flex flex-wrap gap-1.5">
@@ -390,9 +453,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
         </div>
       )}
 
-      {/* ================================================================
-          PORTAL CTA (subtle)
-          ================================================================ */}
+      {/* PORTAL CTA */}
       {messages.length > 2 && (
         <div className="mx-4 mb-2">
           <a
@@ -405,9 +466,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
         </div>
       )}
 
-      {/* ================================================================
-          INPUT
-          ================================================================ */}
+      {/* INPUT */}
       <div className="p-3 border-t border-[hsl(210,20%,93%)]">
         <div className="flex items-center gap-2 bg-[hsl(210,30%,97%)] rounded-xl px-3 py-1.5">
           <input
@@ -415,14 +474,25 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Frag mich was..."
+            placeholder={voice.isListening ? 'Sprich jetzt...' : 'Frag mich was...'}
             className="flex-1 bg-transparent text-sm text-[hsl(220,20%,15%)] placeholder:text-[hsl(215,16%,55%)] outline-none py-2"
-            disabled={isLoading}
+            disabled={isLoading || voice.isListening}
+          />
+          <VoiceButton
+            isListening={voice.isListening}
+            isProcessing={voice.isProcessing}
+            isSpeaking={voice.isSpeaking}
+            isConnected={voice.isConnected}
+            error={voice.error}
+            useBrowserFallback={voice.useBrowserFallback}
+            onToggle={handleVoiceToggle}
+            size="sm"
+            variant="default"
           />
           <Button
             size="sm"
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || voice.isListening}
             className={cn(
               'h-8 w-8 p-0 rounded-full transition-all shrink-0',
               input.trim() && !isLoading
