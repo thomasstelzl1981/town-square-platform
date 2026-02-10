@@ -1,17 +1,18 @@
 /**
  * KaufyArmstrongWidget — Floating AI Chat Widget for Kaufy2026
  * 
+ * Modes:
+ * - Orb: Small chrome orb (Zone 2 style) with mic button
+ * - Expanded: Full chat panel
+ * 
  * Features:
- * - Floating bottom-right button + expandable chat panel
  * - Auto-greeting on first session visit
- * - localStorage persistence for toggle/open state
- * - Quick replies for Kaufy-specific topics
- * - Streaming chat via sot-armstrong-advisor (legacy mode)
- * - Voice input (STT) + Voice output (TTS) via useArmstrongVoice
- * - Mobile: full-width bottom sheet
+ * - Streaming chat via sot-armstrong-advisor
+ * - Voice input (STT) + Voice output (TTS)
+ * - Orb ↔ Expanded toggle with minimize button
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, X, Send, Sparkles, ArrowRight, Volume2, VolumeX, Mic } from 'lucide-react';
+import { X, Send, Sparkles, ArrowRight, Volume2, VolumeX, Mic, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
@@ -38,11 +39,6 @@ interface KaufyArmstrongWidgetProps {
 // CONSTANTS
 // ============================================================================
 
-const STORAGE_KEYS = {
-  enabled: 'kaufy_armstrong_enabled',
-  open: 'kaufy_armstrong_open',
-};
-
 const SESSION_KEY = 'kaufy_armstrong_greeted_session';
 
 const GREETING = `Hi, ich bin Armstrong 👋 Dein Immobilien- und Investment-Berater.
@@ -67,12 +63,11 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstron
 
 export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   const isMobile = useIsMobile();
-  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<'orb' | 'expanded'>('orb');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
-  const [miniVoiceMode, setMiniVoiceMode] = useState(false); // voice-only from closed state
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasGreetedRef = useRef(false);
@@ -90,19 +85,10 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     }
   }, [messages]);
 
-  // Auto-open + greeting on first session
+  // Auto-greeting on first session
   useEffect(() => {
     if (!enabled) return;
-    
-    const savedOpen = localStorage.getItem(STORAGE_KEYS.open);
     const greeted = sessionStorage.getItem(SESSION_KEY);
-    
-    if (savedOpen === 'false') {
-      setIsOpen(false);
-    } else {
-      setIsOpen(true);
-    }
-    
     if (!greeted && !hasGreetedRef.current) {
       hasGreetedRef.current = true;
       sessionStorage.setItem(SESSION_KEY, 'true');
@@ -114,29 +100,22 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     }
   }, [enabled]);
 
-  // Persist open state
+  // Focus input when expanding
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.open, String(isOpen));
-  }, [isOpen]);
-
-  // Focus input when opening
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
+    if (mode === 'expanded' && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 300);
     }
-  }, [isOpen]);
+  }, [mode]);
 
   // ========================================================================
   // VOICE: Auto-send when transcript changes and listening stops
   // ========================================================================
   useEffect(() => {
     if (voice.transcript && voice.transcript !== lastTranscriptRef.current) {
-      // Update input field with live transcript
       setInput(voice.transcript);
     }
   }, [voice.transcript]);
 
-  // When listening stops and we have a transcript, auto-send
   useEffect(() => {
     if (!voice.isListening && lastTranscriptRef.current !== voice.transcript && voice.transcript.trim()) {
       lastTranscriptRef.current = voice.transcript;
@@ -147,20 +126,11 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     }
   }, [voice.isListening, voice.transcript]);
 
-  // Show interim transcript in input (only when panel is open)
   useEffect(() => {
-    if (isOpen && voice.assistantTranscript) {
+    if (mode === 'expanded' && voice.assistantTranscript) {
       setInput(voice.transcript + (voice.transcript ? ' ' : '') + voice.assistantTranscript);
     }
-  }, [voice.assistantTranscript, isOpen]);
-
-  // Mini voice mode: start listening from closed bubble
-  const handleMiniVoiceStart = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation(); // don't open the panel
-    setMiniVoiceMode(true);
-    setVoiceActive(true);
-    voice.startListening();
-  }, [voice]);
+  }, [voice.assistantTranscript, mode]);
 
   // ========================================================================
   // STREAMING CHAT
@@ -247,7 +217,6 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
         }
       }
 
-      // Stream done — auto-TTS if voice was active
       streamDoneRef.current = true;
       if (voiceActive && assistantContent.trim()) {
         voice.speakResponse(assistantContent);
@@ -267,7 +236,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     if (!input.trim() || isLoading) return;
     const msg = input.trim();
     setInput('');
-    setVoiceActive(false); // text input = no auto-TTS
+    setVoiceActive(false);
     streamChat(msg);
   };
 
@@ -286,76 +255,150 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     voice.toggleVoice();
   };
 
+  const handleOrbMicClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVoiceActive(true);
+    voice.startListening();
+  }, [voice]);
+
   if (!enabled) return null;
 
   // ========================================================================
-  // RENDER — FLOATING BUTTON (when closed)
+  // RENDER — ORB MODE (Zone 2 Chrome Orb)
   // ========================================================================
 
-  if (!isOpen) {
-    const isMiniListening = miniVoiceMode && voice.isListening;
-    const isMiniProcessing = miniVoiceMode && isLoading;
-    const isMiniSpeaking = miniVoiceMode && voice.isSpeaking;
-
+  if (mode === 'orb') {
     return (
       <div
         className={cn(
-          'fixed z-50 flex items-center gap-2',
+          'fixed z-50',
           isMobile ? 'bottom-5 right-5' : 'bottom-8 right-8'
         )}
       >
-        {/* Status label for mini voice mode */}
-        {(isMiniListening || isMiniProcessing || isMiniSpeaking) && (
-          <div className="bg-[hsl(220,20%,10%)] text-white text-xs font-medium px-4 py-2 rounded-xl shadow-lg animate-in fade-in slide-in-from-right-2">
-            {isMiniSpeaking ? '🔊 Armstrong spricht...' : isMiniListening ? '🎙️ Sprich jetzt...' : '⏳ Denke nach...'}
+        {/* Voice status tooltip */}
+        {(voice.isListening || voice.isProcessing || voice.isSpeaking || voice.error) && (
+          <div className={cn(
+            'absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg animate-in fade-in slide-in-from-bottom-2',
+            voice.error 
+              ? 'bg-red-500/90 text-white' 
+              : 'bg-[hsl(220,20%,10%)] text-white'
+          )}>
+            {voice.error 
+              ? voice.error 
+              : voice.isSpeaking 
+                ? '🔊 Armstrong spricht...' 
+                : voice.isListening 
+                  ? '🎙️ Sprich jetzt...' 
+                  : '⏳ Denke nach...'}
           </div>
         )}
 
-        {/* Mic button */}
-        <button
-          onClick={handleMiniVoiceStart}
-          disabled={isMiniProcessing || isMiniSpeaking}
-          className={cn(
-            'relative flex items-center justify-center rounded-full shadow-xl transition-all duration-300',
-            isMobile ? 'h-11 w-11' : 'h-12 w-12',
-            isMiniListening
-              ? 'bg-primary text-white'
-              : isMiniSpeaking
-                ? 'bg-[hsl(210,80%,55%)] text-white'
-                : 'bg-[hsl(220,20%,15%)] text-white/80 hover:text-white hover:scale-105 active:scale-95',
-          )}
-          aria-label="Spracheingabe"
-        >
-          {isMiniListening && (
-            <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" style={{ animationDuration: '1.5s' }} />
-          )}
-          {isMiniSpeaking ? (
-            <Volume2 className="h-5 w-5 animate-pulse" />
-          ) : (
-            <Mic className="h-5 w-5" />
-          )}
-        </button>
+        {/* Transcript floating above orb */}
+        {voice.isListening && (voice.transcript || voice.assistantTranscript) && (
+          <div className="absolute -top-16 right-0 max-w-[200px] bg-[hsl(220,20%,10%)] text-white text-xs px-3 py-2 rounded-xl shadow-lg animate-in fade-in">
+            {voice.transcript}{voice.assistantTranscript && <span className="opacity-60"> {voice.assistantTranscript}</span>}
+          </div>
+        )}
 
-        {/* Chat open button */}
-        <button
-          onClick={() => { setMiniVoiceMode(false); setIsOpen(true); }}
+        {/* The Orb */}
+        <div
           className={cn(
-            'group relative flex items-center justify-center rounded-full shadow-2xl transition-all duration-300',
-            'hover:scale-105 active:scale-95',
-            'bg-[hsl(220,20%,10%)] text-white',
-            isMobile ? 'h-14 w-14' : 'h-16 w-16'
+            'rounded-full cursor-pointer pointer-events-auto',
+            'armstrong-orb',
+            'armstrong-orb-glow',
+            'hover:scale-105 transition-all duration-300 ease-out',
+            'flex items-center justify-center',
+            'relative',
+            isMobile ? 'h-28 w-28' : 'h-36 w-36'
           )}
-          aria-label="Armstrong öffnen"
+          onClick={() => setMode('expanded')}
         >
-          <div className="absolute inset-0 rounded-full bg-[hsl(210,80%,55%)] opacity-20 animate-ping" />
-          <MessageCircle className={isMobile ? 'h-6 w-6' : 'h-7 w-7'} />
-        </button>
+          {/* Visor / Face area */}
+          <div 
+            className="absolute inset-5 rounded-full pointer-events-none armstrong-orb-visor"
+            style={{
+              background: `
+                radial-gradient(
+                  ellipse 100% 80% at 50% 30%,
+                  hsl(var(--armstrong-orb-visor-deep)) 0%,
+                  hsl(var(--armstrong-orb-visor)) 40%,
+                  hsl(var(--armstrong-orb-visor-deep)) 100%
+                )
+              `,
+              boxShadow: 'inset 0 4px 16px -4px hsla(0, 0%, 0%, 0.5)',
+            }}
+          />
+          
+          {/* Top-left frost glint */}
+          <div 
+            className="absolute top-3 left-4 h-6 w-6 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle at 40% 40%, hsla(210, 30%, 90%, 0.7) 0%, transparent 70%)',
+              filter: 'blur(3px)',
+            }}
+          />
+          
+          {/* Secondary glint */}
+          <div 
+            className="absolute top-5 left-6 h-2.5 w-2.5 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, hsla(0, 0%, 100%, 0.8) 0%, transparent 70%)',
+              filter: 'blur(1px)',
+            }}
+          />
+          
+          {/* Smile highlight */}
+          <div 
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-none"
+            style={{
+              width: '55%',
+              height: '10px',
+              background: `
+                radial-gradient(
+                  ellipse 100% 100% at 50% 0%,
+                  hsla(210, 25%, 75%, 0.4) 0%,
+                  hsla(220, 20%, 60%, 0.2) 50%,
+                  transparent 100%
+                )
+              `,
+              borderRadius: '0 0 50% 50%',
+              filter: 'blur(2px)',
+            }}
+          />
+          
+          {/* Central Microphone Button */}
+          <button 
+            onClick={handleOrbMicClick}
+            disabled={voice.isProcessing || voice.isSpeaking}
+            className={cn(
+              'h-12 w-12 rounded-full flex items-center justify-center relative z-10',
+              'transition-all duration-300',
+              voice.isListening 
+                ? 'armstrong-mic-active' 
+                : 'armstrong-btn-glass hover:bg-white/25',
+              (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
+            )}
+            title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
+          >
+            {voice.isListening && !voice.isProcessing && (
+              <>
+                <span className="absolute inset-0 rounded-full bg-white/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+                <span className="absolute inset-[-4px] rounded-full bg-white/15 animate-ping" style={{ animationDuration: '2s' }} />
+              </>
+            )}
+            {voice.isSpeaking ? (
+              <Volume2 className="h-5 w-5 text-white animate-pulse" />
+            ) : (
+              <Mic className={cn('h-5 w-5', voice.isListening ? 'text-[hsl(220,20%,10%)]' : 'text-white')} />
+            )}
+          </button>
+        </div>
       </div>
     );
   }
 
   // ========================================================================
-  // RENDER — CHAT PANEL (when open)
+  // RENDER — EXPANDED CHAT PANEL
   // ========================================================================
 
   const showQuickReplies = messages.length <= 1;
@@ -398,7 +441,6 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {/* Stop speaking button */}
           {voice.isSpeaking && (
             <button
               onClick={() => voice.stopSpeaking()}
@@ -408,8 +450,17 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
               <VolumeX className="h-4 w-4" />
             </button>
           )}
+          {/* Minimize to Orb */}
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={() => setMode('orb')}
+            className="h-8 w-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Minimieren"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          {/* Close (also goes to orb) */}
+          <button
+            onClick={() => setMode('orb')}
             className="h-8 w-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Schließen"
           >

@@ -3,15 +3,11 @@
  * 
  * Primary: ElevenLabs useScribe (scribe_v2_realtime, VAD commit)
  * Fallback: Browser SpeechRecognition API (de-DE)
- * 
- * Hook signature is identical to the previous version so all consumers
- * (ArmstrongContainer, ChatPanel, ComposeEmailDialog) work without changes.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Feature flag for future provider switch
 const VOICE_PROVIDER: 'elevenlabs' | 'browser' = 'elevenlabs';
 
 interface VoiceState {
@@ -72,7 +68,6 @@ class ElevenLabsScribeConnection {
 
   async connect(token: string) {
     try {
-      // Request mic
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
@@ -80,14 +75,12 @@ class ElevenLabsScribeConnection {
       this.audioContext = new AudioContext({ sampleRate: 16000 });
       this.source = this.audioContext.createMediaStreamSource(this.stream);
       
-      // Connect WebSocket
       this.ws = new WebSocket(
         `wss://api.elevenlabs.io/v1/speech-to-text/stream?model_id=scribe_v2_realtime&token=${encodeURIComponent(token)}`
       );
 
       this.ws.onopen = () => {
         console.log('[ElevenLabs STT] Connected');
-        // Send initial config
         this.ws?.send(JSON.stringify({
           type: 'configure',
           language_code: 'de',
@@ -145,7 +138,6 @@ class ElevenLabsScribeConnection {
         const s = Math.max(-1, Math.min(1, float32[i]));
         int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
       }
-      // Send as base64
       const bytes = new Uint8Array(int16.buffer);
       let binary = '';
       const chunk = 0x8000;
@@ -193,62 +185,7 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
-  // ── ElevenLabs start ──
-  const startElevenLabs = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, error: null, isProcessing: true }));
-      
-      // Fetch token
-      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !data?.token) {
-        throw new Error('Token-Abruf fehlgeschlagen — Fallback auf Browser');
-      }
-
-      const scribe = new ElevenLabsScribeConnection();
-      scribeRef.current = scribe;
-      providerRef.current = 'elevenlabs';
-
-      scribe.onConnect = () => {
-        setState(prev => ({
-          ...prev,
-          isConnected: true,
-          isListening: true,
-          isProcessing: false,
-          useBrowserFallback: false,
-          transcript: '',
-        }));
-      };
-
-      scribe.onPartial = (text) => {
-        setState(prev => ({ ...prev, assistantTranscript: text }));
-      };
-
-      scribe.onCommit = (text) => {
-        setState(prev => ({
-          ...prev,
-          transcript: prev.transcript + (prev.transcript ? ' ' : '') + text,
-          assistantTranscript: '',
-        }));
-      };
-
-      scribe.onError = (err) => {
-        console.error('[Voice] ElevenLabs error:', err);
-        setState(prev => ({ ...prev, error: err }));
-      };
-
-      scribe.onDisconnect = () => {
-        setState(prev => ({ ...prev, isConnected: false, isListening: false }));
-      };
-
-      await scribe.connect(data.token);
-    } catch (e) {
-      console.warn('[Voice] ElevenLabs failed, falling back to browser:', e);
-      // Fallback to browser
-      startBrowser();
-    }
-  }, []);
-
-  // ── Browser Speech API start ──
+  // ── Browser Speech API start (defined FIRST so startElevenLabs can reference it) ──
   const startBrowser = useCallback(() => {
     const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechAPI) {
@@ -334,6 +271,59 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     }
   }, []);
 
+  // ── ElevenLabs start (references startBrowser for fallback) ──
+  const startElevenLabs = useCallback(async () => {
+    try {
+      setState(prev => ({ ...prev, error: null, isProcessing: true }));
+      
+      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !data?.token) {
+        throw new Error('Token-Abruf fehlgeschlagen — Fallback auf Browser');
+      }
+
+      const scribe = new ElevenLabsScribeConnection();
+      scribeRef.current = scribe;
+      providerRef.current = 'elevenlabs';
+
+      scribe.onConnect = () => {
+        setState(prev => ({
+          ...prev,
+          isConnected: true,
+          isListening: true,
+          isProcessing: false,
+          useBrowserFallback: false,
+          transcript: '',
+        }));
+      };
+
+      scribe.onPartial = (text) => {
+        setState(prev => ({ ...prev, assistantTranscript: text }));
+      };
+
+      scribe.onCommit = (text) => {
+        setState(prev => ({
+          ...prev,
+          transcript: prev.transcript + (prev.transcript ? ' ' : '') + text,
+          assistantTranscript: '',
+        }));
+      };
+
+      scribe.onError = (err) => {
+        console.error('[Voice] ElevenLabs error:', err);
+        setState(prev => ({ ...prev, error: err }));
+      };
+
+      scribe.onDisconnect = () => {
+        setState(prev => ({ ...prev, isConnected: false, isListening: false }));
+      };
+
+      await scribe.connect(data.token);
+    } catch (e) {
+      console.warn('[Voice] ElevenLabs failed, falling back to browser:', e);
+      startBrowser();
+    }
+  }, [startBrowser]);
+
   // ── Public API ──
   const startListening = useCallback(async () => {
     setState(prev => ({ ...prev, error: null }));
@@ -386,7 +376,6 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   const speakResponse = useCallback(async (text: string) => {
     if (!text.trim()) return;
     
-    // Strip markdown syntax for cleaner TTS
     const cleanText = text
       .replace(/#{1,6}\s?/g, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -402,7 +391,6 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     
     if (!cleanText) return;
 
-    // Stop any current playback
     stopSpeaking();
     
     setState(prev => ({ ...prev, isSpeaking: true }));
@@ -460,7 +448,6 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
       scribeRef.current?.disconnect();
       isStoppingRef.current = true;
       try { browserRecRef.current?.stop(); } catch { /* ignore */ }
-      // Cleanup TTS audio
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
