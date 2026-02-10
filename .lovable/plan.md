@@ -1,98 +1,86 @@
 
-# Bereinigung: Muster-Tenants loeschen + Rollendokumentation konsolidieren
 
-## Teil A: Analyse — Doppelte Rollendokumentation
+# IMAP-Parser Fix: RFC-2047-Decoder + Body-Fetch-Fallback
 
-Es existieren **4 verschiedene Stellen** mit Rollendefinitionen, die sich widersprechen:
+## Problem-Zusammenfassung
 
-| # | Datei | Inhalt | Status |
-|---|-------|--------|--------|
-| 1 | `src/constants/rolesMatrix.ts` | 6 Rollen, 21 Module, BASE_TILES, SSOT-Funktionen | AKTUELL — Code-SSOT |
-| 2 | `spec/current/01_platform/ACCESS_MATRIX.md` | 5 alte Rollen (org_admin, internal_ops, renter_user), nur MOD-01 bis MOD-10 | VERALTET |
-| 3 | `src/data/kb-seeds/v1/KB.SYSTEM.005.md` | Alte Hierarchie (platform_admin > org_admin > org_member > agent_roles) | VERALTET |
-| 4 | `src/pages/admin/Users.tsx` (Zeile 68-76) | 7 Rollen hardcoded (inkl. internal_ops, renter_user), kein Bezug zu rolesMatrix | VERALTET |
+Datenbankanalyse zeigt: 11 von 14 E-Mails haben keinen Body-Content. Alle Facebook- und IONOS-Mails sind betroffen. Subject-Zeilen sind teilweise roh encoded (`=?UTF-8?B?...?=`).
 
-**Fazit:** Nur `rolesMatrix.ts` ist aktuell. Die anderen 3 Quellen muessen aktualisiert oder als "ersetzt durch rolesMatrix.ts" markiert werden.
+**Ursache 1**: `full: true` im IMAP-Fetch liefert `msg.raw` leer zurueck bei vielen Servern.
+**Ursache 2**: Kein RFC-2047-Decoder fuer Subject/From-Name Felder.
 
----
+## Aenderungen in einer Datei
 
-## Teil B: Muster-Tenants komplett loeschen
+Alle Fixes betreffen `supabase/functions/sot-mail-sync/index.ts`.
 
-### Bestandsaufnahme
+### Fix 1: RFC-2047-Decoder (Zeile ~141, neue Funktion)
 
-| Datenpunkt | Muster-Vermieter | Muster-Verkaeufer | Muster-Partner GmbH |
-|-----------|-------------------|--------------------|--------------------|
-| Org-ID | b...001 | b...002 | b...003 |
-| org_type | client | client | partner |
-| Memberships | 1 (thomas.stelzl) | 1 (thomas.stelzl) | 1 (thomas.stelzl) |
-| Tiles | 14 | 14 | 16 |
-| Storage-Nodes | 26 | 26 | 26 |
-| Properties | 0 | 0 | 0 |
-| Listings | 0 | 0 | 0 |
-| Contacts | 0 | 0 | 0 |
-| Documents | 0 | 0 | 0 |
-| Units | 0 | 0 | 0 |
+Neue Funktion `decodeRfc2047(input: string): string`:
+- Erkennt `=?charset?B?base64text?=` (Base64-Encoding)
+- Erkennt `=?charset?Q?quotedprintable?=` (Quoted-Printable)
+- Behandelt mehrteilige Chunks (mehrere `=?...?=` hintereinander)
+- Wird angewendet auf:
+  - `envelope.subject` (Zeile 460)
+  - `fromName` (Zeile 392)
 
-Keine Business-Daten vorhanden — sauber loeschbar.
+### Fix 2: Body-Fetch-Fallback (Zeile ~366-443)
 
-### Loesch-Reihenfolge (FK-Constraints beachten)
+Wenn `msg.raw` leer ist, zweiter Fetch-Versuch mit `bodyParts`:
+1. Erst normaler Fetch mit `full: true` (wie bisher)
+2. Wenn `msg.raw` leer: Zweiter Fetch desselben UIDs mit `bodyParts: ['TEXT']`
+3. Das holt `BODY[TEXT]` — den reinen Nachrichteninhalt ohne Header
+4. Fallback-Parsing mit dem gleichen `parseMimeMessage()` angewendet
+5. Logging: Genau protokollieren welcher Pfad genommen wurde
 
 ```text
-1. storage_nodes       (78 Zeilen) — kein FK auf andere Tabellen
-2. tenant_tile_activation (44 Zeilen) — FK auf organizations
-3. memberships         (3 Zeilen) — FK auf organizations + auth.users
-4. organizations       (3 Zeilen) — Stamm-Entitaet
+Fetch-Ablauf:
+  1. client.fetch(range, { envelope, flags, uid, full: true })
+  2. Fuer jede msg wo msg.raw leer ist:
+     → client.fetch(uid, { bodyParts: ['TEXT'] }, true)  // true = UID-basiert
+     → msg.bodyParts['TEXT'] → parseMimeMessage()
+  3. Falls auch bodyParts leer:
+     → client.fetch(uid, { bodyParts: ['1'] }, true)
+     → Direkt als text/plain behandeln
 ```
 
-### Auswirkung auf Auth-User
+### Fix 3: Verbessertes Logging (durchgaengig)
 
-Nach dem Loeschen hat thomas.stelzl nur noch EINE Membership:
-- `System of a Town` (internal) als `platform_admin`
+- Log welcher Fetch-Pfad (raw vs bodyParts TEXT vs bodyParts 1) erfolgreich war
+- Log die Groesse der geholten Daten
+- Log wenn ALLE Pfade fehlschlagen (mit UID und Subject fuer Debugging)
 
-Das ist der gewuenschte Zustand: Ein Admin-User, ein interner Tenant.
+### Fix 4: Re-Sync-Kompatibilitaet
 
----
+Bestehende Mails werden beim naechsten Sync automatisch aktualisiert, da `onConflict: 'account_id,message_id'` ein UPSERT macht. Subject und Body werden dabei mit den korrigierten Werten ueberschrieben.
 
-## Teil C: Users.tsx ROLES-Array aktualisieren
+## Technische Details
 
-Zeile 68-76 in `Users.tsx` definiert ein eigenes ROLES-Array mit 7 Werten, das NICHT aus `rolesMatrix.ts` importiert wird. Das muss synchronisiert werden:
+### RFC-2047-Decoder Implementierung
 
-**Aktuell (veraltet):**
-- platform_admin, org_admin, internal_ops, sales_partner, renter_user, finance_manager, akquise_manager
+```text
+Input:  "=?UTF-8?B?SGFzdCBkdSBkaWNo?= =?UTF-8?B?IGdlcmFkZQ==?="
+Output: "Hast du dich gerade"
 
-**Neu (aus rolesMatrix.ts abgeleitet):**
-- Die ROLES-Liste wird aus `ROLES_CATALOG` + `LEGACY_ROLES` generiert
-- Legacy-Rollen (internal_ops, renter_user, future_room_web_user_lite) werden als "Legacy" markiert
-- `org_admin` bleibt als membership_role verfuegbar (fuer Membership-Verwaltung)
+Regex: /=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g
+  - Group 1: charset (UTF-8)
+  - Group 2: encoding (B = Base64, Q = Quoted-Printable)
+  - Group 3: encoded text
+```
 
----
+### Body-Fetch Strategie
 
-## Teil D: Spec-Dokumente aktualisieren
+Die `@workingdevshero/deno-imap` Bibliothek unterstuetzt:
+- `full: true` → RFC822 vollstaendig (funktioniert nicht bei allen Servern)
+- `bodyParts: ['TEXT']` → BODY[TEXT] (nur Body ohne Header)
+- `bodyParts: ['1']` → BODY[1] (erster MIME-Part, meist text/plain)
 
-### ACCESS_MATRIX.md
-- Rollen-Tabelle aktualisieren: 6 aktive Rollen statt 5 alte
-- Modul-Matrix: 21 Module statt 10
-- Verweis auf `rolesMatrix.ts` als Code-SSOT hinzufuegen
+Der Fallback nutzt diese drei Stufen sequentiell.
 
-### KB.SYSTEM.005.md
-- Hierarchie aktualisieren auf das neue 6-Rollen-Modell
-- Verweis auf `rolesMatrix.ts` als SSOT
-- Alte org_member und agent_roles Konzepte als Legacy markieren
+## Erwartetes Ergebnis nach Deploy + Re-Sync
 
----
+| Vorher | Nachher |
+|--------|---------|
+| 11 Mails ohne Body | Body sollte bei allen vorhanden sein |
+| Encoded Subjects (`=?UTF-8?B?...?=`) | Lesbare deutsche Umlaute |
+| Encoded From-Names | Korrekt dekodierte Absendernamen |
 
-## Implementierungsschritte
-
-| # | Aktion | Datei/Bereich |
-|---|--------|--------------|
-| 1 | DB Migration: Muster-Tenants loeschen | DELETE storage_nodes, tenant_tile_activation, memberships, organizations fuer b...001, b...002, b...003 |
-| 2 | Users.tsx: ROLES-Array synchronisieren | Import aus rolesMatrix.ts oder mindestens konsistent machen |
-| 3 | ACCESS_MATRIX.md aktualisieren | 6 Rollen, 21 Module, SSOT-Verweis |
-| 4 | KB.SYSTEM.005.md aktualisieren | Neue Hierarchie, SSOT-Verweis |
-
-## Was NICHT gemacht wird
-
-- Keine neuen Tenants anlegen (User will nur thomas.stelzl im System)
-- Keine Aenderung an rolesMatrix.ts (ist bereits aktuell)
-- Keine Aenderung an RolesManagement.tsx (ist bereits aktuell)
-- Keine Aenderung an handle_new_user() (bereits aktualisiert)
