@@ -3,8 +3,15 @@
  * 
  * Handles the routing of inbound items from Zone 1 to Zone 2 DMS.
  * Routes based on Tenant-ID matching against active routing rules.
+ * 
+ * System-E-Mail-Adresse: posteingang@inbound.systemofatown.com
+ * Dort kommt die Post zentral an, wird geparst und als inbound_item gespeichert.
+ * Routing-Regeln leiten die Post dann automatisch an den richtigen Tenant weiter.
  */
 import { supabase } from '@/integrations/supabase/client';
+
+/** Die zentrale Posteingang-Adresse für Zone 1 */
+export const SYSTEM_INBOX_EMAIL = 'posteingang@inbound.systemofatown.com';
 
 interface RoutingRule {
   id: string;
@@ -37,7 +44,7 @@ export function matchRoutingRule(
  * 
  * Steps:
  * 1. Creates a document entry in the documents table
- * 2. Links it to the tenant's inbox storage node
+ * 2. Creates a document_link to place it in the DMS
  * 3. Marks the inbound item as routed
  * 
  * Idempotency: Checks routed_to_zone2_at before processing.
@@ -85,7 +92,23 @@ export async function routeToZone2(
       return { success: false, error: 'Dokument-Erstellung fehlgeschlagen' };
     }
 
-    // 3. Mark inbound item as routed
+    // 3. Create document_link so the document appears in the tenant's DMS
+    const { error: linkError } = await supabase
+      .from('document_links')
+      .insert({
+        tenant_id: targetTenantId,
+        document_id: doc.id,
+        object_type: 'postservice_delivery',
+        object_id: inboundItemId,
+        link_status: 'current',
+      });
+
+    if (linkError) {
+      console.error('Document link creation failed:', linkError);
+      // Non-fatal: document exists, just not linked
+    }
+
+    // 4. Mark inbound item as routed
     const updatePayload: Record<string, unknown> = {
       status: 'assigned',
       assigned_tenant_id: targetTenantId,
