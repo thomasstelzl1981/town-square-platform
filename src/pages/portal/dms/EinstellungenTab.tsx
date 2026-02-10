@@ -47,6 +47,7 @@ export function EinstellungenTab() {
   const [orderAddress, setOrderAddress] = useState('');
   const [orderCity, setOrderCity] = useState('');
   const [orderPostalCode, setOrderPostalCode] = useState('');
+  const [orderRecipientName, setOrderRecipientName] = useState('');
 
   // ── Storage Plans ──
   const { data: storagePlans = [] } = useQuery({
@@ -125,7 +126,7 @@ export function EinstellungenTab() {
         requested_by_user_id: user.id,
         type: 'postservice_forwarding',
         status: 'requested',
-        payload_json: { address: orderAddress, city: orderCity, postal_code: orderPostalCode },
+        payload_json: { recipient_name: orderRecipientName, address: orderAddress, city: orderCity, postal_code: orderPostalCode },
         contract_terms: { duration_months: 12, monthly_credits: 30, billing_mode: 'annual_prepay' },
       });
       if (error) throw error;
@@ -442,6 +443,10 @@ export function EinstellungenTab() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>Empfängername</Label>
+              <Input value={orderRecipientName} onChange={(e) => setOrderRecipientName(e.target.value)} placeholder="Max Mustermann / Firma GmbH" />
+            </div>
+            <div className="space-y-2">
               <Label>Straße und Hausnummer</Label>
               <Input value={orderAddress} onChange={(e) => setOrderAddress(e.target.value)} placeholder="Musterstraße 1" />
             </div>
@@ -470,7 +475,7 @@ export function EinstellungenTab() {
             <Button variant="outline" onClick={() => setShowOrderDialog(false)}>Abbrechen</Button>
             <Button
               onClick={() => createMandate.mutate()}
-              disabled={createMandate.isPending || !orderAddress || !orderCity}
+              disabled={createMandate.isPending || !orderRecipientName || !orderAddress || !orderCity}
             >
               {createMandate.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Auftrag einreichen
