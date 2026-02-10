@@ -8,21 +8,21 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
 import { 
   CreateProjectDialog, 
-  ProjectPortfolioTable, 
   CreateDeveloperContextDialog,
   QuickIntakeUploader,
 } from '@/components/projekte';
 import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/ProjectCard';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
+import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
+import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
+import { isDemoMode, DEMO_PROJECT, DEMO_UNITS, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,10 +93,12 @@ export default function PortfolioTab() {
         </div>
       </div>
 
-      {/* Projekt-Widgets (square cards) */}
+      {/* Projekt-Widgets (square cards) — demo card gets col-span-2 */}
       <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
         {isDemo ? (
-          <ProjectCard project={DEMO_PROJECT} isDemo />
+          <div className="col-span-2">
+            <ProjectCard project={DEMO_PROJECT} isDemo />
+          </div>
         ) : (
           portfolioRows.map((project) => (
             <ProjectCard
@@ -110,17 +112,17 @@ export default function PortfolioTab() {
         <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
       </div>
 
-      {/* Main Content: Table (left) + Sticky Calculator (right) */}
+      {/* Main Content: Unit Preisliste (left) + Sticky Calculator (right) */}
       <div className="flex gap-6">
-        {/* Left: Unit Table */}
+        {/* Left: Unit Preisliste */}
         <div className="flex-1 min-w-0">
           {isLoading ? (
             <LoadingState />
           ) : (
-            <ProjectPortfolioTable 
-              rows={isDemo ? [DEMO_PROJECT] : portfolioRows}
+            <UnitPreislisteTable
+              units={DEMO_UNITS}
+              projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
               isDemo={isDemo}
-              onDelete={isDemo ? undefined : handleDeleteProject}
             />
           )}
         </div>
@@ -136,6 +138,13 @@ export default function PortfolioTab() {
           />
         </div>
       </div>
+
+      {/* Dokumenten-Kachel */}
+      <ProjectDMSWidget
+        projectName={isDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+        units={DEMO_UNITS}
+        isDemo={isDemo}
+      />
 
       {/* Dialogs */}
       <CreateProjectDialog
