@@ -306,22 +306,58 @@ export default function ProjekteDashboard() {
         </p>
       </div>
 
+      {/* ── So funktioniert's — 4 Step Visual ────────────────── */}
+      <Card className="glass-card shadow-card overflow-hidden">
+        <CardContent className="p-0">
+          <div className="grid grid-cols-4">
+            {[
+              { step: 1, icon: Upload, title: 'Hochladen', desc: 'Exposé + Preisliste', color: 'text-primary' },
+              { step: 2, icon: Sparkles, title: 'KI-Analyse', desc: 'Automatische Aufbereitung', color: 'text-primary' },
+              { step: 3, icon: CheckCircle2, title: 'Prüfen & Freigeben', desc: 'Provision bestätigen', color: 'text-primary' },
+              { step: 4, icon: TrendingUp, title: 'Vertrieb & Leads', desc: 'Kampagnen starten', color: 'text-primary' },
+            ].map(({ step, icon: Icon, title, desc, color }, idx) => (
+              <div
+                key={step}
+                className={cn(
+                  "relative flex flex-col items-center text-center p-5 transition-colors",
+                  idx < 3 && "border-r border-border/50"
+                )}
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <Icon className={cn("h-5 w-5", color)} />
+                </div>
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Schritt {step}
+                </div>
+                <div className="text-sm font-semibold text-foreground">{title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
+                {idx < 3 && (
+                  <ArrowRight className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-4 w-4 text-muted-foreground/50 z-10 hidden md:block" />
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Magic Intake Card - Primary CTA */}
-      <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-background">
-        <CardHeader>
+      <Card className="border-primary/30 glass-card shadow-elevated relative overflow-hidden">
+        {/* Subtle glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
+        <CardHeader className="relative">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className="p-2.5 rounded-xl bg-primary/10 shadow-glow">
               <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <CardTitle>Neues Projekt starten</CardTitle>
+              <CardTitle className="text-lg">Magic Intake</CardTitle>
               <CardDescription>
                 Laden Sie Exposé und/oder Wohnungsliste hoch — die KI erstellt Ihr Projekt automatisch.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 relative">
           {/* Step indicator */}
           {step !== 'upload' && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -337,7 +373,7 @@ export default function ProjekteDashboard() {
           {/* ── Upload Phase (Steps 1-2) ─────────────────────────── */}
           {step === 'upload' && (
             <>
-              <div className="grid gap-4 md:grid-cols-2">
+               <div className="grid gap-4 md:grid-cols-2">
                 {/* Exposé Upload / Result */}
                 {uploadedExpose ? (
                   <UploadResultCard
@@ -348,16 +384,18 @@ export default function ProjekteDashboard() {
                   <div
                     {...getExposeRootProps()}
                     className={cn(
-                      "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
-                      isExposeDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+                      "relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all group",
+                      isExposeDragActive ? "border-primary bg-primary/5 scale-[1.02] shadow-glow" : "border-border hover:border-primary/50 hover:bg-primary/5",
                       exposeFile && "border-primary bg-primary/5"
                     )}
                   >
                     <input {...getExposeInputProps()} />
                     {exposeFile ? (
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <CheckCircle2 className="h-5 w-5 text-primary" />
+                          </div>
                           <div className="text-left">
                             <p className="font-medium text-sm">{exposeFile.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -378,13 +416,13 @@ export default function ProjekteDashboard() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="p-3 rounded-full bg-muted">
-                          <FileText className="h-6 w-6 text-muted-foreground" />
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="p-4 rounded-2xl bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                          <FileText className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                         <div>
-                          <p className="font-medium">Projekt-Exposé</p>
-                          <p className="text-sm text-muted-foreground">PDF hier ablegen</p>
+                          <p className="font-semibold text-foreground">Projekt-Exposé</p>
+                          <p className="text-sm text-muted-foreground">PDF hier ablegen oder klicken</p>
                         </div>
                       </div>
                     )}
@@ -401,16 +439,18 @@ export default function ProjekteDashboard() {
                   <div
                     {...getPricelistRootProps()}
                     className={cn(
-                      "relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all",
-                      isPricelistDragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+                      "relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all group",
+                      isPricelistDragActive ? "border-primary bg-primary/5 scale-[1.02] shadow-glow" : "border-border hover:border-primary/50 hover:bg-primary/5",
                       pricelistFile && "border-primary bg-primary/5"
                     )}
                   >
                     <input {...getPricelistInputProps()} />
                     {pricelistFile ? (
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <CheckCircle2 className="h-5 w-5 text-primary" />
+                          </div>
                           <div className="text-left">
                             <p className="font-medium text-sm">{pricelistFile.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -431,12 +471,12 @@ export default function ProjekteDashboard() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="p-3 rounded-full bg-muted">
-                          <Table2 className="h-6 w-6 text-muted-foreground" />
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="p-4 rounded-2xl bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                          <Table2 className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                         <div>
-                          <p className="font-medium">Wohnungsliste / Preisliste</p>
+                          <p className="font-semibold text-foreground">Wohnungsliste / Preisliste</p>
                           <p className="text-sm text-muted-foreground">XLSX, CSV oder PDF</p>
                         </div>
                       </div>
