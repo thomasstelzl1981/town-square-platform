@@ -100,20 +100,19 @@ export function EinstellungenTab() {
     onError: () => toast.error('Planwechsel fehlgeschlagen'),
   });
 
-  // ── Postservice Mandate ──
-  const { data: mandate, isLoading: mandateLoading } = useQuery({
+  // ── Postservice Mandates (multi) ──
+  const { data: mandates = [], isLoading: mandateLoading } = useQuery({
     queryKey: ['postservice-mandate', activeTenantId],
     queryFn: async () => {
-      if (!activeTenantId) return null;
+      if (!activeTenantId) return [];
       const { data, error } = await supabase
         .from('postservice_mandates')
         .select('*')
         .eq('tenant_id', activeTenantId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in('status', ['requested', 'setup_in_progress', 'active', 'paused'])
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!activeTenantId,
   });
@@ -134,18 +133,21 @@ export function EinstellungenTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['postservice-mandate'] });
       setShowOrderDialog(false);
+      setOrderRecipientName('');
+      setOrderAddress('');
+      setOrderCity('');
+      setOrderPostalCode('');
       toast.success('Nachsendeauftrag eingereicht');
     },
     onError: () => toast.error('Fehler beim Einreichen'),
   });
 
   const cancelMandate = useMutation({
-    mutationFn: async () => {
-      if (!mandate) return;
+    mutationFn: async (mandateId: string) => {
       const { error } = await supabase
         .from('postservice_mandates')
         .update({ status: 'cancelled' })
-        .eq('id', mandate.id);
+        .eq('id', mandateId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -153,8 +155,6 @@ export function EinstellungenTab() {
       toast.success('Nachsendeauftrag widerrufen');
     },
   });
-
-  const activeMandateExists = mandate && !['cancelled'].includes(mandate.status);
 
   const handleOcrToggle = (enabled: boolean) => {
     setOcrEnabled(enabled);
@@ -287,87 +287,64 @@ export function EinstellungenTab() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm">Laden...</span>
               </div>
-            ) : activeMandateExists ? (
+            ) : (
               <>
-                {/* Status Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">Nachsendeauftrag</div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      Postfach {activeTenantId?.slice(0, 8).toUpperCase()}
+                {/* Existing Mandates */}
+                {mandates.map((m) => {
+                  const payload = m.payload_json as { recipient_name?: string; address?: string; postal_code?: string; city?: string } | null;
+                  return (
+                    <div key={m.id} className="rounded-xl border border-border/50 p-4 space-y-3">
+                      {/* Recipient & Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {payload?.recipient_name || 'Unbekannter Empfänger'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {[payload?.address, [payload?.postal_code, payload?.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                        {getMandateStatusBadge(m.status)}
+                      </div>
+
+                      {/* Postfach */}
+                      <div className="text-xs text-muted-foreground">
+                        Postfach: <span className="font-mono font-medium text-foreground">{activeTenantId?.slice(0, 8).toUpperCase()}</span>
+                      </div>
+
+                      {/* Costs */}
+                      <div className="text-xs text-muted-foreground">
+                        Kosten: 30 Credits/Monat · 3 Credits/Brief
+                      </div>
+
+                      {/* Cancel */}
+                      {['requested', 'setup_in_progress', 'active'].includes(m.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => cancelMandate.mutate(m.id)}
+                          disabled={cancelMandate.isPending}
+                          className="text-destructive hover:text-destructive w-full"
+                        >
+                          Widerrufen
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                  {getMandateStatusBadge(mandate!.status)}
-                </div>
+                  );
+                })}
 
-                {/* Status Message */}
-                {mandate!.status === 'requested' && (
-                  <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 text-sm">
-                    <p className="font-medium text-amber-700 dark:text-amber-400 mb-0.5">Auftrag eingereicht</p>
-                    <p className="text-xs text-muted-foreground">Einrichtung erfolgt durch den Administrator.</p>
-                  </div>
-                )}
-                {mandate!.status === 'setup_in_progress' && (
-                  <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/10 text-sm">
-                    <p className="font-medium text-blue-700 dark:text-blue-400 mb-0.5">Einrichtung läuft</p>
-                    <p className="text-xs text-muted-foreground">Bitte haben Sie etwas Geduld.</p>
-                  </div>
-                )}
-                {mandate!.status === 'active' && (
-                  <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-sm">
-                    <p className="font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Post wird weitergeleitet</p>
-                    <p className="text-xs text-muted-foreground">Eingehende Post wird automatisch in Ihren DMS-Posteingang zugestellt.</p>
-                  </div>
-                )}
+                {/* Add new mandate button — always visible */}
+                <Button onClick={() => setShowOrderDialog(true)} variant={mandates.length > 0 ? 'outline' : 'default'} className="w-full">
+                  {mandates.length > 0 ? '+ Weiteren Nachsendeauftrag einrichten' : 'Nachsendeauftrag einrichten'}
+                </Button>
 
-                {/* Costs */}
+                {/* Cost info */}
                 <div className="p-3 rounded-xl bg-muted/50 space-y-1.5 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground text-sm mb-1">Kostenmodell</p>
                   <p>• 30 Credits / Monat (Grundgebühr)</p>
                   <p>• 3 Credits pro zugestelltem Brief</p>
                   <p>• Mindestlaufzeit: 12 Monate</p>
                 </div>
-
-                {['requested', 'setup_in_progress', 'active'].includes(mandate!.status) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => cancelMandate.mutate()}
-                    disabled={cancelMandate.isPending}
-                    className="text-destructive hover:text-destructive w-full"
-                  >
-                    Nachsendeauftrag widerrufen
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                {/* How it works */}
-                <div className="space-y-3">
-                  {[
-                    { step: '1', text: 'Nachsendeauftrag einreichen' },
-                    { step: '2', text: 'Admin richtet digitalen Postkasten ein' },
-                    { step: '3', text: 'Post wird automatisch zugestellt' },
-                  ].map((item) => (
-                    <div key={item.step} className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {item.step}
-                      </div>
-                      <p className="text-sm text-muted-foreground pt-0.5">{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Costs */}
-                <div className="p-3 rounded-xl bg-muted/50 space-y-1.5 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground text-sm mb-1">Kosten</p>
-                  <p>• 30 Credits / Monat (360 Credits jährlich)</p>
-                  <p>• 3 Credits pro zugestelltem Brief</p>
-                </div>
-
-                <Button onClick={() => setShowOrderDialog(true)} className="w-full">
-                  Nachsendeauftrag einrichten
-                </Button>
               </>
             )}
           </CardContent>
