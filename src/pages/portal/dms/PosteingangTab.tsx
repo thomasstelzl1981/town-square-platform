@@ -151,43 +151,6 @@ export function PosteingangTab() {
 
   return (
     <div className="space-y-4">
-      {/* Upload Email Card */}
-      <Card className="border-primary/20">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
-              Deine Upload-E-Mail
-            </CardTitle>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-muted-foreground">Aktiv</span>
-            </div>
-          </div>
-          <CardDescription>
-            Sende PDFs an diese Adresse. Anhänge landen automatisch hier und im Storage.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
-              {mailboxAddress || 'Wird geladen...'}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyAddress}
-              disabled={!mailboxAddress}
-            >
-              <Copy className="h-4 w-4 mr-1" />
-              Kopieren
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Stats — always visible */}
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-card border rounded-lg px-4 py-3">
@@ -297,6 +260,43 @@ export function PosteingangTab() {
           </div>
         )}
       </div>
+
+      {/* Upload Email Card — below the table */}
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              Deine Upload-E-Mail
+            </CardTitle>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground">Aktiv</span>
+            </div>
+          </div>
+          <CardDescription>
+            Sende PDFs an diese Adresse. Anhänge landen automatisch hier und im Storage.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
+              {mailboxAddress || 'Wird geladen...'}
+            </code>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyAddress}
+              disabled={!mailboxAddress}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Kopieren
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEmail} onOpenChange={(open) => !open && setSelectedEmail(null)}>
