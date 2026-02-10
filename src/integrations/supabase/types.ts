@@ -5580,6 +5580,87 @@ export type Database = {
           },
         ]
       }
+      fortbildung_curated_items: {
+        Row: {
+          affiliate_link: string
+          author_or_channel: string | null
+          created_at: string
+          description: string | null
+          duration_text: string | null
+          external_id: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          price_text: string | null
+          provider: string
+          rating_text: string | null
+          sort_order: number
+          tab: string
+          title: string
+          topic: string
+        }
+        Insert: {
+          affiliate_link: string
+          author_or_channel?: string | null
+          created_at?: string
+          description?: string | null
+          duration_text?: string | null
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          price_text?: string | null
+          provider: string
+          rating_text?: string | null
+          sort_order?: number
+          tab: string
+          title: string
+          topic: string
+        }
+        Update: {
+          affiliate_link?: string
+          author_or_channel?: string | null
+          created_at?: string
+          description?: string | null
+          duration_text?: string | null
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          price_text?: string | null
+          provider?: string
+          rating_text?: string | null
+          sort_order?: number
+          tab?: string
+          title?: string
+          topic?: string
+        }
+        Relationships: []
+      }
+      fortbildung_search_logs: {
+        Row: {
+          created_at: string
+          id: string
+          query: string
+          results_count: number | null
+          tab: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query: string
+          results_count?: number | null
+          tab: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query?: string
+          results_count?: number | null
+          tab?: string
+        }
+        Relationships: []
+      }
       future_room_cases: {
         Row: {
           bank_response: string | null

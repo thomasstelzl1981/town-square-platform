@@ -1,95 +1,37 @@
 /**
- * Fortbildung Page (MOD-15) - Blueprint Ready
+ * MOD-15 Fortbildung — Kuratierter Empfehlungs- & Such-Hub
+ * 4 Tabs: Bücher, Fortbildungen, Vorträge, Kurse
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { SubTabNav } from '@/components/shared/SubTabNav';
+import { FortbildungTabContent } from '@/components/portal/fortbildung/FortbildungTabContent';
 
-import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { BookOpen, GraduationCap, Award, Settings, Play } from 'lucide-react';
-
-function KatalogTile() {
-  return (
-    <ModuleTilePage
-      title="Katalog"
-      description="Durchsuchen Sie verfügbare Fortbildungen"
-      icon={BookOpen}
-      moduleBase="fortbildung"
-      status="empty"
-      emptyTitle="Kurskatalog"
-      emptyDescription="Entdecken Sie unsere Fortbildungsangebote und erweitern Sie Ihr Wissen."
-      emptyIcon={BookOpen}
-      primaryAction={{
-        label: 'Katalog durchsuchen',
-        icon: BookOpen,
-        onClick: () => console.log('Katalog'),
-      }}
-      secondaryAction={{
-        label: "So funktioniert's",
-        href: '/portal/fortbildung',
-      }}
-    />
-  );
-}
-
-function MeineKurseTile() {
-  return (
-    <ModuleTilePage
-      title="Meine Kurse"
-      description="Ihre laufenden und abgeschlossenen Kurse"
-      icon={GraduationCap}
-      moduleBase="fortbildung"
-      status="empty"
-      emptyTitle="Keine Kurse"
-      emptyDescription="Sie haben noch keine Kurse begonnen. Stöbern Sie im Katalog!"
-      emptyIcon={GraduationCap}
-      primaryAction={{
-        label: 'Kurs starten',
-        icon: Play,
-        onClick: () => console.log('Kurs starten'),
-      }}
-    />
-  );
-}
-
-function ZertifikateTile() {
-  return (
-    <ModuleTilePage
-      title="Zertifikate"
-      description="Ihre erworbenen Zertifikate"
-      icon={Award}
-      moduleBase="fortbildung"
-      status="empty"
-      emptyTitle="Keine Zertifikate"
-      emptyDescription="Schließen Sie Kurse ab, um Zertifikate zu erhalten."
-      emptyIcon={Award}
-    />
-  );
-}
-
-function EinstellungenTile() {
-  return (
-    <ModuleTilePage
-      title="Einstellungen"
-      description="Fortbildungs-Einstellungen verwalten"
-      icon={Settings}
-      moduleBase="fortbildung"
-      status="empty"
-      emptyTitle="Einstellungen"
-      emptyDescription="Konfigurieren Sie Ihre Fortbildungs-Präferenzen."
-      emptyIcon={Settings}
-    />
-  );
-}
+const TABS = [
+  { title: 'Bücher', route: '/portal/fortbildung/buecher' },
+  { title: 'Fortbildungen', route: '/portal/fortbildung/fortbildungen' },
+  { title: 'Vorträge', route: '/portal/fortbildung/vortraege' },
+  { title: 'Kurse', route: '/portal/fortbildung/kurse' },
+];
 
 export default function FortbildungPage() {
   return (
-    <Routes>
-      <Route index element={<Navigate to="katalog" replace />} />
-      <Route path="katalog" element={<KatalogTile />} />
-      <Route path="meine-kurse" element={<MeineKurseTile />} />
-      <Route path="zertifikate" element={<ZertifikateTile />} />
-      <Route path="settings" element={<EinstellungenTile />} />
-      <Route path="*" element={<Navigate to="/portal/fortbildung" replace />} />
-    </Routes>
+    <PageShell>
+      <ModulePageHeader
+        title="Fortbildung"
+        description="Bücher, Kurse, Vorträge – kuratiert & durchsuchbar"
+      />
+      <SubTabNav tabs={TABS} />
+      <Routes>
+        <Route index element={<Navigate to="buecher" replace />} />
+        <Route path="buecher" element={<FortbildungTabContent tab="books" />} />
+        <Route path="fortbildungen" element={<FortbildungTabContent tab="trainings" />} />
+        <Route path="vortraege" element={<FortbildungTabContent tab="talks" />} />
+        <Route path="kurse" element={<FortbildungTabContent tab="courses" />} />
+        <Route path="*" element={<Navigate to="/portal/fortbildung/buecher" replace />} />
+      </Routes>
+    </PageShell>
   );
 }

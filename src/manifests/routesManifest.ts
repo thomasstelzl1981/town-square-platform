@@ -424,10 +424,10 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 15,
       visibility: { default: true, org_types: ["partner", "subpartner"] },
       tiles: [
-        { path: "katalog", component: "FortbildungKatalog", title: "Katalog" },
-        { path: "meine-kurse", component: "FortbildungMeineKurse", title: "Meine Kurse" },
-        { path: "zertifikate", component: "FortbildungZertifikate", title: "Zertifikate" },
-        { path: "settings", component: "FortbildungSettings", title: "Einstellungen" },
+        { path: "buecher", component: "FortbildungBuecher", title: "Bücher" },
+        { path: "fortbildungen", component: "FortbildungFortbildungen", title: "Fortbildungen" },
+        { path: "vortraege", component: "FortbildungVortraege", title: "Vorträge" },
+        { path: "kurse", component: "FortbildungKurse", title: "Kurse" },
       ],
     },
     "MOD-16": {
