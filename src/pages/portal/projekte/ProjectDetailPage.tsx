@@ -24,6 +24,7 @@ import {
   ProjectSalesBlock,
   ProjectContractsBlock,
   ProjectPublicationBlock,
+  ProjectAufteilerCalculation,
 } from '@/components/projekte';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
@@ -321,82 +322,9 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* D - Calculation */}
+        {/* D - Calculation (Interactive) */}
         <TabsContent value="calculation">
-          <Card>
-            <CardHeader>
-              <CardTitle>D. Aufteilerkalkulation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {aufteilerCalc ? (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Eingaben</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Kaufpreis:</span>
-                        <p className="font-medium">{formatCurrency(project.purchase_price)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Erwerbsnebenkosten:</span>
-                        <p className="font-medium">{project.ancillary_cost_percent}%</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Sanierung:</span>
-                        <p className="font-medium">{formatCurrency(project.renovation_budget)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Haltedauer:</span>
-                        <p className="font-medium">{project.holding_period_months} Monate</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Verkaufsziel:</span>
-                        <p className="font-medium">{formatCurrency(project.total_sale_target)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Provision:</span>
-                        <p className="font-medium">{project.commission_rate_percent}%</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Ergebnisse</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Gesamtinvestition:</span>
-                        <p className="font-medium">{formatCurrency(aufteilerCalc.total_investment)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Bruttogewinn:</span>
-                        <p className="font-medium text-green-600">{formatCurrency(aufteilerCalc.gross_profit)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Marge:</span>
-                        <p className="font-medium">{aufteilerCalc.profit_margin_percent.toFixed(1)}%</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Annualisiert:</span>
-                        <p className="font-medium">{aufteilerCalc.annualized_return.toFixed(1)}% p.a.</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Gewinn/Einheit:</span>
-                        <p className="font-medium">{formatCurrency(aufteilerCalc.profit_per_unit)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Break-Even:</span>
-                        <p className="font-medium">{aufteilerCalc.break_even_units} Einheiten</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Bitte geben Sie Kaufpreis und Verkaufsziel ein, um die Kalkulation zu sehen.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProjectAufteilerCalculation project={project} units={units} />
         </TabsContent>
 
         {/* E - Pricing */}

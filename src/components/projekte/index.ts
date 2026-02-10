@@ -13,3 +13,4 @@ export { ProjectReservationsBlock } from './blocks/ProjectReservationsBlock';
 export { ProjectSalesBlock } from './blocks/ProjectSalesBlock';
 export { ProjectContractsBlock } from './blocks/ProjectContractsBlock';
 export { ProjectPublicationBlock } from './blocks/ProjectPublicationBlock';
+export { ProjectAufteilerCalculation } from './blocks/ProjectAufteilerCalculation';
