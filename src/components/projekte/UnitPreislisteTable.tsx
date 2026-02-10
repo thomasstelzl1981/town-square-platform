@@ -1,16 +1,26 @@
 /**
  * UnitPreislisteTable — 13-column unit price list for MOD-13 Projekte
- * Includes Stellplatz (parking) column
+ * Inline-editable Verkaufspreis + EUR/m² columns
  */
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Pencil } from 'lucide-react';
 import type { DemoUnit } from './demoProjectData';
 
+interface CalculatedUnit extends DemoUnit {
+  effective_price: number;
+  effective_yield: number;
+  effective_price_per_sqm: number;
+  effective_provision: number;
+}
+
 interface UnitPreislisteTableProps {
-  units: DemoUnit[];
+  units: CalculatedUnit[];
   projectId: string;
   isDemo?: boolean;
+  onUnitPriceChange?: (unitId: string, field: 'list_price' | 'price_per_sqm', value: number) => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -23,18 +33,89 @@ function eur(v: number) {
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 }
 
-export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreislisteTableProps) {
+/** Inline editable cell */
+function EditableCell({
+  value,
+  suffix,
+  onCommit,
+  disabled,
+}: {
+  value: number;
+  suffix?: string;
+  onCommit: (v: number) => void;
+  disabled?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const parsed = Number(draft.replace(/\./g, '').replace(',', '.'));
+    if (!isNaN(parsed) && parsed > 0) {
+      onCommit(parsed);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className="w-full bg-transparent border-b border-primary/40 text-right text-xs font-medium tabular-nums outline-none px-1 py-0.5"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        'group/cell inline-flex items-center gap-1 tabular-nums',
+        !disabled && 'cursor-pointer hover:text-primary transition-colors'
+      )}
+      onClick={(e) => {
+        if (disabled) return;
+        e.stopPropagation();
+        setDraft(Math.round(value).toLocaleString('de-DE'));
+        setEditing(true);
+      }}
+    >
+      {suffix === '€'
+        ? `${Math.round(value).toLocaleString('de-DE')} €`
+        : eur(value)
+      }
+      {!disabled && (
+        <Pencil className="h-2.5 w-2.5 text-muted-foreground/0 group-hover/cell:text-muted-foreground/60 transition-colors" />
+      )}
+    </span>
+  );
+}
+
+export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChange }: UnitPreislisteTableProps) {
   const navigate = useNavigate();
 
   // Summary row
   const totalArea = units.reduce((s, u) => s + u.area_sqm, 0);
   const totalAnnualRent = units.reduce((s, u) => s + u.annual_net_rent, 0);
   const totalNK = units.reduce((s, u) => s + u.non_recoverable_costs, 0);
-  const totalProvision = units.reduce((s, u) => s + u.provision_eur, 0);
-  const totalSalePrice = units.reduce((s, u) => s + u.list_price, 0);
+  const totalProvision = units.reduce((s, u) => s + u.effective_provision, 0);
+  const totalSalePrice = units.reduce((s, u) => s + u.effective_price, 0);
   const totalParking = units.reduce((s, u) => s + u.parking_price, 0);
-  const avgYield = units.length ? (units.reduce((s, u) => s + u.yield_percent, 0) / units.length) : 0;
-  const avgPriceSqm = units.length ? Math.round(totalSalePrice / totalArea) : 0;
+  const avgYield = units.length ? (units.reduce((s, u) => s + u.effective_yield, 0) / units.length) : 0;
+  const avgPriceSqm = units.length && totalArea > 0 ? Math.round(totalSalePrice / totalArea) : 0;
 
   const handleRowClick = (unitId: string, index: number) => {
     if (isDemo && index !== 0) return;
@@ -55,10 +136,10 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Jahresnetto</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">NK n.u.</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Rendite</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Verkaufspreis</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Verkaufspreis ✎</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Provision</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Stellplatz</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">EUR/m²</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">EUR/m² ✎</th>
               <th className="px-3 py-2.5 text-center font-semibold text-muted-foreground">Status</th>
             </tr>
           </thead>
@@ -66,6 +147,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
             {units.map((u, idx) => {
               const badge = STATUS_BADGE[u.status] || STATUS_BADGE.available;
               const isFirstDemo = isDemo && idx === 0;
+              const canEdit = !isDemo || isFirstDemo;
               return (
                 <tr
                   key={u.id}
@@ -86,11 +168,24 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
                   <td className="px-3 py-2 text-right">{u.area_sqm} m²</td>
                   <td className="px-3 py-2 text-right">{eur(u.annual_net_rent)}</td>
                   <td className="px-3 py-2 text-right">{eur(u.non_recoverable_costs)}/M</td>
-                  <td className="px-3 py-2 text-right font-medium">{u.yield_percent.toFixed(2)} %</td>
-                  <td className="px-3 py-2 text-right font-semibold">{eur(u.list_price)}</td>
-                  <td className="px-3 py-2 text-right">{eur(u.provision_eur)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{u.effective_yield.toFixed(2)} %</td>
+                  <td className="px-3 py-2 text-right font-semibold">
+                    <EditableCell
+                      value={u.effective_price}
+                      onCommit={(v) => onUnitPriceChange?.(u.id, 'list_price', v)}
+                      disabled={!canEdit}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right">{eur(u.effective_provision)}</td>
                   <td className="px-3 py-2 text-right">{eur(u.parking_price)}</td>
-                  <td className="px-3 py-2 text-right">{u.price_per_sqm.toLocaleString('de-DE')} €</td>
+                  <td className="px-3 py-2 text-right">
+                    <EditableCell
+                      value={u.effective_price_per_sqm}
+                      suffix="€"
+                      onCommit={(v) => onUnitPriceChange?.(u.id, 'price_per_sqm', v)}
+                      disabled={!canEdit}
+                    />
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <Badge className={cn('text-[10px] border-0', badge.className)}>{badge.label}</Badge>
                   </td>
