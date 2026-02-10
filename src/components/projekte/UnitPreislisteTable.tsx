@@ -1,5 +1,6 @@
 /**
- * UnitPreislisteTable — 12-column unit price list for MOD-13 Projekte
+ * UnitPreislisteTable — 13-column unit price list for MOD-13 Projekte
+ * Includes Stellplatz (parking) column
  */
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
   const totalNK = units.reduce((s, u) => s + u.non_recoverable_costs, 0);
   const totalProvision = units.reduce((s, u) => s + u.provision_eur, 0);
   const totalSalePrice = units.reduce((s, u) => s + u.list_price, 0);
+  const totalParking = units.reduce((s, u) => s + u.parking_price, 0);
   const avgYield = units.length ? (units.reduce((s, u) => s + u.yield_percent, 0) / units.length) : 0;
   const avgPriceSqm = units.length ? Math.round(totalSalePrice / totalArea) : 0;
 
@@ -55,6 +57,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Rendite</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Verkaufspreis</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Provision</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Stellplatz</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">EUR/m²</th>
               <th className="px-3 py-2.5 text-center font-semibold text-muted-foreground">Status</th>
             </tr>
@@ -86,6 +89,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
                   <td className="px-3 py-2 text-right font-medium">{u.yield_percent.toFixed(2)} %</td>
                   <td className="px-3 py-2 text-right font-semibold">{eur(u.list_price)}</td>
                   <td className="px-3 py-2 text-right">{eur(u.provision_eur)}</td>
+                  <td className="px-3 py-2 text-right">{eur(u.parking_price)}</td>
                   <td className="px-3 py-2 text-right">{u.price_per_sqm.toLocaleString('de-DE')} €</td>
                   <td className="px-3 py-2 text-center">
                     <Badge className={cn('text-[10px] border-0', badge.className)}>{badge.label}</Badge>
@@ -108,6 +112,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
               <td className="px-3 py-2.5 text-right">Ø {avgYield.toFixed(2)} %</td>
               <td className="px-3 py-2.5 text-right">{eur(totalSalePrice)}</td>
               <td className="px-3 py-2.5 text-right">{eur(totalProvision)}</td>
+              <td className="px-3 py-2.5 text-right">{eur(totalParking)}</td>
               <td className="px-3 py-2.5 text-right">Ø {avgPriceSqm.toLocaleString('de-DE')} €</td>
               <td className="px-3 py-2.5" />
             </tr>
