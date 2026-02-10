@@ -158,10 +158,18 @@ export function KalenderTab() {
   // Adjust for Monday start (German calendar)
   const adjustedFirstDay = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
+  const calendarHeader = (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight uppercase">Kalender</h1>
+      <p className="text-muted-foreground mt-1">Termine und Ereignisse verwalten</p>
+    </div>
+  );
+
   // === MOBILE: Vereinfachte Listenansicht ===
   if (isMobile) {
     return (
-      <div className="space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
+        {calendarHeader}
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -307,7 +315,9 @@ export function KalenderTab() {
 
   // === DESKTOP: Original 12-Column Grid ===
   return (
-    <div className="grid grid-cols-12 gap-6">
+    <div className="p-4 md:p-6 space-y-4">
+      {calendarHeader}
+      <div className="grid grid-cols-12 gap-6">
       {/* Calendar View */}
       <div className="col-span-8">
         <Card className="glass-card">
@@ -580,6 +590,7 @@ export function KalenderTab() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

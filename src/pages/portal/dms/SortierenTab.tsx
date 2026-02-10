@@ -280,7 +280,7 @@ export function SortierenTab() {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Global Gate Banner */}
       {!aiEnabled && (
         <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
@@ -297,7 +297,7 @@ export function SortierenTab() {
 
       {/* Header */}
       <div>
-        <h1 className="text-h2 text-foreground">Sortieren</h1>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Sortieren</h1>
         <p className="text-sm text-muted-foreground mt-1">Erstelle Sortierkacheln. Diese erzeugen Vorschläge im Posteingang.</p>
       </div>
 

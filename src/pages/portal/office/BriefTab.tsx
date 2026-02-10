@@ -305,7 +305,12 @@ ${senderLine}`);
   };
 
   return (
-    <div className="grid grid-cols-12 gap-6">
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Briefgenerator</h1>
+        <p className="text-muted-foreground mt-1">KI-gestützte Briefe erstellen und versenden</p>
+      </div>
+      <div className="grid grid-cols-12 gap-6">
       {/* Main Form */}
       <div className="col-span-7 space-y-6">
         <Card className="glass-card">
@@ -625,6 +630,7 @@ ${senderLine}`);
         open={showCreateContext} 
         onOpenChange={setShowCreateContext} 
       />
+    </div>
     </div>
   );
 }

@@ -45,15 +45,10 @@ const MietyHomeDossier = React.lazy(() => import('./miety/MietyHomeDossier'));
 // =============================================================================
 function TileShell({ icon: Icon, title, description, children }: { icon: React.ElementType; title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="container max-w-5xl mx-auto p-4 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
+        <p className="text-muted-foreground mt-1">{description}</p>
       </div>
       {children}
     </div>
@@ -197,12 +192,12 @@ function UebersichtTile() {
     encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Welcome */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Willkommen bei Miety</h2>
-          <p className="text-sm text-muted-foreground">Ihr Zuhause auf einen Blick</p>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Miety</h1>
+          <p className="text-muted-foreground mt-1">Ihr Zuhause auf einen Blick</p>
         </div>
         {homes.length > 0 && (
           <Button onClick={() => setShowCreateForm(true)} size="sm" variant="outline">

@@ -120,7 +120,11 @@ function ShopTab({ shopKey }: { shopKey: string }) {
   if (!shop) return null;
 
   return (
-    <div className="space-y-6 p-4 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Shops</h1>
+        <p className="text-muted-foreground mt-1">Einkaufen und Bestellen für Ihr Unternehmen</p>
+      </div>
       {/* Hero with gradient */}
       <Card className="overflow-hidden border-0">
         <div className={`bg-gradient-to-br ${shop.accentClass} p-6 sm:p-8`}>
@@ -381,12 +385,12 @@ function BestellungenTab() {
   const [activeTab, setActiveTab] = useState('order-1');
 
   return (
-    <div className="p-4 max-w-6xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Order list header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Bestellungen</h2>
-          <p className="text-xs text-muted-foreground">Verwalten Sie Ihre Bestellungen als Widgets</p>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Bestellungen</h1>
+          <p className="text-muted-foreground mt-1">Verwalten Sie Ihre Bestellungen als Widgets</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => console.log('Neue Bestellung')}>
           <Plus className="h-4 w-4" />
