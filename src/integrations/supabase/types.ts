@@ -3463,6 +3463,88 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_candidates: {
+        Row: {
+          company: string | null
+          confidence: number | null
+          created_at: string | null
+          domain: string | null
+          email: string | null
+          first_name: string | null
+          full_name: string | null
+          id: string
+          imported_contact_id: string | null
+          last_name: string | null
+          location: string | null
+          phone: string | null
+          role: string | null
+          session_id: string
+          source_json: Json | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          company?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          domain?: string | null
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          imported_contact_id?: string | null
+          last_name?: string | null
+          location?: string | null
+          phone?: string | null
+          role?: string | null
+          session_id: string
+          source_json?: Json | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          company?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          domain?: string | null
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          imported_contact_id?: string | null
+          last_name?: string | null
+          location?: string | null
+          phone?: string | null
+          role?: string | null
+          session_id?: string
+          source_json?: Json | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_candidates_imported_contact_id_fkey"
+            columns: ["imported_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_candidates_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "research_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_candidates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_staging: {
         Row: {
           approved_at: string | null
@@ -3858,6 +3940,47 @@ export type Database = {
           },
           {
             foreignKeyName: "credibility_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_ledger: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          kind: string
+          ref_id: string | null
+          ref_type: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          kind: string
+          ref_id?: string | null
+          ref_type?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          kind?: string
+          ref_id?: string | null
+          ref_type?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -10015,6 +10138,95 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      research_results: {
+        Row: {
+          created_at: string | null
+          entities_json: Json | null
+          id: string
+          session_id: string
+          sources_json: Json | null
+          summary_md: string | null
+          tenant_id: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entities_json?: Json | null
+          id?: string
+          session_id: string
+          sources_json?: Json | null
+          summary_md?: string | null
+          tenant_id: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entities_json?: Json | null
+          id?: string
+          session_id?: string
+          sources_json?: Json | null
+          summary_md?: string | null
+          tenant_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_results_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "research_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_results_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_sessions: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          mode: string
+          query_json: Json | null
+          query_text: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          mode: string
+          query_json?: Json | null
+          query_text: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          mode?: string
+          query_json?: Json | null
+          query_text?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }

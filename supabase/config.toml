@@ -107,3 +107,12 @@ verify_jwt = false
 
 [functions.sot-inbound-receive]
 verify_jwt = false
+
+[functions.sot-research-free]
+verify_jwt = false
+
+[functions.sot-research-pro-contacts]
+verify_jwt = false
+
+[functions.sot-contacts-import]
+verify_jwt = false
