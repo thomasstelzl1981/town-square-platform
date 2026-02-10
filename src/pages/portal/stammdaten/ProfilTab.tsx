@@ -15,6 +15,7 @@ import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Buildi
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
+import defaultLetterheadLogo from '@/assets/logos/armstrong_logo_light.jpg';
 
 interface ProfileFormData {
   display_name: string;
@@ -369,10 +370,8 @@ export function ProfilTab() {
         {/* ── Briefkopf ── */}
         <ProfileWidget icon={Building2} title="Briefkopf-Daten" description="Logo, Firma und Bankverbindung">
           <div className="flex items-start gap-4 mb-4">
-            {formData.letterhead_logo_url && (
-              <img src={formData.letterhead_logo_url} alt="Logo"
-                className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
-            )}
+            <img src={formData.letterhead_logo_url || defaultLetterheadLogo} alt="Logo"
+              className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
             <div className="flex-1">
               <FileUploader onFilesSelected={handleLogoUpload} accept="image/*"
                 label="Logo hochladen" hint="PNG transparent empfohlen" maxSize={2 * 1024 * 1024} />
