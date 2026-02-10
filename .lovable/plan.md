@@ -1,69 +1,83 @@
 
-# DMS-Widget Umbau: Echte Column-View mit Drag-and-Drop pro Ordner
+# DMS-Widget: Immer geoeffneter Tree mit Spalten-Design
 
-## Problem
+## Das Problem
 
-Das aktuelle `ProjectDMSWidget` zeigt einen verschachtelten Ordnerbaum mit einem separaten Drag-and-Drop-Feld ganz unten. Das ist weder uebersichtlich noch praxistauglich. Der Nutzer muss Dokumente direkt in den richtigen Ordner (z.B. die passende Einheit) ziehen koennen.
+Das aktuelle Widget zeigt eine Click-to-Reveal Miller-Column: Erst muss man "Allgemein" oder "Einheiten" anklicken, dann erscheint Spalte 2, dann Spalte 3. Das ist umstaendlich -- der Nutzer will sofort alles sehen.
 
-## Loesung
+## Die neue Idee
 
-Das Widget wird komplett auf ein **Column-Layout** umgebaut -- analog zur bestehenden `ColumnView` im DMS (MOD-03). Drei Spalten nebeneinander:
+Zwei Bereiche, beide **immer offen und sichtbar**, vertikal untereinander:
 
 ```text
-+-------------------+--------------------+---------------------+
-| Spalte 1          | Spalte 2           | Spalte 3            |
-| (Root-Ebene)      | (gewaehlter Ordner)| (Unterordner/Files) |
-|                   |                    |                     |
-| > Allgemein       | 01_Expose          | [Drop-Zone]         |
-|   Einheiten (24)  | 02_Preisliste      | Dateien hier        |
-|                   | 03_Bilder          | ablegen             |
-|                   | ...                |                     |
-|                   |                    |                     |
-| oder:             | oder:              |                     |
-|                   | WE-001             | 01_Grundriss        |
-|                   | WE-002             | 02_Bilder           |
-|                   | WE-003             | 03_Verkaufsunterla. |
-|                   | ...                | 04_Vertraege        |
-+-------------------+--------------------+---------------------+
++===========================================================+
+| [FolderOpen] Projektdokumente        [Neuer Ordner] [Upload] |
++===========================================================+
+|                                                             |
+| ALLGEMEIN                                                   |
+| +------------------+--------------------------------------+ |
+| | 01_Expose        | [Drop-Zone: Dateien hier ablegen]    | |
+| | 02_Preisliste    |                                      | |
+| | 03_Bilder & Mktg |                                      | |
+| | 04_Kalkulation   |                                      | |
+| | 05_Reservierungen|                                      | |
+| | 06_Vertraege     |                                      | |
+| | 99_Sonstiges     |                                      | |
+| +------------------+--------------------------------------+ |
+|                                                             |
+| EINHEITEN (24)                                              |
+| +------------------+------------------+-------------------+ |
+| | WE-001           | 01_Grundriss     | [Drop-Zone]       | |
+| | WE-002           | 02_Bilder        | Dateien hier      | |
+| | WE-003 *         | 03_Verkaufsunt.  | ablegen           | |
+| | WE-004           | 04_Vertraege     |                   | |
+| | ...              | 99_Sonstiges     |                   | |
+| | WE-024           |                  |                   | |
+| +------------------+------------------+-------------------+ |
+|                                                             |
+| 31 Ordner · 0 Dateien                          Statusleiste |
++===========================================================+
 ```
 
-Jede Spalte ist scrollbar. Die letzte aktive Spalte (= der aktuell angewaehlt Ordner) fungiert automatisch als **Drop-Zone**: Dateien, die dorthin gezogen werden, landen im richtigen `storage_node`.
+## Funktionsweise
 
-## Aenderungen
+### Bereich "Allgemein" (2 Spalten, immer offen)
+- **Spalte 1:** Die 7 Standard-Projektordner, alle sichtbar
+- **Spalte 2:** Drop-Zone -- zeigt den aktiven Ordner-Namen und nimmt Dateien per Drag-and-Drop an
+- Klick auf einen Ordner markiert ihn (Highlight), die Drop-Zone rechts zeigt "Dateien in 01_Expose ablegen"
 
-### 1. ProjectDMSWidget komplett umbauen
+### Bereich "Einheiten" (3 Spalten, immer offen)
+- **Spalte 1:** Alle 24 Einheiten aufgereiht (scrollbar), immer sichtbar
+- **Spalte 2:** Die 5 Unterordner der aktuell gewaehlten Einheit
+- **Spalte 3:** Drop-Zone -- zeigt Zielordner + nimmt Dateien an
+- Klick auf eine Einheit waehlt sie aus und zeigt deren Unterordner in Spalte 2
+- Klick auf einen Unterordner markiert ihn, Spalte 3 zeigt "Dateien in WE-003 / 02_Bilder ablegen"
+- Erste Einheit (WE-001) ist standardmaessig vorausgewaehlt
 
-**Datei:** `src/components/projekte/ProjectDMSWidget.tsx`
+## Technische Umsetzung
 
-- Weg mit dem verschachtelten `FolderRow`-Baum und dem separaten Drop-Feld
-- Stattdessen: **3-Spalten-Miller-Column-Layout** (analog zu `ColumnView`)
-- State: `columnPath: string[]` -- trackt den Navigations-Pfad durch die Ordnerstruktur
-- Jede Spalte zeigt die Kinder des ausgewaehlten Ordners
-- Klick auf einen Ordner oeffnet dessen Inhalt in der naechsten Spalte
-- Die letzte offene Spalte hat eine integrierte `FileDropZone`
-- Toolbar bleibt oben (Upload-Button, Neuer-Ordner-Button)
+**Datei:** `src/components/projekte/ProjectDMSWidget.tsx` -- kompletter Umbau
 
-### 2. Demo-Daten als Spalten-Items
+### State
+- `selectedGeneralFolder: string | null` -- welcher Allgemein-Ordner ist aktiv
+- `selectedUnitId: string | null` -- welche Einheit ist gewaehlt (default: erste)
+- `selectedUnitFolder: string | null` -- welcher Einheiten-Unterordner ist aktiv
 
-- Die Demo-Ordnerstruktur (PROJECT_FOLDERS, UNIT_FOLDERS) wird als flache Item-Listen pro Spalte aufbereitet
-- Jeder Ordner bekommt eine eindeutige Demo-ID (z.B. `demo-folder-allgemein`, `demo-folder-einheiten`, `demo-unit-WE-001`)
-- Im Demo-Modus: `opacity-60`, Drop deaktiviert, aber Navigation funktioniert
-- Im echten Modus: Daten kommen aus `storage_nodes` via Props, Drop triggert Upload
+### Layout-Struktur
+- Zwei visuell getrennte Sektionen mit Ueberschriften ("Allgemein", "Einheiten")
+- Jede Sektion hat ihr eigenes Spalten-Grid mit `flex` und `divide-x`
+- Die Drop-Zone-Spalte nutzt `FileDropZone` und zeigt dynamisch den Zielpfad an
+- Einheiten-Spalte 1 bekommt `max-h-[300px] overflow-y-auto` (scrollbar bei 24 Eintraegen)
 
-### 3. Drop-Logik pro Spalte
+### Drop-Logik
+- Allgemein-Drop: `onDrop(files, 'allgemein', selectedGeneralFolder)`
+- Einheiten-Drop: `onDrop(files, 'einheit', selectedUnitId, selectedUnitFolder)`
+- Im Demo-Modus: Drop deaktiviert, aber Navigation funktioniert
 
-- `FileDropZone` umschliesst die aktive (letzte) Spalte
-- `onDrop` uebergibt die Dateien zusammen mit der aktuellen `targetNodeId` (= der Ordner, in den gedroppt wird)
-- Die `onUploadFiles`-Prop wird erweitert zu `onUploadFiles(files: File[], targetNodeId: string)`
-
-### 4. Spalten-Styling
-
-- Spaltenbreite: `min-w-[200px]` mit `flex-1`
-- Trennlinien zwischen Spalten (`border-r`)
-- Ordner-Icons + Chevrons wie in der bestehenden `ColumnView`
-- Datei-Icons basierend auf MIME-Type
-- Hover-Effekte und Selektion-Highlighting
-- Max-Hoehe mit eigenem Scroll pro Spalte
+### Demo-Modus
+- `opacity-60`, `pointer-events-none` auf den Drop-Zones
+- Navigation in den Ordnern funktioniert trotzdem (zum Erkunden)
+- "Musterdaten"-Badge bleibt in der Toolbar
 
 ## Betroffene Dateien
 
@@ -71,32 +85,6 @@ Jede Spalte ist scrollbar. Die letzte aktive Spalte (= der aktuell angewaehlt Or
 |--------|-------|
 | Aendern | `src/components/projekte/ProjectDMSWidget.tsx` |
 
-## Seitenstruktur DMS-Widget nach Umbau
-
-```text
-+----------------------------------------------------------+
-| [FolderOpen] Projektdokumente    [Neuer Ordner] [Upload] |
-+----------------------------------------------------------+
-| Allgemein     | 01_Expose         | [FileDropZone]       |
-| Einheiten(24) | 02_Preisliste     | Dateien hier ablegen |
-|               | 03_Bilder         |                      |
-|               | 04_Kalkulation    |                      |
-|               | 05_Reservierungen |                      |
-|               | 06_Vertraege      |                      |
-|               | 99_Sonstiges      |                      |
-+----------------------------------------------------------+
-| oder nach Klick auf "Einheiten":                         |
-+----------------------------------------------------------+
-| Allgemein     | WE-001            | 01_Grundriss    [DZ] |
-| Einheiten(24)*| WE-002            | 02_Bilder            |
-|               | WE-003            | 03_Verkaufsunt.      |
-|               | ...               | 04_Vertraege         |
-|               | WE-024            | 99_Sonstiges         |
-+----------------------------------------------------------+
-| 2 Ordner · 0 Dateien                          Status-Bar |
-+----------------------------------------------------------+
-```
-
 ## Risiko
 
-Niedrig. Nur eine Datei wird geaendert. Die Column-Logik ist bereits im DMS erprobt (ColumnView). Keine DB-Aenderungen.
+Niedrig. Nur eine UI-Komponente wird umgebaut. Keine DB-Aenderungen. Die FileDropZone-Komponente wird wiederverwendet.
