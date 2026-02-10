@@ -32,13 +32,7 @@ interface SpeechRecognitionConstructor {
   new (): SpeechRecognitionType;
 }
 
-// Extend Window interface for webkit prefix
-declare global {
-  interface Window {
-    webkitSpeechRecognition: SpeechRecognitionConstructor;
-    SpeechRecognition: SpeechRecognitionConstructor;
-  }
-}
+// Use the declarations from useArmstrongVoice.ts (avoid duplicate global Window declarations)
 
 interface BrowserVoiceState {
   isListening: boolean;
