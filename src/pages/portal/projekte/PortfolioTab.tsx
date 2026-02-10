@@ -12,8 +12,9 @@ import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isDemoMode, DEMO_PROJECT, DEMO_UNITS, DEMO_CALC } from '@/components/projekte/demoProjectData';
+import { isDemoMode, DEMO_PROJECT, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
+import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,7 +199,15 @@ export default function PortfolioTab() {
           />
         </div>
         <div className="lg:col-span-2">
-          {/* Platz für spätere Erweiterung */}
+          <SalesStatusReportWidget
+            units={calculatedUnits}
+            projectName={isDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+            investmentCosts={investmentCosts}
+            provisionRate={provisionRate}
+            targetYield={targetYield}
+            developerContext={DEMO_DEVELOPER_CONTEXT}
+            isDemo={isDemo}
+          />
         </div>
       </div>
 

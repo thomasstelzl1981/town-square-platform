@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { 
   Upload, FileText, Table2, Sparkles, X, Loader2, ArrowRight,
   Building2, FolderKanban, TrendingUp, AlertCircle, CheckCircle2,
-  Trash2, Search, Calculator, CalendarCheck, Clock, Plus,
+  Trash2, Search, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -368,72 +368,6 @@ export default function ProjekteDashboard() {
                 ))
               )}
               <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ═══ W4: Kalkulation Preview ═══ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Calculator className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">Kalkulation Preview</CardTitle>
-            {portfolioRows.length === 0 && <Badge variant="outline" className="text-[10px]">Demo</Badge>}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4", isDemo && "opacity-50")}>
-            {[
-              { label: 'Mietrendite', value: isDemo ? `${DEMO_CALC.mietrendite}%` : '—', icon: TrendingUp },
-              { label: 'Erwerbs-NK', value: isDemo ? `${DEMO_CALC.erwerbsnebenkosten}%` : '—', icon: Calculator },
-              { label: 'Gebäudeanteil', value: isDemo ? `${DEMO_CALC.gebaeudeanteil}%` : '—', icon: Building2 },
-              { label: 'Ø Verkaufspreis/WE', value: isDemo ? `€ ${(DEMO_CALC.avgPricePerUnit).toLocaleString('de-DE')}` : (portfolioRows.length > 0 ? formatCurrency(stats.totalRevenue / Math.max(stats.soldUnits, 1)) : '—'), icon: TrendingUp },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <div className="p-2 rounded-lg bg-primary/10"><Icon className="h-4 w-4 text-primary" /></div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-sm font-bold tabular-nums">{value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ═══ W5: Reservierungen Preview ═══ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">Reservierungen</CardTitle>
-            {stats.reservedUnits === 0 && <Badge variant="outline" className="text-[10px]">Demo</Badge>}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {stats.reservedUnits > 0 ? (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-center">
-                <p className="text-2xl font-bold text-amber-600">{stats.reservedUnits}</p>
-                <p className="text-xs text-muted-foreground">Reserviert</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold">{stats.soldUnits}</p>
-                <p className="text-xs text-muted-foreground">Verkauft</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold">{stats.totalUnits - stats.soldUnits - stats.reservedUnits}</p>
-                <p className="text-xs text-muted-foreground">Verfügbar</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/30">
-              <Clock className="h-8 w-8 text-muted-foreground/50" />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Keine aktiven Reservierungen</p>
-                <p className="text-xs text-muted-foreground">Reservierungen erscheinen hier, sobald Einheiten reserviert werden.</p>
-              </div>
             </div>
           )}
         </CardContent>
