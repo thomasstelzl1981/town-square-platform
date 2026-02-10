@@ -53,6 +53,10 @@ interface Contact {
   last_name: string;
   email: string | null;
   company: string | null;
+  salutation: string | null;
+  street: string | null;
+  postal_code: string | null;
+  city: string | null;
 }
 
 interface LandlordContext {
@@ -72,6 +76,11 @@ interface Profile {
   first_name: string | null;
   last_name: string | null;
   active_tenant_id: string | null;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  city: string | null;
+  letterhead_logo_url: string | null;
 }
 
 export function BriefTab() {
@@ -96,7 +105,7 @@ export function BriefTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, first_name, last_name, active_tenant_id')
+        .select('id, display_name, first_name, last_name, active_tenant_id, street, house_number, postal_code, city, letterhead_logo_url')
         .single();
       if (error) throw error;
       return data as Profile;
@@ -127,7 +136,10 @@ export function BriefTab() {
       type: 'PRIVATE',
       label: profile?.display_name || profile?.first_name || 'Privatperson',
       sublabel: 'Persönlicher Absender',
-      address: '', // Could be extended with profile address
+      address: profile ? [
+        [profile.street, profile.house_number].filter(Boolean).join(' '),
+        [profile.postal_code, profile.city].filter(Boolean).join(' '),
+      ].filter(Boolean).join(', ') || undefined : undefined,
     },
     // Business contexts
     ...contexts.map((ctx): SenderOption => ({
@@ -159,7 +171,7 @@ export function BriefTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, email, company')
+        .select('id, first_name, last_name, email, company, salutation, street, postal_code, city')
         .order('last_name');
       if (error) throw error;
       return data as Contact[];
@@ -254,6 +266,7 @@ export function BriefTab() {
           recipient: {
             name: `${selectedContact.first_name} ${selectedContact.last_name}`,
             company: selectedContact.company,
+            salutation: selectedContact.salutation,
           },
           subject,
           prompt,
@@ -495,11 +508,18 @@ ${senderLine}`);
               senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
               senderAddress={selectedSender?.address}
               senderCity={(() => {
+                if (selectedSenderId === 'private') return profile?.city || undefined;
                 const ctx = contexts.find(c => c.id === selectedSenderId);
                 return ctx?.city || undefined;
               })()}
+              senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
+              logoUrl={profile?.letterhead_logo_url || undefined}
               recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
               recipientCompany={selectedContact?.company || undefined}
+              recipientAddress={selectedContact ? [
+                selectedContact.street,
+                [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
+              ].filter(Boolean).join('\n') || undefined : undefined}
               subject={subject}
               body={generatedBody}
               font={letterFont}
