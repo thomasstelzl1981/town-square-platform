@@ -9,41 +9,30 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MietyCreateHomeForm } from './miety/components/MietyCreateHomeForm';
 import { ContractDrawer } from './miety/components/ContractDrawer';
 import {
-  Home,
-  FileText,
-  MessageCircle,
-  Gauge,
-  Zap,
-  Shield,
-  Plus,
-  Building2,
-  ArrowRight,
-  Flame,
-  Droplets,
-  Wifi,
-  Thermometer,
-  FolderOpen,
-  Upload,
-  Users,
-  AlertTriangle,
-  Mail,
-  CheckCircle2,
-  Camera,
-  Globe,
-  Copy,
-  Send,
-  Languages,
-  Phone,
+  Home, FileText, MessageCircle, Gauge, Zap, Shield, Plus, Building2,
+  ArrowRight, Flame, Droplets, Wifi, Thermometer, FolderOpen, Upload,
+  Users, AlertTriangle, Mail, CheckCircle2, Camera, Globe, Copy, Send,
+  Languages, Phone, Settings, ShoppingCart, TrendingDown, ExternalLink,
+  Eye, Video, Cog,
 } from 'lucide-react';
 import React from 'react';
+
+// Camera snapshot images
+import camEntrance from '@/assets/miety/cam-entrance.jpg';
+import camGarden from '@/assets/miety/cam-garden.jpg';
+import camIndoor from '@/assets/miety/cam-indoor.jpg';
+// Arlo product images
+import arloPro5s from '@/assets/miety/arlo-pro5s.jpg';
+import arloSmarthub from '@/assets/miety/arlo-smarthub.jpg';
 
 const MietyHomeDossier = React.lazy(() => import('./miety/MietyHomeDossier'));
 
@@ -85,7 +74,6 @@ function useHomesQuery() {
   });
 }
 
-/** Inline banner when no home exists yet */
 function NoHomeBanner({ onCreateClick }: { onCreateClick: () => void }) {
   return (
     <Card className="border-dashed border-primary/30 bg-primary/5">
@@ -96,8 +84,7 @@ function NoHomeBanner({ onCreateClick }: { onCreateClick: () => void }) {
           <p className="text-xs text-muted-foreground">Legen Sie zuerst Ihr Zuhause an, um Verträge zu speichern.</p>
         </div>
         <Button size="sm" onClick={onCreateClick}>
-          <Plus className="h-4 w-4 mr-1" />
-          Anlegen
+          <Plus className="h-4 w-4 mr-1" />Anlegen
         </Button>
       </CardContent>
     </Card>
@@ -105,7 +92,16 @@ function NoHomeBanner({ onCreateClick }: { onCreateClick: () => void }) {
 }
 
 // =============================================================================
-// Tab 1: Übersicht — Home List + Quick Access Cards
+// Demo camera data
+// =============================================================================
+const demoCameras = [
+  { id: 'cam-1', name: 'Eingang', status: 'online' as const, image: camEntrance },
+  { id: 'cam-2', name: 'Garten', status: 'online' as const, image: camGarden },
+  { id: 'cam-3', name: 'Innen', status: 'offline' as const, image: camIndoor },
+];
+
+// =============================================================================
+// Tab 1: Übersicht
 // =============================================================================
 function UebersichtTile() {
   const { activeTenantId, user } = useAuth();
@@ -117,7 +113,6 @@ function UebersichtTile() {
 
   const { data: homes = [], isLoading } = useHomesQuery();
 
-  // Fetch profile for auto-create
   const { data: profile } = useQuery({
     queryKey: ['profile-for-miety-auto', user?.id],
     queryFn: async () => {
@@ -132,7 +127,6 @@ function UebersichtTile() {
     enabled: !!user?.id,
   });
 
-  // Auto-create home from profile when none exists
   const autoCreateMutation = useMutation({
     mutationFn: async () => {
       if (!activeTenantId || !user?.id || !profile?.city) throw new Error('skip');
@@ -149,9 +143,7 @@ function UebersichtTile() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['miety-homes'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['miety-homes'] }); },
   });
 
   useEffect(() => {
@@ -179,53 +171,41 @@ function UebersichtTile() {
   if (isLoading) {
     return <div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
   }
-
-  if (showCreateForm) {
-    return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
-  }
-
-  if (editingHome) {
-    return (
-      <div className="p-4">
-        <MietyCreateHomeForm
-          onCancel={() => setEditingHome(null)}
-          homeId={editingHome.id}
-          initialData={{
-            name: editingHome.name || '',
-            address: editingHome.address || '',
-            houseNo: editingHome.address_house_no || '',
-            zip: editingHome.zip || '',
-            city: editingHome.city || '',
-            ownershipType: editingHome.ownership_type || 'miete',
-            propertyType: editingHome.property_type || 'wohnung',
-            areaSqm: editingHome.area_sqm?.toString() || '',
-            roomsCount: editingHome.rooms_count?.toString() || '',
-          }}
-        />
-      </div>
-    );
-  }
+  if (showCreateForm) return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
+  if (editingHome) return (
+    <div className="p-4">
+      <MietyCreateHomeForm
+        onCancel={() => setEditingHome(null)}
+        homeId={editingHome.id}
+        initialData={{
+          name: editingHome.name || '', address: editingHome.address || '',
+          houseNo: editingHome.address_house_no || '', zip: editingHome.zip || '',
+          city: editingHome.city || '', ownershipType: editingHome.ownership_type || 'miete',
+          propertyType: editingHome.property_type || 'wohnung',
+          areaSqm: editingHome.area_sqm?.toString() || '', roomsCount: editingHome.rooms_count?.toString() || '',
+        }}
+      />
+    </div>
+  );
 
   const quickCards = [
     { key: 'strom', label: 'Strom', icon: Zap, tab: 'versorgung' },
     { key: 'internet', label: 'Internet', icon: Wifi, tab: 'versorgung' },
     { key: 'hausrat', label: 'Hausrat', icon: Shield, tab: 'versicherungen' },
-    { key: 'zaehler', label: 'Zähler', icon: Gauge, tab: 'zaehlerstaende' },
+    { key: 'zaehler', label: 'Zähler', icon: Gauge, tab: 'versorgung' },
   ];
 
   const getContractStatus = (cat: string) => {
     const c = contracts.find(cc => cc.category === cat);
-    if (!c) return null;
-    return c.provider_name || 'Eingerichtet';
+    return c ? (c.provider_name || 'Eingerichtet') : null;
   };
 
-  const buildMapQuery = (home: any) => {
-    return encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
-  };
+  const buildMapQuery = (home: any) =>
+    encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
 
   return (
     <div className="p-4 space-y-6">
-      {/* Welcome header */}
+      {/* Welcome */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Willkommen bei Miety</h2>
@@ -238,7 +218,7 @@ function UebersichtTile() {
         )}
       </div>
 
-      {/* Home: 3 square tiles or empty state */}
+      {/* Home tiles row 1 */}
       {homes.length === 0 ? (
         <Card className="glass-card border-primary/20">
           <CardContent className="p-6 text-center">
@@ -260,92 +240,115 @@ function UebersichtTile() {
         homes.map((home) => {
           const mapQuery = buildMapQuery(home);
           return (
-            <div key={home.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Kachel 1: Adresse + Name */}
-              <Card className="glass-card aspect-square flex flex-col">
-                <CardContent className="p-5 flex flex-col justify-between h-full">
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Zuhause</span>
+            <div key={home.id} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Kachel 1: Adresse */}
+                <Card className="glass-card aspect-square flex flex-col">
+                  <CardContent className="p-5 flex flex-col justify-between h-full">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Zuhause</span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-lg font-semibold">{profile?.first_name || ''} {profile?.last_name || ''}</p>
+                        <p className="text-base text-muted-foreground">{[home.address, home.address_house_no].filter(Boolean).join(' ')}</p>
+                        <p className="text-base text-muted-foreground">{[home.zip, home.city].filter(Boolean).join(' ')}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                        <Badge variant="secondary" className="text-xs">{home.ownership_type === 'eigentum' ? 'Eigentum' : 'Miete'}</Badge>
+                        {home.property_type && <Badge variant="outline" className="text-xs capitalize">{home.property_type}</Badge>}
+                        {home.area_sqm && <Badge variant="outline" className="text-xs">{home.area_sqm} m²</Badge>}
+                        {home.rooms_count && <Badge variant="outline" className="text-xs">{home.rooms_count} Zimmer</Badge>}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-lg font-semibold">
-                        {profile?.first_name || ''} {profile?.last_name || ''}
-                      </p>
-                      <p className="text-base text-muted-foreground">
-                        {[home.address, home.address_house_no].filter(Boolean).join(' ')}
-                      </p>
-                      <p className="text-base text-muted-foreground">
-                        {[home.zip, home.city].filter(Boolean).join(' ')}
-                      </p>
+                    <div className="flex gap-2 mt-3">
+                      <Button size="sm" variant="outline" onClick={() => setEditingHome(home)}>Bearbeiten</Button>
+                      <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
+                        <ArrowRight className="h-4 w-4 mr-1" />Öffnen
+                      </Button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                      <Badge variant="secondary" className="text-xs">{home.ownership_type === 'eigentum' ? 'Eigentum' : 'Miete'}</Badge>
-                      {home.area_sqm && <Badge variant="outline" className="text-xs">{home.area_sqm} m²</Badge>}
-                      {home.rooms_count && <Badge variant="outline" className="text-xs">{home.rooms_count} Zimmer</Badge>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <Button size="sm" variant="outline" onClick={() => setEditingHome(home)}>
-                      Bearbeiten
-                    </Button>
-                    <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
-                      <ArrowRight className="h-4 w-4 mr-1" />Öffnen
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Kachel 2: Foto / Google Street View */}
-              <Card className="glass-card aspect-square overflow-hidden">
-                <CardContent className="p-0 h-full relative">
-                  {(home.city || home.address) ? (
-                    <iframe
-                      title="Street View"
-                      className="w-full h-full"
-                      style={{ border: 0 }}
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      src={`https://www.google.com/maps?q=${mapQuery}&layer=c&output=embed`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
-                      <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground">Foto hochladen</p>
-                      <p className="text-xs text-muted-foreground mt-1">oder Adresse für Street View eingeben</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                {/* Kachel 2: Street View */}
+                <Card className="glass-card aspect-square overflow-hidden">
+                  <CardContent className="p-0 h-full relative">
+                    {(home.city || home.address) ? (
+                      <iframe title="Street View" className="w-full h-full" style={{ border: 0 }} loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps?q=${mapQuery}&layer=c&output=embed`} />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+                        <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                        <p className="text-sm text-muted-foreground">Foto hochladen</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              {/* Kachel 3: Google Earth / Satellite */}
-              <Card className="glass-card aspect-square overflow-hidden">
-                <CardContent className="p-0 h-full">
-                  {(home.city || home.address) ? (
-                    <iframe
-                      title="Satellitenansicht"
-                      className="w-full h-full"
-                      style={{ border: 0 }}
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      src={`https://www.google.com/maps?q=${mapQuery}&t=k&z=18&output=embed`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
-                      <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground">Satellitenansicht</p>
-                      <p className="text-xs text-muted-foreground mt-1">Verfügbar nach Adresseingabe</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                {/* Kachel 3: Satellite */}
+                <Card className="glass-card aspect-square overflow-hidden">
+                  <CardContent className="p-0 h-full">
+                    {(home.city || home.address) ? (
+                      <iframe title="Satellitenansicht" className="w-full h-full" style={{ border: 0 }} loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps?q=${mapQuery}&t=k&z=18&output=embed`} />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+                        <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                        <p className="text-sm text-muted-foreground">Satellitenansicht</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Row 2: Camera Widgets */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {demoCameras.map((cam) => (
+                  <Card key={cam.id} className="glass-card overflow-hidden group cursor-pointer">
+                    <CardContent className="p-0 relative aspect-video">
+                      <img src={cam.image} alt={cam.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      {/* Status badge top left */}
+                      <Badge className={`absolute top-2 left-2 text-[10px] ${cam.status === 'online' ? 'bg-green-500/90 text-white' : 'bg-muted text-muted-foreground'}`}>
+                        {cam.status === 'online' ? '● Online' : '○ Offline'}
+                      </Badge>
+                      {/* LIVE badge top right */}
+                      {cam.status === 'online' && (
+                        <Badge className="absolute top-2 right-2 bg-red-600 text-white text-[10px] animate-pulse">
+                          LIVE
+                        </Badge>
+                      )}
+                      {/* Name + timestamp bottom */}
+                      <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
+                        <div>
+                          <p className="text-white text-sm font-medium">{cam.name}</p>
+                          <p className="text-white/70 text-[10px]">Gerade eben</p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-white hover:bg-white/20 text-xs">
+                            <Eye className="h-3 w-3 mr-1" />Live
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-white hover:bg-white/20 text-xs">
+                            <Video className="h-3 w-3 mr-1" />Events
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="text-xs">
+                <Plus className="h-3 w-3 mr-1" />Kamera hinzufügen
+              </Button>
             </div>
           );
         })
       )}
 
-      {/* Quick access cards — always visible */}
+      {/* Quick access */}
       <div>
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Schnellzugriff</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -374,7 +377,462 @@ function UebersichtTile() {
 }
 
 // =============================================================================
-// Tab 5: Kommunikation — WhatsApp, E-Mail, KI-Übersetzer
+// Tab 2: Versorgung — IST/SOLL Kachel-Paare + Zählerstand integriert
+// =============================================================================
+function VersorgungTile() {
+  const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
+  const { data: homes = [] } = useHomesQuery();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerCategory, setDrawerCategory] = useState<string>('strom');
+
+  const { data: contracts = [] } = useQuery({
+    queryKey: ['miety-contracts-versorgung', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_contracts').select('*')
+        .eq('tenant_id', activeTenantId)
+        .in('category', ['strom', 'gas', 'wasser', 'internet'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: readings = [] } = useQuery({
+    queryKey: ['miety-meter-readings-all', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_meter_readings').select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('reading_date', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  if (showCreateForm) return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
+
+  const openDrawer = (cat: string) => {
+    if (homes.length === 0) { setShowCreateForm(true); return; }
+    setDrawerCategory(cat);
+    setDrawerOpen(true);
+  };
+
+  const supplyCategories = [
+    { category: 'strom', label: 'Stromvertrag', icon: Zap, meterType: 'strom', meterUnit: 'kWh', hasSoll: true },
+    { category: 'gas', label: 'Gasvertrag', icon: Flame, meterType: 'gas', meterUnit: 'm³', hasSoll: false },
+    { category: 'wasser', label: 'Wasservertrag', icon: Droplets, meterType: 'wasser', meterUnit: 'm³', hasSoll: false },
+    { category: 'internet', label: 'Internet & Telefon', icon: Wifi, meterType: null, meterUnit: null, hasSoll: false },
+  ];
+
+  return (
+    <TileShell icon={Zap} title="Versorgung" description="Strom, Gas, Wasser & Internet — Verträge und Zählerstände">
+      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
+
+      {supplyCategories.map(({ category, label, icon: SIcon, meterType, meterUnit, hasSoll }) => {
+        const contract = contracts.find(c => c.category === category);
+        const reading = meterType ? readings.find(r => r.meter_type === meterType) : null;
+
+        return (
+          <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* IST Card */}
+            <Card className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <SIcon className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ihr Vertrag</p>
+                    <p className="font-medium text-sm">{label}</p>
+                    {contract ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mt-0.5">{contract.provider_name || 'Anbieter'}</p>
+                        {contract.monthly_cost && (
+                          <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
+                        )}
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
+                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>Details →</Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mt-1">Kein Vertrag hinterlegt</p>
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2 text-primary" onClick={() => openDrawer(category)}>
+                          <Plus className="h-3 w-3 mr-1" />Vertrag anlegen
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Integrated meter reading */}
+                {meterType && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Zählerstand</span>
+                    </div>
+                    {reading ? (
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <p className="text-lg font-semibold">{Number(reading.reading_value).toLocaleString('de-DE')}</p>
+                        <span className="text-xs text-muted-foreground">{meterUnit} · {new Date(reading.reading_date).toLocaleDateString('de-DE')}</span>
+                        <TrendingDown className="h-3 w-3 text-green-500 ml-auto" />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Noch kein Stand erfasst</p>
+                    )}
+                    <Button size="sm" variant="ghost" className="text-xs mt-1 -ml-2 text-primary"
+                      onClick={() => homes.length > 0 ? navigate(`/portal/miety/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
+                      <Plus className="h-3 w-3 mr-1" />Neuen Stand erfassen
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* SOLL Card */}
+            {hasSoll ? (
+              <Card className="glass-card border-green-500/20 overflow-hidden">
+                <div className="h-1.5 bg-gradient-to-r from-green-400 to-emerald-600" />
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <Zap className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-green-600 uppercase tracking-wide mb-1">Unser Angebot</p>
+                      <p className="font-medium text-sm">Rabot Charge — Strom zum Börsenpreis</p>
+                      <p className="text-sm text-muted-foreground mt-1">ca. 28,5 ct/kWh (dynamisch)</p>
+                      {contract?.monthly_cost && (
+                        <div className="mt-3 p-2.5 rounded-lg bg-green-50 dark:bg-green-950/30">
+                          <p className="text-xs text-muted-foreground">Sie zahlen aktuell <strong>{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</strong></p>
+                          <p className="text-xs text-green-700 dark:text-green-400 font-medium mt-0.5">
+                            → mit Rabot ca. {(Number(contract.monthly_cost) * 0.85).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat
+                          </p>
+                        </div>
+                      )}
+                      <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0 text-xs">
+                        bis zu 15% sparen
+                      </Badge>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs">Jetzt wechseln</Button>
+                        <Button size="sm" variant="ghost" className="text-xs">Mehr erfahren</Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-dashed opacity-60">
+                <CardContent className="p-5 flex items-center justify-center h-full">
+                  <p className="text-sm text-muted-foreground text-center">
+                    {category === 'gas' ? 'Gasanbieter-Vergleich — demnächst verfügbar' : 'Vergleich nicht verfügbar'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      })}
+
+      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
+        <Plus className="h-4 w-4 mr-1.5" />Weiteren Vertrag hinzufügen
+      </Button>
+
+      {homes.length > 0 && (
+        <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
+      )}
+    </TileShell>
+  );
+}
+
+// =============================================================================
+// Tab 3: Versicherungen — IST/SOLL Kachel-Paare + Neo Digital
+// =============================================================================
+function VersicherungenTile() {
+  const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
+  const { data: homes = [] } = useHomesQuery();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerCategory, setDrawerCategory] = useState<string>('hausrat');
+
+  const { data: contracts = [] } = useQuery({
+    queryKey: ['miety-contracts-versicherung', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_contracts').select('*')
+        .eq('tenant_id', activeTenantId)
+        .in('category', ['hausrat', 'haftpflicht'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  if (showCreateForm) return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
+
+  const openDrawer = (cat: string) => {
+    if (homes.length === 0) { setShowCreateForm(true); return; }
+    setDrawerCategory(cat);
+    setDrawerOpen(true);
+  };
+
+  const home = homes[0];
+  const insuranceTypes = [
+    { category: 'hausrat', label: 'Hausratversicherung', sollPrice: 'ab 4,90 EUR/Monat (Grundschutz)', sollPriceComfort: 'ab 8,50 EUR/Monat (Komfort)' },
+    { category: 'haftpflicht', label: 'Haftpflichtversicherung', sollPrice: 'ab 3,50 EUR/Monat', sollPriceComfort: null },
+  ];
+
+  return (
+    <TileShell icon={Shield} title="Versicherungen" description="Hausrat, Haftpflicht & Vergleichsangebote">
+      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
+
+      {insuranceTypes.map(({ category, label, sollPrice, sollPriceComfort }) => {
+        const contract = contracts.find(c => c.category === category);
+        return (
+          <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* IST Card */}
+            <Card className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <Shield className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ihr Vertrag</p>
+                    <p className="font-medium text-sm">{label}</p>
+                    {contract ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mt-0.5">{contract.provider_name || 'Versicherer'}</p>
+                        {contract.monthly_cost && (
+                          <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
+                        )}
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
+                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>Details →</Button>
+                        <div className="mt-2 pt-2 border-t border-border/50">
+                          <Button size="sm" variant="ghost" className="text-xs -ml-2 text-muted-foreground">
+                            <FolderOpen className="h-3 w-3 mr-1" />Unterlagen herunterladen
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mt-1">Nicht hinterlegt</p>
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2 text-primary" onClick={() => openDrawer(category)}>
+                          <Plus className="h-3 w-3 mr-1" />Hinzufügen
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SOLL Card — Neo Digital */}
+            <Card className="glass-card border-blue-500/20 overflow-hidden">
+              <div className="h-1.5 bg-gradient-to-r from-blue-400 to-indigo-600" />
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-blue-600 uppercase tracking-wide mb-1">Vergleichsangebot</p>
+                    <p className="font-medium text-sm">Neo Digital — {label}</p>
+                    {home && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {home.area_sqm && <Badge variant="outline" className="text-[10px]">{home.area_sqm} m²</Badge>}
+                        {home.property_type && <Badge variant="outline" className="text-[10px] capitalize">{home.property_type}</Badge>}
+                        {home.zip && <Badge variant="outline" className="text-[10px]">PLZ {home.zip}</Badge>}
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-2">{sollPrice}</p>
+                    {sollPriceComfort && <p className="text-xs text-muted-foreground">{sollPriceComfort}</p>}
+                    {contract?.monthly_cost && (
+                      <Badge className="mt-2 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-xs">
+                        Einsparung möglich
+                      </Badge>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">Angebot anfordern</Button>
+                      <Button size="sm" variant="ghost" className="text-xs">Mehr erfahren</Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })}
+
+      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
+        <Plus className="h-4 w-4 mr-1.5" />Weitere Versicherung
+      </Button>
+
+      {homes.length > 0 && (
+        <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
+      )}
+    </TileShell>
+  );
+}
+
+// =============================================================================
+// Tab 4: Smart Home — Kamera-Verwaltung + Arlo Shop
+// =============================================================================
+function SmartHomeTile() {
+  const [cameraToggles, setCameraToggles] = useState<Record<string, boolean>>({
+    'cam-1': true, 'cam-2': true, 'cam-3': false,
+  });
+
+  const arloProducts = [
+    { id: 'pro5s-1', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
+    { id: 'pro5s-2', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
+    { id: 'pro5s-3', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
+    { id: 'smarthub', name: 'Arlo SmartHub', price: 'ab 49,99 EUR', image: arloSmarthub, badges: ['WiFi', 'ZigBee', 'microSD'] },
+  ];
+
+  return (
+    <TileShell icon={Camera} title="Smart Home" description="Kamera-Verwaltung und Arlo Smart Home Shop">
+      {/* Camera Management */}
+      <Card className="glass-card">
+        <CardContent className="p-5">
+          <h3 className="font-medium text-sm mb-3">Meine Kameras</h3>
+          <p className="text-xs text-muted-foreground mb-4">Aktivierte Kameras erscheinen auf Ihrer Übersicht.</p>
+          <div className="space-y-3">
+            {demoCameras.map((cam) => (
+              <div key={cam.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <img src={cam.image} alt={cam.name} className="h-10 w-10 rounded object-cover" />
+                  <div>
+                    <p className="text-sm font-medium">{cam.name}</p>
+                    <p className={`text-xs ${cam.status === 'online' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {cam.status === 'online' ? '● Online' : '○ Offline'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Dashboard</span>
+                  <Switch
+                    checked={cameraToggles[cam.id] ?? false}
+                    onCheckedChange={(v) => setCameraToggles(p => ({ ...p, [cam.id]: v }))}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Starter Set Banner */}
+      <Card className="glass-card border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <ShoppingCart className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Starter Set — Arlo Premium</p>
+              <p className="text-xs text-muted-foreground">3 Kameras + SmartHub — alles was Sie brauchen</p>
+              <p className="text-lg font-bold mt-1">Komplett ab 589,96 EUR</p>
+            </div>
+            <Button size="sm">Starter Set kaufen</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Product Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {arloProducts.map((product) => (
+          <Card key={product.id} className="glass-card overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-square bg-muted/20 flex items-center justify-center p-6">
+                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
+              </div>
+              <div className="p-4">
+                <p className="font-medium text-sm">{product.name}</p>
+                <p className="text-sm font-semibold mt-1">{product.price}</p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {product.badges.map(b => (
+                    <Badge key={b} variant="outline" className="text-[10px]">{b}</Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" variant="outline" className="text-xs flex-1">
+                    <ExternalLink className="h-3 w-3 mr-1" />Bei Arlo kaufen
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs" disabled>
+                    Mit System verbinden
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </TileShell>
+  );
+}
+
+// =============================================================================
+// Tab 5: Einstellungen — API-Verbindungen
+// =============================================================================
+function EinstellungenTile() {
+  const integrations = [
+    { id: 'rabot', name: 'Rabot Energy', desc: 'White-Label Stromtarif zum Börsenpreis', fields: ['API Key', 'Partner ID'], icon: Zap },
+    { id: 'neo', name: 'Neo Digital', desc: 'Versicherungsvergleich für Mieter', fields: ['API Key', 'Makler-ID'], icon: Shield },
+    { id: 'arlo', name: 'Arlo Smart Home', desc: 'Kamerasystem und Smart-Home Geräte', fields: ['API Key', 'Account E-Mail'], icon: Camera },
+  ];
+
+  return (
+    <TileShell icon={Settings} title="Einstellungen" description="API-Verbindungen und Integrationen verwalten">
+      <Accordion type="single" collapsible className="space-y-3">
+        {integrations.map(({ id, name, desc, fields, icon: IIcon }) => (
+          <AccordionItem key={id} value={id} className="border rounded-xl overflow-hidden">
+            <AccordionTrigger className="px-5 py-4 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <IIcon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-sm">{name}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <Badge variant="outline" className="ml-auto mr-3 text-[10px] text-orange-600 border-orange-300">
+                  Nicht verbunden
+                </Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-4">
+              <div className="space-y-3">
+                {fields.map(f => (
+                  <div key={f}>
+                    <label className="text-xs text-muted-foreground mb-1 block">{f}</label>
+                    <Input placeholder={f} className="text-sm" />
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" disabled className="text-xs">
+                  <Cog className="h-3 w-3 mr-1" />Verbindung testen
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </TileShell>
+  );
+}
+
+// =============================================================================
+// Tab 6: Kommunikation — WhatsApp, E-Mail, KI-Übersetzer
 // =============================================================================
 function KommunikationTile() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -396,8 +854,7 @@ function KommunikationTile() {
 
   const handleEmailSend = () => {
     if (!emailAddress) return;
-    const mailto = `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    window.location.href = mailto;
+    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
   };
 
   const handleCopy = () => {
@@ -407,18 +864,14 @@ function KommunikationTile() {
   };
 
   const languages = [
-    { code: 'en', label: 'Englisch' },
-    { code: 'tr', label: 'Türkisch' },
-    { code: 'ar', label: 'Arabisch' },
-    { code: 'uk', label: 'Ukrainisch' },
-    { code: 'ru', label: 'Russisch' },
-    { code: 'pl', label: 'Polnisch' },
+    { code: 'en', label: 'Englisch' }, { code: 'tr', label: 'Türkisch' },
+    { code: 'ar', label: 'Arabisch' }, { code: 'uk', label: 'Ukrainisch' },
+    { code: 'ru', label: 'Russisch' }, { code: 'pl', label: 'Polnisch' },
     { code: 'fr', label: 'Französisch' },
   ];
 
   return (
     <TileShell icon={MessageCircle} title="Kommunikation" description="WhatsApp, E-Mail und KI-Übersetzer">
-      {/* Vermieter-Verlinkung compact */}
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -435,102 +888,61 @@ function KommunikationTile() {
         </CardContent>
       </Card>
 
-      {/* 3 Kommunikations-Kacheln */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Kachel 1: WhatsApp Business */}
+        {/* WhatsApp */}
         <Card className="glass-card border-green-500/20">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Phone className="h-5 w-5 text-green-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-green-500/10"><Phone className="h-5 w-5 text-green-500" /></div>
               <div>
                 <h3 className="font-medium text-sm">WhatsApp Business</h3>
                 <p className="text-xs text-muted-foreground">Direktnachricht an Vermieter</p>
               </div>
             </div>
-            <Input
-              placeholder="Telefonnummer Vermieter"
-              value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
-              className="text-sm"
-            />
-            <textarea
-              placeholder="Nachricht eingeben..."
-              value={whatsappMessage}
-              onChange={(e) => setWhatsappMessage(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
-            />
+            <Input placeholder="Telefonnummer Vermieter" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} className="text-sm" />
+            <textarea placeholder="Nachricht eingeben..." value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
             <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppSend}>
               <Send className="h-4 w-4 mr-1.5" />Nachricht senden
             </Button>
-            <p className="text-xs text-muted-foreground text-center">Verfügbar wenn Ihr Vermieter WhatsApp Business nutzt</p>
           </CardContent>
         </Card>
 
-        {/* Kachel 2: E-Mail */}
+        {/* E-Mail */}
         <Card className="glass-card">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
+              <div className="p-2 rounded-lg bg-primary/10"><Mail className="h-5 w-5 text-primary" /></div>
               <div>
                 <h3 className="font-medium text-sm">E-Mail</h3>
                 <p className="text-xs text-muted-foreground">E-Mail an Vermieter senden</p>
               </div>
             </div>
-            <Input
-              placeholder="E-Mail-Adresse Vermieter"
-              type="email"
-              value={emailAddress}
-              onChange={(e) => setEmailAddress(e.target.value)}
-              className="text-sm"
-            />
-            <Input
-              placeholder="Betreff"
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              className="text-sm"
-            />
-            <textarea
-              placeholder="Nachricht..."
-              value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
-            />
+            <Input placeholder="E-Mail-Adresse Vermieter" type="email" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} className="text-sm" />
+            <Input placeholder="Betreff" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="text-sm" />
+            <textarea placeholder="Nachricht..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
             <Button size="sm" variant="outline" className="w-full" onClick={handleEmailSend}>
               <Mail className="h-4 w-4 mr-1.5" />E-Mail senden
             </Button>
           </CardContent>
         </Card>
 
-        {/* Kachel 3: KI-Übersetzer */}
+        {/* KI-Übersetzer */}
         <Card className="glass-card">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-accent/30">
-                <Languages className="h-5 w-5 text-primary" />
-              </div>
+              <div className="p-2 rounded-lg bg-accent/30"><Languages className="h-5 w-5 text-primary" /></div>
               <div>
                 <h3 className="font-medium text-sm">KI-Übersetzer</h3>
                 <p className="text-xs text-muted-foreground">Text übersetzen & einfügen</p>
               </div>
             </div>
-            <textarea
-              placeholder="Text eingeben (Deutsch)..."
-              value={translateInput}
-              onChange={(e) => setTranslateInput(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
-            />
-            <select
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              className="flex h-10 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              {languages.map(l => (
-                <option key={l.code} value={l.code}>{l.label}</option>
-              ))}
+            <textarea placeholder="Text eingeben (Deutsch)..." value={translateInput} onChange={(e) => setTranslateInput(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+            <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)}
+              className="flex h-10 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+              {languages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
             </select>
             <Button size="sm" variant="outline" className="w-full" disabled>
               <Languages className="h-4 w-4 mr-1.5" />Übersetzen
@@ -552,310 +964,25 @@ function KommunikationTile() {
 }
 
 // =============================================================================
-// Tab 3: Zählerstände — Always 4 meter cards
-// =============================================================================
-function ZaehlerstaendeTile() {
-  const navigate = useNavigate();
-  const { activeTenantId } = useAuth();
-  const { data: homes = [] } = useHomesQuery();
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  const { data: readings = [] } = useQuery({
-    queryKey: ['miety-meter-readings-all', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data, error } = await supabase
-        .from('miety_meter_readings')
-        .select('*, miety_homes!inner(name)')
-        .eq('tenant_id', activeTenantId)
-        .order('reading_date', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  if (showCreateForm) {
-    return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
-  }
-
-  const meterTypes = [
-    { type: 'strom', label: 'Strom', unit: 'kWh', icon: Zap },
-    { type: 'gas', label: 'Gas', unit: 'm³', icon: Flame },
-    { type: 'wasser', label: 'Wasser', unit: 'm³', icon: Droplets },
-    { type: 'heizung', label: 'Heizung', unit: 'kWh', icon: Thermometer },
-  ];
-
-  return (
-    <TileShell icon={Gauge} title="Zählerstände" description="Verbrauchswerte erfassen und überblicken">
-      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {meterTypes.map(({ type, label, unit, icon: MIcon }) => {
-          const reading = readings.find((r) => r.meter_type === type);
-          return (
-            <Card key={type} className={reading ? 'glass-card' : 'border-dashed'}>
-              <CardContent className="p-4 text-center">
-                <MIcon className={`h-6 w-6 mx-auto mb-2 ${reading ? 'text-primary' : 'text-muted-foreground/40'}`} />
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-                {reading ? (
-                  <>
-                    <p className="text-xl font-semibold">{Number(reading.reading_value).toLocaleString('de-DE')}</p>
-                    <p className="text-xs text-muted-foreground">{unit} · {new Date(reading.reading_date).toLocaleDateString('de-DE')}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground py-1">Noch kein Stand</p>
-                    <Button size="sm" variant="ghost" className="text-xs mt-1"
-                      onClick={() => homes.length > 0 ? navigate(`/portal/miety/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
-                      <Plus className="h-3 w-3 mr-1" />Erfassen
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {homes.length > 0 && (
-        <Button variant="outline" onClick={() => navigate(`/portal/miety/zuhause/${homes[0].id}`)}>
-          <Gauge className="h-4 w-4 mr-1.5" />Alle Zählerstände verwalten
-        </Button>
-      )}
-    </TileShell>
-  );
-}
-
-// =============================================================================
-// Tab 4: Versorgung — Always 4 contract cards + add more
-// =============================================================================
-function VersorgungTile() {
-  const navigate = useNavigate();
-  const { activeTenantId } = useAuth();
-  const { data: homes = [] } = useHomesQuery();
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerCategory, setDrawerCategory] = useState<string>('strom');
-
-  const { data: contracts = [] } = useQuery({
-    queryKey: ['miety-contracts-versorgung', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data, error } = await supabase
-        .from('miety_contracts')
-        .select('*')
-        .eq('tenant_id', activeTenantId)
-        .in('category', ['strom', 'gas', 'wasser', 'internet'])
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  if (showCreateForm) {
-    return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
-  }
-
-  const supplyCards = [
-    { category: 'strom', label: 'Stromvertrag', icon: Zap },
-    { category: 'gas', label: 'Gasvertrag', icon: Flame },
-    { category: 'wasser', label: 'Wasservertrag', icon: Droplets },
-    { category: 'internet', label: 'Internet & Telefon', icon: Wifi },
-  ];
-
-  const openDrawer = (cat: string) => {
-    if (homes.length === 0) { setShowCreateForm(true); return; }
-    setDrawerCategory(cat);
-    setDrawerOpen(true);
-  };
-
-  return (
-    <TileShell icon={Zap} title="Versorgung" description="Strom, Gas, Wasser & Internet">
-      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {supplyCards.map(({ category, label, icon: SIcon }) => {
-          const contract = contracts.find(c => c.category === category);
-          return (
-            <Card key={category} className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <SIcon className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{label}</p>
-                    {contract ? (
-                      <>
-                        <p className="text-sm text-muted-foreground mt-0.5">{contract.provider_name || 'Anbieter'}</p>
-                        {contract.monthly_cost && (
-                          <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
-                        )}
-                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
-                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>
-                          Details →
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-xs text-muted-foreground mt-1">Kein Vertrag hinterlegt</p>
-                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2 text-primary" onClick={() => openDrawer(category)}>
-                          <Plus className="h-3 w-3 mr-1" />Vertrag anlegen
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
-        <Plus className="h-4 w-4 mr-1.5" />Weiteren Vertrag hinzufügen
-      </Button>
-
-      {homes.length > 0 && (
-        <ContractDrawer
-          open={drawerOpen}
-          onOpenChange={setDrawerOpen}
-          homeId={homes[0].id}
-          defaultCategory={drawerCategory}
-        />
-      )}
-    </TileShell>
-  );
-}
-
-// =============================================================================
-// Tab 5: Versicherungen — Always 2 insurance cards + add more
-// =============================================================================
-function VersicherungenTile() {
-  const navigate = useNavigate();
-  const { activeTenantId } = useAuth();
-  const { data: homes = [] } = useHomesQuery();
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerCategory, setDrawerCategory] = useState<string>('hausrat');
-
-  const { data: contracts = [] } = useQuery({
-    queryKey: ['miety-contracts-versicherung', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data, error } = await supabase
-        .from('miety_contracts')
-        .select('*')
-        .eq('tenant_id', activeTenantId)
-        .in('category', ['hausrat', 'haftpflicht'])
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  if (showCreateForm) {
-    return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
-  }
-
-  const insuranceCards = [
-    { category: 'hausrat', label: 'Hausratversicherung' },
-    { category: 'haftpflicht', label: 'Haftpflichtversicherung' },
-  ];
-
-  const openDrawer = (cat: string) => {
-    if (homes.length === 0) { setShowCreateForm(true); return; }
-    setDrawerCategory(cat);
-    setDrawerOpen(true);
-  };
-
-  return (
-    <TileShell icon={Shield} title="Versicherungen" description="Hausrat, Haftpflicht & mehr">
-      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {insuranceCards.map(({ category, label }) => {
-          const contract = contracts.find(c => c.category === category);
-          return (
-            <Card key={category} className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <Shield className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{label}</p>
-                    {contract ? (
-                      <>
-                        <p className="text-sm text-muted-foreground mt-0.5">{contract.provider_name || 'Versicherer'}</p>
-                        {contract.monthly_cost && (
-                          <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
-                        )}
-                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
-                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>
-                          Details →
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-xs text-muted-foreground mt-1">Nicht hinterlegt</p>
-                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2 text-primary" onClick={() => openDrawer(category)}>
-                          <Plus className="h-3 w-3 mr-1" />Hinzufügen
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
-        <Plus className="h-4 w-4 mr-1.5" />Weitere Versicherung
-      </Button>
-
-      {homes.length > 0 && (
-        <ContractDrawer
-          open={drawerOpen}
-          onOpenChange={setDrawerOpen}
-          homeId={homes[0].id}
-          defaultCategory={drawerCategory}
-        />
-      )}
-    </TileShell>
-  );
-}
-
-// =============================================================================
 // Main Router
 // =============================================================================
 export default function MietyPortalPage() {
-  const content = moduleContents['MOD-20'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="uebersicht" replace />} />
       <Route path="uebersicht" element={<UebersichtTile />} />
-      <Route path="zaehlerstaende" element={<ZaehlerstaendeTile />} />
       <Route path="versorgung" element={<VersorgungTile />} />
       <Route path="versicherungen" element={<VersicherungenTile />} />
+      <Route path="smarthome" element={<SmartHomeTile />} />
+      <Route path="einstellungen" element={<EinstellungenTile />} />
       <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="zuhause/:homeId" element={
-        <React.Suspense fallback={
-          <div className="flex items-center justify-center p-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          </div>
-        }>
+        <React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
           <MietyHomeDossier />
         </React.Suspense>
       } />
-      <Route path="*" element={<Navigate to="/portal/miety" replace />} />
+      {/* Legacy redirect */}
+      <Route path="zaehlerstaende" element={<Navigate to="/portal/miety/versorgung" replace />} />
     </Routes>
   );
 }
