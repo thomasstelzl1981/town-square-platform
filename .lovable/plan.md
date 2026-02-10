@@ -1,93 +1,94 @@
 
-# DMS Storage — Namenskorrektur, Nummerierung und Mobile Ansicht
+# DMS Storage — Fehleranalyse und Fixes fuer alle 5 Ansichten
 
-## 1. Namenskorrektur im Storage Manifest (SSOT)
+## Gefundene Probleme
 
-Die `root_name` Werte in `src/config/storageManifest.ts` weichen von den tatsaechlichen Modulnamen in `routesManifest.ts` und den Nutzerwuenschen ab. Folgende Korrekturen:
+### Problem 1: Dokumente erscheinen an falscher Stelle (KRITISCH)
+In `StorageTab.tsx` (Zeile 138-165) gibt es einen schweren Logikfehler: Wenn `selectedNodeId` null ist (Root-Ebene), werden ALLE Dokumente des Tenants geladen und angezeigt — obwohl Root-Ordner keine Dokumente direkt enthalten. Das fuehrt dazu, dass z.B. Fahrzeugscheine, Mietvertraege und Fotos alle auf Root-Ebene erscheinen, obwohl sie in Unterordnern liegen.
 
-| Modul | Aktuell (falsch) | Korrekt |
-|-------|-----------------|---------|
-| MOD_03 | DMS | Dokumente |
-| MOD_05 | MSV | Mietverwaltung |
-| MOD_08 | Investments | Investment-Suche |
-| MOD_14 | Communication Pro | Kommunikation Pro |
+**Fix:** Wenn `selectedNodeId === null`, sollen KEINE Dokumente geladen werden (Root zeigt nur Ordner). Nur wenn man in einen Ordner navigiert, werden die dort verlinkten Dokumente angezeigt.
 
-Alle anderen Namen stimmen bereits ueberein (Stammdaten, KI Office, Immobilien, Verkauf, Finanzierung, Vertriebspartner, Leads, Finanzierungsmanager, Akquise-Manager, Projekte, Fortbildung, Services, Car-Management, Finanzanalyse, Photovoltaik, Miety).
+### Problem 2: Alte Namen in der Datenbank (stale data)
+Die `storageManifest.ts` wurde korrigiert (DMS→Dokumente, MSV→Mietverwaltung, etc.), aber die bereits geseedeten DB-Records haben noch die alten Namen:
+- `DMS` statt `Dokumente`
+- `MSV` statt `Mietverwaltung`  
+- `Investments` statt `Investment-Suche`
+- `Communication Pro` statt `Kommunikation Pro`
 
-**Datei:** `src/config/storageManifest.ts` — 4 Zeilen aendern (`root_name` fuer MOD_03, MOD_05, MOD_08, MOD_14)
+Die Anzeige nutzt zwar `getModuleDisplayName()` fuer Modul-Root-Nodes, aber die Column View und andere Stellen greifen teilweise direkt auf `n.name` zu. Zudem stimmt die DB nicht mit dem SSOT ueberein.
 
-## 2. Nummerierung durchgaengig sichtbar machen
+**Fix:** SQL-Update der 4 falschen Namen in `storage_nodes`. Zusaetzlich sicherstellen, dass ueberall `getModuleDisplayName()` genutzt wird.
 
-Die `getModuleDisplayName()` Funktion existiert bereits und erzeugt z.B. `"04 — Immobilien"`. Das Problem: Sie wird nicht ueberall genutzt.
+### Problem 3: Column View zeigt falsche Zuordnungen
+Die `ColumnView` bekommt ALLE `documents` und `documentLinks` als Props und zeigt Dateien basierend auf `documentLinks.filter(l => l.node_id === nodeId)`. Da `StorageTab` aber die `documents` Query bereits nach `selectedNodeId` filtert, bekommt die Column View nur die Dokumente des aktuell ausgewaehlten Ordners — NICHT die des in der Spalte angeklickten Ordners. Die Column View braucht aber Zugriff auf ALLE Dokumente, da sie mehrere Ordner-Ebenen gleichzeitig anzeigt.
 
-**ColumnView** (`src/components/dms/views/ColumnView.tsx`, Zeile 72): Zeigt nur `n.name` (den rohen DB-Namen, z.B. `"Immobilien"` ohne Nummer). Muss `getModuleDisplayName()` nutzen fuer Root-Module-Nodes (erkennbar an `template_id` das auf `_ROOT` endet).
+**Fix:** Eine separate, ungefilterte Dokumente+Links Query fuer die Column View, oder besser: Die Column View soll die Dokumente selbst per `documentLinks` filtern (funktioniert bereits, aber die `documents` Liste aus StorageTab ist gefiltert und unvollstaendig).
 
-**StorageFileManager** (Zeilen 111-113, 126-128): Nutzt `getModuleDisplayName()` bereits korrekt fuer Breadcrumb und Items — das passt.
+### Problem 4: Multi Select View weicht vom Supabase-Design ab
+Unsere Multi Select View zeigt ein Grid mit Icon-Kacheln. Das Supabase-Original zeigt eine spaltenbasierte Ansicht (wie Column View) MIT Checkboxen und einer gruenen Action-Bar. Oben steht "Select all X files" pro Spalte, und die ausgewaehlten Items haben gruene Checkboxen.
 
-**Aenderungen:**
-- `ColumnView.tsx`: Root-Spalte und nachfolgende Spalten muessen bei Modul-Root-Nodes `getModuleDisplayName(n.module_code)` verwenden statt `n.name`
+**Fix:** MultiSelectView komplett umbauen zu einer spaltenbasierten Ansicht mit Checkboxen (wie Supabase Screenshot 4).
 
-## 3. Mobile Ansicht (Dropbox-Stil)
+### Problem 5: Preview View zeigt nur Dateien, keine Ordner
+Die linke Spalte der Preview View filtert auf `items.filter(i => i.type === 'file')`. Wenn man auf Root-Ebene ist und es keine Dateien gibt, ist die linke Liste leer. Es fehlt die Navigation in Ordner.
 
-Aktuell gibt es keine mobile Optimierung. Die Tabelle mit 6 Spalten (Checkbox, Name, Size, Type, Date, Menu) ist auf Mobilgeraeten nicht nutzbar. Dropbox Mobile zeigt:
+**Fix:** Ordner in der linken Liste der Preview View ebenfalls anzeigen, mit Klick-Navigation.
 
-- Einfache vertikale Liste mit grossem Touch-Target
-- Jede Zeile: Icon links, Name + Metadaten (Groesse, Datum) gestapelt, 3-Punkt-Menu rechts
-- Kein Checkbox im Normalzustand — Long-Press aktiviert Multi-Select
-- Pull-to-Refresh
-- Toolbar vereinfacht: nur Zurueck-Pfeil + Ordnername + Upload-FAB (Floating Action Button)
-- Kein Sort-Dropdown, kein View-Switcher auf Mobile
-- FAB unten rechts fuer Upload + Neuer Ordner
+### Problem 6: Nummerierung nicht ueberall sichtbar
+Die `getModuleDisplayName()` Funktion wird zwar in ListView und StorageFileManager genutzt, aber die Nummerierung (z.B. "04 — Immobilien") muss konsistent in ALLEN Views und in der Breadcrumb erscheinen.
 
-**Aenderungen:**
+## Technische Fixes
 
-**`StorageFileManager.tsx`**: `useIsMobile()` importieren. Bei Mobile: kein View-Switcher (immer List), vereinfachte Toolbar, FAB statt Toolbar-Buttons.
+### 1. `StorageTab.tsx` — Dokumente-Query Fix
+Zeile 138-165: Wenn `selectedNodeId === null`, leere Liste zurueckgeben (keine Dokumente auf Root-Ebene). Zusaetzlich eine SEPARATE ungefilterte Dokumente+Links Query fuer Column View und Multi Select View hinzufuegen.
 
-**`StorageToolbar.tsx`**: Mobile-Variante: Nur Zurueck-Pfeil + aktueller Ordnername (kein Breadcrumb-Pfad, kein View/Sort-Dropdown). Upload und Neuer Ordner werden in einen FAB ausgelagert.
+```typescript
+// Gefilterte Docs fuer aktuelle Ansicht
+const { data: documents = [] } = useQuery({
+  queryKey: ['documents', activeTenantId, selectedNodeId],
+  queryFn: async () => {
+    if (!activeTenantId || !selectedNodeId) return []; // <-- FIX: kein selectedNodeId = keine Docs
+    // ... Rest wie bisher
+  },
+});
 
-**`ListView.tsx`**: Mobile-Variante der Zeilen:
-- Statt 6-Spalten-Grid: `flex` Layout mit Icon, Name+Meta gestapelt, 3-Punkt-Menu
-- Keine Checkbox-Spalte (Multi-Select per Long-Press oder ueber den Multi-Select View-Mode)
-- Keine Size/Type/Date Spalten — stattdessen unter dem Namen als einzeilige Meta-Info: `"2.3 MB · PDF · 10.02.2026"`
+// ALLE Docs + Links fuer Column View / Multi Select
+const { data: allDocuments = [] } = useQuery({
+  queryKey: ['all-documents', activeTenantId],
+  queryFn: async () => {
+    if (!activeTenantId) return [];
+    const { data } = await supabase.from('documents')
+      .select('*').eq('tenant_id', activeTenantId);
+    return data || [];
+  },
+});
+```
 
-**Neues Element — FAB (Floating Action Button):**
-- Position: `fixed bottom-6 right-6` innerhalb des Containers
-- Primaerfarbe, rund, Plus-Icon
-- Klick oeffnet Radial-Menu oder Bottom-Sheet mit: "Datei hochladen" + "Neuer Ordner"
+### 2. SQL-Migration — Stale Namen korrigieren
+```sql
+UPDATE storage_nodes SET name = 'Dokumente' WHERE template_id = 'MOD_03_ROOT';
+UPDATE storage_nodes SET name = 'Mietverwaltung' WHERE template_id = 'MOD_05_ROOT';
+UPDATE storage_nodes SET name = 'Investment-Suche' WHERE template_id = 'MOD_08_ROOT';
+UPDATE storage_nodes SET name = 'Kommunikation Pro' WHERE template_id = 'MOD_14_ROOT';
+```
 
-## Technische Umsetzung
+### 3. `ColumnView.tsx` — Eigene Dokument-Filterung
+Die Column View muss `allDocuments` und `documentLinks` bekommen (ungefiltert) und selbst pro Spalte filtern. Der Import von `getModuleDisplayName` ist bereits vorhanden und wird korrekt genutzt.
 
-### Dateien die geaendert werden:
+### 4. `MultiSelectView.tsx` — Spaltenbasiertes Layout (Supabase-Stil)
+Komplett umbauen: Statt Grid-Kacheln eine spaltenbasierte Ansicht wie Column View, aber mit Checkboxen pro Item und "Select all X files" Header pro Spalte. Gruene Checkboxen bei Auswahl.
 
-1. **`src/config/storageManifest.ts`** — 4 `root_name` Werte korrigieren:
-   - Zeile 107: `'DMS'` → `'Dokumente'`
-   - Zeile 140: `'MSV'` → `'Mietverwaltung'`
-   - Zeile 181: `'Investments'` → `'Investment-Suche'`
-   - Zeile 252: `'Communication Pro'` → `'Kommunikation Pro'`
+### 5. `PreviewView.tsx` — Ordner in linker Liste
+Ordner ebenfalls in der linken Liste anzeigen (mit Folder-Icon), Klick navigiert in den Ordner. Nur Dateien sind fuer Preview auswaehlbar.
 
-2. **`src/components/dms/views/ColumnView.tsx`** — Nummerierung in Miller-Spalten:
-   - `getModuleDisplayName` importieren
-   - Bei Root-Nodes (erkennbar an `template_id?.endsWith('_ROOT')` + `module_code`) den Display-Namen verwenden
+### 6. `StorageFileManager.tsx` — allDocuments Prop
+Neue Prop `allDocuments` und `allDocumentLinks` fuer Column View und Multi Select View durchreichen.
 
-3. **`src/components/dms/views/ListView.tsx`** — Mobile-Variante:
-   - `useIsMobile()` importieren
-   - Desktop: bestehendes 6-Spalten-Grid (unveraendert)
-   - Mobile: Einfache Flex-Zeilen (Icon | Name+Meta | Menu), kein Header, kein Checkbox
+## Zusammenfassung der zu aendernden Dateien
 
-4. **`src/components/dms/StorageToolbar.tsx`** — Mobile-Variante:
-   - `useIsMobile()` importieren
-   - Mobile: Nur Zurueck-Pfeil + aktueller Ordnername (letztes Breadcrumb-Segment)
-   - View-Switcher, Sort, Upload, NewFolder Buttons ausblenden auf Mobile
-
-5. **`src/components/dms/StorageFileManager.tsx`** — Mobile FAB + Anpassungen:
-   - `useIsMobile()` importieren
-   - Mobile: `viewMode` fest auf `'list'` setzen (kein View-Switcher)
-   - FAB-Button unten rechts rendern mit Upload + Neuer Ordner Aktionen
-   - Container-Hoehe auf Mobile anpassen: `h-[calc(100vh-8rem)]` statt `12rem`
-
-### Reihenfolge:
-1. storageManifest.ts — Namenskorrektur (4 Zeilen)
-2. ColumnView.tsx — Nummerierung einbauen
-3. ListView.tsx — Mobile-Variante
-4. StorageToolbar.tsx — Mobile-Variante
-5. StorageFileManager.tsx — FAB + Mobile-Logik
+1. **`StorageTab.tsx`** — Docs-Query Fix (kein Docs bei Root), separate All-Docs Query, neue Props
+2. **`StorageFileManager.tsx`** — Neue Props `allDocuments`/`allDocumentLinks` entgegennehmen und an Column/MultiSelect weiterleiten
+3. **`ColumnView.tsx`** — Nutzt `allDocuments` statt `documents`
+4. **`MultiSelectView.tsx`** — Komplett umbauen zu spaltenbasiert mit Checkboxen
+5. **`PreviewView.tsx`** — Ordner in linke Liste aufnehmen, Navigation ermoeglichen
+6. **SQL-Migration** — 4 falsche Namen korrigieren
