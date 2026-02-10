@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { ArrowLeft, Download, Home, MapPin, Ruler, Calendar, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LineChart, Line, Area, AreaChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Area, AreaChart, Cell } from 'recharts';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { DEMO_UNIT_DETAIL } from '@/components/projekte/demoProjectData';
 import { useInvestmentEngine, defaultInput } from '@/hooks/useInvestmentEngine';
@@ -226,7 +226,7 @@ export function LandingPageUnitExpose({ unit, isDemo, onBack }: LandingPageUnitE
                   <Tooltip formatter={(v: number) => `${v} €`} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     {breakdownData.map((entry, i) => (
-                      <Bar key={i} dataKey="value" fill={entry.fill} />
+                      <Cell key={i} fill={entry.fill} />
                     ))}
                   </Bar>
                 </BarChart>
