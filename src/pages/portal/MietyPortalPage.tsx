@@ -4,9 +4,9 @@
  * All tiles show permanent placeholder cards — no empty blockers
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
@@ -102,11 +102,58 @@ function NoHomeBanner({ onCreateClick }: { onCreateClick: () => void }) {
 // Tab 1: Übersicht — Home List + Quick Access Cards
 // =============================================================================
 function UebersichtTile() {
-  const { activeTenantId } = useAuth();
+  const { activeTenantId, user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingHome, setEditingHome] = useState<any>(null);
+  const autoCreatedRef = useRef(false);
 
   const { data: homes = [], isLoading } = useHomesQuery();
+
+  // Fetch profile for auto-create
+  const { data: profile } = useQuery({
+    queryKey: ['profile-for-miety-auto', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, street, house_number, postal_code, city')
+        .eq('id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Auto-create home from profile when none exists
+  const autoCreateMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeTenantId || !user?.id || !profile?.city) throw new Error('skip');
+      const { error } = await supabase.from('miety_homes').insert({
+        tenant_id: activeTenantId,
+        user_id: user.id,
+        name: 'Mein Zuhause',
+        address: profile.street || null,
+        address_house_no: profile.house_number || null,
+        zip: profile.postal_code || null,
+        city: profile.city,
+        ownership_type: 'miete',
+        property_type: 'wohnung',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['miety-homes'] });
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoading && homes.length === 0 && profile?.city && !autoCreatedRef.current && !autoCreateMutation.isPending) {
+      autoCreatedRef.current = true;
+      autoCreateMutation.mutate();
+    }
+  }, [isLoading, homes.length, profile?.city]);
 
   const { data: contracts = [] } = useQuery({
     queryKey: ['miety-contracts-overview', activeTenantId],
@@ -131,6 +178,28 @@ function UebersichtTile() {
     return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
   }
 
+  if (editingHome) {
+    return (
+      <div className="p-4">
+        <MietyCreateHomeForm
+          onCancel={() => setEditingHome(null)}
+          homeId={editingHome.id}
+          initialData={{
+            name: editingHome.name || '',
+            address: editingHome.address || '',
+            houseNo: editingHome.address_house_no || '',
+            zip: editingHome.zip || '',
+            city: editingHome.city || '',
+            ownershipType: editingHome.ownership_type || 'miete',
+            propertyType: editingHome.property_type || 'wohnung',
+            areaSqm: editingHome.area_sqm?.toString() || '',
+            roomsCount: editingHome.rooms_count?.toString() || '',
+          }}
+        />
+      </div>
+    );
+  }
+
   const quickCards = [
     { key: 'strom', label: 'Strom', icon: Zap, tab: 'versorgung' },
     { key: 'internet', label: 'Internet', icon: Wifi, tab: 'versorgung' },
@@ -142,6 +211,10 @@ function UebersichtTile() {
     const c = contracts.find(cc => cc.category === cat);
     if (!c) return null;
     return c.provider_name || 'Eingerichtet';
+  };
+
+  const buildMapQuery = (home: any) => {
+    return encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
   };
 
   return (
@@ -159,7 +232,7 @@ function UebersichtTile() {
         )}
       </div>
 
-      {/* Home cards or create CTA */}
+      {/* Home cards or loading state */}
       {homes.length === 0 ? (
         <Card className="glass-card border-primary/20">
           <CardContent className="p-6 text-center">
@@ -167,30 +240,61 @@ function UebersichtTile() {
               <Home className="h-10 w-10 text-primary" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Ihr Zuhause einrichten</h3>
-            <p className="text-muted-foreground mb-4 max-w-md mx-auto">Adresse wird automatisch aus Ihren Stammdaten übernommen.</p>
-            <Button onClick={() => setShowCreateForm(true)} size="lg">
-              <Plus className="h-5 w-5 mr-2" />Zuhause anlegen
-            </Button>
+            <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+              {profile?.city ? 'Wird automatisch aus Ihren Stammdaten erstellt...' : 'Bitte hinterlegen Sie zuerst Ihre Adresse in den Stammdaten.'}
+            </p>
+            {!profile?.city && (
+              <Button onClick={() => setShowCreateForm(true)} size="lg">
+                <Plus className="h-5 w-5 mr-2" />Manuell anlegen
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
           {homes.map((home) => (
-            <Card key={home.id} className="glass-card hover:border-primary/30 transition-colors cursor-pointer group" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
+            <Card key={home.id} className="glass-card">
               <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0"><Building2 className="h-5 w-5 text-primary" /></div>
+                <div className="flex items-start gap-4">
+                  {/* Left: Info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{home.name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {[home.address, home.address_house_no].filter(Boolean).join(' ')}{home.city ? `, ${home.city}` : ''}
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                      <h3 className="font-semibold text-lg truncate">{home.name}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {[home.address, home.address_house_no].filter(Boolean).join(' ')}
+                      {home.zip || home.city ? ', ' : ''}
+                      {[home.zip, home.city].filter(Boolean).join(' ')}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-2">
+                    <div className="flex items-center gap-1.5 mb-3">
                       <Badge variant="secondary" className="text-xs">{home.ownership_type === 'eigentum' ? 'Eigentum' : 'Miete'}</Badge>
                       {home.area_sqm && <Badge variant="outline" className="text-xs">{home.area_sqm} m²</Badge>}
+                      {home.rooms_count && <Badge variant="outline" className="text-xs">{home.rooms_count} Zimmer</Badge>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingHome(home); }}>
+                        Bearbeiten
+                      </Button>
+                      <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
+                        <ArrowRight className="h-4 w-4 mr-1" />Öffnen
+                      </Button>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-1" />
+                  {/* Right: Google Maps Satellite */}
+                  {(home.city || home.address) && (
+                    <div className="flex-shrink-0 w-[140px] h-[120px] rounded-lg overflow-hidden border border-border">
+                      <iframe
+                        title="Satellitenansicht"
+                        width="140"
+                        height="120"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps?q=${buildMapQuery(home)}&t=k&z=18&output=embed`}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
