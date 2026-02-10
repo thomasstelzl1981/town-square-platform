@@ -188,7 +188,7 @@ export function EinstellungenTab() {
   };
 
   const formatGB = (bytes: number) => `${(bytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
-  const formatCredits = (cents: number) => `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+  const formatCredits = (cents: number) => `${Math.round(cents / 25)} Credits`;
 
   const getMandateStatusBadge = (status: string) => {
     const map: Record<string, { icon: typeof Clock; label: string; cls: string }> = {
@@ -253,14 +253,20 @@ export function EinstellungenTab() {
                 const isActive = plan.id === currentPlanId;
                 const PlanIcon = PLAN_ICONS[plan.name] || HardDrive;
                 return (
-                  <button
+                   <button
                     key={plan.id}
-                    onClick={() => !isActive && changePlanMutation.mutate(plan)}
+                    onClick={() => {
+                      if (!isActive && plan.price_cents > 0) {
+                        toast.info('Vertrag erforderlich – bitte kontaktieren Sie uns für ein Upgrade.');
+                        return;
+                      }
+                      if (!isActive) changePlanMutation.mutate(plan);
+                    }}
                     disabled={isActive || changePlanMutation.isPending}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                       isActive
                         ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
-                        : 'border-border/50 hover:border-primary/30 hover:bg-primary/5'
+                        : plan.price_cents > 0 ? 'border-border/50 opacity-60 cursor-not-allowed' : 'border-border/50 hover:border-primary/30 hover:bg-primary/5'
                     }`}
                   >
                     <PlanIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -288,7 +294,7 @@ export function EinstellungenTab() {
               })}
             </div>
 
-            <p className="text-[11px] text-muted-foreground">4 Credits = 1 € · Abrechnung monatlich</p>
+            <p className="text-[11px] text-muted-foreground">Abrechnung monatlich in Credits</p>
           </CardContent>
         </Card>
 
@@ -428,7 +434,7 @@ export function EinstellungenTab() {
                 <span className="text-sm text-foreground font-medium">Kosten pro Dokument</span>
                 <Badge variant="outline" className="font-mono">1 Credit</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">≈ 0,25 € pro Auslesung</p>
+              <p className="text-xs text-muted-foreground mt-1">Pro Dokument wird 1 Credit berechnet</p>
             </div>
           </CardContent>
         </Card>
