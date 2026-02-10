@@ -9,10 +9,10 @@ import { Sun, Wifi, Landmark, Settings } from 'lucide-react';
 
 export default function EinstellungenTab() {
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Einstellungen</h2>
-        <p className="text-muted-foreground">Integrationen und Monitoring-Konfiguration</p>
+        <h2 className="text-h2 text-foreground">Einstellungen</h2>
+        <p className="text-sm text-muted-foreground">Integrationen und Monitoring-Konfiguration</p>
       </div>
 
       {/* Connectors */}
@@ -51,7 +51,7 @@ export default function EinstellungenTab() {
       </div>
 
       {/* Monitoring Settings */}
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Settings className="h-4 w-4" />

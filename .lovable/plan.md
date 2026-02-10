@@ -42,6 +42,10 @@ Die Recherche (3-Kachel-Layout: Free, Pro, Candidates) war fälschlicherweise in
 - ✅ Armstrong Actions korrekt auf MOD-14 gemappt
 - ✅ Alte Dateien unter `office/components/` können gelöscht werden (Originals verbleiben als Backup)
 
+## 0b. Widget-Design-Harmonisierung (ERLEDIGT ✅)
+
+Shared Components: PageShell, KPICard, WidgetHeader, ListRow erstellt. Alle Module harmonisiert (Padding, glass-card, Typografie). 4 Legacy-Dateien in MOD-11 gelöscht. MOD-04/MOD-08 bewusst ausgenommen.
+
 ---
 
 ## 1. Navigation / Routing

@@ -334,7 +334,7 @@ const KatalogTab = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header with stats */}
       <div className="flex items-center justify-between">
         <div>
@@ -355,7 +355,7 @@ const KatalogTab = () => {
 
       {/* Filters Card */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <Card>
+        <Card className="glass-card">
           <CollapsibleTrigger asChild>
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
               <div className="flex items-center justify-between">
@@ -477,7 +477,7 @@ const KatalogTab = () => {
       </Collapsible>
 
       {/* Listings Table */}
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-lg">Objektkatalog</CardTitle>
           <CardDescription>

@@ -297,11 +297,11 @@ export default function ProjekteDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Projekte</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-h2 text-foreground">Projekte</h1>
+        <p className="text-sm text-muted-foreground">
           Bauträger- und Aufteiler-Projekte verwalten
         </p>
       </div>

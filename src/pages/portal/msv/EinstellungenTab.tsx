@@ -129,9 +129,9 @@ const EinstellungenTab = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Premium Status */}
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Star className="h-4 w-4 text-accent" />
@@ -189,7 +189,7 @@ const EinstellungenTab = () => {
       </Card>
 
       {/* Automatisierung */}
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -302,7 +302,7 @@ const EinstellungenTab = () => {
       </Card>
 
       {/* Kontoanbindung (FinAPI) */}
-      <Card className={isPremium ? '' : 'border-dashed'}>
+      <Card className={`glass-card ${isPremium ? '' : 'border-dashed'}`}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Building2 className="h-4 w-4" />
@@ -386,7 +386,7 @@ const EinstellungenTab = () => {
       </Card>
 
       {/* E-Mail-Versand */}
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Mail className="h-4 w-4" />

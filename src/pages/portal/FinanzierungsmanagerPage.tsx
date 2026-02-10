@@ -53,7 +53,7 @@ export default function FinanzierungsmanagerPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Route Content - Navigation handled by Level 3 SubTabs */}
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
