@@ -41,14 +41,19 @@ export const DEMO_CALC = {
 };
 
 // ── 24 Demo Units ───────────────────────────────────────────────────────
-interface DemoUnit {
+export interface DemoUnit {
   id: string;
+  public_id: string;
   unit_number: string;
   rooms: number;
   floor: number;
   area_sqm: number;
   list_price: number;
   rent_monthly: number;
+  annual_net_rent: number;
+  non_recoverable_costs: number;
+  yield_percent: number;
+  price_per_sqm: number;
   provision_eur: number;
   status: 'available';
 }
@@ -67,6 +72,11 @@ const TOTAL_SALE = 7_200_000;
 const COMMISSION_RATE = 0.10;
 const YIELD_RATE = 0.04;
 
+// Slight yield variation per unit type to make demo realistic
+const YIELD_OFFSETS: Record<number, number> = { 1: 0.004, 2: 0.002, 3: -0.001, 4: -0.003 };
+// Non-recoverable costs vary by size
+const NK_PER_SQM = 0.30; // ~0.30 EUR/m² monthly
+
 function buildDemoUnits(): DemoUnit[] {
   const units: DemoUnit[] = [];
   let idx = 0;
@@ -77,18 +87,28 @@ function buildDemoUnits(): DemoUnit[] {
       const areaShare = tmpl.area / totalArea;
       const listPrice = Math.round(TOTAL_SALE * areaShare);
       const purchaseShare = Math.round(TOTAL_PURCHASE * areaShare);
-      const rentMonthly = Math.round((purchaseShare * YIELD_RATE) / 12);
+      const yieldRate = YIELD_RATE + (YIELD_OFFSETS[tmpl.rooms] || 0);
+      const rentMonthly = Math.round((purchaseShare * yieldRate) / 12);
+      const annualNetRent = rentMonthly * 12;
+      const nonRecoverableCosts = Math.round(tmpl.area * NK_PER_SQM);
+      const yieldPercent = Math.round((annualNetRent / listPrice) * 10000) / 100;
+      const pricePerSqm = Math.round(listPrice / tmpl.area);
       const provisionEur = Math.round(listPrice * COMMISSION_RATE);
       const floor = Math.min(Math.ceil(idx / 4), 6);
 
       units.push({
         id: `demo-unit-${String(idx).padStart(3, '0')}`,
+        public_id: `SOT-BE-DEMO${String(idx).padStart(4, '0')}`,
         unit_number: `WE-${String(idx).padStart(3, '0')}`,
         rooms: tmpl.rooms,
         floor,
         area_sqm: tmpl.area,
         list_price: listPrice,
         rent_monthly: rentMonthly,
+        annual_net_rent: annualNetRent,
+        non_recoverable_costs: nonRecoverableCosts,
+        yield_percent: yieldPercent,
+        price_per_sqm: pricePerSqm,
         provision_eur: provisionEur,
         status: 'available',
       });
