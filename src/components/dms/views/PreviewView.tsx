@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { File, FileText, Image, FileSpreadsheet, Download, Copy, Trash2 } from 'lucide-react';
+import { Folder, File, FileText, Image, FileSpreadsheet, Download, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +15,7 @@ interface PreviewViewProps {
   onSelectItem: (item: FileManagerItem) => void;
   onDownload: (documentId: string) => void;
   onDelete: (item: FileManagerItem) => void;
+  onNavigateFolder: (nodeId: string) => void;
   isDownloading?: boolean;
 }
 
@@ -44,10 +45,8 @@ function formatDate(dateStr: string) {
   });
 }
 
-export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onDelete, isDownloading }: PreviewViewProps) {
+export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onDelete, onNavigateFolder, isDownloading }: PreviewViewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  const files = items.filter(i => i.type === 'file');
 
   useEffect(() => {
     async function loadPreview() {
@@ -76,13 +75,13 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
 
   return (
     <div className="flex h-full">
-      {/* Left: file list */}
+      {/* Left: item list (folders + files) */}
       <div className="w-[240px] min-w-[240px] border-r flex flex-col">
         <ScrollArea className="flex-1">
           <div className="py-1">
-            {files.map(item => {
+            {items.map(item => {
               const isActive = selectedItem?.id === item.id;
-              const ItemIcon = getFileIcon(item.mimeType);
+              const ItemIcon = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
               return (
                 <button
                   key={item.id}
@@ -90,18 +89,29 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
                     'w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors',
                     isActive && 'bg-primary/10',
                   )}
-                  onClick={() => onSelectItem(item)}
+                  onClick={() => {
+                    if (item.type === 'folder' && item.nodeId) {
+                      onNavigateFolder(item.nodeId);
+                    } else {
+                      onSelectItem(item);
+                    }
+                  }}
                 >
                   <ItemIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
+                    {item.type === 'file' && (
+                      <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
+                    )}
+                    {item.type === 'folder' && item.childCount !== undefined && (
+                      <p className="text-xs text-muted-foreground">{item.childCount} Elemente</p>
+                    )}
                   </div>
                 </button>
               );
             })}
-            {files.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-8">Keine Dateien</p>
+            {items.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-8">Keine Elemente</p>
             )}
           </div>
         </ScrollArea>
@@ -109,7 +119,7 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
 
       {/* Right: preview */}
       <div className="flex-1 flex flex-col">
-        {selectedItem ? (
+        {selectedItem && selectedItem.type === 'file' ? (
           <ScrollArea className="flex-1">
             <div className="p-6 space-y-6">
               {/* Preview area */}
