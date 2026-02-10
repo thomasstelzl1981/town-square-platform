@@ -21,6 +21,7 @@ import { CreateReservationDialog } from '@/components/projekte';
 import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { isDemoMode, DEMO_PROJECT, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
 
 export default function VertriebTab() {
   const navigate = useNavigate();
@@ -28,19 +29,20 @@ export default function VertriebTab() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const activeProjectId = selectedProject || projects[0]?.id;
-  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(activeProjectId);
-  const { units } = useProjectUnits(activeProjectId);
+  const isDemo = isDemoMode(projects);
+  const activeProjectId = isDemo ? DEMO_PROJECT.id : (selectedProject || projects[0]?.id);
+  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(isDemo ? undefined : activeProjectId);
+  const { units } = useProjectUnits(isDemo ? undefined : activeProjectId);
 
   if (isLoadingPortfolio) return <LoadingState />;
 
-  // Stats — always computed, even if 0
-  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0);
-  const totalSold = portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
-  const totalReserved = portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
-  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0);
-  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0);
-  const soldValue = portfolioRows.reduce((sum, r) => {
+  // Stats — use demo fallback when no real projects
+  const totalUnits = isDemo ? DEMO_PROJECT.total_units_count : portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0);
+  const totalSold = isDemo ? 0 : portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
+  const totalReserved = isDemo ? 0 : portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
+  const totalAvailable = isDemo ? DEMO_PROJECT.units_available : portfolioRows.reduce((sum, r) => sum + r.units_available, 0);
+  const totalValue = isDemo ? DEMO_PROJECT.total_sale_target : portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0);
+  const soldValue = isDemo ? 0 : portfolioRows.reduce((sum, r) => {
     const unitValue = r.total_sale_target && r.total_units_count ? r.total_sale_target / r.total_units_count : 0;
     return sum + (unitValue * r.units_sold);
   }, 0);
@@ -68,7 +70,7 @@ export default function VertriebTab() {
     return acc;
   }, {} as Record<string, { name: string; reservations: number; sold: number; volume: number; commission: number }>);
 
-  const activeProject = projects.find(p => p.id === activeProjectId);
+  const activeProject = isDemo ? null : projects.find(p => p.id === activeProjectId);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
@@ -239,10 +241,11 @@ export default function VertriebTab() {
       {/* ═══ Vertriebsauftrag & Distribution ═══ */}
       <SalesApprovalSection
         projectId={activeProjectId}
-        projectName={activeProject?.name}
-        projectAddress={activeProject?.address || ''}
+        projectName={isDemo ? DEMO_PROJECT.name : activeProject?.name}
+        projectAddress={isDemo ? `${DEMO_PROJECT_DESCRIPTION.address}, ${DEMO_PROJECT_DESCRIPTION.postal_code} ${DEMO_PROJECT_DESCRIPTION.city}` : (activeProject?.address || '')}
         totalUnits={totalUnits}
         projectVolume={totalValue}
+        isDemo={isDemo}
       />
 
       {/* Create Reservation Dialog */}
