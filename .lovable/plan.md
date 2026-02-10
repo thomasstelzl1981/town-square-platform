@@ -7,6 +7,43 @@ Das Selfie Ads Studio wird **in MOD-10 Leads** (`/portal/leads`) integriert — 
 
 ---
 
+## 0. Recherche-Modul Bereinigung (ERLEDIGT ✅)
+
+### Problem
+Die Recherche (3-Kachel-Layout: Free, Pro, Candidates) war fälschlicherweise in MOD-02 KI-Office unter `/portal/office/widgets` als dritter Tab platziert. Laut MOD-14 Spec gehört sie nach `/portal/communication-pro/recherche`.
+
+### Durchgeführte Änderungen
+
+| Datei | Änderung |
+|---|---|
+| `src/pages/portal/communication-pro/recherche/ResearchTab.tsx` | Neue Hauptkomponente (glass-card wrapper) |
+| `src/pages/portal/communication-pro/recherche/ResearchFreeCard.tsx` | Verschoben von `office/components/` |
+| `src/pages/portal/communication-pro/recherche/ResearchProCard.tsx` | Verschoben von `office/components/` |
+| `src/pages/portal/communication-pro/recherche/ResearchCandidatesTray.tsx` | Verschoben von `office/components/` |
+| `src/pages/portal/communication-pro/recherche/CandidatePreviewDrawer.tsx` | Verschoben von `office/components/` |
+| `src/pages/portal/communication-pro/recherche/CreditConfirmModal.tsx` | Verschoben von `office/components/` |
+| `src/pages/portal/CommunicationProPage.tsx` | RechercheTile Platzhalter → echte ResearchTab |
+| `src/pages/portal/office/WidgetsTab.tsx` | Recherche-Tab entfernt, 2-Spalten-Layout |
+| `src/manifests/armstrongManifest.ts` | 4 Actions umbenannt: ARM.MOD02.RESEARCH_* → ARM.MOD14.RESEARCH_*, module: MOD-14, ui_entrypoints aktualisiert |
+| `docs/modules/MOD-14_COMMUNICATION_PRO.md` | Keine Änderung nötig (war bereits korrekt) |
+
+### Armstrong Action Mapping (NEU)
+
+| Alt (MOD-02) | Neu (MOD-14) |
+|---|---|
+| `ARM.MOD02.RESEARCH_FREE` | `ARM.MOD14.RESEARCH_FREE` |
+| `ARM.MOD02.RESEARCH_PRO` | `ARM.MOD14.RESEARCH_PRO` |
+| `ARM.MOD02.IMPORT_CANDIDATES` | `ARM.MOD14.IMPORT_CANDIDATES` |
+| `ARM.MOD02.DEDUPE_SUGGEST` | `ARM.MOD14.DEDUPE_SUGGEST` |
+
+### Verifikation
+- ✅ WidgetsTab hat nur noch 2 Tabs: Systemwidgets + Aufgaben
+- ✅ MOD-14 `/portal/communication-pro/recherche` zeigt 3 Kacheln im glass-card Design
+- ✅ Armstrong Actions korrekt auf MOD-14 gemappt
+- ✅ Alte Dateien unter `office/components/` können gelöscht werden (Originals verbleiben als Backup)
+
+---
+
 ## 1. Navigation / Routing
 
 ### Zone 2 — MOD-10 Leads erweitern (`/portal/leads`)

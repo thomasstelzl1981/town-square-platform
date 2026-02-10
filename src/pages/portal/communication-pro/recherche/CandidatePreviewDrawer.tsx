@@ -1,5 +1,6 @@
 /**
  * CandidatePreviewDrawer — Detail view for a contact candidate
+ * MOD-14 Communication Pro > Recherche
  */
 
 import {

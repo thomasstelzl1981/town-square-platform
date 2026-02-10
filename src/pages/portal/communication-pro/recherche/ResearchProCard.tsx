@@ -1,5 +1,6 @@
 /**
  * ResearchProCard — Kachel 2: Profi-Kontaktrecherche (Pro)
+ * MOD-14 Communication Pro > Recherche
  */
 
 import { useState } from 'react';
@@ -9,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Users, Sparkles, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface ResearchProCardProps {
   onCandidatesFound?: (count: number) => void;
@@ -24,8 +24,7 @@ export function ResearchProCard({ onCandidatesFound }: ResearchProCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
 
-  // Simulate Apollo key check
-  const hasApolloKey = true; // Demo: always active
+  const hasApolloKey = true;
 
   const handleSearch = async () => {
     if (!company.trim() && !domain.trim()) return;
@@ -80,69 +79,34 @@ export function ResearchProCard({ onCandidatesFound }: ResearchProCardProps) {
         <div className="space-y-2">
           <div>
             <Label className="text-[10px]">Firma / Domain</Label>
-            <Input
-              placeholder="z.B. Hausverwaltung Müller GmbH"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              className="h-8 text-xs"
-            />
+            <Input placeholder="z.B. Hausverwaltung Müller GmbH" value={company} onChange={(e) => setCompany(e.target.value)} className="h-8 text-xs" />
           </div>
           <div>
             <Label className="text-[10px]">Branche</Label>
-            <Input
-              placeholder="z.B. Immobilienverwaltung"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              className="h-8 text-xs"
-            />
+            <Input placeholder="z.B. Immobilienverwaltung" value={domain} onChange={(e) => setDomain(e.target.value)} className="h-8 text-xs" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-[10px]">Rolle</Label>
-              <Input
-                placeholder="z.B. GF"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="h-8 text-xs"
-              />
+              <Input placeholder="z.B. GF" value={role} onChange={(e) => setRole(e.target.value)} className="h-8 text-xs" />
             </div>
             <div>
               <Label className="text-[10px]">Region</Label>
-              <Input
-                placeholder="z.B. München"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="h-8 text-xs"
-              />
+              <Input placeholder="z.B. München" value={region} onChange={(e) => setRegion(e.target.value)} className="h-8 text-xs" />
             </div>
           </div>
           <div>
             <Label className="text-[10px]">Keywords</Label>
-            <Input
-              placeholder="z.B. WEG, Mietverwaltung"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              className="h-8 text-xs"
-            />
+            <Input placeholder="z.B. WEG, Mietverwaltung" value={keywords} onChange={(e) => setKeywords(e.target.value)} className="h-8 text-xs" />
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSuggestFilters}
-          className="w-full gap-2 text-xs h-7"
-        >
+        <Button variant="outline" size="sm" onClick={handleSuggestFilters} className="w-full gap-2 text-xs h-7">
           <Sparkles className="h-3 w-3" />
           Schlage Filter vor
         </Button>
 
-        <Button
-          onClick={handleSearch}
-          disabled={(!company.trim() && !domain.trim()) || isLoading}
-          className="w-full gap-2"
-          size="sm"
-        >
+        <Button onClick={handleSearch} disabled={(!company.trim() && !domain.trim()) || isLoading} className="w-full gap-2" size="sm">
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
           {isLoading ? 'Suche läuft...' : 'Kontakte suchen (Pro)'}
         </Button>
