@@ -172,6 +172,31 @@ export const DEMO_PROJECT_IMAGES: DemoProjectImage[] = [
   { label: 'Badezimmer', importKey: 'bathroom' },
 ];
 
+// ── Demo Developer Context (Projektgesellschaft) ────────────────────────
+export interface DeveloperContext {
+  name: string;
+  legal_form: string;
+  hrb_number: string;
+  ust_id: string;
+  managing_director: string;
+  street: string;
+  house_number: string;
+  postal_code: string;
+  city: string;
+}
+
+export const DEMO_DEVELOPER_CONTEXT: DeveloperContext = {
+  name: 'Stadtpark Wohnen GmbH',
+  legal_form: 'GmbH',
+  hrb_number: 'HRB 287451 · AG München',
+  ust_id: 'DE318294756',
+  managing_director: 'Thomas Stelzl',
+  street: 'Leopoldstraße',
+  house_number: '42',
+  postal_code: '80802',
+  city: 'München',
+};
+
 // ── Demo Portfolio Row (for table) ──────────────────────────────────────
 // Re-export as array for direct table consumption
 export const DEMO_PORTFOLIO_ROWS: ProjectPortfolioRow[] = [DEMO_PROJECT];
