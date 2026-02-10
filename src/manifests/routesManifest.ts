@@ -397,7 +397,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "dashboard", component: "ProjekteDashboard", title: "Dashboard", default: true },
         { path: "projekte", component: "PortfolioTab", title: "Projekte" },
         { path: "vertrieb", component: "VertriebTab", title: "Vertrieb" },
-        { path: "marketing", component: "MarketingTab", title: "Marketing" },
+        { path: "landing-page", component: "LandingPageTab", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true },
