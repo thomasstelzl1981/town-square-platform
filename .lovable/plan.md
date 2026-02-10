@@ -1,82 +1,109 @@
 
-# Tiefenpruefung: Zweite Runde — Ergebnisse
+# ACQUIARY Website — Zone 3 Neuaufbau
 
-## Status-Uebersicht
+## Analyse der bisherigen Version
 
-| Pruefpunkt | Status | Details |
-|------------|--------|---------|
-| DB: commissions Spalten | OK | Alle 10 neuen Spalten vorhanden, pipeline_id nullable |
-| DB: agreement_templates (5x) | OK | Alle 5 aktiv, Version 1 |
-| DB: RLS commissions INSERT | OK | `com_insert_via_terms_gate` aktiv (liable_user_id = auth.uid() OR membership) |
-| DB: RLS documents INSERT | OK | `docs_insert_contract_member` aktiv (doc_type = 'CONTRACT') |
-| DB: Storage Bucket "documents" | OK | Bucket existiert, nicht public |
-| DB: Storage Policies | OK | `docs_storage_insert_authenticated` + `docs_storage_select_authenticated` vorhanden |
-| DB: user_consents RLS | OK | `consent_insert_self` erlaubt self-insert |
-| Config: outboundBrands.ts | OK | Domains korrekt, Umlaut-Normalisierung vorhanden |
-| UI: TermsGatePanel | OK | Template laden, Vorschau, Checkbox, Accept-Flow |
-| UI: AcceptMandateDialog | OK | TermsGatePanel korrekt integriert |
-| UI: PartnerReleaseDialog | OK | Slider + TermsGatePanel korrekt |
-| UI: AkquiseManagerPage Gate | OK | partner_name nutzt display_name (Fix M1 implementiert) |
-| UI: LeadPool Create-Dialog | OK | source='manual', zone1_pool=true |
-| UI: LeadPool Assign-Dialog | OK | UserPlus-Button verknuepft mit openAssignDialog() |
-| UI: CommissionApproval | OK | Zeigt Typ, Zahlungspflichtiger, Brutto, Plattform(30%) |
-| UI: NetworkTab | OK | Brutto/Plattform(30%)/Netto Spalten |
-| UI: VertraegeTab | OK | commission_type + Brutto/Plattform in Beschreibung |
-| Edge: sot-system-mail-send | OK | from_override Parameter implementiert und genutzt |
-| Edge: sot-finance-manager-notify | OK | Sendet via sot-system-mail-send |
+Die exportierte Acquiary-Website hat 16 Seiten und 13 Nav-Eintraege. Das Kernproblem: zu viel Redundanz.
 
----
+| Seiten-Cluster | Inhaltsueberschneidung |
+|---|---|
+| Methodik + So funktioniert's + Leistungen | Alle drei beschreiben denselben Prozess |
+| Zusammenarbeit + Partnerkreis | Beide erklaeren das Netzwerkmodell |
+| Akquisemanager + Karriere | Beide werben Akquise-Manager an |
+| Mandantenportal + KI | Guter eigenstaendiger Inhalt, aber als Unterseite zu granular |
 
-## VERBLEIBENDE PROBLEME (2 Stueck)
+## Neues Konzept: 5 Seiten (Investment-House-Aesthetik)
 
-### P1: doc_type Case-Mismatch (MITTEL)
+Vorbild: Diskrete, minimalistische Optik wie Houlihan Lokey, Lazard, oder deutsche Family-Office-Websites (z.B. FINVIA, HQ Trust). Wenig Text, viel Weissraum, subtile Animationen. Azure Blue bleibt als Primaerfarbe, aber zurueckhaltender eingesetzt.
 
-**Problem:** Die RLS-Policy `docs_insert_contract_member` prueft auf `doc_type = 'CONTRACT'` (Grossbuchstaben). Der Code in `contractGenerator.ts` (Zeile 142) setzt ebenfalls `doc_type: 'CONTRACT'`. Das stimmt ueberein — ABER: alle bestehenden doc_type-Werte in der DB sind snake_case/lowercase (`insurance_policy`, `lease_contract`, `purchase_contract` etc.).
+### Seitenstruktur (5 Seiten + Objekt anbieten)
 
-Das ist kein Blocker — der INSERT funktioniert technisch. Es ist aber eine Inkonsistenz in der Namenskonvention. Alle anderen doc_types sind lowercase, nur CONTRACT ist uppercase.
-
-**Empfehlung:** `doc_type` auf `contract` (lowercase) aendern — sowohl im Code als auch in der RLS-Policy. Oder so lassen, da es funktioniert.
-
-### P2: sot-finance-manager-notify Auth-Kontext (MITTEL)
-
-**Problem:** `sot-finance-manager-notify` ruft `sot-system-mail-send` mit dem Service-Role-Key als Authorization-Header auf (Zeile 118):
-```
-'Authorization': `Bearer ${supabaseServiceKey}`,
+```text
+/acquiary               Start (Hero + Kompakt-Prozess + USPs + CTA)
+/acquiary/methodik      Methodik & Technologie (Prozess + KI + Portal — konsolidiert)
+/acquiary/netzwerk      Netzwerk & Partner (Zusammenarbeit + Partnerkreis — konsolidiert)
+/acquiary/karriere      Akquisemanager werden (Karriere + Manager-Details — konsolidiert)
+/acquiary/objekt        Objekt anbieten (Lead-Capture — bleibt eigenstaendig)
 ```
 
-`sot-system-mail-send` versucht dann (Zeile 39-46):
-```
-const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
-const userClient = createClient(SUPABASE_URL, anonKey, {
-  global: { headers: { Authorization: authHeader } },
-});
-const { data: { user }, error: authError } = await userClient.auth.getUser();
+### Navigation (Header)
+
+```text
+[A] ACQUIARY    Methodik    Netzwerk    Karriere    |  Objekt anbieten [Button]  |  [Theme] Login
 ```
 
-Der Service-Role-Key kann nicht als normaler User aufgeloest werden — `auth.getUser()` koennte scheitern oder einen Service-Kontext zurueckgeben. Das haengt davon ab, wie Supabase den Service-Role JWT behandelt.
+5 Nav-Eintraege statt 13. "Start" ist das Logo. "Objekt anbieten" als primaerer CTA-Button rechts.
 
-**Risiko:** E-Mails aus `sot-finance-manager-notify` koennten nicht ankommen, wenn der Auth-Check fehlschlaegt. Der Fallback in Zeilen 139-152 loggt dann nur den Inhalt.
+## Design-Sprache
 
-**Empfehlung:** In `sot-system-mail-send` einen Bypass fuer Service-Role-Aufrufe einbauen — z.B. den `SUPABASE_SERVICE_ROLE_KEY` direkt pruefen, bevor `auth.getUser()` aufgerufen wird.
+- **Farbpalette:** Azure Blue (#2196F3) als Akzent, Dark Mode Default (wie SoT), helle Variante verfuegbar
+- **Typografie:** Grosse, duenne Headlines (light weight 300-400), viel Tracking. Keine Uppercase-Display wie SoT (zu laut), stattdessen elegante Serifenlose
+- **Layout:** 1280px Container, grosszuegige Sektions-Abstande (120px+), subtile Trennlinien statt Hintergrundwechsel
+- **Karten:** Minimale Borders, kein Shadow-Hover (Investment-House-Stil), ggf. subtiler Border-Highlight
+- **Animationen:** Dezentes Fade-In beim Scrollen, keine Hover-Lifts
+- **Trust-Elemente:** Diskrete Badges (DSGVO, KI-gestuetzt, NDA-geschuetzt) am Footer, nicht als eigene Sektion
 
----
+## Technische Umsetzung
 
-## ZUSAMMENFASSUNG
+### Neue Dateien
 
-Die Implementierung ist zu **95% produktionsbereit**. Alle kritischen Blocker (K1-K3 aus der vorherigen Pruefung) wurden korrekt behoben:
+```text
+src/pages/zone3/acquiary/
+  AcquiaryLayout.tsx         Layout (Header + Footer + Outlet)
+  AcquiaryHome.tsx           Startseite
+  AcquiaryMethodik.tsx       Methodik & Technologie
+  AcquiaryNetzwerk.tsx       Netzwerk & Partner
+  AcquiaryKarriere.tsx       Akquisemanager werden
+  AcquiaryObjekt.tsx         Objekt anbieten (Lead-Capture)
+  index.ts                   Barrel-Export
 
-- RLS fuer commissions INSERT: Policy aktiv
-- RLS fuer documents INSERT: Policy aktiv
-- Storage Bucket "documents": Existiert mit Policies
-- Alle 5 Agreement Templates: Aktiv in DB
-- Alle 10 neuen Spalten: Vorhanden
-- Alle 4 Gate-Dialoge: Korrekt integriert
-- Lead Pool: Create + Assign Dialoge funktional
-- E-Mail: from_override implementiert
+src/styles/acquiary-premium.css   Eigene CSS-Variablen und Styles (analog futureroom-premium.css)
+```
 
-Die zwei verbleibenden Punkte (P1 doc_type Case, P2 Service-Role Auth) sind mittlere Probleme, die den Hauptflow nicht blockieren, aber fuer Produktionsreife behoben werden sollten.
+### Routing (routesManifest.ts)
 
-### Empfohlene Aktion
+Neuer Eintrag in `zone3Websites`:
+```typescript
+acquiary: {
+  base: "/acquiary",
+  layout: "AcquiaryLayout",
+  routes: [
+    { path: "", component: "AcquiaryHome", title: "ACQUIARY" },
+    { path: "methodik", component: "AcquiaryMethodik", title: "Methodik" },
+    { path: "netzwerk", component: "AcquiaryNetzwerk", title: "Netzwerk" },
+    { path: "karriere", component: "AcquiaryKarriere", title: "Karriere" },
+    { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
+  ],
+},
+```
 
-1. **P1 fixen:** `doc_type: 'CONTRACT'` zu `doc_type: 'contract'` aendern (contractGenerator.ts Zeile 142) und RLS-Policy `docs_insert_contract_member` anpassen
-2. **P2 fixen:** Service-Role-Bypass in `sot-system-mail-send` einbauen, damit Edge-to-Edge-Aufrufe funktionieren
+### Inhaltszuordnung (alt nach neu)
+
+| Alter Inhalt | Neuer Ort |
+|---|---|
+| Home Hero + Stats | AcquiaryHome (Hero, kompakter) |
+| Methodik | AcquiaryMethodik Sektion 1 |
+| So funktioniert's | AcquiaryMethodik Sektion 2 (3-Schritt-Prozess) |
+| Leistungen | AcquiaryMethodik Sektion 3 (Leistungskatalog) |
+| Mandantenportal + KI | AcquiaryMethodik Sektion 4 (Portal + KI-Features) |
+| Zusammenarbeit | AcquiaryNetzwerk Sektion 1 (Kooperationsmodell) |
+| Partnerkreis | AcquiaryNetzwerk Sektion 2 (Partner-Typen) |
+| Akquisemanager | AcquiaryKarriere (Haupt-Karriereseite) |
+| Karriere | AcquiaryKarriere (konsolidiert: Was Sie tun, Was Sie bekommen, Wen wir suchen) |
+| Objekt anbieten | AcquiaryObjekt (1:1 uebernommen, Lead-Capture) |
+| Immobilienangebote | Entfaellt (intern, nicht fuer Website) |
+| Erstprofil/Kontakt | CTAs auf allen Seiten, kein separater Screen |
+| Impressum/Datenschutz/AGB | Footer-Links (Platzhalter-Seiten) |
+
+### CSS-Architektur (acquiary-premium.css)
+
+Eigene CSS-Custom-Properties mit `--aq-` Praefix (analog `--fr-` fuer FutureRoom):
+- **Hero:** Dunkler, subtiler Gradient (kein radial glow wie SoT, eher linear und ruhig)
+- **Sections:** Alternierend weisser Hintergrund und sehr helles Grau (#FAFBFC)
+- **Cards:** 1px Border, kein Shadow, groesserer Radius (20px)
+- **Buttons:** Primaer-Button mit Azure Fill, Secondary als Ghost mit feiner Border
+- **Footer:** Dunkler Hintergrund, 4-Spalten-Grid (wie FutureRoom-Pattern)
+
+### Kein Datenbank-Aenderung noetig
+
+Die Seite ist rein statisch (Zone 3 = read-only). Lead-Capture ("Objekt anbieten") nutzt den bestehenden Edge Function Endpunkt `/api/public/leads`. Keine neuen Tabellen oder RLS-Policies erforderlich.
