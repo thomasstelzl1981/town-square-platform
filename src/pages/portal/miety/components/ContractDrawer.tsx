@@ -29,12 +29,13 @@ interface ContractDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   homeId: string;
+  defaultCategory?: string;
 }
 
-export function ContractDrawer({ open, onOpenChange, homeId }: ContractDrawerProps) {
+export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: ContractDrawerProps) {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState('sonstige');
+  const [category, setCategory] = useState(defaultCategory || 'sonstige');
   const [providerName, setProviderName] = useState('');
   const [contractNumber, setContractNumber] = useState('');
   const [monthlyCost, setMonthlyCost] = useState('');
@@ -70,7 +71,7 @@ export function ContractDrawer({ open, onOpenChange, homeId }: ContractDrawerPro
   });
 
   function resetForm() {
-    setCategory('sonstige');
+    setCategory(defaultCategory || 'sonstige');
     setProviderName('');
     setContractNumber('');
     setMonthlyCost('');
