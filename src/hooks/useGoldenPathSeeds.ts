@@ -13,7 +13,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Fixed Dev-Tenant UUID
+// Fixed Dev-Tenant UUID — used by seed_golden_path_data RPC (hard-scoped in backend).
+// Prefer dynamic tenant from AuthContext where possible.
 export const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
 
 // Fixed IDs for idempotent upserts

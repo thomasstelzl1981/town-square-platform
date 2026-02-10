@@ -1,17 +1,28 @@
 /**
- * ROLES MATRIX — Zentrale Rollendefinition
+ * ROLES MATRIX — Zentrale Rollendefinition (Konsolidiert)
  * 
- * SSOT für Rollen-Dokumentation in Zone 1
- * Diese Konstanten werden im RolesManagement-Modul visualisiert.
+ * SSOT für Rollen-Dokumentation in Zone 1.
+ * membership_role steuert Tile-Aktivierung (tenant-bezogen).
+ * app_role steuert globale Rechte (Zone-1-Zugang, God Mode).
+ * 
+ * 6 Rollen: platform_admin, super_user, client_user,
+ *           akquise_manager, finance_manager, sales_partner
+ * 21 Module: MOD-00 bis MOD-20
  */
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 export interface RoleDefinition {
   code: string;
   label: string;
-  zone: string;
   description: string;
-  modules: string[];
-  dbNote?: string; // Hinweis auf DB-Abweichung
+  membershipRole: string;        // Wert in memberships.role
+  appRole?: string;              // Optionaler Wert in user_roles.role
+  totalModules: number;
+  isSystem?: boolean;            // Nicht wählbar bei Signup
+  isLegacy?: boolean;            // Legacy, nicht mehr aktiv
 }
 
 export interface ModuleDefinition {
@@ -22,138 +33,97 @@ export interface ModuleDefinition {
 }
 
 // =============================================================================
-// ROLLEN-KATALOG
+// TILE-SETS — SSOT (spiegelt DB-Funktion get_tiles_for_role())
 // =============================================================================
+
+/** 14 Basis-Module — alle User-Rollen */
+export const BASE_TILES: string[] = [
+  'MOD-00', 'MOD-01', 'MOD-02', 'MOD-03', 'MOD-04', 'MOD-05',
+  'MOD-06', 'MOD-07', 'MOD-08', 'MOD-15', 'MOD-16', 'MOD-17',
+  'MOD-18', 'MOD-20',
+];
+
+/** Zusatz-Module pro Spezialrolle */
+export const ROLE_EXTRA_TILES: Record<string, string[]> = {
+  sales_partner: ['MOD-09', 'MOD-10'],
+  finance_manager: ['MOD-11'],
+  akquise_manager: ['MOD-12'],
+};
+
+/** 7 Spezial-Module (nicht im Basis-Set) */
+export const SPECIALIST_TILES: string[] = [
+  'MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-19',
+];
+
+/** Alle 21 Module */
+export const ALL_TILES: string[] = [...BASE_TILES, ...SPECIALIST_TILES].sort();
+
+// =============================================================================
+// ROLLEN-KATALOG (6 aktive Rollen)
+// =============================================================================
+
 export const ROLES_CATALOG: RoleDefinition[] = [
-  // --- GLOBALE / SYSTEMROLLEN ---
   {
     code: 'platform_admin',
     label: 'Platform Admin',
-    zone: 'Zone 1',
-    description: 'Plattformbetreiber (God Mode) — Governance, Oversight, Delegation, Support',
-    modules: [
-      'Zone 1: ALLE Admin-Module',
-      'Zone 2: ALLE Module (Read + Steuerung, kein operatives Daily-Work)',
-    ],
-  },
-  
-  // --- ORGANISATIONSROLLEN ---
-  {
-    code: 'org_admin',
-    label: 'Org Admin',
-    zone: 'Zone 2',
-    description: 'Eigentümer / Geschäftsführer / Hauptnutzer eines Tenants',
-    modules: [
-      'MOD-00 Dashboard (voll)',
-      'MOD-01 Stammdaten (voll)',
-      'MOD-02 KI Office (voll)',
-      'MOD-03 DMS (voll)',
-      'MOD-04 Immobilien (voll, SSOT)',
-      'MOD-05 MSV (voll)',
-      'MOD-06 Verkauf (voll)',
-      'MOD-07 Finanzierung (voll)',
-      'MOD-08 Investment-Suche (voll)',
-      'MOD-09 Vertriebspartner (eigene Struktur)',
-      'MOD-10 Leads',
-      'MOD-13 Projekte',
-      'MOD-14 Communication Pro',
-      'MOD-15 Fortbildung',
-      'MOD-16 Services',
-      'MOD-17 Car-Management',
-      'MOD-18 Finanzanalyse',
-      'MOD-19 Photovoltaik',
-      'MOD-20 Miety (Vermieter-Sicht)',
-    ],
+    description: 'Plattformbetreiber (God Mode) — Zone 1 Governance, Oversight, Support. Uneingeschränkter Zugriff auf alle Tenants.',
+    membershipRole: 'platform_admin',
+    appRole: 'platform_admin',
+    totalModules: 21,
+    isSystem: true,
   },
   {
-    code: 'internal_user',
-    label: 'Internal User',
-    zone: 'Zone 2',
-    description: 'Mitarbeiter im Kunden-Tenant — Operative Nutzung, keine Governance',
-    modules: [
-      'MOD-00 Dashboard',
-      'MOD-02 KI Office',
-      'MOD-03 DMS',
-      'MOD-04 Immobilien (read / eingeschränkt write)',
-      'MOD-05 MSV (operativ)',
-      'MOD-06 Verkauf (mit Freigaben)',
-      'MOD-07 Finanzierung (vorbereitend)',
-      'MOD-13 Projekte',
-      'MOD-14 Communication Pro',
-      'MOD-17 Car-Management',
-    ],
-    dbNote: 'DB hat aktuell: internal_ops (Umbenennung in Phase 11)',
-  },
-  
-  // --- SPEZIALROLLEN ---
-  {
-    code: 'sales_partner',
-    label: 'Sales Partner',
-    zone: 'Zone 2',
-    description: 'Externer oder interner Vertriebspartner — Deal-, Pipeline- und Provisionsfokus',
-    modules: [
-      'MOD-00 Dashboard',
-      'MOD-06 Verkauf (read-only Listings)',
-      'MOD-07 Finanzierung (Übergabe / Status)',
-      'MOD-08 Investment-Suche (Mandate, Suche, Favoriten)',
-      'MOD-09 Vertriebspartner (Pipeline, Netzwerk)',
-      'MOD-10 Leads (zugewiesene Leads)',
-    ],
+    code: 'super_user',
+    label: 'Super-User',
+    description: 'Vollzugriff auf alle 21 Module. Membership bleibt org_admin, zusätzlich app_role super_user.',
+    membershipRole: 'org_admin',
+    appRole: 'super_user',
+    totalModules: 21,
   },
   {
-    code: 'finance_manager',
-    label: 'Finanzierungsmanager',
-    zone: 'Zone 2 (Spezialmodul)',
-    description: 'FutureRoom Finanzierungsmanager — Bearbeitet übergebene Finanzierungsfälle',
-    modules: [
-      'MOD-00 Dashboard',
-      'MOD-03 DMS (finanzierungsbezogene Dokumente)',
-      'MOD-07 Finanzierung (read / status sync)',
-      'MOD-11 Finanzierungsmanager (SoT nach Annahme)',
-    ],
+    code: 'client_user',
+    label: 'Standardkunde',
+    description: 'Standard-Nutzer mit 14 Basis-Modulen. Automatische Zuweisung bei Signup.',
+    membershipRole: 'org_admin',
+    totalModules: 14,
   },
   {
     code: 'akquise_manager',
     label: 'Akquise-Manager',
-    zone: 'Zone 2 (Spezialmodul)',
-    description: 'Acquiary Manager — Bearbeitung von Investment- & Akquise-Mandaten',
-    modules: [
-      'MOD-00 Dashboard',
-      'MOD-03 DMS',
-      'MOD-04 Immobilien (Objekteingang, read/write begrenzt)',
-      'MOD-08 Investment-Suche (Mandate)',
-      'MOD-12 Akquise-Manager',
-    ],
-  },
-  
-  // --- LITE-ROLLEN ---
-  {
-    code: 'future_room_web_user_lite',
-    label: 'FutureRoom Lite',
-    zone: 'Zone 3 Entry',
-    description: 'Nutzer von Zone-3-FutureRoom — Keine volle Portalnutzung',
-    modules: [
-      'MOD-00 Dashboard (stark eingeschränkt)',
-      'MOD-07 Finanzierung (Selbstauskunft / Upload)',
-    ],
+    description: 'Akquise-Spezialist — Basis-Module + MOD-12 Akquise-Manager.',
+    membershipRole: 'akquise_manager',
+    appRole: 'akquise_manager',
+    totalModules: 15,
   },
   {
-    code: 'tenant_renter_lite',
-    label: 'Mieter (Lite)',
-    zone: 'Zone 2 Andock',
-    description: 'Mieter (eingeladen aus MOD-05) — Eigener Mini-Tenant',
-    modules: [
-      'MOD-03 DMS (eigene Dokumente)',
-      'MOD-14 Communication Pro (eingeschränkt)',
-      'MOD-20 Miety',
-    ],
-    dbNote: 'DB hat aktuell: renter_user (Umbenennung in Phase 11)',
+    code: 'finance_manager',
+    label: 'Finanzierungsmanager',
+    description: 'Finanzierungs-Spezialist — Basis-Module + MOD-11 Finanzierungsmanager.',
+    membershipRole: 'finance_manager',
+    appRole: 'finance_manager',
+    totalModules: 15,
+  },
+  {
+    code: 'sales_partner',
+    label: 'Vertriebspartner',
+    description: 'Vertriebspartner — Basis-Module + MOD-09 Vertriebspartner + MOD-10 Leads.',
+    membershipRole: 'sales_partner',
+    appRole: 'sales_partner',
+    totalModules: 16,
   },
 ];
 
+// Legacy-Rollen (im Enum, nicht mehr aktiv)
+export const LEGACY_ROLES = [
+  { code: 'internal_ops', label: 'Internal Ops (Legacy)', note: 'Bleibt im Enum, wird nicht genutzt' },
+  { code: 'renter_user', label: 'Renter User (Legacy)', note: 'Bleibt im Enum, wird nicht genutzt' },
+  { code: 'future_room_web_user_lite', label: 'FutureRoom Lite (Legacy)', note: 'Bleibt im Enum, wird nicht genutzt' },
+];
+
 // =============================================================================
-// MODUL-KATALOG (für Matrix-Ansicht)
+// MODUL-KATALOG (21 Module)
 // =============================================================================
+
 export const MODULES_CATALOG: ModuleDefinition[] = [
   { code: 'MOD-00', name: 'Dashboard', zone: 'Zone 2', description: 'Zentrale Home-/Einstiegsseite' },
   { code: 'MOD-01', name: 'Stammdaten', zone: 'Zone 2', description: 'Profil, Verträge, Abrechnung' },
@@ -171,7 +141,7 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
   { code: 'MOD-13', name: 'Projekte', zone: 'Zone 2', description: 'Übersicht, Timeline, Dokumente' },
   { code: 'MOD-14', name: 'Communication Pro', zone: 'Zone 2', description: 'Serien-E-Mails, Social' },
   { code: 'MOD-15', name: 'Fortbildung', zone: 'Zone 2', description: 'Kurse, Zertifikate' },
-  { code: 'MOD-16', name: 'Services', zone: 'Zone 2', description: 'Handwerker, Wartung' },
+  { code: 'MOD-16', name: 'Services', zone: 'Zone 2', description: 'Shops & Marktplätze' },
   { code: 'MOD-17', name: 'Car-Management', zone: 'Zone 2', description: 'Fahrzeuge, Fahrtenbuch' },
   { code: 'MOD-18', name: 'Finanzanalyse', zone: 'Zone 2', description: 'Investment-Analyse' },
   { code: 'MOD-19', name: 'Photovoltaik', zone: 'Zone 2', description: 'PV-Anlagen-Verwaltung' },
@@ -179,30 +149,33 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
 ];
 
 // =============================================================================
-// MODUL-ROLLEN-MATRIX (welche Rolle hat Zugriff auf welches Modul)
+// MODUL-ROLLEN-MATRIX
 // =============================================================================
+
 export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
-  'MOD-00': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner', 'finance_manager', 'akquise_manager', 'future_room_web_user_lite', 'tenant_renter_lite'],
-  'MOD-01': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner', 'tenant_renter_lite'],
-  'MOD-02': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner'],
-  'MOD-03': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner', 'finance_manager', 'akquise_manager', 'tenant_renter_lite'],
-  'MOD-04': ['platform_admin', 'org_admin', 'internal_user', 'akquise_manager'],
-  'MOD-05': ['platform_admin', 'org_admin', 'internal_user', 'tenant_renter_lite'],
-  'MOD-06': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner'],
-  'MOD-07': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner', 'finance_manager', 'future_room_web_user_lite'],
-  'MOD-08': ['platform_admin', 'org_admin', 'internal_user', 'sales_partner', 'akquise_manager'],
-  'MOD-09': ['platform_admin', 'sales_partner'],
-  'MOD-10': ['platform_admin', 'org_admin', 'sales_partner'],
-  'MOD-11': ['platform_admin', 'finance_manager'],
-  'MOD-12': ['platform_admin', 'akquise_manager'],
-  'MOD-13': ['platform_admin', 'org_admin', 'internal_user'],
-  'MOD-14': ['platform_admin', 'org_admin', 'internal_user', 'tenant_renter_lite'],
-  'MOD-15': ['platform_admin', 'org_admin'],
-  'MOD-16': ['platform_admin', 'org_admin'],
-  'MOD-17': ['platform_admin', 'org_admin', 'internal_user'],
-  'MOD-18': ['platform_admin', 'org_admin'],
-  'MOD-19': ['platform_admin', 'org_admin'],
-  'MOD-20': ['platform_admin', 'org_admin', 'tenant_renter_lite'],
+  // Basis-Module: alle 6 Rollen
+  'MOD-00': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-01': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-02': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-03': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-04': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-05': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-06': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-07': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-08': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-15': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-16': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-17': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-18': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  'MOD-20': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  // Spezial-Module
+  'MOD-09': ['platform_admin', 'super_user', 'sales_partner'],
+  'MOD-10': ['platform_admin', 'super_user', 'sales_partner'],
+  'MOD-11': ['platform_admin', 'super_user', 'finance_manager'],
+  'MOD-12': ['platform_admin', 'super_user', 'akquise_manager'],
+  'MOD-13': ['platform_admin', 'super_user'],
+  'MOD-14': ['platform_admin', 'super_user'],
+  'MOD-19': ['platform_admin', 'super_user'],
 };
 
 // =============================================================================
@@ -226,4 +199,16 @@ export function getModulesForRole(roleCode: string): string[] {
 /** Gibt alle Rollen zurück, die Zugriff auf ein Modul haben */
 export function getRolesForModule(moduleCode: string): string[] {
   return MODULE_ROLE_MATRIX[moduleCode] || [];
+}
+
+/** Prüft ob ein Modul im Basis-Set ist */
+export function isBaseTile(moduleCode: string): boolean {
+  return BASE_TILES.includes(moduleCode);
+}
+
+/** Gibt die Tiles für eine Rolle zurück (Frontend-Spiegel der DB-Funktion) */
+export function getTilesForRole(roleCode: string): string[] {
+  if (roleCode === 'platform_admin' || roleCode === 'super_user') return ALL_TILES;
+  const extras = ROLE_EXTRA_TILES[roleCode] || [];
+  return [...BASE_TILES, ...extras];
 }

@@ -13550,6 +13550,7 @@ export type Database = {
           from_email: string
         }[]
       }
+      get_tiles_for_role: { Args: { p_role: string }; Returns: string[] }
       get_user_memberships: {
         Args: { p_user_id: string }
         Returns: {
@@ -13714,6 +13715,8 @@ export type Database = {
         | "finance_manager"
         | "akquise_manager"
         | "sales_partner"
+        | "super_user"
+        | "client_user"
       car_claim_status:
         | "draft"
         | "open"
@@ -14075,6 +14078,8 @@ export const Constants = {
         "finance_manager",
         "akquise_manager",
         "sales_partner",
+        "super_user",
+        "client_user",
       ],
       car_claim_status: [
         "draft",
