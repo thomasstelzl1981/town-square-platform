@@ -139,7 +139,7 @@ export async function storeContractAndCreateRecords(params: {
         size_bytes: contractBlob.size,
         uploaded_by: userId,
         public_id: `CONTRACT-${Date.now()}`,
-        doc_type: 'CONTRACT',
+        doc_type: 'contract',
         source: 'system',
         scope: 'tenant',
       })
