@@ -33,7 +33,6 @@ import {
   FileText, 
   Send, 
   Save, 
-  Eye,
   Loader2,
   Check,
   ChevronsUpDown,
@@ -43,6 +42,7 @@ import {
   Mic,
   History
 } from 'lucide-react';
+import { LetterPreview } from '@/components/portal/office/LetterPreview';
 import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
 
 interface Contact {
@@ -291,7 +291,7 @@ ${senderLine}`);
   return (
     <div className="grid grid-cols-12 gap-6">
       {/* Main Form */}
-      <div className="col-span-8 space-y-6">
+      <div className="col-span-7 space-y-6">
         <Card className="glass-card">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-5">
@@ -456,97 +456,116 @@ ${senderLine}`);
               />
             </div>
 
-            {/* Step 5: Channel Selection */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">5</Badge>
-                Versandkanal
-              </Label>
-              <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="email" id="email" />
-                  <Label htmlFor="email" className="flex items-center gap-1 cursor-pointer">
-                    <Mail className="h-4 w-4" />
-                    E-Mail (Systemmail)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fax" id="fax" />
-                  <Label htmlFor="fax" className="flex items-center gap-1 cursor-pointer">
-                    <Phone className="h-4 w-4" />
-                    Fax
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="post" id="post" />
-                  <Label htmlFor="post" className="flex items-center gap-1 cursor-pointer">
-                    <FileOutput className="h-4 w-4" />
-                    Post
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button variant="outline" className="gap-2" disabled={!generatedBody}>
-                <Eye className="h-4 w-4" />
-                PDF Vorschau
-              </Button>
-              <Button 
-                variant="outline" 
-                className="gap-2" 
-                onClick={() => saveDraftMutation.mutate()}
-                disabled={!generatedBody || saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Als Entwurf speichern
-              </Button>
-              <Button className="gap-2 flex-1" disabled={!generatedBody}>
-                <Send className="h-4 w-4" />
-                Senden & Bestätigen
-              </Button>
-            </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sidebar - Recent Drafts */}
-      <div className="col-span-4 space-y-4">
+      {/* Right Column: Preview + Actions + Drafts */}
+      <div className="col-span-5 space-y-4">
+        {/* Letter Preview */}
         <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
+            </div>
+            <LetterPreview
+              senderName={selectedSender?.label}
+              senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
+              senderAddress={selectedSender?.address}
+              recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
+              recipientCompany={selectedContact?.company || undefined}
+              subject={subject}
+              body={generatedBody}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Dispatch Channel + Actions */}
+        <Card className="glass-card">
+          <CardContent className="p-4 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Versandkanal</Label>
+              <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-3">
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="email" id="ch-email" />
+                  <Label htmlFor="ch-email" className="flex items-center gap-1 cursor-pointer text-xs">
+                    <Mail className="h-3.5 w-3.5" />
+                    E-Mail
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="fax" id="ch-fax" />
+                  <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-xs">
+                    <Phone className="h-3.5 w-3.5" />
+                    Fax
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="post" id="ch-post" />
+                  <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-xs">
+                    <FileOutput className="h-3.5 w-3.5" />
+                    Post
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-1.5 flex-1" 
+                onClick={() => saveDraftMutation.mutate()}
+                disabled={!generatedBody || saveDraftMutation.isPending}
+              >
+                {saveDraftMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                Speichern
+              </Button>
+              <Button size="sm" className="gap-1.5 flex-1" disabled={!generatedBody}>
+                <Send className="h-3.5 w-3.5" />
+                Senden
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Drafts (compact) */}
+        <Card className="glass-card">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
                 <History className="h-3.5 w-3.5 text-primary" />
               </div>
               <h3 className="text-sm font-semibold">Letzte Entwürfe</h3>
             </div>
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[160px]">
               {recentDrafts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Noch keine Entwürfe vorhanden
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Noch keine Entwürfe
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {recentDrafts.map((draft) => (
                     <button
                       key={draft.id}
-                      className="w-full p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+                      className="w-full p-2 rounded-md border hover:bg-muted/50 transition-colors text-left"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm truncate">
+                        <span className="font-medium text-xs truncate">
                           {draft.subject || 'Ohne Betreff'}
                         </span>
-                        <Badge variant={draft.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
+                        <Badge variant={draft.status === 'sent' ? 'default' : 'secondary'} className="text-[10px] h-4">
                           {draft.status === 'sent' ? 'Gesendet' : 'Entwurf'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
                         {new Date(draft.created_at).toLocaleDateString('de-DE')}
                       </p>
                     </button>
@@ -554,31 +573,6 @@ ${senderLine}`);
                 </div>
               )}
             </ScrollArea>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                <FileText className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <h3 className="text-sm font-semibold">Vorlagen</h3>
-            </div>
-            <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start text-sm h-auto py-2">
-                Mieterhöhung ankündigen
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-sm h-auto py-2">
-                Nebenkostenabrechnung
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-sm h-auto py-2">
-                Kündigung bestätigen
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-sm h-auto py-2">
-                Mahnung
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
