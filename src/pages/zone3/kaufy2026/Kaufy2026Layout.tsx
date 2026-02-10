@@ -12,12 +12,14 @@ import { Menu, X, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
+import { KaufyPinGate } from '@/components/zone3/kaufy2026/KaufyPinGate';
 
 const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 
 export default function Kaufy2026Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('kaufy_pin_verified') === 'true');
   
   // Armstrong toggle — default ON, persisted in localStorage
   const [armstrongEnabled, setArmstrongEnabled] = useState(() => {
@@ -28,6 +30,10 @@ export default function Kaufy2026Layout() {
   useEffect(() => {
     localStorage.setItem(ARMSTRONG_STORAGE_KEY, String(armstrongEnabled));
   }, [armstrongEnabled]);
+
+  if (!pinVerified) {
+    return <KaufyPinGate onVerified={() => setPinVerified(true)} />;
+  }
 
   const navLinks = [
     { path: '/kaufy2026', label: 'Suchen', exact: true },
