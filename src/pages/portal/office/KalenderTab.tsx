@@ -168,7 +168,7 @@ export function KalenderTab() {
   // === MOBILE: Vereinfachte Listenansicht ===
   if (isMobile) {
     return (
-      <div className="p-4 md:p-6 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
         {calendarHeader}
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
@@ -315,7 +315,7 @@ export function KalenderTab() {
 
   // === DESKTOP: Original 12-Column Grid ===
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
       {calendarHeader}
       <div className="grid grid-cols-12 gap-6">
       {/* Calendar View */}

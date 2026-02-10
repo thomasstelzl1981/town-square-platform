@@ -585,7 +585,7 @@ export function EmailTab() {
 
   // Email Client UI - ALWAYS visible, connection via button
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight uppercase">E-Mail</h1>
         <p className="text-muted-foreground mt-1">Ihr KI-gestützter E-Mail-Client</p>

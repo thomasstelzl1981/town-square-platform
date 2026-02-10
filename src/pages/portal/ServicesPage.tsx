@@ -120,7 +120,7 @@ function ShopTab({ shopKey }: { shopKey: string }) {
   if (!shop) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight uppercase">Shops</h1>
         <p className="text-muted-foreground mt-1">Einkaufen und Bestellen für Ihr Unternehmen</p>
@@ -385,7 +385,7 @@ function BestellungenTab() {
   const [activeTab, setActiveTab] = useState('order-1');
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Order list header */}
       <div className="flex items-center justify-between">
         <div>
