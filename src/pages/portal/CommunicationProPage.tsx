@@ -6,32 +6,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { Mail, Search, Share2, Bot, Plus, Send } from 'lucide-react';
+import { Search, Bot, Plus } from 'lucide-react';
 import { SocialPage } from './communication-pro/social/SocialPage';
-
-function SerienEmailsTile() {
-  return (
-    <ModuleTilePage
-      title="Serien-E-Mails"
-      description="Versenden Sie personalisierte E-Mail-Kampagnen"
-      icon={Mail}
-      moduleBase="communication-pro"
-      status="empty"
-      emptyTitle="Keine Kampagnen"
-      emptyDescription="Erstellen Sie Ihre erste E-Mail-Serie für effektive Kundenkommunikation."
-      emptyIcon={Mail}
-      primaryAction={{
-        label: 'Kampagne erstellen',
-        icon: Plus,
-        onClick: () => console.log('Kampagne erstellen'),
-      }}
-      secondaryAction={{
-        label: "So funktioniert's",
-        href: '/portal/communication-pro',
-      }}
-    />
-  );
-}
+import { SerienEmailsPage } from './communication-pro/SerienEmailsPage';
 
 function RechercheTile() {
   return (
@@ -79,7 +56,7 @@ export default function CommunicationProPage() {
   return (
     <Routes>
       <Route index element={<ModuleHowItWorks content={content} />} />
-      <Route path="serien-emails" element={<SerienEmailsTile />} />
+      <Route path="serien-emails" element={<SerienEmailsPage />} />
       <Route path="recherche" element={<RechercheTile />} />
       <Route path="social/*" element={<SocialPage />} />
       <Route path="agenten" element={<AgentenTile />} />
