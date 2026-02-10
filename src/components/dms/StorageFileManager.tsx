@@ -1,8 +1,10 @@
 /**
  * StorageFileManager — Supabase-style premium file manager
  * Single card container with 5 view modes, toolbar, and status bar.
+ * Mobile: Dropbox-style with FAB, simplified toolbar, list-only view.
  */
 import { useState, useMemo, useRef, useCallback } from 'react';
+import { Plus, Upload, FolderPlus } from 'lucide-react';
 import { StorageToolbar, type ViewMode, type SortField, type SortDir } from './StorageToolbar';
 import { ListView, type FileManagerItem } from './views/ListView';
 import { ColumnView } from './views/ColumnView';
@@ -12,7 +14,15 @@ import { PathNavigatorView } from './views/PathNavigatorView';
 import { BulkActionBar } from './BulkActionBar';
 import { NewFolderDialog } from './NewFolderDialog';
 import { FileDropZone } from './FileDropZone';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getModuleDisplayName } from '@/config/storageManifest';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface StorageNode {
   id: string;
@@ -92,6 +102,7 @@ export function StorageFileManager({
   selectedNodeId,
   onSelectNode,
 }: StorageFileManagerProps) {
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -101,6 +112,9 @@ export function StorageFileManager({
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Force list view on mobile
+  const effectiveViewMode = isMobile ? 'list' : viewMode;
 
   // Breadcrumb segments
   const breadcrumbSegments = useMemo(() => {
@@ -148,11 +162,8 @@ export function StorageFileManager({
 
     const all = [...childFolders, ...fileItems];
 
-    // Sort
     all.sort((a, b) => {
-      // Folders always first
       if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-
       let cmp = 0;
       switch (sortField) {
         case 'name': cmp = a.name.localeCompare(b.name); break;
@@ -166,13 +177,11 @@ export function StorageFileManager({
     return all;
   }, [nodes, documents, selectedNodeId, sortField, sortDir]);
 
-  // Total size
   const totalSize = useMemo(() =>
     documents.reduce((acc, d) => acc + d.size_bytes, 0),
     [documents],
   );
 
-  // Current path string for PathNavigator
   const currentPathStr = useMemo(() =>
     breadcrumbSegments.map(s => s.label).join(' / '),
     [breadcrumbSegments],
@@ -253,7 +262,6 @@ export function StorageFileManager({
   };
 
   const handleNavigatePath = (path: string) => {
-    // Simple path navigation: find node by walking names
     const parts = path.split('/').map(s => s.trim()).filter(Boolean);
     let currentId: string | null = null;
     for (const part of parts) {
@@ -266,7 +274,7 @@ export function StorageFileManager({
 
   return (
     <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full">
-      <div className="rounded-2xl bg-card border shadow-sm overflow-hidden h-[calc(100vh-12rem)] flex flex-col">
+      <div className={`rounded-2xl bg-card border shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
@@ -280,7 +288,7 @@ export function StorageFileManager({
         {/* Toolbar */}
         <StorageToolbar
           breadcrumbSegments={breadcrumbSegments}
-          viewMode={viewMode}
+          viewMode={effectiveViewMode}
           sortField={sortField}
           sortDir={sortDir}
           onNavigate={(nodeId) => { onSelectNode(nodeId); setSelectedIds(new Set()); setPreviewItem(null); }}
@@ -304,7 +312,7 @@ export function StorageFileManager({
 
         {/* Content */}
         <div className="flex-1 min-h-0">
-          {viewMode === 'list' && (
+          {effectiveViewMode === 'list' && (
             <ListView
               items={items}
               selectedIds={selectedIds}
@@ -323,7 +331,7 @@ export function StorageFileManager({
             />
           )}
 
-          {viewMode === 'columns' && (
+          {effectiveViewMode === 'columns' && (
             <ColumnView
               allNodes={nodes}
               documents={documents}
@@ -334,7 +342,7 @@ export function StorageFileManager({
             />
           )}
 
-          {viewMode === 'preview' && (
+          {effectiveViewMode === 'preview' && (
             <PreviewView
               items={items}
               selectedItem={previewItem}
@@ -345,7 +353,7 @@ export function StorageFileManager({
             />
           )}
 
-          {viewMode === 'multiselect' && (
+          {effectiveViewMode === 'multiselect' && (
             <MultiSelectView
               items={items}
               selectedIds={selectedIds}
@@ -355,7 +363,7 @@ export function StorageFileManager({
             />
           )}
 
-          {viewMode === 'navigator' && (
+          {effectiveViewMode === 'navigator' && (
             <PathNavigatorView
               currentPath={currentPathStr}
               items={items}
@@ -383,6 +391,30 @@ export function StorageFileManager({
           <span>·</span>
           <span>{formatFileSize(totalSize)}</span>
         </div>
+
+        {/* Mobile FAB */}
+        {isMobile && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                className="absolute bottom-14 right-4 h-14 w-14 rounded-full shadow-lg z-10"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-48">
+              <DropdownMenuItem onClick={handleUploadClick} disabled={isUploading}>
+                <Upload className="h-4 w-4 mr-2" />
+                Datei hochladen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setNewFolderParentId(selectedNodeId); setShowNewFolderDialog(true); }}>
+                <FolderPlus className="h-4 w-4 mr-2" />
+                Neuer Ordner
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* New folder dialog */}
         <NewFolderDialog
