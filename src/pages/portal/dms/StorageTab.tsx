@@ -292,7 +292,12 @@ export function StorageTab() {
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-2">
+    <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-h2 text-foreground">Dateien</h1>
+        <p className="text-sm text-muted-foreground mt-1">Verwalten Sie Ihre Dokumente und Ordner.</p>
+      </div>
       {/* Upload feedback */}
       {uploadedFiles.length > 0 && (
         <UploadResultList

@@ -143,36 +143,19 @@ export function PosteingangTab() {
     }
   };
 
-  const pendingCount = emails.filter(e => e.status === 'received' || e.status === 'processing').length;
-  const errorCount = emails.filter(e => e.status === 'error').length;
-  const readyCount = emails.filter(e => e.status === 'ready').length;
 
   const SKELETON_ROWS = 10;
 
   return (
-    <div className="space-y-4">
-      {/* Stats — always visible */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <div className="text-2xl font-bold">{emails.length}</div>
-          <div className="text-xs text-muted-foreground">Gesamt</div>
-        </div>
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <div className="text-2xl font-bold text-green-600">{readyCount}</div>
-          <div className="text-xs text-muted-foreground">Bereit</div>
-        </div>
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
-          <div className="text-xs text-muted-foreground">Ausstehend</div>
-        </div>
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <div className="text-2xl font-bold text-destructive">{errorCount}</div>
-          <div className="text-xs text-muted-foreground">Fehler</div>
-        </div>
+    <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-h2 text-foreground">Posteingang</h1>
+        <p className="text-sm text-muted-foreground mt-1">Hier gehen E-Mails und Dokumente aus Ihrem digitalen Postservice ein.</p>
       </div>
 
-      {/* Table — always visible */}
-      <div className="border rounded-lg bg-card overflow-hidden">
+      {/* Table */}
+      <Card className="glass-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
@@ -259,10 +242,10 @@ export function PosteingangTab() {
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Upload Email Card — below the table */}
-      <Card className="border-primary/20">
+      <Card className="glass-card overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
