@@ -22,6 +22,7 @@ import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/Proje
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ export default function PortfolioTab() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const isLoading = loadingContexts || isLoadingPortfolio;
+  const isDemo = isDemoMode(portfolioRows);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -93,14 +95,18 @@ export default function PortfolioTab() {
 
       {/* Projekt-Widgets (square cards) */}
       <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
-        {portfolioRows.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            isSelected={selectedProject?.id === project.id}
-            onClick={(id) => setSelectedProjectId(id)}
-          />
-        ))}
+        {isDemo ? (
+          <ProjectCard project={DEMO_PROJECT} isDemo />
+        ) : (
+          portfolioRows.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              isSelected={selectedProject?.id === project.id}
+              onClick={(id) => setSelectedProjectId(id)}
+            />
+          ))
+        )}
         <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
       </div>
 
@@ -110,22 +116,11 @@ export default function PortfolioTab() {
         <div className="flex-1 min-w-0">
           {isLoading ? (
             <LoadingState />
-          ) : portfolioRows.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="p-8 text-center">
-                <p className="text-muted-foreground mb-4">
-                  Noch keine Projekte vorhanden. Erstellen Sie Ihr erstes Projekt über den Magic Intake oder manuell.
-                </p>
-                <Button onClick={() => setCreateProjectOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Erstes Projekt erstellen
-                </Button>
-              </CardContent>
-            </Card>
           ) : (
             <ProjectPortfolioTable 
-              rows={portfolioRows}
-              onDelete={handleDeleteProject}
+              rows={isDemo ? [DEMO_PROJECT] : portfolioRows}
+              isDemo={isDemo}
+              onDelete={isDemo ? undefined : handleDeleteProject}
             />
           )}
         </div>
@@ -133,11 +128,11 @@ export default function PortfolioTab() {
         {/* Right: Sticky Calculator */}
         <div className="hidden lg:block w-[280px] flex-shrink-0">
           <StickyCalculatorPanel
-            totalSaleTarget={selectedProject?.total_sale_target || undefined}
-            purchasePrice={selectedProject?.purchase_price || undefined}
-            unitsCount={selectedProject?.total_units_count}
-            commissionRate={10}
-            isDemo={!selectedProject}
+            totalSaleTarget={isDemo ? DEMO_PROJECT.total_sale_target || undefined : selectedProject?.total_sale_target || undefined}
+            purchasePrice={isDemo ? DEMO_PROJECT.purchase_price || undefined : selectedProject?.purchase_price || undefined}
+            unitsCount={isDemo ? DEMO_PROJECT.total_units_count : selectedProject?.total_units_count}
+            commissionRate={isDemo ? DEMO_CALC.provision : 10}
+            isDemo={isDemo || !selectedProject}
           />
         </div>
       </div>
