@@ -141,8 +141,8 @@ describe('Zone 2: Portal Modules', () => {
 // ZONE 3: WEBSITES
 // =============================================================================
 describe('Zone 3: Websites', () => {
-  it('should have 4 website definitions', () => {
-    expect(Object.keys(zone3Websites).length).toBe(4);
+  it('should have 5 website definitions', () => {
+    expect(Object.keys(zone3Websites).length).toBe(5);
   });
 
   it('should have Kaufy2026 website', () => {
@@ -164,6 +164,12 @@ describe('Zone 3: Websites', () => {
   it('should have SOT website', () => {
     expect(zone3Websites.sot).toBeDefined();
     expect(zone3Websites.sot.base).toBe('/sot');
+  });
+
+  it('should have Acquiary website', () => {
+    expect(zone3Websites.acquiary).toBeDefined();
+    expect(zone3Websites.acquiary.base).toBe('/acquiary');
+    expect(zone3Websites.acquiary.layout).toBe('AcquiaryLayout');
   });
 });
 

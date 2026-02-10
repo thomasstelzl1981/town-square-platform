@@ -561,6 +561,17 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "SotFAQ", title: "FAQ" },
     ],
   },
+  acquiary: {
+    base: "/acquiary",
+    layout: "AcquiaryLayout",
+    routes: [
+      { path: "", component: "AcquiaryHome", title: "ACQUIARY" },
+      { path: "methodik", component: "AcquiaryMethodik", title: "Methodik" },
+      { path: "netzwerk", component: "AcquiaryNetzwerk", title: "Netzwerk" },
+      { path: "karriere", component: "AcquiaryKarriere", title: "Karriere" },
+      { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
+    ],
+  },
 };
 
 // =============================================================================
