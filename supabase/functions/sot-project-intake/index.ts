@@ -1,19 +1,10 @@
 /**
- * SOT Project Intake - Project creation with file storage
- * MOD-13 PROJEKTE - Magic Intake
+ * SOT Project Intake - Magic Intake with Full AI + XLSX + Storage-Tree
+ * MOD-13 PROJEKTE
  * 
- * Supports two modes:
- * 
- * Mode 1 (NEW - Multi-step workflow):
- * - storagePaths: { expose?: string, pricelist?: string } - Already uploaded files
- * - mode: 'analyze' | 'create'
- *   - 'analyze': Only extract data, return for review
- *   - 'create': Create project with reviewedData
- * - reviewedData: User-confirmed data (only for mode='create')
- * 
- * Mode 2 (LEGACY - Single-step):
- * - FormData with expose/pricelist files
- * - Creates project immediately
+ * Modes:
+ *   analyze  — Extract project data from Exposé (AI) + parse Pricelist (XLSX)
+ *   create   — Create project, bulk-insert units, seed storage_nodes tree
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -24,31 +15,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Max file size for AI extraction (5MB) - larger files skip AI to avoid memory issues
 const MAX_AI_PROCESSING_SIZE = 5 * 1024 * 1024;
 
-// Max upload size (20MB)
-const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
+// ── Standard folder templates ─────────────────────────────────────────────────
+const PROJECT_FOLDERS = [
+  '01_expose',
+  '02_preisliste',
+  '03_bilder_marketing',
+  '04_kalkulation_exports',
+  '05_reservierungen',
+  '06_vertraege',
+  '99_sonstiges',
+];
 
-/**
- * Sanitize filename for Supabase Storage
- */
-function sanitizeFilename(filename: string): string {
-  const lastDot = filename.lastIndexOf('.');
-  const ext = lastDot > 0 ? filename.slice(lastDot) : '';
-  const baseName = lastDot > 0 ? filename.slice(0, lastDot) : filename;
-  
-  const sanitized = baseName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[[\](){}]/g, '')
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-    .substring(0, 80);
-  
-  return sanitized + ext.toLowerCase();
+const UNIT_FOLDERS = [
+  '01_grundriss',
+  '02_bilder',
+  '03_verkaufsunterlagen',
+  '04_vertraege_reservierung',
+  '99_sonstiges',
+];
+
+interface ExtractedUnit {
+  unitNumber: string;
+  type: string;
+  area: number;
+  rooms: number;
+  floor: string;
+  price: number;
+  currentRent?: number;
 }
 
 interface ExtractedData {
@@ -61,48 +56,35 @@ interface ExtractedData {
   priceRange: string;
   description?: string;
   projectType?: 'neubau' | 'aufteilung';
-  extractedUnits?: Array<{
-    unitNumber: string;
-    type: string;
-    area: number;
-    price: number;
-  }>;
+  extractedUnits?: ExtractedUnit[];
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Get auth token from request
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
-    
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get user's tenant
     const { data: profile } = await supabase
       .from('profiles')
       .select('active_tenant_id')
@@ -111,60 +93,52 @@ serve(async (req) => {
 
     if (!profile?.active_tenant_id) {
       return new Response(JSON.stringify({ error: 'No tenant selected' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const tenantId = profile.active_tenant_id;
-
-    // Detect request type (JSON or FormData)
     const contentType = req.headers.get('content-type') || '';
-    
-    if (contentType.includes('application/json')) {
-      // NEW MODE: JSON with storagePaths
-      const body = await req.json();
-      const { storagePaths, contextId, mode, reviewedData } = body;
 
-      console.log('Project intake - JSON mode:', { mode, storagePaths, contextId });
-
-      if (mode === 'analyze') {
-        return await handleAnalyzeMode(supabase, tenantId, storagePaths, contextId);
-      } else if (mode === 'create') {
-        return await handleCreateMode(supabase, tenantId, storagePaths, contextId, reviewedData, user.id);
-      } else {
-        return new Response(JSON.stringify({ error: 'Invalid mode. Use "analyze" or "create"' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
-      // LEGACY MODE: FormData with files
-      return await handleLegacyMode(req, supabase, tenantId, user.id);
+    if (!contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ error: 'JSON body required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
+    const body = await req.json();
+    const { storagePaths, mode, reviewedData } = body;
+
+    console.log('Project intake:', { mode, storagePaths });
+
+    if (mode === 'analyze') {
+      return await handleAnalyze(supabase, tenantId, storagePaths);
+    } else if (mode === 'create') {
+      return await handleCreate(supabase, tenantId, storagePaths, reviewedData, user.id);
+    } else {
+      return new Response(JSON.stringify({ error: 'Invalid mode' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   } catch (error) {
     console.error('Intake error:', error);
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Internal server error',
     }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
 
-/**
- * ANALYZE MODE: Extract data from uploaded files, return for review
- */
-async function handleAnalyzeMode(
+// ══════════════════════════════════════════════════════════════════════════════
+// ANALYZE MODE
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function handleAnalyze(
   supabase: ReturnType<typeof createClient>,
   tenantId: string,
   storagePaths: { expose?: string; pricelist?: string },
-  contextId: string
 ): Promise<Response> {
-  console.log('Analyze mode - extracting data from storage paths:', storagePaths);
-
   const extractedData: ExtractedData = {
     projectName: '',
     address: '',
@@ -176,154 +150,269 @@ async function handleAnalyzeMode(
     extractedUnits: [],
   };
 
-  // Try to extract from expose PDF
+  // ── 1. Exposé — AI extraction ─────────────────────────────────────────────
   if (storagePaths.expose) {
     try {
-      // Download file from storage
-      const { data: fileData, error: downloadError } = await supabase.storage
+      const { data: fileData, error: dlError } = await supabase.storage
         .from('tenant-documents')
         .download(storagePaths.expose);
 
-      if (downloadError) {
-        console.error('Error downloading expose:', downloadError);
-      } else if (fileData) {
-        const fileSize = fileData.size;
-        console.log('Downloaded expose, size:', fileSize);
+      if (dlError) {
+        console.error('Download expose error:', dlError);
+      } else if (fileData && fileData.size <= MAX_AI_PROCESSING_SIZE) {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (LOVABLE_API_KEY) {
+          const buffer = await fileData.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-        if (fileSize <= MAX_AI_PROCESSING_SIZE) {
-          const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-          if (LOVABLE_API_KEY) {
-            const buffer = await fileData.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-
-            const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
-                messages: [
-                  {
-                    role: 'system',
-                    content: `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere:
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                {
+                  role: 'system',
+                  content: `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere:
 - Projektname (z.B. "Residenz am Park")
 - Stadt/Ort
 - PLZ
-- Adresse
-- Anzahl Einheiten (wenn erkennbar)
-- Gesamtfläche in m² (wenn erkennbar)
+- Adresse (Straße + Hausnr)
+- Anzahl Wohneinheiten
+- Gesamtfläche in m²
 - Preisspanne (z.B. "250.000 - 450.000 €")
 - Kurzbeschreibung (max 200 Zeichen)
 - Projekttyp: "neubau" oder "aufteilung"
 
+Wenn Einheiten erkennbar sind, extrahiere auch diese als Array.
+
 Antworte NUR mit einem JSON-Objekt:
 {
-  "projectName": "Projektname",
-  "city": "Stadt",
-  "postalCode": "12345",
-  "address": "Straße 1",
-  "unitsCount": 12,
-  "totalArea": 1200,
-  "priceRange": "250.000 - 450.000 €",
-  "description": "Kurzbeschreibung",
-  "projectType": "neubau"
+  "projectName": "...",
+  "city": "...",
+  "postalCode": "...",
+  "address": "...",
+  "unitsCount": 0,
+  "totalArea": 0,
+  "priceRange": "...",
+  "description": "...",
+  "projectType": "neubau",
+  "extractedUnits": [
+    { "unitNumber": "WE-001", "type": "Wohnung", "area": 65.0, "rooms": 2, "floor": "EG", "price": 289000 }
+  ]
 }`
-                  },
-                  {
-                    role: 'user',
-                    content: [
-                      { type: 'text', text: 'Extrahiere die Projektdaten aus diesem PDF:' },
-                      { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } }
-                    ]
-                  }
-                ],
-                max_tokens: 800,
-              }),
-            });
+                },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: 'Analysiere dieses Immobilien-Exposé vollständig:' },
+                    { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } }
+                  ]
+                }
+              ],
+              max_tokens: 2000,
+            }),
+          });
 
-            if (aiResponse.ok) {
-              const aiResult = await aiResponse.json();
-              const content = aiResult.choices?.[0]?.message?.content;
-              if (content) {
-                const jsonMatch = content.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
+          if (aiResponse.ok) {
+            const aiResult = await aiResponse.json();
+            const content = aiResult.choices?.[0]?.message?.content;
+            if (content) {
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                try {
                   const parsed = JSON.parse(jsonMatch[0]);
                   Object.assign(extractedData, {
-                    projectName: parsed.projectName || parsed.name || '',
+                    projectName: parsed.projectName || '',
                     city: parsed.city || '',
-                    postalCode: parsed.postalCode || parsed.postal_code || '',
+                    postalCode: parsed.postalCode || '',
                     address: parsed.address || '',
                     unitsCount: parseInt(parsed.unitsCount) || 0,
                     totalArea: parseFloat(parsed.totalArea) || 0,
                     priceRange: parsed.priceRange || '',
                     description: parsed.description || '',
-                    projectType: parsed.projectType || parsed.project_type || 'neubau',
+                    projectType: parsed.projectType || 'neubau',
+                    extractedUnits: Array.isArray(parsed.extractedUnits) ? parsed.extractedUnits : [],
                   });
-                  console.log('AI extraction successful:', extractedData);
+                  console.log('AI extraction successful:', extractedData.projectName);
+                } catch (parseErr) {
+                  console.error('JSON parse error:', parseErr);
                 }
               }
-            } else {
-              console.error('AI response not ok:', aiResponse.status);
+            }
+          } else {
+            const errText = await aiResponse.text();
+            console.error('AI error:', aiResponse.status, errText);
+            // Surface rate-limit errors
+            if (aiResponse.status === 429 || aiResponse.status === 402) {
+              return new Response(JSON.stringify({
+                error: aiResponse.status === 429
+                  ? 'KI-Rate-Limit erreicht. Bitte versuchen Sie es in einer Minute erneut.'
+                  : 'KI-Credits aufgebraucht. Bitte laden Sie Credits nach.',
+              }), {
+                status: aiResponse.status,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
             }
           }
-        } else {
-          console.log('File too large for AI extraction, returning empty template');
         }
+      } else if (fileData) {
+        console.log('File too large for AI extraction:', fileData.size);
       }
     } catch (err) {
-      console.error('Error in expose extraction:', err);
+      console.error('Expose extraction error:', err);
     }
   }
 
-  // If no project name extracted, generate placeholder
-  if (!extractedData.projectName) {
-    const year = new Date().getFullYear();
-    extractedData.projectName = `Neues Projekt ${year}`;
+  // ── 2. Pricelist — XLSX/CSV parsing via AI ────────────────────────────────
+  if (storagePaths.pricelist) {
+    try {
+      const { data: fileData, error: dlError } = await supabase.storage
+        .from('tenant-documents')
+        .download(storagePaths.pricelist);
+
+      if (dlError) {
+        console.error('Download pricelist error:', dlError);
+      } else if (fileData && fileData.size <= MAX_AI_PROCESSING_SIZE) {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        const mimeType = storagePaths.pricelist.endsWith('.pdf')
+          ? 'application/pdf'
+          : storagePaths.pricelist.endsWith('.csv')
+            ? 'text/csv'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        if (LOVABLE_API_KEY) {
+          const buffer = await fileData.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                {
+                  role: 'system',
+                  content: `Du bist ein Preislisten-Parser für Immobilienprojekte. Extrahiere alle Wohneinheiten aus der Preisliste.
+
+Für jede Einheit extrahiere:
+- unitNumber: Wohnungsnummer (z.B. "WE-001", "Top 1", "Whg. 1")
+- type: Typ (z.B. "Wohnung", "Apartment", "Penthouse", "Maisonette", "Gewerbe", "Stellplatz")
+- area: Wohnfläche in m² (Zahl)
+- rooms: Zimmeranzahl (Zahl)
+- floor: Etage/Geschoss (z.B. "EG", "1.OG", "DG")
+- price: Kaufpreis in EUR (Zahl, ohne Tausenderpunkte)
+- currentRent: Aktuelle Monatsmiete in EUR (wenn vorhanden, sonst 0)
+
+Antworte NUR mit einem JSON-Array:
+[
+  { "unitNumber": "WE-001", "type": "Wohnung", "area": 65.0, "rooms": 2, "floor": "EG", "price": 289000, "currentRent": 650 }
+]`
+                },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste:' },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+                  ]
+                }
+              ],
+              max_tokens: 4000,
+            }),
+          });
+
+          if (aiResponse.ok) {
+            const aiResult = await aiResponse.json();
+            const content = aiResult.choices?.[0]?.message?.content;
+            if (content) {
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                try {
+                  const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
+                  if (Array.isArray(units) && units.length > 0) {
+                    extractedData.extractedUnits = units;
+                    extractedData.unitsCount = units.length;
+                    extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+                    const prices = units.map(u => u.price).filter(p => p > 0);
+                    if (prices.length > 0) {
+                      const min = Math.min(...prices);
+                      const max = Math.max(...prices);
+                      extractedData.priceRange = min === max
+                        ? `${min.toLocaleString('de-DE')} €`
+                        : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+                    }
+                    console.log(`Pricelist parsed: ${units.length} units extracted`);
+                  }
+                } catch (parseErr) {
+                  console.error('Pricelist parse error:', parseErr);
+                }
+              }
+            }
+          } else if (aiResponse.status === 429 || aiResponse.status === 402) {
+            console.warn('AI rate limit on pricelist:', aiResponse.status);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Pricelist extraction error:', err);
+    }
   }
 
-  return new Response(JSON.stringify({
-    success: true,
-    extractedData,
-  }), {
+  // Fallback name
+  if (!extractedData.projectName) {
+    extractedData.projectName = `Neues Projekt ${new Date().getFullYear()}`;
+  }
+
+  return new Response(JSON.stringify({ success: true, extractedData }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-/**
- * CREATE MODE: Create project with user-reviewed data
- */
-async function handleCreateMode(
+// ══════════════════════════════════════════════════════════════════════════════
+// CREATE MODE
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function handleCreate(
   supabase: ReturnType<typeof createClient>,
   tenantId: string,
   storagePaths: { expose?: string; pricelist?: string },
-  contextId: string,
   reviewedData: ExtractedData,
   userId: string
 ): Promise<Response> {
-  console.log('Create mode - creating project with reviewed data:', reviewedData);
+  console.log('Create mode:', reviewedData.projectName, '—', reviewedData.extractedUnits?.length || 0, 'units');
 
-  // Get or validate developer context
-  let developerContextId = contextId;
-  if (!developerContextId) {
-    const { data: existingContexts } = await supabase
+  // ── 1. Developer Context ──────────────────────────────────────────────────
+  let contextId: string;
+  const { data: existingContexts } = await supabase
+    .from('developer_contexts')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .limit(1);
+
+  if (existingContexts && existingContexts.length > 0) {
+    contextId = existingContexts[0].id;
+  } else {
+    const { data: newCtx, error: ctxErr } = await supabase
       .from('developer_contexts')
+      .insert({
+        tenant_id: tenantId,
+        name: 'Meine Gesellschaft',
+        legal_form: 'GmbH',
+        is_default: true,
+      })
       .select('id')
-      .eq('tenant_id', tenantId)
-      .limit(1);
-
-    if (existingContexts && existingContexts.length > 0) {
-      developerContextId = existingContexts[0].id;
-    } else {
-      return new Response(JSON.stringify({ error: 'No developer context available' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      .single();
+    if (ctxErr) throw new Error('Context creation failed: ' + ctxErr.message);
+    contextId = newCtx.id;
   }
 
-  // Generate project code
+  // ── 2. Generate project code ──────────────────────────────────────────────
   const year = new Date().getFullYear();
   const { count } = await supabase
     .from('dev_projects')
@@ -331,15 +420,14 @@ async function handleCreateMode(
     .eq('tenant_id', tenantId)
     .like('project_code', `BT-${year}-%`);
 
-  const nextNum = (count || 0) + 1;
-  const projectCode = `BT-${year}-${String(nextNum).padStart(3, '0')}`;
+  const projectCode = `BT-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
 
-  // Create project with reviewed data
-  const { data: project, error: projectError } = await supabase
+  // ── 3. Create project ─────────────────────────────────────────────────────
+  const { data: project, error: projErr } = await supabase
     .from('dev_projects')
     .insert({
       tenant_id: tenantId,
-      developer_context_id: developerContextId,
+      developer_context_id: contextId,
       project_code: projectCode,
       name: reviewedData.projectName || `Projekt ${projectCode}`,
       city: reviewedData.city || null,
@@ -347,367 +435,208 @@ async function handleCreateMode(
       address: reviewedData.address || null,
       description: reviewedData.description || null,
       project_type: reviewedData.projectType === 'aufteilung' ? 'aufteilung' : 'neubau',
-      status: 'draft_intake',
-      needs_review: false, // User already reviewed
+      total_units_count: reviewedData.extractedUnits?.length || reviewedData.unitsCount || 0,
+      status: 'draft_ready',
+      needs_review: false,
       intake_data: {
         created_at: new Date().toISOString(),
         files: storagePaths,
         reviewed_data: reviewedData,
-        units_count_indicated: reviewedData.unitsCount,
-        total_area_indicated: reviewedData.totalArea,
       },
       created_by: userId,
     })
     .select()
     .single();
 
-  if (projectError) {
-    console.error('Error creating project:', projectError);
-    throw new Error('Failed to create project: ' + projectError.message);
+  if (projErr) throw new Error('Project creation failed: ' + projErr.message);
+  console.log('Project created:', project.id, projectCode);
+
+  // ── 4. Bulk-insert units ──────────────────────────────────────────────────
+  const units = reviewedData.extractedUnits || [];
+  const createdUnitIds: string[] = [];
+
+  if (units.length > 0) {
+    const unitRows = units.map((u, idx) => ({
+      project_id: project.id,
+      tenant_id: tenantId,
+      unit_number: u.unitNumber || `WE-${String(idx + 1).padStart(3, '0')}`,
+      unit_type: u.type || 'Wohnung',
+      area_sqm: u.area || null,
+      rooms_count: u.rooms || null,
+      floor: u.floor || null,
+      list_price: u.price || null,
+      minimum_price: u.price ? Math.round(u.price * 0.95) : null,
+      current_rent: u.currentRent || null,
+      price_per_sqm: u.area && u.price ? Math.round(u.price / u.area) : null,
+      status: 'available',
+    }));
+
+    const { data: insertedUnits, error: unitsErr } = await supabase
+      .from('dev_project_units')
+      .insert(unitRows)
+      .select('id');
+
+    if (unitsErr) {
+      console.error('Units insert error:', unitsErr);
+    } else if (insertedUnits) {
+      insertedUnits.forEach(u => createdUnitIds.push(u.id));
+      console.log(`Inserted ${insertedUnits.length} units`);
+
+      // Update project total_units_count
+      await supabase.from('dev_projects').update({
+        total_units_count: insertedUnits.length,
+      }).eq('id', project.id);
+    }
   }
 
-  console.log('Created project:', project.id);
+  // ── 5. Seed Storage-Tree ──────────────────────────────────────────────────
+  await seedStorageTree(supabase, tenantId, project.id, projectCode, createdUnitIds, units);
 
-  // Move files from intake folder to project folder if needed
-  if (storagePaths.expose || storagePaths.pricelist) {
-    const projectStoragePath = `projects/${tenantId}/${project.id}`;
-    
-    // Copy expose
-    if (storagePaths.expose) {
-      try {
-        const fileName = storagePaths.expose.split('/').pop() || 'expose.pdf';
-        const newPath = `${projectStoragePath}/expose/${fileName}`;
-        
-        const { error: copyError } = await supabase.storage
-          .from('tenant-documents')
-          .copy(storagePaths.expose, newPath);
-        
-        if (!copyError) {
-          // Delete original
-          await supabase.storage.from('tenant-documents').remove([storagePaths.expose]);
-          console.log('Moved expose to project folder');
-        }
-      } catch (err) {
-        console.error('Error moving expose:', err);
-      }
-    }
-
-    // Copy pricelist
-    if (storagePaths.pricelist) {
-      try {
-        const fileName = storagePaths.pricelist.split('/').pop() || 'pricelist.xlsx';
-        const newPath = `${projectStoragePath}/pricelist/${fileName}`;
-        
-        const { error: copyError } = await supabase.storage
-          .from('tenant-documents')
-          .copy(storagePaths.pricelist, newPath);
-        
-        if (!copyError) {
-          await supabase.storage.from('tenant-documents').remove([storagePaths.pricelist]);
-          console.log('Moved pricelist to project folder');
-        }
-      } catch (err) {
-        console.error('Error moving pricelist:', err);
-      }
-    }
+  // ── 6. Move uploaded files to project folders ─────────────────────────────
+  if (storagePaths.expose) {
+    try {
+      const fileName = storagePaths.expose.split('/').pop() || 'expose.pdf';
+      const newPath = `projects/${tenantId}/${project.id}/expose/${fileName}`;
+      await supabase.storage.from('tenant-documents').copy(storagePaths.expose, newPath);
+      console.log('Copied expose to project folder');
+    } catch (e) { console.error('Move expose error:', e); }
+  }
+  if (storagePaths.pricelist) {
+    try {
+      const fileName = storagePaths.pricelist.split('/').pop() || 'pricelist.xlsx';
+      const newPath = `projects/${tenantId}/${project.id}/pricelist/${fileName}`;
+      await supabase.storage.from('tenant-documents').copy(storagePaths.pricelist, newPath);
+      console.log('Copied pricelist to project folder');
+    } catch (e) { console.error('Move pricelist error:', e); }
   }
 
   return new Response(JSON.stringify({
     success: true,
     projectId: project.id,
     projectCode,
-    message: 'Projekt erfolgreich erstellt',
+    unitsCreated: createdUnitIds.length,
+    message: `Projekt "${reviewedData.projectName}" mit ${createdUnitIds.length} Einheiten erstellt.`,
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-/**
- * LEGACY MODE: Handle FormData with file uploads (for backwards compatibility)
- */
-async function handleLegacyMode(
-  req: Request,
+// ══════════════════════════════════════════════════════════════════════════════
+// STORAGE TREE SEEDING
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function seedStorageTree(
   supabase: ReturnType<typeof createClient>,
   tenantId: string,
-  userId: string
-): Promise<Response> {
-  // Parse form data
-  const formData = await req.formData();
-  const exposeFile = formData.get('expose') as File | null;
-  const pricelistFile = formData.get('pricelist') as File | null;
-  const contextId = formData.get('contextId') as string | null;
-  const autoCreateContext = formData.get('autoCreateContext') === 'true';
+  projectId: string,
+  projectCode: string,
+  unitIds: string[],
+  units: ExtractedUnit[]
+): Promise<void> {
+  console.log('Seeding storage tree for', projectCode);
 
-  if (!exposeFile && !pricelistFile) {
-    return new Response(JSON.stringify({ error: 'At least one file required' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Check file sizes
-  const exposeSize = exposeFile?.size || 0;
-  const pricelistSize = pricelistFile?.size || 0;
-  
-  if (exposeSize > MAX_UPLOAD_SIZE) {
-    return new Response(JSON.stringify({ 
-      error: `Exposé zu groß (${Math.round(exposeSize / 1024 / 1024)}MB). Maximum: 20MB` 
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-  
-  if (pricelistSize > MAX_UPLOAD_SIZE) {
-    return new Response(JSON.stringify({ 
-      error: `Preisliste zu groß (${Math.round(pricelistSize / 1024 / 1024)}MB). Maximum: 20MB` 
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  console.log('Legacy mode - project intake with file upload:', {
-    hasExpose: !!exposeFile,
-    exposeSize: exposeSize ? `${Math.round(exposeSize / 1024)}KB` : null,
-    hasPricelist: !!pricelistFile,
-    pricelistSize: pricelistSize ? `${Math.round(pricelistSize / 1024)}KB` : null,
-    contextId,
-  });
-
-  // Generate project code
-  const year = new Date().getFullYear();
-  const { count } = await supabase
-    .from('dev_projects')
-    .select('*', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .like('project_code', `BT-${year}-%`);
-
-  const nextNum = (count || 0) + 1;
-  const projectCode = `BT-${year}-${String(nextNum).padStart(3, '0')}`;
-
-  // Get or create developer context
-  let developerContextId = contextId;
-  
-  if (!developerContextId) {
-    const { data: existingContexts } = await supabase
-      .from('developer_contexts')
+  try {
+    // Find the MOD_13 root folder for this tenant
+    const { data: modRoot } = await supabase
+      .from('storage_nodes')
       .select('id')
       .eq('tenant_id', tenantId)
+      .eq('name', 'MOD_13')
+      .eq('node_type', 'folder')
+      .is('parent_id', null)
       .limit(1);
 
-    if (existingContexts && existingContexts.length > 0) {
-      developerContextId = existingContexts[0].id;
-    } else if (autoCreateContext) {
-      const { data: newContext, error: contextError } = await supabase
-        .from('developer_contexts')
+    const parentId = modRoot?.[0]?.id || null;
+
+    // Create project root folder
+    const { data: projectFolder, error: pfErr } = await supabase
+      .from('storage_nodes')
+      .insert({
+        tenant_id: tenantId,
+        parent_id: parentId,
+        name: projectCode,
+        node_type: 'folder',
+        dev_project_id: projectId,
+      })
+      .select('id')
+      .single();
+
+    if (pfErr) {
+      console.error('Project folder creation error:', pfErr);
+      return;
+    }
+
+    const projectFolderId = projectFolder.id;
+
+    // Create standard project sub-folders
+    const folderInserts = PROJECT_FOLDERS.map(name => ({
+      tenant_id: tenantId,
+      parent_id: projectFolderId,
+      name,
+      node_type: 'folder' as const,
+      dev_project_id: projectId,
+    }));
+
+    const { error: subErr } = await supabase
+      .from('storage_nodes')
+      .insert(folderInserts);
+
+    if (subErr) {
+      console.error('Sub-folder creation error:', subErr);
+    }
+
+    // Create unit folders (if units exist)
+    if (unitIds.length > 0) {
+      // Create "Einheiten" container
+      const { data: einheitenFolder } = await supabase
+        .from('storage_nodes')
         .insert({
           tenant_id: tenantId,
-          name: 'Meine Gesellschaft',
-          legal_form: 'GmbH',
-          is_default: true,
+          parent_id: projectFolderId,
+          name: 'Einheiten',
+          node_type: 'folder',
+          dev_project_id: projectId,
         })
-        .select()
+        .select('id')
         .single();
 
-      if (contextError) {
-        console.error('Error creating context:', contextError);
-        return new Response(JSON.stringify({ error: 'Failed to create developer context' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      developerContextId = newContext.id;
-    } else {
-      return new Response(JSON.stringify({ error: 'No developer context available' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-  }
+      if (einheitenFolder) {
+        for (let i = 0; i < unitIds.length; i++) {
+          const unitNumber = units[i]?.unitNumber || `WE-${String(i + 1).padStart(3, '0')}`;
+          
+          // Create unit folder
+          const { data: unitFolder } = await supabase
+            .from('storage_nodes')
+            .insert({
+              tenant_id: tenantId,
+              parent_id: einheitenFolder.id,
+              name: unitNumber,
+              node_type: 'folder',
+              dev_project_id: projectId,
+              dev_project_unit_id: unitIds[i],
+            })
+            .select('id')
+            .single();
 
-  // Create draft project
-  const { data: project, error: projectError } = await supabase
-    .from('dev_projects')
-    .insert({
-      tenant_id: tenantId,
-      developer_context_id: developerContextId,
-      project_code: projectCode,
-      name: `Projekt ${projectCode}`,
-      status: 'draft_intake',
-      needs_review: true,
-      intake_data: {
-        started_at: new Date().toISOString(),
-        has_expose: !!exposeFile,
-        expose_size: exposeSize,
-        has_pricelist: !!pricelistFile,
-        pricelist_size: pricelistSize,
-        ai_extraction_skipped: exposeSize > MAX_AI_PROCESSING_SIZE,
-      },
-      created_by: userId,
-    })
-    .select()
-    .single();
+          if (unitFolder) {
+            // Create unit sub-folders
+            const unitSubFolders = UNIT_FOLDERS.map(name => ({
+              tenant_id: tenantId,
+              parent_id: unitFolder.id,
+              name,
+              node_type: 'folder' as const,
+              dev_project_id: projectId,
+              dev_project_unit_id: unitIds[i],
+            }));
 
-  if (projectError) {
-    console.error('Error creating project:', projectError);
-    throw new Error('Failed to create project: ' + projectError.message);
-  }
-
-  console.log('Created draft project:', project.id);
-
-  // Upload files to Storage
-  const storagePath = `projects/${tenantId}/${project.id}`;
-  const uploadResults: { expose?: string; pricelist?: string } = {};
-
-  if (exposeFile) {
-    const exposeBuffer = await exposeFile.arrayBuffer();
-    const safeExposeName = sanitizeFilename(exposeFile.name);
-    const exposePath = `${storagePath}/expose/${safeExposeName}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('project-documents')
-      .upload(exposePath, exposeBuffer, {
-        contentType: exposeFile.type,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Error uploading expose:', uploadError);
-    } else {
-      uploadResults.expose = exposePath;
-    }
-  }
-
-  if (pricelistFile) {
-    const pricelistBuffer = await pricelistFile.arrayBuffer();
-    const safePricelistName = sanitizeFilename(pricelistFile.name);
-    const pricelistPath = `${storagePath}/pricelist/${safePricelistName}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('project-documents')
-      .upload(pricelistPath, pricelistBuffer, {
-        contentType: pricelistFile.type,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Error uploading pricelist:', uploadError);
-    } else {
-      uploadResults.pricelist = pricelistPath;
-    }
-  }
-
-  // Update project with file paths
-  await supabase
-    .from('dev_projects')
-    .update({
-      intake_data: {
-        ...project.intake_data,
-        files: uploadResults,
-        files_uploaded_at: new Date().toISOString(),
-      },
-    })
-    .eq('id', project.id);
-
-  // AI extraction for small files (same as before)
-  let aiExtractionDone = false;
-  if (exposeFile && exposeSize <= MAX_AI_PROCESSING_SIZE) {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (LOVABLE_API_KEY) {
-      try {
-        const exposeBuffer = await exposeFile.arrayBuffer();
-        const exposeBase64 = btoa(String.fromCharCode(...new Uint8Array(exposeBuffer)));
-        
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              {
-                role: 'system',
-                content: `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere:
-- Projektname
-- Stadt/Ort
-- PLZ
-- Adresse
-- Kurzbeschreibung (max 200 Zeichen)
-- Projekttyp: "neubau" oder "aufteilung"
-
-Antworte NUR mit einem JSON-Objekt:
-{
-  "name": "Projektname",
-  "city": "Stadt",
-  "postal_code": "12345",
-  "address": "Straße 1",
-  "description": "Kurzbeschreibung",
-  "project_type": "neubau"
-}`
-              },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: 'Extrahiere die Projektdaten:' },
-                  { type: 'image_url', image_url: { url: `data:application/pdf;base64,${exposeBase64}` } }
-                ]
-              }
-            ],
-            max_tokens: 500,
-          }),
-        });
-
-        if (aiResponse.ok) {
-          const aiResult = await aiResponse.json();
-          const content = aiResult.choices?.[0]?.message?.content;
-          if (content) {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              
-              await supabase
-                .from('dev_projects')
-                .update({
-                  name: parsed.name || project.name,
-                  city: parsed.city || null,
-                  postal_code: parsed.postal_code || null,
-                  address: parsed.address || null,
-                  description: parsed.description || null,
-                  project_type: parsed.project_type === 'neubau' ? 'neubau' : 'aufteilung',
-                  intake_data: {
-                    ...project.intake_data,
-                    files: uploadResults,
-                    ai_extracted_at: new Date().toISOString(),
-                    ai_extraction_success: true,
-                  },
-                })
-                .eq('id', project.id);
-              
-              aiExtractionDone = true;
-              console.log('AI extraction successful');
-            }
+            await supabase.from('storage_nodes').insert(unitSubFolders);
           }
         }
-      } catch (aiErr) {
-        console.error('AI extraction error:', aiErr);
       }
     }
-  }
 
-  return new Response(JSON.stringify({
-    success: true,
-    projectId: project.id,
-    projectCode,
-    contextId: developerContextId,
-    filesUploaded: uploadResults,
-    aiExtractionDone,
-    message: aiExtractionDone 
-      ? 'Projekt erstellt und Daten extrahiert.'
-      : 'Projekt erstellt. Bitte ergänzen Sie die Daten manuell.',
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+    console.log('Storage tree seeded:', PROJECT_FOLDERS.length, 'project folders +', unitIds.length, 'unit folders');
+  } catch (err) {
+    console.error('Storage tree seeding error:', err);
+  }
 }
