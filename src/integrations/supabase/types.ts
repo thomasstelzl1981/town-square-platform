@@ -5802,6 +5802,86 @@ export type Database = {
           },
         ]
       }
+      inbox_sort_containers: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_sort_containers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_sort_rules: {
+        Row: {
+          container_id: string
+          created_at: string
+          field: string
+          id: string
+          keywords_json: Json
+          operator: string
+          tenant_id: string
+        }
+        Insert: {
+          container_id: string
+          created_at?: string
+          field: string
+          id?: string
+          keywords_json?: Json
+          operator?: string
+          tenant_id: string
+        }
+        Update: {
+          container_id?: string
+          created_at?: string
+          field?: string
+          id?: string
+          keywords_json?: Json
+          operator?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_sort_rules_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_sort_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_sort_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_registry: {
         Row: {
           auth_type: string | null
@@ -8034,6 +8114,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          ai_extraction_enabled: boolean
           created_at: string
           depth: number
           id: string
@@ -8050,6 +8131,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_extraction_enabled?: boolean
           created_at?: string
           depth?: number
           id?: string
@@ -8066,6 +8148,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_extraction_enabled?: boolean
           created_at?: string
           depth?: number
           id?: string

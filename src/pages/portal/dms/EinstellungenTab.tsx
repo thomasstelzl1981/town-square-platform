@@ -39,9 +39,20 @@ const PLAN_ICONS: Record<string, typeof HardDrive> = {
 export function EinstellungenTab() {
   const { user, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [ocrEnabled, setOcrEnabled] = useState(() => {
-    const stored = localStorage.getItem('dms_ocr_enabled');
-    return stored !== 'false';
+  // OCR state from DB
+  const { data: ocrEnabled = false } = useQuery({
+    queryKey: ['ai-extraction-enabled', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return false;
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('ai_extraction_enabled')
+        .eq('id', activeTenantId)
+        .single();
+      if (error) throw error;
+      return data?.ai_extraction_enabled ?? false;
+    },
+    enabled: !!activeTenantId,
   });
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [orderAddress, setOrderAddress] = useState('');
@@ -156,10 +167,24 @@ export function EinstellungenTab() {
     },
   });
 
+  const ocrToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const { error } = await supabase
+        .from('organizations')
+        .update({ ai_extraction_enabled: enabled })
+        .eq('id', activeTenantId);
+      if (error) throw error;
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['ai-extraction-enabled'] });
+      toast.success(enabled ? 'Dokumenten-Auslesung aktiviert' : 'Dokumenten-Auslesung deaktiviert');
+    },
+    onError: () => toast.error('Fehler beim Umschalten'),
+  });
+
   const handleOcrToggle = (enabled: boolean) => {
-    setOcrEnabled(enabled);
-    localStorage.setItem('dms_ocr_enabled', String(enabled));
-    toast.success(enabled ? 'Dokumenten-Auslesung aktiviert' : 'Dokumenten-Auslesung deaktiviert');
+    ocrToggleMutation.mutate(enabled);
   };
 
   const formatGB = (bytes: number) => `${(bytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
