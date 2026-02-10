@@ -25,19 +25,23 @@
 - Read-Only Block D ersetzt durch `<ProjectAufteilerCalculation />`
 - Import + Export in index.ts hinzugefuegt
 
+#### ✅ Edge Function `sot-project-intake` — Full AI + XLSX + Storage-Tree
+- **Analyze Mode:** Gemini 2.5 Flash fuer Expose-Extraktion (Projektname, Adresse, PLZ, Stadt, Einheiten, Preise)
+- **Pricelist Parsing:** AI-basierte XLSX/CSV/PDF-Preislisten-Extraktion → extractedUnits Array
+- **Create Mode:** Projekt + Units Bulk-Insert + Storage-Tree Seeding
+- **Storage-Tree:** 7 Projektordner (01_expose bis 99_sonstiges) + Einheiten-Ordner mit 5 Sub-Ordnern pro Unit
+- **Rate-Limit Handling:** 429/402 Fehler werden sauber durchgereicht
+- **Auto-Context:** Developer Context wird automatisch angelegt wenn keiner existiert
+
 ### Naechste Schritte
 
-#### P0.2 — Edge Function `sot-project-intake`
-- PDF-Analyse via Lovable AI (Gemini)
-- XLSX-Import zu `dev_project_units`
-- Storage-Tree Seeding (7 Standardordner)
-
 #### P0.3 — Demo-Seed
-- 1 Developer Context + 1 Projekt + 5 Units (DB-Migration)
+- 1 Developer Context + 1 Projekt + 5 Units + Storage-Tree (DB-Migration)
 
 #### P1 — Vertriebsfreigabe
 - TermsGate Consent-Panel
 - Status-Sync (Reservierung → Unit-Status)
+- Preisliste editierbar (ProjectPricingBlock)
 
 #### P2 — Lead-Maschine (eigener Prompt)
 - Kampagnen-Studio (Facebook/Instagram)
