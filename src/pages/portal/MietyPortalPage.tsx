@@ -22,7 +22,7 @@ import {
   ArrowRight, Flame, Droplets, Wifi, Thermometer, FolderOpen, Upload,
   Users, AlertTriangle, Mail, CheckCircle2, Camera, Globe, Copy, Send,
   Languages, Phone, Settings, ShoppingCart, TrendingDown, ExternalLink,
-  Eye, Video, Cog,
+  Eye, Video,
 } from 'lucide-react';
 import React from 'react';
 
@@ -782,57 +782,10 @@ function SmartHomeTile() {
   );
 }
 
-// =============================================================================
-// Tab 5: Einstellungen — API-Verbindungen
-// =============================================================================
-function EinstellungenTile() {
-  const integrations = [
-    { id: 'rabot', name: 'Rabot Energy', desc: 'White-Label Stromtarif zum Börsenpreis', fields: ['API Key', 'Partner ID'], icon: Zap },
-    { id: 'neo', name: 'Neo Digital', desc: 'Versicherungsvergleich für Mieter', fields: ['API Key', 'Makler-ID'], icon: Shield },
-    { id: 'arlo', name: 'Arlo Smart Home', desc: 'Kamerasystem und Smart-Home Geräte', fields: ['API Key', 'Account E-Mail'], icon: Camera },
-  ];
-
-  return (
-    <TileShell icon={Settings} title="Einstellungen" description="API-Verbindungen und Integrationen verwalten">
-      <Accordion type="single" collapsible className="space-y-3">
-        {integrations.map(({ id, name, desc, fields, icon: IIcon }) => (
-          <AccordionItem key={id} value={id} className="border rounded-xl overflow-hidden">
-            <AccordionTrigger className="px-5 py-4 hover:no-underline">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted">
-                  <IIcon className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-sm">{name}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-                <Badge variant="outline" className="ml-auto mr-3 text-[10px] text-orange-600 border-orange-300">
-                  Nicht verbunden
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-5 pb-4">
-              <div className="space-y-3">
-                {fields.map(f => (
-                  <div key={f}>
-                    <label className="text-xs text-muted-foreground mb-1 block">{f}</label>
-                    <Input placeholder={f} className="text-sm" />
-                  </div>
-                ))}
-                <Button size="sm" variant="outline" disabled className="text-xs">
-                  <Cog className="h-3 w-3 mr-1" />Verbindung testen
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </TileShell>
-  );
-}
+// (Einstellungen entfernt — APIs werden in Zone 1 Integration Registry verwaltet)
 
 // =============================================================================
-// Tab 6: Kommunikation — WhatsApp, E-Mail, KI-Übersetzer
+// Tab 5: Kommunikation — Vermieter-Kontakt, WhatsApp, E-Mail, KI-Übersetzer
 // =============================================================================
 function KommunikationTile() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -871,29 +824,44 @@ function KommunikationTile() {
   ];
 
   return (
-    <TileShell icon={MessageCircle} title="Kommunikation" description="WhatsApp, E-Mail und KI-Übersetzer">
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10"><Users className="h-4 w-4 text-primary" /></div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Vermieter verbinden</p>
-              <p className="text-xs text-muted-foreground">Einladungscode eingeben für gemeinsamen Datenraum</p>
+    <TileShell icon={MessageCircle} title="Kommunikation" description="Kontakt zu Ihrem Vermieter">
+      {/* Vermieter-Kontaktdaten */}
+      <Card className="glass-card border-primary/20 bg-primary/5">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2.5 rounded-lg bg-primary/10">
+              <Users className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex gap-2 items-center">
-              <Input placeholder="VM-ABC123" className="text-sm w-36" />
-              <Button size="sm" variant="outline">Verbinden</Button>
+            <div>
+              <h3 className="font-semibold text-sm">Ihr Vermieter</h3>
+              <p className="text-xs text-muted-foreground">Kontaktdaten Ihrer Hausverwaltung</p>
+            </div>
+            <Badge variant="outline" className="ml-auto text-[10px] text-green-600 border-green-300">Verbunden</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Name</p>
+              <p className="text-sm font-medium">Müller Hausverwaltung GmbH</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">E-Mail</p>
+              <p className="text-sm font-medium">info@mueller-hv.de</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Telefon</p>
+              <p className="text-sm font-medium">+49 30 1234567</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Kommunikationskanäle — 3 Kacheln */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* WhatsApp */}
         <Card className="glass-card border-green-500/20">
-          <CardContent className="p-5 space-y-3">
+          <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-green-500/10"><Phone className="h-5 w-5 text-green-500" /></div>
+              <div className="p-2.5 rounded-lg bg-green-500/10"><Phone className="h-5 w-5 text-green-500" /></div>
               <div>
                 <h3 className="font-medium text-sm">WhatsApp Business</h3>
                 <p className="text-xs text-muted-foreground">Direktnachricht an Vermieter</p>
@@ -901,7 +869,7 @@ function KommunikationTile() {
             </div>
             <Input placeholder="Telefonnummer Vermieter" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} className="text-sm" />
             <textarea placeholder="Nachricht eingeben..." value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
             <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppSend}>
               <Send className="h-4 w-4 mr-1.5" />Nachricht senden
             </Button>
@@ -910,9 +878,9 @@ function KommunikationTile() {
 
         {/* E-Mail */}
         <Card className="glass-card">
-          <CardContent className="p-5 space-y-3">
+          <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10"><Mail className="h-5 w-5 text-primary" /></div>
+              <div className="p-2.5 rounded-lg bg-primary/10"><Mail className="h-5 w-5 text-primary" /></div>
               <div>
                 <h3 className="font-medium text-sm">E-Mail</h3>
                 <p className="text-xs text-muted-foreground">E-Mail an Vermieter senden</p>
@@ -921,7 +889,7 @@ function KommunikationTile() {
             <Input placeholder="E-Mail-Adresse Vermieter" type="email" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} className="text-sm" />
             <Input placeholder="Betreff" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="text-sm" />
             <textarea placeholder="Nachricht..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
             <Button size="sm" variant="outline" className="w-full" onClick={handleEmailSend}>
               <Mail className="h-4 w-4 mr-1.5" />E-Mail senden
             </Button>
@@ -930,16 +898,16 @@ function KommunikationTile() {
 
         {/* KI-Übersetzer */}
         <Card className="glass-card">
-          <CardContent className="p-5 space-y-3">
+          <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-accent/30"><Languages className="h-5 w-5 text-primary" /></div>
+              <div className="p-2.5 rounded-lg bg-accent/30"><Languages className="h-5 w-5 text-primary" /></div>
               <div>
                 <h3 className="font-medium text-sm">KI-Übersetzer</h3>
                 <p className="text-xs text-muted-foreground">Text übersetzen & einfügen</p>
               </div>
             </div>
             <textarea placeholder="Text eingeben (Deutsch)..." value={translateInput} onChange={(e) => setTranslateInput(e.target.value)}
-              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
             <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)}
               className="flex h-10 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
               {languages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
@@ -959,6 +927,23 @@ function KommunikationTile() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Vermieter verbinden — unten */}
+      <Card className="glass-card border-dashed border-muted-foreground/20">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-muted"><Users className="h-4 w-4 text-muted-foreground" /></div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Vermieter verbinden</p>
+              <p className="text-xs text-muted-foreground">Einladungscode eingeben für gemeinsamen Datenraum</p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input placeholder="VM-ABC123" className="text-sm w-36" />
+              <Button size="sm" variant="outline">Verbinden</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </TileShell>
   );
 }
@@ -974,7 +959,7 @@ export default function MietyPortalPage() {
       <Route path="versorgung" element={<VersorgungTile />} />
       <Route path="versicherungen" element={<VersicherungenTile />} />
       <Route path="smarthome" element={<SmartHomeTile />} />
-      <Route path="einstellungen" element={<EinstellungenTile />} />
+      <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="zuhause/:homeId" element={
         <React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>

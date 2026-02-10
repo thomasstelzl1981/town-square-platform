@@ -483,12 +483,11 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 20,
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
-        // 6 tiles (Zählerstände integriert in Versorgung, Smart Home + Einstellungen neu)
+        // 5 tiles (Einstellungen entfernt — APIs in Zone 1 Integration Registry)
         { path: "uebersicht", component: "MietyUebersicht", title: "Übersicht" },
         { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
         { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
         { path: "smarthome", component: "MietySmartHome", title: "Smart Home" },
-        { path: "einstellungen", component: "MietyEinstellungen", title: "Einstellungen" },
         { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
       ],
       dynamic_routes: [
