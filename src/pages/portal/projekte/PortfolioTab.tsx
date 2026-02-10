@@ -3,10 +3,9 @@
  * MOD-13 PROJEKTE — P0 Redesign
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
-import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
 import { ProjectOverviewCard } from '@/components/projekte/ProjectOverviewCard';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
@@ -28,14 +27,19 @@ import {
 export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { contexts, defaultContext, isLoading: loadingContexts } = useDeveloperContexts();
-  const [selectedContextId, setSelectedContextId] = useState<string | undefined>(undefined);
-  const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects(selectedContextId);
+  const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
   
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  const isLoading = loadingContexts || isLoadingPortfolio;
+  const isLoading = isLoadingPortfolio;
   const isDemo = isDemoMode(portfolioRows);
+
+  // Auto-select first project when data loads
+  useEffect(() => {
+    if (!selectedProjectId && portfolioRows.length > 0) {
+      setSelectedProjectId(portfolioRows[0].id);
+    }
+  }, [portfolioRows, selectedProjectId]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -67,11 +71,11 @@ export default function PortfolioTab() {
           <p className="text-muted-foreground">Übersicht aller Bauträger- und Aufteiler-Projekte</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={selectedContextId || 'all'} onValueChange={(v) => setSelectedContextId(v === 'all' ? undefined : v)}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Alle Gesellschaften" /></SelectTrigger>
+          <Select value={selectedProjectId || 'demo'} onValueChange={(v) => setSelectedProjectId(v === 'demo' ? null : v)}>
+            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Projekt wählen" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Gesellschaften</SelectItem>
-              {contexts.map((ctx) => (<SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>))}
+              {isDemo && <SelectItem value="demo">Residenz am Stadtpark (Demo)</SelectItem>}
+              {portfolioRows.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
             </SelectContent>
           </Select>
         </div>
