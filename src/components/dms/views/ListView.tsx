@@ -2,6 +2,7 @@ import { Folder, File, FileText, Image, FileSpreadsheet, ChevronUp, ChevronDown 
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { SortField, SortDir } from '@/components/dms/StorageToolbar';
 
 export interface FileManagerItem {
@@ -66,6 +67,15 @@ function formatType(mime?: string) {
   return mime;
 }
 
+function formatShortType(mime?: string) {
+  if (!mime) return '';
+  if (mime.includes('pdf')) return 'PDF';
+  if (mime.startsWith('image/')) return mime.split('/')[1]?.toUpperCase() || 'Bild';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'Excel';
+  if (mime.includes('word') || mime.includes('document')) return 'Word';
+  return mime.split('/')[1]?.toUpperCase() || '';
+}
+
 interface SortHeaderProps {
   label: string;
   field: SortField;
@@ -107,7 +117,63 @@ export function ListView({
   isDownloading,
   isDeleting,
 }: ListViewProps) {
+  const isMobile = useIsMobile();
   const allSelected = items.length > 0 && selectedIds.size === items.length;
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-auto">
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-16">
+              <File className="h-10 w-10 mb-3 opacity-40" />
+              <p className="text-sm">Dieser Ordner ist leer</p>
+              <p className="text-xs mt-1">Dateien hochladen über den + Button</p>
+            </div>
+          ) : (
+            items.map(item => {
+              const IconComponent = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
+              const meta = item.type === 'file'
+                ? [formatFileSize(item.size), formatShortType(item.mimeType), formatDate(item.createdAt)].filter(Boolean).join(' · ')
+                : item.childCount !== undefined ? `${item.childCount} Elemente` : '';
+
+              return (
+                <div
+                  key={item.id}
+                  className="group/row flex items-center gap-3 px-4 py-3 border-b border-border/50 active:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (item.type === 'folder' && item.nodeId) {
+                      onNavigateFolder(item.nodeId);
+                    } else {
+                      onPreview(item);
+                    }
+                  }}
+                >
+                  <IconComponent className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{item.name}</p>
+                    {meta && <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</p>}
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <FileRowMenu
+                      type={item.type}
+                      onOpen={item.type === 'folder' && item.nodeId ? () => onNavigateFolder(item.nodeId!) : undefined}
+                      onNewSubfolder={item.type === 'folder' && item.nodeId ? () => onNewSubfolder(item.nodeId!) : undefined}
+                      onDownload={item.type === 'file' && item.documentId ? () => onDownload(item.documentId!) : undefined}
+                      onPreview={item.type === 'file' ? () => onPreview(item) : undefined}
+                      onDelete={() => onDelete(item)}
+                      isDownloading={isDownloading}
+                      isDeleting={isDeleting}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -160,7 +226,7 @@ export function ListView({
                   className="justify-self-center"
                 />
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <IconComponent className={cn('h-4 w-4 shrink-0', item.type === 'folder' ? 'text-muted-foreground' : 'text-muted-foreground')} />
+                  <IconComponent className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="text-sm truncate">{item.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">{formatFileSize(item.size)}</span>

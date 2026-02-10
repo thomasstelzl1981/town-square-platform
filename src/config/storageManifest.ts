@@ -103,7 +103,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_03: {
     module_code: 'MOD_03',
-    root_name: 'DMS',
+    root_name: 'Dokumente',
     root_template_id: 'MOD_03_ROOT',
     display_order: 3,
     entity_sub_folders: [],
@@ -137,7 +137,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_05: {
     module_code: 'MOD_05',
-    root_name: 'MSV',
+    root_name: 'Mietverwaltung',
     root_template_id: 'MOD_05_ROOT',
     display_order: 5,
     entity_sub_folders: [],
@@ -178,7 +178,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_08: {
     module_code: 'MOD_08',
-    root_name: 'Investments',
+    root_name: 'Investment-Suche',
     root_template_id: 'MOD_08_ROOT',
     display_order: 8,
     entity_sub_folders: [],
@@ -249,7 +249,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_14: {
     module_code: 'MOD_14',
-    root_name: 'Communication Pro',
+    root_name: 'Kommunikation Pro',
     root_template_id: 'MOD_14_ROOT',
     display_order: 14,
     entity_sub_folders: [],

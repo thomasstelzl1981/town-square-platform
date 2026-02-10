@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ViewMode = 'list' | 'columns' | 'preview' | 'multiselect' | 'navigator';
 export type SortField = 'name' | 'size' | 'type' | 'created_at';
@@ -63,10 +64,14 @@ export function StorageToolbar({
   onNewFolderClick,
   isUploading,
 }: StorageToolbarProps) {
+  const isMobile = useIsMobile();
   const currentViewOption = VIEW_OPTIONS.find(v => v.mode === viewMode);
   const CurrentViewIcon = currentViewOption?.icon || List;
 
   const canGoBack = breadcrumbSegments.length > 0;
+  const currentFolderName = breadcrumbSegments.length > 0
+    ? breadcrumbSegments[breadcrumbSegments.length - 1].label
+    : 'Alle Dokumente';
 
   const handleSortSelect = (value: string) => {
     if (value === sortField) {
@@ -76,21 +81,33 @@ export function StorageToolbar({
     }
   };
 
+  const handleGoBack = () => {
+    const parent = breadcrumbSegments.length >= 2
+      ? breadcrumbSegments[breadcrumbSegments.length - 2].id
+      : null;
+    onNavigate(parent);
+  };
+
+  // Mobile: simplified toolbar — just back arrow + folder name
+  if (isMobile) {
+    return (
+      <div className="px-3 py-2.5 border-b flex items-center gap-2">
+        {canGoBack && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleGoBack}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <span className="text-sm font-medium truncate flex-1">{currentFolderName}</span>
+      </div>
+    );
+  }
+
+  // Desktop: full toolbar
   return (
     <div className="px-4 py-3 border-b flex items-center gap-2">
       {/* Back button */}
       {canGoBack && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0"
-          onClick={() => {
-            const parent = breadcrumbSegments.length >= 2
-              ? breadcrumbSegments[breadcrumbSegments.length - 2].id
-              : null;
-            onNavigate(parent);
-          }}
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleGoBack}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
       )}

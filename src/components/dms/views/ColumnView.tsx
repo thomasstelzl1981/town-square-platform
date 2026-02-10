@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Folder, File, FileText, Image, FileSpreadsheet, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { getModuleDisplayName } from '@/config/storageManifest';
 import type { FileManagerItem } from './ListView';
 
 interface ColumnViewProps {
@@ -69,7 +70,14 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
     result.push({
       parentId: null,
       selectedId: columnPath[0],
-      items: rootFolders.map(n => ({ id: n.id, name: n.name, type: 'folder' as const, nodeId: n.id })),
+      items: rootFolders.map(n => ({
+        id: n.id,
+        name: n.module_code && n.template_id?.endsWith('_ROOT')
+          ? getModuleDisplayName(n.module_code)
+          : n.name,
+        type: 'folder' as const,
+        nodeId: n.id,
+      })),
     });
 
     // Subsequent columns
@@ -82,7 +90,14 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
         .map(d => ({ id: d!.id, name: d!.name, type: 'file' as const, mimeType: d!.mime_type }));
 
       const items = [
-        ...childFolders.map(n => ({ id: n.id, name: n.name, type: 'folder' as const, nodeId: n.id })),
+        ...childFolders.map(n => ({
+          id: n.id,
+          name: n.module_code && n.template_id?.endsWith('_ROOT')
+            ? getModuleDisplayName(n.module_code)
+            : n.name,
+          type: 'folder' as const,
+          nodeId: n.id,
+        })),
         ...nodeDocs,
       ];
 

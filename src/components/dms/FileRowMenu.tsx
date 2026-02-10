@@ -35,7 +35,7 @@ export function FileRowMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"
+          className="h-7 w-7 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
           <MoreVertical className="h-4 w-4" />
