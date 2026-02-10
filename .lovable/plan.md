@@ -1,45 +1,75 @@
 
-# Preisliste + Kalkulator: 5 Verbesserungen
 
-## 1. Stellplatzpreise editierbar machen
+# Redesign Objektbeschreibung: Neues 2-Spalten-Layout
 
-In `UnitPreislisteTable.tsx` wird die Stellplatz-Spalte (aktuell nur Anzeige `eur(u.parking_price)`) durch eine `EditableCell` ersetzt. Der Callback `onUnitPriceChange` wird um den Feldtyp `'parking_price'` erweitert.
+## Aktuelles Layout
 
-In `PortfolioTab.tsx` wird `handleUnitPriceChange` erweitert, um `parking_price` Overrides zu speichern. Der Override-State `unitOverrides` bekommt ein optionales `parking_price`-Feld. Die `calculatedUnits`-Berechnung uebernimmt den Override oder den Default (20.000 EUR).
+```text
+┌──────────────────────────────────────────────────┐
+│  Headline + Adresse                 Gesamtpreis  │
+├──────────────────────────────────────────────────┤
+│  [Bild1] [Bild2] [Bild3] [Bild4]  (4er Grid)    │
+├──────────────────────────────────────────────────┤
+│  Key Facts (Liste)  │  Beschreibung (2 Spalten)  │
+└──────────────────────────────────────────────────┘
+```
 
-## 2. Status aenderbar machen (Dropdown)
+## Neues Layout
 
-Der `DemoUnit`-Typ in `demoProjectData.ts` wird von `status: 'available'` auf `status: 'available' | 'reserved' | 'notary' | 'sold'` erweitert.
+```text
+┌──────────────────────────────────────────────────┐
+│  Headline + Adresse                 Gesamtpreis  │
+├──────────────────────┬───────────────────────────┤
+│  [  Slideshow-Bild ] │                           │
+│  [  < Bild  1/4  > ] │   Beschreibungstext...    │
+│    ● ○ ○ ○           │   ...                     │
+│ ─────────────────────│   ...                     │
+│  WE: 24  │ Stellpl   │   ...                     │
+│  Flaeche │ Baujahr   │   ...                     │
+│  Heizart │ Energie   │   ...                     │
+└──────────────────────┴───────────────────────────┘
+```
 
-Die Status-Map in `UnitPreislisteTable.tsx` bekommt einen neuen Eintrag `notary` (Label "Notar", blaue Farbe). Die Badge-Zelle wird durch ein klickbares Dropdown (Select) ersetzt. Ein neuer Callback `onStatusChange(unitId, newStatus)` wird vom PortfolioTab durchgereicht.
+Die linke Spalte enthaelt die Bildergalerie (Slideshow mit Pfeilen und Dot-Indikatoren) und darunter die 6 Key Facts als 2x3 Grid. Die rechte Spalte zeigt die Beschreibung ueber die gesamte Hoehe der Kachel.
 
-In `PortfolioTab.tsx` wird ein separater State `unitStatusOverrides: Record<string, string>` gefuehrt. Der Status-Override wird in `calculatedUnits` eingeflochten.
+## Aenderungen
 
-## 3. PieChart durch kompaktes Balkendiagramm ersetzen
+### ProjectOverviewCard.tsx
 
-In `StickyCalculatorPanel.tsx` wird der PieChart (~160px Hoehe) durch ein horizontales gestapeltes Balkendiagramm ersetzt. Dafuer wird `BarChart` aus recharts verwendet. Ein einzelner horizontaler Balken zeigt die drei Segmente (Investitionskosten, Provision, Marge) nebeneinander. Hoehe: ca. 60px statt 160px. Die Legende bleibt darunter.
+- Headline-Zeile bleibt unveraendert (volle Breite oben)
+- Darunter ein 2-Spalten-Grid (`md:grid-cols-5`, links 2 Spalten, rechts 3 Spalten)
+- **Linke Spalte:**
+  - Bildergalerie mit `useState` fuer `activeIndex`
+  - Vor/Zurueck-Pfeile (ChevronLeft/ChevronRight) als halbtransparente Buttons
+  - Punkt-Indikatoren unter dem Bild
+  - Darunter die 6 Key Facts als `grid-cols-2 grid-rows-3` (kompakt, 2 nebeneinander)
+- **Rechte Spalte:**
+  - Beschreibungstexte, vertikal angeordnet, ueber die gesamte Hoehe
+- Vier Platzhalter-Bilder mit farbigen Gradienten und Labels (Aussen, Wohnzimmer, Kueche, Bad), definiert als Array `DEMO_PROJECT_IMAGES` in `demoProjectData.ts`
 
-## 4. Kalkulator-Hoehe reduzieren
+### demoProjectData.ts
 
-Konkrete Massnahmen in `StickyCalculatorPanel.tsx`:
-- PieChart-Bereich von 160px auf ~60px (Balkendiagramm)
-- Paddings und Margins reduzieren: `space-y-4` auf `space-y-2.5`, `pb-3` auf `pb-2`
-- KPI-Grid kompakter: `space-y-2` auf `space-y-1.5`
-- Gesamthoehe sinkt um ca. 150-200px
+- Neues exportiertes Array `DEMO_PROJECT_IMAGES` mit vier Eintraegen:
+  ```text
+  { label: 'Aussenansicht', gradient: 'from-emerald-800 to-emerald-600' }
+  { label: 'Wohnzimmer',    gradient: 'from-amber-700 to-amber-500' }
+  { label: 'Kueche',        gradient: 'from-slate-700 to-slate-500' }
+  { label: 'Badezimmer',    gradient: 'from-sky-800 to-sky-600' }
+  ```
 
-## 5. Zwei redundante KPI-Zeilen entfernen
+### areaConfig.ts
 
-Im KPI-Bereich von `StickyCalculatorPanel.tsx` (Zeilen 203-212) werden die beiden Zeilen "Ø Ist-Rendite" und "Zielrendite" komplett geloescht. Diese Werte sind redundant, da die Endkundenrendite bereits ueber den Slider gesteuert wird und die tatsaechliche Rendite pro Einheit in der Preisliste sichtbar ist. Das spart zusaetzlich Hoehe im Kalkulator.
+- Operations-Modul-Reihenfolge auf `['MOD-09', 'MOD-13', 'MOD-10', 'MOD-11', 'MOD-12']` aendern (Vertriebspartner, Projekte, Leads, Finanzierungs-Manager, AkquiseManager)
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| Aendern | `src/components/projekte/demoProjectData.ts` (Status-Typ erweitern) |
-| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` (Stellplatz editierbar, Status-Dropdown) |
-| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` (Balkendiagramm, kompaktere Hoehe, 2 KPI-Zeilen entfernen) |
-| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` (parking + status Overrides) |
+| Aendern | `src/components/projekte/ProjectOverviewCard.tsx` |
+| Aendern | `src/components/projekte/demoProjectData.ts` |
+| Aendern | `src/manifests/areaConfig.ts` |
 
 ## Risiko
 
-Niedrig. Bestehende Berechnungslogik wird nicht veraendert, nur erweitert (Stellplatz-Override, Status-Override). Chart-Tausch und Zeilen-Entfernung sind rein visuell.
+Niedrig. Rein visuelle Aenderungen ohne Auswirkung auf Berechnungslogik.
+
