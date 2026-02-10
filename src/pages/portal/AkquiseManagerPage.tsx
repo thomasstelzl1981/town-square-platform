@@ -6,7 +6,7 @@
  */
 
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -456,12 +456,11 @@ function AkquiseTools() {
 }
 
 export default function AkquiseManagerPage() {
-  const content = moduleContents['MOD-12'];
 
   return (
     <div className="h-full overflow-auto">
       <Routes>
-        <Route index element={<ModuleHowItWorks content={content} />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AkquiseDashboard />} />
         <Route path="mandate" element={<AkquiseMandate />} />
         <Route path="mandate/neu" element={<MandatCreateWizardManager />} />

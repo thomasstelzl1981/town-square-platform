@@ -3,7 +3,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { LineChart, LayoutDashboard, FileBarChart, GitBranch, Settings, Plus } from 'lucide-react';
 
@@ -87,11 +87,9 @@ function EinstellungenTile() {
 }
 
 export default function FinanzanalysePage() {
-  const content = moduleContents['MOD-18'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<DashboardTile />} />
       <Route path="reports" element={<ReportsTile />} />
       <Route path="szenarien" element={<SzenarienTile />} />

@@ -4,7 +4,7 @@
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { Settings } from 'lucide-react';
 
@@ -32,12 +32,9 @@ function EinstellungenTile() {
 }
 
 const VerkaufPage = () => {
-  const content = moduleContents['MOD-06'];
-
   return (
     <Routes>
-      {/* How It Works as index */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="objekte" replace />} />
       
       {/* Tile routes - 5 tiles per manifest */}
       <Route path="objekte" element={<ObjekteTab />} />

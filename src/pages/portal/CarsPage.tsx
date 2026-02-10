@@ -3,7 +3,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { 
   CarsFahrzeuge, 
   CarsVersicherungen, 
@@ -13,12 +13,9 @@ import {
 } from '@/components/portal/cars';
 
 export default function CarsPage() {
-  const content = moduleContents['MOD-17'];
-
   return (
     <Routes>
-      {/* Index: How It Works Landing */}
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="fahrzeuge" replace />} />
       
       {/* Tiles */}
       <Route path="fahrzeuge" element={<CarsFahrzeuge />} />

@@ -5,7 +5,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { Bot } from 'lucide-react';
 import { SocialPage } from './communication-pro/social/SocialPage';
@@ -33,11 +33,9 @@ function AgentenTile() {
 }
 
 export default function CommunicationProPage() {
-  const content = moduleContents['MOD-14'];
-
   return (
     <Routes>
-      <Route index element={<ModuleHowItWorks content={content} />} />
+      <Route index element={<Navigate to="serien-emails" replace />} />
       <Route path="serien-emails" element={<SerienEmailsPage />} />
       <Route path="recherche" element={<ResearchTab />} />
       <Route path="social/*" element={<SocialPage />} />

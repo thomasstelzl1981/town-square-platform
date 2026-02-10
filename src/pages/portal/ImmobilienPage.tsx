@@ -14,10 +14,10 @@
  * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
  */
 import React, { Component, ReactNode, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 
 // Direct imports for instant sub-tab navigation
 import { CreatePropertyRedirect } from './immobilien/CreatePropertyRedirect';
@@ -84,8 +84,8 @@ const ImmobilienPage = () => {
         {/* CREATE: Direct import for immediate feedback */}
         <Route path="neu" element={<CreatePropertyRedirect />} />
         
-        {/* PRIMARY: How It Works landing page */}
-        <Route index element={<ModuleHowItWorks content={moduleContents['MOD-04']} />} />
+        {/* PRIMARY: Redirect to portfolio */}
+        <Route index element={<Navigate to="portfolio" replace />} />
         <Route path="portfolio" element={<PortfolioTab />} />
         
         {/* SECONDARY: Context management */}
@@ -97,7 +97,7 @@ const ImmobilienPage = () => {
         <Route path=":id" element={<PropertyDetailPage />} />
         
         {/* Fallback for any unmatched paths */}
-        <Route path="*" element={<ModuleHowItWorks content={moduleContents['MOD-04']} />} />
+        <Route path="*" element={<Navigate to="/portal/immobilien" replace />} />
       </Routes>
     </ImmobilienErrorBoundary>
   );

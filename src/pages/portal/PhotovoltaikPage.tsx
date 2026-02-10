@@ -2,7 +2,7 @@
  * Photovoltaik Page (MOD-19) — Full implementation
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
+
 import React from 'react';
 
 const AnlagenTab = React.lazy(() => import('@/pages/portal/photovoltaik/AnlagenTab'));
@@ -19,14 +19,12 @@ const Loading = () => (
 );
 
 export default function PhotovoltaikPage() {
-  const content = moduleContents['MOD-19'];
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto">
         <React.Suspense fallback={<Loading />}>
           <Routes>
-            <Route index element={<ModuleHowItWorks content={content} />} />
+            <Route index element={<Navigate to="anlagen" replace />} />
             <Route path="anlagen" element={<AnlagenTab />} />
             <Route path="monitoring" element={<MonitoringTab />} />
             <Route path="dokumente" element={<DokumenteTab />} />
