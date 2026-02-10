@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, SkipForward, FileText, Building, User } from 'lucide-react';
+import { Check, X, SkipForward, FileText, Building, User, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface InboundItem {
   id: string;
@@ -24,9 +25,32 @@ interface InboundItem {
 
 export function SortierenTab() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedProperty, setSelectedProperty] = useState<string>('');
   const [selectedContact, setSelectedContact] = useState<string>('');
   const [notes, setNotes] = useState('');
+
+  // OCR gate - check if extraction is enabled (stored in localStorage for MVP)
+  const [ocrEnabled] = useState(() => {
+    const stored = localStorage.getItem('dms_ocr_enabled');
+    return stored !== 'false'; // default true
+  });
+
+  if (!ocrEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <Cpu className="h-16 w-16 text-muted-foreground/40" />
+        <h2 className="text-xl font-semibold">Dokumenten-Auslesung erforderlich</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Um Dokumente vorsortieren zu können, muss die Dokumenten-Auslesung (OCR/KI) in den Einstellungen aktiviert sein.
+        </p>
+        <p className="text-sm text-muted-foreground">1 Credit pro Dokument-Auslesung</p>
+        <Button onClick={() => navigate('/portal/dms/einstellungen')}>
+          Zu den Einstellungen
+        </Button>
+      </div>
+    );
+  }
 
   // Fetch pending items
   const { data: pendingItems = [], isLoading } = useQuery({
