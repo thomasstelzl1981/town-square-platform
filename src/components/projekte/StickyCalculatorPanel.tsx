@@ -201,8 +201,14 @@ export function StickyCalculatorPanel({
             <span className="font-medium tabular-nums">{fmt(calc.profitPerUnit)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Ø Endkundenrendite</span>
-            <span className="font-medium tabular-nums">{calc.avgYield.toFixed(2)} %</span>
+            <span className="text-muted-foreground">Ø Ist-Rendite</span>
+            <span className={`font-medium tabular-nums ${calc.avgYield >= targetYield * 100 ? 'text-emerald-600' : 'text-destructive'}`}>
+              {calc.avgYield.toFixed(2)} %
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Zielrendite</span>
+            <span className="font-medium tabular-nums">{(targetYield * 100).toFixed(1)} %</span>
           </div>
         </div>
 

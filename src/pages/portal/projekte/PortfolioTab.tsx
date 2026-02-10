@@ -153,12 +153,24 @@ export default function PortfolioTab() {
         </div>
       </div>
 
-      {/* Globalobjekt-Beschreibung + Kalkulator nebeneinander */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
-          <ProjectOverviewCard isDemo={isDemo} />
-        </div>
-        <div className="lg:col-span-2">
+      {/* Globalobjekt-Beschreibung (volle Breite) */}
+      <ProjectOverviewCard isDemo={isDemo} />
+
+      {/* Preisliste (volle Breite) */}
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <UnitPreislisteTable
+          units={calculatedUnits}
+          projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
+          isDemo={isDemo}
+          onUnitPriceChange={handleUnitPriceChange}
+        />
+      )}
+
+      {/* Kalkulator-Zeile: 1/3 Kalkulator + 2/3 leer */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
           <StickyCalculatorPanel
             investmentCosts={investmentCosts}
             provisionRate={provisionRate}
@@ -172,19 +184,10 @@ export default function PortfolioTab() {
             isDemo={isDemo || !selectedProject}
           />
         </div>
+        <div className="lg:col-span-2">
+          {/* Platz für spätere Erweiterung */}
+        </div>
       </div>
-
-      {/* Preisliste (volle Breite) */}
-      {isLoading ? (
-        <LoadingState />
-      ) : (
-        <UnitPreislisteTable
-          units={calculatedUnits}
-          projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
-          isDemo={isDemo}
-          onUnitPriceChange={handleUnitPriceChange}
-        />
-      )}
 
       {/* Dokumenten-Kachel */}
       <ProjectDMSWidget

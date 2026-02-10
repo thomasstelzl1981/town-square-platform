@@ -123,7 +123,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
   };
 
   return (
-    <div className={cn('rounded-2xl border bg-card overflow-hidden', isDemo && 'opacity-40 select-none')}>
+    <div className="rounded-2xl border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -147,17 +147,13 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
             {units.map((u, idx) => {
               const badge = STATUS_BADGE[u.status] || STATUS_BADGE.available;
               const isFirstDemo = isDemo && idx === 0;
-              const canEdit = !isDemo || isFirstDemo;
+              const canEdit = true;
               return (
                 <tr
                   key={u.id}
                   className={cn(
-                    'border-b border-border/50 transition-colors',
-                    isFirstDemo
-                      ? 'bg-primary/5 hover:bg-primary/10 cursor-pointer pointer-events-auto opacity-100'
-                      : isDemo
-                        ? 'pointer-events-none'
-                        : 'hover:bg-muted/20 cursor-pointer'
+                    'border-b border-border/50 transition-colors hover:bg-muted/20 cursor-pointer',
+                    isFirstDemo && 'bg-primary/5 hover:bg-primary/10'
                   )}
                   onClick={() => handleRowClick(u.id, idx)}
                 >
