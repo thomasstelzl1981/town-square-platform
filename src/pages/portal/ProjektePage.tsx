@@ -10,7 +10,7 @@ import {
   ProjekteDashboard, 
   PortfolioTab, 
   VertriebTab, 
-  MarketingTab, 
+  LandingPageTab, 
   ProjectDetailPage, 
   UnitDetailPage,
   KontexteTab, 
@@ -25,7 +25,7 @@ export default function ProjektePage() {
       <Route path="dashboard" element={<ProjekteDashboard />} />
       <Route path="projekte" element={<PortfolioTab />} />
       <Route path="vertrieb" element={<VertriebTab />} />
-      <Route path="marketing" element={<MarketingTab />} />
+      <Route path="landing-page" element={<LandingPageTab />} />
       
       {/* Hidden route for managing developer contexts (accessible via settings/Projektakte) */}
       <Route path="kontexte" element={<KontexteTab />} />
@@ -42,6 +42,7 @@ export default function ProjektePage() {
       <Route path="timeline" element={<Navigate to="/portal/projekte/projekte" replace />} />
       <Route path="dokumente" element={<Navigate to="/portal/projekte/projekte" replace />} />
       <Route path="einstellungen" element={<Navigate to="/portal/projekte/kontexte" replace />} />
+      <Route path="marketing" element={<Navigate to="/portal/projekte/landing-page" replace />} />
       <Route path="neu" element={<Navigate to="/portal/projekte/dashboard?create=1" replace />} />
       
       {/* Fallback */}
