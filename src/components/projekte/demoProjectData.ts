@@ -56,7 +56,7 @@ export interface DemoUnit {
   price_per_sqm: number;
   provision_eur: number;
   parking_price: number;
-  status: 'available';
+  status: 'available' | 'reserved' | 'notary' | 'sold';
 }
 
 const UNIT_TEMPLATES: Array<{ rooms: number; area: number; count: number }> = [

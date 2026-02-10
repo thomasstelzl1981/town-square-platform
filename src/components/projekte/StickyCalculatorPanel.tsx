@@ -3,7 +3,7 @@
  * MOD-13 PROJEKTE — P0 Redesign
  *
  * Inputs: Investitionskosten, Provision-Slider, Endkundenrendite-Slider, Preisanpassung +/-
- * Outputs: KPIs (Marge, Gewinn/Einheit, Ø Rendite), PieChart
+ * Outputs: KPIs (Marge, Gewinn/Einheit), horizontal stacked BarChart
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, Save, Minus, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import type { DemoUnit } from './demoProjectData';
 
 interface CalculatedUnit extends DemoUnit {
@@ -57,17 +57,26 @@ export function StickyCalculatorPanel({
     const marginAbs = totalSale - investmentCosts - provisionAbs;
     const marginPct = totalSale > 0 ? (marginAbs / totalSale) * 100 : 0;
     const profitPerUnit = units.length > 0 ? marginAbs / units.length : 0;
-    const avgYield = units.length > 0
-      ? units.reduce((s, u) => s + u.effective_yield, 0) / units.length
-      : 0;
 
-    return { totalSale, provisionAbs, marginAbs, marginPct, profitPerUnit, avgYield };
+    return { totalSale, provisionAbs, marginAbs, marginPct, profitPerUnit };
   }, [units, investmentCosts, provisionRate]);
 
-  const pieData = [
-    { name: 'Investitionskosten', value: Math.max(0, investmentCosts), color: 'hsl(var(--muted-foreground))' },
-    { name: 'Provision', value: Math.max(0, calc.provisionAbs), color: 'hsl(var(--chart-4))' },
-    { name: 'Marge', value: Math.max(0, calc.marginAbs), color: 'hsl(var(--primary))' },
+  // Stacked bar data — single row with 3 segments
+  const barData = useMemo(() => {
+    const total = investmentCosts + Math.max(0, calc.provisionAbs) + Math.max(0, calc.marginAbs);
+    if (total <= 0) return [{ name: 'Split', invest: 100, provision: 0, marge: 0 }];
+    return [{
+      name: 'Split',
+      invest: (investmentCosts / total) * 100,
+      provision: (Math.max(0, calc.provisionAbs) / total) * 100,
+      marge: (Math.max(0, calc.marginAbs) / total) * 100,
+    }];
+  }, [investmentCosts, calc.provisionAbs, calc.marginAbs]);
+
+  const legendItems = [
+    { name: 'Investitionskosten', color: 'hsl(var(--muted-foreground))' },
+    { name: 'Provision', color: 'hsl(var(--chart-4))' },
+    { name: 'Marge', color: 'hsl(var(--primary))' },
   ];
 
   const fmt = (v: number) =>
@@ -82,7 +91,7 @@ export function StickyCalculatorPanel({
 
   return (
     <Card className="glass-card shadow-card h-full">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Calculator className="h-4 w-4 text-primary" />
           Kalkulator
@@ -91,9 +100,9 @@ export function StickyCalculatorPanel({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2.5">
         {/* Investment Costs Input */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Investitionskosten</Label>
           <div className="flex gap-1.5">
             <Input
@@ -116,7 +125,7 @@ export function StickyCalculatorPanel({
         </div>
 
         {/* Provision Slider */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex justify-between items-baseline">
             <Label className="text-xs text-muted-foreground">Provision (brutto)</Label>
             <span className="text-xs font-bold text-primary tabular-nums">{(provisionRate * 100).toFixed(1)}%</span>
@@ -131,7 +140,7 @@ export function StickyCalculatorPanel({
         </div>
 
         {/* Target Yield Slider */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex justify-between items-baseline">
             <Label className="text-xs text-muted-foreground">Endkundenrendite</Label>
             <span className="text-xs font-bold text-primary tabular-nums">{(targetYield * 100).toFixed(1)}%</span>
@@ -146,7 +155,7 @@ export function StickyCalculatorPanel({
         </div>
 
         {/* Price Adjustment Stepper */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Preisanpassung</Label>
           <div className="flex items-center justify-center gap-3">
             <Button
@@ -176,7 +185,7 @@ export function StickyCalculatorPanel({
         <Separator />
 
         {/* KPI Grid */}
-        <div className="space-y-2 text-xs">
+        <div className="space-y-1.5 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Gesamtverkauf</span>
             <span className="font-medium tabular-nums">{fmt(calc.totalSale)}</span>
@@ -200,46 +209,29 @@ export function StickyCalculatorPanel({
             <span className="text-muted-foreground">Gewinn / Einheit</span>
             <span className="font-medium tabular-nums">{fmt(calc.profitPerUnit)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Ø Ist-Rendite</span>
-            <span className={`font-medium tabular-nums ${calc.avgYield >= targetYield * 100 ? 'text-emerald-600' : 'text-destructive'}`}>
-              {calc.avgYield.toFixed(2)} %
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Zielrendite</span>
-            <span className="font-medium tabular-nums">{(targetYield * 100).toFixed(1)} %</span>
-          </div>
         </div>
 
         <Separator />
 
-        {/* Pie Chart — bottom */}
-        <div className="h-[160px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={35}
-                outerRadius={65}
-                paddingAngle={2}
-                dataKey="value"
-                stroke="none"
-              >
-                {pieData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => fmt(value)}
-                contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-3 -mt-2">
-            {pieData.map((d) => (
+        {/* Horizontal stacked bar chart */}
+        <div>
+          <div className="h-[40px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <XAxis type="number" hide domain={[0, 100]} />
+                <YAxis type="category" dataKey="name" hide />
+                <Tooltip
+                  formatter={(value: number) => `${value.toFixed(1)}%`}
+                  contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
+                />
+                <Bar dataKey="invest" stackId="a" fill="hsl(var(--muted-foreground))" radius={[4, 0, 0, 4]} name="Investitionskosten" />
+                <Bar dataKey="provision" stackId="a" fill="hsl(var(--chart-4))" radius={0} name="Provision" />
+                <Bar dataKey="marge" stackId="a" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Marge" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-center gap-3 mt-1">
+            {legendItems.map((d) => (
               <div key={d.name} className="flex items-center gap-1 text-[9px] text-muted-foreground">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                 {d.name}

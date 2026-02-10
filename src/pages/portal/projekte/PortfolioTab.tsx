@@ -78,24 +78,22 @@ export default function PortfolioTab() {
   const [provisionRate, setProvisionRate] = useState(0.10); // 10%
   const [priceAdjustment, setPriceAdjustment] = useState(0); // %
   const [targetYield, setTargetYield] = useState(0.04); // 4%
-  const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number }>>({});
+  const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number; parking_price?: number }>>({});
+  const [unitStatusOverrides, setUnitStatusOverrides] = useState<Record<string, string>>({});
 
   // Base units (demo or real)
   const baseUnits: DemoUnit[] = isDemo ? DEMO_UNITS : DEMO_UNITS; // TODO: replace with real units
 
-  // Compute effective unit values — Akquise-Manager formula:
-  // Base price = annual_net_rent / targetYield
-  // Overrides are absolute (no priceAdjustment applied)
+  // Compute effective unit values
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
     return baseUnits.map((u) => {
       const override = unitOverrides[u.id];
+      const statusOverride = unitStatusOverrides[u.id];
       let effectivePrice: number;
 
       if (override?.list_price != null) {
-        // Manual override — absolute, no price adjustment
         effectivePrice = Math.round(override.list_price);
       } else {
-        // Yield-driven base price + price adjustment
         const basePrice = targetYield > 0 ? u.annual_net_rent / targetYield : 0;
         effectivePrice = Math.round(basePrice * (1 + priceAdjustment / 100));
       }
@@ -103,6 +101,7 @@ export default function PortfolioTab() {
       const effectiveYield = effectivePrice > 0 ? (u.annual_net_rent / effectivePrice) * 100 : 0;
       const effectivePricePerSqm = u.area_sqm > 0 ? Math.round(effectivePrice / u.area_sqm) : 0;
       const effectiveProvision = Math.round(effectivePrice * provisionRate);
+      const parkingPrice = override?.parking_price ?? u.parking_price;
 
       return {
         ...u,
@@ -110,14 +109,24 @@ export default function PortfolioTab() {
         effective_yield: effectiveYield,
         effective_price_per_sqm: effectivePricePerSqm,
         effective_provision: effectiveProvision,
+        parking_price: parkingPrice,
+        status: (statusOverride || u.status) as DemoUnit['status'],
       };
     });
-  }, [baseUnits, unitOverrides, priceAdjustment, provisionRate, targetYield]);
+  }, [baseUnits, unitOverrides, unitStatusOverrides, priceAdjustment, provisionRate, targetYield]);
 
-  // Handle inline price edits — stored as absolute overrides
-  const handleUnitPriceChange = useCallback((unitId: string, field: 'list_price' | 'price_per_sqm', value: number) => {
+  // Handle inline price edits
+  const handleUnitPriceChange = useCallback((unitId: string, field: 'list_price' | 'price_per_sqm' | 'parking_price', value: number) => {
     const unit = baseUnits.find(u => u.id === unitId);
     if (!unit) return;
+
+    if (field === 'parking_price') {
+      setUnitOverrides(prev => ({
+        ...prev,
+        [unitId]: { ...prev[unitId], parking_price: Math.round(value) },
+      }));
+      return;
+    }
 
     let newPrice: number;
     if (field === 'price_per_sqm') {
@@ -126,12 +135,16 @@ export default function PortfolioTab() {
       newPrice = Math.round(value);
     }
 
-    // Absolute override — priceAdjustment does NOT apply to overrides
     setUnitOverrides(prev => ({
       ...prev,
-      [unitId]: { list_price: newPrice },
+      [unitId]: { ...prev[unitId], list_price: newPrice },
     }));
   }, [baseUnits]);
+
+  // Handle status changes
+  const handleStatusChange = useCallback((unitId: string, status: string) => {
+    setUnitStatusOverrides(prev => ({ ...prev, [unitId]: status }));
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
@@ -164,6 +177,7 @@ export default function PortfolioTab() {
           projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
           isDemo={isDemo}
           onUnitPriceChange={handleUnitPriceChange}
+          onStatusChange={handleStatusChange}
         />
       )}
 
