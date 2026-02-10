@@ -1,5 +1,6 @@
 /**
  * ResearchCandidatesTray — Kachel 3: Gefundene Kontakte (Übernahme)
+ * MOD-14 Communication Pro > Recherche
  */
 
 import { useState } from 'react';
@@ -26,7 +27,6 @@ interface ContactCandidate {
   status: 'new' | 'reviewed' | 'imported' | 'rejected';
 }
 
-// Demo candidates
 const DEMO_CANDIDATES: ContactCandidate[] = [
   { id: 'c1', full_name: 'Dr. Klaus Weber', role: 'Geschäftsführer', company: 'Weber Hausverwaltung GmbH', location: 'München', email: 'k.w***@weber-hv.de', phone: '+49 89 ***', domain: 'weber-hv.de', confidence: 0.95, status: 'new' },
   { id: 'c2', full_name: 'Sabine Meier', role: 'Geschäftsführerin', company: 'Meier Immobilien GmbH', location: 'München', email: 's.m***@meier-immo.de', phone: '', domain: 'meier-immo.de', confidence: 0.88, status: 'new' },
@@ -108,7 +108,6 @@ export function ResearchCandidatesTray() {
             </div>
           ) : (
             <>
-              {/* Bulk actions */}
               <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/50">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -128,7 +127,6 @@ export function ResearchCandidatesTray() {
                 )}
               </div>
 
-              {/* Candidate list */}
               <div className="flex-1 overflow-auto space-y-1 max-h-[400px]">
                 {candidates.map((c) => {
                   const statusInfo = STATUS_LABELS[c.status];

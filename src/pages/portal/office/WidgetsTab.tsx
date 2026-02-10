@@ -4,11 +4,13 @@
  * Two tabs:
  * 1. Systemwidgets - Configure dashboard system widgets
  * 2. Aufgabenwidgets - Archive of completed Armstrong widgets
+ * 
+ * NOTE: Recherche wurde nach MOD-14 Communication Pro verschoben
  */
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +43,6 @@ import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SystemWidgetsTab } from './SystemWidgetsTab';
-import { ResearchTab } from './ResearchTab';
 
 // Icon mapping
 const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
@@ -105,7 +106,6 @@ function TaskWidgetsContent() {
 
   const handleRepeat = (widgetId: string) => {
     console.log('Repeat widget:', widgetId);
-    // TODO: Implement repeat functionality via Armstrong
   };
 
   return (
@@ -117,7 +117,6 @@ function TaskWidgetsContent() {
           <h2 className={isMobile ? "text-lg font-semibold" : "text-h2"}>Erledigte Widgets</h2>
         </div>
         
-        {/* Filters — vertikal auf Mobile */}
         <div className={cn(
           "flex gap-2",
           isMobile ? "flex-col" : "flex-row items-center"
@@ -184,7 +183,6 @@ function TaskWidgetsContent() {
                 className="glass-card border-muted-foreground/10 hover:border-primary/20 transition-colors"
               >
                 <CardContent className="p-3 flex items-center gap-3">
-                  {/* Icon */}
                   <div className={cn(
                     "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
                     "bg-gradient-to-br",
@@ -193,7 +191,6 @@ function TaskWidgetsContent() {
                     <Icon className="h-4 w-4 text-foreground/70" />
                   </div>
                   
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">
@@ -210,7 +207,6 @@ function TaskWidgetsContent() {
                     )}
                   </div>
                   
-                  {/* Meta */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-[10px] text-muted-foreground hidden sm:inline">
                       {widget.completed_at 
@@ -219,7 +215,6 @@ function TaskWidgetsContent() {
                       }
                     </span>
                     
-                    {/* Status Badge */}
                     <Badge 
                       variant="outline" 
                       className={cn(
@@ -237,7 +232,6 @@ function TaskWidgetsContent() {
                       {isCompleted ? 'Erledigt' : 'Abgebr.'}
                     </Badge>
                     
-                    {/* Repeat Button */}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -268,7 +262,7 @@ export function WidgetsTab() {
         "border-b",
         isMobile ? "px-4 pt-4" : "px-4 md:px-6 lg:px-8 pt-4"
       )}>
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="system" className="gap-2">
             <Settings2 className="h-4 w-4" />
             Systemwidgets
@@ -276,10 +270,6 @@ export function WidgetsTab() {
           <TabsTrigger value="tasks" className="gap-2">
             <Layers className="h-4 w-4" />
             Aufgaben
-          </TabsTrigger>
-          <TabsTrigger value="research" className="gap-2">
-            <Search className="h-4 w-4" />
-            Recherche
           </TabsTrigger>
         </TabsList>
       </div>
@@ -290,10 +280,6 @@ export function WidgetsTab() {
 
       <TabsContent value="tasks" className="mt-0">
         <TaskWidgetsContent />
-      </TabsContent>
-
-      <TabsContent value="research" className="mt-0">
-        <ResearchTab />
       </TabsContent>
     </Tabs>
     </Card>

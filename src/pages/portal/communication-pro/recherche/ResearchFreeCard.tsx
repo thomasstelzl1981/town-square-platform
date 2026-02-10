@@ -1,5 +1,6 @@
 /**
  * ResearchFreeCard — Kachel 1: Allgemeine Recherche (Free)
+ * MOD-14 Communication Pro > Recherche
  */
 
 import { useState } from 'react';
@@ -15,7 +16,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, Globe, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 // Demo result data
 const DEMO_RESULT = {
@@ -55,7 +55,6 @@ export function ResearchFreeCard() {
   const handleSearch = async () => {
     if (!query.trim()) return;
     setIsLoading(true);
-    // Simulate API call with demo data
     await new Promise(r => setTimeout(r, 1500));
     setResult(DEMO_RESULT);
     setIsLoading(false);
@@ -75,7 +74,6 @@ export function ResearchFreeCard() {
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-3">
-        {/* Input Area */}
         <Textarea
           placeholder="Was möchtest du recherchieren?"
           value={query}
@@ -104,7 +102,6 @@ export function ResearchFreeCard() {
           {isLoading ? 'Recherchiere...' : 'Suchen (Free)'}
         </Button>
 
-        {/* Results or Empty State */}
         {result ? (
           <div className="flex-1 overflow-auto space-y-3 border-t border-border/50 pt-3">
             <h4 className="font-semibold text-xs text-primary">{result.title}</h4>

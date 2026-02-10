@@ -1,5 +1,6 @@
 /**
  * CreditConfirmModal — Credit confirmation before contact import
+ * MOD-14 Communication Pro > Recherche
  */
 
 import {
