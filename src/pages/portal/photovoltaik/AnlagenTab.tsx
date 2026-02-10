@@ -61,12 +61,12 @@ export default function AnlagenTab() {
   ];
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Anlagen</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-h2 text-foreground">Anlagen</h2>
+          <p className="text-sm text-muted-foreground">
             {hasPlants ? `${plants.length} PV-Anlage${plants.length > 1 ? 'n' : ''}` : 'Ihr PV-Portfolio'}
           </p>
         </div>
@@ -91,7 +91,7 @@ export default function AnlagenTab() {
         </div>
       ) : hasPlants ? (
         /* Real data table */
-        <Card>
+        <Card className="glass-card">
           <CardContent className="p-0">
             <Table>
               <TableHeader>

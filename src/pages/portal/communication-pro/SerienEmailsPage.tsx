@@ -130,16 +130,16 @@ export function SerienEmailsPage() {
   const avgOpen = DEMO_CAMPAIGNS.filter(c => c.openRate > 0).reduce((s, c, _, a) => s + c.openRate / a.length, 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary/10 p-2">
-            <Mail className="h-6 w-6 text-primary" />
+          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Mail className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold uppercase">Serien-E-Mails</h1>
-            <p className="text-muted-foreground mt-0.5">Personalisierte E-Mail-Kampagnen mit Immobilien-Content</p>
+            <h1 className="text-h2 text-foreground">Serien-E-Mails</h1>
+            <p className="text-xs text-muted-foreground">Personalisierte E-Mail-Kampagnen mit Immobilien-Content</p>
           </div>
         </div>
         <Button onClick={() => toast.info('Kampagnen-Editor wird vorbereitet…')}>
@@ -149,46 +149,62 @@ export function SerienEmailsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-3">
+        <Card className="glass-card">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Kampagnen</p>
-              <Send className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Kampagnen</p>
+                <p className="text-2xl font-bold mt-1">{DEMO_CAMPAIGNS.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{activeCampaigns} aktiv</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Send className="h-4 w-4 text-primary" />
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">{DEMO_CAMPAIGNS.length}</p>
-            <p className="text-xs text-muted-foreground">{activeCampaigns} aktiv</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
+        <Card className="glass-card">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Empfänger</p>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Empfänger</p>
+                <p className="text-2xl font-bold mt-1">{totalRecipients.toLocaleString('de-DE')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Kontakte gesamt</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">{totalRecipients.toLocaleString('de-DE')}</p>
-            <p className="text-xs text-muted-foreground">Kontakte gesamt</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
+        <Card className="glass-card">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Ø Öffnungsrate</p>
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Ø Öffnungsrate</p>
+                <p className="text-2xl font-bold mt-1">{avgOpen.toFixed(1)}%</p>
+                <p className="text-xs text-primary mt-0.5">+3.2% vs. Vormonat</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Eye className="h-4 w-4 text-primary" />
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">{avgOpen.toFixed(1)}%</p>
-            <p className="text-xs text-primary">+3.2% vs. Vormonat</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
+        <Card className="glass-card">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Ø Klickrate</p>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Ø Klickrate</p>
+                <p className="text-2xl font-bold mt-1">
+                  {DEMO_CAMPAIGNS.filter(c => c.clickRate > 0).reduce((s, c, _, a) => s + c.clickRate / a.length, 0).toFixed(1)}%
+                </p>
+                <p className="text-xs text-primary mt-0.5">Über Branchendurchschnitt</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">
-              {DEMO_CAMPAIGNS.filter(c => c.clickRate > 0).reduce((s, c, _, a) => s + c.clickRate / a.length, 0).toFixed(1)}%
-            </p>
-            <p className="text-xs text-primary">Über Branchendurchschnitt</p>
           </CardContent>
         </Card>
       </div>

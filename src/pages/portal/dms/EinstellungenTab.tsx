@@ -212,7 +212,7 @@ export function EinstellungenTab() {
   const currentPlan = storagePlans.find(p => p.id === currentPlanId);
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-h2 text-foreground">Einstellungen</h1>

@@ -292,7 +292,7 @@ export function StorageTab() {
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-h2 text-foreground">Dateien</h1>
