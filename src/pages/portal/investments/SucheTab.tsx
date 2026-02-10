@@ -331,10 +331,10 @@ export default function SucheTab() {
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Objektsuche</h1>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Objektsuche</h1>
         <p className="text-muted-foreground">
           Finden Sie passende Kapitalanlage-Objekte für Ihre Situation
         </p>

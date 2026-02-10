@@ -204,11 +204,11 @@ export function CreatePage() {
   // Editor view
   if (editingDraft) {
     return (
-      <div className="p-6 space-y-4 max-w-3xl">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <Button variant="ghost" size="sm" onClick={() => setEditingDraft(null)}>← Zurück</Button>
-            <h1 className="text-xl font-bold mt-1">{editingDraft.draft_title || 'Unbenannter Draft'}</h1>
+            <h1 className="text-xl font-bold tracking-tight uppercase mt-1">{editingDraft.draft_title || 'Unbenannter Draft'}</h1>
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteDraft.mutate(editingDraft.id)}>
@@ -280,10 +280,10 @@ export function CreatePage() {
 
   // Draft list
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Content Creation</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Content Creation</h1>
           <p className="text-muted-foreground mt-1">
             Erstelle und verfeinere Posts — KI-gestützt, in deinem Stil.
           </p>

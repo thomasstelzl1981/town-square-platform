@@ -147,10 +147,10 @@ export default function SimulationTab() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Investment-Simulation</h1>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Investment-Simulation</h1>
         <p className="text-muted-foreground">
           Berechnen Sie die Auswirkung eines Neukaufs auf Ihr Gesamtportfolio
         </p>

@@ -299,10 +299,10 @@ export function KnowledgePage() {
   const briefingCount = topics.filter((t) => t.topic_briefing).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Knowledge Base</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Knowledge Base</h1>
           <p className="text-muted-foreground mt-1">
             Definiere bis zu 10 Themen. Die KI erstellt Briefings mit Hook-Mustern, Argumentationslinien und CTAs.
           </p>

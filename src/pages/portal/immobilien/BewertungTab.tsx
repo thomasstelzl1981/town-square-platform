@@ -62,7 +62,7 @@ export function BewertungTab() {
   const pendingValuations = valuations?.filter(v => v.status === 'pending' || v.status === 'processing') || [];
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Workflow Visualisierung */}
       <Card>
         <CardHeader className="pb-3">

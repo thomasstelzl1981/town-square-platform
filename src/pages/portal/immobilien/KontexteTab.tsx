@@ -845,10 +845,10 @@ export function KontexteTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold">Vermietereinheiten</h2>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Vermietereinheiten</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Verwalten Sie Ihre steuerlichen Kontexte für die Immobilienbewertung
         </p>

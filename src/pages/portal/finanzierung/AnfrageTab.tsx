@@ -160,7 +160,7 @@ export default function AnfrageTab() {
 
   // 3. Falls kein Draft → Dialog zur Erstellung zeigen
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <Card>
         <CardContent className="text-center py-12">
           <FileStack className="h-12 w-12 mx-auto text-muted-foreground/50" />

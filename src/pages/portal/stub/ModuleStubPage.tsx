@@ -17,7 +17,7 @@ export function ModuleStubPage() {
   const subPage = pathSegments[2];
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <Card className="border-dashed">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">

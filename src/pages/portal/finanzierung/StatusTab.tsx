@@ -253,7 +253,7 @@ export default function StatusTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {requests.map(request => {
         const mandate = Array.isArray(request.mandate) ? request.mandate[0] : request.mandate;
         const manager = mandate?.assigned_manager_id 

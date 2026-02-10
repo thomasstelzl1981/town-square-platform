@@ -109,10 +109,10 @@ export function InboundPage() {
   const statusLabel: Record<string, string> = { new: 'Neu', drafted: 'Draft erstellt', archived: 'Archiviert' };
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Individual Content</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Individual Content</h1>
           <p className="text-muted-foreground mt-1">
             Halte Momente fest und lass die KI daraus Posts erstellen.
           </p>
