@@ -1,22 +1,13 @@
 /**
- * Portfolio Tab - Arbeitsfläche mit Projekt-Widgets + Sticky-Kalkulator
+ * Portfolio Tab - Globalobjekt-Beschreibung + Preisliste + DMS
  * MOD-13 PROJEKTE — P0 Redesign
- * 
- * NEVER shows EmptyState only — always structured UI with placeholders.
  */
 
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
-import { 
-  CreateProjectDialog, 
-  CreateDeveloperContextDialog,
-  QuickIntakeUploader,
-} from '@/components/projekte';
-import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/ProjectCard';
+import { ProjectOverviewCard } from '@/components/projekte/ProjectOverviewCard';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
@@ -41,7 +32,6 @@ export default function PortfolioTab() {
   const [selectedContextId, setSelectedContextId] = useState<string | undefined>(undefined);
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects(selectedContextId);
   
-  const [createProjectOpen, setCreateProjectOpen] = useState(searchParams.get('create') === '1');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const isLoading = loadingContexts || isLoadingPortfolio;
@@ -61,10 +51,6 @@ export default function PortfolioTab() {
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
     }
-  };
-
-  const handleProjectCreated = (projectId: string) => {
-    navigate(`/portal/projekte/${projectId}`);
   };
 
   // Get selected project data for calculator
@@ -88,29 +74,11 @@ export default function PortfolioTab() {
               {contexts.map((ctx) => (<SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>))}
             </SelectContent>
           </Select>
-          <QuickIntakeUploader onSuccess={(projectId) => navigate(`/portal/projekte/${projectId}`)} />
-          <Button onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Neues Projekt</Button>
         </div>
       </div>
 
-      {/* Projekt-Widgets (square cards) — demo card gets col-span-2 */}
-      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
-        {isDemo ? (
-          <div className="col-span-2">
-            <ProjectCard project={DEMO_PROJECT} isDemo />
-          </div>
-        ) : (
-          portfolioRows.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              isSelected={selectedProject?.id === project.id}
-              onClick={(id) => setSelectedProjectId(id)}
-            />
-          ))
-        )}
-        <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
-      </div>
+      {/* Globalobjekt-Beschreibung (ImmoScout24-Stil) */}
+      <ProjectOverviewCard isDemo={isDemo} />
 
       {/* Main Content: Unit Preisliste (left) + Sticky Calculator (right) */}
       <div className="flex gap-6">
@@ -146,14 +114,7 @@ export default function PortfolioTab() {
         isDemo={isDemo}
       />
 
-      {/* Dialogs */}
-      <CreateProjectDialog
-        open={createProjectOpen}
-        onOpenChange={setCreateProjectOpen}
-        onSuccess={handleProjectCreated}
-        defaultContextId={selectedContextId || defaultContext?.id}
-      />
-
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

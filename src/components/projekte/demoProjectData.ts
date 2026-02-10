@@ -55,6 +55,7 @@ export interface DemoUnit {
   yield_percent: number;
   price_per_sqm: number;
   provision_eur: number;
+  parking_price: number;
   status: 'available';
 }
 
@@ -110,6 +111,7 @@ function buildDemoUnits(): DemoUnit[] {
         yield_percent: yieldPercent,
         price_per_sqm: pricePerSqm,
         provision_eur: provisionEur,
+        parking_price: 20_000,
         status: 'available',
       });
     }
@@ -133,6 +135,28 @@ export const DEMO_UNIT_DETAIL = {
   address: 'Am Stadtpark 12',
   city: 'München',
   postal_code: '80331',
+};
+
+// ── Demo Project Description (ImmoScout-style) ─────────────────────────
+export const DEMO_PROJECT_DESCRIPTION = {
+  headline: 'Residenz am Stadtpark',
+  address: 'Am Stadtpark 12',
+  city: 'München',
+  postal_code: '80331',
+  description: [
+    'Die „Residenz am Stadtpark" ist ein gepflegtes Mehrfamilienhaus in bevorzugter Innenstadtlage Münchens, nur wenige Gehminuten vom Englischen Garten entfernt. Das 1998 errichtete und 2021 umfassend sanierte Wohngebäude bietet 24 moderne Wohneinheiten in ruhiger und dennoch zentraler Lage.',
+    'Die Ausstattung umfasst Eichenparkett, Fußbodenheizung, elektrische Rollläden sowie bodentiefe Fenster mit Dreifachverglasung. Alle Wohnungen verfügen über Balkone oder Terrassen mit Blick auf den angrenzenden Stadtpark. Die Bäder sind mit hochwertiger Sanitärkeramik und bodengleichen Duschen ausgestattet.',
+    'Das Gesamtkonzept richtet sich an Kapitalanleger, die eine nachhaltige Rendite in einer der gefragtesten Lagen Münchens suchen. Die vollständige energetische Sanierung (KfW 70) gewährleistet niedrige Nebenkosten und langfristigen Werterhalt.',
+  ],
+  total_units: 24,
+  total_parking_spaces: 24,
+  total_living_area: 1_540,
+  year_built: 1998,
+  renovation_year: 2021,
+  heating_type: 'Zentralheizung (Gas)',
+  energy_class: 'B',
+  total_sale_price: 7_200_000,
+  images_count: 4,
 };
 
 // ── Demo Portfolio Row (for table) ──────────────────────────────────────
