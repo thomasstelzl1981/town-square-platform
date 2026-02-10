@@ -483,13 +483,12 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 20,
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
-        // EXCEPTION: 6 tiles instead of 4
+        // 5 tiles (Dokumente entfernt, Kommunikation ans Ende)
         { path: "uebersicht", component: "MietyUebersicht", title: "Übersicht" },
-        { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
         { path: "zaehlerstaende", component: "MietyZaehlerstaende", title: "Zählerstände" },
         { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
         { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
-        { path: "dokumente", component: "MietyDokumente", title: "Dokumente" },
+        { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
       ],
       dynamic_routes: [
         { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },

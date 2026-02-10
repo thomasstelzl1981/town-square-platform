@@ -36,6 +36,12 @@ import {
   AlertTriangle,
   Mail,
   CheckCircle2,
+  Camera,
+  Globe,
+  Copy,
+  Send,
+  Languages,
+  Phone,
 } from 'lucide-react';
 import React from 'react';
 
@@ -232,7 +238,7 @@ function UebersichtTile() {
         )}
       </div>
 
-      {/* Home cards or loading state */}
+      {/* Home: 3 square tiles or empty state */}
       {homes.length === 0 ? (
         <Card className="glass-card border-primary/20">
           <CardContent className="p-6 text-center">
@@ -251,55 +257,92 @@ function UebersichtTile() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {homes.map((home) => (
-            <Card key={home.id} className="glass-card">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-4">
-                  {/* Left: Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+        homes.map((home) => {
+          const mapQuery = buildMapQuery(home);
+          return (
+            <div key={home.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Kachel 1: Adresse + Name */}
+              <Card className="glass-card aspect-square flex flex-col">
+                <CardContent className="p-5 flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
                       <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
-                      <h3 className="font-semibold text-lg truncate">{home.name}</h3>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Zuhause</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {[home.address, home.address_house_no].filter(Boolean).join(' ')}
-                      {home.zip || home.city ? ', ' : ''}
-                      {[home.zip, home.city].filter(Boolean).join(' ')}
-                    </p>
-                    <div className="flex items-center gap-1.5 mb-3">
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold">
+                        {profile?.first_name || ''} {profile?.last_name || ''}
+                      </p>
+                      <p className="text-base text-muted-foreground">
+                        {[home.address, home.address_house_no].filter(Boolean).join(' ')}
+                      </p>
+                      <p className="text-base text-muted-foreground">
+                        {[home.zip, home.city].filter(Boolean).join(' ')}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-3">
                       <Badge variant="secondary" className="text-xs">{home.ownership_type === 'eigentum' ? 'Eigentum' : 'Miete'}</Badge>
                       {home.area_sqm && <Badge variant="outline" className="text-xs">{home.area_sqm} m²</Badge>}
                       {home.rooms_count && <Badge variant="outline" className="text-xs">{home.rooms_count} Zimmer</Badge>}
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingHome(home); }}>
-                        Bearbeiten
-                      </Button>
-                      <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
-                        <ArrowRight className="h-4 w-4 mr-1" />Öffnen
-                      </Button>
-                    </div>
                   </div>
-                  {/* Right: Google Maps Satellite */}
-                  {(home.city || home.address) && (
-                    <div className="flex-shrink-0 w-[140px] h-[120px] rounded-lg overflow-hidden border border-border">
-                      <iframe
-                        title="Satellitenansicht"
-                        width="140"
-                        height="120"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps?q=${buildMapQuery(home)}&t=k&z=18&output=embed`}
-                      />
+                  <div className="flex gap-2 mt-3">
+                    <Button size="sm" variant="outline" onClick={() => setEditingHome(home)}>
+                      Bearbeiten
+                    </Button>
+                    <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
+                      <ArrowRight className="h-4 w-4 mr-1" />Öffnen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Kachel 2: Foto / Google Street View */}
+              <Card className="glass-card aspect-square overflow-hidden">
+                <CardContent className="p-0 h-full relative">
+                  {(home.city || home.address) ? (
+                    <iframe
+                      title="Street View"
+                      className="w-full h-full"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://www.google.com/maps?q=${mapQuery}&layer=c&output=embed`}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+                      <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">Foto hochladen</p>
+                      <p className="text-xs text-muted-foreground mt-1">oder Adresse für Street View eingeben</p>
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+
+              {/* Kachel 3: Google Earth / Satellite */}
+              <Card className="glass-card aspect-square overflow-hidden">
+                <CardContent className="p-0 h-full">
+                  {(home.city || home.address) ? (
+                    <iframe
+                      title="Satellitenansicht"
+                      className="w-full h-full"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://www.google.com/maps?q=${mapQuery}&t=k&z=18&output=embed`}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+                      <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">Satellitenansicht</p>
+                      <p className="text-xs text-muted-foreground mt-1">Verfügbar nach Adresseingabe</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })
       )}
 
       {/* Quick access cards — always visible */}
@@ -331,68 +374,176 @@ function UebersichtTile() {
 }
 
 // =============================================================================
-// Tab 2: Kommunikation — Vermieter-Verlinkung + Schadensmeldung
+// Tab 5: Kommunikation — WhatsApp, E-Mail, KI-Übersetzer
 // =============================================================================
 function KommunikationTile() {
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [translateInput, setTranslateInput] = useState('');
+  const [translateResult, setTranslateResult] = useState('');
+  const [targetLang, setTargetLang] = useState('en');
+  const [copied, setCopied] = useState(false);
+
+  const handleWhatsAppSend = () => {
+    if (!whatsappNumber) return;
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    const url = `https://wa.me/${cleanNumber}${whatsappMessage ? `?text=${encodeURIComponent(whatsappMessage)}` : ''}`;
+    window.open(url, '_blank');
+  };
+
+  const handleEmailSend = () => {
+    if (!emailAddress) return;
+    const mailto = `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = mailto;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(translateResult);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const languages = [
+    { code: 'en', label: 'Englisch' },
+    { code: 'tr', label: 'Türkisch' },
+    { code: 'ar', label: 'Arabisch' },
+    { code: 'uk', label: 'Ukrainisch' },
+    { code: 'ru', label: 'Russisch' },
+    { code: 'pl', label: 'Polnisch' },
+    { code: 'fr', label: 'Französisch' },
+  ];
+
   return (
-    <TileShell icon={MessageCircle} title="Kommunikation" description="Vermieter, Nachrichten und Schadensmeldungen">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Vermieter-Verlinkung */}
-        <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-primary/10"><Users className="h-5 w-5 text-primary" /></div>
-              <div>
-                <h3 className="font-medium">Vermieter verbinden</h3>
-                <p className="text-xs text-muted-foreground">Verbinden Sie sich mit Ihrem Vermieter</p>
-              </div>
+    <TileShell icon={MessageCircle} title="Kommunikation" description="WhatsApp, E-Mail und KI-Übersetzer">
+      {/* Vermieter-Verlinkung compact */}
+      <Card className="glass-card">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10"><Users className="h-4 w-4 text-primary" /></div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Vermieter verbinden</p>
+              <p className="text-xs text-muted-foreground">Einladungscode eingeben für gemeinsamen Datenraum</p>
             </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Einladungscode eingeben</p>
-                <div className="flex gap-2">
-                  <Input placeholder="z.B. VM-ABC123" className="text-sm" />
-                  <Button size="sm" variant="outline">Verbinden</Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Oder bitten Sie Ihren Vermieter um eine Einladung.</p>
+            <div className="flex gap-2 items-center">
+              <Input placeholder="VM-ABC123" className="text-sm w-36" />
+              <Button size="sm" variant="outline">Verbinden</Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Schadensmeldung */}
-        <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-destructive/10"><AlertTriangle className="h-5 w-5 text-destructive" /></div>
+      {/* 3 Kommunikations-Kacheln */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Kachel 1: WhatsApp Business */}
+        <Card className="glass-card border-green-500/20">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Phone className="h-5 w-5 text-green-500" />
+              </div>
               <div>
-                <h3 className="font-medium">Schadensmeldung</h3>
-                <p className="text-xs text-muted-foreground">Schäden melden und dokumentieren</p>
+                <h3 className="font-medium text-sm">WhatsApp Business</h3>
+                <p className="text-xs text-muted-foreground">Direktnachricht an Vermieter</p>
               </div>
             </div>
-            <Button variant="outline" className="w-full" disabled>
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Schaden melden
+            <Input
+              placeholder="Telefonnummer Vermieter"
+              value={whatsappNumber}
+              onChange={(e) => setWhatsappNumber(e.target.value)}
+              className="text-sm"
+            />
+            <textarea
+              placeholder="Nachricht eingeben..."
+              value={whatsappMessage}
+              onChange={(e) => setWhatsappMessage(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
+            />
+            <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppSend}>
+              <Send className="h-4 w-4 mr-1.5" />Nachricht senden
             </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center">Verfügbar nach Vermieter-Verlinkung</p>
+            <p className="text-xs text-muted-foreground text-center">Verfügbar wenn Ihr Vermieter WhatsApp Business nutzt</p>
           </CardContent>
         </Card>
 
-        {/* Nachrichten */}
-        <Card className="border-dashed">
-          <CardContent className="p-5 text-center">
-            <Mail className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Nachrichten</p>
-            <p className="text-xs text-muted-foreground mt-1">Noch keine Nachrichten vorhanden</p>
+        {/* Kachel 2: E-Mail */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">E-Mail</h3>
+                <p className="text-xs text-muted-foreground">E-Mail an Vermieter senden</p>
+              </div>
+            </div>
+            <Input
+              placeholder="E-Mail-Adresse Vermieter"
+              type="email"
+              value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)}
+              className="text-sm"
+            />
+            <Input
+              placeholder="Betreff"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              className="text-sm"
+            />
+            <textarea
+              placeholder="Nachricht..."
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
+            />
+            <Button size="sm" variant="outline" className="w-full" onClick={handleEmailSend}>
+              <Mail className="h-4 w-4 mr-1.5" />E-Mail senden
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Korrespondenz-Dokumente */}
-        <Card className="border-dashed">
-          <CardContent className="p-5 text-center">
-            <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Korrespondenz</p>
-            <p className="text-xs text-muted-foreground mt-1">Dokumente werden hier abgelegt</p>
+        {/* Kachel 3: KI-Übersetzer */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-accent/30">
+                <Languages className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">KI-Übersetzer</h3>
+                <p className="text-xs text-muted-foreground">Text übersetzen & einfügen</p>
+              </div>
+            </div>
+            <textarea
+              placeholder="Text eingeben (Deutsch)..."
+              value={translateInput}
+              onChange={(e) => setTranslateInput(e.target.value)}
+              className="flex min-h-[60px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none"
+            />
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="flex h-10 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              {languages.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+            <Button size="sm" variant="outline" className="w-full" disabled>
+              <Languages className="h-4 w-4 mr-1.5" />Übersetzen
+            </Button>
+            {translateResult && (
+              <div className="p-3 rounded-lg bg-muted/40 text-sm">
+                <p>{translateResult}</p>
+                <Button size="sm" variant="ghost" className="mt-2 text-xs" onClick={handleCopy}>
+                  <Copy className="h-3 w-3 mr-1" />{copied ? 'Kopiert!' : 'Kopieren'}
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground text-center">KI-Übersetzung demnächst verfügbar</p>
           </CardContent>
         </Card>
       </div>
@@ -682,50 +833,6 @@ function VersicherungenTile() {
 }
 
 // =============================================================================
-// Tab 6: Dokumente — Folder-based overview
-// =============================================================================
-function DokumenteTile() {
-  const navigate = useNavigate();
-  const { data: homes = [] } = useHomesQuery();
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  if (showCreateForm) {
-    return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
-  }
-
-  const folders = [
-    { key: 'vertraege', label: 'Verträge', icon: FileText },
-    { key: 'zaehler', label: 'Zählerstände', icon: Gauge },
-    { key: 'versicherungen', label: 'Versicherungen', icon: Shield },
-    { key: 'versorgung', label: 'Versorgung', icon: Zap },
-    { key: 'kommunikation', label: 'Kommunikation', icon: Mail },
-    { key: 'sonstiges', label: 'Sonstiges', icon: FolderOpen },
-  ];
-
-  return (
-    <TileShell icon={FileText} title="Dokumente" description="Verträge, Belege und wichtige Unterlagen">
-      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {folders.map(({ key, label, icon: FIcon }) => (
-          <Card key={key} className="border-dashed hover:border-primary/30 transition-colors cursor-pointer"
-            onClick={() => homes.length > 0 ? navigate(`/portal/miety/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
-            <CardContent className="p-5 text-center">
-              <FIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-sm font-medium">{label}</p>
-              <p className="text-xs text-muted-foreground mt-1">0 Dokumente</p>
-              <Button size="sm" variant="ghost" className="text-xs mt-2">
-                <Upload className="h-3 w-3 mr-1" />Hochladen
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </TileShell>
-  );
-}
-
-// =============================================================================
 // Main Router
 // =============================================================================
 export default function MietyPortalPage() {
@@ -735,11 +842,10 @@ export default function MietyPortalPage() {
     <Routes>
       <Route index element={<ModuleHowItWorks content={content} />} />
       <Route path="uebersicht" element={<UebersichtTile />} />
-      <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="zaehlerstaende" element={<ZaehlerstaendeTile />} />
       <Route path="versorgung" element={<VersorgungTile />} />
       <Route path="versicherungen" element={<VersicherungenTile />} />
-      <Route path="dokumente" element={<DokumenteTile />} />
+      <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="zuhause/:homeId" element={
         <React.Suspense fallback={
           <div className="flex items-center justify-center p-8">
