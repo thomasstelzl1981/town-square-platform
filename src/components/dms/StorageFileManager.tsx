@@ -60,6 +60,7 @@ interface DocumentLink {
 interface StorageFileManagerProps {
   nodes: StorageNode[];
   documents: Document[];
+  allDocuments: Document[];
   documentLinks: DocumentLink[];
   onUploadFiles: (files: File[]) => void;
   onDownload: (documentId: string) => void;
@@ -87,6 +88,7 @@ function formatFileSize(bytes?: number) {
 export function StorageFileManager({
   nodes,
   documents,
+  allDocuments,
   documentLinks,
   onUploadFiles,
   onDownload,
@@ -334,7 +336,7 @@ export function StorageFileManager({
           {effectiveViewMode === 'columns' && (
             <ColumnView
               allNodes={nodes}
-              documents={documents}
+              documents={allDocuments}
               documentLinks={documentLinks}
               columnPath={columnPath}
               onNavigateColumn={handleColumnNavigate}
@@ -349,6 +351,7 @@ export function StorageFileManager({
               onSelectItem={setPreviewItem}
               onDownload={onDownload}
               onDelete={handleDelete}
+              onNavigateFolder={handleNavigateFolder}
               isDownloading={isDownloading}
             />
           )}

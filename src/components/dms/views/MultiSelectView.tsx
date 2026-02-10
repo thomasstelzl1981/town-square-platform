@@ -1,5 +1,6 @@
 import { Folder, File, FileText, Image, FileSpreadsheet } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { FileManagerItem } from './ListView';
 
@@ -19,22 +20,38 @@ function getFileIcon(mime?: string) {
   return File;
 }
 
+function formatFileSize(bytes?: number) {
+  if (!bytes || bytes === 0) return '';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
 export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSelectAll, onNavigateFolder }: MultiSelectViewProps) {
   const allSelected = items.length > 0 && selectedIds.size === items.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < items.length;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 border-b">
-        <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} />
+      {/* Header bar */}
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/30 border-b">
+        <Checkbox
+          checked={allSelected}
+          // @ts-ignore - indeterminate support
+          indeterminate={someSelected}
+          onCheckedChange={onToggleSelectAll}
+        />
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Alle {items.length} Elemente auswählen
+          {selectedIds.size > 0
+            ? `${selectedIds.size} von ${items.length} ausgewählt`
+            : `Alle ${items.length} Elemente auswählen`}
         </span>
       </div>
 
-      {/* Grid */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+      {/* Column-style list */}
+      <ScrollArea className="flex-1">
+        <div className="py-1">
           {items.map(item => {
             const isSelected = selectedIds.has(item.id);
             const Icon = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
@@ -43,33 +60,38 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
               <div
                 key={item.id}
                 className={cn(
-                  'relative flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors cursor-pointer',
-                  isSelected ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-muted/50',
+                  'flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer',
+                  isSelected && 'bg-primary/5',
                 )}
                 onClick={() => onToggleSelect(item.id)}
                 onDoubleClick={() => {
                   if (item.type === 'folder' && item.nodeId) onNavigateFolder(item.nodeId);
                 }}
               >
-                <div className="absolute top-2 left-2">
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => onToggleSelect(item.id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-                <Icon className="h-8 w-8 text-muted-foreground" />
-                <span className="text-xs text-center truncate w-full">{item.name}</span>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(item.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(isSelected && 'border-primary data-[state=checked]:bg-primary')}
+                />
+                <Icon className={cn('h-4 w-4 shrink-0', item.type === 'folder' ? 'text-muted-foreground' : 'text-muted-foreground')} />
+                <span className="flex-1 text-sm truncate">{item.name}</span>
+                {item.type === 'file' && item.size && (
+                  <span className="text-xs text-muted-foreground shrink-0">{formatFileSize(item.size)}</span>
+                )}
+                {item.type === 'folder' && item.childCount !== undefined && (
+                  <span className="text-xs text-muted-foreground shrink-0">{item.childCount} Elemente</span>
+                )}
               </div>
             );
           })}
+          {items.length === 0 && (
+            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+              Keine Elemente
+            </div>
+          )}
         </div>
-        {items.length === 0 && (
-          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            Keine Elemente
-          </div>
-        )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

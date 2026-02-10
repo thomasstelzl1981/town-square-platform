@@ -134,30 +134,40 @@ export function StorageTab() {
     seedSystemNodes();
   }, [activeTenantId, nodes, nodesLoading, refetchNodes, MODULE_ROOT_FOLDERS]);
 
-  // Documents for selected node
+  // Documents for selected node (empty at root level)
   const { data: documents = [] } = useQuery({
     queryKey: ['documents', activeTenantId, selectedNodeId],
     queryFn: async (): Promise<Document[]> => {
+      if (!activeTenantId || !selectedNodeId) return []; // FIX: no docs at root
+      const { data: links } = await supabase
+        .from('document_links')
+        .select('document_id')
+        .eq('tenant_id', activeTenantId)
+        .eq('node_id', selectedNodeId);
+      const docIds = (links || []).map(l => l.document_id);
+      if (docIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .in('id', docIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Document[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ALL documents + links (unfiltered) for ColumnView / MultiSelectView
+  const { data: allDocuments = [] } = useQuery({
+    queryKey: ['all-documents', activeTenantId],
+    queryFn: async (): Promise<Document[]> => {
       if (!activeTenantId) return [];
-      let docIds: string[] = [];
-      if (selectedNodeId) {
-        const { data: links } = await supabase
-          .from('document_links')
-          .select('document_id')
-          .eq('tenant_id', activeTenantId)
-          .eq('node_id', selectedNodeId);
-        docIds = (links || []).map(l => l.document_id);
-        if (docIds.length === 0) return [];
-      }
-      let query = supabase
+      const { data, error } = await supabase
         .from('documents')
         .select('*')
         .eq('tenant_id', activeTenantId)
         .order('created_at', { ascending: false });
-      if (selectedNodeId && docIds.length > 0) {
-        query = query.in('id', docIds);
-      }
-      const { data, error } = await query;
       if (error) throw error;
       return data as Document[];
     },
@@ -295,6 +305,7 @@ export function StorageTab() {
       <StorageFileManager
         nodes={nodes}
         documents={documents}
+        allDocuments={allDocuments}
         documentLinks={documentLinks}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
