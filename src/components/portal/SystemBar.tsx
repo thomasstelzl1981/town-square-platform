@@ -2,9 +2,8 @@
  * SYSTEM BAR — Top-level system controls for Zone 2
  * 
  * Fixed height: 48px
- * Contains: Home button, Theme Toggle, Logo placeholder, Local time, Armstrong toggle, User avatar
- * 
- * ORBITAL Design System: Theme toggle is placed left side, after Home button
+ * 3-zone layout: Left (Home, Theme, Temp) | Center (ARMSTRONG) | Right (Clock, Chatbot, Profile)
+ * All 6 buttons: identical round glass style
  */
 
 import { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,27 +28,62 @@ import {
   User,
   Rocket,
   KeyRound,
-  MapPin,
-  Mountain
+  Sun,
+  Moon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const GLASS_BUTTON = cn(
+  'h-10 w-10 rounded-full',
+  'bg-white/30 dark:bg-white/10',
+  'backdrop-blur-md',
+  'border border-white/20 dark:border-white/10',
+  'shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]',
+  'hover:bg-white/45 dark:hover:bg-white/15',
+  'flex items-center justify-center transition-all',
+  'text-foreground'
+);
+
+/** Inline analog clock SVG */
+function AnalogClock({ time }: { time: Date }) {
+  const hours = time.getHours() % 12;
+  const minutes = time.getMinutes();
+  const hourAngle = hours * 30 + minutes * 0.5;
+  const minuteAngle = minutes * 6;
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" strokeWidth="1.5" opacity="0.4" />
+      {/* Hour hand */}
+      <line
+        x1="12" y1="12"
+        x2={12 + 4.5 * Math.sin((hourAngle * Math.PI) / 180)}
+        y2={12 - 4.5 * Math.cos((hourAngle * Math.PI) / 180)}
+        strokeWidth="2"
+      />
+      {/* Minute hand */}
+      <line
+        x1="12" y1="12"
+        x2={12 + 6.5 * Math.sin((minuteAngle * Math.PI) / 180)}
+        y2={12 - 6.5 * Math.cos((minuteAngle * Math.PI) / 180)}
+        strokeWidth="1.5"
+      />
+      <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth="0" />
+    </svg>
+  );
+}
 
 export function SystemBar() {
   const navigate = useNavigate();
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
   const { armstrongVisible, showArmstrong, hideArmstrong, resetArmstrong, isMobile, setActiveArea } = usePortalLayout();
+  const { theme, setTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [location, setLocation] = useState<{
-    city: string;
-    altitude: number | null;
-  } | null>(null);
-  const [locationError, setLocationError] = useState(false);
+  const [temperature, setTemperature] = useState<number | null>(null);
 
-  // Home button click handler - reset state and navigate, show Armstrong as circle
   const handleHomeClick = () => {
     setActiveArea(null);
     navigate('/portal');
-    // Show Armstrong as collapsed circle (not expanded)
     showArmstrong({ expanded: false });
   };
 
@@ -61,183 +95,107 @@ export function SystemBar() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch user location on mount with fallback to profile city
+  // Fetch temperature via geolocation + OpenMeteo
   useEffect(() => {
-    // Fallback function: use city from user profile
-    const useProfileFallback = () => {
-      if (profile?.city) {
-        setLocation({
-          city: profile.city as string,
-          altitude: null // No altitude from profile
-        });
-        console.log('Geolocation Fallback: Using profile city', profile.city);
-      } else {
-        setLocationError(true);
-      }
-    };
-
-    if (!navigator.geolocation) {
-      useProfileFallback();
-      return;
-    }
+    if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude, altitude } = position.coords;
-        console.log('Geolocation success:', { latitude, longitude, altitude });
-        
+        const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
+          const res = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
           );
-          const data = await response.json();
-          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
-          
-          setLocation({
-            city,
-            altitude: altitude ? Math.round(altitude) : null
-          });
-        } catch (error) {
-          console.error('Geocoding failed, using fallback:', error);
-          useProfileFallback();
+          const data = await res.json();
+          if (data.current_weather?.temperature != null) {
+            setTemperature(Math.round(data.current_weather.temperature));
+          }
+        } catch (e) {
+          console.warn('Temperature fetch failed:', e);
         }
       },
-      (error) => {
-        // Detailed logging for debugging
-        const errorMessages: Record<number, string> = {
-          1: 'Berechtigung verweigert',
-          2: 'Position nicht verfügbar',
-          3: 'Zeitüberschreitung',
-        };
-        console.warn('Geolocation error:', errorMessages[error.code] || error.message);
-        // Fallback to profile city
-        useProfileFallback();
-      },
-      { 
-        enableHighAccuracy: true,
-        timeout: 10000,      // 10 second timeout
-        maximumAge: 300000   // Cache for 5 minutes
-      }
+      () => { /* silently fail */ },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
     );
-  }, [profile?.city]); // Re-run when profile city changes
+  }, []);
 
   const initials = profile?.display_name
     ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase()
     : profile?.email?.charAt(0).toUpperCase() || 'U';
 
-  const formattedTime = currentTime.toLocaleTimeString('de-DE', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
       <div className="flex h-12 items-center justify-between px-4">
-        {/* Left section: Home + Theme Toggle + Logo placeholder */}
-        <div className="flex items-center gap-1">
-          {/* Home button - onClick handler for proper state reset */}
-          <button 
-            onClick={handleHomeClick}
-            className={cn(
-              'flex items-center justify-center p-2 rounded-xl transition-all',
-              'text-muted-foreground hover:text-foreground',
-              'nav-tab-glass'
-            )}
-            title="Zur Portal-Startseite"
-          >
-            <Home className="h-5 w-5" />
+
+        {/* LEFT — 3 Glass Buttons */}
+        <div className="flex items-center gap-2">
+          {/* 1. Home */}
+          <button onClick={handleHomeClick} className={GLASS_BUTTON} title="Startseite">
+            <Home className="h-4.5 w-4.5" />
           </button>
 
-          {/* Theme Toggle — ORBITAL Design System requirement */}
-          <ThemeToggle />
+          {/* 2. Theme Toggle */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className={GLASS_BUTTON}
+            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          >
+            <Sun className="h-4.5 w-4.5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4.5 w-4.5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
+          </button>
+
+          {/* 3. Temperature */}
+          <button className={GLASS_BUTTON} title="Aktuelle Außentemperatur">
+            <span className="text-xs font-medium leading-none">
+              {temperature !== null ? `${temperature}°` : '—°'}
+            </span>
+          </button>
         </div>
 
-{/* Center section: Location + Time (digital only, no icon) */}
-        <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
-          {location ? (
-            <>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm">{location.city}</span>
-              </div>
-              {location.altitude !== null && (
-                <div className="flex items-center gap-1">
-                  <Mountain className="h-3.5 w-3.5" />
-                  <span className="text-sm">{location.altitude}m</span>
-                </div>
-              )}
-            </>
-          ) : locationError ? (
-            <button
-              onClick={() => {
-                setLocationError(false);
-                navigator.geolocation?.getCurrentPosition(
-                  async (position) => {
-                    const { latitude, longitude, altitude } = position.coords;
-                    try {
-                      const response = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-                        { headers: { 'User-Agent': 'SystemOfATown/1.0' } }
-                      );
-                      const data = await response.json();
-                      const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || 'Unbekannt';
-                      setLocation({ city, altitude: altitude ? Math.round(altitude) : null });
-                    } catch (error) {
-                      console.error('Geocoding failed:', error);
-                      setLocationError(true);
-                    }
-                  },
-                  () => setLocationError(true),
-                  { enableHighAccuracy: true }
-                );
-              }}
-              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-              title="Standort aktivieren"
-            >
-              <MapPin className="h-4 w-4" />
-              <span className="text-sm">Standort?</span>
-            </button>
-          ) : null}
-          
-          {/* Digitale Uhrzeit - ohne Icon */}
-          <span className="text-sm font-mono tabular-nums">{formattedTime}</span>
-        </div>
+        {/* CENTER — ARMSTRONG Wordmark */}
+        <span
+          className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none"
+          style={{ fontSize: '14px' }}
+        >
+          ARMSTRONG
+        </span>
 
-{/* Right section: Armstrong + User avatar */}
-        <div className="flex items-center gap-1">
-          {/* Armstrong toggle - Desktop only: Show + Reset when turning on */}
+        {/* RIGHT — 3 Glass Buttons */}
+        <div className="flex items-center gap-2">
+          {/* 1. Analog Clock */}
+          <div className={GLASS_BUTTON}>
+            <AnalogClock time={currentTime} />
+          </div>
+
+          {/* 2. Armstrong Chatbot */}
           {!isMobile && (
-            <Button
-              variant="glass"
-              size="icon"
+            <button
               onClick={() => {
                 if (armstrongVisible) {
                   hideArmstrong();
                 } else {
-                  // When showing, always reset position to ensure visibility
                   showArmstrong({ resetPosition: true, expanded: false });
                 }
               }}
               className={cn(
-                'h-9 w-9',
+                GLASS_BUTTON,
                 armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
               )}
               title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
             >
-              <Rocket className="h-5 w-5" />
-            </Button>
+              <Rocket className="h-4.5 w-4.5" />
+            </button>
           )}
 
-          {/* User Menu */}
+          {/* 3. Profile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="h-8 w-8">
+              <button className={GLASS_BUTTON} title="Profil">
+                <Avatar className="h-7 w-7">
                   <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-[10px] font-medium bg-transparent">{initials}</AvatarFallback>
                 </Avatar>
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
@@ -260,14 +218,12 @@ export function SystemBar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {/* Armstrong reset option */}
               {!isMobile && (
                 <DropdownMenuItem onClick={resetArmstrong}>
                   <Rocket className="h-4 w-4 mr-2" />
                   Armstrong zurücksetzen
                 </DropdownMenuItem>
               )}
-              {/* Show real login link in dev mode when using bypass */}
               {isDevelopmentMode && !user && (
                 <DropdownMenuItem asChild>
                   <Link to="/auth" className="text-primary">
