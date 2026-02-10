@@ -32,9 +32,11 @@ import React from 'react';
 import camEntrance from '@/assets/miety/cam-entrance.jpg';
 import camGarden from '@/assets/miety/cam-garden.jpg';
 import camIndoor from '@/assets/miety/cam-indoor.jpg';
-// Arlo product images
-import arloPro5s from '@/assets/miety/arlo-pro5s.jpg';
-import arloSmarthub from '@/assets/miety/arlo-smarthub.jpg';
+// Eufy product images
+import eufySolocamS340 from '@/assets/miety/eufy-solocam-s340.jpg';
+import eufyFloodlightE340 from '@/assets/miety/eufy-floodlight-e340.jpg';
+import eufyIndoorS350 from '@/assets/miety/eufy-indoor-s350.jpg';
+import eufyHomebaseS380 from '@/assets/miety/eufy-homebase-s380.jpg';
 
 const MietyHomeDossier = React.lazy(() => import('./miety/MietyHomeDossier'));
 
@@ -190,17 +192,6 @@ function UebersichtTile() {
     </div>
   );
 
-  const quickCards = [
-    { key: 'strom', label: 'Strom', icon: Zap, tab: 'versorgung' },
-    { key: 'internet', label: 'Internet', icon: Wifi, tab: 'versorgung' },
-    { key: 'hausrat', label: 'Hausrat', icon: Shield, tab: 'versicherungen' },
-    { key: 'zaehler', label: 'Zähler', icon: Gauge, tab: 'versorgung' },
-  ];
-
-  const getContractStatus = (cat: string) => {
-    const c = contracts.find(cc => cc.category === cat);
-    return c ? (c.provider_name || 'Eingerichtet') : null;
-  };
 
   const buildMapQuery = (home: any) =>
     encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
@@ -310,7 +301,7 @@ function UebersichtTile() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {demoCameras.map((cam) => (
                   <Card key={cam.id} className="glass-card overflow-hidden group cursor-pointer">
-                    <CardContent className="p-0 relative aspect-video">
+                    <CardContent className="p-0 relative aspect-square">
                       <img src={cam.image} alt={cam.name} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       {/* Status badge top left */}
@@ -350,30 +341,6 @@ function UebersichtTile() {
         })
       )}
 
-      {/* Quick access */}
-      <div>
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Schnellzugriff</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickCards.map(({ key, label, icon: QIcon, tab }) => {
-            const status = key !== 'zaehler' ? getContractStatus(key) : null;
-            return (
-              <Card key={key} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => navigate(`/portal/miety/${tab}`)}>
-                <CardContent className="p-4 text-center">
-                  <QIcon className="h-6 w-6 mx-auto mb-2 text-primary" />
-                  <p className="text-sm font-medium">{label}</p>
-                  {status ? (
-                    <p className="text-xs text-primary mt-1 flex items-center justify-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />{status}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mt-1">Einrichten →</p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
@@ -445,8 +412,8 @@ function VersorgungTile() {
         return (
           <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* IST Card */}
-            <Card className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
-              <CardContent className="p-5">
+            <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} aspect-square`}>
+              <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
                     <SIcon className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
@@ -500,9 +467,9 @@ function VersorgungTile() {
 
             {/* SOLL Card */}
             {hasSoll ? (
-              <Card className="glass-card border-green-500/20 overflow-hidden">
+              <Card className="glass-card border-green-500/20 overflow-hidden aspect-square">
                 <div className="h-1.5 bg-gradient-to-r from-green-400 to-emerald-600" />
-                <CardContent className="p-5">
+                <CardContent className="p-5 flex flex-col justify-between h-full">
                   <div className="flex items-start gap-3">
                     <div className="p-2 rounded-lg bg-green-500/10">
                       <Zap className="h-5 w-5 text-green-600" />
@@ -531,7 +498,7 @@ function VersorgungTile() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-dashed opacity-60">
+              <Card className="border-dashed opacity-60 aspect-square">
                 <CardContent className="p-5 flex items-center justify-center h-full">
                   <p className="text-sm text-muted-foreground text-center">
                     {category === 'gas' ? 'Gasanbieter-Vergleich — demnächst verfügbar' : 'Vergleich nicht verfügbar'}
@@ -603,8 +570,8 @@ function VersicherungenTile() {
         return (
           <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* IST Card */}
-            <Card className={contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'}>
-              <CardContent className="p-5">
+            <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} aspect-square`}>
+              <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
                     <Shield className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
@@ -640,9 +607,9 @@ function VersicherungenTile() {
             </Card>
 
             {/* SOLL Card — Neo Digital */}
-            <Card className="glass-card border-blue-500/20 overflow-hidden">
+            <Card className="glass-card border-blue-500/20 overflow-hidden aspect-square">
               <div className="h-1.5 bg-gradient-to-r from-blue-400 to-indigo-600" />
-              <CardContent className="p-5">
+              <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-blue-500/10">
                     <Shield className="h-5 w-5 text-blue-600" />
@@ -687,23 +654,161 @@ function VersicherungenTile() {
   );
 }
 
+// EufyConnectCard — functional eufy account connection
 // =============================================================================
-// Tab 4: Smart Home — Kamera-Verwaltung + Arlo Shop
+function EufyConnectCard() {
+  const { activeTenantId, user } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [error, setError] = useState('');
+
+  // Check existing connection
+  useEffect(() => {
+    if (!user?.id || !activeTenantId) return;
+    supabase
+      .from('miety_eufy_accounts')
+      .select('email')
+      .eq('user_id', user.id)
+      .eq('tenant_id', activeTenantId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) { setConnected(true); setEmail(data.email); }
+      });
+  }, [user?.id, activeTenantId]);
+
+  const handleConnect = async () => {
+    if (!email || !password || !activeTenantId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/eufy-connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ action: 'login', email, password, tenant_id: activeTenantId }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setError(result.detail || result.error || 'Verbindung fehlgeschlagen');
+      } else {
+        setConnected(true);
+        setDevices(result.devices || []);
+        setPassword('');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Netzwerkfehler');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/eufy-connect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ action: 'disconnect', tenant_id: activeTenantId }),
+    });
+    setConnected(false);
+    setDevices([]);
+    setEmail('');
+  };
+
+  return (
+    <Card className="glass-card border-primary/20">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 rounded-xl bg-primary/10">
+            <Link2 className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-sm">eufy Konto verbinden</h3>
+            <p className="text-xs text-muted-foreground">
+              {connected ? `Verbunden als ${email}` : 'Melden Sie sich mit Ihrem eufy-Konto an, um Ihre Kameras zu verwalten.'}
+            </p>
+          </div>
+          {connected && (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0 text-xs">
+              <CheckCircle2 className="h-3 w-3 mr-1" />Verbunden
+            </Badge>
+          )}
+        </div>
+
+        {connected ? (
+          <div className="space-y-3">
+            {devices.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Erkannte Geräte:</p>
+                {devices.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">{d.name}</p>
+                      <p className="text-xs text-muted-foreground">{d.model}</p>
+                    </div>
+                    <Badge variant={d.status === 'online' ? 'default' : 'secondary'} className="text-[10px]">
+                      {d.status === 'online' ? '● Online' : '○ Offline'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button size="sm" variant="outline" className="text-xs" onClick={handleDisconnect}>
+              Verbindung trennen
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1.5 block">E-Mail-Adresse</Label>
+              <Input type="email" placeholder="ihre@email.de" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs mb-1.5 block">Passwort</Label>
+              <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            <Button className="w-full mt-1" onClick={handleConnect} disabled={loading || !email || !password}>
+              <Link2 className="h-4 w-4 mr-2" />
+              {loading ? 'Verbinde...' : 'Verbindung herstellen'}
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Ihre Zugangsdaten werden verschlüsselt gespeichert und nur für die API-Verbindung verwendet.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Tab 4: Smart Home — Kamera-Verwaltung + eufy Shop
 // =============================================================================
 function SmartHomeTile() {
   const [cameraToggles, setCameraToggles] = useState<Record<string, boolean>>({
     'cam-1': true, 'cam-2': true, 'cam-3': false,
   });
 
-  const arloProducts = [
-    { id: 'pro5s-1', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
-    { id: 'pro5s-2', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
-    { id: 'pro5s-3', name: 'Arlo Pro 5S 2K', price: 'ab 179,99 EUR', image: arloPro5s, badges: ['2K HDR', 'Akku', 'WLAN', '160°'] },
-    { id: 'smarthub', name: 'Arlo SmartHub', price: 'ab 49,99 EUR', image: arloSmarthub, badges: ['WiFi', 'ZigBee', 'microSD'] },
+  const eufyProducts = [
+    { id: 'solocam-s340', name: 'eufy SoloCam S340', price: 'ab 159,99 EUR', image: eufySolocamS340, badges: ['3K', 'Solar', 'WLAN', '360°'], url: 'https://www.eufy.com/de/products/solocam-s340' },
+    { id: 'floodlight-e340', name: 'eufy Floodlight Cam E340', price: 'ab 179,99 EUR', image: eufyFloodlightE340, badges: ['3K', 'Flutlicht', 'WLAN', '360°'], url: 'https://www.eufy.com/de/products/floodlight-cam-e340' },
+    { id: 'indoor-s350', name: 'eufy Indoor Cam S350', price: 'ab 59,99 EUR', image: eufyIndoorS350, badges: ['4K', 'Pan&Tilt', 'WLAN', 'Dual-Cam'], url: 'https://www.eufy.com/de/products/indoor-cam-s350' },
+    { id: 'homebase-s380', name: 'eufy HomeBase S380', price: 'ab 149,99 EUR', image: eufyHomebaseS380, badges: ['WiFi', '16TB', 'Lokal-KI'], url: 'https://www.eufy.com/de/products/homebase-s380' },
   ];
 
   return (
-    <TileShell icon={Camera} title="Smart Home" description="Kamera-Verwaltung und Arlo Smart Home Shop">
+    <TileShell icon={Camera} title="Smart Home" description="Kamera-Verwaltung und eufy Smart Home">
       {/* Camera Management */}
       <Card className="glass-card">
         <CardContent className="p-5">
@@ -742,9 +847,9 @@ function SmartHomeTile() {
               <ShoppingCart className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm">Starter Set — Arlo Premium</p>
-              <p className="text-xs text-muted-foreground">3 Kameras + SmartHub — alles was Sie brauchen</p>
-              <p className="text-lg font-bold mt-1">Komplett ab 589,96 EUR</p>
+              <p className="font-semibold text-sm">Starter Set — eufy Security</p>
+              <p className="text-xs text-muted-foreground">2 Kameras + HomeBase — alles was Sie brauchen</p>
+              <p className="text-lg font-bold mt-1">Komplett ab 469,97 EUR</p>
             </div>
             <Button size="sm">Starter Set kaufen</Button>
           </div>
@@ -753,7 +858,7 @@ function SmartHomeTile() {
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {arloProducts.map((product) => (
+        {eufyProducts.map((product) => (
           <Card key={product.id} className="glass-card overflow-hidden">
             <CardContent className="p-0">
               <div className="aspect-square bg-muted/20 flex items-center justify-center p-6">
@@ -768,11 +873,8 @@ function SmartHomeTile() {
                   ))}
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="text-xs flex-1">
-                    <ExternalLink className="h-3 w-3 mr-1" />Bei Arlo kaufen
-                  </Button>
-                  <Button size="sm" variant="ghost" className="text-xs" disabled>
-                    Mit System verbinden
+                  <Button size="sm" variant="outline" className="text-xs flex-1" onClick={() => window.open(product.url, '_blank')}>
+                    <ExternalLink className="h-3 w-3 mr-1" />Bei eufy kaufen
                   </Button>
                 </div>
               </div>
@@ -781,37 +883,8 @@ function SmartHomeTile() {
         ))}
       </div>
 
-      {/* Arlo Konto verbinden */}
-      <Card className="glass-card border-primary/20">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-primary/10">
-              <Link2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">Arlo Konto verbinden</h3>
-              <p className="text-xs text-muted-foreground">Melden Sie sich mit Ihrem Arlo-Konto an, um Ihre Kameras zu verwalten.</p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs mb-1.5 block">E-Mail-Adresse</Label>
-              <Input type="email" placeholder="ihre@email.de" />
-            </div>
-            <div>
-              <Label className="text-xs mb-1.5 block">Passwort</Label>
-              <Input type="password" placeholder="••••••••" />
-            </div>
-            <Button className="w-full mt-1">
-              <Link2 className="h-4 w-4 mr-2" />
-              Verbindung herstellen
-            </Button>
-            <p className="text-[10px] text-muted-foreground text-center">
-              Ihre Zugangsdaten werden verschlüsselt gespeichert und nur für die API-Verbindung verwendet.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* eufy Konto verbinden */}
+      <EufyConnectCard />
     </TileShell>
   );
 }
