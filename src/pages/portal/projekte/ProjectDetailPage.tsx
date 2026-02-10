@@ -70,7 +70,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="p-6 text-center">
         <p className="text-muted-foreground">Projekt nicht gefunden</p>
-        <Button variant="link" onClick={() => navigate('/portal/projekte/portfolio')}>
+        <Button variant="link" onClick={() => navigate('/portal/projekte/projekte')}>
           Zurück zum Portfolio
         </Button>
       </div>
@@ -97,7 +97,7 @@ export default function ProjectDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/portal/projekte/portfolio')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/portal/projekte/projekte')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
