@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { DEV_TENANT_UUID } from '@/hooks/useGoldenPathSeeds';
 import type { 
   FinanceRequest, 
   ApplicantProfile, 
@@ -15,15 +14,12 @@ import type {
 const SUBMITTED_STATUS = 'submitted_to_zone1';
 
 export function useFinanceRequests() {
-  const { activeOrganization, isDevelopmentMode } = useAuth();
+  const { activeOrganization } = useAuth();
 
   return useQuery({
     queryKey: ['finance-requests', activeOrganization?.id],
     queryFn: async () => {
-      if (!activeOrganization?.id && !isDevelopmentMode) return [];
-      
-      // P0-1 FIX: Use correct DEV_TENANT_UUID fallback instead of invalid 'dev-tenant' string
-      const tenantId = activeOrganization?.id || (isDevelopmentMode ? DEV_TENANT_UUID : null);
+      const tenantId = activeOrganization?.id;
       if (!tenantId) return [];
       
       const { data, error } = await supabase
@@ -45,7 +41,7 @@ export function useFinanceRequests() {
       if (error) throw error;
       return data as (FinanceRequest & { applicant_profiles: Partial<ApplicantProfile>[] })[];
     },
-    enabled: !!activeOrganization?.id || isDevelopmentMode,
+    enabled: !!activeOrganization?.id,
   });
 }
 
@@ -83,7 +79,7 @@ export function useFinanceRequest(requestId: string | undefined) {
 
 export function useCreateFinanceRequest() {
   const queryClient = useQueryClient();
-  const { activeOrganization, user, isDevelopmentMode } = useAuth();
+  const { activeOrganization, user } = useAuth();
 
   return useMutation({
     mutationFn: async (data: {
@@ -91,8 +87,7 @@ export function useCreateFinanceRequest() {
       property_id?: string;
       custom_object_data?: Record<string, unknown>;
     }) => {
-      // P0-1 FIX: Use correct DEV_TENANT_UUID fallback
-      const tenantId = activeOrganization?.id || (isDevelopmentMode ? DEV_TENANT_UUID : null);
+      const tenantId = activeOrganization?.id;
       if (!tenantId) throw new Error('No tenant ID available');
       
       const userId = user?.id || 'dev-user';
