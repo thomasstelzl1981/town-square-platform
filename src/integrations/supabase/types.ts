@@ -7571,6 +7571,163 @@ export type Database = {
           },
         ]
       }
+      mail_campaign_attachments: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          filename: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          filename: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_campaign_attachments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "mail_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mail_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          city: string | null
+          company: string | null
+          contact_id: string | null
+          created_at: string
+          delivery_status: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          campaign_id: string
+          city?: string | null
+          company?: string | null
+          contact_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          email: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          city?: string | null
+          company?: string | null
+          contact_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          email?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "mail_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mail_campaign_recipients_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mail_campaigns: {
+        Row: {
+          body_template: string
+          created_at: string
+          failed_count: number
+          id: string
+          include_signature: boolean
+          name: string
+          org_id: string
+          recipients_count: number
+          sent_at: string | null
+          sent_count: number
+          status: string
+          subject_template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_template?: string
+          created_at?: string
+          failed_count?: number
+          id?: string
+          include_signature?: boolean
+          name?: string
+          org_id: string
+          recipients_count?: number
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject_template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_template?: string
+          created_at?: string
+          failed_count?: number
+          id?: string
+          include_signature?: boolean
+          name?: string
+          org_id?: string
+          recipients_count?: number
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject_template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_campaigns_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mail_messages: {
         Row: {
           account_id: string
@@ -13556,6 +13713,7 @@ export type Database = {
         | "user"
         | "finance_manager"
         | "akquise_manager"
+        | "sales_partner"
       car_claim_status:
         | "draft"
         | "open"
@@ -13916,6 +14074,7 @@ export const Constants = {
         "user",
         "finance_manager",
         "akquise_manager",
+        "sales_partner",
       ],
       car_claim_status: [
         "draft",

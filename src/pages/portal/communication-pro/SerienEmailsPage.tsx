@@ -1,133 +1,93 @@
 /**
- * SerienEmailsPage — Living demo for MOD-14 "Serien-E-Mails"
- * Shows example campaigns with real posting images and investment copy.
- * No hardcoded DB data — purely presentational demo content.
+ * SerienEmailsPage — MOD-14 Serien-E-Mail (Outbound-Light)
+ * Dashboard with campaign list + CampaignWizard
+ * Role-gated: only sales_partner can access
  */
 
 import { useState } from 'react';
-import { Mail, Plus, Eye, BarChart3, Clock, Send, CheckCircle2, Users, TrendingUp, Copy, MoreHorizontal } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMailCampaigns } from '@/hooks/useMailCampaigns';
+import { CampaignWizard } from '@/components/portal/communication-pro/CampaignWizard';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import {
+  Mail, Plus, Send, Users, CheckCircle2, AlertCircle,
+  Clock, Trash2, Loader2, ShieldAlert,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
-import imgKiPlattform from '@/assets/social/posting-ki-plattform.jpeg';
-import imgVermoegen from '@/assets/social/posting-vermoegen.jpeg';
-import imgFragen from '@/assets/social/posting-kapitalanlage-fragen.jpeg';
-import imgAnalyse from '@/assets/social/posting-analyse-anfordern.jpeg';
-import imgOhneVerkaufsdruck from '@/assets/social/posting-ohne-verkaufsdruck.jpeg';
-import imgObjekteZahlen from '@/assets/social/posting-objekte-zahlen.jpeg';
-import imgStarteKaufy from '@/assets/social/posting-starte-kaufy.jpeg';
-import imgDokumente from '@/assets/social/posting-analyse-dokumente.jpeg';
-
-/* ── Demo campaign data ─────────────────────────────── */
-
-interface DemoCampaign {
-  id: string;
-  name: string;
-  status: 'draft' | 'scheduled' | 'active' | 'completed';
-  recipients: number;
-  openRate: number;
-  clickRate: number;
-  sentDate?: string;
-  scheduledDate?: string;
-  slides: { image: string; caption: string; postText: string }[];
-}
-
-const DEMO_CAMPAIGNS: DemoCampaign[] = [
-  {
-    id: '1',
-    name: 'Kapitalanlage Herbst-Kampagne',
-    status: 'active',
-    recipients: 342,
-    openRate: 38.2,
-    clickRate: 12.4,
-    sentDate: '03.02.2026',
-    slides: [
-      {
-        image: imgKiPlattform,
-        caption: 'Die KI-Plattform für Kapitalanlageimmobilien',
-        postText: 'Marktanalyse, Objektprüfung und digitale Versicherbarkeit – alles auf einer Plattform. Entdecken Sie, wie KI Ihre Immobilienentscheidungen revolutioniert.',
-      },
-      {
-        image: imgVermoegen,
-        caption: 'Vermögen aufbauen. Strukturiert. Transparent.',
-        postText: 'Immobilien als Kapitalanlage bieten Ihnen eine der sichersten Möglichkeiten, langfristig Vermögen aufzubauen. Mit der richtigen Strategie und fundierten Analysen.',
-      },
-      {
-        image: imgFragen,
-        caption: 'Kapitalanlage beginnt mit den richtigen Fragen.',
-        postText: 'Welche Rendite ist realistisch? Welche Lage verspricht Stabilität? Wir liefern die Antworten – ohne Verkaufsdruck, mit fundierten Zahlen.',
-      },
-      {
-        image: imgAnalyse,
-        caption: 'Kostenlose Analyse anfordern',
-        postText: 'Fordern Sie jetzt Ihre individuelle Investmentanalyse an. Unser Team bewertet Standort, Rendite und Risiken – kostenfrei und unverbindlich.',
-      },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Neujahrsaktion – Immobilien 2026',
-    status: 'completed',
-    recipients: 518,
-    openRate: 42.7,
-    clickRate: 15.1,
-    sentDate: '15.01.2026',
-    slides: [
-      {
-        image: imgOhneVerkaufsdruck,
-        caption: 'Immobilien als Kapitalanlage. Ohne Verkaufsdruck.',
-        postText: 'Keine Versprechungen. Nur ehrliche Analysen. So treffen Sie Ihre Investmententscheidung auf Basis von Fakten, nicht Emotionen.',
-      },
-      {
-        image: imgObjekteZahlen,
-        caption: 'Objekte – Zahlen – Perspektiven.',
-        postText: 'Jede Immobilie hat ihre Geschichte. Wir bereiten die Zahlen so auf, dass Sie auf einen Blick Potenzial und Risiko erkennen.',
-      },
-      {
-        image: imgDokumente,
-        caption: 'Kostenlose Analyse anfordern.',
-        postText: 'Standortanalyse, Renditeberechnung, Cashflow-Prognose – professionell aufbereitet für Ihre Entscheidung.',
-      },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Partner-Onboarding Serie',
-    status: 'scheduled',
-    recipients: 127,
-    openRate: 0,
-    clickRate: 0,
-    scheduledDate: '17.02.2026',
-    slides: [
-      {
-        image: imgStarteKaufy,
-        caption: 'Starte mit Kaufy.',
-        postText: 'Kaufy ist Ihr Partner für Kapitalanlageimmobilien. Strukturiert, transparent und digital – so funktioniert modernes Immobilieninvestment.',
-      },
-    ],
-  },
-];
-
-const STATUS_MAP: Record<DemoCampaign['status'], { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  draft: { label: 'Entwurf', variant: 'outline' },
-  scheduled: { label: 'Geplant', variant: 'secondary' },
-  active: { label: 'Aktiv', variant: 'default' },
-  completed: { label: 'Abgeschlossen', variant: 'secondary' },
+const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: typeof Send }> = {
+  draft: { label: 'Entwurf', variant: 'outline', icon: Clock },
+  sending: { label: 'Wird gesendet', variant: 'default', icon: Loader2 },
+  sent: { label: 'Gesendet', variant: 'secondary', icon: CheckCircle2 },
+  failed: { label: 'Fehlgeschlagen', variant: 'destructive', icon: AlertCircle },
 };
 
-/* ── Component ──────────────────────────────────────── */
-
 export function SerienEmailsPage() {
-  const [selectedCampaign, setSelectedCampaign] = useState<DemoCampaign | null>(null);
+  const { user } = useAuth();
+  const [showWizard, setShowWizard] = useState(false);
+  const { campaigns, isLoading, deleteCampaign } = useMailCampaigns();
 
-  const activeCampaigns = DEMO_CAMPAIGNS.filter(c => c.status === 'active').length;
-  const totalRecipients = DEMO_CAMPAIGNS.reduce((s, c) => s + c.recipients, 0);
-  const avgOpen = DEMO_CAMPAIGNS.filter(c => c.openRate > 0).reduce((s, c, _, a) => s + c.openRate / a.length, 0);
+  // Role-gate: check if user has sales_partner role
+  const { data: hasSalesRole, isLoading: roleLoading } = useQuery({
+    queryKey: ['user-has-sales-role', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const roles = (data || []).map(r => r.role);
+      return roles.includes('sales_partner') || roles.includes('platform_admin');
+    },
+    enabled: !!user?.id,
+  });
+
+  if (roleLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!hasSalesRole) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center gap-4 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <ShieldAlert className="h-8 w-8 text-destructive" />
+        </div>
+        <h2 className="text-lg font-semibold">Zugriff eingeschränkt</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Serien-E-Mails sind nur für Vertriebspartner verfügbar. 
+          Bitte kontaktieren Sie Ihren Administrator, um die entsprechende Rolle zu erhalten.
+        </p>
+      </div>
+    );
+  }
+
+  if (showWizard) {
+    return (
+      <div className="p-4 md:p-6">
+        <CampaignWizard
+          onClose={() => setShowWizard(false)}
+          onSuccess={() => setShowWizard(false)}
+        />
+      </div>
+    );
+  }
+
+  const totalRecipients = campaigns.reduce((s, c) => s + (c.recipients_count || 0), 0);
+  const sentCampaigns = campaigns.filter(c => c.status === 'sent').length;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -138,24 +98,24 @@ export function SerienEmailsPage() {
             <Mail className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h1 className="text-h2 text-foreground">Serien-E-Mails</h1>
-            <p className="text-xs text-muted-foreground">Personalisierte E-Mail-Kampagnen mit Immobilien-Content</p>
+            <h1 className="text-lg font-semibold text-foreground">Serien-E-Mails</h1>
+            <p className="text-xs text-muted-foreground">Personalisierter Massenversand an Ihre Kontakte</p>
           </div>
         </div>
-        <Button onClick={() => toast.info('Kampagnen-Editor wird vorbereitet…')}>
-          <Plus className="h-4 w-4 mr-2" /> Kampagne erstellen
+        <Button onClick={() => setShowWizard(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Neue Serien-E-Mail
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="glass-card">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Kampagnen</p>
-                <p className="text-2xl font-bold mt-1">{DEMO_CAMPAIGNS.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{activeCampaigns} aktiv</p>
+                <p className="text-2xl font-bold mt-1">{campaigns.length}</p>
+                <p className="text-xs text-muted-foreground">{sentCampaigns} gesendet</p>
               </div>
               <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Send className="h-4 w-4 text-primary" />
@@ -163,13 +123,12 @@ export function SerienEmailsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Empfänger</p>
+                <p className="text-xs text-muted-foreground">Empfänger gesamt</p>
                 <p className="text-2xl font-bold mt-1">{totalRecipients.toLocaleString('de-DE')}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Kontakte gesamt</p>
               </div>
               <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Users className="h-4 w-4 text-primary" />
@@ -177,215 +136,104 @@ export function SerienEmailsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Ø Öffnungsrate</p>
-                <p className="text-2xl font-bold mt-1">{avgOpen.toFixed(1)}%</p>
-                <p className="text-xs text-primary mt-0.5">+3.2% vs. Vormonat</p>
-              </div>
-              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Eye className="h-4 w-4 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Ø Klickrate</p>
+                <p className="text-xs text-muted-foreground">Zugestellt</p>
                 <p className="text-2xl font-bold mt-1">
-                  {DEMO_CAMPAIGNS.filter(c => c.clickRate > 0).reduce((s, c, _, a) => s + c.clickRate / a.length, 0).toFixed(1)}%
+                  {campaigns.reduce((s, c) => s + (c.sent_count || 0), 0).toLocaleString('de-DE')}
                 </p>
-                <p className="text-xs text-primary mt-0.5">Über Branchendurchschnitt</p>
+                <p className="text-xs text-destructive">
+                  {campaigns.reduce((s, c) => s + (c.failed_count || 0), 0)} fehlgeschlagen
+                </p>
               </div>
               <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="h-4 w-4 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs: Kampagnen / Vorschau */}
-      <Tabs defaultValue="campaigns" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="campaigns">Kampagnen</TabsTrigger>
-          <TabsTrigger value="content">Content-Bibliothek</TabsTrigger>
-        </TabsList>
-
-        {/* ── Tab: Kampagnen ── */}
-        <TabsContent value="campaigns" className="space-y-3">
-          {DEMO_CAMPAIGNS.map(campaign => {
-            const st = STATUS_MAP[campaign.status];
+      {/* Campaign List */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : campaigns.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <h3 className="font-medium text-foreground">Noch keine Kampagnen</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              Erstellen Sie Ihre erste Serien-E-Mail, um personalisierte Nachrichten an Ihre Kontakte zu senden.
+            </p>
+            <Button onClick={() => setShowWizard(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Kampagne erstellen
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {campaigns.map(campaign => {
+            const st = STATUS_MAP[campaign.status] || STATUS_MAP.draft;
+            const StIcon = st.icon;
             return (
-              <Card
-                key={campaign.id}
-                className="cursor-pointer hover:border-primary/40 transition-colors"
-                onClick={() => setSelectedCampaign(selectedCampaign?.id === campaign.id ? null : campaign)}
-              >
-                <CardContent className="pt-4 pb-4">
+              <Card key={campaign.id} className="hover:border-primary/30 transition-colors">
+                <CardContent className="py-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {/* Thumbnail strip */}
-                      <div className="flex -space-x-2">
-                        {campaign.slides.slice(0, 3).map((s, i) => (
-                          <img
-                            key={i}
-                            src={s.image}
-                            alt={s.caption}
-                            className="w-10 h-10 rounded-md object-cover border-2 border-background"
-                          />
-                        ))}
-                        {campaign.slides.length > 3 && (
-                          <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-xs font-medium border-2 border-background">
-                            +{campaign.slides.length - 3}
-                          </div>
-                        )}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <StIcon className={`h-4 w-4 ${campaign.status === 'sending' ? 'animate-spin' : ''} text-muted-foreground`} />
                       </div>
-                      <div>
-                        <p className="font-medium">{campaign.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{campaign.name || campaign.subject_template || 'Ohne Titel'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {campaign.slides.length} Slides · {campaign.recipients} Empfänger
-                          {campaign.sentDate && ` · Versendet ${campaign.sentDate}`}
-                          {campaign.scheduledDate && ` · Geplant für ${campaign.scheduledDate}`}
+                          {campaign.recipients_count} Empfänger
+                          {campaign.sent_at && ` · Gesendet ${format(new Date(campaign.sent_at), 'dd.MM.yyyy HH:mm', { locale: de })}`}
+                          {!campaign.sent_at && ` · Erstellt ${format(new Date(campaign.created_at), 'dd.MM.yyyy', { locale: de })}`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {campaign.openRate > 0 && (
-                        <div className="text-right hidden md:block">
-                          <p className="text-sm font-medium">{campaign.openRate}% geöffnet</p>
-                          <Progress value={campaign.openRate} className="w-24 h-1.5 mt-1" />
-                        </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {campaign.status === 'sent' && campaign.sent_count > 0 && (
+                        <span className="text-xs text-muted-foreground hidden md:block">
+                          {campaign.sent_count}/{campaign.recipients_count} zugestellt
+                        </span>
                       )}
                       <Badge variant={st.variant}>{st.label}</Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => toast.info('Kampagne dupliziert')}>
-                            <Copy className="h-4 w-4 mr-2" /> Duplizieren
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast.info('Statistik wird geladen…')}>
-                            <BarChart3 className="h-4 w-4 mr-2" /> Statistik
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {campaign.status === 'draft' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Kampagne löschen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Diese Kampagne und alle zugehörigen Empfänger werden unwiderruflich gelöscht.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteCampaign.mutate(campaign.id)}>
+                                Löschen
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
-
-                  {/* Expanded slide preview */}
-                  {selectedCampaign?.id === campaign.id && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium mb-3">Slide-Vorschau</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {campaign.slides.map((slide, i) => (
-                          <div key={i} className="space-y-2">
-                            <img
-                              src={slide.image}
-                              alt={slide.caption}
-                              className="w-full aspect-[4/5] object-cover rounded-lg"
-                            />
-                            <p className="text-xs font-semibold leading-tight">{slide.caption}</p>
-                            <p className="text-xs text-muted-foreground leading-snug">{slide.postText}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             );
           })}
-        </TabsContent>
-
-        {/* ── Tab: Content-Bibliothek ── */}
-        <TabsContent value="content" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Kapitalanlage-Postings</CardTitle>
-              <CardDescription>
-                Fertige Bild-Text-Kombinationen für Ihre nächste Kampagne. Klicken Sie auf ein Posting, um es in eine Kampagne zu übernehmen.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {[
-                  {
-                    image: imgKiPlattform,
-                    headline: 'Die KI-Plattform für Kapitalanlageimmobilien',
-                    text: 'Marktanalyse, Objektprüfung und digitale Versicherbarkeit – alles auf einer Plattform. Investieren Sie smart in Immobilien.',
-                  },
-                  {
-                    image: imgVermoegen,
-                    headline: 'Vermögen aufbauen. Strukturiert.',
-                    text: 'Mit Immobilien als Kapitalanlage schaffen Sie nachhaltigen Wohlstand. Schritt für Schritt, mit klarer Strategie.',
-                  },
-                  {
-                    image: imgFragen,
-                    headline: 'Die richtigen Fragen stellen',
-                    text: 'Kapitalanlage beginnt mit den richtigen Fragen. Wir liefern Antworten – fundiert, transparent und ohne Verkaufsdruck.',
-                  },
-                  {
-                    image: imgAnalyse,
-                    headline: 'Kostenlose Analyse anfordern',
-                    text: 'Erhalten Sie eine professionelle Bewertung Ihres Investmentpotenzials. Kostenfrei und unverbindlich.',
-                  },
-                  {
-                    image: imgOhneVerkaufsdruck,
-                    headline: 'Ohne Verkaufsdruck investieren',
-                    text: 'Keine Versprechungen – nur ehrliche Analysen. Treffen Sie Ihre Investmententscheidung auf Basis von Fakten.',
-                  },
-                  {
-                    image: imgObjekteZahlen,
-                    headline: 'Objekte – Zahlen – Perspektiven',
-                    text: 'Jede Immobilie hat ihre Geschichte. Wir bereiten die Zahlen auf, damit Sie Potenzial und Risiko sofort erkennen.',
-                  },
-                  {
-                    image: imgDokumente,
-                    headline: 'Professionelle Standortanalyse',
-                    text: 'Standortanalyse, Renditeberechnung, Cashflow-Prognose – professionell aufbereitet für Ihre Entscheidung.',
-                  },
-                  {
-                    image: imgStarteKaufy,
-                    headline: 'Starte mit Kaufy',
-                    text: 'Ihr Partner für Kapitalanlageimmobilien. Strukturiert, transparent und digital – modernes Immobilieninvestment.',
-                  },
-                ].map((item, i) => (
-                  <Card
-                    key={i}
-                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow group"
-                    onClick={() => toast.success(`"${item.headline}" in Kampagne übernommen`)}
-                  >
-                    <div className="relative">
-                      <img
-                        src={item.image}
-                        alt={item.headline}
-                        className="w-full aspect-[4/5] object-cover group-hover:scale-[1.02] transition-transform"
-                      />
-                      <div className="absolute top-2 right-2">
-                        <Badge variant="secondary" className="bg-background/80 backdrop-blur text-xs">
-                          <Plus className="h-3 w-3 mr-1" /> Verwenden
-                        </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="pt-3 pb-3 space-y-1">
-                      <p className="text-sm font-semibold leading-tight">{item.headline}</p>
-                      <p className="text-xs text-muted-foreground leading-snug">{item.text}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
