@@ -55,7 +55,7 @@ export function StickyCalculatorPanel({
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 
   return (
-    <Card className="glass-card shadow-card sticky top-24">
+    <Card className="glass-card shadow-card h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <Calculator className="h-4 w-4 text-primary" />
