@@ -485,11 +485,11 @@ export const zone2Portal: ZoneDefinition = {
       tiles: [
         // EXCEPTION: 6 tiles instead of 4
         { path: "uebersicht", component: "MietyUebersicht", title: "Übersicht" },
-        { path: "dokumente", component: "MietyDokumente", title: "Dokumente" },
         { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
         { path: "zaehlerstaende", component: "MietyZaehlerstaende", title: "Zählerstände" },
         { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
         { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
+        { path: "dokumente", component: "MietyDokumente", title: "Dokumente" },
       ],
       dynamic_routes: [
         { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },

@@ -22,8 +22,12 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string 
 
 const PLACEHOLDER_CARDS = [
   { category: 'strom', label: 'Stromvertrag' },
-  { category: 'hausrat', label: 'Hausratversicherung' },
+  { category: 'gas', label: 'Gasvertrag' },
+  { category: 'wasser', label: 'Wasservertrag' },
   { category: 'internet', label: 'Internetvertrag' },
+  { category: 'hausrat', label: 'Hausratversicherung' },
+  { category: 'haftpflicht', label: 'Haftpflichtversicherung' },
+  { category: 'miete', label: 'Mietvertrag' },
 ];
 
 interface MietyContractsSectionProps {

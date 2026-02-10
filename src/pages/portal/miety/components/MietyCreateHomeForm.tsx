@@ -1,8 +1,9 @@
 /**
  * MietyCreateHomeForm — Inline form for creating a new home
+ * Prefills address from user profile data
  */
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -32,6 +33,30 @@ export function MietyCreateHomeForm({ onCancel }: MietyCreateHomeFormProps) {
   const [propertyType, setPropertyType] = useState('wohnung');
   const [areaSqm, setAreaSqm] = useState('');
   const [roomsCount, setRoomsCount] = useState('');
+
+  // Prefill from profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile-address-prefill', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('street, house_number, postal_code, city')
+        .eq('id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.street && !address) setAddress(profile.street);
+      if (profile.house_number && !houseNo) setHouseNo(profile.house_number);
+      if (profile.postal_code && !zip) setZip(profile.postal_code);
+      if (profile.city && !city) setCity(profile.city);
+    }
+  }, [profile]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
