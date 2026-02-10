@@ -11,7 +11,7 @@
  * - Mobile: full-width bottom sheet
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, X, Send, Sparkles, ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, ArrowRight, Volume2, VolumeX, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
@@ -72,6 +72,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
+  const [miniVoiceMode, setMiniVoiceMode] = useState(false); // voice-only from closed state
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasGreetedRef = useRef(false);
@@ -146,12 +147,20 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     }
   }, [voice.isListening, voice.transcript]);
 
-  // Show interim transcript in input
+  // Show interim transcript in input (only when panel is open)
   useEffect(() => {
-    if (voice.assistantTranscript) {
+    if (isOpen && voice.assistantTranscript) {
       setInput(voice.transcript + (voice.transcript ? ' ' : '') + voice.assistantTranscript);
     }
-  }, [voice.assistantTranscript]);
+  }, [voice.assistantTranscript, isOpen]);
+
+  // Mini voice mode: start listening from closed bubble
+  const handleMiniVoiceStart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // don't open the panel
+    setMiniVoiceMode(true);
+    setVoiceActive(true);
+    voice.startListening();
+  }, [voice]);
 
   // ========================================================================
   // STREAMING CHAT
@@ -284,32 +293,64 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   // ========================================================================
 
   if (!isOpen) {
+    const isMiniListening = miniVoiceMode && voice.isListening;
+    const isMiniProcessing = miniVoiceMode && isLoading;
+    const isMiniSpeaking = miniVoiceMode && voice.isSpeaking;
+
     return (
-      <button
-        onClick={() => setIsOpen(true)}
+      <div
         className={cn(
-          'fixed z-50 group transition-all duration-300 ease-out',
-          'hover:scale-105 active:scale-95',
-          isMobile
-            ? 'bottom-5 right-5'
-            : 'bottom-8 right-8'
+          'fixed z-50 flex items-center gap-2',
+          isMobile ? 'bottom-5 right-5' : 'bottom-8 right-8'
         )}
-        aria-label="Armstrong öffnen"
       >
-        <div className={cn(
-          'relative flex items-center justify-center rounded-full shadow-2xl',
-          'bg-[hsl(220,20%,10%)] text-white',
-          isMobile ? 'h-14 w-14' : 'h-16 w-16'
-        )}>
+        {/* Status label for mini voice mode */}
+        {(isMiniListening || isMiniProcessing || isMiniSpeaking) && (
+          <div className="bg-[hsl(220,20%,10%)] text-white text-xs font-medium px-4 py-2 rounded-xl shadow-lg animate-in fade-in slide-in-from-right-2">
+            {isMiniSpeaking ? '🔊 Armstrong spricht...' : isMiniListening ? '🎙️ Sprich jetzt...' : '⏳ Denke nach...'}
+          </div>
+        )}
+
+        {/* Mic button */}
+        <button
+          onClick={handleMiniVoiceStart}
+          disabled={isMiniProcessing || isMiniSpeaking}
+          className={cn(
+            'relative flex items-center justify-center rounded-full shadow-xl transition-all duration-300',
+            isMobile ? 'h-11 w-11' : 'h-12 w-12',
+            isMiniListening
+              ? 'bg-primary text-white'
+              : isMiniSpeaking
+                ? 'bg-[hsl(210,80%,55%)] text-white'
+                : 'bg-[hsl(220,20%,15%)] text-white/80 hover:text-white hover:scale-105 active:scale-95',
+          )}
+          aria-label="Spracheingabe"
+        >
+          {isMiniListening && (
+            <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+          )}
+          {isMiniSpeaking ? (
+            <Volume2 className="h-5 w-5 animate-pulse" />
+          ) : (
+            <Mic className="h-5 w-5" />
+          )}
+        </button>
+
+        {/* Chat open button */}
+        <button
+          onClick={() => { setMiniVoiceMode(false); setIsOpen(true); }}
+          className={cn(
+            'group relative flex items-center justify-center rounded-full shadow-2xl transition-all duration-300',
+            'hover:scale-105 active:scale-95',
+            'bg-[hsl(220,20%,10%)] text-white',
+            isMobile ? 'h-14 w-14' : 'h-16 w-16'
+          )}
+          aria-label="Armstrong öffnen"
+        >
           <div className="absolute inset-0 rounded-full bg-[hsl(210,80%,55%)] opacity-20 animate-ping" />
           <MessageCircle className={isMobile ? 'h-6 w-6' : 'h-7 w-7'} />
-        </div>
-        {!isMobile && (
-          <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-[hsl(220,20%,10%)] text-white text-sm font-medium px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
-            Armstrong – KI-Berater
-          </span>
-        )}
-      </button>
+        </button>
+      </div>
     );
   }
 
