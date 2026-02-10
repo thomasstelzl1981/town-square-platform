@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -592,7 +592,16 @@ export function KontakteTab() {
 
   return (
     <Card className="glass-card overflow-hidden">
-      <CardHeader className="pb-4">
+      <CardContent className="p-5 pb-4 border-b">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Kontaktbuch</h3>
+            <p className="text-xs text-muted-foreground">{contacts.length} Kontakte</p>
+          </div>
+        </div>
         <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -666,7 +675,7 @@ export function KontakteTab() {
           </DialogContent>
         </Dialog>
         </div>
-      </CardHeader>
+      </CardContent>
       <CardContent className="p-0">
       {/* Contacts Table */}
       {contacts.length === 0 ? (

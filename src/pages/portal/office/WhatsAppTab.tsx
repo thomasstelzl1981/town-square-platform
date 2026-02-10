@@ -192,10 +192,12 @@ export function WhatsAppTab() {
       {/* Left: Conversation List */}
       <div className="w-80 border-r flex flex-col">
         <div className="p-4 border-b">
-          <h3 className="font-semibold flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            WhatsApp Chats
-          </h3>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-green-600" />
+            </div>
+            <span className="text-sm font-semibold">WhatsApp Chats</span>
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
