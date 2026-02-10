@@ -1,121 +1,165 @@
 
 
-# Strategie: Entwicklungsaccount isolieren und fuer User bereitstellen
+# Konsolidierter Plan: Admin Roles + Tile-Eroeffnung — Saubere Integration
 
-## Aktuelle Situation (Befund)
+## Analyse: Warum ZWEI Rollen-Systeme?
 
-### Was existiert
-- **1 Auth-User mit Daten**: `thomas.stelzl@systemofadown.com` — hat Profil, Membership, ist `platform_admin` der internen Org "System of a Town"
-- **1 Waisen-User**: `test@example.com` — existiert in auth.users, hat aber **kein Profil und keine Membership** (Trigger hat nicht gefeuert)
-- **1 Seed-Artefakt**: `admin@systemofatown.com` mit fester UUID `b0000000-...` — nur in auth.users, keine public-Daten
-- **1 Organisation**: "System of a Town" (type: `internal`) mit 20 Tile-Aktivierungen
-- **0 Eintraege** in `user_roles` — kein einziger User hat eine fachliche Rolle zugewiesen
-
-### Kritisches Problem: Signup-Trigger fehlt
-Die Funktion `handle_new_user()` existiert zwar als Code in den Migrationen, aber der **Trigger auf `auth.users` ist NICHT installiert**. Das bedeutet:
-- Wenn sich ein neuer User registriert, bekommt er **keine Organisation, kein Profil, keine Membership**
-- Er landet in einem leeren Zustand und kann nichts sehen
-- Das erklaert auch, warum `test@example.com` verwaist ist
-
-### Dev-Mode ist deaktiviert
-`isDevelopmentEnvironment()` gibt immer `false` zurueck. Login wird erzwungen. Die `DEV_TENANT_UUID`-Referenzen in 4 Dateien sind aktuell tote Codepfade — nur noch in `useGoldenPathSeeds` und `useFinanceRequest` als Fallback aktiv.
-
----
-
-## Strategie: 3-Schichten-Modell
+Aktuell existieren zwei getrennte Enums und Tabellen:
 
 ```text
-Schicht 1: INTERNAL ORG (Plattform-Betrieb)
-  "System of a Town" | org_type=internal
-  User: thomas.stelzl (platform_admin)
-  Zweck: Zone 1 Admin, Oversight, Konfiguration
-  
-Schicht 2: DEMO/TEST ORGS (Entwicklung + QA)
-  "Muster-Kunde GmbH" | org_type=client
-  "Muster-Partner GmbH" | org_type=partner
-  Zweck: Alle Rollen und Flows testen, bevor echte User kommen
-  
-Schicht 3: PRODUCTION ORGS (echte User)
-  Werden automatisch bei Signup erstellt
-  Jeder neue User bekommt eigene client-Org + Tiles
+TABELLE 1: memberships (tenant-bezogen)
+  ├── Enum: membership_role
+  ├── Werte: platform_admin, org_admin, internal_ops, sales_partner,
+  │          renter_user, finance_manager, akquise_manager, future_room_web_user_lite
+  └── Zweck: Wer gehoert zu welchem Tenant mit welcher Berechtigung?
+
+TABELLE 2: user_roles (global, tenant-unabhaengig)
+  ├── Enum: app_role
+  ├── Werte: platform_admin, moderator, user, finance_manager, akquise_manager, sales_partner
+  └── Zweck: Globale Spezialrechte (z.B. Zone-1-Zugang)
 ```
 
+**Das Problem:** Keines der beiden Systeme steuert aktuell die Tile-Aktivierung. Die Tiles werden manuell oder pauschal per Migration gesetzt. Es gibt keine automatische Verbindung zwischen Rolle und Modulen.
+
+## Loesung: membership_role als SSOT fuer Tile-Aktivierung
+
+Die `membership_role` ist der richtige Ort, weil:
+1. Sie ist TENANT-bezogen — Tiles sind ebenfalls tenant-bezogen (`tenant_tile_activation`)
+2. Ein User kann in verschiedenen Tenants verschiedene Rollen haben
+3. Sie existiert bereits mit den richtigen Werten
+
+Die `app_role` (user_roles) bleibt bestehen fuer globale Rechte (Zone 1, is_platform_admin), wird aber NICHT fuer Tile-Logik verwendet.
+
+### Rollenmodell (konsolidiert)
+
+| membership_role | Verwendungszweck | Tile-Steuerung | Anmerkung |
+|----------------|-----------------|----------------|-----------|
+| `org_admin` | Tenant-Eigentuemer | JA — bestimmt Basis-Set | Automatisch bei Signup |
+| `sales_partner` | Vertriebspartner | JA — Basis + MOD-09, 10 | Bei Einladung/Zuweisung |
+| `finance_manager` | Finanzierungsmanager | JA — Basis + MOD-11 | Bei Einladung/Zuweisung |
+| `akquise_manager` | Akquise-Manager | JA — Basis + MOD-12 | Bei Einladung/Zuweisung |
+| `platform_admin` | System-Admin | Alle 21 (Override) | Nur fuer SoT-Intern |
+| `internal_ops` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
+| `renter_user` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
+| `future_room_web_user_lite` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
+
+### Neue User-Typen und ihre Zuordnung
+
+Bei der Account-Eroeffnung gibt es 5 waehlbare Pfade:
+
+| User-Typ (UI-Label) | membership_role | Module (Gesamt) |
+|---------------------|----------------|-----------------|
+| Standardkunde | `org_admin` | 14 Basis-Module |
+| Super-User | `org_admin` + app_role `super_user` | Alle 21 Module |
+| Akquise-Manager | `akquise_manager` | 14 Basis + MOD-12 = 15 |
+| Finanzierungsmanager | `finance_manager` | 14 Basis + MOD-11 = 15 |
+| Vertriebspartner | `sales_partner` | 14 Basis + MOD-09 + MOD-10 = 16 |
+
+**Super-User** ist ein Sonderfall: Die membership_role bleibt `org_admin`, aber ein Eintrag in `user_roles` mit `super_user` schaltet alle 21 Module frei. Das haelt die membership_role sauber.
+
+### Modul-Zuordnung im Detail
+
+**14 Basis-Module (alle User-Rollen):**
+MOD-00 Dashboard, MOD-01 Stammdaten, MOD-02 KI Office, MOD-03 DMS, MOD-04 Immobilien, MOD-05 MSV, MOD-06 Verkauf, MOD-07 Finanzierung, MOD-08 Investment-Suche, MOD-15 Fortbildung, MOD-16 Services, MOD-17 Car-Management, MOD-18 Finanzanalyse, MOD-20 Miety
+
+**7 Spezial-Module (nur bestimmte Rollen/Super-User):**
+MOD-09 Vertriebspartner, MOD-10 Leads, MOD-11 Finanzierungsmanager, MOD-12 Akquise-Manager, MOD-13 Projekte, MOD-14 Communication Pro, MOD-19 Photovoltaik
+
+**Monitoring (geplant, nur dokumentiert):**
+Zukuenftig fuer akquise_manager, finance_manager, sales_partner
+
 ---
 
-## Implementierungsplan
+## Implementierungsschritte
 
-### Schritt 1: Signup-Trigger reparieren (KRITISCH)
+### Schritt 1: Datenbank — Tile-Mapping-Funktion erstellen
 
-Der `handle_new_user`-Trigger muss auf `auth.users` installiert werden. Ohne ihn funktioniert kein Signup.
+Neue SECURITY DEFINER Funktion `get_tiles_for_role(membership_role)` die die korrekte Tile-Liste zurueckgibt:
 
-**Migration:**
-- `CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()`
-- Die Funktion existiert bereits und erstellt: Organisation (type=client) + Profil + Membership (role=org_admin)
+```text
+org_admin        → 14 Basis-Module
+sales_partner    → 14 Basis + MOD-09 + MOD-10
+finance_manager  → 14 Basis + MOD-11
+akquise_manager  → 14 Basis + MOD-12
+platform_admin   → Alle 21
+```
 
-**Erweiterung der Funktion:**
-- Standard-Tiles aktivieren (MOD-01 Stammdaten, MOD-03 DMS, MOD-04 Immobilien) fuer jede neue client-Org
-- Damit sieht jeder neue User sofort ein funktionierendes Portal
+Diese Funktion wird von `handle_new_user()` aufgerufen und kann auch manuell verwendet werden.
 
-### Schritt 2: Verwaiste User aufraeumen
+### Schritt 2: Datenbank — app_role Enum erweitern
 
-- `test@example.com` und `admin@systemofatown.com` (Seed-Artefakt) aus auth.users entfernen oder mit korrekten Profilen/Memberships versehen
-- Entscheidung: Loeschen ist sauberer, da sie keine echten Daten haben
+- `super_user` und `client_user` zum `app_role` Enum hinzufuegen
+- `super_user` in user_roles aktiviert Override: alle 21 Module
 
-### Schritt 3: Test-Personas anlegen
+### Schritt 3: Datenbank — handle_new_user() ueberarbeiten
 
-Fuer jede Rolle eine eigene Organisation + User + Membership + user_role:
+- Aktuell: Hardcoded `['MOD-01', 'MOD-03', 'MOD-04']` als Standard-Tiles
+- Neu: Ruft `get_tiles_for_role('org_admin')` auf → 14 Basis-Module
+- Neue User bekommen automatisch membership_role `org_admin` (wie bisher)
+- Optional: Parameter fuer Rolle aus Signup-Metadata (fuer Spezialrollen-Onboarding)
 
-| Persona | E-Mail | Org-Name | org_type | Rolle (user_roles) |
-|---------|--------|----------|----------|-------------------|
-| Vermieter | vermieter@test.sot.dev | Muster-Vermieter | client | — (Standard-User) |
-| Verkaeufer | verkaeufer@test.sot.dev | Muster-Verkaeufer | client | — |
-| Vertriebspartner | partner@test.sot.dev | Muster-Partner GmbH | partner | sales_partner |
-| Akquise-Manager | akquise@test.sot.dev | (Membership in Internal) | — | acquisition_manager |
-| Finance-Manager | finance@test.sot.dev | (Membership in Internal) | — | finance_manager |
+### Schritt 4: Datenbank — Test-Org Tiles korrigieren
 
-Jede Persona bekommt die passenden Tile-Aktivierungen gemaess der Portal-Entry-Role-Mapping-Regel.
+| Test-Org | membership_role | Aktive Tiles |
+|----------|----------------|-------------|
+| Muster-Vermieter | org_admin | 14 Basis |
+| Muster-Verkaeufer | org_admin | 14 Basis |
+| Muster-Partner GmbH | sales_partner | 14 Basis + MOD-09 + MOD-10 = 16 |
+| System of a Town | platform_admin | Alle 21 |
 
-### Schritt 4: DEV_TENANT_UUID-Referenzen bereinigen
+Tiles entfernen die nicht zur jeweiligen Rolle gehoeren.
 
-- `useFinanceRequest.ts`: Fallback auf `activeOrganization?.id` statt hardcoded UUID
-- `useGoldenPathSeeds.ts`: Tenant-ID dynamisch aus AuthContext beziehen
-- `AuthContext.tsx`: DEV_MOCK_* Konstanten koennen bleiben (als Emergency-Fallback), aber `isDevelopmentEnvironment()` bleibt `false`
+### Schritt 5: rolesMatrix.ts — Konsolidierung
 
-### Schritt 5: Org-Switcher validieren
+- ROLES_CATALOG auf 6 Eintraege: `platform_admin`, `super_user`, `client_user` (= org_admin), `akquise_manager`, `finance_manager`, `sales_partner`
+- Jede Rolle zeigt klar: Basis-Module + Zusatz-Module
+- MODULE_ROLE_MATRIX aktualisiert mit den 6 Rollen
+- Neue Konstante: `BASE_TILES` und `ROLE_EXTRA_TILES` — werden auch vom UI genutzt
+- `dbNote` Felder zeigen die Zuordnung zur membership_role
 
-Der bestehende Org-Switcher im Header muss fuer den `platform_admin` funktionieren:
-- thomas.stelzl bekommt zusaetzliche Memberships in den Test-Orgs
-- Damit kann er zwischen Internal (Zone 1) und den Test-Orgs (Zone 2) wechseln
-- So wird der gesamte Flow aus beiden Perspektiven testbar
+### Schritt 6: RolesManagement.tsx — Komplette Ueberarbeitung
 
----
+**Tab 1 — Rollen-Katalog:**
+- 6 Rollen-Karten mit Basis/Zusatz-Trennung
+- Jede Karte zeigt: Label, Beschreibung, Anzahl Module, DB-Mapping (welche membership_role / app_role)
+- Super-User-Karte erklaert den Sonderfall (org_admin + app_role super_user)
 
-## Was das fuer spaetere echte User bedeutet
+**Tab 2 — Modul-Rollen-Matrix:**
+- 21 Zeilen (MOD-00 bis MOD-20)
+- 6 Spalten (platform_admin, super_user, client_user, akquise_manager, finance_manager, sales_partner)
+- Farbkodierung: Gruen = Basis (alle haben es), Blau = Zusatz (rollenspezifisch)
+- Monitoring-Platzhalter als Info-Zeile am Ende
 
-1. **Signup**: User registriert sich -> Trigger erstellt automatisch Organisation + Profil + Membership + Standard-Tiles
-2. **Isolation**: Jeder User sieht NUR seine eigenen Daten (RLS via tenant_id)
-3. **Keine Vermischung**: Die interne Org und Test-Orgs sind komplett getrennt von Production-Orgs
-4. **Skalierung**: Ob 1 oder 1000 Organisationen — das System behandelt alle gleich
+**Tab 3 — Governance & Eroeffnungsprozess:**
+- Dokumentation des Signup-Flows: Was passiert automatisch?
+- Mapping-Tabelle: UI-Label → membership_role → app_role → Tiles
+- Erklaerung org_admin vs platform_admin
+- DB-Status: Aktive Enum-Werte beider Systeme (live aus Konstanten, nicht hardcoded)
+- Warning-Banner zu Legacy-Werten (internal_ops, renter_user etc.) anstatt Dev-Mode-Warning
+
+### Schritt 7: useGoldenPathSeeds.ts — DEV_TENANT_UUID bereinigen
+
+Hardcoded UUID durch dynamischen AuthContext-Tenant ersetzen.
 
 ---
 
 ## Dateien-Uebersicht
 
-| Aktion | Datei/Bereich | Beschreibung |
-|--------|--------------|-------------|
-| DB Migration | Trigger installieren | `on_auth_user_created` + `handle_new_user` erweitern (Tile-Aktivierung) |
-| DB Migration | Test-Personas | Organisationen, Profiles, Memberships, user_roles fuer 5 Personas |
-| DB Migration | Cleanup | Verwaiste auth.users entfernen |
-| Code | `useFinanceRequest.ts` | DEV_TENANT_UUID Fallback durch dynamischen Tenant ersetzen |
-| Code | `useGoldenPathSeeds.ts` | Hardcoded UUID durch AuthContext-Tenant ersetzen |
-| KEINE | `AuthContext.tsx` | Bleibt wie ist (Dev-Mode deaktiviert, Mocks als Notfall-Fallback) |
-| KEINE | Routing/Manifest | Kein Drift |
+| Aktion | Datei/Bereich |
+|--------|--------------|
+| DB Migration | Neue Funktion `get_tiles_for_role(membership_role)` |
+| DB Migration | `app_role` Enum: + `super_user`, + `client_user` |
+| DB Migration | `handle_new_user()`: Nutzt `get_tiles_for_role('org_admin')` statt Hardcode |
+| DB Migration | Test-Org Tiles: DELETE + rollenspezifisch neu setzen |
+| Code | `src/constants/rolesMatrix.ts` — 6 Rollen, BASE_TILES, ROLE_EXTRA_TILES |
+| Code | `src/pages/admin/RolesManagement.tsx` — Komplettes Redesign |
+| Code | `src/hooks/useGoldenPathSeeds.ts` — DEV_TENANT_UUID entfernen |
 
----
+## Was NICHT gemacht wird
 
-## Risiken und Hinweise
-
-- **Auth.users ist ein reserviertes Schema**: Wir koennen dort keine Zeilen loeschen via Migration. Die Seed-Artefakte muessen manuell oder via Edge Function bereinigt werden.
-- **Tile-Aktivierung bei Signup**: Die `handle_new_user`-Funktion muss erweitert werden, um Standard-Tiles zu aktivieren. Ohne das sieht ein neuer User ein leeres Portal.
-- **Passwort fuer Test-User**: Die Test-Personas werden via Migration in `profiles`/`memberships`/`organizations` angelegt, aber die auth.users-Eintraege muessen separat erstellt werden (da wir auth-Schema nicht direkt beschreiben koennen).
+- Module NICHT umnummerieren (Analyse hat gezeigt: zu riskant)
+- membership_role Enum NICHT schrumpfen (Postgres-Limitierung)
+- Monitoring-Modul NUR dokumentiert, nicht gebaut
+- Routing/Navigation unveraendert
+- Internal-Org behaelt alle 21 Tiles
 
