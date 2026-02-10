@@ -14,17 +14,16 @@ export function BulkActionBar({ count, onDownload, onDelete, onClear, isDownload
   if (count === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-primary/5 border-b text-sm">
-      <span className="font-medium text-primary">{count} ausgewählt</span>
-      <div className="flex-1" />
-      <Button variant="outline" size="sm" onClick={onDownload} disabled={isDownloading}>
-        <Download className="h-3.5 w-3.5 mr-1.5" />
-        Herunterladen
+    <div className="flex items-center gap-3 px-4 py-2 bg-primary text-primary-foreground text-sm">
+      <Button variant="ghost" size="icon" className="h-6 w-6 text-primary-foreground hover:bg-primary-foreground/20" onClick={onClear}>
+        <X className="h-3.5 w-3.5" />
       </Button>
+      <span className="font-medium">{count} ausgewählt</span>
+      <div className="flex-1" />
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        className="text-destructive border-destructive/30 hover:bg-destructive/10"
+        className="text-primary-foreground hover:bg-primary-foreground/20"
         onClick={() => {
           if (confirm(`${count} Dokument(e) wirklich löschen?`)) onDelete();
         }}
@@ -33,8 +32,15 @@ export function BulkActionBar({ count, onDownload, onDelete, onClear, isDownload
         <Trash2 className="h-3.5 w-3.5 mr-1.5" />
         Löschen
       </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClear}>
-        <X className="h-3.5 w-3.5" />
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-primary-foreground hover:bg-primary-foreground/20"
+        onClick={onDownload}
+        disabled={isDownloading}
+      >
+        <Download className="h-3.5 w-3.5 mr-1.5" />
+        Herunterladen
       </Button>
     </div>
   );

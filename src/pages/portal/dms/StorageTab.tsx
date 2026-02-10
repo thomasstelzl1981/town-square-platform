@@ -1,28 +1,16 @@
 /**
- * DMS Storage Tab — MOD-03 — OneDrive-Style File Manager
- * 3-Panel Layout: Tree | Files | Detail
- * SSOT: STORAGE_MANIFEST for all 20 modules
+ * DMS Storage Tab — Supabase-Style Premium File Manager
+ * Data layer only — delegates all UI to StorageFileManager
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataTable, FileUploader, EmptyState, type Column } from '@/components/shared';
-import { StorageFolderTree } from '@/components/dms/StorageFolderTree';
-import { StorageBreadcrumb } from '@/components/dms/StorageBreadcrumb';
-import { FileDetailPanel } from '@/components/dms/FileDetailPanel';
-import { FileDropZone } from '@/components/dms/FileDropZone';
-import { BulkActionBar } from '@/components/dms/BulkActionBar';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { File, Plus, Download, Trash2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { UploadResultList } from '@/components/shared/UploadResultCard';
 import { STORAGE_MANIFEST, getSortedModules, getModuleDisplayName } from '@/config/storageManifest';
+import { StorageFileManager } from '@/components/dms/StorageFileManager';
 
 interface StorageNode {
   id: string;
@@ -36,12 +24,6 @@ interface StorageNode {
   unit_id: string | null;
   module_code: string | null;
   created_at: string;
-}
-
-interface PropertyInfo {
-  id: string;
-  code: string | null;
-  address: string;
 }
 
 interface Document {
@@ -87,8 +69,6 @@ export function StorageTab() {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
 
   const MODULE_ROOT_FOLDERS = useMemo(() => buildModuleRootFolders(), []);
 
@@ -104,20 +84,6 @@ export function StorageTab() {
         .order('name');
       if (error) throw error;
       return (data || []) as unknown as StorageNode[];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  const { data: properties = [] } = useQuery({
-    queryKey: ['properties-for-tree', activeTenantId],
-    queryFn: async (): Promise<PropertyInfo[]> => {
-      if (!activeTenantId) return [];
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id, code, address')
-        .eq('tenant_id', activeTenantId);
-      if (error) throw error;
-      return data as PropertyInfo[];
     },
     enabled: !!activeTenantId,
   });
@@ -169,7 +135,7 @@ export function StorageTab() {
   }, [activeTenantId, nodes, nodesLoading, refetchNodes, MODULE_ROOT_FOLDERS]);
 
   // Documents for selected node
-  const { data: documents = [], isLoading: docsLoading } = useQuery({
+  const { data: documents = [] } = useQuery({
     queryKey: ['documents', activeTenantId, selectedNodeId],
     queryFn: async (): Promise<Document[]> => {
       if (!activeTenantId) return [];
@@ -256,7 +222,6 @@ export function StorageTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       toast.success('Dokument gelöscht');
-      setSelectedDocId(null);
     },
     onError: () => toast.error('Löschen fehlgeschlagen'),
   });
@@ -275,245 +240,76 @@ export function StorageTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
       toast.success('Ordner gelöscht');
-      if (selectedNodeId) setSelectedNodeId(null);
     },
     onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
 
-  // ── Helpers ──────────────────────────────────────────────────
-  const handleFileSelect = (files: File[]) => files.forEach(file => uploadMutation.mutate(file));
-  const handleDropFiles = (files: File[]) => files.forEach(file => uploadMutation.mutate(file));
+  const createFolderMutation = useMutation({
+    mutationFn: async ({ name, parentId }: { name: string; parentId: string | null }) => {
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const parentNode = parentId ? nodes.find(n => n.id === parentId) : null;
+      const { error } = await supabase.from('storage_nodes').insert({
+        tenant_id: activeTenantId,
+        parent_id: parentId,
+        name,
+        node_type: 'folder',
+        module_code: parentNode?.module_code || 'MOD_03',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      toast.success('Ordner erstellt');
+    },
+    onError: () => toast.error('Ordner erstellen fehlgeschlagen'),
+  });
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  // ── Handlers ─────────────────────────────────────────────────
+  const handleUploadFiles = (files: File[]) => files.forEach(file => uploadMutation.mutate(file));
+
+  const handleBulkDownload = (ids: Set<string>) => {
+    ids.forEach(id => downloadMutation.mutate(id));
   };
 
-  const getDocumentLinks = (docId: string) => documentLinks.filter(l => l.document_id === docId);
-
-  // Breadcrumb path
-  const breadcrumbSegments = useMemo(() => {
-    if (!selectedNodeId) return [];
-    const segments: { id: string; label: string }[] = [];
-    let current = nodes.find(n => n.id === selectedNodeId);
-    while (current) {
-      const label = current.module_code && current.template_id?.endsWith('_ROOT')
-        ? getModuleDisplayName(current.module_code)
-        : current.name;
-      segments.unshift({ id: current.id, label });
-      current = current.parent_id ? nodes.find(n => n.id === current!.parent_id) : undefined;
-    }
-    return segments;
-  }, [selectedNodeId, nodes]);
-
-  // Selection
-  const toggleDocSelection = (docId: string) => {
-    setSelectedDocIds(prev => {
-      const next = new Set(prev);
-      if (next.has(docId)) next.delete(docId);
-      else next.add(docId);
-      return next;
-    });
-  };
-
-  const toggleAllDocs = () => {
-    if (selectedDocIds.size === documents.length) {
-      setSelectedDocIds(new Set());
-    } else {
-      setSelectedDocIds(new Set(documents.map(d => d.id)));
-    }
-  };
-
-  const handleBulkDownload = () => {
-    selectedDocIds.forEach(id => downloadMutation.mutate(id));
-  };
-
-  const handleBulkDelete = async () => {
-    for (const id of selectedDocIds) {
+  const handleBulkDelete = async (ids: Set<string>) => {
+    for (const id of ids) {
       await supabase.from('documents').delete().eq('id', id);
     }
     queryClient.invalidateQueries({ queryKey: ['documents'] });
-    setSelectedDocIds(new Set());
-    toast.success(`${selectedDocIds.size} Dokument(e) gelöscht`);
+    toast.success(`${ids.size} Dokument(e) gelöscht`);
   };
-
-  const selectedDocument = selectedDocId ? documents.find(d => d.id === selectedDocId) : null;
-  const showDetailPanel = !!selectedDocument;
-
-  // ── Columns ──────────────────────────────────────────────────
-  const columns: Column<Document>[] = [
-    {
-      key: 'select',
-      header: '',
-      render: (_, doc) => (
-        <Checkbox
-          checked={selectedDocIds.has(doc.id)}
-          onCheckedChange={() => toggleDocSelection(doc.id)}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ),
-    },
-    {
-      key: 'name',
-      header: 'Name',
-      render: (_, doc) => (
-        <div className="flex items-center gap-2">
-          <File className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-medium truncate">{doc.name}</span>
-          {getDocumentLinks(doc.id).length > 0 && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              <Link2 className="h-3 w-3 mr-1" />
-              {getDocumentLinks(doc.id).length}
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'mime_type',
-      header: 'Typ',
-      render: (_, doc) => (
-        <span className="text-muted-foreground text-xs">
-          {doc.mime_type.split('/')[1]?.toUpperCase() || doc.mime_type}
-        </span>
-      ),
-    },
-    {
-      key: 'size_bytes',
-      header: 'Größe',
-      render: (_, doc) => <span className="text-xs">{formatFileSize(doc.size_bytes)}</span>,
-    },
-    {
-      key: 'created_at',
-      header: 'Hochgeladen',
-      render: (_, doc) => (
-        <span className="text-xs text-muted-foreground">
-          {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: de })}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (_, doc) => (
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); downloadMutation.mutate(doc.id); }}>
-            <Download className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm('Dokument wirklich löschen?')) deleteMutation.mutate(doc.id);
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100vh-16rem)]">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 pb-3 border-b mb-3">
-        <StorageBreadcrumb segments={breadcrumbSegments} onNavigate={setSelectedNodeId} />
-        <div className="flex-1" />
-        <FileUploader
-          onFilesSelected={handleFileSelect}
-          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xls,.xlsx"
-          maxSize={10 * 1024 * 1024}
-          className="w-auto"
-        >
-          <Button size="sm" disabled={uploadMutation.isPending}>
-            <Plus className="h-4 w-4 mr-1" />
-            Hochladen
-          </Button>
-        </FileUploader>
-      </div>
-
+    <div className="flex flex-col gap-2">
       {/* Upload feedback */}
       {uploadedFiles.length > 0 && (
-        <div className="pb-2">
-          <UploadResultList
-            files={uploadedFiles}
-            status={uploadProgress.status === 'analyzing' ? 'analyzing' : uploadProgress.status === 'done' ? 'done' : 'uploaded'}
-            onClear={clearUploadedFiles}
-            compact
-          />
-        </div>
+        <UploadResultList
+          files={uploadedFiles}
+          status={uploadProgress.status === 'analyzing' ? 'analyzing' : uploadProgress.status === 'done' ? 'done' : 'uploaded'}
+          onClear={clearUploadedFiles}
+          compact
+        />
       )}
 
-      {/* 3-Panel Layout */}
-      <div className="flex gap-3 flex-1 min-h-0">
-        {/* Left: Folder Tree */}
-        <div className="w-64 shrink-0">
-          <StorageFolderTree
-            nodes={nodes}
-            properties={properties}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={(id) => {
-              setSelectedNodeId(id);
-              setSelectedDocId(null);
-              setSelectedDocIds(new Set());
-            }}
-            onDeleteFolder={(nodeId) => deleteFolderMutation.mutate(nodeId)}
-          />
-        </div>
-
-        {/* Center: File List with Drop Zone */}
-        <FileDropZone onDrop={handleDropFiles} disabled={uploadMutation.isPending} className="flex-1 min-w-0">
-          <div className="border rounded-lg bg-card h-full flex flex-col">
-            {/* Bulk actions */}
-            <BulkActionBar
-              count={selectedDocIds.size}
-              onDownload={handleBulkDownload}
-              onDelete={handleBulkDelete}
-              onClear={() => setSelectedDocIds(new Set())}
-              isDownloading={downloadMutation.isPending}
-            />
-
-            <div className="flex-1 overflow-auto">
-              {documents.length === 0 ? (
-                <EmptyState
-                  icon={File}
-                  title={selectedNodeId ? 'Keine Dokumente in diesem Ordner' : 'Keine Dokumente'}
-                  description={selectedNodeId ? 'Dateien hierher ziehen oder hochladen' : 'Wähle einen Ordner oder lade Dokumente hoch'}
-                />
-              ) : (
-                <DataTable
-                  data={documents}
-                  columns={columns}
-                  isLoading={docsLoading}
-                  onRowClick={(doc) => setSelectedDocId(doc.id)}
-                />
-              )}
-            </div>
-          </div>
-        </FileDropZone>
-
-        {/* Right: Detail Panel */}
-        {showDetailPanel && selectedDocument && (
-          <div className="w-72 shrink-0">
-            <FileDetailPanel
-              document={selectedDocument}
-              links={getDocumentLinks(selectedDocument.id)}
-              onClose={() => setSelectedDocId(null)}
-              onDownload={(id) => downloadMutation.mutate(id)}
-              onDelete={(id) => deleteMutation.mutate(id)}
-              isDownloading={downloadMutation.isPending}
-              isDeleting={deleteMutation.isPending}
-            />
-          </div>
-        )}
-      </div>
+      <StorageFileManager
+        nodes={nodes}
+        documents={documents}
+        documentLinks={documentLinks}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={setSelectedNodeId}
+        onUploadFiles={handleUploadFiles}
+        onDownload={(id) => downloadMutation.mutate(id)}
+        onDeleteDocument={(id) => deleteMutation.mutate(id)}
+        onDeleteFolder={(id) => deleteFolderMutation.mutate(id)}
+        onCreateFolder={(name, parentId) => createFolderMutation.mutate({ name, parentId })}
+        onBulkDownload={handleBulkDownload}
+        onBulkDelete={handleBulkDelete}
+        isUploading={uploadMutation.isPending}
+        isDownloading={downloadMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        isCreatingFolder={createFolderMutation.isPending}
+      />
     </div>
   );
 }
