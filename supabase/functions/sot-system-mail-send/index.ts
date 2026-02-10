@@ -8,13 +8,19 @@ const corsHeaders = {
 
 const DEFAULT_FROM = 'System of a Town <noreply@systemofatown.com>';
 
+interface MailAttachment {
+  filename: string;
+  content: string; // base64 encoded
+}
+
 interface SystemMailRequest {
   to: string | string[];
   subject: string;
   html?: string;
   text?: string;
-  context?: string; // e.g. "renovation_tender", "serien_email"
+  context?: string; // e.g. "renovation_tender", "serien_email", "letter_send"
   from_override?: string; // e.g. "futureroom@systemofatown.com" — overrides user identity lookup
+  attachments?: MailAttachment[];
 }
 
 serve(async (req) => {
@@ -55,7 +61,7 @@ serve(async (req) => {
     }
 
     const body: SystemMailRequest = await req.json();
-    const { to, subject, html, text, context, from_override } = body;
+    const { to, subject, html, text, context, from_override, attachments } = body;
 
     if (!to || !subject) {
       throw new Error('Missing required fields: to, subject');
@@ -113,6 +119,12 @@ serve(async (req) => {
     if (html) resendBody.html = html;
     if (text) resendBody.text = text;
     if (replyTo) resendBody.reply_to = replyTo;
+    if (attachments && attachments.length > 0) {
+      resendBody.attachments = attachments.map((a: MailAttachment) => ({
+        filename: a.filename,
+        content: a.content,
+      }));
+    }
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
