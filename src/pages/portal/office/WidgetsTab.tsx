@@ -41,6 +41,7 @@ import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SystemWidgetsTab } from './SystemWidgetsTab';
+import { ResearchTab } from './ResearchTab';
 
 // Icon mapping
 const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
@@ -267,7 +268,7 @@ export function WidgetsTab() {
         "border-b",
         isMobile ? "px-4 pt-4" : "px-4 md:px-6 lg:px-8 pt-4"
       )}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="system" className="gap-2">
             <Settings2 className="h-4 w-4" />
             Systemwidgets
@@ -275,6 +276,10 @@ export function WidgetsTab() {
           <TabsTrigger value="tasks" className="gap-2">
             <Layers className="h-4 w-4" />
             Aufgaben
+          </TabsTrigger>
+          <TabsTrigger value="research" className="gap-2">
+            <Search className="h-4 w-4" />
+            Recherche
           </TabsTrigger>
         </TabsList>
       </div>
@@ -285,6 +290,10 @@ export function WidgetsTab() {
 
       <TabsContent value="tasks" className="mt-0">
         <TaskWidgetsContent />
+      </TabsContent>
+
+      <TabsContent value="research" className="mt-0">
+        <ResearchTab />
       </TabsContent>
     </Tabs>
     </Card>
