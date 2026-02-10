@@ -6,10 +6,29 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ModuleHowItWorks, moduleContents } from '@/components/portal/HowItWorks';
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { Bot, Plus } from 'lucide-react';
+import { Search, Bot, Plus } from 'lucide-react';
 import { SocialPage } from './communication-pro/social/SocialPage';
 import { SerienEmailsPage } from './communication-pro/SerienEmailsPage';
-import { RecherchePage } from './communication-pro/RecherchePage';
+
+function RechercheTile() {
+  return (
+    <ModuleTilePage
+      title="Recherche"
+      description="Finden Sie potenzielle Kontakte und Leads"
+      icon={Search}
+      moduleBase="communication-pro"
+      status="empty"
+      emptyTitle="Keine Suchergebnisse"
+      emptyDescription="Starten Sie eine neue Recherche, um passende Kontakte zu finden."
+      emptyIcon={Search}
+      primaryAction={{
+        label: 'Recherche starten',
+        icon: Search,
+        onClick: () => console.log('Recherche'),
+      }}
+    />
+  );
+}
 
 function AgentenTile() {
   return (
@@ -38,7 +57,7 @@ export default function CommunicationProPage() {
     <Routes>
       <Route index element={<ModuleHowItWorks content={content} />} />
       <Route path="serien-emails" element={<SerienEmailsPage />} />
-      <Route path="recherche" element={<RecherchePage />} />
+      <Route path="recherche" element={<RechercheTile />} />
       <Route path="social/*" element={<SocialPage />} />
       <Route path="agenten" element={<AgentenTile />} />
       <Route path="*" element={<Navigate to="/portal/communication-pro" replace />} />
