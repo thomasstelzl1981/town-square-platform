@@ -4387,6 +4387,7 @@ export type Database = {
           parking_type: string | null
           price_per_sqm: number | null
           project_id: string
+          property_id: string | null
           public_id: string | null
           rent_net: number | null
           rent_nk: number | null
@@ -4395,6 +4396,7 @@ export type Database = {
           te_number: string | null
           tenant_id: string
           tenant_name: string | null
+          unit_id: string | null
           unit_number: string
           updated_at: string
         }
@@ -4415,6 +4417,7 @@ export type Database = {
           parking_type?: string | null
           price_per_sqm?: number | null
           project_id: string
+          property_id?: string | null
           public_id?: string | null
           rent_net?: number | null
           rent_nk?: number | null
@@ -4423,6 +4426,7 @@ export type Database = {
           te_number?: string | null
           tenant_id: string
           tenant_name?: string | null
+          unit_id?: string | null
           unit_number: string
           updated_at?: string
         }
@@ -4443,6 +4447,7 @@ export type Database = {
           parking_type?: string | null
           price_per_sqm?: number | null
           project_id?: string
+          property_id?: string | null
           public_id?: string | null
           rent_net?: number | null
           rent_nk?: number | null
@@ -4451,6 +4456,7 @@ export type Database = {
           te_number?: string | null
           tenant_id?: string
           tenant_name?: string | null
+          unit_id?: string | null
           unit_number?: string
           updated_at?: string
         }
@@ -4463,10 +4469,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "dev_project_units_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "dev_project_units_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_project_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]
@@ -10723,6 +10743,66 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      sales_desk_requests: {
+        Row: {
+          commission_agreement: Json | null
+          created_at: string
+          id: string
+          project_id: string
+          requested_at: string
+          requested_by: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_agreement?: Json | null
+          created_at?: string
+          id?: string
+          project_id: string
+          requested_at?: string
+          requested_by: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_agreement?: Json | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          requested_at?: string
+          requested_by?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_desk_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_desk_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }

@@ -5,6 +5,9 @@ export { CreateReservationDialog } from './CreateReservationDialog';
 export { ProjectPortfolioTable } from './ProjectPortfolioTable';
 export { UnitStatusBadge, UnitStatusDot } from './UnitStatusBadge';
 export { QuickIntakeUploader } from './QuickIntakeUploader';
+export { ProjectCard, ProjectCardPlaceholder } from './ProjectCard';
+export { StickyCalculatorPanel } from './StickyCalculatorPanel';
+export { SalesApprovalSection } from './SalesApprovalSection';
 
 // Block Components
 export { ProjectPricingBlock } from './blocks/ProjectPricingBlock';

@@ -1,6 +1,9 @@
 /**
  * Marketing Tab - Kaufy Listings & Landingpages
- * MOD-13 PROJEKTE
+ * MOD-13 PROJEKTE — P0 Redesign
+ * 
+ * NEVER shows EmptyState only — stats always visible.
+ * Kaufy toggle shows info about Sales Desk requirement (GP-05).
  */
 
 import { useState } from 'react';
@@ -11,74 +14,49 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Megaphone, Share2, ExternalLink, Sparkles, Users, Check, Link2 } from 'lucide-react';
+import { Globe, Megaphone, Share2, ExternalLink, Sparkles, Users, Check, Link2, Shield, AlertCircle } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { toast } from 'sonner';
 
 export default function MarketingTab() {
   const { projects, isLoading, updateProject } = useDevProjects();
-  const [landingpageDialog, setLandingpageDialog] = useState<{ open: boolean; projectId: string | null }>({ 
-    open: false, 
-    projectId: null 
-  });
+  const [landingpageDialog, setLandingpageDialog] = useState<{ open: boolean; projectId: string | null }>({ open: false, projectId: null });
   const [landingpageSlug, setLandingpageSlug] = useState('');
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  if (isLoading) return <LoadingState />;
 
-  if (projects.length === 0) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6">
-        <EmptyState
-          title="Keine Projekte vorhanden"
-          description="Erstellen Sie ein Projekt im Portfolio-Tab, um Marketing-Optionen zu nutzen."
-        />
-      </div>
-    );
-  }
+  // NO early return for empty projects — always show structure
 
   const handleKaufyToggle = async (projectId: string, enabled: boolean) => {
-    try {
-      await updateProject.mutateAsync({ 
-        id: projectId, 
-        kaufy_listed: enabled 
+    // GP-05: Show info that Sales Desk approval is needed
+    if (enabled) {
+      toast.info('Kaufy-Listing erfordert Sales Desk Freigabe', {
+        description: 'Bitte senden Sie zunächst eine Freigabe-Anfrage über den Vertrieb-Tab.',
       });
-      toast.success(enabled ? 'Auf Kaufy gelistet' : 'Von Kaufy entfernt');
-    } catch (error) {
-      toast.error('Fehler beim Aktualisieren');
+      return;
     }
+    try {
+      await updateProject.mutateAsync({ id: projectId, kaufy_listed: enabled });
+      toast.success('Von Kaufy entfernt');
+    } catch { toast.error('Fehler beim Aktualisieren'); }
   };
 
   const handleFeaturedToggle = async (projectId: string, enabled: boolean) => {
     try {
-      await updateProject.mutateAsync({ 
-        id: projectId, 
-        kaufy_featured: enabled 
-      });
+      await updateProject.mutateAsync({ id: projectId, kaufy_featured: enabled });
       toast.success(enabled ? 'Premium-Platzierung aktiviert' : 'Premium-Platzierung deaktiviert');
-    } catch (error) {
-      toast.error('Fehler beim Aktualisieren');
-    }
+    } catch { toast.error('Fehler beim Aktualisieren'); }
   };
 
   const handleLandingpageCreate = async () => {
     if (!landingpageDialog.projectId || !landingpageSlug) return;
-    
     try {
-      await updateProject.mutateAsync({ 
-        id: landingpageDialog.projectId, 
-        landingpage_slug: landingpageSlug.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-        landingpage_enabled: true,
-      });
+      await updateProject.mutateAsync({ id: landingpageDialog.projectId, landingpage_slug: landingpageSlug.toLowerCase().replace(/[^a-z0-9-]/g, ''), landingpage_enabled: true });
       toast.success('Landingpage erstellt');
       setLandingpageDialog({ open: false, projectId: null });
       setLandingpageSlug('');
-    } catch (error) {
-      toast.error('Fehler beim Erstellen der Landingpage');
-    }
+    } catch { toast.error('Fehler beim Erstellen der Landingpage'); }
   };
 
   const activeProjects = projects.filter(p => p.status === 'active');
@@ -89,45 +67,47 @@ export default function MarketingTab() {
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight uppercase">Marketing & Veröffentlichung</h2>
-        <p className="text-muted-foreground">
-          Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages
-        </p>
+        <p className="text-muted-foreground">Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages</p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — ALWAYS visible */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Auf Kaufy gelistet</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Auf Kaufy gelistet</CardTitle></CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{listedProjects.length}</div>
             <p className="text-xs text-muted-foreground">von {projects.length} Projekten</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Premium-Platzierung</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Premium-Platzierung</CardTitle></CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{featuredProjects.length}</div>
             <p className="text-xs text-muted-foreground">Featured Listings</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Landingpages</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Landingpages</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {projects.filter(p => p.landingpage_enabled).length}
-            </div>
+            <div className="text-2xl font-bold">{projects.filter(p => p.landingpage_enabled).length}</div>
             <p className="text-xs text-muted-foreground">aktive Projekt-Seiten</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Free Options */}
+      {/* Sales Desk Hint */}
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+        <Shield className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium">Sales Desk Freigabe erforderlich</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Kaufy-Listings und Vertriebskanäle werden erst nach Freigabe durch den Sales Desk (Zone 1) aktiviert. 
+            Senden Sie eine Freigabe-Anfrage über den Tab „Vertrieb".
+          </p>
+        </div>
+      </div>
+
+      {/* Kaufy Marktplatz */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -135,15 +115,15 @@ export default function MarketingTab() {
             <CardTitle>Kaufy Marktplatz</CardTitle>
             <Badge variant="secondary">Kostenlos</Badge>
           </div>
-          <CardDescription>
-            Listen Sie Ihre Projekte kostenlos auf dem Kaufy-Marktplatz
-          </CardDescription>
+          <CardDescription>Listen Sie Ihre Projekte kostenlos auf dem Kaufy-Marktplatz</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {activeProjects.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Keine aktiven Projekte vorhanden. Aktivieren Sie ein Projekt im Portfolio.
+          {projects.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-4 text-center">
+              Erstellen Sie ein Projekt im Dashboard, um Marketing-Optionen zu nutzen.
             </p>
+          ) : activeProjects.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Keine aktiven Projekte vorhanden. Aktivieren Sie ein Projekt im Portfolio.</p>
           ) : (
             activeProjects.map((project) => (
               <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -151,33 +131,19 @@ export default function MarketingTab() {
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{project.name}</p>
                     {project.kaufy_listed && (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        <Check className="mr-1 h-3 w-3" />
-                        Gelistet
-                      </Badge>
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><Check className="mr-1 h-3 w-3" />Gelistet</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {project.city} · {project.total_units_count} Einheiten
-                  </p>
+                  <p className="text-sm text-muted-foreground">{project.city} · {project.total_units_count} Einheiten</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Auf Kaufy listen</span>
-                    <Switch 
-                      checked={project.kaufy_listed || false}
-                      onCheckedChange={(checked) => handleKaufyToggle(project.id, checked)}
-                    />
+                    <Switch checked={project.kaufy_listed || false} onCheckedChange={(checked) => handleKaufyToggle(project.id, checked)} />
                   </div>
                 </div>
               </div>
             ))
-          )}
-          
-          {projects.filter(p => p.status !== 'active').length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {projects.filter(p => p.status !== 'active').length} weitere Projekte (nicht aktiv)
-            </p>
           )}
         </CardContent>
       </Card>
@@ -187,43 +153,22 @@ export default function MarketingTab() {
         <Card className="border-primary/50">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle>Projekt-Präsentation</CardTitle>
-              <Badge>200€/Monat</Badge>
+              <Sparkles className="h-5 w-5 text-primary" /><CardTitle>Projekt-Präsentation</CardTitle><Badge>200€/Monat</Badge>
             </div>
-            <CardDescription>
-              Featured Placement unter Kaufy → Projekte mit erweiterter Darstellung
-            </CardDescription>
+            <CardDescription>Featured Placement unter Kaufy → Projekte mit erweiterter Darstellung</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Premium-Platzierung auf der Startseite
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Erweiterte Bildergalerie
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Hervorgehobene Einheiten-Liste
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Direkter Kontakt-Button
-              </li>
+              {['Premium-Platzierung auf der Startseite', 'Erweiterte Bildergalerie', 'Hervorgehobene Einheiten-Liste', 'Direkter Kontakt-Button'].map(t => (
+                <li key={t} className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-primary rounded-full" />{t}</li>
+              ))}
             </ul>
-            
             {listedProjects.length > 0 && (
               <div className="pt-4 border-t space-y-2">
                 {listedProjects.map(project => (
                   <div key={project.id} className="flex items-center justify-between text-sm">
                     <span>{project.name}</span>
-                    <Switch 
-                      checked={project.kaufy_featured || false}
-                      onCheckedChange={(checked) => handleFeaturedToggle(project.id, checked)}
-                    />
+                    <Switch checked={project.kaufy_featured || false} onCheckedChange={(checked) => handleFeaturedToggle(project.id, checked)} />
                   </div>
                 ))}
               </div>
@@ -234,60 +179,28 @@ export default function MarketingTab() {
         <Card className="border-primary/50">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              <CardTitle>Projekt-Landingpage</CardTitle>
-              <Badge>200€/Monat</Badge>
+              <Globe className="h-5 w-5 text-primary" /><CardTitle>Projekt-Landingpage</CardTitle><Badge>200€/Monat</Badge>
             </div>
-            <CardDescription>
-              Eigene Subdomain mit Investment-Rechner und Lead-Erfassung
-            </CardDescription>
+            <CardDescription>Eigene Subdomain mit Investment-Rechner und Lead-Erfassung</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Eigene URL (projekt.kaufy.de)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Integrierter Investment-Rechner
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Lead-Formular mit CRM-Integration
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                Analytics & Conversion-Tracking
-              </li>
+              {['Eigene URL (projekt.kaufy.de)', 'Integrierter Investment-Rechner', 'Lead-Formular mit CRM-Integration', 'Analytics & Conversion-Tracking'].map(t => (
+                <li key={t} className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-primary rounded-full" />{t}</li>
+              ))}
             </ul>
-            
             {activeProjects.length > 0 && (
               <div className="pt-4 border-t space-y-2">
                 {activeProjects.map(project => (
                   <div key={project.id} className="flex items-center justify-between text-sm">
                     <div>
                       <span>{project.name}</span>
-                      {project.landingpage_slug && (
-                        <span className="ml-2 text-muted-foreground">
-                          <Link2 className="inline h-3 w-3 mr-1" />
-                          {project.landingpage_slug}.kaufy.de
-                        </span>
-                      )}
+                      {project.landingpage_slug && <span className="ml-2 text-muted-foreground"><Link2 className="inline h-3 w-3 mr-1" />{project.landingpage_slug}.kaufy.de</span>}
                     </div>
                     {project.landingpage_enabled ? (
                       <Badge variant="outline" className="bg-green-50 text-green-700">Aktiv</Badge>
                     ) : (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setLandingpageSlug(project.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-                          setLandingpageDialog({ open: true, projectId: project.id });
-                        }}
-                      >
-                        Erstellen
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => { setLandingpageSlug(project.name.toLowerCase().replace(/[^a-z0-9]/g, '-')); setLandingpageDialog({ open: true, projectId: project.id }); }}>Erstellen</Button>
                     )}
                   </div>
                 ))}
@@ -301,64 +214,41 @@ export default function MarketingTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-primary" />
-            <CardTitle>Social Lead Generation</CardTitle>
-            <Badge variant="outline">Coming Soon</Badge>
+            <Megaphone className="h-5 w-5 text-primary" /><CardTitle>Social Lead Generation</CardTitle><Badge variant="outline">Coming Soon</Badge>
           </div>
-          <CardDescription>
-            Automatisierte Werbekampagnen auf Social Media mit Lead-Integration
-          </CardDescription>
+          <CardDescription>Automatisierte Werbekampagnen auf Social Media mit Lead-Integration</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-4">
               <Users className="h-8 w-8 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Integration mit MOD-10 Leads</p>
-                <p className="text-sm text-muted-foreground">
-                  Facebook, Instagram & Google Ads Kampagnen
-                </p>
-              </div>
+              <div><p className="font-medium">Integration mit MOD-10 Leads</p><p className="text-sm text-muted-foreground">Facebook, Instagram & Google Ads Kampagnen</p></div>
             </div>
-            <Button variant="secondary" disabled>
-              Bald verfügbar
-            </Button>
+            <Button variant="secondary" disabled>Bald verfügbar</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Landingpage Creation Dialog */}
+      {/* Landingpage Dialog */}
       <Dialog open={landingpageDialog.open} onOpenChange={(open) => setLandingpageDialog({ ...landingpageDialog, open })}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Projekt-Landingpage erstellen</DialogTitle>
-            <DialogDescription>
-              Wählen Sie eine URL für Ihre Projekt-Landingpage
-            </DialogDescription>
+            <DialogDescription>Wählen Sie eine URL für Ihre Projekt-Landingpage</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>URL-Slug</Label>
               <div className="flex items-center gap-2">
-                <Input 
-                  value={landingpageSlug}
-                  onChange={(e) => setLandingpageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="mein-projekt"
-                />
+                <Input value={landingpageSlug} onChange={(e) => setLandingpageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="mein-projekt" />
                 <span className="text-muted-foreground whitespace-nowrap">.kaufy.de</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt
-              </p>
+              <p className="text-sm text-muted-foreground">Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLandingpageDialog({ open: false, projectId: null })}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleLandingpageCreate} disabled={!landingpageSlug}>
-              Landingpage erstellen
-            </Button>
+            <Button variant="outline" onClick={() => setLandingpageDialog({ open: false, projectId: null })}>Abbrechen</Button>
+            <Button onClick={handleLandingpageCreate} disabled={!landingpageSlug}>Landingpage erstellen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
