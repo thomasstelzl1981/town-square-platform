@@ -1,15 +1,18 @@
 /**
- * useArmstrongVoice — WebSocket-based voice interaction with Armstrong
+ * useArmstrongVoice — ElevenLabs Scribe v2 Realtime STT + Browser Fallback
  * 
- * Handles:
- * - Microphone capture (PCM16 @ 24kHz)
- * - WebSocket connection to sot-armstrong-voice
- * - Audio playback of responses
- * - VAD-based turn detection
- * - Browser Speech API fallback when WebSocket fails
+ * Primary: ElevenLabs useScribe (scribe_v2_realtime, VAD commit)
+ * Fallback: Browser SpeechRecognition API (de-DE)
+ * 
+ * Hook signature is identical to the previous version so all consumers
+ * (ArmstrongContainer, ChatPanel, ComposeEmailDialog) work without changes.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+// Feature flag for future provider switch
+const VOICE_PROVIDER: 'elevenlabs' | 'browser' = 'elevenlabs';
 
 interface VoiceState {
   isConnected: boolean;
@@ -29,124 +32,143 @@ interface UseArmstrongVoiceReturn extends VoiceState {
   disconnect: () => void;
 }
 
-// Audio utilities
-const encodeAudioForAPI = (float32Array: Float32Array): string => {
-  const int16Array = new Int16Array(float32Array.length);
-  for (let i = 0; i < float32Array.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32Array[i]));
-    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+// ─── Browser Speech API types ───
+interface SpeechRecognitionType extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((ev: Event) => void) | null;
+  onend: ((ev: Event) => void) | null;
+  onresult: ((ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((ev: SpeechRecognitionErrorEvent) => void) | null;
+}
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition: new () => SpeechRecognitionType;
+    SpeechRecognition: new () => SpeechRecognitionType;
   }
-  const uint8Array = new Uint8Array(int16Array.buffer);
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
-  }
-  return btoa(binary);
-};
+}
 
-const createWavFromPCM = (pcmData: Uint8Array): Uint8Array => {
-  const int16Data = new Int16Array(pcmData.length / 2);
-  for (let i = 0; i < pcmData.length; i += 2) {
-    int16Data[i / 2] = (pcmData[i + 1] << 8) | pcmData[i];
-  }
+// ─── ElevenLabs WebSocket STT ───
+class ElevenLabsScribeConnection {
+  private ws: WebSocket | null = null;
+  private audioContext: AudioContext | null = null;
+  private stream: MediaStream | null = null;
+  private processor: ScriptProcessorNode | null = null;
+  private source: MediaStreamAudioSourceNode | null = null;
+  
+  onPartial?: (text: string) => void;
+  onCommit?: (text: string) => void;
+  onError?: (error: string) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
 
-  const sampleRate = 24000;
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const blockAlign = (numChannels * bitsPerSample) / 8;
-  const byteRate = sampleRate * blockAlign;
-  const dataSize = int16Data.byteLength;
-
-  const wavHeader = new ArrayBuffer(44);
-  const view = new DataView(wavHeader);
-
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  const wavArray = new Uint8Array(wavHeader.byteLength + int16Data.byteLength);
-  wavArray.set(new Uint8Array(wavHeader), 0);
-  wavArray.set(new Uint8Array(int16Data.buffer), wavHeader.byteLength);
-
-  return wavArray;
-};
-
-// Audio queue for sequential playback
-class AudioQueue {
-  private queue: Uint8Array[] = [];
-  private isPlaying = false;
-  private audioContext: AudioContext;
-  private onPlaybackStart?: () => void;
-  private onPlaybackEnd?: () => void;
-
-  constructor(
-    audioContext: AudioContext,
-    onPlaybackStart?: () => void,
-    onPlaybackEnd?: () => void
-  ) {
-    this.audioContext = audioContext;
-    this.onPlaybackStart = onPlaybackStart;
-    this.onPlaybackEnd = onPlaybackEnd;
-  }
-
-  async addToQueue(audioData: Uint8Array) {
-    this.queue.push(audioData);
-    if (!this.isPlaying) {
-      await this.playNext();
-    }
-  }
-
-  private async playNext() {
-    if (this.queue.length === 0) {
-      this.isPlaying = false;
-      this.onPlaybackEnd?.();
-      return;
-    }
-
-    if (!this.isPlaying) {
-      this.onPlaybackStart?.();
-    }
-    this.isPlaying = true;
-    const audioData = this.queue.shift()!;
-
+  async connect(token: string) {
     try {
-      const wavData = createWavFromPCM(audioData);
-      const arrayBufferCopy = wavData.buffer.slice(0) as ArrayBuffer;
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBufferCopy);
+      // Request mic
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
 
-      const source = this.audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(this.audioContext.destination);
+      this.audioContext = new AudioContext({ sampleRate: 16000 });
+      this.source = this.audioContext.createMediaStreamSource(this.stream);
+      
+      // Connect WebSocket
+      this.ws = new WebSocket(
+        `wss://api.elevenlabs.io/v1/speech-to-text/stream?model_id=scribe_v2_realtime&token=${encodeURIComponent(token)}`
+      );
 
-      source.onended = () => this.playNext();
-      source.start(0);
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      this.playNext();
+      this.ws.onopen = () => {
+        console.log('[ElevenLabs STT] Connected');
+        // Send initial config
+        this.ws?.send(JSON.stringify({
+          type: 'configure',
+          language_code: 'de',
+          commit_strategy: 'vad',
+        }));
+        this.onConnect?.();
+        this.startAudioCapture();
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          switch (data.type) {
+            case 'partial_transcript':
+              if (data.text) this.onPartial?.(data.text);
+              break;
+            case 'committed_transcript':
+            case 'committed_transcript_with_timestamps':
+              if (data.text) this.onCommit?.(data.text);
+              break;
+            case 'error':
+              console.error('[ElevenLabs STT] Error:', data);
+              this.onError?.(data.message || 'STT error');
+              break;
+          }
+        } catch (e) {
+          console.error('[ElevenLabs STT] Parse error:', e);
+        }
+      };
+
+      this.ws.onerror = () => {
+        this.onError?.('WebSocket connection failed');
+      };
+
+      this.ws.onclose = () => {
+        console.log('[ElevenLabs STT] Disconnected');
+        this.onDisconnect?.();
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Connection failed';
+      this.onError?.(msg);
+      throw e;
     }
   }
 
-  clear() {
-    this.queue = [];
-    this.isPlaying = false;
+  private startAudioCapture() {
+    if (!this.audioContext || !this.source) return;
+    
+    this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+    this.processor.onaudioprocess = (e) => {
+      if (this.ws?.readyState !== WebSocket.OPEN) return;
+      const float32 = e.inputBuffer.getChannelData(0);
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      // Send as base64
+      const bytes = new Uint8Array(int16.buffer);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, Math.min(i + chunk, bytes.length))));
+      }
+      this.ws.send(JSON.stringify({ type: 'audio', data: btoa(binary) }));
+    };
+    this.source.connect(this.processor);
+    this.processor.connect(this.audioContext.destination);
+  }
+
+  disconnect() {
+    this.source?.disconnect();
+    this.processor?.disconnect();
+    this.stream?.getTracks().forEach(t => t.stop());
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.close();
+    }
+    this.ws = null;
+    this.audioContext?.close();
+    this.audioContext = null;
+    this.stream = null;
+    this.source = null;
+    this.processor = null;
   }
 }
 
@@ -162,256 +184,179 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     useBrowserFallback: false,
   });
 
-  // Browser Speech API fallback
-  const browserRecognitionRef = useRef<any>(null);
-  const useBrowserFallbackRef = useRef(false);
+  const scribeRef = useRef<ElevenLabsScribeConnection | null>(null);
+  const browserRecRef = useRef<SpeechRecognitionType | null>(null);
+  const isStoppingRef = useRef(false);
+  const providerRef = useRef<'elevenlabs' | 'browser'>('elevenlabs');
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioQueueRef = useRef<AudioQueue | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-  // Cleanup function
-  const cleanup = useCallback(() => {
-    if (sourceRef.current) {
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
-    }
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    audioQueueRef.current?.clear();
-  }, []);
-
-  // Disconnect
-  const disconnect = useCallback(() => {
-    cleanup();
-    setState(prev => ({
-      ...prev,
-      isConnected: false,
-      isListening: false,
-      isProcessing: false,
-      isSpeaking: false,
-    }));
-  }, [cleanup]);
-
-  // Stop listening
-  const stopListening = useCallback(() => {
-    if (sourceRef.current) {
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
-    }
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setState(prev => ({ ...prev, isListening: false }));
-  }, []);
-
-  // Start listening
-  const startListening = useCallback(async () => {
+  // ── ElevenLabs start ──
+  const startElevenLabs = useCallback(async () => {
     try {
-      setState(prev => ({ ...prev, error: null }));
-
-      // Initialize audio context if needed
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      setState(prev => ({ ...prev, error: null, isProcessing: true }));
+      
+      // Fetch token
+      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !data?.token) {
+        throw new Error('Token-Abruf fehlgeschlagen — Fallback auf Browser');
       }
 
-      // Initialize audio queue
-      if (!audioQueueRef.current) {
-        audioQueueRef.current = new AudioQueue(
-          audioContextRef.current,
-          () => setState(prev => ({ ...prev, isSpeaking: true })),
-          () => setState(prev => ({ ...prev, isSpeaking: false }))
-        );
-      }
+      const scribe = new ElevenLabsScribeConnection();
+      scribeRef.current = scribe;
+      providerRef.current = 'elevenlabs';
 
-      // Connect WebSocket if not connected
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        const wsUrl = `wss://ktpvilzjtcaxyuufocrs.functions.supabase.co/functions/v1/sot-armstrong-voice`;
-        
-        wsRef.current = new WebSocket(wsUrl);
-
-        wsRef.current.onopen = () => {
-          console.log('Voice WebSocket connected');
-          setState(prev => ({ ...prev, isConnected: true }));
-        };
-
-        wsRef.current.onmessage = async (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('Voice event:', data.type);
-
-            switch (data.type) {
-              case 'session.created':
-              case 'session.updated':
-                console.log('Voice session ready');
-                break;
-
-              case 'input_audio_buffer.speech_started':
-                setState(prev => ({ ...prev, isProcessing: true }));
-                break;
-
-              case 'input_audio_buffer.speech_stopped':
-                setState(prev => ({ ...prev, isProcessing: true }));
-                break;
-
-              case 'conversation.item.input_audio_transcription.completed':
-                setState(prev => ({
-                  ...prev,
-                  transcript: data.transcript || prev.transcript,
-                }));
-                break;
-
-              case 'response.audio_transcript.delta':
-                setState(prev => ({
-                  ...prev,
-                  assistantTranscript: prev.assistantTranscript + (data.delta || ''),
-                }));
-                break;
-
-              case 'response.audio_transcript.done':
-                setState(prev => ({ ...prev, isProcessing: false }));
-                break;
-
-              case 'response.audio.delta':
-                if (data.delta) {
-                  const binaryString = atob(data.delta);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                  }
-                  await audioQueueRef.current?.addToQueue(bytes);
-                }
-                break;
-
-              case 'response.done':
-                setState(prev => ({
-                  ...prev,
-                  isProcessing: false,
-                  assistantTranscript: '',
-                }));
-                break;
-
-              case 'error':
-                console.error('Voice error:', data.error);
-                setState(prev => ({
-                  ...prev,
-                  error: data.error?.message || 'Voice error occurred',
-                  isProcessing: false,
-                }));
-                break;
-            }
-          } catch (error) {
-            console.error('Error processing voice message:', error);
-          }
-        };
-
-        wsRef.current.onerror = (error) => {
-          console.error('Voice WebSocket error:', error);
-          setState(prev => ({
-            ...prev,
-            error: 'Verbindung zum Sprachdienst fehlgeschlagen',
-            isConnected: false,
-          }));
-        };
-
-        wsRef.current.onclose = () => {
-          console.log('Voice WebSocket closed');
-          setState(prev => ({
-            ...prev,
-            isConnected: false,
-            isListening: false,
-          }));
-        };
-
-        // Wait for connection
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
-          wsRef.current!.addEventListener('open', () => {
-            clearTimeout(timeout);
-            resolve();
-          }, { once: true });
-          wsRef.current!.addEventListener('error', () => {
-            clearTimeout(timeout);
-            reject(new Error('Connection failed'));
-          }, { once: true });
-        });
-      }
-
-      // Request microphone access
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 24000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-
-      // Set up audio processing
-      const audioContext = audioContextRef.current;
-      sourceRef.current = audioContext.createMediaStreamSource(streamRef.current);
-      processorRef.current = audioContext.createScriptProcessor(4096, 1, 1);
-
-      processorRef.current.onaudioprocess = (e) => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          const inputData = e.inputBuffer.getChannelData(0);
-          const encodedAudio = encodeAudioForAPI(new Float32Array(inputData));
-          wsRef.current.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: encodedAudio,
-          }));
-        }
+      scribe.onConnect = () => {
+        setState(prev => ({
+          ...prev,
+          isConnected: true,
+          isListening: true,
+          isProcessing: false,
+          useBrowserFallback: false,
+          transcript: '',
+        }));
       };
 
-      sourceRef.current.connect(processorRef.current);
-      processorRef.current.connect(audioContext.destination);
+      scribe.onPartial = (text) => {
+        setState(prev => ({ ...prev, assistantTranscript: text }));
+      };
 
-      setState(prev => ({
-        ...prev,
-        isListening: true,
-        transcript: '',
-        assistantTranscript: '',
-      }));
-    } catch (error) {
-      console.error('Failed to start listening:', error);
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Mikrofon-Zugriff verweigert',
-        isListening: false,
-      }));
+      scribe.onCommit = (text) => {
+        setState(prev => ({
+          ...prev,
+          transcript: prev.transcript + (prev.transcript ? ' ' : '') + text,
+          assistantTranscript: '',
+        }));
+      };
+
+      scribe.onError = (err) => {
+        console.error('[Voice] ElevenLabs error:', err);
+        setState(prev => ({ ...prev, error: err }));
+      };
+
+      scribe.onDisconnect = () => {
+        setState(prev => ({ ...prev, isConnected: false, isListening: false }));
+      };
+
+      await scribe.connect(data.token);
+    } catch (e) {
+      console.warn('[Voice] ElevenLabs failed, falling back to browser:', e);
+      // Fallback to browser
+      startBrowser();
     }
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanup();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+  // ── Browser Speech API start ──
+  const startBrowser = useCallback(() => {
+    const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechAPI) {
+      setState(prev => ({
+        ...prev,
+        error: 'Spracherkennung wird von diesem Browser nicht unterstützt',
+        isProcessing: false,
+      }));
+      return;
+    }
+
+    providerRef.current = 'browser';
+    const recognition = new SpeechAPI();
+    recognition.lang = 'de-DE';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      isStoppingRef.current = false;
+      setState(prev => ({
+        ...prev,
+        isConnected: true,
+        isListening: true,
+        isProcessing: false,
+        useBrowserFallback: true,
+        error: null,
+        transcript: '',
+      }));
+    };
+
+    recognition.onend = () => {
+      if (!isStoppingRef.current && browserRecRef.current) {
+        try { browserRecRef.current.start(); } catch { /* already started */ }
+        return;
+      }
+      setState(prev => ({ ...prev, isListening: false, isConnected: false }));
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      if (final) {
+        setState(prev => ({
+          ...prev,
+          transcript: prev.transcript + (prev.transcript ? ' ' : '') + final,
+          assistantTranscript: '',
+        }));
+      }
+      if (interim) {
+        setState(prev => ({ ...prev, assistantTranscript: interim }));
       }
     };
-  }, [cleanup]);
 
-  // Toggle voice on/off
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === 'aborted') return;
+      const messages: Record<string, string> = {
+        'no-speech': 'Keine Sprache erkannt',
+        'audio-capture': 'Mikrofon nicht verfügbar',
+        'not-allowed': 'Mikrofonzugriff verweigert',
+        'network': 'Netzwerkfehler',
+      };
+      setState(prev => ({
+        ...prev,
+        error: messages[event.error] || 'Spracherkennungsfehler',
+        isListening: false,
+      }));
+    };
+
+    browserRecRef.current = recognition;
+    isStoppingRef.current = false;
+    try {
+      recognition.start();
+    } catch {
+      setState(prev => ({ ...prev, error: 'Konnte Spracherkennung nicht starten' }));
+    }
+  }, []);
+
+  // ── Public API ──
+  const startListening = useCallback(async () => {
+    setState(prev => ({ ...prev, error: null }));
+    if (VOICE_PROVIDER === 'elevenlabs') {
+      await startElevenLabs();
+    } else {
+      startBrowser();
+    }
+  }, [startElevenLabs, startBrowser]);
+
+  const stopListening = useCallback(() => {
+    isStoppingRef.current = true;
+    if (providerRef.current === 'elevenlabs' && scribeRef.current) {
+      scribeRef.current.disconnect();
+      scribeRef.current = null;
+    }
+    if (browserRecRef.current) {
+      try { browserRecRef.current.stop(); } catch { /* ignore */ }
+      browserRecRef.current = null;
+    }
+    setState(prev => ({ ...prev, isListening: false, isConnected: false, assistantTranscript: '' }));
+  }, []);
+
+  const disconnect = useCallback(() => {
+    stopListening();
+  }, [stopListening]);
+
   const toggleVoice = useCallback(() => {
     if (state.isListening) {
       stopListening();
@@ -419,6 +364,15 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
       startListening();
     }
   }, [state.isListening, startListening, stopListening]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      scribeRef.current?.disconnect();
+      isStoppingRef.current = true;
+      try { browserRecRef.current?.stop(); } catch { /* ignore */ }
+    };
+  }, []);
 
   return {
     ...state,

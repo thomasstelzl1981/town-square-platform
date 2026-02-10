@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import {
   Select,
   SelectContent,
@@ -272,7 +273,10 @@ export function ServiceCaseCreateDialog({
           
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Kurzbeschreibung (optional)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description">Kurzbeschreibung (optional)</Label>
+              <DictationButton onTranscript={(text) => setDescription(prev => prev + (prev ? ' ' : '') + text)} />
+            </div>
             <Textarea
               id="description"
               value={description}

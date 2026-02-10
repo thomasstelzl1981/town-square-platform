@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MietyCreateHomeForm } from './miety/components/MietyCreateHomeForm';
@@ -901,8 +902,13 @@ function KommunikationTile() {
               </div>
             </div>
             <Input placeholder="Telefonnummer Vermieter" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} className="text-sm" />
-            <textarea placeholder="Nachricht eingeben..." value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)}
-              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+            <div className="relative">
+              <textarea placeholder="Nachricht eingeben..." value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)}
+                className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              <div className="absolute top-1 right-1">
+                <DictationButton onTranscript={(text) => setWhatsappMessage(prev => prev + (prev ? ' ' : '') + text)} />
+              </div>
+            </div>
             <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppSend}>
               <Send className="h-4 w-4 mr-1.5" />Nachricht senden
             </Button>
@@ -921,8 +927,13 @@ function KommunikationTile() {
             </div>
             <Input placeholder="E-Mail-Adresse Vermieter" type="email" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} className="text-sm" />
             <Input placeholder="Betreff" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="text-sm" />
-            <textarea placeholder="Nachricht..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)}
-              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+            <div className="relative">
+              <textarea placeholder="Nachricht..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)}
+                className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              <div className="absolute top-1 right-1">
+                <DictationButton onTranscript={(text) => setEmailBody(prev => prev + (prev ? ' ' : '') + text)} />
+              </div>
+            </div>
             <Button size="sm" variant="outline" className="w-full" onClick={handleEmailSend}>
               <Mail className="h-4 w-4 mr-1.5" />E-Mail senden
             </Button>
@@ -939,8 +950,13 @@ function KommunikationTile() {
                 <p className="text-xs text-muted-foreground">Text übersetzen & einfügen</p>
               </div>
             </div>
-            <textarea placeholder="Text eingeben (Deutsch)..." value={translateInput} onChange={(e) => setTranslateInput(e.target.value)}
-              className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+            <div className="relative">
+              <textarea placeholder="Text eingeben (Deutsch)..." value={translateInput} onChange={(e) => setTranslateInput(e.target.value)}
+                className="flex min-h-[120px] w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
+              <div className="absolute top-1 right-1">
+                <DictationButton onTranscript={(text) => setTranslateInput(prev => prev + (prev ? ' ' : '') + text)} />
+              </div>
+            </div>
             <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)}
               className="flex h-10 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
               {languages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}

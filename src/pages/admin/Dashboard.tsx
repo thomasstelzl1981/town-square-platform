@@ -210,6 +210,14 @@ export default function Dashboard() {
                 <Rocket className="h-4 w-4" />
                 Future Room
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/acquiary')}
+                className="gap-2"
+              >
+                <Building2 className="h-4 w-4" />
+                Acquiary
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Go-live: kaufy.app | systemofatown.app | miety.app | futureroom.app

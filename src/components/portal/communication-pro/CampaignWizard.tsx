@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -244,7 +245,10 @@ export function CampaignWizard({ onClose, onSuccess }: CampaignWizardProps) {
             </div>
 
             <div>
-              <Label>Nachricht</Label>
+              <div className="flex items-center justify-between">
+                <Label>Nachricht</Label>
+                <DictationButton onTranscript={(text) => setBody(prev => prev + (prev ? ' ' : '') + text)} />
+              </div>
               <Textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}

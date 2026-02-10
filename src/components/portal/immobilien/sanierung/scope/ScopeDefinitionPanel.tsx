@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { Separator } from '@/components/ui/separator';
 import { 
   Bot, Upload, FileText, Sparkles, Building2, AlertCircle,
@@ -389,6 +390,9 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center justify-end mb-1">
+            <DictationButton onTranscript={(text) => setScopeDescription(prev => prev + (prev ? ' ' : '') + text)} />
+          </div>
           <Textarea
             value={scopeDescription}
             onChange={(e) => setScopeDescription(e.target.value)}

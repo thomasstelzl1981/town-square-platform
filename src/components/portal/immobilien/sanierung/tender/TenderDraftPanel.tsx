@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -306,7 +307,10 @@ Mit freundlichen Grüßen
 
               {/* Custom Message */}
               <div className="space-y-2">
-                <Label>Zusätzliche Hinweise (optional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Zusätzliche Hinweise (optional)</Label>
+                  <DictationButton onTranscript={(text) => setCustomMessage(prev => prev + (prev ? ' ' : '') + text)} />
+                </div>
                 <Textarea
                   placeholder="z.B. Besichtigungstermin, besondere Anforderungen..."
                   value={customMessage}

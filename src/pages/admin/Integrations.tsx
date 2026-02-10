@@ -158,6 +158,79 @@ export default function Integrations() {
         </p>
       </div>
 
+      {/* Voice Integration Documentation */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            <CardTitle>Spracheingabe (Voice)</CardTitle>
+          </div>
+          <CardDescription>
+            ElevenLabs Scribe v2 Realtime — Diktat-zu-Text in allen Freitext-Feldern
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/20">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Primär: ElevenLabs Scribe v2
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Realtime STT via WebSocket · VAD-Commit · Deutsch
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                Fallback: Browser Speech API
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                webkitSpeechRecognition · de-DE · Automatisch bei Fehler
+              </p>
+            </div>
+          </div>
+          
+          <div>
+            <p className="text-sm font-medium mb-2">Voice-fähige Felder</p>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-2 font-medium">Komponente</th>
+                    <th className="text-left p-2 font-medium">Feld</th>
+                    <th className="text-left p-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { comp: 'ArmstrongContainer', field: 'Chat-Eingabe', status: 'aktiv' },
+                    { comp: 'ChatPanel', field: 'Chat-Eingabe', status: 'aktiv' },
+                    { comp: 'ComposeEmailDialog', field: 'Betreff / Body', status: 'aktiv' },
+                    { comp: 'CampaignWizard', field: 'Kampagnen-Nachricht', status: 'aktiv' },
+                    { comp: 'ClaimCreateDialog', field: 'Schadensbeschreibung', status: 'aktiv' },
+                    { comp: 'ServiceCaseCreateDialog', field: 'Kurzbeschreibung', status: 'aktiv' },
+                    { comp: 'ScopeDefinitionPanel', field: 'Sanierungsumfang', status: 'aktiv' },
+                    { comp: 'TenderDraftPanel', field: 'Zusätzliche Hinweise', status: 'aktiv' },
+                    { comp: 'DeliveryTab', field: 'Präsentationsnotizen', status: 'aktiv' },
+                    { comp: 'KontakteTab', field: 'Kontakt-Notizen', status: 'aktiv' },
+                    { comp: 'MietyPortalPage', field: 'WhatsApp / E-Mail / Übersetzer', status: 'aktiv' },
+                  ].map((row, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2 font-mono text-xs">{row.comp}</td>
+                      <td className="p-2">{row.field}</td>
+                      <td className="p-2">
+                        <Badge className="bg-green-600 text-xs">{row.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* API Keys Status Overview */}
       <Card>
         <CardHeader>
@@ -171,7 +244,7 @@ export default function Integrations() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {configuredSecrets.map(secret => (
+            {[...configuredSecrets, 'ELEVENLABS_API_KEY'].map(secret => (
               <Badge key={secret} variant="outline" className="flex items-center gap-1.5 py-1.5">
                 <CheckCircle2 className="h-3 w-3 text-green-600" />
                 {secret}
