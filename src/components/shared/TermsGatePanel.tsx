@@ -186,24 +186,30 @@ export function TermsGatePanel({
         <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
           Zusammenfassung
         </h4>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <span className="text-muted-foreground">Brutto-Provision:</span>
-          <span className="font-medium text-right">{formatEUR(grossCommission)}</span>
+        {grossCommission > 0 ? (
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-muted-foreground">Brutto-Provision:</span>
+            <span className="font-medium text-right">{formatEUR(grossCommission)}</span>
 
-          <span className="text-muted-foreground">Plattformgebühr (30%):</span>
-          <span className="font-medium text-right text-destructive">
-            {formatEUR(platformFee)}
-          </span>
+            <span className="text-muted-foreground">Plattformgebühr (30%):</span>
+            <span className="font-medium text-right text-destructive">
+              {formatEUR(platformFee)}
+            </span>
 
-          {liableRole !== 'owner' && (
-            <>
-              <span className="text-muted-foreground">Ihr Anteil:</span>
-              <span className="font-semibold text-right text-primary">
-                {formatEUR(netCommission)}
-              </span>
-            </>
-          )}
-        </div>
+            {liableRole !== 'owner' && (
+              <>
+                <span className="text-muted-foreground">Ihr Anteil:</span>
+                <span className="font-semibold text-right text-primary">
+                  {formatEUR(netCommission)}
+                </span>
+              </>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            Die Vergütung wird bei Mandatsabschluss extern geregelt. Die Plattformgebühr von 30% gilt bei Provisionsauszahlung.
+          </p>
+        )}
 
         <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
           <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />

@@ -14,6 +14,7 @@ interface SystemMailRequest {
   html?: string;
   text?: string;
   context?: string; // e.g. "renovation_tender", "serien_email"
+  from_override?: string; // e.g. "futureroom@systemofatown.com" — overrides user identity lookup
 }
 
 serve(async (req) => {
@@ -45,25 +46,32 @@ serve(async (req) => {
     }
 
     const body: SystemMailRequest = await req.json();
-    const { to, subject, html, text, context } = body;
+    const { to, subject, html, text, context, from_override } = body;
 
     if (!to || !subject) {
       throw new Error('Missing required fields: to, subject');
     }
 
-    // Resolve outbound identity
-    const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
-      p_user_id: user.id,
-    });
-
     let fromAddress = DEFAULT_FROM;
     let replyTo: string | undefined;
 
-    if (identityRows && identityRows.length > 0) {
-      const identity = identityRows[0];
-      const displayName = identity.display_name || 'Portal';
-      fromAddress = `${displayName} <${identity.from_email}>`;
-      replyTo = identity.from_email;
+    // If from_override is provided, use it as desk sender (skip identity lookup)
+    if (from_override) {
+      fromAddress = `System of a Town <${from_override}>`;
+      replyTo = from_override;
+      console.log(`[sot-system-mail-send] Using from_override: ${from_override}`);
+    } else {
+      // Resolve outbound identity from user
+      const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
+        p_user_id: user.id,
+      });
+
+      if (identityRows && identityRows.length > 0) {
+        const identity = identityRows[0];
+        const displayName = identity.display_name || 'Portal';
+        fromAddress = `${displayName} <${identity.from_email}>`;
+        replyTo = identity.from_email;
+      }
     }
 
     console.log(`[sot-system-mail-send] context=${context || 'generic'} from=${fromAddress} to=${Array.isArray(to) ? to.join(',') : to}`);
