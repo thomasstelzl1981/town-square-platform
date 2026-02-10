@@ -35,6 +35,7 @@ interface SalesApprovalSectionProps {
   projectAddress?: string;
   totalUnits?: number;
   projectVolume?: number;
+  isDemo?: boolean;
 }
 
 interface FeatureConfig {
@@ -85,6 +86,7 @@ export function SalesApprovalSection({
   projectAddress,
   totalUnits,
   projectVolume,
+  isDemo = false,
 }: SalesApprovalSectionProps) {
   const { profile, user } = useAuth();
   const queryClient = useQueryClient();
@@ -100,7 +102,7 @@ export function SalesApprovalSection({
   });
   const [isActivating, setIsActivating] = useState(false);
 
-  // Fetch existing request for this project
+  // Fetch existing request for this project (skip for demo)
   const { data: request } = useQuery({
     queryKey: ['sales-desk-request', projectId],
     queryFn: async () => {
@@ -115,7 +117,7 @@ export function SalesApprovalSection({
       if (error) throw error;
       return data;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !isDemo,
   });
 
   const requestStatus = request?.status as string | undefined;
@@ -141,7 +143,16 @@ export function SalesApprovalSection({
 
   // ─── Activate Vertriebsauftrag ───
   async function activateVertriebsauftrag() {
-    if (!allAgreementsAccepted || !projectId || !tenantId || !user) return;
+    if (!allAgreementsAccepted) return;
+
+    if (isDemo) {
+      toast.info('Demo-Modus', {
+        description: 'Im Demo-Modus kann kein echter Vertriebsauftrag erteilt werden. Erstellen Sie ein Projekt, um fortzufahren.',
+      });
+      return;
+    }
+
+    if (!projectId || !tenantId || !user) return;
 
     setIsActivating(true);
     try {
@@ -230,7 +241,7 @@ export function SalesApprovalSection({
     // kaufy_projekt and landingpage are simple toggles — placeholder for now
   }
 
-  const hasProject = !!projectId;
+  const hasProject = !!projectId || isDemo;
 
   return (
     <div className="space-y-4">
