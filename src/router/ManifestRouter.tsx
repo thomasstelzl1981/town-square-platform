@@ -167,6 +167,14 @@ import SotPreise from '@/pages/zone3/sot/SotPreise';
 import SotDemo from '@/pages/zone3/sot/SotDemo';
 import SotFAQ from '@/pages/zone3/sot/SotFAQ';
 
+// Zone 3: ACQUIARY Website
+import AcquiaryLayout from '@/pages/zone3/acquiary/AcquiaryLayout';
+import AcquiaryHome from '@/pages/zone3/acquiary/AcquiaryHome';
+import AcquiaryMethodik from '@/pages/zone3/acquiary/AcquiaryMethodik';
+import AcquiaryNetzwerk from '@/pages/zone3/acquiary/AcquiaryNetzwerk';
+import AcquiaryKarriere from '@/pages/zone3/acquiary/AcquiaryKarriere';
+import AcquiaryObjekt from '@/pages/zone3/acquiary/AcquiaryObjekt';
+
 // 404
 import NotFound from '@/pages/NotFound';
 
@@ -361,6 +369,17 @@ const sotComponentMap: Record<string, React.ComponentType> = {
 };
 
 // =============================================================================
+// Component Map for Zone 3 ACQUIARY
+// =============================================================================
+const acquiaryComponentMap: Record<string, React.ComponentType> = {
+  AcquiaryHome,
+  AcquiaryMethodik,
+  AcquiaryNetzwerk,
+  AcquiaryKarriere,
+  AcquiaryObjekt,
+};
+
+// =============================================================================
 // Layout Map for Zone 3
 // =============================================================================
 const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.ReactNode }>> = {
@@ -368,6 +387,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   MietyLayout,
   FutureRoomLayout,
   SotLayout,
+  AcquiaryLayout,
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -375,6 +395,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   miety: mietyComponentMap,
   futureroom: futureroomComponentMap,
   sot: sotComponentMap,
+  acquiary: acquiaryComponentMap,
 };
 
 // =============================================================================
