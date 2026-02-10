@@ -1,11 +1,14 @@
 /**
- * Portfolio Tab - Project List with Aufteiler KPIs
- * MOD-13 PROJEKTE
+ * Portfolio Tab - Arbeitsfläche mit Projekt-Widgets + Sticky-Kalkulator
+ * MOD-13 PROJEKTE — P0 Redesign
+ * 
+ * NEVER shows EmptyState only — always structured UI with placeholders.
  */
 
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
@@ -15,7 +18,8 @@ import {
   CreateDeveloperContextDialog,
   QuickIntakeUploader,
 } from '@/components/projekte';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/ProjectCard';
+import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -37,12 +41,9 @@ export default function PortfolioTab() {
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects(selectedContextId);
   
   const [createProjectOpen, setCreateProjectOpen] = useState(searchParams.get('create') === '1');
-  const [createContextOpen, setCreateContextOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const isLoading = loadingContexts || isLoadingPortfolio;
-
-  // No longer blocking on missing contexts - Magic Intake will auto-create
-  // Context can be created via Dashboard or settings
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -64,60 +65,84 @@ export default function PortfolioTab() {
     navigate(`/portal/projekte/${projectId}`);
   };
 
+  // Get selected project data for calculator
+  const selectedProject = selectedProjectId 
+    ? portfolioRows.find(p => p.id === selectedProjectId)
+    : portfolioRows[0];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight uppercase">Projekt-Portfolio</h2>
-          <p className="text-muted-foreground">
-            Übersicht aller Bauträger- und Aufteiler-Projekte
-          </p>
+          <p className="text-muted-foreground">Übersicht aller Bauträger- und Aufteiler-Projekte</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Context Filter */}
-          <Select
-            value={selectedContextId || 'all'}
-            onValueChange={(v) => setSelectedContextId(v === 'all' ? undefined : v)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Alle Gesellschaften" />
-            </SelectTrigger>
+          <Select value={selectedContextId || 'all'} onValueChange={(v) => setSelectedContextId(v === 'all' ? undefined : v)}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Alle Gesellschaften" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Gesellschaften</SelectItem>
-              {contexts.map((ctx) => (
-                <SelectItem key={ctx.id} value={ctx.id}>
-                  {ctx.name}
-                </SelectItem>
-              ))}
+              {contexts.map((ctx) => (<SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>))}
             </SelectContent>
           </Select>
-          
-          <QuickIntakeUploader 
-            onSuccess={(projectId) => navigate(`/portal/projekte/${projectId}`)} 
-          />
-          
-          <Button onClick={() => setCreateProjectOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Neues Projekt
-          </Button>
+          <QuickIntakeUploader onSuccess={(projectId) => navigate(`/portal/projekte/${projectId}`)} />
+          <Button onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Neues Projekt</Button>
         </div>
       </div>
 
-      {isLoading ? (
-        <LoadingState />
-      ) : portfolioRows.length === 0 ? (
-        <EmptyState
-          title="Keine Projekte"
-          description="Erstellen Sie Ihr erstes Bauträger- oder Aufteiler-Projekt."
-          action={{ label: 'Projekt erstellen', onClick: () => setCreateProjectOpen(true) }}
-        />
-      ) : (
-        <ProjectPortfolioTable 
-          rows={portfolioRows}
-          onDelete={handleDeleteProject}
-        />
-      )}
+      {/* Projekt-Widgets (square cards) */}
+      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        {portfolioRows.map((project) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            isSelected={selectedProject?.id === project.id}
+            onClick={(id) => setSelectedProjectId(id)}
+          />
+        ))}
+        <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+      </div>
 
+      {/* Main Content: Table (left) + Sticky Calculator (right) */}
+      <div className="flex gap-6">
+        {/* Left: Unit Table */}
+        <div className="flex-1 min-w-0">
+          {isLoading ? (
+            <LoadingState />
+          ) : portfolioRows.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground mb-4">
+                  Noch keine Projekte vorhanden. Erstellen Sie Ihr erstes Projekt über den Magic Intake oder manuell.
+                </p>
+                <Button onClick={() => setCreateProjectOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Erstes Projekt erstellen
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <ProjectPortfolioTable 
+              rows={portfolioRows}
+              onDelete={handleDeleteProject}
+            />
+          )}
+        </div>
+
+        {/* Right: Sticky Calculator */}
+        <div className="hidden lg:block w-[280px] flex-shrink-0">
+          <StickyCalculatorPanel
+            totalSaleTarget={selectedProject?.total_sale_target || undefined}
+            purchasePrice={selectedProject?.purchase_price || undefined}
+            unitsCount={selectedProject?.total_units_count}
+            commissionRate={10}
+            isDemo={!selectedProject}
+          />
+        </div>
+      </div>
+
+      {/* Dialogs */}
       <CreateProjectDialog
         open={createProjectOpen}
         onOpenChange={setCreateProjectOpen}
@@ -136,10 +161,7 @@ export default function PortfolioTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>
