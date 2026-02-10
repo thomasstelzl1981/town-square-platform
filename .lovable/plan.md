@@ -1,88 +1,101 @@
 
 
-# MOD-13: Preisliste mit Wohnungsliste + Dokumenten-Kachel (verfeinert)
+# MOD-13: Demo-Wohnung Expose mit Investment Engine (verfeinert)
 
-## Verfeinerung gegenueber dem letzten Plan
+## Problem
 
-Die Spalte **Objekt-ID** (SOT-BE-*) wird als erste Spalte in die Wohnungsliste aufgenommen. Diese ID ist die interne Einheiten-ID, die per DB-Trigger automatisch bei jeder Unit-Anlage erzeugt wird. Sie ist der Schluessel fuer das Verkaufsexpose und den DMS-Ordner jeder Wohnung.
+Der vorherige Plan sah ein statisches Tab-Layout fuer das Demo-Expose vor. Die echten Objekt-Exposes auf KAUFY (Zone 3), MOD-08 und MOD-09 verwenden aber das vollstaendige **Investment-Engine-Layout** mit MasterGraph, Haushaltsrechnung, SliderPanel etc. Das Demo-Expose muss exakt diesen Aufbau spiegeln.
 
----
+## Referenz-Layout (Kaufy2026Expose / PartnerExposePage)
 
-## Spalten der Wohnungsliste (UnitPreislisteTable)
+```text
++---------------------------------------+------------------+
+| Bildergalerie (Platzhalter)           |                  |
++---------------------------------------+  INVESTMENT      |
+| Badge "ETW" · Titel · Adresse        |  SLIDER          |
++---------------------------------------+  PANEL           |
+| Key Facts (6 Spalten):                |  (sticky)        |
+| Kaufpreis | Flaeche | Baujahr |       |                  |
+| Einheiten | Miete   | Rendite |       |                  |
++---------------------------------------+                  |
+| Beschreibung                          |                  |
++---------------------------------------+                  |
+| MasterGraph (40-Jahres-Projektion)    |                  |
++---------------------------------------+                  |
+| Haushaltsrechnung (T-Konto)           |                  |
++---------------------------------------+                  |
+| FinanzierungSummary                   |                  |
++---------------------------------------+                  |
+| DetailTable40Jahre (Collapsible)      |                  |
++---------------------------------------+------------------+
+| Google Maps Platzhalter (volle Breite)                   |
++----------------------------------------------------------+
+```
 
-| # | Spalte | Feld | Beschreibung |
-|---|--------|------|-------------|
-| 1 | **Objekt-ID** | `public_id` (SOT-BE-*) | Interne Einheiten-ID, verlinkt zur Wohnungsakte |
-| 2 | WE-Nr | `unit_number` | Wohnungsnummer (WE-001 etc.) |
-| 3 | Typ | `rooms` | Zimmeranzahl (1-Zi, 2-Zi etc.) |
-| 4 | Etage | `floor` | Stockwerk |
-| 5 | Flaeche m2 | `living_area` | Wohnflaeche |
-| 6 | Jahresnetto-Kaltmiete | `current_rent * 12` | EUR/Jahr |
-| 7 | Nicht umlagef. NK | `non_recoverable_costs` | Monatlich, EUR |
-| 8 | Mietrendite | `(Jahresnetto / Verkaufspreis) * 100` | Individuell pro WE |
-| 9 | Verkaufspreis | `sale_price` | Listenpreis EUR |
-| 10 | Provision EUR | `sale_price * provision_rate` | Provision pro WE |
-| 11 | EUR/m2 | `sale_price / living_area` | Quadratmeterpreis |
-| 12 | Status | `reservation_status` | Ampel-Badge (frei/reserviert/verkauft) |
+## Aenderungen
 
-- **Summenzeile**: Summen fuer Flaeche, Jahresnetto, NK, Provision, Verkaufspreis + Durchschnitt Mietrendite + Durchschnitt EUR/m2
-- **Klick auf Zeile**: Navigiert zu `/portal/projekte/{projectId}/einheit/{unitId}` (Verkaufsexpose)
+### 1. UnitPreislisteTable: Erste Zeile hervorheben + klickbar
 
----
+**Datei:** `src/components/projekte/UnitPreislisteTable.tsx`
 
-## Alle Aenderungen
-
-### 1. Projekt-Widget doppelt so breit
-
-**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
-- ProjectCard bekommt `col-span-2` im Grid
+- Zeile 1 (WE-001) bekommt `bg-primary/5 hover:bg-primary/10` Hintergrund
+- `pointer-events-none` wird nur auf Zeilen 2-24 angewendet, Zeile 1 bleibt klickbar
+- Klick navigiert zu `/portal/projekte/demo-project-001/einheit/demo-unit-001`
 
 ### 2. Demo-Daten erweitern
 
 **Datei:** `src/components/projekte/demoProjectData.ts`
-- `DEMO_UNITS` erhaelt zusaetzlich:
-  - `public_id`: Simulierte IDs (SOT-BE-DEMO0001 bis SOT-BE-DEMO0024)
-  - `annual_net_rent`: Jahresnetto-Kaltmiete
-  - `non_recoverable_costs`: Nicht umlagefaehige NK (variiert 12-25 EUR/Monat)
-  - `yield_percent`: Individuelle Rendite (3.6% bis 4.4%)
-  - `price_per_sqm`: EUR/m2
 
-### 3. Neue Preisliste-Tabelle
+Neue Konstante `DEMO_UNIT_DETAIL`:
+- `title`: "2-Zimmer-Wohnung, 1. OG links"
+- `description`: 2-3 Saetze Beispieltext
+- `year_built`: 1998
+- `heating_type`: "Zentralheizung (Gas)"
+- `energy_class`: "B"
+- Alle Werte fuer Key Facts Bar (Kaufpreis, Flaeche, Miete aus DEMO_UNITS[0])
 
-**Neue Datei:** `src/components/projekte/UnitPreislisteTable.tsx`
-- Alle 12 Spalten wie oben definiert
-- Objekt-ID als erste Spalte, monospace-Font, klickbar
-- Summenzeile am Ende
-- `isDemo` Prop fuer gedaempfte Darstellung
-- Zeilen-Klick navigiert zur Unit-Detailseite
+### 3. UnitDetailPage: Demo-Modus mit vollstaendigem Investment-Engine-Layout
 
-### 4. Dokumenten-Kachel
+**Datei:** `src/pages/portal/projekte/UnitDetailPage.tsx`
 
-**Neue Datei:** `src/components/projekte/ProjectDMSWidget.tsx`
-- DMS-Ordnerbaum aus `storage_nodes`
-- Zwei Bereiche: Allgemein (Projektordner) + Einheiten (je WE)
-- Drag-and-Drop via `FileDropZone`
-- Im Demo-Modus: Statischer Placeholder-Baum
+Wenn `unitId?.startsWith('demo-unit-')`:
+- **Keine DB-Abfragen** ausfuehren
+- Demo-Daten aus `DEMO_UNIT_DETAIL` und `DEMO_UNITS[0]` laden
+- `useInvestmentEngine()` mit Demo-Werten aufrufen (echte Berechnung, statische Input-Daten)
+- Gesamtes Layout in `opacity-60` mit "Musterdaten"-Badge
 
-### 5. PortfolioTab Layout
+Das Layout folgt 1:1 dem Kaufy2026Expose-Pattern:
 
-**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
-- ProjectCard mit `col-span-2`
-- `UnitPreislisteTable` ersetzt `ProjectPortfolioTable`
-- `ProjectDMSWidget` als eigene Kachel darunter
+**Linke Spalte (lg:col-span-2):**
+1. Bildergalerie-Platzhalter (graue Flaeche mit "Beispielbilder" Text, gleiche Proportionen wie ExposeImageGallery)
+2. Property Header: Badge "Eigentumswohnung" + Titel + Adresse + Kaufpreis
+3. Key Facts Bar (6 Spalten): Kaufpreis, Wohnflaeche, Baujahr, Zimmer, Miete/Mo, Bruttorendite
+4. Beschreibung (Demo-Text)
+5. **MasterGraph** (40-Jahres-Projektion) -- echte Komponente mit berechneten Demo-Daten
+6. **Haushaltsrechnung** (T-Konto) -- echte Komponente
+7. **FinanzierungSummary** -- echte Komponente
+8. **DetailTable40Jahre** (Collapsible, defaultOpen=false) -- echte Komponente
+9. Karten-Platzhalter (graue Flaeche mit "Standort" Text)
 
----
+**Rechte Spalte (lg:col-span-1, sticky):**
+- **InvestmentSliderPanel** -- echte Komponente, interaktiv auch im Demo-Modus
+- Slider-Aenderungen loesen echte Neuberechnung aus (zeigt die Engine in Aktion)
+
+**Wichtig:** Die Investment-Engine-Komponenten (MasterGraph, Haushaltsrechnung, InvestmentSliderPanel, DetailTable40Jahre, FinanzierungSummary) werden als echte, funktionale Komponenten eingebunden -- nicht als Platzhalter. Der Slider ist im Demo-Modus bedienbar, damit der Nutzer die Engine live erleben kann.
+
+### 4. Navigation / Routing
+
+Keine Route-Aenderungen noetig. Die bestehende Route `/portal/projekte/:projectId/einheit/:unitId` in `ProjektePage.tsx` zeigt bereits `UnitDetailPage`. Die Demo-Erkennung erfolgt intern ueber `unitId.startsWith('demo-unit-')`.
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| Erstellen | `src/components/projekte/UnitPreislisteTable.tsx` |
-| Erstellen | `src/components/projekte/ProjectDMSWidget.tsx` |
+| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` |
 | Aendern | `src/components/projekte/demoProjectData.ts` |
-| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` |
+| Aendern | `src/pages/portal/projekte/UnitDetailPage.tsx` |
 
 ## Risiko
 
-Niedrig. Additive Aenderungen, keine bestehende Logik wird entfernt.
+Niedrig. Die Investment-Engine-Komponenten werden mit statischen Demo-Daten gefuettert. `useInvestmentEngine()` wird mit festen Input-Werten aufgerufen. Keine DB-Aenderungen, keine neuen Routes.
 
