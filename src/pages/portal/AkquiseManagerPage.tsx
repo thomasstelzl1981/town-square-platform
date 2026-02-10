@@ -6,6 +6,7 @@
  */
 
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { TermsGatePanel } from '@/components/shared/TermsGatePanel';
@@ -252,6 +253,7 @@ function AkquiseMandateDetail() {
   const { mandateId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, profile } = useAuth();
   const { data: mandate, isLoading } = useAcqMandate(mandateId);
   const acceptMandate = useAcceptAcqMandate();
 
@@ -340,8 +342,8 @@ function AkquiseMandateDetail() {
             <TermsGatePanel
               templateCode="ACQ_MANDATE_ACCEPTANCE_V1"
               templateVariables={{
-                partner_name: mandate.assigned_manager_user_id || '',
-                partner_email: '',
+              partner_name: profile?.display_name || user?.email || 'Akquise-Manager',
+                partner_email: user?.email || '',
                 investor_name: mandate.client_display_name || 'Investor',
                 search_criteria: mandate.asset_focus?.join(', ') || 'Nicht spezifiziert',
                 mandate_id: mandate.code,

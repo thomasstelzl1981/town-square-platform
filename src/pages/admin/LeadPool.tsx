@@ -71,6 +71,11 @@ export default function LeadPool() {
   const [assignments, setAssignments] = useState<LeadAssignment[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  const [partnerOrgs, setPartnerOrgs] = useState<{ id: string; name: string }[]>([]);
   const [newLead, setNewLead] = useState({
     name: '',
     email: '',
@@ -105,6 +110,7 @@ export default function LeadPool() {
       const assignmentsData = assignmentsRes.data || [];
       const orgs = orgsRes.data || [];
       const contacts = contactsRes.data || [];
+      setPartnerOrgs(orgs);
 
       const enrichedLeads = leadsData.map(lead => ({
         ...lead,
@@ -163,6 +169,42 @@ export default function LeadPool() {
       toast({ title: 'Fehler', description: 'Lead konnte nicht erstellt werden.', variant: 'destructive' });
     } finally {
       setCreating(false);
+    }
+  }
+
+  function openAssignDialog(leadId: string) {
+    setSelectedLeadId(leadId);
+    setSelectedPartnerId('');
+    setAssignDialogOpen(true);
+  }
+
+  async function handleAssignLead() {
+    if (!selectedLeadId || !selectedPartnerId) return;
+    setAssigning(true);
+    try {
+      const { error } = await supabase.from('lead_assignments').insert({
+        lead_id: selectedLeadId,
+        partner_org_id: selectedPartnerId,
+        status: 'offered',
+        offered_at: new Date().toISOString(),
+      } as any);
+
+      if (error) throw error;
+
+      // Update lead status
+      await supabase.from('leads').update({
+        status: 'assigned',
+        assigned_partner_id: selectedPartnerId,
+      } as any).eq('id', selectedLeadId);
+
+      toast({ title: 'Lead zugewiesen', description: 'Lead wurde dem Partner angeboten.' });
+      setAssignDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error assigning lead:', error);
+      toast({ title: 'Fehler', description: 'Zuweisung fehlgeschlagen.', variant: 'destructive' });
+    } finally {
+      setAssigning(false);
     }
   }
 
@@ -316,7 +358,7 @@ export default function LeadPool() {
                           <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => openAssignDialog(lead.id)} title="Lead zuweisen">
                             <UserPlus className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -471,7 +513,42 @@ export default function LeadPool() {
         </DialogContent>
       </Dialog>
 
-      {/* PDF Export */}
+      {/* Assign Lead Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lead zuweisen</DialogTitle>
+            <DialogDescription>
+              Wählen Sie eine Partner-Organisation, der dieser Lead angeboten werden soll.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Partner-Organisation</Label>
+              <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Partner auswählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {partnerOrgs.map(org => (
+                    <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleAssignLead} disabled={!selectedPartnerId || assigning}>
+              {assigning && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Zuweisen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PdfExportFooter
         contentRef={contentRef}
         documentTitle="Lead Pool"
