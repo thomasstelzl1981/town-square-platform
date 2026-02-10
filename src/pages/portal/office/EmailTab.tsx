@@ -39,7 +39,10 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Reply,
+  ReplyAll,
+  Forward
 } from 'lucide-react';
 
 // Email Account Types
@@ -314,6 +317,44 @@ export function EmailTab() {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [showComposeDialog, setShowComposeDialog] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [composeInitialTo, setComposeInitialTo] = useState('');
+  const [composeInitialSubject, setComposeInitialSubject] = useState('');
+  const [composeInitialBody, setComposeInitialBody] = useState('');
+
+  const openCompose = (to = '', subject = '', body = '') => {
+    setComposeInitialTo(to);
+    setComposeInitialSubject(subject);
+    setComposeInitialBody(body);
+    setShowComposeDialog(true);
+  };
+
+  const handleReply = (email: any) => {
+    const fromAddr = email.from_address || '';
+    const subj = email.subject || '';
+    const date = new Date(email.received_at).toLocaleString('de-DE');
+    const sender = email.from_name || email.from_address || '';
+    const quoted = `\n\n--- Am ${date} schrieb ${sender}: ---\n${email.body_text || email.snippet || ''}`;
+    openCompose(fromAddr, subj.startsWith('Re:') ? subj : `Re: ${subj}`, quoted);
+  };
+
+  const handleReplyAll = (email: any) => {
+    const fromAddr = email.from_address || '';
+    const toAddrs = Array.isArray(email.to_addresses) ? email.to_addresses : [];
+    const allRecipients = [fromAddr, ...toAddrs].filter((a: string) => a && a !== activeAccount?.email_address);
+    const subj = email.subject || '';
+    const date = new Date(email.received_at).toLocaleString('de-DE');
+    const sender = email.from_name || email.from_address || '';
+    const quoted = `\n\n--- Am ${date} schrieb ${sender}: ---\n${email.body_text || email.snippet || ''}`;
+    openCompose(allRecipients.join(', '), subj.startsWith('Re:') ? subj : `Re: ${subj}`, quoted);
+  };
+
+  const handleForward = (email: any) => {
+    const subj = email.subject || '';
+    const date = new Date(email.received_at).toLocaleString('de-DE');
+    const sender = email.from_name || email.from_address || '';
+    const quoted = `\n\n--- Weitergeleitete Nachricht ---\nVon: ${sender}\nDatum: ${date}\nBetreff: ${subj}\n\n${email.body_text || email.snippet || ''}`;
+    openCompose('', subj.startsWith('Fwd:') ? subj : `Fwd: ${subj}`, quoted);
+  };
 
   // Fetch connected email accounts from database
   const { data: accounts = [], isLoading: isLoadingAccounts, refetch: refetchAccounts } = useQuery({
@@ -558,9 +599,19 @@ export function EmailTab() {
       {/* Compose Email Dialog */}
       <ComposeEmailDialog
         open={showComposeDialog}
-        onOpenChange={setShowComposeDialog}
+        onOpenChange={(open) => {
+          setShowComposeDialog(open);
+          if (!open) {
+            setComposeInitialTo('');
+            setComposeInitialSubject('');
+            setComposeInitialBody('');
+          }
+        }}
         accountId={activeAccount?.id || ''}
         accountEmail={activeAccount?.email_address || ''}
+        initialTo={composeInitialTo}
+        initialSubject={composeInitialSubject}
+        initialBody={composeInitialBody}
         onSent={() => {
           refetchMessages();
         }}
@@ -650,15 +701,15 @@ export function EmailTab() {
               ) : messages.length > 0 ? (
                 <div className="divide-y">
                 {messages.map((msg: any) => (
-                    <button
+                    <div
                       key={msg.id}
-                      onClick={() => setSelectedEmail(msg.id)}
                       className={cn(
-                        'w-full p-3 text-left transition-colors duration-150',
+                        'relative group w-full p-3 text-left transition-colors duration-150 cursor-pointer',
                         'hover:bg-accent/50',
                         selectedEmail === msg.id && 'bg-accent',
                         !msg.is_read && 'bg-primary/5 hover:bg-primary/10'
                       )}
+                      onClick={() => setSelectedEmail(msg.id)}
                     >
                       <div className="flex items-start gap-2">
                         <div className="flex-1 min-w-0">
@@ -675,11 +726,23 @@ export function EmailTab() {
                             {msg.snippet}
                           </p>
                         </div>
-                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap group-hover:hidden">
                           {new Date(msg.received_at).toLocaleDateString('de-DE')}
                         </div>
+                        {/* Hover actions */}
+                        <div className="hidden group-hover:flex items-center gap-0.5 absolute right-2 top-1/2 -translate-y-1/2 bg-background/90 backdrop-blur-sm rounded-md border p-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); toggleStarMutation.mutate({ messageId: msg.id, isStarred: msg.is_starred }); }}>
+                            <Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-yellow-500 fill-yellow-500")} />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(msg.id); }}>
+                            <Archive className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(msg.id); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -799,16 +862,16 @@ export function EmailTab() {
                   </ScrollArea>
                   {/* Email Actions */}
                   <div className="p-3 border-t flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Send className="h-4 w-4" />
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReply(email)}>
+                      <Reply className="h-4 w-4" />
                       Antworten
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Send className="h-4 w-4" />
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReplyAll(email)}>
+                      <ReplyAll className="h-4 w-4" />
                       Allen antworten
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Send className="h-4 w-4" />
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleForward(email)}>
+                      <Forward className="h-4 w-4" />
                       Weiterleiten
                     </Button>
                   </div>

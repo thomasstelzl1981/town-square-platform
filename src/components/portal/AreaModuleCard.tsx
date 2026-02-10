@@ -10,6 +10,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { HowItWorksContent } from '@/components/portal/HowItWorks/moduleContents';
@@ -27,17 +28,14 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
   const navigate = useNavigate();
   const displayLabel = getModuleDisplayLabel(moduleCode, content.title);
   
-  // Take first 3 benefits for compact display
   const displayBenefits = content.benefits.slice(0, 3);
-  
-  // Get sub-tiles for display (max 6)
   const displayTiles = content.subTiles?.slice(0, 6) || [];
 
-  // === MOBILE: Gesamte Karte klickbar ===
+  // === MOBILE ===
   if (isMobile) {
     return (
       <Card 
-        className="hover:border-primary/40 transition-colors cursor-pointer active:scale-[0.98] h-full flex flex-col"
+        className="glass-card hover:border-primary/30 transition-colors cursor-pointer active:scale-[0.98] h-full flex flex-col"
         onClick={() => navigate(defaultRoute)}
       >
         <CardHeader className="pb-2">
@@ -47,13 +45,12 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 flex-1">
-          {/* Kompakte Sub-Tiles */}
           {displayTiles.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {displayTiles.slice(0, 4).map((tile) => (
                 <span
                   key={tile.route}
-                  className="text-[10px] bg-muted px-1.5 py-0.5 rounded"
+                  className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full"
                 >
                   {tile.title}
                 </span>
@@ -70,14 +67,14 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
     );
   }
 
-  // === DESKTOP: Detaillierte Variante mit Button ===
+  // === DESKTOP ===
   return (
-    <Card className="hover:border-primary/40 transition-colors h-full flex flex-col group">
+    <Card className="glass-card hover:border-primary/30 transition-colors h-full flex flex-col group min-h-[280px]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground font-mono uppercase">
+          <Badge variant="secondary" className="text-[10px] uppercase tracking-wider px-2 py-0.5">
             {moduleCode}
-          </span>
+          </Badge>
         </div>
         <CardTitle className="text-lg leading-tight">{displayLabel}</CardTitle>
         <CardDescription className="text-sm line-clamp-2">
@@ -96,7 +93,7 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
           ))}
         </div>
 
-        {/* Sub-tiles preview */}
+        {/* Sub-tiles */}
         {displayTiles.length > 0 && (
           <div className="mb-4">
             <p className="text-xs text-muted-foreground mb-2">Bereiche:</p>
@@ -104,7 +101,7 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
               {displayTiles.map((tile) => (
                 <span
                   key={tile.route}
-                  className="text-xs bg-muted px-2 py-0.5 rounded-full"
+                  className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
                 >
                   {tile.title}
                 </span>
@@ -115,7 +112,7 @@ export function AreaModuleCard({ moduleCode, content, defaultRoute }: AreaModule
 
         {/* CTA */}
         <div className="mt-auto">
-          <Button asChild variant="outline" size="sm" className="w-full gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+          <Button asChild variant="default" size="sm" className="w-full gap-2">
             <Link to={defaultRoute}>
               Modul öffnen
               <ArrowRight className="h-4 w-4" />

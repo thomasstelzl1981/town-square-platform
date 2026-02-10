@@ -18,7 +18,7 @@ interface AreaPromoCardProps {
 
 export function AreaPromoCard({ promo }: AreaPromoCardProps) {
   return (
-    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20 hover:border-primary/40 transition-colors h-full flex flex-col">
+    <Card className="glass-card bg-gradient-to-br from-primary/5 via-transparent to-background border-primary/20 hover:border-primary/30 transition-colors h-full flex flex-col min-h-[280px]">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2 mb-2">
           <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
