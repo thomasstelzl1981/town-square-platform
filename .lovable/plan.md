@@ -1,76 +1,68 @@
 
-# Briefgenerator: Daten korrekt aus Stammdaten/Kontakten durchreichen
+# Zwei Bereiche: Area Base Design + E-Mail-Aktionen reparieren
 
-## Problem
+## 1. Area Base — Homogenes Card-Design
 
-Drei Datenleitungen sind aktuell unterbrochen:
-1. **Empfaenger-Adresse** wird nicht aus der `contacts`-Tabelle geladen (Felder `street`, `postal_code`, `city` existieren, werden aber nicht abgefragt)
-2. **Absender-Logo + Briefkopf** wird nicht aus dem Profil geladen (`letterhead_logo_url`, `letterhead_company_line` etc. werden ignoriert)
-3. **Privater Absender** hat keine Adresse (Profil-Adressfelder werden nicht in die Sender-Option uebernommen)
+Die Module-Cards auf `/portal/area/base` (Miety, KI-Office, Dokumente, Shops, Stammdaten) und die Promo-Card bekommen ein einheitliches, hochwertiges Design.
 
-## Aenderungen
+### Aenderungen in `AreaModuleCard.tsx`
+- Glassmorphism-Stil (`glass-card`) fuer alle Karten, passend zum KI-Office-Standard
+- Einheitliche Hoehe durch `min-h-[280px]` (Desktop)
+- Dezenter Gradient-Rand bei Hover (`border-primary/30`)
+- Module-Code Badge oben links dezenter (kein `font-mono`, stattdessen kleiner Chip)
+- Sub-Tiles als abgerundete Chips mit Primary-Akzent statt grauem `bg-muted`
+- CTA-Button einheitlich als `variant="default"` statt `variant="outline"`
 
-### 1. `BriefTab.tsx` — Kontakt-Query erweitern
+### Aenderungen in `AreaPromoCard.tsx`
+- Gleiche Kartenhoehe (`min-h-[280px]`) wie die Module-Cards
+- Icon-Bereich subtiler gestaltet
+- Gradient bleibt, aber dezenter (weniger `from-primary/10`)
 
-Die Kontakt-Query (aktuell Zeile 162) wird um Adressfelder erweitert:
+---
 
-```
-contacts: id, first_name, last_name, email, company, salutation, street, postal_code, city
-```
+## 2. E-Mail-Client — Aktionsbuttons funktional machen
 
-Das `Contact`-Interface bekommt die neuen Felder. Die Empfaenger-Adresse wird dann als mehrzeiliger String an `LetterPreview.recipientAddress` uebergeben:
+### Problem
+- Die drei Buttons am unteren Rand der E-Mail-Detailansicht ("Antworten", "Allen antworten", "Weiterleiten") haben **keine onClick-Handler**
+- In der E-Mail-Liste (Inbox) gibt es **keine Aktions-Icons** (Loeschen, Archivieren) pro Zeile
+- Die Icons fuer Reply/Forward sind alle `Send` — sie sollten spezifische Icons haben (`Reply`, `ReplyAll`, `Forward`)
 
-```
-Musterstrasse 5
-80000 Muenchen
-```
+### Aenderungen in `EmailTab.tsx`
 
-### 2. `BriefTab.tsx` — Profil-Query erweitern
+**a) Reply/Forward-Buttons funktional machen (Zeilen 801-813):**
+- Neue Icons importieren: `Reply`, `ReplyAll`, `Forward` aus `lucide-react`
+- `Antworten` oeffnet den ComposeDialog mit:
+  - `to` = Absender der E-Mail
+  - `subject` = "Re: " + Original-Betreff
+  - `body` = Quoted Original (mit "Am [Datum] schrieb [Absender]:" Prefix)
+- `Allen antworten` wie oben, aber `to` = Absender + alle `to_addresses` (ohne eigene Adresse)
+- `Weiterleiten` oeffnet den ComposeDialog mit:
+  - `to` = leer
+  - `subject` = "Fwd: " + Original-Betreff
+  - `body` = Quoted Original (mit "Weitergeleitete Nachricht" Header)
 
-Die Profil-Query (aktuell Zeile 98) wird um Briefkopf- und Adressfelder erweitert:
+**b) ComposeEmailDialog um Prefill-Props erweitern:**
+- Neue optionale Props: `initialTo`, `initialSubject`, `initialBody`
+- Beim Oeffnen werden diese Felder vorbelegt
+- Beim Schliessen werden sie zurueckgesetzt
 
-```
-profiles: id, display_name, first_name, last_name, active_tenant_id,
-          street, house_number, postal_code, city,
-          letterhead_logo_url, letterhead_company_line
-```
+**c) Inbox-Liste — Hover-Aktionen pro E-Mail (Zeilen 652-683):**
+- Bei Hover ueber eine E-Mail-Zeile erscheinen rechts kleine Icon-Buttons:
+  - Loeschen (Trash2) — ruft `deleteMutation.mutate(msg.id)` auf
+  - Archivieren (Archive) — ruft `archiveMutation.mutate(msg.id)` auf
+  - Stern (Star) — ruft `toggleStarMutation.mutate()` auf
+- Diese Buttons sind absolut positioniert und erscheinen nur bei `group-hover`
 
-### 3. `BriefTab.tsx` — Privater Absender mit Adresse
+**d) E-Mail-Detail-Header — fehlende Loeschen/Archiv-Buttons sichtbarer:**
+- Die bestehenden Star/Archive/Delete-Buttons im Header (Zeilen 730-757) existieren bereits und sind funktional — diese bleiben unveraendert
 
-Die "Privatperson"-SenderOption (Zeile 126) bekommt die Profil-Adresse:
-
-```text
-address: "Musterstr. 1, 12345 Hamburg"  (statt leer)
-```
-
-### 4. `BriefTab.tsx` — Logo-Prop an LetterPreview durchreichen
-
-Die `LetterPreview`-Komponente (Zeile 493) bekommt ein neues Prop:
-
-```
-logoUrl={profile?.letterhead_logo_url || undefined}
-```
-
-### 5. `BriefTab.tsx` — Empfaenger-Adresse an LetterPreview durchreichen
-
-```
-recipientAddress={selectedContact ? [
-  selectedContact.street,
-  [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' ')
-].filter(Boolean).join('\n') : undefined}
-```
-
-### 6. Edge Function — Anrede-Logik verbessern
-
-Der Prompt in `sot-letter-generate` bekommt die `salutation` des Kontakts (Herr/Frau), damit die Anrede korrekt generiert wird ("Sehr geehrter Herr Mueller" vs. "Sehr geehrte Frau Mueller").
+---
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/office/BriefTab.tsx` | Query-Erweiterungen, Props-Durchreichung, Interface-Update |
-| `supabase/functions/sot-letter-generate/index.ts` | Salutation-Feld im Prompt |
-
-## Kein DB-/Schema-Aenderung noetig
-
-Alle Felder (`street`, `postal_code`, `city`, `salutation` auf `contacts`; `letterhead_logo_url` etc. auf `profiles`) existieren bereits in der Datenbank.
+| `src/components/portal/AreaModuleCard.tsx` | Glassmorphism-Design, einheitliche Hoehe |
+| `src/components/portal/AreaPromoCard.tsx` | Gleiche Hoehe, dezenterer Stil |
+| `src/pages/portal/office/EmailTab.tsx` | Reply/Forward/Delete funktional, Inbox Hover-Aktionen, neue Icons |
+| `src/components/portal/office/ComposeEmailDialog.tsx` | Prefill-Props fuer Reply/Forward |
