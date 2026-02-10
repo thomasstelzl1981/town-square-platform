@@ -13,10 +13,8 @@
  * - Status: System view and audit trail
  */
 import * as React from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { LayoutDashboard, FolderOpen, MessageSquare, BarChart3, ShieldAlert } from 'lucide-react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ShieldAlert } from 'lucide-react';
 import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,8 +27,7 @@ const FMKommunikation = React.lazy(() => import('./finanzierungsmanager/FMKommun
 const FMStatus = React.lazy(() => import('./finanzierungsmanager/FMStatus'));
 
 export default function FinanzierungsmanagerPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  // Navigation handled by Level 3 SubTabs
   const { data: cases, isLoading } = useFutureRoomCases();
   const { memberships, isPlatformAdmin } = useAuth();
 
@@ -55,74 +52,9 @@ export default function FinanzierungsmanagerPage() {
     );
   }
 
-  const activeCases = cases?.filter(c => c.status === 'active') || [];
-  const needsActionCases = cases?.filter(c => 
-    c.finance_mandates?.finance_requests?.status === 'needs_customer_action'
-  ) || [];
-
-  // Determine active tab from route
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.includes('/faelle')) return 'faelle';
-    if (path.includes('/kommunikation')) return 'kommunikation';
-    if (path.includes('/status')) return 'status';
-    return 'dashboard';
-  };
-
-  const handleTabChange = (value: string) => {
-    navigate(`/portal/finanzierungsmanager/${value === 'dashboard' ? '' : value}`);
-  };
-
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Finanzierungsmanager</h1>
-          <p className="text-muted-foreground">
-            Ihre Workbench für zugewiesene Finanzierungsfälle
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {activeCases.length > 0 && (
-            <Badge variant="secondary" className="text-sm">
-              {activeCases.length} aktive Fälle
-            </Badge>
-          )}
-          {needsActionCases.length > 0 && (
-            <Badge variant="destructive" className="text-sm">
-              {needsActionCases.length} benötigen Aktion
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation Tabs — 4 Items per Spec */}
-      <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="dashboard" className="gap-2">
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="faelle" className="gap-2">
-            <FolderOpen className="h-4 w-4" />
-            Fälle
-            {activeCases.length > 0 && (
-              <Badge variant="outline" className="ml-1">{activeCases.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="kommunikation" className="gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Kommunikation
-          </TabsTrigger>
-          <TabsTrigger value="status" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Status
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Route Content - No inner Suspense, outer Suspense in ManifestRouter handles it */}
+      {/* Route Content - Navigation handled by Level 3 SubTabs */}
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
