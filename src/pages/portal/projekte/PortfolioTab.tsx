@@ -83,18 +83,21 @@ export default function PortfolioTab() {
   // Base units (demo or real)
   const baseUnits: DemoUnit[] = isDemo ? DEMO_UNITS : DEMO_UNITS; // TODO: replace with real units
 
-  // Compute effective unit values
+  // Compute effective unit values — Akquise-Manager formula:
+  // Base price = annual_net_rent / targetYield
+  // Overrides are absolute (no priceAdjustment applied)
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
     return baseUnits.map((u) => {
       const override = unitOverrides[u.id];
       let effectivePrice: number;
 
       if (override?.list_price != null) {
-        // Manual override — apply price adjustment on top
-        effectivePrice = Math.round(override.list_price * (1 + priceAdjustment / 100));
+        // Manual override — absolute, no price adjustment
+        effectivePrice = Math.round(override.list_price);
       } else {
-        // Base price with adjustment
-        effectivePrice = Math.round(u.list_price * (1 + priceAdjustment / 100));
+        // Yield-driven base price + price adjustment
+        const basePrice = targetYield > 0 ? u.annual_net_rent / targetYield : 0;
+        effectivePrice = Math.round(basePrice * (1 + priceAdjustment / 100));
       }
 
       const effectiveYield = effectivePrice > 0 ? (u.annual_net_rent / effectivePrice) * 100 : 0;
@@ -109,9 +112,9 @@ export default function PortfolioTab() {
         effective_provision: effectiveProvision,
       };
     });
-  }, [baseUnits, unitOverrides, priceAdjustment, provisionRate]);
+  }, [baseUnits, unitOverrides, priceAdjustment, provisionRate, targetYield]);
 
-  // Handle inline price edits from table
+  // Handle inline price edits — stored as absolute overrides
   const handleUnitPriceChange = useCallback((unitId: string, field: 'list_price' | 'price_per_sqm', value: number) => {
     const unit = baseUnits.find(u => u.id === unitId);
     if (!unit) return;
@@ -123,16 +126,12 @@ export default function PortfolioTab() {
       newPrice = Math.round(value);
     }
 
-    // Store as override (without price adjustment applied, so adjustment can still layer on top)
-    const basePrice = priceAdjustment !== 0
-      ? Math.round(newPrice / (1 + priceAdjustment / 100))
-      : newPrice;
-
+    // Absolute override — priceAdjustment does NOT apply to overrides
     setUnitOverrides(prev => ({
       ...prev,
-      [unitId]: { list_price: basePrice },
+      [unitId]: { list_price: newPrice },
     }));
-  }, [baseUnits, priceAdjustment]);
+  }, [baseUnits]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
