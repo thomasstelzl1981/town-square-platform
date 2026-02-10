@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, CalendarCheck, CheckCircle, XCircle, Clock, TrendingUp, Plus, Eye, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDevProjects } from '@/hooks/useDevProjects';
@@ -67,6 +68,8 @@ export default function VertriebTab() {
     return acc;
   }, {} as Record<string, { name: string; reservations: number; sold: number; volume: number; commission: number }>);
 
+  const activeProject = projects.find(p => p.id === activeProjectId);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -74,9 +77,25 @@ export default function VertriebTab() {
           <h2 className="text-2xl font-bold tracking-tight uppercase">Vertrieb & Reservierungen</h2>
           <p className="text-muted-foreground">Übersicht über Reservierungen und Partner-Performance</p>
         </div>
-        {projects.length > 0 && (
-          <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
-        )}
+        <div className="flex items-center gap-3">
+          {projects.length > 1 && (
+            <Select value={activeProjectId || ''} onValueChange={(val) => setSelectedProject(val)}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Projekt wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.address ? ` — ${p.address}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {projects.length > 0 && (
+            <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards — ALWAYS visible */}
@@ -220,8 +239,8 @@ export default function VertriebTab() {
       {/* ═══ Vertriebsauftrag & Distribution ═══ */}
       <SalesApprovalSection
         projectId={activeProjectId}
-        projectName={projects[0]?.name}
-        projectAddress={projects[0]?.address || ''}
+        projectName={activeProject?.name}
+        projectAddress={activeProject?.address || ''}
         totalUnits={totalUnits}
         projectVolume={totalValue}
       />

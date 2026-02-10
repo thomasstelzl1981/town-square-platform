@@ -230,9 +230,7 @@ export function SalesApprovalSection({
     // kaufy_projekt and landingpage are simple toggles — placeholder for now
   }
 
-  if (!projectId) {
-    return null;
-  }
+  const hasProject = !!projectId;
 
   return (
     <div className="space-y-4">
@@ -243,7 +241,9 @@ export function SalesApprovalSection({
             Vertriebsauftrag
           </CardTitle>
           <CardDescription>
-            Verwalten Sie die Vermarktung und Vertriebskanäle für dieses Projekt
+            {hasProject
+              ? 'Verwalten Sie die Vermarktung und Vertriebskanäle für dieses Projekt'
+              : 'Erstellen Sie ein Projekt, um den Vertriebsauftrag zu aktivieren.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,7 +307,7 @@ export function SalesApprovalSection({
                   <Switch
                     checked={isActive}
                     onCheckedChange={() => handleFeatureToggle(code)}
-                    disabled={!canActivate || config.comingSoon || isActivating}
+                    disabled={!hasProject || !canActivate || config.comingSoon || isActivating}
                   />
                 </div>
 
