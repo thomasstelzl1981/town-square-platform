@@ -52,11 +52,20 @@ export function LetterPreview({
 
   return (
     <div
-      className="bg-white rounded-sm shadow-lg border border-border/30 overflow-hidden relative"
-      style={{ aspectRatio: '210 / 297', fontFamily }}
+      className="bg-white rounded-sm shadow-lg border border-border/30 overflow-hidden relative mx-auto"
+      style={{
+        /* Fixed pixel dimensions proportional to DIN A4 (210:297) */
+        width: '100%',
+        maxWidth: '420px',
+        aspectRatio: '210 / 297',
+        fontFamily,
+      }}
     >
-      {/* A4 page with DIN 5008 zones — all sizing relative to the container */}
-      <div className="h-full w-full relative" style={{ fontSize: '0.55cqw' }}>
+      {/* 
+        Scaled A4 page. We use a 420px wide container representing 210mm.
+        Scale factor: 1mm ≈ 2px. All positions use percentage of page.
+      */}
+      <div className="h-full w-full relative" style={{ fontSize: '10px' }}>
 
         {/* ── LOGO — top-right, max ~20% of page width, 25mm zone ── */}
         <div
@@ -70,27 +79,27 @@ export function LetterPreview({
           />
         </div>
 
-        {/* ── CONTENT AREA — 20mm margins simulated ── */}
+        {/* ── CONTENT AREA — margins: left 25mm (11.9%), right 20mm (9.5%), top/bottom 20mm ── */}
         <div
           className="absolute flex flex-col"
-          style={{ top: '6.7%', left: '9.5%', right: '9.5%', bottom: '6.7%' }}
+          style={{ top: '6.7%', left: '11.9%', right: '9.5%', bottom: '6.7%' }}
         >
 
-          {/* Spacer for logo zone (~25mm) */}
+          {/* Spacer for logo zone (~25mm = 8.4% of 297mm) */}
           <div style={{ height: '8.4%', flexShrink: 0 }} />
 
           {/* ── SENDER LINE (small, above envelope window) ── */}
           <div
             className="border-b border-gray-300 text-gray-400 truncate"
-            style={{ fontSize: '1.4em', paddingBottom: '0.6em', marginBottom: '0.4em', marginTop: '2em' }}
+            style={{ fontSize: '0.65em', paddingBottom: '3px', marginBottom: '2px', marginTop: '8px' }}
           >
             {senderLine}
           </div>
 
           {/* ── RECIPIENT WINDOW (DIN 5008 Fensterzone: 85×45mm) ── */}
-          <div style={{ minHeight: '15.2%', marginBottom: '1.5em' }}>
+          <div style={{ minHeight: '15.2%', marginBottom: '6px' }}>
             {recipientName ? (
-              <div className="text-gray-800" style={{ fontSize: '2em', lineHeight: '1.6' }}>
+              <div className="text-gray-800" style={{ fontSize: '1em', lineHeight: '1.55' }}>
                 {recipientCompany && <div>{recipientCompany}</div>}
                 <div>{recipientName}</div>
                 {recipientAddress && (
@@ -98,7 +107,7 @@ export function LetterPreview({
                 )}
               </div>
             ) : (
-              <div className="text-gray-300 italic" style={{ fontSize: '2em' }}>
+              <div className="text-gray-300 italic" style={{ fontSize: '1em' }}>
                 Empfänger...
               </div>
             )}
@@ -107,7 +116,7 @@ export function LetterPreview({
           {/* ── DATE — right-aligned ── */}
           <div
             className="text-right text-gray-500"
-            style={{ fontSize: '1.8em', marginBottom: '2em' }}
+            style={{ fontSize: '0.9em', marginBottom: '10px' }}
           >
             {displayDate}
           </div>
@@ -116,14 +125,14 @@ export function LetterPreview({
           {subject ? (
             <div
               className="font-bold text-gray-900"
-              style={{ fontSize: '2.2em', marginBottom: '2em' }}
+              style={{ fontSize: '1.05em', marginBottom: '10px' }}
             >
               {subject}
             </div>
           ) : (
             <div
               className="text-gray-300 italic"
-              style={{ fontSize: '2.2em', marginBottom: '2em' }}
+              style={{ fontSize: '1.05em', marginBottom: '10px' }}
             >
               Betreff...
             </div>
@@ -134,14 +143,14 @@ export function LetterPreview({
             {body ? (
               <div
                 className="whitespace-pre-wrap text-gray-800"
-                style={{ fontSize: '1.8em', lineHeight: '1.6' }}
+                style={{ fontSize: '0.85em', lineHeight: '1.6' }}
               >
                 {body}
               </div>
             ) : (
               <div
                 className="flex flex-col items-center justify-center h-full text-gray-300"
-                style={{ fontSize: '1.8em' }}
+                style={{ fontSize: '0.9em' }}
               >
                 Ihr Brief erscheint hier...
               </div>

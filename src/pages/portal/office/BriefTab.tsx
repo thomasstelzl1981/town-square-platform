@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -43,9 +51,12 @@ import {
   Mic,
   History,
   Type,
+  Download,
+  Eye,
 } from 'lucide-react';
 import { LetterPreview, type LetterFont } from '@/components/portal/office/LetterPreview';
 import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
+import { generateLetterPdf, type LetterPdfData } from '@/lib/letterPdf';
 
 interface Contact {
   id: string;
@@ -304,6 +315,139 @@ ${senderLine}`);
     }
   };
 
+  // ── PDF helpers ──
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [faxNumber, setFaxNumber] = useState('');
+
+  const buildPdfData = (): LetterPdfData => ({
+    senderName: selectedSender?.label,
+    senderCompany: selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined,
+    senderAddress: selectedSender?.address,
+    senderCity: (() => {
+      if (selectedSenderId === 'private') return profile?.city || undefined;
+      const ctx = contexts.find(c => c.id === selectedSenderId);
+      return ctx?.city || undefined;
+    })(),
+    senderRole: selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined,
+    recipientName: selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined,
+    recipientCompany: selectedContact?.company || undefined,
+    recipientAddress: selectedContact ? [
+      selectedContact.street,
+      [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
+    ].filter(Boolean).join('\n') || undefined : undefined,
+    subject,
+    body: generatedBody,
+  });
+
+  const handlePdfPreview = () => {
+    if (!generatedBody) return;
+    const { dataUrl } = generateLetterPdf(buildPdfData());
+    setPdfPreviewUrl(dataUrl);
+    setShowPdfPreview(true);
+  };
+
+  const handlePdfDownload = () => {
+    if (!generatedBody) return;
+    const { blob } = generateLetterPdf(buildPdfData());
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Brief_${subject?.replace(/[^a-zA-Z0-9äöüÄÖÜ]/g, '_') || 'Entwurf'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('PDF heruntergeladen');
+  };
+
+  const handleSend = async () => {
+    if (!generatedBody || !selectedContact) return;
+
+    // Validate channel-specific requirements
+    if (channel === 'fax' && !faxNumber.trim()) {
+      toast.error('Bitte geben Sie eine Faxnummer ein');
+      return;
+    }
+    if (channel === 'email' && !selectedContact.email) {
+      toast.error('Dieser Kontakt hat keine E-Mail-Adresse');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const { base64 } = generateLetterPdf(buildPdfData());
+      const pdfFilename = `Brief_${subject?.replace(/[^a-zA-Z0-9]/g, '_') || 'Dokument'}.pdf`;
+      const recipientFullName = `${selectedContact.first_name} ${selectedContact.last_name}`;
+
+      let mailTo: string;
+      let mailSubject: string;
+      let mailHtml: string;
+      let mailContext: string;
+
+      if (channel === 'email') {
+        // Direct email to recipient
+        mailTo = selectedContact.email!;
+        mailSubject = subject || 'Schreiben';
+        mailHtml = `<p>Sehr geehrte${selectedContact.salutation === 'Frau' ? '' : 'r'} ${recipientFullName},</p>
+<p>anbei erhalten Sie ein Schreiben zum Thema „${subject || 'siehe Anhang'}".</p>
+<p>Bei Rückfragen stehen wir Ihnen gerne zur Verfügung.</p>
+<p>Mit freundlichen Grüßen,<br/>${selectedSender?.label || 'Ihr Ansprechpartner'}</p>`;
+        mailContext = 'letter_email';
+      } else if (channel === 'fax') {
+        // SimpleFax: fax number in subject
+        mailTo = 'simplefax@systemofatown.com';
+        mailSubject = faxNumber.trim();
+        mailHtml = `<p>Fax an: ${faxNumber.trim()}</p><p>Empfänger: ${recipientFullName}</p>`;
+        mailContext = 'letter_fax';
+      } else {
+        // SimpleBrief: just send the PDF
+        mailTo = 'simplebrief@systemofatown.com';
+        mailSubject = `Brief an ${recipientFullName}`;
+        mailHtml = `<p>Brief-Versand an:</p><p>${recipientFullName}<br/>${selectedContact.street || ''}<br/>${[selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' ')}</p>`;
+        mailContext = 'letter_post';
+      }
+
+      const { error } = await supabase.functions.invoke('sot-system-mail-send', {
+        body: {
+          to: mailTo,
+          subject: mailSubject,
+          html: mailHtml,
+          context: mailContext,
+          attachments: [{ filename: pdfFilename, content: base64 }],
+        },
+      });
+
+      if (error) throw error;
+
+      // Save as sent draft
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('active_tenant_id, id')
+        .single();
+
+      if (profileData?.active_tenant_id) {
+        await supabase.from('letter_drafts').insert({
+          tenant_id: profileData.active_tenant_id,
+          created_by: profileData.id,
+          recipient_contact_id: selectedContact.id,
+          subject,
+          prompt,
+          body: generatedBody,
+          status: 'sent',
+          channel,
+        });
+        queryClient.invalidateQueries({ queryKey: ['recent-letter-drafts'] });
+      }
+
+      const channelLabel = channel === 'email' ? 'E-Mail' : channel === 'fax' ? 'Fax' : 'Post';
+      toast.success(`Brief per ${channelLabel} versendet`);
+    } catch (error: any) {
+      toast.error('Versandfehler: ' + error.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
@@ -535,6 +679,36 @@ ${senderLine}`);
         {/* Dispatch Channel + Actions */}
         <Card className="glass-card">
           <CardContent className="p-4 space-y-4">
+            {/* PDF Actions */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">PDF</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 flex-1"
+                  onClick={handlePdfPreview}
+                  disabled={!generatedBody}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Vorschau
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 flex-1"
+                  onClick={handlePdfDownload}
+                  disabled={!generatedBody}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Channel selection */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Versandkanal</Label>
               <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-3">
@@ -549,18 +723,46 @@ ${senderLine}`);
                   <RadioGroupItem value="fax" id="ch-fax" />
                   <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-xs">
                     <Phone className="h-3.5 w-3.5" />
-                    Fax
+                    SimpleFax
                   </Label>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <RadioGroupItem value="post" id="ch-post" />
                   <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-xs">
                     <FileOutput className="h-3.5 w-3.5" />
-                    Post
+                    SimpleBrief
                   </Label>
                 </div>
               </RadioGroup>
             </div>
+
+            {/* Fax number input (only for fax channel) */}
+            {channel === 'fax' && (
+              <div className="space-y-1">
+                <Label className="text-xs">Faxnummer</Label>
+                <Input
+                  placeholder="z.B. +49 30 12345678"
+                  value={faxNumber}
+                  onChange={(e) => setFaxNumber(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
+
+            {/* Channel info hint */}
+            <p className="text-[10px] text-muted-foreground">
+              {channel === 'email' && selectedContact?.email
+                ? `An: ${selectedContact.email}`
+                : channel === 'email'
+                ? 'Kontakt hat keine E-Mail-Adresse'
+                : channel === 'fax'
+                ? 'PDF wird per SimpleFax als Fax gesendet'
+                : 'PDF wird per SimpleBrief als Postbrief versendet'}
+            </p>
+
+            <Separator />
+
+            {/* Action buttons */}
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -576,8 +778,17 @@ ${senderLine}`);
                 )}
                 Speichern
               </Button>
-              <Button size="sm" className="gap-1.5 flex-1" disabled={!generatedBody}>
-                <Send className="h-3.5 w-3.5" />
+              <Button 
+                size="sm" 
+                className="gap-1.5 flex-1" 
+                disabled={!generatedBody || isSending}
+                onClick={handleSend}
+              >
+                {isSending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
                 Senden
               </Button>
             </div>
@@ -624,6 +835,31 @@ ${senderLine}`);
           </CardContent>
         </Card>
       </div>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>PDF-Vorschau</DialogTitle>
+            <DialogDescription>DIN A4 Brief im PDF-Format</DialogDescription>
+          </DialogHeader>
+          {pdfPreviewUrl && (
+            <iframe
+              src={pdfPreviewUrl}
+              className="w-full flex-1 rounded-md border"
+              style={{ minHeight: '70vh' }}
+              title="Brief PDF Vorschau"
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPdfPreview(false)}>Schließen</Button>
+            <Button onClick={handlePdfDownload} className="gap-1.5">
+              <Download className="h-4 w-4" />
+              PDF herunterladen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Context Dialog */}
       <CreateContextDialog 
