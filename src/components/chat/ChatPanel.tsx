@@ -83,6 +83,9 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     ref
   ) => {
     const [input, setInput] = React.useState("");
+    const [voiceMode, setVoiceMode] = React.useState(false);
+    const prevMessagesLenRef = React.useRef(0);
+    const prevListeningRef = React.useRef(false);
     
     // Universal upload hook
     const { upload: universalUpload, uploadedFiles, clearUploadedFiles, isUploading } = useUniversalUpload();
@@ -92,6 +95,28 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     
     // Voice integration
     const voice = useArmstrongVoice();
+
+    // Auto-send transcript when user stops speaking
+    React.useEffect(() => {
+      if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
+        // User stopped speaking and we have a transcript
+        setVoiceMode(true);
+        advisor.sendMessage(voice.transcript.trim());
+      }
+      prevListeningRef.current = voice.isListening;
+    }, [voice.isListening, voice.transcript]);
+
+    // Auto-speak when new assistant message arrives in voice mode
+    React.useEffect(() => {
+      const msgs = advisor.messages;
+      if (voiceMode && msgs.length > prevMessagesLenRef.current) {
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg?.role === 'assistant' && lastMsg.content) {
+          voice.speakResponse(lastMsg.content);
+        }
+      }
+      prevMessagesLenRef.current = msgs.length;
+    }, [advisor.messages, voiceMode]);
 
     const handleVoiceToggle = React.useCallback(() => {
       if (voice.isListening) {
@@ -125,6 +150,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
 
     const handleSend = () => {
       if (input.trim()) {
+        setVoiceMode(false); // Text input = no auto-speak
         if (externalOnSend) {
           externalOnSend(input.trim());
         } else {

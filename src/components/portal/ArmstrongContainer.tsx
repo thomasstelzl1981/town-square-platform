@@ -16,6 +16,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
 import { Button } from '@/components/ui/button';
 import { 
   Minimize2, 
@@ -39,9 +40,35 @@ export function ArmstrongContainer() {
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const prevListeningRef = useRef(false);
+  const prevMessagesLenRef = useRef(0);
   
   // Voice integration
   const voice = useArmstrongVoice();
+  
+  // Advisor for orb-mode voice conversation
+  const orbAdvisor = useArmstrongAdvisor();
+
+  // Orb mode: auto-send transcript when user stops speaking (collapsed only)
+  useEffect(() => {
+    if (!armstrongExpanded && prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
+      orbAdvisor.sendMessage(voice.transcript.trim());
+    }
+    prevListeningRef.current = voice.isListening;
+  }, [voice.isListening, voice.transcript, armstrongExpanded]);
+
+  // Orb mode: auto-speak when new assistant message arrives
+  useEffect(() => {
+    if (armstrongExpanded) return; // ChatPanel handles this when expanded
+    const msgs = orbAdvisor.messages;
+    if (msgs.length > prevMessagesLenRef.current) {
+      const lastMsg = msgs[msgs.length - 1];
+      if (lastMsg?.role === 'assistant' && lastMsg.content) {
+        voice.speakResponse(lastMsg.content);
+      }
+    }
+    prevMessagesLenRef.current = msgs.length;
+  }, [orbAdvisor.messages, armstrongExpanded]);
   
   // Draggable integration for orb positioning
   // IMPORTANT: This hook MUST be called unconditionally (Rules of Hooks)
