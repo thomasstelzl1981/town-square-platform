@@ -8,6 +8,7 @@
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
+import { TermsGatePanel } from '@/components/shared/TermsGatePanel';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -325,9 +326,9 @@ function AkquiseMandateDetail() {
         </div>
       </div>
 
-      {/* Gate Panel */}
+      {/* Gate Panel — TermsGatePanel */}
       {needsGate && (
-        <Card className="border-orange-300 bg-orange-50">
+        <Card className="border-primary/30">
           <CardHeader>
             <CardTitle>Split-Bestätigung erforderlich</CardTitle>
             <CardDescription>
@@ -335,14 +336,29 @@ function AkquiseMandateDetail() {
               die Mandantendaten einzusehen.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-white rounded-lg border">
-              <p className="text-sm">Nach Bestätigung erhalten Sie Zugriff auf die vollständigen Mandantendaten und können mit der Akquise beginnen.</p>
-            </div>
-            <Button onClick={() => acceptMandate.mutate(mandate.id)} disabled={acceptMandate.isPending}>
-              {acceptMandate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Split bestätigen & Mandat annehmen
-            </Button>
+          <CardContent>
+            <TermsGatePanel
+              templateCode="ACQ_MANDATE_ACCEPTANCE_V1"
+              templateVariables={{
+                partner_name: mandate.assigned_manager_user_id || '',
+                partner_email: '',
+                investor_name: mandate.client_display_name || 'Investor',
+                search_criteria: mandate.asset_focus?.join(', ') || 'Nicht spezifiziert',
+                mandate_id: mandate.code,
+              }}
+              referenceId={mandate.id}
+              referenceType="acq_mandate"
+              liableUserId={mandate.assigned_manager_user_id || ''}
+              liableRole="akquise_manager"
+              grossCommission={0}
+              grossCommissionPct={0}
+              commissionType="acquisition"
+              tenantId={mandate.tenant_id}
+              onAccept={async () => {
+                await acceptMandate.mutateAsync(mandate.id);
+              }}
+              isPending={acceptMandate.isPending}
+            />
           </CardContent>
         </Card>
       )}

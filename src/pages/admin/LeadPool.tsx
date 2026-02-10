@@ -5,6 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -16,16 +28,16 @@ import {
 import { 
   Target, 
   Users, 
-  Building2,
   Loader2,
   Eye,
   UserPlus,
   CheckCircle,
-  XCircle
+  Plus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PdfExportFooter } from '@/components/pdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface Lead {
   id: string;
@@ -52,10 +64,20 @@ interface LeadAssignment {
 
 export default function LeadPool() {
   const { isPlatformAdmin } = useAuth();
+  const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [assignments, setAssignments] = useState<LeadAssignment[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newLead, setNewLead] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    interest_type: '',
+    notes: '',
+  });
   const [stats, setStats] = useState({
     totalPool: 0,
     assigned: 0,
@@ -84,7 +106,6 @@ export default function LeadPool() {
       const orgs = orgsRes.data || [];
       const contacts = contactsRes.data || [];
 
-      // Enrich leads with contact names
       const enrichedLeads = leadsData.map(lead => ({
         ...lead,
         contact_name: contacts.find(c => c.id === lead.contact_id)
@@ -93,7 +114,6 @@ export default function LeadPool() {
         assigned_partner_name: orgs.find(o => o.id === lead.assigned_partner_id)?.name || null,
       }));
 
-      // Enrich assignments with partner names
       const enrichedAssignments = assignmentsData.map(a => ({
         ...a,
         partner_name: orgs.find(o => o.id === a.partner_org_id)?.name || 'Unknown',
@@ -112,6 +132,37 @@ export default function LeadPool() {
       console.error('Error fetching lead pool data:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreateLead() {
+    if (!newLead.name.trim()) return;
+    setCreating(true);
+    try {
+      const { error } = await supabase.from('leads').insert({
+        source: 'manual',
+        status: 'new',
+        zone1_pool: true,
+        interest_type: newLead.interest_type || null,
+        notes: newLead.notes || null,
+        raw_data: {
+          name: newLead.name,
+          email: newLead.email,
+          phone: newLead.phone,
+        },
+      } as any);
+
+      if (error) throw error;
+
+      toast({ title: 'Lead erstellt', description: `Lead "${newLead.name}" wurde erfolgreich angelegt.` });
+      setCreateDialogOpen(false);
+      setNewLead({ name: '', email: '', phone: '', interest_type: '', notes: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      toast({ title: 'Fehler', description: 'Lead konnte nicht erstellt werden.', variant: 'destructive' });
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -138,9 +189,9 @@ export default function LeadPool() {
       case 'contacted':
         return <Badge variant="secondary">Kontaktiert</Badge>;
       case 'qualified':
-        return <Badge className="bg-blue-500">Qualifiziert</Badge>;
+        return <Badge variant="secondary">Qualifiziert</Badge>;
       case 'converted':
-        return <Badge className="bg-green-500">Konvertiert</Badge>;
+        return <Badge variant="default">Konvertiert</Badge>;
       case 'lost':
         return <Badge variant="destructive">Verloren</Badge>;
       default:
@@ -150,11 +201,17 @@ export default function LeadPool() {
 
   return (
     <div className="space-y-6" ref={contentRef}>
-      <div>
-        <h1 className="text-2xl font-bold uppercase">Lead Pool (Zone 1)</h1>
-        <p className="text-muted-foreground">
-          Zentrale Lead-Verwaltung und Partner-Zuweisung
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold uppercase">Lead Pool (Zone 1)</h1>
+          <p className="text-muted-foreground">
+            Zentrale Lead-Verwaltung und Partner-Zuweisung
+          </p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Lead anlegen
+        </Button>
       </div>
 
       {/* Stats */}
@@ -176,7 +233,7 @@ export default function LeadPool() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-blue-500" />
+              <UserPlus className="h-4 w-4 text-primary" />
               <span className="text-2xl font-bold">{stats.assigned}</span>
             </div>
           </CardContent>
@@ -187,7 +244,7 @@ export default function LeadPool() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-yellow-500" />
+              <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-2xl font-bold">{stats.pending}</span>
             </div>
           </CardContent>
@@ -198,7 +255,7 @@ export default function LeadPool() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-primary" />
               <span className="text-2xl font-bold">{stats.converted}</span>
             </div>
           </CardContent>
@@ -222,6 +279,10 @@ export default function LeadPool() {
                 <div className="text-center py-8">
                   <Target className="h-12 w-12 mx-auto text-muted-foreground/50" />
                   <p className="mt-2 text-muted-foreground">Keine Leads im Pool</p>
+                  <Button variant="outline" className="mt-4 gap-2" onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Ersten Lead anlegen
+                  </Button>
                 </div>
               ) : (
                 <Table>
@@ -311,12 +372,12 @@ export default function LeadPool() {
                         </TableCell>
                         <TableCell>
                           {a.accepted_at ? (
-                            <span className="text-green-600">{format(new Date(a.accepted_at), 'dd.MM.yyyy', { locale: de })}</span>
+                            <span className="text-primary">{format(new Date(a.accepted_at), 'dd.MM.yyyy', { locale: de })}</span>
                           ) : '—'}
                         </TableCell>
                         <TableCell>
                           {a.rejected_at ? (
-                            <span className="text-red-600">{format(new Date(a.rejected_at), 'dd.MM.yyyy', { locale: de })}</span>
+                            <span className="text-destructive">{format(new Date(a.rejected_at), 'dd.MM.yyyy', { locale: de })}</span>
                           ) : '—'}
                         </TableCell>
                       </TableRow>
@@ -328,6 +389,87 @@ export default function LeadPool() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create Lead Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Lead manuell anlegen</DialogTitle>
+            <DialogDescription>
+              Erstellen Sie einen neuen Lead für den Pool. Der Lead kann anschließend einem Partner zugewiesen werden.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="lead-name">Name *</Label>
+              <Input
+                id="lead-name"
+                value={newLead.name}
+                onChange={(e) => setNewLead(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Vor- und Nachname"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-email">E-Mail</Label>
+              <Input
+                id="lead-email"
+                type="email"
+                value={newLead.email}
+                onChange={(e) => setNewLead(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="email@beispiel.de"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-phone">Telefon</Label>
+              <Input
+                id="lead-phone"
+                type="tel"
+                value={newLead.phone}
+                onChange={(e) => setNewLead(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+49..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-interest">Interesse-Typ</Label>
+              <Select
+                value={newLead.interest_type}
+                onValueChange={(value) => setNewLead(prev => ({ ...prev, interest_type: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Auswählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="purchase">Kauf</SelectItem>
+                  <SelectItem value="sale">Verkauf</SelectItem>
+                  <SelectItem value="financing">Finanzierung</SelectItem>
+                  <SelectItem value="investment">Investment</SelectItem>
+                  <SelectItem value="rental">Vermietung</SelectItem>
+                  <SelectItem value="other">Sonstiges</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-notes">Notizen</Label>
+              <Textarea
+                id="lead-notes"
+                value={newLead.notes}
+                onChange={(e) => setNewLead(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Zusätzliche Informationen…"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleCreateLead} disabled={!newLead.name.trim() || creating}>
+              {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Lead erstellen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* PDF Export */}
       <PdfExportFooter

@@ -3357,14 +3357,23 @@ export type Database = {
         Row: {
           agreement_consent_id: string | null
           amount: number
+          commission_type: string | null
           contact_id: string | null
+          contract_document_id: string | null
           created_at: string
+          gross_commission: number | null
           id: string
           invoiced_at: string | null
+          liable_role: string | null
+          liable_user_id: string | null
           notes: string | null
           paid_at: string | null
           percentage: number | null
-          pipeline_id: string
+          pipeline_id: string | null
+          platform_fee: number | null
+          platform_share_pct: number | null
+          reference_id: string | null
+          reference_type: string | null
           status: Database["public"]["Enums"]["commission_status"]
           tenant_id: string
           updated_at: string
@@ -3372,14 +3381,23 @@ export type Database = {
         Insert: {
           agreement_consent_id?: string | null
           amount: number
+          commission_type?: string | null
           contact_id?: string | null
+          contract_document_id?: string | null
           created_at?: string
+          gross_commission?: number | null
           id?: string
           invoiced_at?: string | null
+          liable_role?: string | null
+          liable_user_id?: string | null
           notes?: string | null
           paid_at?: string | null
           percentage?: number | null
-          pipeline_id: string
+          pipeline_id?: string | null
+          platform_fee?: number | null
+          platform_share_pct?: number | null
+          reference_id?: string | null
+          reference_type?: string | null
           status?: Database["public"]["Enums"]["commission_status"]
           tenant_id: string
           updated_at?: string
@@ -3387,14 +3405,23 @@ export type Database = {
         Update: {
           agreement_consent_id?: string | null
           amount?: number
+          commission_type?: string | null
           contact_id?: string | null
+          contract_document_id?: string | null
           created_at?: string
+          gross_commission?: number | null
           id?: string
           invoiced_at?: string | null
+          liable_role?: string | null
+          liable_user_id?: string | null
           notes?: string | null
           paid_at?: string | null
           percentage?: number | null
-          pipeline_id?: string
+          pipeline_id?: string | null
+          platform_fee?: number | null
+          platform_share_pct?: number | null
+          reference_id?: string | null
+          reference_type?: string | null
           status?: Database["public"]["Enums"]["commission_status"]
           tenant_id?: string
           updated_at?: string
@@ -3412,6 +3439,20 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_contract_document_id_fkey"
+            columns: ["contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_liable_user_id_fkey"
+            columns: ["liable_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
