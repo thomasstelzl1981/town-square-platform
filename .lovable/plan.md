@@ -1,84 +1,95 @@
 
-# MIETY Sichtbarkeits-Fix — Tiles mit echtem Inhalt befuellen
 
-## Problem-Analyse
+# MIETY Komplett-Ueberarbeitung — Vorbereitete Vertraege + Lebendige Tabs
 
-Der Code wurde zwar erstellt, aber die 5 Tile-Seiten (Dokumente, Kommunikation, Zaehlerstaende, Versorgung, Versicherungen) zeigen alle nur leere `ModuleTilePage`-Platzhalter mit `status="empty"`. Das Dossier existiert unter `/portal/miety/zuhause/:homeId`, aber die Tiles verlinken nur schwach darauf ("Zur Uebersicht"). Der User sieht daher auf jedem Tab nur "leer".
+## Kernproblem
 
-**Kern-Problem:** Alle 5 Tiles nutzen `ModuleTilePage` mit `status="empty"` — ein generischer Blueprint-Platzhalter. Keine Tile zeigt echte Daten oder leitet intelligent zum Dossier weiter.
+Alle 5 Tiles (ausser Uebersicht) zeigen nur "Legen Sie zuerst ein Zuhause an" — ein Fullscreen-Blocker (`NoHomesState`). Selbst im Dossier fehlen vorbereitete Kacheln fuer alle Mindestvertraege. Die Adresse aus den Profildaten wird nicht uebernommen.
 
-## Loesung
+## Loesung: 4 Aenderungspakete
 
-Alle 5 Tiles werden von generischen Platzhaltern zu funktionalen Seiten umgebaut, die:
+### Paket 1: Profil-Prefill im Create-Formular
 
-1. **Wenn Homes existieren:** Eine Zusammenfassung der jeweiligen Daten ueber alle Homes + direkte "Zur Akte" Navigation zeigen
-2. **Wenn keine Homes existieren:** Den Create-Flow direkt einbetten (nicht nur "Zur Uebersicht" verlinken)
-3. **Immer:** Quick-Action-Buttons fuer die jeweilige Funktion zeigen
+**Datei:** `src/pages/portal/miety/components/MietyCreateHomeForm.tsx`
 
-## Aenderungen
+Beim Laden werden `profiles.street`, `house_number`, `postal_code`, `city` abgefragt und als Defaults gesetzt. Der User sieht ein vorausgefuelltes Formular, kann aber aendern.
 
-### Datei: `src/pages/portal/MietyPortalPage.tsx`
+### Paket 2: Tab-Reihenfolge aendern
 
-Alle 5 Tile-Funktionen komplett ersetzen:
+**Datei:** `src/manifests/routesManifest.ts`
 
-**DokumenteTile:** 
-- Zeigt Home-Cards mit Dokumenten-Zaehler pro Home
-- CTA "Akte oeffnen" pro Home
-- Empty State: "Legen Sie zuerst ein Zuhause an" + Create-Button
+Neue Reihenfolge der tiles im MOD-20 Block:
+1. Uebersicht
+2. Kommunikation
+3. Zaehlerstaende
+4. Versorgung
+5. Versicherungen
+6. Dokumente
+
+Dieselbe Reihenfolge in den Routes in `MietyPortalPage.tsx`.
+
+### Paket 3: Alle Tiles mit permanenten Kacheln (KERN)
+
+**Datei:** `src/pages/portal/MietyPortalPage.tsx`
+
+Komplette Ueberarbeitung: `NoHomesState` wird entfernt. Jeder Tab zeigt IMMER vorbereitete Kacheln — egal ob ein Home existiert oder nicht. Wenn kein Home existiert, oeffnet der "+ Anlegen" Button das Create-Formular inline.
+
+**UebersichtTile:**
+- Bleibt wie bisher (Home-Liste + Create), plus 4 Schnellzugriff-Kacheln (Strom, Internet, Hausrat, Zaehlerstaende) als Status-Cards
+
+**KommunikationTile (Position 2):**
+- Vermieter-Verlinkungskachel mit Einladungscode-Feld
+- Schadensmeldung-Kachel (Platzhalter mit CTA)
+- Dokumente-Bereich (Platzhalter "Korrespondenz")
 
 **ZaehlerstaendeTile:**
-- Zeigt letzte Zaehlerstaende aus `miety_meter_readings` ueber alle Homes
-- Kacheln pro Zaehlertyp (Strom/Gas/Wasser/Heizung) mit letztem Wert
-- CTA "Zaehlerstand erfassen" (navigiert zur Akte)
+- IMMER 4 Kacheln: Strom, Gas, Wasser, Heizung — mit "Erfassen" Button
+- Kein NoHomesState Blocker
 
 **VersorgungTile:**
-- Zeigt Versorger-Vertraege aus `miety_contracts` (Kategorie strom/gas/wasser/internet)
-- Karten mit Anbieter + Kosten
-- CTA "Vertrag anlegen"
+- IMMER 4 vorbereitete Vertragskacheln:
+  - Stromvertrag (Zap-Icon)
+  - Gasvertrag (Flame-Icon)
+  - Wasservertrag (Droplets-Icon)
+  - Internet/Telefon (Wifi-Icon)
+- Jede Kachel: Icon, Label, Anbieter/Kosten oder "Kein Vertrag hinterlegt", "+ Vertrag anlegen"
+- "+ Weiteren Vertrag hinzufuegen" Button
 
 **VersicherungenTile:**
-- Zeigt Versicherungs-Vertraege aus `miety_contracts` (Kategorie hausrat/haftpflicht)
-- Karten mit Status-Badge
-- CTA "Versicherung hinzufuegen"
+- IMMER 2 vorbereitete Kacheln:
+  - Hausratversicherung (Shield-Icon)
+  - Haftpflichtversicherung (Shield-Icon)
+- Jede Kachel mit Status oder "Nicht hinterlegt", "+ Hinzufuegen"
+- "+ Weitere Versicherung" Button
 
-**KommunikationTile:**
-- Bleibt Platzhalter, aber mit besserem Design (kein generisches ModuleTilePage mehr)
-- Zeigt "Kommt bald" mit Teaser-Inhalt
+**DokumenteTile (Position 6):**
+- 6 Ordner-Kacheln als Vorschau (Vertraege, Zaehler, Versicherungen, Versorgung, Kommunikation, Sonstiges)
+- Dokumenten-Zaehler + Upload-Hinweis
 
-### Gemeinsames Pattern fuer alle Tiles:
+### Paket 4: Erweiterte Placeholder-Karten im Dossier + ContractDrawer defaultCategory
 
-```text
-+------------------------------------------+
-| [Icon] Titel                              |
-| Beschreibungstext                         |
-+------------------------------------------+
-| [Home-Card 1]  [Home-Card 2]  [Home-Card] |
-|  - Zaehler: 3   - Zaehler: 0             |
-|  [Akte oeffnen] [Akte oeffnen]            |
-+------------------------------------------+
-| ODER (wenn keine Homes):                  |
-| "Legen Sie zuerst ein Zuhause an"         |
-| [Zuhause anlegen Button]                  |
-+------------------------------------------+
-```
+**Datei:** `src/pages/portal/miety/components/MietyContractsSection.tsx`
 
-### Technische Details:
+PLACEHOLDER_CARDS erweitern von 3 auf 7 Eintraege:
+- strom, gas, wasser, internet, hausrat, haftpflicht, miete
 
-- Jede Tile bekommt einen eigenen `useQuery` Hook fuer die relevanten Daten
-- `miety_homes` wird in allen Tiles abgefragt (als Grundlage)
-- `miety_contracts` wird in Versorgung/Versicherungen gefiltert nach `category`
-- `miety_meter_readings` wird in Zaehlerstaende mit letztem Wert pro Typ abgefragt
-- Navigation zur Akte via `navigate(/portal/miety/zuhause/${home.id})`
-- `ModuleTilePage` Import wird komplett entfernt — keine generischen Platzhalter mehr
+Wenn `filterCategories` gesetzt ist, werden nur passende Placeholders gezeigt (z.B. bei Versicherungen nur hausrat + haftpflicht).
 
-### Padding/Container:
+**Datei:** `src/pages/portal/miety/components/ContractDrawer.tsx`
 
-Alle Tiles bekommen `container max-w-5xl mx-auto p-4` fuer konsistentes Layout, mit einem schlichten Header (Titel + Beschreibung in `text-h2` + `text-sm text-muted-foreground`).
+Neue optionale Prop `defaultCategory?: string`. Wenn gesetzt, wird die Kategorie beim Oeffnen vorausgewaehlt.
 
-## Dateien
+## Dateien-Uebersicht
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/MietyPortalPage.tsx` | Alle 5 Tile-Funktionen komplett neu schreiben (DokumenteTile, KommunikationTile, ZaehlerstaendeTile, VersorgungTile, VersicherungenTile) — `ModuleTilePage` durch echte Daten-Abfragen + Karten ersetzen |
+| `src/manifests/routesManifest.ts` | Tiles-Reihenfolge in MOD-20: Kommunikation auf Pos 2, Dokumente auf Pos 6 |
+| `src/pages/portal/MietyPortalPage.tsx` | Komplett-Rewrite aller 6 Tile-Funktionen: NoHomesState weg, permanente Kacheln, ContractDrawer/MeterReadingDrawer inline, Kommunikation mit Vermieter-Kachel |
+| `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` | Profildaten-Prefill aus `profiles` Tabelle |
+| `src/pages/portal/miety/components/MietyContractsSection.tsx` | PLACEHOLDER_CARDS auf 7 erweitern (alle Mindestvertraege) |
+| `src/pages/portal/miety/components/ContractDrawer.tsx` | Neue Prop `defaultCategory` fuer Vorauswahl |
 
-Keine neuen Dateien noetig. Keine Datenbank-Aenderungen.
+## Keine Datenbank-Aenderungen
+
+Alle Tabellen existieren bereits. `profiles` wird nur gelesen (SELECT).
+
