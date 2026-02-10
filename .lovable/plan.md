@@ -1,165 +1,98 @@
 
+# Bereinigung: Muster-Tenants loeschen + Rollendokumentation konsolidieren
 
-# Konsolidierter Plan: Admin Roles + Tile-Eroeffnung — Saubere Integration
+## Teil A: Analyse — Doppelte Rollendokumentation
 
-## Analyse: Warum ZWEI Rollen-Systeme?
+Es existieren **4 verschiedene Stellen** mit Rollendefinitionen, die sich widersprechen:
 
-Aktuell existieren zwei getrennte Enums und Tabellen:
+| # | Datei | Inhalt | Status |
+|---|-------|--------|--------|
+| 1 | `src/constants/rolesMatrix.ts` | 6 Rollen, 21 Module, BASE_TILES, SSOT-Funktionen | AKTUELL — Code-SSOT |
+| 2 | `spec/current/01_platform/ACCESS_MATRIX.md` | 5 alte Rollen (org_admin, internal_ops, renter_user), nur MOD-01 bis MOD-10 | VERALTET |
+| 3 | `src/data/kb-seeds/v1/KB.SYSTEM.005.md` | Alte Hierarchie (platform_admin > org_admin > org_member > agent_roles) | VERALTET |
+| 4 | `src/pages/admin/Users.tsx` (Zeile 68-76) | 7 Rollen hardcoded (inkl. internal_ops, renter_user), kein Bezug zu rolesMatrix | VERALTET |
+
+**Fazit:** Nur `rolesMatrix.ts` ist aktuell. Die anderen 3 Quellen muessen aktualisiert oder als "ersetzt durch rolesMatrix.ts" markiert werden.
+
+---
+
+## Teil B: Muster-Tenants komplett loeschen
+
+### Bestandsaufnahme
+
+| Datenpunkt | Muster-Vermieter | Muster-Verkaeufer | Muster-Partner GmbH |
+|-----------|-------------------|--------------------|--------------------|
+| Org-ID | b...001 | b...002 | b...003 |
+| org_type | client | client | partner |
+| Memberships | 1 (thomas.stelzl) | 1 (thomas.stelzl) | 1 (thomas.stelzl) |
+| Tiles | 14 | 14 | 16 |
+| Storage-Nodes | 26 | 26 | 26 |
+| Properties | 0 | 0 | 0 |
+| Listings | 0 | 0 | 0 |
+| Contacts | 0 | 0 | 0 |
+| Documents | 0 | 0 | 0 |
+| Units | 0 | 0 | 0 |
+
+Keine Business-Daten vorhanden — sauber loeschbar.
+
+### Loesch-Reihenfolge (FK-Constraints beachten)
 
 ```text
-TABELLE 1: memberships (tenant-bezogen)
-  ├── Enum: membership_role
-  ├── Werte: platform_admin, org_admin, internal_ops, sales_partner,
-  │          renter_user, finance_manager, akquise_manager, future_room_web_user_lite
-  └── Zweck: Wer gehoert zu welchem Tenant mit welcher Berechtigung?
-
-TABELLE 2: user_roles (global, tenant-unabhaengig)
-  ├── Enum: app_role
-  ├── Werte: platform_admin, moderator, user, finance_manager, akquise_manager, sales_partner
-  └── Zweck: Globale Spezialrechte (z.B. Zone-1-Zugang)
+1. storage_nodes       (78 Zeilen) — kein FK auf andere Tabellen
+2. tenant_tile_activation (44 Zeilen) — FK auf organizations
+3. memberships         (3 Zeilen) — FK auf organizations + auth.users
+4. organizations       (3 Zeilen) — Stamm-Entitaet
 ```
 
-**Das Problem:** Keines der beiden Systeme steuert aktuell die Tile-Aktivierung. Die Tiles werden manuell oder pauschal per Migration gesetzt. Es gibt keine automatische Verbindung zwischen Rolle und Modulen.
+### Auswirkung auf Auth-User
 
-## Loesung: membership_role als SSOT fuer Tile-Aktivierung
+Nach dem Loeschen hat thomas.stelzl nur noch EINE Membership:
+- `System of a Town` (internal) als `platform_admin`
 
-Die `membership_role` ist der richtige Ort, weil:
-1. Sie ist TENANT-bezogen — Tiles sind ebenfalls tenant-bezogen (`tenant_tile_activation`)
-2. Ein User kann in verschiedenen Tenants verschiedene Rollen haben
-3. Sie existiert bereits mit den richtigen Werten
+Das ist der gewuenschte Zustand: Ein Admin-User, ein interner Tenant.
 
-Die `app_role` (user_roles) bleibt bestehen fuer globale Rechte (Zone 1, is_platform_admin), wird aber NICHT fuer Tile-Logik verwendet.
+---
 
-### Rollenmodell (konsolidiert)
+## Teil C: Users.tsx ROLES-Array aktualisieren
 
-| membership_role | Verwendungszweck | Tile-Steuerung | Anmerkung |
-|----------------|-----------------|----------------|-----------|
-| `org_admin` | Tenant-Eigentuemer | JA — bestimmt Basis-Set | Automatisch bei Signup |
-| `sales_partner` | Vertriebspartner | JA — Basis + MOD-09, 10 | Bei Einladung/Zuweisung |
-| `finance_manager` | Finanzierungsmanager | JA — Basis + MOD-11 | Bei Einladung/Zuweisung |
-| `akquise_manager` | Akquise-Manager | JA — Basis + MOD-12 | Bei Einladung/Zuweisung |
-| `platform_admin` | System-Admin | Alle 21 (Override) | Nur fuer SoT-Intern |
-| `internal_ops` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
-| `renter_user` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
-| `future_room_web_user_lite` | Legacy — nicht aktiv | — | Bleibt im Enum, wird nicht genutzt |
+Zeile 68-76 in `Users.tsx` definiert ein eigenes ROLES-Array mit 7 Werten, das NICHT aus `rolesMatrix.ts` importiert wird. Das muss synchronisiert werden:
 
-### Neue User-Typen und ihre Zuordnung
+**Aktuell (veraltet):**
+- platform_admin, org_admin, internal_ops, sales_partner, renter_user, finance_manager, akquise_manager
 
-Bei der Account-Eroeffnung gibt es 5 waehlbare Pfade:
+**Neu (aus rolesMatrix.ts abgeleitet):**
+- Die ROLES-Liste wird aus `ROLES_CATALOG` + `LEGACY_ROLES` generiert
+- Legacy-Rollen (internal_ops, renter_user, future_room_web_user_lite) werden als "Legacy" markiert
+- `org_admin` bleibt als membership_role verfuegbar (fuer Membership-Verwaltung)
 
-| User-Typ (UI-Label) | membership_role | Module (Gesamt) |
-|---------------------|----------------|-----------------|
-| Standardkunde | `org_admin` | 14 Basis-Module |
-| Super-User | `org_admin` + app_role `super_user` | Alle 21 Module |
-| Akquise-Manager | `akquise_manager` | 14 Basis + MOD-12 = 15 |
-| Finanzierungsmanager | `finance_manager` | 14 Basis + MOD-11 = 15 |
-| Vertriebspartner | `sales_partner` | 14 Basis + MOD-09 + MOD-10 = 16 |
+---
 
-**Super-User** ist ein Sonderfall: Die membership_role bleibt `org_admin`, aber ein Eintrag in `user_roles` mit `super_user` schaltet alle 21 Module frei. Das haelt die membership_role sauber.
+## Teil D: Spec-Dokumente aktualisieren
 
-### Modul-Zuordnung im Detail
+### ACCESS_MATRIX.md
+- Rollen-Tabelle aktualisieren: 6 aktive Rollen statt 5 alte
+- Modul-Matrix: 21 Module statt 10
+- Verweis auf `rolesMatrix.ts` als Code-SSOT hinzufuegen
 
-**14 Basis-Module (alle User-Rollen):**
-MOD-00 Dashboard, MOD-01 Stammdaten, MOD-02 KI Office, MOD-03 DMS, MOD-04 Immobilien, MOD-05 MSV, MOD-06 Verkauf, MOD-07 Finanzierung, MOD-08 Investment-Suche, MOD-15 Fortbildung, MOD-16 Services, MOD-17 Car-Management, MOD-18 Finanzanalyse, MOD-20 Miety
-
-**7 Spezial-Module (nur bestimmte Rollen/Super-User):**
-MOD-09 Vertriebspartner, MOD-10 Leads, MOD-11 Finanzierungsmanager, MOD-12 Akquise-Manager, MOD-13 Projekte, MOD-14 Communication Pro, MOD-19 Photovoltaik
-
-**Monitoring (geplant, nur dokumentiert):**
-Zukuenftig fuer akquise_manager, finance_manager, sales_partner
+### KB.SYSTEM.005.md
+- Hierarchie aktualisieren auf das neue 6-Rollen-Modell
+- Verweis auf `rolesMatrix.ts` als SSOT
+- Alte org_member und agent_roles Konzepte als Legacy markieren
 
 ---
 
 ## Implementierungsschritte
 
-### Schritt 1: Datenbank — Tile-Mapping-Funktion erstellen
-
-Neue SECURITY DEFINER Funktion `get_tiles_for_role(membership_role)` die die korrekte Tile-Liste zurueckgibt:
-
-```text
-org_admin        → 14 Basis-Module
-sales_partner    → 14 Basis + MOD-09 + MOD-10
-finance_manager  → 14 Basis + MOD-11
-akquise_manager  → 14 Basis + MOD-12
-platform_admin   → Alle 21
-```
-
-Diese Funktion wird von `handle_new_user()` aufgerufen und kann auch manuell verwendet werden.
-
-### Schritt 2: Datenbank — app_role Enum erweitern
-
-- `super_user` und `client_user` zum `app_role` Enum hinzufuegen
-- `super_user` in user_roles aktiviert Override: alle 21 Module
-
-### Schritt 3: Datenbank — handle_new_user() ueberarbeiten
-
-- Aktuell: Hardcoded `['MOD-01', 'MOD-03', 'MOD-04']` als Standard-Tiles
-- Neu: Ruft `get_tiles_for_role('org_admin')` auf → 14 Basis-Module
-- Neue User bekommen automatisch membership_role `org_admin` (wie bisher)
-- Optional: Parameter fuer Rolle aus Signup-Metadata (fuer Spezialrollen-Onboarding)
-
-### Schritt 4: Datenbank — Test-Org Tiles korrigieren
-
-| Test-Org | membership_role | Aktive Tiles |
-|----------|----------------|-------------|
-| Muster-Vermieter | org_admin | 14 Basis |
-| Muster-Verkaeufer | org_admin | 14 Basis |
-| Muster-Partner GmbH | sales_partner | 14 Basis + MOD-09 + MOD-10 = 16 |
-| System of a Town | platform_admin | Alle 21 |
-
-Tiles entfernen die nicht zur jeweiligen Rolle gehoeren.
-
-### Schritt 5: rolesMatrix.ts — Konsolidierung
-
-- ROLES_CATALOG auf 6 Eintraege: `platform_admin`, `super_user`, `client_user` (= org_admin), `akquise_manager`, `finance_manager`, `sales_partner`
-- Jede Rolle zeigt klar: Basis-Module + Zusatz-Module
-- MODULE_ROLE_MATRIX aktualisiert mit den 6 Rollen
-- Neue Konstante: `BASE_TILES` und `ROLE_EXTRA_TILES` — werden auch vom UI genutzt
-- `dbNote` Felder zeigen die Zuordnung zur membership_role
-
-### Schritt 6: RolesManagement.tsx — Komplette Ueberarbeitung
-
-**Tab 1 — Rollen-Katalog:**
-- 6 Rollen-Karten mit Basis/Zusatz-Trennung
-- Jede Karte zeigt: Label, Beschreibung, Anzahl Module, DB-Mapping (welche membership_role / app_role)
-- Super-User-Karte erklaert den Sonderfall (org_admin + app_role super_user)
-
-**Tab 2 — Modul-Rollen-Matrix:**
-- 21 Zeilen (MOD-00 bis MOD-20)
-- 6 Spalten (platform_admin, super_user, client_user, akquise_manager, finance_manager, sales_partner)
-- Farbkodierung: Gruen = Basis (alle haben es), Blau = Zusatz (rollenspezifisch)
-- Monitoring-Platzhalter als Info-Zeile am Ende
-
-**Tab 3 — Governance & Eroeffnungsprozess:**
-- Dokumentation des Signup-Flows: Was passiert automatisch?
-- Mapping-Tabelle: UI-Label → membership_role → app_role → Tiles
-- Erklaerung org_admin vs platform_admin
-- DB-Status: Aktive Enum-Werte beider Systeme (live aus Konstanten, nicht hardcoded)
-- Warning-Banner zu Legacy-Werten (internal_ops, renter_user etc.) anstatt Dev-Mode-Warning
-
-### Schritt 7: useGoldenPathSeeds.ts — DEV_TENANT_UUID bereinigen
-
-Hardcoded UUID durch dynamischen AuthContext-Tenant ersetzen.
-
----
-
-## Dateien-Uebersicht
-
-| Aktion | Datei/Bereich |
-|--------|--------------|
-| DB Migration | Neue Funktion `get_tiles_for_role(membership_role)` |
-| DB Migration | `app_role` Enum: + `super_user`, + `client_user` |
-| DB Migration | `handle_new_user()`: Nutzt `get_tiles_for_role('org_admin')` statt Hardcode |
-| DB Migration | Test-Org Tiles: DELETE + rollenspezifisch neu setzen |
-| Code | `src/constants/rolesMatrix.ts` — 6 Rollen, BASE_TILES, ROLE_EXTRA_TILES |
-| Code | `src/pages/admin/RolesManagement.tsx` — Komplettes Redesign |
-| Code | `src/hooks/useGoldenPathSeeds.ts` — DEV_TENANT_UUID entfernen |
+| # | Aktion | Datei/Bereich |
+|---|--------|--------------|
+| 1 | DB Migration: Muster-Tenants loeschen | DELETE storage_nodes, tenant_tile_activation, memberships, organizations fuer b...001, b...002, b...003 |
+| 2 | Users.tsx: ROLES-Array synchronisieren | Import aus rolesMatrix.ts oder mindestens konsistent machen |
+| 3 | ACCESS_MATRIX.md aktualisieren | 6 Rollen, 21 Module, SSOT-Verweis |
+| 4 | KB.SYSTEM.005.md aktualisieren | Neue Hierarchie, SSOT-Verweis |
 
 ## Was NICHT gemacht wird
 
-- Module NICHT umnummerieren (Analyse hat gezeigt: zu riskant)
-- membership_role Enum NICHT schrumpfen (Postgres-Limitierung)
-- Monitoring-Modul NUR dokumentiert, nicht gebaut
-- Routing/Navigation unveraendert
-- Internal-Org behaelt alle 21 Tiles
-
+- Keine neuen Tenants anlegen (User will nur thomas.stelzl im System)
+- Keine Aenderung an rolesMatrix.ts (ist bereits aktuell)
+- Keine Aenderung an RolesManagement.tsx (ist bereits aktuell)
+- Keine Aenderung an handle_new_user() (bereits aktualisiert)
