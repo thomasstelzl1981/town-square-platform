@@ -137,6 +137,48 @@ serve(async (req) => {
 });
 
 /**
+ * Decode RFC 2047 encoded words in headers (Subject, From name, etc.)
+ * Handles =?charset?B?base64?= and =?charset?Q?quoted-printable?= patterns
+ */
+function decodeRfc2047(input: string): string {
+  if (!input || !input.includes('=?')) return input;
+  
+  try {
+    // Remove folding whitespace between adjacent encoded words
+    const cleaned = input.replace(/\?=\s+=\?/g, '?==?');
+    
+    return cleaned.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_match, charset, encoding, text) => {
+      try {
+        const enc = encoding.toUpperCase();
+        if (enc === 'B') {
+          // Base64 decoding
+          const cleanedBase64 = text.replace(/\s/g, '');
+          const bytes = decodeBase64(cleanedBase64);
+          return new TextDecoder(charset, { fatal: false }).decode(bytes);
+        } else if (enc === 'Q') {
+          // Quoted-Printable decoding (RFC 2047 variant: _ = space)
+          const qpText = text.replace(/_/g, ' ');
+          const decoded = qpText.replace(/=([0-9A-Fa-f]{2})/g, (_, hex: string) => {
+            return String.fromCharCode(parseInt(hex, 16));
+          });
+          // Re-decode bytes for proper charset handling
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(decoded);
+          return new TextDecoder(charset, { fatal: false }).decode(bytes);
+        }
+        return text;
+      } catch (e) {
+        console.error('RFC 2047 decode chunk error:', e);
+        return text;
+      }
+    });
+  } catch (e) {
+    console.error('RFC 2047 decode error:', e);
+    return input;
+  }
+}
+
+/**
  * Decode Quoted-Printable encoded string
  */
 function decodeQuotedPrintable(input: string): string {
@@ -388,7 +430,7 @@ async function syncImapMail(
         const fromEmail = fromAddr?.mailbox && fromAddr?.host 
           ? `${fromAddr.mailbox}@${fromAddr.host}` 
           : '';
-        const fromName = fromAddr?.name || '';
+        const fromName = decodeRfc2047(fromAddr?.name || '');
 
         // Extract to addresses
         const toAddrs = envelope.to?.map((addr: any) => 
@@ -415,31 +457,89 @@ async function syncImapMail(
           receivedAt = new Date().toISOString();
         }
 
-        // Parse MIME content manually
+        // Parse MIME content — with tiered fallback for body fetch
         let bodyText = '';
         let bodyHtml = '';
         let snippet = '';
         let hasAttachments = false;
+        let fetchPath = 'none';
         
+        // === Tier 1: Try msg.raw from full: true ===
         if (msg.raw) {
           try {
-            // Convert Uint8Array to string
             const decoder = new TextDecoder('utf-8', { fatal: false });
             const rawMessage = decoder.decode(msg.raw);
-            
-            // Parse MIME structure
             const parsed = parseMimeMessage(rawMessage);
-            
             bodyText = truncate(parsed.text, MAX_BODY_SIZE);
             bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
             hasAttachments = parsed.hasAttachments;
-            
-            console.log(`Parsed message UID ${msg.uid}: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+            fetchPath = 'raw';
+            console.log(`[UID ${msg.uid}] Tier1 raw: text=${bodyText.length}b, html=${bodyHtml.length}b`);
           } catch (parseError) {
-            console.error(`Error parsing MIME for UID ${msg.uid}:`, parseError);
+            console.error(`[UID ${msg.uid}] Tier1 raw parse error:`, parseError);
           }
-        } else {
-          console.log(`No raw content for UID ${msg.uid}`);
+        }
+        
+        // === Tier 2: Fallback — fetch BODY[TEXT] via bodyParts ===
+        if (!bodyText && !bodyHtml && msg.uid) {
+          console.log(`[UID ${msg.uid}] Tier1 empty, trying BODY[TEXT]...`);
+          try {
+            const fallbackMsgs = await client.fetch(`${msg.uid}`, {
+              bodyParts: ['TEXT'],
+            }, true); // true = UID-based fetch
+            
+            const fbMsg = fallbackMsgs?.[0];
+            const textPart = fbMsg?.bodyParts?.get?.('TEXT') || fbMsg?.bodyParts?.TEXT;
+            
+            if (textPart) {
+              const fbContent = (textPart instanceof Uint8Array) 
+                ? new TextDecoder('utf-8', { fatal: false }).decode(textPart)
+                : String(textPart);
+              
+              if (fbContent.length > 0) {
+                const parsed = parseMimeMessage(fbContent);
+                bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+                bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+                hasAttachments = parsed.hasAttachments;
+                fetchPath = 'bodyParts-TEXT';
+                console.log(`[UID ${msg.uid}] Tier2 TEXT: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+              }
+            }
+          } catch (fb2Error) {
+            console.error(`[UID ${msg.uid}] Tier2 TEXT fetch error:`, fb2Error);
+          }
+        }
+        
+        // === Tier 3: Fallback — fetch BODY[1] (first MIME part) ===
+        if (!bodyText && !bodyHtml && msg.uid) {
+          console.log(`[UID ${msg.uid}] Tier2 empty, trying BODY[1]...`);
+          try {
+            const fallbackMsgs = await client.fetch(`${msg.uid}`, {
+              bodyParts: ['1'],
+            }, true);
+            
+            const fbMsg = fallbackMsgs?.[0];
+            const part1 = fbMsg?.bodyParts?.get?.('1') || fbMsg?.bodyParts?.['1'];
+            
+            if (part1) {
+              const fbContent = (part1 instanceof Uint8Array) 
+                ? new TextDecoder('utf-8', { fatal: false }).decode(part1)
+                : String(part1);
+              
+              if (fbContent.length > 0) {
+                // Treat as plain text directly
+                bodyText = truncate(fbContent, MAX_BODY_SIZE);
+                fetchPath = 'bodyParts-1';
+                console.log(`[UID ${msg.uid}] Tier3 BODY[1]: text=${bodyText.length}b`);
+              }
+            }
+          } catch (fb3Error) {
+            console.error(`[UID ${msg.uid}] Tier3 BODY[1] fetch error:`, fb3Error);
+          }
+        }
+        
+        if (!bodyText && !bodyHtml) {
+          console.warn(`[UID ${msg.uid}] ALL fetch tiers failed — no body content. Subject: ${envelope.subject}`);
         }
         
         // Generate snippet from body content
@@ -449,6 +549,9 @@ async function syncImapMail(
           snippet = truncate(stripHtml(bodyHtml), 200);
         }
 
+        // Decode subject with RFC 2047
+        const decodedSubject = decodeRfc2047(envelope.subject || '') || '(Kein Betreff)';
+
         // Upsert message with body content
         const { error } = await supabase
           .from('mail_messages')
@@ -457,7 +560,7 @@ async function syncImapMail(
             message_id: msg.uid?.toString() || `imap_${Date.now()}_${synced}`,
             thread_id: envelope.messageId || null,
             folder: folder.toUpperCase(),
-            subject: envelope.subject || '(Kein Betreff)',
+            subject: decodedSubject,
             from_address: fromEmail,
             from_name: fromName,
             to_addresses: toAddrs,
