@@ -1,212 +1,230 @@
 
-# Kaufy Social Media + Selfie Ads Studio — Angepasster Plan
+# Phase 1: Globaler Outbound-Mail-Fundament-Baustein
 
-## Einordnung: Alles unter bestehende Strukturen
+## Zusammenfassung
 
-Das Selfie Ads Studio wird **in MOD-10 Leads** (`/portal/leads`) integriert — nicht als separater Bereich. Die Zone-1-Steuerung kommt als neuer Admin-Desk "Social Media" in die bestehende `zone1Admin.routes`.
-
----
-
-## 0. Recherche-Modul Bereinigung (ERLEDIGT ✅)
-
-### Problem
-Die Recherche (3-Kachel-Layout: Free, Pro, Candidates) war fälschlicherweise in MOD-02 KI-Office unter `/portal/office/widgets` als dritter Tab platziert. Laut MOD-14 Spec gehört sie nach `/portal/communication-pro/recherche`.
-
-### Durchgeführte Änderungen
-
-| Datei | Änderung |
-|---|---|
-| `src/pages/portal/communication-pro/recherche/ResearchTab.tsx` | Neue Hauptkomponente (glass-card wrapper) |
-| `src/pages/portal/communication-pro/recherche/ResearchFreeCard.tsx` | Verschoben von `office/components/` |
-| `src/pages/portal/communication-pro/recherche/ResearchProCard.tsx` | Verschoben von `office/components/` |
-| `src/pages/portal/communication-pro/recherche/ResearchCandidatesTray.tsx` | Verschoben von `office/components/` |
-| `src/pages/portal/communication-pro/recherche/CandidatePreviewDrawer.tsx` | Verschoben von `office/components/` |
-| `src/pages/portal/communication-pro/recherche/CreditConfirmModal.tsx` | Verschoben von `office/components/` |
-| `src/pages/portal/CommunicationProPage.tsx` | RechercheTile Platzhalter → echte ResearchTab |
-| `src/pages/portal/office/WidgetsTab.tsx` | Recherche-Tab entfernt, 2-Spalten-Layout |
-| `src/manifests/armstrongManifest.ts` | 4 Actions umbenannt: ARM.MOD02.RESEARCH_* → ARM.MOD14.RESEARCH_*, module: MOD-14, ui_entrypoints aktualisiert |
-| `docs/modules/MOD-14_COMMUNICATION_PRO.md` | Keine Änderung nötig (war bereits korrekt) |
-
-### Armstrong Action Mapping (NEU)
-
-| Alt (MOD-02) | Neu (MOD-14) |
-|---|---|
-| `ARM.MOD02.RESEARCH_FREE` | `ARM.MOD14.RESEARCH_FREE` |
-| `ARM.MOD02.RESEARCH_PRO` | `ARM.MOD14.RESEARCH_PRO` |
-| `ARM.MOD02.IMPORT_CANDIDATES` | `ARM.MOD14.IMPORT_CANDIDATES` |
-| `ARM.MOD02.DEDUPE_SUGGEST` | `ARM.MOD14.DEDUPE_SUGGEST` |
-
-### Verifikation
-- ✅ WidgetsTab hat nur noch 2 Tabs: Systemwidgets + Aufgaben
-- ✅ MOD-14 `/portal/communication-pro/recherche` zeigt 3 Kacheln im glass-card Design
-- ✅ Armstrong Actions korrekt auf MOD-14 gemappt
-- ✅ Alte Dateien unter `office/components/` können gelöscht werden (Originals verbleiben als Backup)
-
-## 0b. Widget-Design-Harmonisierung (ERLEDIGT ✅)
-
-Shared Components: PageShell, KPICard, WidgetHeader, ListRow erstellt. Alle Module harmonisiert (Padding, glass-card, Typografie). 4 Legacy-Dateien in MOD-11 gelöscht. MOD-04/MOD-08 bewusst ausgenommen.
+Dieser Plan implementiert eine zentrale Outbound-E-Mail-Identitaet pro User, verankert im Profil (MOD-01) und genutzt von allen Outbound-Features in Zone 2. Resend bleibt die Versandinfrastruktur, aber die sichtbare Absenderadresse ("From") kommt aus der Profil-Outbound-Kennung.
 
 ---
 
-## 1. Navigation / Routing
-
-### Zone 2 — MOD-10 Leads erweitern (`/portal/leads`)
-
-Bestehende Tiles bleiben, neue kommen dazu:
+## Architektur-Uebersicht
 
 ```text
-Bestehend:
-  /portal/leads/inbox       → Inbox
-  /portal/leads/meine       → Meine Leads
-  /portal/leads/pipeline    → Pipeline
-  /portal/leads/werbung     → Werbung
-
-Neu (Selfie Ads Studio):
-  /portal/leads/selfie-ads            → Selfie Ads Studio (Ueberblick)
-  /portal/leads/selfie-ads-planen     → Kampagne planen (5 Slots)
-  /portal/leads/selfie-ads-summary    → Mandat Zusammenfassung
-  /portal/leads/selfie-ads-kampagnen  → Meine Kampagnen
-  /portal/leads/selfie-ads-performance→ Performance
-  /portal/leads/selfie-ads-abrechnung → Abrechnung
-```
-
-Aenderungen:
-- **`routesManifest.ts`**: MOD-10 tiles Array um 6 Eintraege erweitern
-- **`LeadsPage.tsx`**: 6 neue lazy-loaded Routes + Imports
-
-### Zone 1 — Neuer Admin-Desk "Social Media" (`/admin/social-media`)
-
-```text
-  /admin/social-media              → Dashboard
-  /admin/social-media/kampagnen    → Kaufy Kampagnen
-  /admin/social-media/creator      → Creator
-  /admin/social-media/vertrieb     → Social Vertrieb (Mandate)
-  /admin/social-media/vertrieb/:id → Mandat Detail
-  /admin/social-media/leads        → Leads & Routing
-  /admin/social-media/templates    → Templates & CI
-  /admin/social-media/abrechnung   → Abrechnung
-```
-
-Aenderungen:
-- **`routesManifest.ts`**: 8 neue Routes in `zone1Admin.routes`
-- **`AdminSidebar.tsx`**: Neue Gruppe "Social Media" mit Megaphone-Icon
-- **`ManifestRouter.tsx`**: 8 neue Admin-Komponenten lazy-loaded
-
----
-
-## 2. Datenmodell (6 Tabellen + RLS)
-
-Alle Tabellen mit `tenant_id` + RLS ueber `get_user_tenant_id()`:
-
-| Tabelle | Zweck |
-|---|---|
-| `social_mandates` | Partner-Auftraege (Status: submitted→review→approved→scheduled→live→ended) |
-| `social_templates` | 5 Kaufy CI Templates (slideshow_4, single, story, carousel) |
-| `social_creatives` | Generierte Outputs (Slideshow-Outline + Caption + CTA pro Slot T1-T5) |
-| `social_campaigns` | Kaufy-interne Kampagnen (organisch + paid) |
-| `social_leads` | Lead-Intake (Meta Leadgen + Manual), verknuepft mit Mandat + Partner |
-| `social_lead_events` | Timeline/Audit (webhook_received, autoresponder_sent, routed, status_changed) |
-
-Seed: 5 Templates + 1 Demo-Mandat + 3 Demo-Kampagnen + 5 Demo-Leads.
-
----
-
-## 3. Zone 2 — Selfie Ads Studio Seiten (unter /portal/leads)
-
-### SelfieAdsStudio.tsx (Ueberblick)
-- Widget-Karten: "Aktive Kampagnen", "Neue Leads", "Performance", "Letzte Beauftragungen"
-- Lebendige Demo-Karten (nie leer)
-
-### SelfieAdsPlanen.tsx (Kampagne planen — eine Seite, kein Wizard)
-5 Abschnitte:
-- **A) Parameter**: Ziel, Laufzeit, Budget, Regionen (1-3), Zielgruppe-Presets
-- **B) 5 Template-Slots**: Graue Karten T1-T5, immer sichtbar, Status-Badges
-- **C) Personalisierung**: Beraterportrait, Name, Region, Claim (80 Zeichen)
-- **D) Generieren**: Button → pro Slot 4-Slide Vorschau + Caption/CTA inline
-- **E) Zusammenfassung**: Kompaktkarte + CTA "Zur Mandatszusammenfassung"
-
-### SelfieAdsZusammenfassung.tsx
-- Read-only Mandatsakte (Case-Feeling)
-- CTA "Beauftragen & bezahlen"
-
-### SelfieAdsKampagnen.tsx
-- Liste beauftragter Mandate mit Status-Badges
-
-### SelfieAdsPerformance.tsx
-- CPL, Leads, Zeitraum-Diagramm (Recharts), Top Templates, Region
-
-### SelfieAdsAbrechnung.tsx
-- Zahlungen pro Mandat, Status, Rechnungs-Links
-
----
-
-## 4. Zone 1 — Social Media Admin-Seiten
-
-Alle unter `src/pages/admin/social-media/`:
-
-| Seite | Funktion |
-|---|---|
-| SocialMediaDashboard.tsx | KPIs: Aktive Kampagnen, Mandate, Leads, Spend |
-| SocialMediaKampagnen.tsx | Kaufy-eigene Kampagnen (organisch + paid) |
-| SocialMediaCreator.tsx | Seitenbasierter Creator (Plattform, Ziel, Templates, Generate, Publish) |
-| SocialMediaVertrieb.tsx | Mandate-Liste (aus Zone 2 Beauftragungen) |
-| SocialMediaVertriebDetail.tsx | Mandatsakte: Daten, Creatives, Publishing-Plan, Abrechnung |
-| SocialMediaLeads.tsx | Zentrale Lead-Inbox mit Routing-Aktionen |
-| SocialMediaTemplates.tsx | Kaufy CI Template-Verwaltung |
-| SocialMediaAbrechnung.tsx | Gesamt-Spend, Partner-Abrechnung, Exports |
-
----
-
-## 5. Edge Functions (Stubs)
-
-| Function | Zweck |
-|---|---|
-| `sot-social-mandate-submit` | Zone 2 → Zone 1 Mandats-Uebergabe |
-| `sot-social-payment-create` | Checkout-Session erstellen |
-| `sot-social-payment-webhook` | Payment-Confirmation → Status-Update |
-| `sot-social-meta-webhook` | Meta Leadgen Intake + Lead-Routing |
-| `sot-social-autoresponder` | Auto-E-Mail (Kaufy-Absender, Reply-To Partner) |
-
----
-
-## 6. DMS/Storage Trees
-
-```text
-Zone 1:
-  SocialMedia/
-    KaufyCampaigns/{campaignId}/Creatives/, Assets/, Reports/
-    SocialVertriebMandate/{mandateId}/Briefing/, Creatives/, MetaExports/, Billing/
-
-Zone 2 (unter Leads):
-  Leads/
-    SelfieAdsStudio/
-      Drafts/{draftId}/, MandateRefs/{mandateId}/, Assets/, Reports/
++-------------------------------------------------------------------+
+|  PROFIL (MOD-01)                                                  |
+|  +-------------------------------------------------------------+  |
+|  | Outbound-Widget (NEU)                                       |  |
+|  | - Brand-Dropdown (gefiltert nach Rolle)                     |  |
+|  | - From-Email (readonly, aus Brand-Preset)                   |  |
+|  | - Display-Name (editierbar)                                 |  |
+|  | - Info-Text                                                 |  |
+|  +-------------------------------------------------------------+  |
++-------------------------------------------------------------------+
+         |
+         v
++-------------------------------------------------------------------+
+|  DB: user_outbound_identities                                     |
+|  user_id | brand_key | from_email | display_name | is_active      |
++-------------------------------------------------------------------+
+         |
+         v
++-------------------------------------------------------------------+
+|  Edge Function: sot-system-mail-send (NEU)                        |
+|  - Laedt Active Outbound Identity                                 |
+|  - Setzt From + Reply-To                                          |
+|  - Sendet via Resend API                                          |
++-------------------------------------------------------------------+
+         |
+         v
++-------------------------------------------------------------------+
+|  Bestehende Features (Refactor):                                  |
+|  - sot-renovation-outbound -> nutzt sot-system-mail-send          |
+|  - Serien-E-Mail (MOD-14) -> nutzt sot-system-mail-send           |
++-------------------------------------------------------------------+
 ```
 
 ---
 
-## 7. Dateien-Gesamtuebersicht
+## Schritt 1: Datenbank-Migration
 
-| Datei | Aenderung |
-|---|---|
-| `src/manifests/routesManifest.ts` | +6 MOD-10 Tiles, +8 Admin Routes |
-| `src/pages/portal/LeadsPage.tsx` | +6 lazy Routes (SelfieAds*) |
-| `src/components/admin/AdminSidebar.tsx` | Neue Gruppe "Social Media" |
-| `src/router/ManifestRouter.tsx` | +8 Admin lazy Imports |
-| `src/pages/portal/vertriebspartner/SelfieAds*.tsx` | 6 neue Seiten (unter leads/) |
-| `src/pages/admin/social-media/*.tsx` | 8 neue Seiten + index.ts |
-| DB Migration | 6 Tabellen + RLS + Seeds |
-| `supabase/functions/sot-social-*` | 5 Edge Function Stubs |
+### 1a. Tabelle `user_outbound_identities`
+
+```sql
+CREATE TABLE public.user_outbound_identities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  brand_key TEXT NOT NULL,
+  from_email TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT '',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Nur eine aktive Identity pro User
+CREATE UNIQUE INDEX idx_user_outbound_active 
+  ON public.user_outbound_identities (user_id) 
+  WHERE is_active = true;
+
+-- RLS
+ALTER TABLE public.user_outbound_identities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own outbound identity"
+  ON public.user_outbound_identities FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own outbound identity"
+  ON public.user_outbound_identities FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own outbound identity"
+  ON public.user_outbound_identities FOR UPDATE
+  TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Service role full access"
+  ON public.user_outbound_identities FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+```
+
+### 1b. RPC-Funktion fuer Edge Functions
+
+```sql
+CREATE OR REPLACE FUNCTION public.get_active_outbound_identity(p_user_id UUID)
+RETURNS TABLE(brand_key TEXT, from_email TEXT, display_name TEXT)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT brand_key, from_email, display_name
+  FROM public.user_outbound_identities
+  WHERE user_id = p_user_id AND is_active = true
+  LIMIT 1;
+$$;
+```
 
 ---
 
-## 8. Phasenfolge
+## Schritt 2: Brand-Konfiguration (Frontend-Konstante)
 
-1. **Routing + Skeletons**: Manifest, LeadsPage, AdminSidebar, alle Seiten als Widget-Skeletons mit Demo-Karten
-2. **Datenmodell**: 6 Tabellen + RLS + Seeds
-3. **Selfie Ads Planen**: 5-Slot-Seite mit Parametern, Generierung, Zusammenfassung
-4. **Payment + Mandats-Uebergabe**: Edge Functions + Status-Maschine
-5. **Zone 1 Vertrieb**: Mandatsakte + Publishing-Pipeline
-6. **Leads Intake + Autoresponder**: Webhook + Routing + E-Mail
-7. **Performance + Abrechnung**: Dashboards beidseitig
-8. **Kaufy Creator**: Interner Kampagnen-Manager
+Neue Datei: `src/config/outboundBrands.ts`
+
+Definiert:
+- `OUTBOUND_BRANDS`: Array mit brand_key, label, domain, default_from_template
+- `ROLE_TO_ALLOWED_BRANDS`: Mapping von app_role/org_role auf erlaubte brand_keys
+- `ROLE_TO_DEFAULT_BRAND`: Default-Brand pro Rolle
+
+Konkrete Brands:
+| brand_key | Label | Domain | Rollen |
+|-----------|-------|--------|--------|
+| SOT | System of a Town | systemofatown.com | user (default), alle |
+| KAUFY | Kaufy | kaufi.de | sales_partner |
+| ACQUIARY | Acquiary | acquiary.com | akquise_manager |
+| FUTUREROOM | FutureRoom | futureroom.de | finance_manager |
+
+Logik: User sieht nur Brands, die seiner Rolle entsprechen. Hat ein User mehrere Rollen (z.B. user + sales_partner), sieht er die Union.
+
+---
+
+## Schritt 3: UI — Outbound-Widget im Profil (ProfilTab.tsx)
+
+Neues `OutboundWidget` als `ProfileWidget` in der bestehenden ProfilTab-Seite, platziert zwischen "E-Mail-Signatur" und "Briefkopf-Daten".
+
+Elemente:
+- **Select/Dropdown**: "Outbound-Kennung" — zeigt nur erlaubte brand_keys (gefiltert ueber Rollen-Query)
+- **Readonly Input**: "Absender E-Mail" — automatisch aus Brand-Preset (z.B. `vorname.nachname@kaufi.de`)
+- **Editierbares Input**: "Anzeigename" — frei editierbar
+- **Info-Box**: Erklaerungstext zum Outbound-Verhalten
+- **Speichern-Button**: Upsert in `user_outbound_identities`
+
+Die Rollen werden ueber eine Query auf `user_roles` UND `organization_members` geholt, dann gegen `ROLE_TO_ALLOWED_BRANDS` gefiltert.
+
+---
+
+## Schritt 4: Edge Function — `sot-system-mail-send`
+
+Neue zentrale Edge Function fuer alle System-Outbound-E-Mails.
+
+Ablauf:
+1. Auth-Check (Bearer Token)
+2. Lade aktive Outbound Identity via `get_active_outbound_identity(user_id)`
+3. Fallback: Falls keine Identity, nutze SOT-Default
+4. Sende via Resend API mit:
+   - `from`: `"${display_name} <${from_email}>"` (Resend unterstuetzt custom From)
+   - `reply_to`: `from_email`
+   - `to`, `subject`, `html`/`text` aus Request-Body
+5. Return success/error
+
+Request-Interface:
+```text
+{
+  to: string | string[],
+  subject: string,
+  html?: string,
+  text?: string,
+  context?: string  // z.B. "renovation_tender", "serien_email"
+}
+```
+
+---
+
+## Schritt 5: Refactor bestehender Outbound-Features
+
+### 5a. `sot-renovation-outbound`
+
+Aktuell: Hardcoded `from: 'Ausschreibung <noreply@systemofatown.de>'`
+
+Aenderung: Statt direkt Resend aufzurufen, laedt die Function die aktive Outbound Identity des sendenden Users und setzt From/Reply-To entsprechend. Die Resend-Logik bleibt in dieser Function (kein Aufruf von sot-system-mail-send aus einer Edge Function heraus), aber die Identity-Aufloesung wird identisch.
+
+### 5b. Frontend-Caller (TenderDraftPanel.tsx)
+
+Keine Aenderung notwendig — der Edge-Function-Call bleibt gleich, die From-Adresse wird serverseitig aufgeloest.
+
+---
+
+## Schritt 6: Auto-Provisioning (Konzept-Ready)
+
+Bei Registrierung oder erstem Login ohne Outbound Identity:
+- ProfilTab prueft ob `user_outbound_identities` leer ist
+- Falls ja: Auto-Insert mit Default-Brand basierend auf Rolle
+- From-Email wird aus Template generiert: `vorname.nachname@domain`
+- Display-Name wird aus Profil uebernommen
+
+Dies wird im Frontend (ProfilTab/OutboundWidget) als Auto-Init implementiert, NICHT als Trigger.
+
+---
+
+## Dateien-Uebersicht
+
+| Aktion | Datei | Beschreibung |
+|--------|-------|--------------|
+| NEU | `src/config/outboundBrands.ts` | Brand-Config + Rollen-Mapping |
+| NEU | `supabase/functions/sot-system-mail-send/index.ts` | Zentrale Outbound-Edge-Function |
+| EDIT | `src/pages/portal/stammdaten/ProfilTab.tsx` | OutboundWidget hinzufuegen |
+| EDIT | `supabase/functions/sot-renovation-outbound/index.ts` | From-Adresse aus Outbound Identity laden |
+| DB | Migration | Tabelle + RLS + RPC |
+
+---
+
+## Nicht enthalten (explizit ausgeschlossen)
+
+- Inbox-Tracking / Follow-up-Automatisierung
+- Provider-Integration (Google Workspace / Microsoft) fuer Mailbox-Provisioning
+- Neue Routen oder Manifest-Aenderungen
+- Zone 1 Admin Provisioning-UI
+- Aenderungen an MOD-04/MOD-08
+
+---
+
+## Abnahmekriterien
+
+1. Profil hat neuen Bereich "Outbound" mit Brand-Auswahl und Speicherung
+2. Rollen-Gating: User sieht nur erlaubte Brands (SOT fuer Standard, KAUFY fuer sales_partner, etc.)
+3. DB-Constraint: genau eine aktive Outbound Identity pro User
+4. sot-renovation-outbound nutzt die gespeicherte Outbound Identity
+5. Zentrale sot-system-mail-send Edge Function existiert und ist einsatzbereit
+6. Keine neuen Routen, kein Manifest-Drift
