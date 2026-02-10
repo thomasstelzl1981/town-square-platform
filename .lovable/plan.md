@@ -1,55 +1,42 @@
 
 
-# Profil-Speichern Fix + MIETY Adressuebernahme
+# MIETY Uebersicht: Auto-Home + Google Maps Satellitenansicht
 
-## Fehler-Analyse
+## Problem
 
-In `src/pages/portal/stammdaten/ProfilTab.tsx` Zeilen 167-183 speichert die `updateProfile`-Mutation nur diese Felder:
-- `display_name`
-- `avatar_url`
-- `email_signature`
-- `letterhead_*` (6 Felder)
-- `updated_at`
-
-**Es fehlen komplett:**
-- `first_name`, `last_name`
-- `street`, `house_number`, `postal_code`, `city`, `country`
-- `phone_landline`, `phone_mobile`, `phone_whatsapp`
-- `tax_number`, `tax_id`
-
-Das heisst: Der User gibt Daten ein, drueckt Speichern, es kommt "Profil gespeichert" — aber die Adresse, Telefonnummern etc. werden nie an die Datenbank gesendet.
+Obwohl die Profildaten gespeichert sind, muss der User immer noch manuell auf "Zuhause anlegen" klicken und ein Formular ausfuellen. Die Uebersicht zeigt die Adresse nicht automatisch an und es fehlt eine Kartenansicht.
 
 ## Loesung
 
-### Aenderung 1: Update-Mutation vervollstaendigen
+### 1. Auto-Create Home beim Laden der Uebersicht
 
-**Datei:** `src/pages/portal/stammdaten/ProfilTab.tsx`
+Wenn der User MIETY oeffnet und kein Home existiert, aber Profildaten (mindestens `city`) vorhanden sind, wird automatisch ein Home-Eintrag in `miety_homes` erstellt — OHNE Formular, OHNE Klick.
 
-Die `.update()`-Payload um alle fehlenden Felder erweitern:
+**Ablauf:**
+1. `UebersichtTile` laedt `homes` und `profile`
+2. Wenn `homes.length === 0` UND `profile.city` existiert → automatischer INSERT in `miety_homes` mit Profildaten
+3. Query wird invalidiert → Home-Card erscheint sofort
 
-```
-first_name, last_name,
-street, house_number, postal_code, city, country,
-phone_landline, phone_mobile, phone_whatsapp,
-tax_number, tax_id
-```
+### 2. Home-Card mit Adresse + Google Maps Satellite
 
-### Aenderung 2: MIETY auto-Adressuebernahme
+Die bestehende Home-Card (Zeilen 177-198 in MietyPortalPage) wird erweitert:
 
-**Datei:** `src/pages/portal/MietyPortalPage.tsx`
+- **Links:** Name, Adresse, Eigentum/Miete Badge, Flaeche (wie bisher)
+- **Rechts:** Google Maps Satellite Embed als kleine Kachel (ca. 120x120px), eingebettet per iframe mit `https://www.google.com/maps?q={adresse}&t=k&output=embed` (`t=k` = Satellitenansicht)
+- "Bearbeiten" Button um Daten zu aendern
 
-In der UebersichtTile: Wenn kein Home existiert aber Profildaten vorhanden sind, wird das Create-Formular mit vorausgefuellter Adresse angezeigt. Die Adresse soll als Default-Wert sichtbar sein, nicht erst nach Klick auf "Anlegen".
+### 3. Bearbeiten-Modus statt Neu-Anlegen
 
-Das `MietyCreateHomeForm` hat den Prefill bereits implementiert (wurde im letzten Update eingebaut) — es liest `profiles.street/house_number/postal_code/city`. Sobald der Profil-Speichern-Bug gefixt ist, funktioniert die Kette:
+Da das Home automatisch existiert, wird der "Zuhause anlegen" CTA ersetzt durch einen "Bearbeiten" Button auf der Home-Card. Klick oeffnet das bestehende `MietyCreateHomeForm` im Edit-Modus (vorausgefuellt mit bestehenden Daten).
 
-1. User gibt Adresse im Profil ein → Speichern funktioniert
-2. MIETY liest Profildaten → Formular ist vorausgefuellt
-
-## Technische Details
+## Technische Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Update-Mutation um 12 fehlende Felder erweitern (Zeilen 169-180) |
+| `src/pages/portal/MietyPortalPage.tsx` | UebersichtTile: Auto-Create Logik (useEffect + useMutation), Home-Card mit Google Maps Satellite Embed, Bearbeiten-Button statt Anlegen |
+| `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` | Optionale `homeId` + `initialData` Props fuer Edit-Modus (UPDATE statt INSERT) |
 
-Keine Datenbank-Aenderungen noetig — die Spalten existieren bereits in der `profiles`-Tabelle.
+### Keine Datenbank-Aenderungen noetig
+
+`miety_homes` hat alle benoetigten Spalten. Google Maps Embed ist keyless (bestehendes Pattern laut Memory).
 
