@@ -1,236 +1,221 @@
 
+# Recherchemodul — MOD-02 KI Office Integration
 
-# MOD-20 MIETY — Ueberarbeiteter Plan v4
+## Zusammenfassung
 
-## Wichtigste Aenderung gegenueber v3
-
-**Soll/Ist als ZWEI SEPARATE Kacheln** statt einer geteilten Kachel. Auf Desktop stehen sie nebeneinander (`grid-cols-2`), auf Mobile stapeln sie sich automatisch untereinander (`grid-cols-1`). Das ist mobilfreundlich und klar getrennt.
-
-**Arlo Produktbilder**: Werden per AI Image Generation (Gemini) als hochwertige Produktbilder erzeugt und im Projekt gespeichert — realistische Darstellungen der Arlo Pro 5S und SmartHub. Ebenso 3 Kamera-Snapshot-Platzhalter (Eingang/Garten/Innen) fuer die Live-Widgets.
+Ein 3-Kachel-Recherche-Feature wird als dritter Tab innerhalb der bestehenden Widgets-Seite (`/portal/office/widgets`) integriert. Es bietet kostenlose Webrecherche, kostenpflichtige Kontaktrecherche (Apollo) und eine Uebernahme-Funktion ins zentrale Kontaktbuch mit Credit-Verbrauch.
 
 ---
 
-## Tab-Struktur (6 Tabs)
+## 1. Navigation (kein neues Modul)
+
+Recherche wird als **dritter Tab** in der bestehenden `WidgetsTab.tsx` eingebaut:
 
 ```text
-Tab 1: Uebersicht        (bestehend + Kamera-Widgets Row 2 + Wohnflaeche/Objektart)
-Tab 2: Versorgung         (bestehend + Zaehlerstaende integriert + Rabot Energy SEPARATE Kachel)
-Tab 3: Versicherungen     (bestehend + Neo Digital SEPARATE Kachel)
-Tab 4: Smart Home         (NEU — Arlo Shop + Kamera-Aktivierung)
-Tab 5: Einstellungen      (NEU — API-Verbindungen)
-Tab 6: Kommunikation      (bestehend)
+Tabs in /portal/office/widgets:
+  [Systemwidgets] [Aufgaben] [Recherche]   <-- NEU
+```
+
+Kein neuer Manifest-Eintrag noetig. Die WidgetsTab hat bereits eine Tabs-Komponente mit 2 Tabs — wir fuegen einen dritten hinzu.
+
+---
+
+## 2. UI-Komponenten (3 Kacheln im Recherche-Tab)
+
+### Layout
+Desktop: 3 Kacheln nebeneinander (`grid grid-cols-1 lg:grid-cols-3 gap-4`)
+Mobile: gestapelt
+
+### Kachel 1 — Allgemeine Recherche (Free)
+- Textarea: "Was moechtest du recherchieren?"
+- Optional: Dropdown "Recherche-Ziel" (Markt, Firma, Person, Objekt, News, Tech, Sonstiges)
+- Button: "Suchen (Free)" mit Search-Icon
+- Ergebnis-Bereich: Markdown-Summary + Quellenliste + Stichpunkte
+- Empty State: Erklaerungstext + Beispieleingaben
+
+### Kachel 2 — Profi-Kontaktrecherche (Pro)
+- Eingabefelder: Firma/Domain, Branche, Rolle, Region, Keywords
+- KI-Assist Button: "Schlage Filter vor" (Stub)
+- Button: "Kontakte suchen (Pro)" mit Users-Icon
+- Info: "Max. 25 Kandidaten pro Suche"
+- Ergebnis-Zaehler: "X Kandidaten gefunden → Kachel 3"
+- Empty State (kein Apollo-Key): "Pro-Integration nicht aktiv" + Hinweis
+
+### Kachel 3 — Gefundene Kontakte (Uebernahme)
+- Tabelle/Liste der ContactCandidates mit:
+  - Checkbox pro Zeile
+  - Name, Rolle, Firma, Ort, E-Mail (masked), Confidence-Badge
+  - Status-Badge (new/reviewed/imported/rejected)
+  - "Details"-Button (oeffnet Preview-Drawer)
+- Bulk-Aktion: "Ausgewaehlte uebernehmen (n Credits)"
+- Credit-Bestaetigung vor Import (Modal)
+- Duplikat-Warnung wenn aehnliche contacts existieren
+- Empty State: "Keine Treffer. Starte eine Pro-Suche."
+
+### Neue Dateien
+- `src/pages/portal/office/ResearchTab.tsx` — Container mit 3 Kacheln
+- `src/pages/portal/office/components/ResearchFreeCard.tsx`
+- `src/pages/portal/office/components/ResearchProCard.tsx`
+- `src/pages/portal/office/components/ResearchCandidatesTray.tsx`
+- `src/pages/portal/office/components/CandidatePreviewDrawer.tsx`
+- `src/pages/portal/office/components/CreditConfirmModal.tsx`
+
+---
+
+## 3. Datenmodell (3 neue Tabellen + credit_ledger)
+
+### 3.1 research_sessions
+```sql
+CREATE TABLE research_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  created_by uuid NOT NULL REFERENCES auth.users(id),
+  mode text NOT NULL CHECK (mode IN ('free','pro_contacts')),
+  query_text text NOT NULL,
+  query_json jsonb DEFAULT '{}',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','completed','failed')),
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: tenant_id via memberships
+```
+
+### 3.2 research_results
+```sql
+CREATE TABLE research_results (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES research_sessions(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  title text,
+  summary_md text,
+  sources_json jsonb DEFAULT '[]',
+  entities_json jsonb DEFAULT '[]',
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: tenant_id via memberships
+```
+
+### 3.3 contact_candidates
+```sql
+CREATE TABLE contact_candidates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES research_sessions(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  full_name text,
+  first_name text,
+  last_name text,
+  role text,
+  company text,
+  domain text,
+  location text,
+  email text,
+  phone text,
+  source_json jsonb DEFAULT '{}',
+  confidence numeric(3,2) DEFAULT 0,
+  status text NOT NULL DEFAULT 'new' CHECK (status IN ('new','reviewed','imported','rejected')),
+  imported_contact_id uuid REFERENCES contacts(id),
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: tenant_id via memberships
+```
+
+### 3.4 credit_ledger (NEU)
+Die bestehende `billing_usage` ist ein Aggregat-Zaehler, kein Ledger. Fuer Einzel-Transaktionen brauchen wir:
+
+```sql
+CREATE TABLE credit_ledger (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  kind text NOT NULL,
+  amount integer NOT NULL,
+  ref_type text,
+  ref_id uuid,
+  created_at timestamptz DEFAULT now()
+);
+-- kind: 'contact_import', 'research_pro', etc.
+-- amount: negativ = Verbrauch, positiv = Aufladung
+-- RLS: tenant_id via memberships (SELECT only, INSERT via RPC)
 ```
 
 ---
 
-## Aenderung 1: Manifest
+## 4. Edge Functions (Stubs)
 
-**Datei:** `src/manifests/routesManifest.ts`
+### 4.1 sot-research-free
+- Empfaengt: `{ query_text, research_target? }`
+- Erstellt `research_sessions` (mode='free')
+- Ruft Firecrawl auf (Web-Suche/Scrape) — Stub: returns mock data
+- Ruft Lovable AI auf (Summarize/Extract) — Stub: returns mock summary
+- Speichert `research_results`
+- Returniert: `{ session_id, result }`
 
-- Entferne `zaehlerstaende` Tile
-- Fuege `smarthome` und `einstellungen` hinzu
-- Ergebnis: 6 Tiles
+### 4.2 sot-research-pro-contacts
+- Empfaengt: `{ company, domain, role, region, keywords, limit=25 }`
+- Erstellt `research_sessions` (mode='pro_contacts')
+- Ruft Apollo API auf — Stub: returns mock candidates
+- Speichert `contact_candidates`
+- Returniert: `{ session_id, candidates[] }`
 
-```text
-tiles:
-  - uebersicht
-  - versorgung
-  - versicherungen
-  - smarthome
-  - einstellungen
-  - kommunikation
+### 4.3 sot-contacts-import
+- Empfaengt: `{ candidate_ids[] }`
+- Prueft Credits (credit_ledger balance >= n)
+- Duplikatpruefung (email/company fuzzy)
+- Upserted in `contacts`
+- Schreibt `credit_ledger` Eintraege (-1 pro Kontakt)
+- Updated `contact_candidates.status` = 'imported'
+- Returniert: `{ contacts[], credits_consumed, duplicates_skipped }`
+
+---
+
+## 5. Armstrong Actions (4 neue)
+
+In `armstrongManifest.ts` unter MOD-02 hinzufuegen:
+
+| Action Code | Titel | Risk | Cost | Execution |
+|---|---|---|---|---|
+| ARM.MOD02.RESEARCH_FREE | Allgemeine Recherche | low | free | execute |
+| ARM.MOD02.RESEARCH_PRO | Profi-Kontaktrecherche | low | credits | execute_with_confirmation |
+| ARM.MOD02.IMPORT_CANDIDATES | Kontakte uebernehmen | low | credits | execute_with_confirmation |
+| ARM.MOD02.DEDUPE_SUGGEST | Duplikatpruefung | low | free | execute |
+
+---
+
+## 6. Integration Registry
+
+Firecrawl und Apollo sind bereits registriert. Nur IPFI muss hinzugefuegt werden:
+
+```sql
+INSERT INTO integration_registry (code, name, type, status, description, secret_ref)
+VALUES ('IPFI', 'IPFI Recherche', 'api', 'pending_setup', 'Auxiliary research provider', 'IPFI_API_KEY');
 ```
 
 ---
 
-## Aenderung 2: Uebersicht — Kamera-Widgets + erweiterte Adresskarte
+## 7. Demo-Daten (Seed)
 
-**Datei:** `src/pages/portal/MietyPortalPage.tsx` (UebersichtTile)
+2 Beispiel-Sessions + 10 Beispiel-Candidates damit die UI sofort lebt:
 
-### 2.1 Adress-Kachel erweitern
+- Free Session: "Marktanalyse Eigentumswohnungen Leipzig 2026" mit Summary + 5 Quellen
+- Pro Session: "Hausverwaltungen Muenchen, GF" mit 10 Kandidaten (verschiedene Status: new, reviewed, imported)
 
-Zusaetzliche Badges:
-- **Wohnflaeche** (z.B. "85 m2") — `area_sqm`
-- **Objektart** (z.B. "Wohnung") — `property_type`
-
-Diese Felder existieren bereits in `miety_homes` und werden schon angezeigt. Nur sicherstellen, dass sie prominent sind.
-
-### 2.2 Kamera-Widgets (Row 2, 3 Kacheln)
-
-Unter dem bestehenden 3-Kachel-Grid ein zweites Grid:
-
-| Kachel | Name | Status | Snapshot |
-|---|---|---|---|
-| Kamera 1 | Eingang | Online (gruen) | AI-generiertes Bild: Hauseingang bei Tag |
-| Kamera 2 | Garten | Online (gruen) | AI-generiertes Bild: Gartenansicht |
-| Kamera 3 | Innen | Offline (grau) | AI-generiertes Bild: Wohnzimmer |
-
-Jede Kachel:
-- Snapshot-Bild als Hintergrund (nicht grauer Platzhalter!)
-- Roter pulsierender "LIVE" Badge oben rechts
-- Status-Badge oben links (Online/Offline)
-- Timestamp unten links (z.B. "Gerade eben")
-- Actions via Drawer: "Live ansehen", "Events", "Einstellungen"
-
-Darunter: CTA "+ Kamera hinzufuegen" (Drawer-Stub)
-
-### 2.3 Schnellzugriff aktualisieren
-
-"Zaehler" Quick-Card zeigt auf `versorgung` statt `zaehlerstaende`.
+Werden als statische Demo-Daten im Frontend gehalten (wie bei WidgetsTab), spaeter durch React Query ersetzt.
 
 ---
 
-## Aenderung 3: Versorgung — ZWEI SEPARATE Kacheln pro Kategorie
-
-**Datei:** `src/pages/portal/MietyPortalPage.tsx` (VersorgungTile)
-
-### Layout-Pattern: Zwei Kacheln nebeneinander
-
-Fuer jede Versorgungskategorie (Strom, Gas, Wasser, Internet) ein Kachel-Paar:
-
-```text
-Desktop (sm+):
-+---------------------------+  +---------------------------+
-|  IST: Ihr Stromvertrag    |  |  SOLL: Rabot Energy       |
-|  [Anbieter, Kosten...]    |  |  [Boersenpreis, Ersparnis]|
-|  [Zaehlerstand-Bereich]   |  |  [Jetzt wechseln CTA]     |
-+---------------------------+  +---------------------------+
-
-Mobile:
-+---------------------------+
-|  IST: Ihr Stromvertrag    |
-+---------------------------+
-+---------------------------+
-|  SOLL: Rabot Energy       |
-+---------------------------+
-```
-
-Umgesetzt als `grid grid-cols-1 sm:grid-cols-2 gap-4` pro Kategorie-Paar.
-
-### Linke Kachel: IST (bestehender Vertrag)
-
-- Bestehende Vertragskarte (wie jetzt) PLUS:
-- **Zaehlerstand-Bereich** (aus ZaehlerstaendeTile migriert):
-  - Icon + letzter Wert + Datum
-  - Button "Neuen Stand erfassen" (Drawer)
-  - Trend-Icon (Stub)
-
-### Rechte Kachel: SOLL (unser Angebot)
-
-- **Bei Strom: Rabot Energy White-Label**
-  - Titel: "Rabot Charge — Strom zum Boersenpreis"
-  - Gruener Akzent-Gradient Header
-  - Beispielpreis: "ca. 28,5 ct/kWh (dynamisch)"
-  - Vergleichsrechnung: "Sie zahlen aktuell X EUR → mit Rabot ca. Y EUR"
-  - Einsparung-Badge: "bis zu 15% sparen"
-  - CTA "Jetzt wechseln" (Stub)
-
-- **Bei Gas:** "Gasanbieter-Vergleich — demnachst verfuegbar" (ausgegraut)
-- **Bei Wasser/Internet:** "Vergleich nicht verfuegbar" (ausgegraut, dezent)
-
-### ZaehlerstaendeTile entfernen
-
-Die gesamte `ZaehlerstaendeTile` Funktion wird geloescht. Meter-Reading-Query wird in `VersorgungTile` integriert.
-
----
-
-## Aenderung 4: Versicherungen — ZWEI SEPARATE Kacheln
-
-**Datei:** `src/pages/portal/MietyPortalPage.tsx` (VersicherungenTile)
-
-### Gleiches Pattern: Zwei Kacheln nebeneinander
-
-```text
-Desktop:
-+---------------------------+  +---------------------------+
-|  IST: Ihre Hausrat-       |  |  SOLL: Neo Digital        |
-|  versicherung             |  |  Vergleichsangebot        |
-|  [Versicherer, Kosten]    |  |  [ab 4,90 EUR/Monat]      |
-|  [Dokumente Download]     |  |  [Angebot anfordern CTA]  |
-+---------------------------+  +---------------------------+
-```
-
-### Linke Kachel: IST (bestehende Versicherung)
-
-- Wie bisher PLUS:
-- Dokumente-Bereich: "Unterlagen herunterladen" (Stub-Link)
-
-### Rechte Kachel: SOLL (Neo Digital Vergleich)
-
-- Titel: "Neo Digital — Vergleichsangebot"
-- Blauer Akzent-Header
-- Objektdaten automatisch: Wohnflaeche + Objektart + PLZ (aus `miety_homes`)
-- Beispielpreise:
-  - Hausrat: "ab 4,90 EUR/Monat (Grundschutz)" / "ab 8,50 EUR/Monat (Komfort)"
-  - Haftpflicht: "ab 3,50 EUR/Monat"
-- Einsparung-Badge wenn IST vorhanden
-- CTA "Angebot anfordern" (Stub)
-- CTA "Mehr erfahren" (Link-Stub)
-
----
-
-## Aenderung 5: Smart Home Tab (NEU)
-
-**Datei:** `src/pages/portal/MietyPortalPage.tsx` (neue Komponente `SmartHomeTile`)
-
-### 5.1 Kamera-Verwaltung
-
-"Meine Kameras" mit Toggle pro Kamera:
-- "Am Dashboard anzeigen" (UI-only Stub)
-
-### 5.2 Arlo Shop mit echten Produktbildern
-
-**Bilder**: 4 Produktbilder werden per AI Image Generation erzeugt (Arlo Pro 5S weiss, Arlo SmartHub weiss) und als statische Assets gespeichert.
-
-Starter-Set Banner:
-- "Starter Set — Arlo Premium: 3 Kameras + SmartHub"
-- Gesamtpreis: "Komplett ab 589,96 EUR"
-
-4 Produktkarten (2x2 Grid):
-
-| Produkt | Preis | Badges | Bild |
-|---|---|---|---|
-| Arlo Pro 5S 2K #1 | ab 179,99 EUR | 2K HDR, Akku, WLAN, 160 Grad | AI-generiert |
-| Arlo Pro 5S 2K #2 | ab 179,99 EUR | 2K HDR, Akku, WLAN, 160 Grad | AI-generiert |
-| Arlo Pro 5S 2K #3 | ab 179,99 EUR | 2K HDR, Akku, WLAN, 160 Grad | AI-generiert |
-| Arlo SmartHub | ab 49,99 EUR | WiFi, ZigBee, microSD | AI-generiert |
-
-CTAs: "Bei Arlo kaufen" (Link-Stub), "Mit System verbinden" (disabled)
-
----
-
-## Aenderung 6: Einstellungen Tab (NEU)
-
-**Datei:** `src/pages/portal/MietyPortalPage.tsx` (neue Komponente `EinstellungenTile`)
-
-3 Integration-Cards (Accordion):
-
-| Integration | Felder | Status |
-|---|---|---|
-| Rabot Energy | API Key, Partner ID | Nicht verbunden |
-| Neo Digital | API Key, Makler-ID | Nicht verbunden |
-| Arlo Smart Home | API Key, Account E-Mail | Nicht verbunden |
-
----
-
-## Aenderung 7: Index-Route Fix
-
-Redirect von `/portal/miety` direkt auf `uebersicht` (kein HowItWorks).
-
----
-
-## Technische Aenderungen
+## 8. Dateien-Uebersicht
 
 | Datei | Aenderung |
 |---|---|
-| `src/manifests/routesManifest.ts` | "zaehlerstaende" entfernen, "smarthome" + "einstellungen" hinzufuegen (6 Tiles) |
-| `src/pages/portal/MietyPortalPage.tsx` | ZaehlerstaendeTile loeschen. VersorgungTile: Zwei-Kachel-Pattern + Zaehlerstaende + Rabot. VersicherungenTile: Zwei-Kachel-Pattern + Neo Digital. Neue SmartHomeTile (Arlo Shop mit AI-Bildern). Neue EinstellungenTile (3 API-Cards). UebersichtTile: Kamera Row 2 mit Snapshot-Bildern + Badges. Index-Route Redirect. Quick-Access "Zaehler" auf "versorgung". |
-
-### AI-generierte Bilder (7 Stueck)
-- 3x Kamera-Snapshots (Eingang Tag, Garten, Wohnzimmer) fuer Uebersicht
-- 3x Arlo Pro 5S Produktfoto (weisse Kamera, Studiofoto-Stil)
-- 1x Arlo SmartHub Produktfoto (weisser Hub, Studiofoto-Stil)
-
-### Keine Datenbank-Aenderungen
-Reines Frontend-MVP. Alle Daten statisch/Platzhalter.
-
+| `src/pages/portal/office/WidgetsTab.tsx` | Dritter Tab "Recherche" hinzufuegen |
+| `src/pages/portal/office/ResearchTab.tsx` | NEU — 3-Kachel Container |
+| `src/pages/portal/office/components/ResearchFreeCard.tsx` | NEU — Kachel 1 |
+| `src/pages/portal/office/components/ResearchProCard.tsx` | NEU — Kachel 2 |
+| `src/pages/portal/office/components/ResearchCandidatesTray.tsx` | NEU — Kachel 3 |
+| `src/pages/portal/office/components/CandidatePreviewDrawer.tsx` | NEU — Detail-Drawer |
+| `src/pages/portal/office/components/CreditConfirmModal.tsx` | NEU — Credit-Bestaetigung |
+| `src/manifests/armstrongManifest.ts` | 4 neue Actions (Research + Import) |
+| `supabase/functions/sot-research-free/index.ts` | NEU — Edge Function Stub |
+| `supabase/functions/sot-research-pro-contacts/index.ts` | NEU — Edge Function Stub |
+| `supabase/functions/sot-contacts-import/index.ts` | NEU — Edge Function Stub |
+| DB Migration | 3 Tabellen + credit_ledger + RLS |
+| DB Migration | IPFI Integration Registry Eintrag |
