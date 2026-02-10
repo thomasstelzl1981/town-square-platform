@@ -1,49 +1,82 @@
 
-# MOD-13 Projekte — Implementierungsplan
 
-## Status: P0 In Arbeit
+# Armstrong Voice-Integration reparieren und aktivieren
 
-### Erledigte Schritte
+## Was ist das Problem?
 
-#### ✅ ProjectAufteilerCalculation (Block D — interaktiv)
-- Neue Komponente `src/components/projekte/blocks/ProjectAufteilerCalculation.tsx`
-- 3 Slider: Zielrendite Endkunde, Vertriebsprovision, Vertriebsdauer
-- 5 Eingabefelder: Kaufpreis, Sanierung, Nebenkosten %, Zinssatz %, EK-Anteil %
-- Kosten vs. Erloese Side-by-Side Cards
-- Hero-Result: Gewinn, Marge, ROI auf EK
-- Sensitivitaetsanalyse (Bar-Chart)
-- Speichern in `dev_projects` + `dev_project_calculations`
-- Start-Setup: 25% Marge, 3% Provision
+**Zone 3 (Kaufy-Website):** Das Chat-Widget hat aktuell nur Text-Eingabe. Es gibt keinen Mikrofon-Button und keine Sprachausgabe -- Voice wurde beim Einbau schlicht nicht integriert.
 
-#### ✅ Dashboard Redesign (ProjekteDashboard.tsx)
-- "So funktioniert's" 4-Schritt-Visual (Upload → KI → Pruefen → Vertrieb)
-- Magic Intake Card mit Glassmorphism-Design, Glow-Effekt
-- Dropzones mit Hover-Animationen und groesseren Touch-Targets
-- CI-konformes Design (glass-card, shadow-glow, rounded-xl)
+**Zone 2 (Portal):** Voice ist technisch eingebaut, aber nie getestet worden (keine Logs). Die Grundstruktur funktioniert, muss aber verifiziert werden.
 
-#### ✅ ProjectDetailPage Tab D umgebaut
-- Read-Only Block D ersetzt durch `<ProjectAufteilerCalculation />`
-- Import + Export in index.ts hinzugefuegt
+---
 
-#### ✅ Edge Function `sot-project-intake` — Full AI + XLSX + Storage-Tree
-- **Analyze Mode:** Gemini 2.5 Flash fuer Expose-Extraktion (Projektname, Adresse, PLZ, Stadt, Einheiten, Preise)
-- **Pricelist Parsing:** AI-basierte XLSX/CSV/PDF-Preislisten-Extraktion → extractedUnits Array
-- **Create Mode:** Projekt + Units Bulk-Insert + Storage-Tree Seeding
-- **Storage-Tree:** 7 Projektordner (01_expose bis 99_sonstiges) + Einheiten-Ordner mit 5 Sub-Ordnern pro Unit
-- **Rate-Limit Handling:** 429/402 Fehler werden sauber durchgereicht
-- **Auto-Context:** Developer Context wird automatisch angelegt wenn keiner existiert
+## Was wird gebaut?
 
-### Naechste Schritte
+### 1. Voice in Zone 3 Kaufy-Widget einbauen
 
-#### P0.3 — Demo-Seed
-- 1 Developer Context + 1 Projekt + 5 Units + Storage-Tree (DB-Migration)
+Die `KaufyArmstrongWidget.tsx` bekommt:
 
-#### P1 — Vertriebsfreigabe
-- TermsGate Consent-Panel
-- Status-Sync (Reservierung → Unit-Status)
-- Preisliste editierbar (ProjectPricingBlock)
+- **Mikrofon-Button** neben dem Send-Button (reuse `VoiceButton` Komponente)
+- **`useArmstrongVoice` Hook** Integration (identisch wie Portal)
+- **Auto-Send:** Wenn der Nutzer aufhoert zu sprechen (VAD oder Browser-Erkennung), wird der erkannte Text automatisch als Nachricht gesendet
+- **Auto-TTS:** Jede Armstrong-Antwort wird automatisch vorgelesen (via `speakResponse`)
+- **Stop-Button:** Waehrend Armstrong spricht, kann der Nutzer die Ausgabe stoppen
 
-#### P2 — Lead-Maschine (eigener Prompt)
-- Kampagnen-Studio (Facebook/Instagram)
-- Lead-Inbox
-- Content-Generierung aus Expose
+```text
++-------------------------------------------+
+| [Input-Feld............]  [Mic]  [Send]   |
++-------------------------------------------+
+```
+
+Wenn Armstrong antwortet und Voice aktiv ist:
+- Antwort wird gestreamt UND nach Abschluss vorgelesen
+- Waehrend des Vorlesens erscheint ein kleines Lautsprecher-Icon mit Pulse-Animation
+
+### 2. Edge Functions verifizieren und testen
+
+Beide Edge Functions (`elevenlabs-scribe-token` und `elevenlabs-tts`) existieren und haben den API-Key. Sie muessen einmal live getestet werden, um sicherzustellen, dass sie korrekt deployed sind und antworten.
+
+### 3. Browser-Fallback sichtbar machen
+
+Falls ElevenLabs nicht verfuegbar ist (Token-Fehler, Rate-Limit), faellt der Hook automatisch auf die Browser Speech API zurueck. Im Kaufy-Widget wird das durch einen kleinen orangenen Punkt am Mikrofon-Icon angezeigt (wie bereits im `VoiceButton` implementiert).
+
+---
+
+## Technische Aenderungen
+
+### Datei 1: `src/components/zone3/kaufy2026/KaufyArmstrongWidget.tsx`
+
+**Aenderungen:**
+- Import `useArmstrongVoice` und `VoiceButton` hinzufuegen
+- Hook im Component-Body aufrufen
+- Auto-Send Logik: Wenn `voice.transcript` sich aendert und `voice.isListening` false wird, Text als Nachricht senden
+- Auto-TTS Logik: Nach Stream-Ende `voice.speakResponse(assistantContent)` aufrufen
+- VoiceButton neben Send-Button im Input-Bereich einbauen
+- Visueller Indikator wenn Armstrong spricht (Pulse am Avatar)
+
+### Datei 2: Keine weiteren Dateien noetig
+
+Alle anderen Komponenten (`VoiceButton`, `useArmstrongVoice`, Edge Functions) existieren bereits und sind korrekt implementiert.
+
+---
+
+## Verhalten nach der Aenderung
+
+**Nutzer oeffnet Kaufy-Website:**
+1. Armstrong begruesst (Text, wie bisher)
+2. Nutzer klickt Mikrofon-Button -> Mikrofon aktiviert (ElevenLabs oder Browser-Fallback)
+3. Nutzer spricht -> Live-Transkript erscheint im Input-Feld
+4. Nutzer hoert auf -> Text wird automatisch als Nachricht gesendet
+5. Armstrong antwortet (Streaming-Text) -> Nach Abschluss wird Antwort vorgelesen
+6. Nutzer kann jederzeit Sprachausgabe stoppen
+
+**Fuer Zone 2 Portal:** Keine Aenderung noetig -- funktioniert bereits, muss nur getestet werden.
+
+---
+
+## Implementierungsreihenfolge
+
+1. Voice-Integration in `KaufyArmstrongWidget.tsx` einbauen
+2. Edge Functions `elevenlabs-scribe-token` und `elevenlabs-tts` live testen
+3. End-to-End Test: Kaufy oeffnen, Mikrofon klicken, sprechen, Antwort hoeren
+
