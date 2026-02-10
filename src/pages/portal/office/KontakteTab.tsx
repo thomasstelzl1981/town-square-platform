@@ -595,6 +595,11 @@ export function KontakteTab() {
   );
 
   return (
+    <div className="p-4 md:p-6 space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Kontakte</h1>
+        <p className="text-muted-foreground mt-1">Ihr zentrales Kontaktbuch verwalten</p>
+      </div>
     <Card className="glass-card overflow-hidden">
       <CardContent className="p-5 pb-4 border-b">
         <div className="flex items-center gap-3 mb-4">
@@ -846,5 +851,6 @@ export function KontakteTab() {
         )}
       </DetailDrawer>
     </Card>
+    </div>
   );
 }

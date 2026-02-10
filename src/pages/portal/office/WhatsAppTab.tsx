@@ -188,7 +188,12 @@ export function WhatsAppTab() {
   }
 
   return (
-    <Card className="glass-card overflow-hidden flex h-[calc(100vh-220px)]">
+    <div className="p-4 md:p-6 space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">WhatsApp</h1>
+        <p className="text-muted-foreground mt-1">Nachrichten und Konversationen verwalten</p>
+      </div>
+    <Card className="glass-card overflow-hidden flex h-[calc(100vh-320px)]">
       {/* Left: Conversation List */}
       <div className="w-80 border-r flex flex-col">
         <div className="p-4 border-b">
@@ -392,5 +397,6 @@ export function WhatsAppTab() {
         )}
       </div>
     </Card>
+    </div>
   );
 }

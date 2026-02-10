@@ -256,12 +256,14 @@ export function WidgetsTab() {
   const isMobile = useIsMobile();
 
   return (
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">Widgets</h1>
+        <p className="text-muted-foreground mt-1">System- und Aufgabenwidgets verwalten</p>
+      </div>
     <Card className="glass-card overflow-hidden">
     <Tabs defaultValue="system" className="w-full">
-      <div className={cn(
-        "border-b",
-        isMobile ? "px-4 pt-4" : "px-4 md:px-6 lg:px-8 pt-4"
-      )}>
+      <div className="border-b px-4 pt-4">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="system" className="gap-2">
             <Settings2 className="h-4 w-4" />
@@ -283,5 +285,6 @@ export function WidgetsTab() {
       </TabsContent>
     </Tabs>
     </Card>
+    </div>
   );
 }
