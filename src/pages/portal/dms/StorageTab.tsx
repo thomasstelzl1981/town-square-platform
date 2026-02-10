@@ -205,6 +205,7 @@ export function StorageTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['all-documents'] });
       queryClient.invalidateQueries({ queryKey: ['document-links'] });
       queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
       toast.success('Dokument hochgeladen');

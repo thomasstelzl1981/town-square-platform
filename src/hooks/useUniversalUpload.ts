@@ -278,7 +278,7 @@ export function useUniversalUpload() {
       // Step 3: Create document_links
       let documentLinkId: string | undefined;
 
-      if (documentId && objectType && objectId) {
+      if (documentId && ((objectType && objectId) || parentNodeId)) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: linkData, error: linkError } = await (supabase as any)
@@ -286,8 +286,8 @@ export function useUniversalUpload() {
             .insert({
               tenant_id: activeTenantId,
               document_id: documentId,
-              object_type: objectType,
-              object_id: objectId,
+              object_type: objectType || null,
+              object_id: objectId || null,
               unit_id: unitId || null,
               node_id: parentNodeId || null,
               link_status: 'pending',
