@@ -179,37 +179,6 @@ export default function VertriebTab() {
         </CardContent>
       </Card>
 
-      {/* Project Status Overview */}
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" />Projekt-Status</CardTitle></CardHeader>
-        <CardContent>
-          {portfolioRows.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-sm">Erstellen Sie ein Projekt, um den Fortschritt zu verfolgen.</div>
-          ) : (
-            <div className="space-y-4">
-              {portfolioRows.map((project) => {
-                const progress = project.total_units_count > 0 ? Math.round((project.units_sold / project.total_units_count) * 100) : 0;
-                return (
-                  <div key={project.id} className="flex items-center gap-4 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors" onClick={() => navigate(`/portal/projekte/${project.id}`)}>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium">{project.name}</span>
-                        <span className="text-sm text-muted-foreground">{project.units_sold}/{project.total_units_count} verkauft</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{project.units_available} frei</Badge>
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">{project.units_reserved} res.</Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Partner Performance */}
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Partner-Performance</CardTitle></CardHeader>
@@ -248,11 +217,13 @@ export default function VertriebTab() {
         </CardContent>
       </Card>
 
-      {/* ═══ NEW: Sales Desk Approval Section ═══ */}
+      {/* ═══ Vertriebsauftrag & Distribution ═══ */}
       <SalesApprovalSection
         projectId={activeProjectId}
         projectName={projects[0]?.name}
-        isDemo={portfolioRows.length === 0}
+        projectAddress={projects[0]?.address || ''}
+        totalUnits={totalUnits}
+        projectVolume={totalValue}
       />
 
       {/* Create Reservation Dialog */}
