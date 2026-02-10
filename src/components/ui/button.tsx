@@ -9,25 +9,31 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_1px_3px_hsla(0,0%,0%,0.1)] hover:shadow-[0_2px_6px_hsla(0,0%,0%,0.15)] active:scale-[0.98] transition-all duration-200",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:scale-[0.98] transition-all duration-200",
         outline: cn(
           "bg-white/30 dark:bg-white/10",
           "backdrop-blur-md",
           "border border-white/20 dark:border-white/10",
-          "shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]",
-          "hover:bg-white/45 dark:hover:bg-white/15",
+          "shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15),0_1px_3px_hsla(0,0%,0%,0.06)]",
+          "hover:bg-white/50 dark:hover:bg-white/18",
+          "hover:shadow-[inset_0_1px_0_hsla(0,0%,100%,0.2),0_2px_6px_hsla(0,0%,0%,0.08)]",
+          "active:scale-[0.98]",
+          "transition-all duration-200",
           "text-foreground"
         ),
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.98] transition-all duration-200",
+        ghost: "hover:bg-accent hover:text-accent-foreground active:scale-[0.98] transition-all duration-200",
         link: "text-primary underline-offset-4 hover:underline",
         glass: cn(
           "bg-white/50 dark:bg-white/10",
           "backdrop-blur-md",
           "border border-white/30 dark:border-white/10",
           "shadow-[inset_0_1px_0_hsla(0,0%,100%,0.2),0_1px_3px_hsla(0,0%,0%,0.1)]",
-          "hover:bg-white/60 dark:hover:bg-white/15",
+          "hover:bg-white/65 dark:hover:bg-white/18",
+          "hover:shadow-[inset_0_1px_0_hsla(0,0%,100%,0.25),0_2px_6px_hsla(0,0%,0%,0.12)]",
+          "active:scale-[0.98]",
+          "transition-all duration-200",
           "text-foreground"
         ),
       },
