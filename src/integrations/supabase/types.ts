@@ -8045,6 +8045,8 @@ export type Database = {
           public_id: string
           settings: Json
           slug: string
+          storage_plan_id: string | null
+          storage_quota_bytes: number | null
           updated_at: string
         }
         Insert: {
@@ -8059,6 +8061,8 @@ export type Database = {
           public_id: string
           settings?: Json
           slug: string
+          storage_plan_id?: string | null
+          storage_quota_bytes?: number | null
           updated_at?: string
         }
         Update: {
@@ -8073,6 +8077,8 @@ export type Database = {
           public_id?: string
           settings?: Json
           slug?: string
+          storage_plan_id?: string | null
+          storage_quota_bytes?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -8081,6 +8087,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_storage_plan_id_fkey"
+            columns: ["storage_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
