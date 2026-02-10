@@ -242,6 +242,15 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   ArmstrongPolicies,
   ArmstrongTestHarness,
   ArmstrongIntegrations,
+  // Social Media (Zone 1)
+  SocialMediaDashboard: React.lazy(() => import('@/pages/admin/social-media/SocialMediaDashboard')),
+  SocialMediaKampagnen: React.lazy(() => import('@/pages/admin/social-media/SocialMediaKampagnen')),
+  SocialMediaCreator: React.lazy(() => import('@/pages/admin/social-media/SocialMediaCreator')),
+  SocialMediaVertrieb: React.lazy(() => import('@/pages/admin/social-media/SocialMediaVertrieb')),
+  SocialMediaVertriebDetail: React.lazy(() => import('@/pages/admin/social-media/SocialMediaVertriebDetail')),
+  SocialMediaLeads: React.lazy(() => import('@/pages/admin/social-media/SocialMediaLeads')),
+  SocialMediaTemplates: React.lazy(() => import('@/pages/admin/social-media/SocialMediaTemplates')),
+  SocialMediaAbrechnung: React.lazy(() => import('@/pages/admin/social-media/SocialMediaAbrechnung')),
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
