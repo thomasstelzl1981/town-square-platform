@@ -82,7 +82,7 @@ export default function PortfolioTab() {
       </div>
 
       {/* Globalobjekt-Beschreibung + Kalkulator nebeneinander */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
           <ProjectOverviewCard isDemo={isDemo} />
         </div>
