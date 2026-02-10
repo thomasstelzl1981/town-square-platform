@@ -1,76 +1,121 @@
 
-# Nachsendeauftraege als eigenstaendige Kacheln (Multi-Mandate)
+# MOD-03 DMS — Reiter "Sortieren" als Widget-Kachel-Grid
 
-## Problemstellung
+## Ausgangslage
 
-Aktuell zeigt die Postservice-Kachel nur **einen** Nachsendeauftrag und wechselt zwischen "Einrichten"-Ansicht und "Aktiv"-Ansicht. Der Nutzer benoetigt aber die Moeglichkeit, **mehrere** Nachsendeauftraege zu verwalten (z.B. fuer verschiedene Vermietereinheiten oder Firmen). Ausserdem fehlen in der aktiven Ansicht die Details wie Empfaenger und Adresse.
+Der aktuelle `SortierenTab` ist ein manuelles Dokument-Triage-UI (Annehmen/Ablehnen/Ueberspringen). Das entspricht nicht dem gewuenschten Widget-Kachel-System fuer Sortierregeln. Es gibt:
+- Keine `inbox_sort_containers` / `inbox_sort_rules` Tabellen
+- Kein datenbankgestuetztes OCR-Gate (`tenant_ai_extraction_enabled`) — nur `localStorage`
+- Keine Default-Kachel "Rechnungen"
 
-## Loesung
+## Umsetzungsplan
 
-Die mittlere Kachel "Digitaler Postservice" wird umgebaut:
+### 1. Datenbank-Migration
 
-1. **Query aendern**: Statt `limit(1).maybeSingle()` werden **alle** Mandate geladen (ausser `cancelled`)
-2. **Jeder aktive Nachsendeauftrag** wird als eigene Mini-Kachel innerhalb der Postservice-Card dargestellt mit:
-   - Empfaengername (aus `payload_json.recipient_name`)
-   - Adresse (Strasse, PLZ, Ort aus `payload_json`)
-   - Status-Badge (Eingereicht / In Bearbeitung / Aktiv)
-   - Postfach-Nummer
-   - "Widerrufen"-Button direkt in der Kachel
-3. **Button "Weiteren Nachsendeauftrag einrichten"** bleibt immer sichtbar (unterhalb der bestehenden Mandate)
-4. Widerrufene Auftraege werden nicht angezeigt
+**Tabelle A: `inbox_sort_containers`**
+- `id` (uuid, PK)
+- `tenant_id` (uuid, FK organizations)
+- `name` (text, NOT NULL)
+- `is_enabled` (bool, DEFAULT true)
+- `created_at`, `updated_at` (timestamptz)
 
-## Visuelles Konzept
+**Tabelle B: `inbox_sort_rules`**
+- `id` (uuid, PK)
+- `tenant_id` (uuid, FK organizations)
+- `container_id` (uuid, FK inbox_sort_containers ON DELETE CASCADE)
+- `field` (text — 'subject', 'from', 'to')
+- `operator` (text — 'contains')
+- `keywords_json` (jsonb — string array)
+- `created_at` (timestamptz)
+
+**Spalte C: `organizations.ai_extraction_enabled`**
+- `bool DEFAULT false` — ersetzt den localStorage-Ansatz
+
+**RLS-Policies:** Tenant-basierter Zugriff (SELECT/INSERT/UPDATE/DELETE) ueber `tenant_id` abgesichert via Auth-Context.
+
+**Seed:** Kein DB-Seed. Die Default-Kachel "Rechnungen" wird per Client-Logik beim ersten Laden erzeugt (wenn keine Container fuer den Tenant existieren).
+
+### 2. EinstellungenTab anpassen
+
+- OCR-Toggle (`handleOcrToggle`) schreibt kuenftig in `organizations.ai_extraction_enabled` statt `localStorage`
+- Query fuer den Zustand aus `organizations` lesen
+
+### 3. SortierenTab komplett neu aufbauen
+
+**Aufbau:**
 
 ```text
-+------------------------------------------+
-| [Mail-Icon] Digitaler Postservice        |
-| Nachsendeauftraege verwalten             |
-+------------------------------------------+
-|                                          |
-| +--------------------------------------+ |
-| | Mister Thomas / System of a Town     | |
-| | Musterstrasse 1, 80331 Muenchen      | |
-| | Postfach: A0000000                   | |
-| | Weiterleitung: [Aktiv]               | |
-| |                                      | |
-| | Kosten: 30 Credits/Monat + 3/Brief   | |
-| | [Widerrufen]                         | |
-| +--------------------------------------+ |
-|                                          |
-| +--------------------------------------+ |
-| | Firma XY GmbH                        | |
-| | Hauptstr. 5, 10115 Berlin            | |
-| | Postfach: A0000000                   | |
-| | Status: [Eingereicht]                | |
-| |                                      | |
-| | Kosten: 30 Credits/Monat + 3/Brief   | |
-| | [Widerrufen]                         | |
-| +--------------------------------------+ |
-|                                          |
-| [+ Weiteren Nachsendeauftrag einrichten] |
-|                                          |
-| Kostenmodell (Info-Box)                  |
-+------------------------------------------+
++--------------------------------------------------+
+| [Banner: "Dokumenten-Auslesung deaktiviert"      |
+|  CTA: "Jetzt aktivieren"]  (nur wenn disabled)   |
++--------------------------------------------------+
+| Sortieren                                         |
+| Erstelle Sortierkacheln. Diese erzeugen           |
+| Vorschlaege im Posteingang.                       |
++--------------------------------------------------+
+|                                                    |
+| +------------------+  +------------------+         |
+| | Rechnungen       |  | (weitere...)     |         |
+| | [subject:        |  |                  |         |
+| |  Rechnung,       |  |                  |         |
+| |  Invoice]        |  |                  |         |
+| | Status: Aktiv    |  |                  |         |
+| | [Edit][Dup][Del] |  |                  |         |
+| +------------------+  +------------------+         |
+|                                                    |
+| [+ Neue Sortierkachel]                             |
++--------------------------------------------------+
 ```
 
-## Technische Umsetzung
+**Datenabruf:**
+- Query `organizations.ai_extraction_enabled` fuer den Global Gate
+- Query `inbox_sort_containers` + `inbox_sort_rules` (join) fuer den Tenant
 
-### Datei: `src/pages/portal/dms/EinstellungenTab.tsx`
+**Global Gate Banner:**
+- Wenn `ai_extraction_enabled === false`: Gelbes/oranges Banner oben mit Cpu-Icon
+- Text: "Dokumenten-Auslesung ist deaktiviert. Sortierregeln werden nicht ausgefuehrt."
+- CTA-Button: "Jetzt aktivieren" → `navigate('/portal/dms/einstellungen')`
+- UI bleibt editierbar (Kacheln anlegen/bearbeiten/loeschen geht trotzdem)
 
-**Query anpassen (Zeile 104-119):**
-- `postservice_mandates` Query aendern: `.in('status', ['requested', 'setup_in_progress', 'active', 'paused'])` statt `limit(1).maybeSingle()`, Ergebnis als Array
-- Typ von `mandate` (single) auf `mandates` (Array) aendern
+**Kachel-Grid:**
+- `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`
+- Jede Kachel als `Card` mit glassmorphism-Stil:
+  - Name (fett)
+  - Regel-Badges (z.B. `Betreff: Rechnung, Invoice`) als `Badge variant="outline"`
+  - Status-Badge: "Aktiv" (gruen) oder "Inaktiv (Auslesung aus)" (grau, wenn global disabled)
+  - Trefferzahl-Platzhalter (optional, "—" wenn keine Daten)
+  - Action-Buttons: Bearbeiten, Duplizieren, Loeschen
 
-**Kachel B komplett umbauen (Zeile 270-374):**
-- Ueber `mandates` Array iterieren
-- Jedes Mandat als eigene innere Kachel (`rounded-xl border p-4`) mit:
-  - `payload_json.recipient_name` als Titel (fett)
-  - `payload_json.address`, `payload_json.postal_code`, `payload_json.city` als Adresszeile
-  - Postfach-Nummer aus `tenant_id`
-  - Status-Badge via bestehender `getMandateStatusBadge()`
-  - Individueller "Widerrufen"-Button der die jeweilige Mandate-ID nutzt
-- `cancelMandate` Mutation anpassen: Parameter `mandateId` statt festes `mandate.id`
-- "Nachsendeauftrag einrichten"-Button immer sichtbar (nicht nur wenn kein Mandat existiert)
-- Kostenmodell-Infobox bleibt am Ende der Kachel
+**Default-Kachel "Rechnungen":**
+- Beim ersten Laden: Wenn `containers.length === 0`, automatisch INSERT eines Containers "Rechnungen" mit Regel `{ field: 'subject', operator: 'contains', keywords: ['Rechnung', 'Invoice'] }`
+- Danach Query invalidieren → Kachel erscheint
 
-**Keine Datenbank-Aenderungen noetig** — Die `postservice_mandates` Tabelle unterstuetzt bereits mehrere Eintraege pro Tenant.
+**CRUD-Dialog (Create/Edit):**
+- Dialog mit Feldern:
+  - Name (Input, Pflicht)
+  - Regel-Builder (MVP):
+    - Dropdown: Feld (Betreff / Absender / Empfaenger)
+    - Operator: "enthaelt" (fest, MVP)
+    - Keywords: Input mit Enter-to-add Chips
+  - Mehrere Regeln pro Container moeglich (Button: "+ Regel hinzufuegen")
+- Speichern: Insert/Update container + rules (Transaktion: erst Container, dann Rules)
+- Duplizieren: Kopiert Container + Rules mit Name "(Kopie)"
+
+**Loeschen:**
+- AlertDialog zur Bestaetigung
+- CASCADE loescht automatisch die Rules mit
+
+### 4. Dateien-Uebersicht
+
+| Datei | Aenderung |
+|---|---|
+| SQL-Migration | Neue Tabellen + `organizations.ai_extraction_enabled` + RLS |
+| `src/pages/portal/dms/SortierenTab.tsx` | Komplett neu (Widget-Grid + CRUD) |
+| `src/pages/portal/dms/EinstellungenTab.tsx` | OCR-Toggle auf DB umstellen |
+
+### 5. Technische Details
+
+- Alle Queries nutzen `activeTenantId` aus `useAuth()`
+- RLS-Policies pruefen `auth.uid()` gegen `user_roles.tenant_id`
+- Keywords werden als `jsonb`-Array gespeichert (`["Rechnung", "Invoice"]`)
+- Integration mit Posteingang (Badge-Anzeige) wird als separater Schritt behandelt — hier nur die Container-Verwaltung
