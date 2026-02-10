@@ -1,94 +1,88 @@
 
 
-# MOD-13: Musterdaten-Anzeige bei leerem State
+# MOD-13: Preisliste mit Wohnungsliste + Dokumenten-Kachel (verfeinert)
 
-## Ziel
+## Verfeinerung gegenueber dem letzten Plan
 
-Wenn keine echten Projekte vorhanden sind, wird ein vollstaendiges **Demo-Projekt mit 24 Wohnungen** in abgeschwächtem Grau angezeigt. Alle Widgets, Tabellen, Cards und der Kalkulator zeigen realistische Musterdaten. Sobald ein echtes Projekt angelegt wird (Magic Intake oder manuell), verschwinden die Musterdaten komplett.
+Die Spalte **Objekt-ID** (SOT-BE-*) wird als erste Spalte in die Wohnungsliste aufgenommen. Diese ID ist die interne Einheiten-ID, die per DB-Trigger automatisch bei jeder Unit-Anlage erzeugt wird. Sie ist der Schluessel fuer das Verkaufsexpose und den DMS-Ordner jeder Wohnung.
 
-## Demo-Projekt Definition
+---
 
-| Feld | Wert |
-|------|------|
-| Name | Residenz am Stadtpark |
-| Stadt | 80331 Muenchen |
-| Typ | Aufteilung |
-| Einheiten | 24 WE |
-| Mietrendite | 4,0% |
-| Erwerbsnebenkosten (AV) | 2,0% |
-| Gebaeudeanteil | 80% |
-| Kaufpreis gesamt | 4.800.000 EUR |
-| Verkaufsziel gesamt | 7.200.000 EUR |
-| Provision | 10% |
-| Zielmarge | 20% |
+## Spalten der Wohnungsliste (UnitPreislisteTable)
 
-**24 Demo-Wohnungen** (WE-001 bis WE-024):
-- Mischung aus 1-Zi (30m2), 2-Zi (55m2), 3-Zi (75m2), 4-Zi (95m2)
-- Kaltmiete abgeleitet aus 4% Rendite auf anteiligen Kaufpreis
-- Verkaufspreis pro WE anteilig nach Flaeche
-- Alle Status "frei" (gruen)
-- Provision EUR pro WE berechnet
+| # | Spalte | Feld | Beschreibung |
+|---|--------|------|-------------|
+| 1 | **Objekt-ID** | `public_id` (SOT-BE-*) | Interne Einheiten-ID, verlinkt zur Wohnungsakte |
+| 2 | WE-Nr | `unit_number` | Wohnungsnummer (WE-001 etc.) |
+| 3 | Typ | `rooms` | Zimmeranzahl (1-Zi, 2-Zi etc.) |
+| 4 | Etage | `floor` | Stockwerk |
+| 5 | Flaeche m2 | `living_area` | Wohnflaeche |
+| 6 | Jahresnetto-Kaltmiete | `current_rent * 12` | EUR/Jahr |
+| 7 | Nicht umlagef. NK | `non_recoverable_costs` | Monatlich, EUR |
+| 8 | Mietrendite | `(Jahresnetto / Verkaufspreis) * 100` | Individuell pro WE |
+| 9 | Verkaufspreis | `sale_price` | Listenpreis EUR |
+| 10 | Provision EUR | `sale_price * provision_rate` | Provision pro WE |
+| 11 | EUR/m2 | `sale_price / living_area` | Quadratmeterpreis |
+| 12 | Status | `reservation_status` | Ampel-Badge (frei/reserviert/verkauft) |
 
-Die Tabelle zeigt alle 24 Zeilen mit Summenzeile am Ende.
+- **Summenzeile**: Summen fuer Flaeche, Jahresnetto, NK, Provision, Verkaufspreis + Durchschnitt Mietrendite + Durchschnitt EUR/m2
+- **Klick auf Zeile**: Navigiert zu `/portal/projekte/{projectId}/einheit/{unitId}` (Verkaufsexpose)
 
-## Aenderungen
+---
 
-### 1. Neue Datei: Demo-Daten-Konstanten
+## Alle Aenderungen
 
-**`src/components/projekte/demoProjectData.ts`**
+### 1. Projekt-Widget doppelt so breit
 
-Exportiert:
-- `DEMO_PROJECT`: Ein `ProjectPortfolioRow`-kompatibles Objekt mit allen Feldern
-- `DEMO_UNITS`: Array mit 24 Unit-Objekten (WE-Nr, Typ, Etage, Flaeche, Miete, Verkaufspreis, Provision, Status)
-- `DEMO_CALC`: Kalkulationswerte (4% Rendite, 2% AV, 80% Gebaeudeanteil)
-- `isDemoMode(portfolioRows)`: Helper-Funktion die `true` zurueckgibt wenn `portfolioRows.length === 0`
+**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
+- ProjectCard bekommt `col-span-2` im Grid
 
-### 2. Dashboard (ProjekteDashboard.tsx)
+### 2. Demo-Daten erweitern
 
-- **Stats-Cards (W3):** Wenn `isDemoMode`: Demo-Werte anzeigen (24 Einheiten, 0 verkauft, 0% Quote, EUR 0 Umsatz IST) -- in `text-muted-foreground/50` Farbe
-- **Projekt-Cards (W3b):** Statt `ProjectCardPlaceholder` wird eine echte `ProjectCard` mit `DEMO_PROJECT` gerendert, aber mit `opacity-50` und einem "Musterdaten"-Badge
-- **Kalkulations-Preview (W4):** Demo-Werte aus `DEMO_CALC` (4% Rendite, 2% AV, 80% Gebaeudeanteil, EUR 300.000 Verkaufsziel/WE)
-- **Reservierungen (W5):** Bleibt wie jetzt (0/0/24 Placeholder)
+**Datei:** `src/components/projekte/demoProjectData.ts`
+- `DEMO_UNITS` erhaelt zusaetzlich:
+  - `public_id`: Simulierte IDs (SOT-BE-DEMO0001 bis SOT-BE-DEMO0024)
+  - `annual_net_rent`: Jahresnetto-Kaltmiete
+  - `non_recoverable_costs`: Nicht umlagefaehige NK (variiert 12-25 EUR/Monat)
+  - `yield_percent`: Individuelle Rendite (3.6% bis 4.4%)
+  - `price_per_sqm`: EUR/m2
 
-### 3. Projekte-Tab (PortfolioTab.tsx)
+### 3. Neue Preisliste-Tabelle
 
-- Wenn `isDemoMode`:
-  - **Projekt-Widgets oben:** Ein einzelner Demo-ProjectCard mit `opacity-50` + "Musterdaten"-Badge
-  - **Tabelle:** `ProjectPortfolioTable` erhaelt die `DEMO_UNITS` als Rows, gerendert mit `opacity-40 pointer-events-none` CSS-Klasse
-  - Die Tabelle zeigt alle 24 Zeilen + Summenzeile mit echten berechneten Summen
-  - **Sticky-Kalkulator:** Erhaelt die Demo-Werte aus `DEMO_CALC`
+**Neue Datei:** `src/components/projekte/UnitPreislisteTable.tsx`
+- Alle 12 Spalten wie oben definiert
+- Objekt-ID als erste Spalte, monospace-Font, klickbar
+- Summenzeile am Ende
+- `isDemo` Prop fuer gedaempfte Darstellung
+- Zeilen-Klick navigiert zur Unit-Detailseite
 
-### 4. ProjectPortfolioTable (ProjectPortfolioTable.tsx)
+### 4. Dokumenten-Kachel
 
-- Neues Prop `isDemo?: boolean`
-- Wenn `isDemo`: Gesamte Tabelle erhaelt `opacity-40` und `select-none pointer-events-none` Klassen
-- Der "Keine Projekte vorhanden" EmptyState bei `rows.length === 0` wird ENTFERNT (wird nie mehr getriggert, weil immer Demo-Daten uebergeben werden)
-- Die Summenzeile zeigt "Musterdaten" Hinweis wenn `isDemo`
+**Neue Datei:** `src/components/projekte/ProjectDMSWidget.tsx`
+- DMS-Ordnerbaum aus `storage_nodes`
+- Zwei Bereiche: Allgemein (Projektordner) + Einheiten (je WE)
+- Drag-and-Drop via `FileDropZone`
+- Im Demo-Modus: Statischer Placeholder-Baum
 
-### 5. ProjectCard + StickyCalculatorPanel
+### 5. PortfolioTab Layout
 
-- `ProjectCard`: Neues optionales Prop `isDemo?: boolean` -- rendert mit `opacity-50` und deaktiviertem onClick
-- `StickyCalculatorPanel`: `isDemo` Badge ist bereits vorhanden, keine Aenderung noetig
+**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
+- ProjectCard mit `col-span-2`
+- `UnitPreislisteTable` ersetzt `ProjectPortfolioTable`
+- `ProjectDMSWidget` als eigene Kachel darunter
 
-## Verhalten beim Anlegen eines echten Projekts
-
-Sobald `portfolioRows.length > 0` (ein echtes Projekt existiert):
-- `isDemoMode()` gibt `false` zurueck
-- Alle Demo-Daten verschwinden sofort
-- Echte Daten werden angezeigt
-- Storage-Tree und IDs werden NUR fuer echte Projekte erzeugt (kein DMS-Seeding fuer Demo)
+---
 
 ## Betroffene Dateien
 
-| Aktion | Datei | Aenderung |
-|--------|-------|-----------|
-| Erstellen | `src/components/projekte/demoProjectData.ts` | Demo-Konstanten + isDemoMode Helper |
-| Aendern | `src/pages/portal/projekte/ProjekteDashboard.tsx` | Demo-Daten in W3, W3b, W4 einbinden |
-| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` | Demo-Daten in Widgets + Tabelle einbinden |
-| Aendern | `src/components/projekte/ProjectPortfolioTable.tsx` | `isDemo` Prop, EmptyState entfernen |
-| Aendern | `src/components/projekte/ProjectCard.tsx` | `isDemo` Prop fuer gedaempfte Darstellung |
+| Aktion | Datei |
+|--------|-------|
+| Erstellen | `src/components/projekte/UnitPreislisteTable.tsx` |
+| Erstellen | `src/components/projekte/ProjectDMSWidget.tsx` |
+| Aendern | `src/components/projekte/demoProjectData.ts` |
+| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` |
 
 ## Risiko
 
-Kein Risiko. Reine UI-Aenderung mit statischen Konstanten. Keine DB-Aenderungen, keine Logik-Aenderungen. Demo-Daten werden nie persistiert.
+Niedrig. Additive Aenderungen, keine bestehende Logik wird entfernt.
 
