@@ -4,7 +4,6 @@
 
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { WorkflowSubbar, SERVICES_WORKFLOW_STEPS } from '@/components/shared/WorkflowSubbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -394,7 +393,6 @@ function BestellungenTab() {
 export default function ServicesPage() {
   return (
     <div className="flex flex-col h-full">
-      <WorkflowSubbar steps={SERVICES_WORKFLOW_STEPS} moduleBase="services" />
       <div className="flex-1 overflow-auto">
         <Routes>
           <Route index element={<Navigate to="amazon" replace />} />
