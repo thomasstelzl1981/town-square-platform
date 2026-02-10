@@ -188,7 +188,7 @@ export function WhatsAppTab() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight uppercase">WhatsApp</h1>
         <p className="text-muted-foreground mt-1">Nachrichten und Konversationen verwalten</p>

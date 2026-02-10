@@ -280,7 +280,7 @@ export function SortierenTab() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Global Gate Banner */}
       {!aiEnabled && (
         <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
