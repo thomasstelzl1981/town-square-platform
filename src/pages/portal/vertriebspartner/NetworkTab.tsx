@@ -147,45 +147,57 @@ const NetworkTab = () => {
                   <TableHead>Objekt</TableHead>
                   <TableHead>Kunde</TableHead>
                   <TableHead>Abschluss</TableHead>
-                  <TableHead className="text-right">Provision</TableHead>
+                  <TableHead className="text-right">Brutto-Provision</TableHead>
+                  <TableHead className="text-right">Plattform (30%)</TableHead>
+                  <TableHead className="text-right">Netto</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       Noch keine abgeschlossenen Provisionen. Gewonnene Deals erscheinen hier automatisch.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  commissions.map((commission) => (
-                    <TableRow key={commission.id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {commission.property}
-                      </TableCell>
-                      <TableCell>{commission.customer}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(commission.closedAt, 'dd.MM.yyyy', { locale: de })}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(commission.amount)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {commission.status === 'paid' ? (
-                          <Badge variant="default" className="bg-green-600">
-                            <Check className="mr-1 h-3 w-3" />
-                            Bezahlt
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <Clock className="mr-1 h-3 w-3" />
-                            Offen
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  commissions.map((commission) => {
+                    const platformFee = commission.amount * 0.30;
+                    const netAmount = commission.amount - platformFee;
+                    return (
+                      <TableRow key={commission.id}>
+                        <TableCell className="font-medium max-w-[200px] truncate">
+                          {commission.property}
+                        </TableCell>
+                        <TableCell>{commission.customer}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(commission.closedAt, 'dd.MM.yyyy', { locale: de })}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(commission.amount)}
+                        </TableCell>
+                        <TableCell className="text-right text-destructive">
+                          {formatCurrency(platformFee)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {formatCurrency(netAmount)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {commission.status === 'paid' ? (
+                            <Badge variant="default">
+                              <Check className="mr-1 h-3 w-3" />
+                              Bezahlt
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <Clock className="mr-1 h-3 w-3" />
+                              Offen
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

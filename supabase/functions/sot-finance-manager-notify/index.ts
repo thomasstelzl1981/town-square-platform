@@ -1,6 +1,7 @@
 /**
  * Edge Function: sot-finance-manager-notify
- * Sends notification email to customer when mandate is accepted
+ * Sends notification email to customer when mandate is accepted.
+ * Uses sot-system-mail-send for actual delivery.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -14,16 +15,16 @@ const corsHeaders = {
 interface NotifyRequest {
   mandateId: string;
   managerId: string;
+  notificationType?: 'mandate_accepted' | 'contract_available';
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { mandateId, managerId } = await req.json() as NotifyRequest;
+    const { mandateId, managerId, notificationType = 'mandate_accepted' } = await req.json() as NotifyRequest;
 
     if (!mandateId || !managerId) {
       throw new Error('mandateId and managerId are required');
@@ -79,46 +80,76 @@ serve(async (req) => {
       );
     }
 
-    // Log the notification (in production, send actual email via Resend/SendGrid)
-    console.log('=== Finance Manager Notification ===');
-    console.log(`To: ${applicant.email}`);
-    console.log(`Subject: Ihr Finanzierungsmanager wurde zugewiesen`);
-    console.log(`Manager: ${manager.display_name || manager.email}`);
-    console.log(`Request: ${request?.public_id}`);
+    // Determine email content based on notification type
+    let subject: string;
+    let bodyHtml: string;
 
-    // TODO: Integrate with email service (Resend, SendGrid, etc.)
-    // For now, just log and return success
-    
-    // Example email content:
-    const emailContent = {
-      to: applicant.email,
-      subject: 'Ihr Finanzierungsmanager wurde zugewiesen',
-      body: `
-        Guten Tag ${applicant.first_name || 'Kunde'},
+    if (notificationType === 'contract_available') {
+      subject = 'Ihr Vertrag ist verfügbar';
+      bodyHtml = `
+        <p>Guten Tag ${applicant.first_name || 'Kunde'},</p>
+        <p>Der Vertrag zu Ihrem Finanzierungsantrag (<strong>${request?.public_id}</strong>) steht nun in Ihrem Portal zur Verfügung.</p>
+        <p><strong>Ihr Ansprechpartner:</strong><br/>
+        ${manager.display_name || 'Finanzierungsmanager'}<br/>
+        E-Mail: ${manager.email}</p>
+        <p>Sie können den Vertrag und den Status Ihrer Anfrage jederzeit in Ihrem Portal unter "Finanzierung > Status" einsehen.</p>
+        <p>Mit freundlichen Grüßen,<br/>Ihr Finanzierungsteam</p>
+      `;
+    } else {
+      subject = 'Ihr Finanzierungsmanager wurde zugewiesen';
+      bodyHtml = `
+        <p>Guten Tag ${applicant.first_name || 'Kunde'},</p>
+        <p>Ihr Finanzierungsantrag (<strong>${request?.public_id}</strong>) wurde einem Finanzierungsmanager zugewiesen.</p>
+        <p><strong>Ihr Ansprechpartner:</strong><br/>
+        ${manager.display_name || 'Finanzierungsmanager'}<br/>
+        E-Mail: ${manager.email}</p>
+        <p>Sie können den Status Ihrer Anfrage jederzeit in Ihrem Portal unter "Finanzierung > Status" einsehen.</p>
+        <p>Mit freundlichen Grüßen,<br/>Ihr Finanzierungsteam</p>
+      `;
+    }
 
-        Ihr Finanzierungsantrag (${request?.public_id}) wurde einem Finanzierungsmanager zugewiesen.
+    // Send via sot-system-mail-send
+    try {
+      const mailResponse = await fetch(`${supabaseUrl}/functions/v1/sot-system-mail-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          to: applicant.email,
+          subject,
+          html: bodyHtml,
+          context: `finance_${notificationType}`,
+          from_address: 'futureroom@systemofatown.com',
+        }),
+      });
 
-        Ihr Ansprechpartner:
-        ${manager.display_name || 'Finanzierungsmanager'}
-        E-Mail: ${manager.email}
+      const mailResult = await mailResponse.json();
+      console.log(`[sot-finance-manager-notify] Mail sent via sot-system-mail-send:`, mailResult);
 
-        Sie können den Status Ihrer Anfrage jederzeit in Ihrem Portal unter "Finanzierung > Status" einsehen.
-
-        Mit freundlichen Grüßen,
-        Ihr Finanzierungsteam
-      `,
-    };
-
-    console.log('Email content:', emailContent);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Notification logged (email integration pending)',
-        emailContent 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Notification sent',
+          mailResult,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (mailError) {
+      // Fallback: log the email content if mail send fails
+      console.error('[sot-finance-manager-notify] Mail send failed, logging content:', mailError);
+      console.log(`To: ${applicant.email}, Subject: ${subject}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Notification logged (mail send fallback)',
+          emailContent: { to: applicant.email, subject, bodyHtml },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('Error in sot-finance-manager-notify:', error);

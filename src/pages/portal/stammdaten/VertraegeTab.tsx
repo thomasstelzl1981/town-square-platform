@@ -220,16 +220,25 @@ export function VertraegeTab() {
         link: `/portal/verkauf/objekte`,
       };
     }),
-    // Commissions
-    ...(commissions || []).map((c): Agreement => ({
-      id: c.id,
-      type: 'commission',
-      title: `Provisionsvereinbarung`,
-      description: `Abgeschlossen am ${format(new Date(c.created_at), 'dd.MM.yyyy', { locale: de })}${c.amount ? ` — ${c.amount.toLocaleString('de-DE')} €` : ''}`,
-      date: new Date(c.created_at),
-      status: c.status,
-      icon: Coins,
-    })),
+    // Commissions (with new commission_type and reference info)
+    ...(commissions || []).map((c): Agreement => {
+      const typeLabels: Record<string, string> = {
+        finance: 'Finanzierung',
+        acquisition: 'Akquise',
+        sales: 'Verkauf',
+        lead: 'Lead',
+      };
+      const typeLabel = typeLabels[c.commission_type || ''] || 'Provision';
+      return {
+        id: c.id,
+        type: 'commission',
+        title: `Provisionsvereinbarung — ${typeLabel}`,
+        description: `Abgeschlossen am ${format(new Date(c.created_at), 'dd.MM.yyyy', { locale: de })}${c.gross_commission ? ` — Brutto: ${c.gross_commission.toLocaleString('de-DE')} €` : c.amount ? ` — ${c.amount.toLocaleString('de-DE')} €` : ''}${c.platform_fee ? ` (Plattform: ${c.platform_fee.toLocaleString('de-DE')} €)` : ''}`,
+        date: new Date(c.created_at),
+        status: c.status,
+        icon: Coins,
+      };
+    }),
     // Acquisition Mandates
     ...(acqMandates || []).map((am): Agreement => ({
       id: am.id,

@@ -36,6 +36,15 @@ interface Commission {
   invoiced_at: string | null;
   paid_at: string | null;
   created_at: string;
+  // New fields
+  commission_type?: string | null;
+  liable_user_id?: string | null;
+  liable_name?: string;
+  liable_role?: string | null;
+  gross_commission?: number | null;
+  platform_fee?: number | null;
+  reference_type?: string | null;
+  contract_document_id?: string | null;
 }
 
 export default function CommissionApproval() {
@@ -61,15 +70,17 @@ export default function CommissionApproval() {
   async function fetchData() {
     setLoading(true);
     try {
-      const [commissionsRes, orgsRes, contactsRes] = await Promise.all([
+      const [commissionsRes, orgsRes, contactsRes, profilesRes] = await Promise.all([
         supabase.from('commissions').select('*'),
         supabase.from('organizations').select('id, name'),
         supabase.from('contacts').select('id, first_name, last_name'),
+        supabase.from('profiles').select('id, display_name, email'),
       ]);
 
       const commissionsData = commissionsRes.data || [];
       const orgs = orgsRes.data || [];
       const contacts = contactsRes.data || [];
+      const profiles = profilesRes.data || [];
 
       const enriched = commissionsData.map(c => ({
         ...c,
@@ -77,6 +88,9 @@ export default function CommissionApproval() {
         contact_name: contacts.find(ct => ct.id === c.contact_id)
           ? `${contacts.find(ct => ct.id === c.contact_id)?.first_name} ${contacts.find(ct => ct.id === c.contact_id)?.last_name}`
           : null,
+        liable_name: c.liable_user_id
+          ? profiles.find(p => p.id === c.liable_user_id)?.display_name || profiles.find(p => p.id === c.liable_user_id)?.email || '—'
+          : undefined,
       }));
 
       setCommissions(enriched);
@@ -210,10 +224,11 @@ export default function CommissionApproval() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Partner</TableHead>
+                  <TableHead>Typ</TableHead>
+                  <TableHead>Partner / Zahlungspfl.</TableHead>
                   <TableHead>Kontakt</TableHead>
-                  <TableHead className="text-right">Betrag</TableHead>
-                  <TableHead className="text-right">%</TableHead>
+                  <TableHead className="text-right">Brutto</TableHead>
+                  <TableHead className="text-right">Plattform (30%)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Fakturiert</TableHead>
                   <TableHead>Bezahlt</TableHead>
@@ -221,31 +236,61 @@ export default function CommissionApproval() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {commissions.map(c => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.tenant_name}</TableCell>
-                    <TableCell>{c.contact_name || '—'}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(c.amount)}</TableCell>
-                    <TableCell className="text-right">{c.percentage ? `${c.percentage}%` : '—'}</TableCell>
-                    <TableCell>{getStatusBadge(c.status)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {c.invoiced_at ? format(new Date(c.invoiced_at), 'dd.MM.yyyy', { locale: de }) : '—'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {c.paid_at ? format(new Date(c.paid_at), 'dd.MM.yyyy', { locale: de }) : '—'}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {c.status === 'pending' && (
-                        <Button variant="ghost" size="sm" className="text-green-600">
-                          <CheckCircle className="h-4 w-4" />
+                {commissions.map(c => {
+                  const typeLabels: Record<string, string> = {
+                    finance: 'Finanzierung',
+                    acquisition: 'Akquise',
+                    sales: 'Verkauf',
+                    lead: 'Lead',
+                  };
+                  const roleLabels: Record<string, string> = {
+                    owner: 'Eigentümer',
+                    finance_manager: 'Finance Mgr.',
+                    akquise_manager: 'Akquise Mgr.',
+                    vertriebspartner: 'Vertriebsp.',
+                  };
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {typeLabels[c.commission_type || ''] || c.commission_type || '—'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{c.liable_name || c.tenant_name}</div>
+                        {c.liable_role && (
+                          <span className="text-xs text-muted-foreground">
+                            {roleLabels[c.liable_role] || c.liable_role}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>{c.contact_name || '—'}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {c.gross_commission ? formatCurrency(c.gross_commission) : formatCurrency(c.amount)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-destructive">
+                        {c.platform_fee ? formatCurrency(c.platform_fee) : '—'}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(c.status)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {c.invoiced_at ? format(new Date(c.invoiced_at), 'dd.MM.yyyy', { locale: de }) : '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {c.paid_at ? format(new Date(c.paid_at), 'dd.MM.yyyy', { locale: de }) : '—'}
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        {c.status === 'pending' && (
+                          <Button variant="ghost" size="sm" className="text-primary">
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

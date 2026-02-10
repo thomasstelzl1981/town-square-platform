@@ -24,20 +24,20 @@ export const OUTBOUND_BRANDS: OutboundBrand[] = [
   {
     brand_key: 'KAUFY',
     label: 'Kaufy',
-    domain: 'kaufi.de',
-    default_from_template: '{first}.{last}@kaufi.de',
+    domain: 'adkaufy.app',
+    default_from_template: '{first}.{last}@adkaufy.app',
   },
   {
     brand_key: 'ACQUIARY',
     label: 'Acquiary',
-    domain: 'acquiary.com',
-    default_from_template: '{first}.{last}@acquiary.com',
+    domain: 'adacquiary.com',
+    default_from_template: '{first}.{last}@adacquiary.com',
   },
   {
     brand_key: 'FUTUREROOM',
     label: 'FutureRoom',
-    domain: 'futureroom.de',
-    default_from_template: '{first}.{last}@futureroom.de',
+    domain: 'futureroom.com',
+    default_from_template: '{first}.{last}@futureroom.com',
   },
 ];
 
@@ -91,12 +91,21 @@ export function getDefaultBrandKey(roles: string[]): string {
   return ROLE_TO_DEFAULT_BRAND['user'] || 'SOT';
 }
 
+/** Normalize German umlauts for email addresses */
+function normalizeUmlauts(str: string): string {
+  return str
+    .replace(/ä/g, 'ae').replace(/Ä/g, 'ae')
+    .replace(/ö/g, 'oe').replace(/Ö/g, 'oe')
+    .replace(/ü/g, 'ue').replace(/Ü/g, 'ue')
+    .replace(/ß/g, 'ss');
+}
+
 /** Generate default from_email from brand template and user name */
 export function generateFromEmail(brandKey: string, firstName: string, lastName: string): string {
   const brand = getBrandByKey(brandKey);
   if (!brand) return `noreply@systemofatown.com`;
-  const first = (firstName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const last = (lastName || 'portal').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const first = normalizeUmlauts(firstName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const last = normalizeUmlauts(lastName || 'portal').toLowerCase().replace(/[^a-z0-9]/g, '');
   return brand.default_from_template
     .replace('{first}', first)
     .replace('{last}', last);
