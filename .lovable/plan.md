@@ -1,205 +1,121 @@
 
-# MOD-14 Serien-E-Mail (Outbound-Light) — Implementierungsplan
 
-## Zusammenfassung
+# Strategie: Entwicklungsaccount isolieren und fuer User bereitstellen
 
-Dieses Feature ersetzt die aktuelle Demo-SerienEmailsPage durch eine funktionale Outbound-Light-Loesung: Kampagnen erstellen, Empfaenger aus dem bestehenden `contacts`-System waehlen, personalisiert versenden via `sot-system-mail-send`, und Versandhistorie einsehen. Kein Inbox-Tracking, kein CRM, kein Follow-up.
+## Aktuelle Situation (Befund)
+
+### Was existiert
+- **1 Auth-User mit Daten**: `thomas.stelzl@systemofadown.com` — hat Profil, Membership, ist `platform_admin` der internen Org "System of a Town"
+- **1 Waisen-User**: `test@example.com` — existiert in auth.users, hat aber **kein Profil und keine Membership** (Trigger hat nicht gefeuert)
+- **1 Seed-Artefakt**: `admin@systemofatown.com` mit fester UUID `b0000000-...` — nur in auth.users, keine public-Daten
+- **1 Organisation**: "System of a Town" (type: `internal`) mit 20 Tile-Aktivierungen
+- **0 Eintraege** in `user_roles` — kein einziger User hat eine fachliche Rolle zugewiesen
+
+### Kritisches Problem: Signup-Trigger fehlt
+Die Funktion `handle_new_user()` existiert zwar als Code in den Migrationen, aber der **Trigger auf `auth.users` ist NICHT installiert**. Das bedeutet:
+- Wenn sich ein neuer User registriert, bekommt er **keine Organisation, kein Profil, keine Membership**
+- Er landet in einem leeren Zustand und kann nichts sehen
+- Das erklaert auch, warum `test@example.com` verwaist ist
+
+### Dev-Mode ist deaktiviert
+`isDevelopmentEnvironment()` gibt immer `false` zurueck. Login wird erzwungen. Die `DEV_TENANT_UUID`-Referenzen in 4 Dateien sind aktuell tote Codepfade — nur noch in `useGoldenPathSeeds` und `useFinanceRequest` als Fallback aktiv.
 
 ---
 
-## Architektur
+## Strategie: 3-Schichten-Modell
 
 ```text
-SerienEmailsPage (Dashboard)
-  |
-  +-- CampaignList (DB: mail_campaigns)
-  |     - Name, Status, Created, Sent, Recipients Count
-  |     - CTA: "Neue Serien-E-Mail"
-  |
-  +-- CampaignWizard (4 Steps)
-        |
-        Step 1: Empfaenger
-        |  - Search/Multi-Select aus contacts (tenant_id + scope=zone2_tenant)
-        |  - Kategorie/Tag-Filter (contacts.category + admin_contact_tags)
-        |  - Dedupe by email, exclude null-email
-        |
-        Step 2: Inhalt
-        |  - From: readonly (OutboundIdentity)
-        |  - Subject + Body (Textarea/Markdown)
-        |  - Platzhalter: {{first_name}}, {{last_name}}, {{company}}, {{city}}
-        |  - Signatur-Toggle (aus Profil email_signature)
-        |
-        Step 3: Anhaenge
-        |  - Upload via useUniversalUpload -> tenant-documents bucket
-        |  - Referenz in mail_campaign_attachments
-        |  - Max 5 Dateien, je 10MB
-        |
-        Step 4: Review & Send
-           - Preview (erste 3 Empfaenger personalisiert)
-           - Warnhinweis: Replies in persoenliches Postfach
-           - "Jetzt senden" Button
-           - Ruft Edge Function sot-serien-email-send auf
+Schicht 1: INTERNAL ORG (Plattform-Betrieb)
+  "System of a Town" | org_type=internal
+  User: thomas.stelzl (platform_admin)
+  Zweck: Zone 1 Admin, Oversight, Konfiguration
+  
+Schicht 2: DEMO/TEST ORGS (Entwicklung + QA)
+  "Muster-Kunde GmbH" | org_type=client
+  "Muster-Partner GmbH" | org_type=partner
+  Zweck: Alle Rollen und Flows testen, bevor echte User kommen
+  
+Schicht 3: PRODUCTION ORGS (echte User)
+  Werden automatisch bei Signup erstellt
+  Jeder neue User bekommt eigene client-Org + Tiles
 ```
 
 ---
 
-## Schritt 1: Datenbank-Migration
+## Implementierungsplan
 
-### Neue Tabellen
+### Schritt 1: Signup-Trigger reparieren (KRITISCH)
 
-**mail_campaigns**
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid PK | |
-| user_id | uuid FK auth.users | Ersteller |
-| org_id | uuid | Tenant |
-| name | text | Kampagnenname |
-| subject_template | text | Betreff mit Platzhaltern |
-| body_template | text | Body mit Platzhaltern |
-| include_signature | boolean | Signatur anhaengen? |
-| status | text | draft / sending / sent / failed |
-| recipients_count | int | Anzahl Empfaenger |
-| sent_count | int | Erfolgreich gesendet |
-| failed_count | int | Fehlgeschlagen |
-| created_at | timestamptz | |
-| sent_at | timestamptz | Versandzeitpunkt |
+Der `handle_new_user`-Trigger muss auf `auth.users` installiert werden. Ohne ihn funktioniert kein Signup.
 
-**mail_campaign_recipients**
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid PK | |
-| campaign_id | uuid FK | |
-| contact_id | uuid nullable | Referenz auf contacts |
-| email | text | Zieladresse |
-| first_name | text | Fuer Personalisierung |
-| last_name | text | |
-| company | text | |
-| city | text | |
-| delivery_status | text | queued / sent / bounced / failed |
-| sent_at | timestamptz | |
-| error | text nullable | Fehlermeldung |
+**Migration:**
+- `CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()`
+- Die Funktion existiert bereits und erstellt: Organisation (type=client) + Profil + Membership (role=org_admin)
 
-**mail_campaign_attachments**
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid PK | |
-| campaign_id | uuid FK | |
-| storage_path | text | Pfad in tenant-documents |
-| filename | text | Originaldateiname |
-| mime_type | text | |
-| size_bytes | int | |
-| created_at | timestamptz | |
+**Erweiterung der Funktion:**
+- Standard-Tiles aktivieren (MOD-01 Stammdaten, MOD-03 DMS, MOD-04 Immobilien) fuer jede neue client-Org
+- Damit sieht jeder neue User sofort ein funktionierendes Portal
 
-### RLS-Policies
+### Schritt 2: Verwaiste User aufraeumen
 
-Alle drei Tabellen: User kann nur eigene Datensaetze sehen/erstellen/aendern (via `user_id` auf mail_campaigns, und campaign_id JOIN fuer Recipients/Attachments).
+- `test@example.com` und `admin@systemofatown.com` (Seed-Artefakt) aus auth.users entfernen oder mit korrekten Profilen/Memberships versehen
+- Entscheidung: Loeschen ist sauberer, da sie keine echten Daten haben
+
+### Schritt 3: Test-Personas anlegen
+
+Fuer jede Rolle eine eigene Organisation + User + Membership + user_role:
+
+| Persona | E-Mail | Org-Name | org_type | Rolle (user_roles) |
+|---------|--------|----------|----------|-------------------|
+| Vermieter | vermieter@test.sot.dev | Muster-Vermieter | client | — (Standard-User) |
+| Verkaeufer | verkaeufer@test.sot.dev | Muster-Verkaeufer | client | — |
+| Vertriebspartner | partner@test.sot.dev | Muster-Partner GmbH | partner | sales_partner |
+| Akquise-Manager | akquise@test.sot.dev | (Membership in Internal) | — | acquisition_manager |
+| Finance-Manager | finance@test.sot.dev | (Membership in Internal) | — | finance_manager |
+
+Jede Persona bekommt die passenden Tile-Aktivierungen gemaess der Portal-Entry-Role-Mapping-Regel.
+
+### Schritt 4: DEV_TENANT_UUID-Referenzen bereinigen
+
+- `useFinanceRequest.ts`: Fallback auf `activeOrganization?.id` statt hardcoded UUID
+- `useGoldenPathSeeds.ts`: Tenant-ID dynamisch aus AuthContext beziehen
+- `AuthContext.tsx`: DEV_MOCK_* Konstanten koennen bleiben (als Emergency-Fallback), aber `isDevelopmentEnvironment()` bleibt `false`
+
+### Schritt 5: Org-Switcher validieren
+
+Der bestehende Org-Switcher im Header muss fuer den `platform_admin` funktionieren:
+- thomas.stelzl bekommt zusaetzliche Memberships in den Test-Orgs
+- Damit kann er zwischen Internal (Zone 1) und den Test-Orgs (Zone 2) wechseln
+- So wird der gesamte Flow aus beiden Perspektiven testbar
 
 ---
 
-## Schritt 2: Edge Function — `sot-serien-email-send`
+## Was das fuer spaetere echte User bedeutet
 
-Dedizierte Edge Function fuer den Massenversand (getrennt von `sot-system-mail-send` um Throttling und Batch-Logik zu kapseln).
-
-**Ablauf:**
-1. Auth-Check
-2. Lade Campaign + Recipients aus DB (status = draft)
-3. Lade Outbound Identity des Users (via `get_active_outbound_identity`)
-4. Lade Profil-Signatur (falls `include_signature = true`)
-5. Fuer jeden Recipient:
-   - Ersetze Platzhalter im Subject + Body
-   - Haenge Signatur an (falls aktiviert)
-   - Sende via Resend API (From = Outbound Identity)
-   - Update recipient delivery_status
-6. Update Campaign: status = sent, sent_at, sent_count, failed_count
-7. Return Zusammenfassung
-
-**Throttling:** Sequenziell mit kleiner Pause (kein paralleler Burst), ca. 2/Sekunde.
-
-**Attachments:** Phase 1 — Attachments werden als Links im Body eingefuegt (signed URLs), NICHT als echte E-Mail-Attachments (Resend-Limit und Komplexitaet). In einer spaeteren Phase koennen echte Attachments via Resend hinzugefuegt werden.
+1. **Signup**: User registriert sich -> Trigger erstellt automatisch Organisation + Profil + Membership + Standard-Tiles
+2. **Isolation**: Jeder User sieht NUR seine eigenen Daten (RLS via tenant_id)
+3. **Keine Vermischung**: Die interne Org und Test-Orgs sind komplett getrennt von Production-Orgs
+4. **Skalierung**: Ob 1 oder 1000 Organisationen — das System behandelt alle gleich
 
 ---
 
-## Schritt 3: Frontend-Implementierung
+## Dateien-Uebersicht
 
-### 3a. SerienEmailsPage (Refactor)
-
-Die bestehende Demo-Page wird ersetzt durch:
-- **Kampagnenliste**: Tabelle aus `mail_campaigns` (Query via Supabase)
-- **KPI-Cards**: Live-Daten statt Hardcoded (Anzahl Campaigns, Total Recipients, etc.)
-- **CTA**: "Neue Serien-E-Mail" oeffnet den Wizard
-
-### 3b. CampaignWizard (neues Component)
-
-Neues Component `CampaignWizard.tsx` mit 4 Steps und Step-Navigation.
-
-**Step 1 — Empfaenger:**
-- Query `contacts` (WHERE tenant_id = user's org, scope = 'zone2_tenant', email IS NOT NULL, deleted_at IS NULL)
-- Suchfeld fuer Name/Email/Company
-- Kategorie-Filter (contacts.category)
-- Tag-Filter (JOIN admin_contact_tags)
-- Multi-Select mit Checkbox-Liste
-- Badge: "X Empfaenger ausgewaehlt"
-- Deduplizierung nach email
-
-**Step 2 — Inhalt:**
-- Read-only "Von": Display der Outbound Identity (Query `user_outbound_identities`)
-- Subject Textfeld
-- Body Textarea (einfacher Editor, kein Richtext in Phase 1)
-- Platzhalter-Buttons: Klick fuegt `{{first_name}}` etc. ein
-- Toggle "Signatur anhaengen" (laedt email_signature aus profiles)
-- Live-Vorschau Panel
-
-**Step 3 — Anhaenge:**
-- FileUploader (bestehende Komponente)
-- Max 5 Dateien, je 10MB, bevorzugt PDF
-- Upload via `useUniversalUpload` in tenant-documents bucket
-- Anzeige der hochgeladenen Dateien mit Loeschen-Option
-
-**Step 4 — Review & Send:**
-- Zusammenfassung: Empfaengeranzahl, Betreff, Body-Preview
-- 3 personalisierte Vorschau-Cards (erste 3 Empfaenger)
-- Warnhinweis-Box
-- "Jetzt senden" Button: Speichert Campaign + Recipients in DB, ruft Edge Function auf
-
-### 3c. Role-Gating
-
-Die SerienEmailsPage prueft beim Laden, ob der User die Rolle `sales_partner` hat (Query auf `user_roles`). Falls nicht: Zugriff verweigert mit Info-Screen.
+| Aktion | Datei/Bereich | Beschreibung |
+|--------|--------------|-------------|
+| DB Migration | Trigger installieren | `on_auth_user_created` + `handle_new_user` erweitern (Tile-Aktivierung) |
+| DB Migration | Test-Personas | Organisationen, Profiles, Memberships, user_roles fuer 5 Personas |
+| DB Migration | Cleanup | Verwaiste auth.users entfernen |
+| Code | `useFinanceRequest.ts` | DEV_TENANT_UUID Fallback durch dynamischen Tenant ersetzen |
+| Code | `useGoldenPathSeeds.ts` | Hardcoded UUID durch AuthContext-Tenant ersetzen |
+| KEINE | `AuthContext.tsx` | Bleibt wie ist (Dev-Mode deaktiviert, Mocks als Notfall-Fallback) |
+| KEINE | Routing/Manifest | Kein Drift |
 
 ---
 
-## Schritt 4: Dateien-Uebersicht
+## Risiken und Hinweise
 
-| Aktion | Datei | Beschreibung |
-|--------|-------|-------------|
-| DB | Migration | 3 Tabellen + RLS + Indizes |
-| NEU | `supabase/functions/sot-serien-email-send/index.ts` | Batch-Versand Edge Function |
-| REWRITE | `src/pages/portal/communication-pro/SerienEmailsPage.tsx` | Dashboard + Wizard |
-| NEU | `src/components/portal/communication-pro/CampaignWizard.tsx` | 4-Step Wizard |
-| NEU | `src/components/portal/communication-pro/RecipientSelector.tsx` | Empfaenger-Auswahl |
-| NEU | `src/hooks/useMailCampaigns.ts` | CRUD Hooks fuer Campaigns |
-| KEINE | `CommunicationProPage.tsx` | Route bleibt `serien-emails` — kein Manifest-Drift |
+- **Auth.users ist ein reserviertes Schema**: Wir koennen dort keine Zeilen loeschen via Migration. Die Seed-Artefakte muessen manuell oder via Edge Function bereinigt werden.
+- **Tile-Aktivierung bei Signup**: Die `handle_new_user`-Funktion muss erweitert werden, um Standard-Tiles zu aktivieren. Ohne das sieht ein neuer User ein leeres Portal.
+- **Passwort fuer Test-User**: Die Test-Personas werden via Migration in `profiles`/`memberships`/`organizations` angelegt, aber die auth.users-Eintraege muessen separat erstellt werden (da wir auth-Schema nicht direkt beschreiben koennen).
 
----
-
-## Nicht enthalten (explizit ausgeschlossen)
-
-- Reply-Tracking / Inbox-Handling
-- E-Mail-Sequenzen / Follow-ups
-- Scheduling ("Spaeter senden") — nur "Jetzt senden" in Phase 1
-- Echte E-Mail-Attachments (Phase 1: Links im Body)
-- Bounce-Webhook (dokumentiert als naechster Schritt, nicht implementiert)
-- Richtext-Editor (Phase 1: Plaintext/Markdown Textarea)
-- Neue Routen oder Manifest-Aenderungen
-
----
-
-## Abnahmekriterien
-
-1. Serien-E-Mail nur fuer `sales_partner` erreichbar (Role-Gate)
-2. Kampagne erstellen mit Empfaenger-Auswahl aus contacts
-3. Personalisierung mit Platzhaltern funktioniert
-4. Versand ueber `sot-serien-email-send` loggt pro Empfaenger Status
-5. Kampagnen-Dashboard zeigt Historie mit Status
-6. Absender kommt aus Profil-Outbound (read-only im Wizard)
-7. Attachments hochladbar und als Links referenziert
-8. Keine neuen Routen, kein Manifest-Drift
