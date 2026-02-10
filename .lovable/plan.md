@@ -1,39 +1,45 @@
 
+# Fix: Vertriebsauftrag mit Demodaten anzeigen
 
-# Fix: Vertriebsauftrag-Sektion wird nicht angezeigt
+## Problem
 
-## Ursache
-
-Die `SalesApprovalSection` hat auf Zeile 233-235 ein Guard:
-
-```text
-if (!projectId) {
-  return null;
-}
-```
-
-Wenn keine Projekte in der Datenbank existieren, ist `activeProjectId = undefined` und die gesamte Sektion verschwindet. Dasselbe galt fuer die alte Version — aber dort gab es die "Projekt-Status"-Karte darueber, die jetzt entfernt wurde. Daher sieht es so aus, als haette sich nichts geaendert.
+Die `SalesApprovalSection` ist zwar korrekt gebaut (Agreement-Panel, Slider, Checkboxen), aber sie wird nie sichtbar, weil:
+1. `dev_projects` Tabelle ist leer
+2. `VertriebTab` hat keinen Demo-Fallback (anders als z.B. `PortfolioTab`)
+3. Ohne `projectId` sind alle Switches disabled — der User sieht nur graue Kacheln
 
 ## Loesung
 
-1. **Fallback statt null**: Wenn kein Projekt vorhanden ist, zeigt die `SalesApprovalSection` trotzdem die Card "Vertriebsauftrag" an — aber mit einem Hinweis: "Bitte legen Sie zuerst ein Projekt an, um den Vertrieb zu aktivieren." Die Switches sind disabled.
+Die `VertriebTab` bekommt denselben Demo-Modus wie die anderen Tabs: Wenn keine echten Projekte existieren, werden die Demodaten aus `demoProjectData.ts` verwendet.
 
-2. **Projekt-Selektor hinzufuegen**: Wenn mehrere Projekte existieren, soll im VertriebTab ein Dropdown oben erscheinen, mit dem man das aktive Projekt waehlen kann. Aktuell wird immer nur `projects[0]` verwendet.
+### Datei 1: `src/pages/portal/projekte/VertriebTab.tsx`
 
-## Aenderungen
+- `isDemoMode` und `DEMO_PROJECT` aus `demoProjectData` importieren
+- Wenn `projects.length === 0`: Demo-Projekt als Fallback verwenden
+- `activeProjectId` wird `DEMO_PROJECT.id` (= `'demo-project-001'`)
+- `SalesApprovalSection` bekommt die Demo-Props:
+  - `projectId = DEMO_PROJECT.id`
+  - `projectName = 'Residenz am Stadtpark'`
+  - `projectAddress = 'Am Stadtpark 12, 80331 München'`
+  - `totalUnits = 24`
+  - `projectVolume = 7_200_000`
+- KPI-Karten zeigen ebenfalls Demo-Werte (24 Einheiten, 0 verkauft, etc.)
 
-### Datei 1: `src/components/projekte/SalesApprovalSection.tsx`
+### Datei 2: `src/components/projekte/SalesApprovalSection.tsx`
 
-- Zeile 233-235: Statt `return null` bei fehlendem `projectId` → Card mit Hinweis-Text und deaktivierten Switches rendern
-- Die Feature-Liste wird weiterhin angezeigt, alle Switches sind disabled
-- Unter dem Titel erscheint ein Info-Text: "Erstellen Sie ein Projekt, um den Vertriebsauftrag zu aktivieren."
+- `hasProject`-Check entfernen — die Komponente bekommt jetzt immer gueltige Props (entweder echt oder Demo)
+- Die Switches sind bedienbar, das Agreement-Panel expandiert beim Klick
+- Die `activateVertriebsauftrag`-Funktion prueft weiterhin auf echte IDs — bei Demo-IDs zeigt sie einen Toast: "Im Demo-Modus nicht verfuegbar. Erstellen Sie ein echtes Projekt."
+- Der volle UI-Flow (Panel expandieren, Slider bewegen, Checkboxen setzen) funktioniert auch im Demo-Modus — nur der finale "Vertrieb aktivieren"-Klick wird abgefangen
 
-### Datei 2: `src/pages/portal/projekte/VertriebTab.tsx`
+### Ergebnis
 
-- Projekt-Selector: Select-Dropdown im Header, der zwischen den verfuegbaren Projekten wechselt
-- Der Selector zeigt Projektname + Adresse und setzt `selectedProject`
-- Die `SalesApprovalSection` bekommt immer Props — auch wenn `projectId` undefined ist
+Der User sieht sofort:
+- Die 3 Feature-Switches (Vertrieb, Kaufy, Landingpage)
+- Kann "Vertrieb aktivieren" klicken → Panel expandiert
+- Sieht Projektdaten-Box mit "Residenz am Stadtpark", 24 WE, 7.2M EUR
+- Kann Provisions-Slider bewegen (3-15%)
+- Kann Checkboxen setzen
+- Beim finalen Klick: Toast mit Demo-Hinweis
 
-## Ergebnis
-
-Die Vertriebsauftrag-Sektion ist immer sichtbar. Bei keinem Projekt: Info-Hinweis. Bei Projekten: voller Agreement-Flow wie geplant.
+Keine DB-Aenderungen. Nur 2 Dateien betroffen.
