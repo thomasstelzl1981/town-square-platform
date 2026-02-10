@@ -9,6 +9,7 @@ interface LetterRequest {
   recipient: {
     name: string;
     company?: string;
+    salutation?: string;
   };
   subject: string;
   prompt: string;
@@ -70,10 +71,14 @@ Regeln:
 - Reiner Text, KEINE Markdown-Überschriften, KEINE Emojis
 - KEIN "Betreff:" im Text`;
 
+    const salutationHint = recipient.salutation
+      ? `Anrede: ${recipient.salutation === 'Herr' ? 'Sehr geehrter Herr' : recipient.salutation === 'Frau' ? 'Sehr geehrte Frau' : 'Sehr geehrte/r'} ${recipient.name.split(' ').pop()}`
+      : '';
+
     const userPrompt = `Erstelle einen formellen Geschäftsbrief mit folgenden Angaben:
 
 Empfänger: ${recipient.name}${recipient.company ? ` (${recipient.company})` : ''}
-Betreff: ${subject || 'Nicht angegeben'}
+${salutationHint ? salutationHint + '\n' : ''}Betreff: ${subject || 'Nicht angegeben'}
 
 Anliegen des Nutzers:
 ${prompt}
