@@ -77,13 +77,7 @@ interface StorageFileManagerProps {
   onSelectNode: (nodeId: string | null) => void;
 }
 
-function formatFileSize(bytes?: number) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+import { formatFileSize } from './storageHelpers';
 
 export function StorageFileManager({
   nodes,
@@ -276,7 +270,7 @@ export function StorageFileManager({
 
   return (
     <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full">
-      <div className={`rounded-2xl bg-card border shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
+      <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
@@ -341,6 +335,11 @@ export function StorageFileManager({
               columnPath={columnPath}
               onNavigateColumn={handleColumnNavigate}
               onSelectFile={setPreviewItem}
+              onDownload={onDownload}
+              onDelete={handleDelete}
+              onNewSubfolder={handleNewSubfolder}
+              isDownloading={isDownloading}
+              isDeleting={isDeleting}
             />
           )}
 
@@ -389,7 +388,7 @@ export function StorageFileManager({
         </div>
 
         {/* Status bar */}
-        <div className="px-4 py-2 border-t text-xs text-muted-foreground flex items-center gap-2">
+        <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground flex items-center gap-2">
           <span>{items.length} Elemente</span>
           <span>·</span>
           <span>{formatFileSize(totalSize)}</span>

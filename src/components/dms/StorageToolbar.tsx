@@ -1,18 +1,12 @@
-import { ChevronLeft, Upload, FolderPlus, List, Columns3, Eye, CheckSquare, Navigation } from 'lucide-react';
+import { ChevronLeft, Upload, FolderPlus, List, Columns3, Eye, CheckSquare, Navigation, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ViewMode = 'list' | 'columns' | 'preview' | 'multiselect' | 'navigator';
@@ -52,6 +46,8 @@ const SORT_OPTIONS: { field: SortField; label: string }[] = [
   { field: 'created_at', label: 'Erstellt am' },
 ];
 
+const BTN = "h-8 gap-1.5 shrink-0 text-xs";
+
 export function StorageToolbar({
   breadcrumbSegments,
   viewMode,
@@ -73,11 +69,11 @@ export function StorageToolbar({
     ? breadcrumbSegments[breadcrumbSegments.length - 1].label
     : 'Alle Dokumente';
 
-  const handleSortSelect = (value: string) => {
-    if (value === sortField) {
+  const handleSortSelect = (field: SortField) => {
+    if (field === sortField) {
       onSortChange(sortField, sortDir === 'asc' ? 'desc' : 'asc');
     } else {
-      onSortChange(value as SortField, 'asc');
+      onSortChange(field, 'asc');
     }
   };
 
@@ -88,10 +84,9 @@ export function StorageToolbar({
     onNavigate(parent);
   };
 
-  // Mobile: simplified toolbar — just back arrow + folder name
   if (isMobile) {
     return (
-      <div className="px-3 py-2.5 border-b flex items-center gap-2">
+      <div className="px-3 py-2.5 border-b border-border/30 flex items-center gap-2">
         {canGoBack && (
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleGoBack}>
             <ChevronLeft className="h-5 w-5" />
@@ -102,9 +97,8 @@ export function StorageToolbar({
     );
   }
 
-  // Desktop: full toolbar
   return (
-    <div className="px-4 py-3 border-b flex items-center gap-2">
+    <div className="px-4 py-2.5 border-b border-border/30 flex items-center gap-2">
       {/* Back button */}
       {canGoBack && (
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleGoBack}>
@@ -140,7 +134,7 @@ export function StorageToolbar({
       {/* View switcher */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+          <Button variant="outline" size="sm" className={BTN}>
             <CurrentViewIcon className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{currentViewOption?.label}</span>
           </Button>
@@ -160,29 +154,51 @@ export function StorageToolbar({
       </DropdownMenu>
 
       {/* Sort */}
-      <Select value={sortField} onValueChange={handleSortSelect}>
-        <SelectTrigger className="w-[120px] h-8 shrink-0">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className={BTN}>
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sortieren</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
           {SORT_OPTIONS.map(opt => (
-            <SelectItem key={opt.field} value={opt.field}>
-              {opt.label} {sortField === opt.field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-            </SelectItem>
+            <DropdownMenuItem
+              key={opt.field}
+              onClick={() => handleSortSelect(opt.field)}
+              className={sortField === opt.field ? 'bg-accent' : ''}
+            >
+              {sortField === opt.field ? (
+                sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5 mr-2" /> : <ArrowDown className="h-3.5 w-3.5 mr-2" />
+              ) : (
+                <span className="w-3.5 mr-2" />
+              )}
+              {opt.label}
+            </DropdownMenuItem>
           ))}
-        </SelectContent>
-      </Select>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* New folder */}
-      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={onNewFolderClick}>
-        <FolderPlus className="h-4 w-4" />
-      </Button>
-
-      {/* Upload */}
-      <Button size="sm" onClick={onUploadClick} disabled={isUploading} className="shrink-0 gap-1.5">
-        <Upload className="h-3.5 w-3.5" />
-        Upload
-      </Button>
+      {/* Upload + New Folder combined */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className={BTN} disabled={isUploading}>
+            <Upload className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Hochladen</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onUploadClick} disabled={isUploading}>
+            <Upload className="h-4 w-4 mr-2" />
+            Datei hochladen
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onNewFolderClick}>
+            <FolderPlus className="h-4 w-4 mr-2" />
+            Neuer Ordner
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

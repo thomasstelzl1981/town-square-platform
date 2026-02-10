@@ -1,7 +1,8 @@
-import { Folder, File, FileText, Image, FileSpreadsheet } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { getFileIcon, formatFileSize } from '@/components/dms/storageHelpers';
 import type { FileManagerItem } from './ListView';
 
 interface MultiSelectViewProps {
@@ -12,22 +13,6 @@ interface MultiSelectViewProps {
   onNavigateFolder: (nodeId: string) => void;
 }
 
-function getFileIcon(mime?: string) {
-  if (!mime) return File;
-  if (mime.startsWith('image/')) return Image;
-  if (mime.includes('pdf')) return FileText;
-  if (mime.includes('sheet') || mime.includes('excel')) return FileSpreadsheet;
-  return File;
-}
-
-function formatFileSize(bytes?: number) {
-  if (!bytes || bytes === 0) return '';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
 export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSelectAll, onNavigateFolder }: MultiSelectViewProps) {
   const allSelected = items.length > 0 && selectedIds.size === items.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < items.length;
@@ -35,7 +20,7 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
   return (
     <div className="flex flex-col h-full">
       {/* Header bar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/30 border-b">
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20 border-b border-border/30">
         <Checkbox
           checked={allSelected}
           // @ts-ignore - indeterminate support
@@ -49,7 +34,7 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
         </span>
       </div>
 
-      {/* Column-style list */}
+      {/* List */}
       <ScrollArea className="flex-1">
         <div className="py-1">
           {items.map(item => {
@@ -60,7 +45,7 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
               <div
                 key={item.id}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer',
+                  'flex items-center gap-3 px-4 py-2 hover:bg-muted/30 transition-colors cursor-pointer',
                   isSelected && 'bg-primary/5',
                 )}
                 onClick={() => onToggleSelect(item.id)}
@@ -74,13 +59,10 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
                   onClick={(e) => e.stopPropagation()}
                   className={cn(isSelected && 'border-primary data-[state=checked]:bg-primary')}
                 />
-                <Icon className={cn('h-4 w-4 shrink-0', item.type === 'folder' ? 'text-muted-foreground' : 'text-muted-foreground')} />
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 text-sm truncate">{item.name}</span>
                 {item.type === 'file' && item.size && (
                   <span className="text-xs text-muted-foreground shrink-0">{formatFileSize(item.size)}</span>
-                )}
-                {item.type === 'folder' && item.childCount !== undefined && (
-                  <span className="text-xs text-muted-foreground shrink-0">{item.childCount} Elemente</span>
                 )}
               </div>
             );
