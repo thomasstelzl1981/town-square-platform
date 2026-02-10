@@ -94,3 +94,18 @@ export function formatFileSize(bytes: number | null | undefined): string {
   
   return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
+
+/**
+ * Format a date in long German format for formal letters
+ * e.g. "Hamburg, 10. Februar 2026"
+ */
+export function formatDateLong(value: string | Date | null | undefined, city?: string): string {
+  if (!value) return '–';
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const formatted = new Intl.DateTimeFormat('de-DE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+  return city ? `${city}, ${formatted}` : formatted;
+}

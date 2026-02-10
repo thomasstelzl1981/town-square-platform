@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Command,
   CommandEmpty,
@@ -40,9 +41,10 @@ import {
   Phone,
   FileOutput,
   Mic,
-  History
+  History,
+  Type,
 } from 'lucide-react';
-import { LetterPreview } from '@/components/portal/office/LetterPreview';
+import { LetterPreview, type LetterFont } from '@/components/portal/office/LetterPreview';
 import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
 
 interface Contact {
@@ -86,6 +88,7 @@ export function BriefTab() {
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
   const [showCreateContext, setShowCreateContext] = useState(false);
   const [prefillApplied, setPrefillApplied] = useState(false);
+  const [letterFont, setLetterFont] = useState<LetterFont>('din');
 
   // Fetch profile for private sender
   const { data: profile } = useQuery({
@@ -466,20 +469,40 @@ ${senderLine}`);
         {/* Letter Preview */}
         <Card className="glass-card">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
               </div>
-              <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
+              <Select value={letterFont} onValueChange={(v) => setLetterFont(v as LetterFont)}>
+                <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <Type className="h-3 w-3 mr-1.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="din">D-DIN (System)</SelectItem>
+                  <SelectItem value="arial">Arial</SelectItem>
+                  <SelectItem value="calibri">Calibri</SelectItem>
+                  <SelectItem value="times">Times New Roman</SelectItem>
+                  <SelectItem value="georgia">Georgia</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <LetterPreview
               senderName={selectedSender?.label}
               senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
               senderAddress={selectedSender?.address}
+              senderCity={(() => {
+                const ctx = contexts.find(c => c.id === selectedSenderId);
+                return ctx?.city || undefined;
+              })()}
               recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
               recipientCompany={selectedContact?.company || undefined}
               subject={subject}
               body={generatedBody}
+              font={letterFont}
             />
           </CardContent>
         </Card>
