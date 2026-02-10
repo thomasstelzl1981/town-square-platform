@@ -12,6 +12,7 @@ import type { ProjectPortfolioRow } from '@/types/projekte';
 interface ProjectCardProps {
   project: ProjectPortfolioRow;
   isSelected?: boolean;
+  isDemo?: boolean;
   onClick?: (id: string) => void;
 }
 
@@ -45,10 +46,11 @@ const STATUS_LABELS: Record<string, string> = {
   paused: 'Pausiert',
 };
 
-export function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
+export function ProjectCard({ project, isSelected, isDemo, onClick }: ProjectCardProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
+    if (isDemo) return;
     if (onClick) {
       onClick(project.id);
     } else {
@@ -62,7 +64,8 @@ export function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) 
     <Card
       className={cn(
         'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group aspect-square flex flex-col',
-        isSelected && 'ring-2 ring-primary shadow-glow'
+        isSelected && 'ring-2 ring-primary shadow-glow',
+        isDemo && 'opacity-50 pointer-events-none select-none'
       )}
       onClick={handleClick}
     >

@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import type { ProjectPortfolioRow, ProjectStatus } from '@/types/projekte';
 
 interface Props {
   rows: ProjectPortfolioRow[];
   isLoading?: boolean;
+  isDemo?: boolean;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
@@ -49,7 +51,7 @@ function formatCurrency(value: number | null): string {
   }).format(value);
 }
 
-export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Props) {
+export function ProjectPortfolioTable({ rows, isLoading, isDemo, onEdit, onDelete }: Props) {
   const navigate = useNavigate();
 
   if (isLoading) {
@@ -62,7 +64,7 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
     );
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !isDemo) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>Keine Projekte vorhanden</p>
@@ -81,7 +83,7 @@ export function ProjectPortfolioTable({ rows, isLoading, onEdit, onDelete }: Pro
   const overallProgress = totalUnits > 0 ? Math.round((totalSold / totalUnits) * 100) : 0;
 
   return (
-    <div className="rounded-lg border bg-card overflow-x-auto">
+    <div className={cn("rounded-lg border bg-card overflow-x-auto", isDemo && "opacity-40 select-none pointer-events-none")}>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

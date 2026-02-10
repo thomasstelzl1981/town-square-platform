@@ -30,6 +30,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { ProjectDeleteDialog, type DeletionProtocol } from '@/components/projekte/ProjectDeleteDialog';
 import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/ProjectCard';
 import { CreateProjectDialog } from '@/components/projekte/CreateProjectDialog';
+import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 
 interface ExtractedProjectData {
@@ -142,13 +143,15 @@ export default function ProjekteDashboard() {
   const hasUploadedFiles = !!uploadedExpose || !!uploadedPricelist;
   const hasSelectedFiles = !!exposeFile || !!pricelistFile;
 
+  const isDemo = isDemoMode(portfolioRows);
+
   const stats = {
-    totalProjects: portfolioRows.length,
-    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length,
-    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0),
-    soldUnits: portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
-    totalRevenue: portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
-    reservedUnits: portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
+    totalProjects: isDemo ? 1 : portfolioRows.length,
+    activeProjects: isDemo ? 1 : portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length,
+    totalUnits: isDemo ? 24 : portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0),
+    soldUnits: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
+    totalRevenue: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
+    reservedUnits: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
   };
 
   return (
@@ -296,7 +299,7 @@ export default function ProjekteDashboard() {
       </Card>
 
       {/* ═══ W3: Stats Cards — ALWAYS visible ═══ */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={cn("grid gap-4 md:grid-cols-4", isDemo && "opacity-50")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Projekte</CardTitle>
@@ -304,7 +307,7 @@ export default function ProjekteDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb</p>
+            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -357,12 +360,14 @@ export default function ProjekteDashboard() {
             <LoadingState />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {portfolioRows.slice(0, 5).map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-              {portfolioRows.length === 0 && (
-                <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+              {isDemo ? (
+                <ProjectCard project={DEMO_PROJECT} isDemo />
+              ) : (
+                portfolioRows.slice(0, 5).map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))
               )}
+              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
             </div>
           )}
         </CardContent>
@@ -378,12 +383,12 @@ export default function ProjekteDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4", isDemo && "opacity-50")}>
             {[
-              { label: 'Ø Provision', value: '10%', icon: TrendingUp },
-              { label: 'Ø Zielmarge', value: '20%', icon: TrendingUp },
-              { label: 'Selbstkosten', value: '70%', icon: Calculator },
-              { label: 'Ø Gewinn/WE', value: portfolioRows.length > 0 ? formatCurrency(stats.totalRevenue / Math.max(stats.soldUnits, 1)) : '€ 62.500', icon: Building2 },
+              { label: 'Mietrendite', value: isDemo ? `${DEMO_CALC.mietrendite}%` : '—', icon: TrendingUp },
+              { label: 'Erwerbs-NK', value: isDemo ? `${DEMO_CALC.erwerbsnebenkosten}%` : '—', icon: Calculator },
+              { label: 'Gebäudeanteil', value: isDemo ? `${DEMO_CALC.gebaeudeanteil}%` : '—', icon: Building2 },
+              { label: 'Ø Verkaufspreis/WE', value: isDemo ? `€ ${(DEMO_CALC.avgPricePerUnit).toLocaleString('de-DE')}` : (portfolioRows.length > 0 ? formatCurrency(stats.totalRevenue / Math.max(stats.soldUnits, 1)) : '—'), icon: TrendingUp },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <div className="p-2 rounded-lg bg-primary/10"><Icon className="h-4 w-4 text-primary" /></div>
