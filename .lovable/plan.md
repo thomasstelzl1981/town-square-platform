@@ -1,209 +1,84 @@
 
-# MOD-20 MIETY — Zuhause-Akte (Dossier) + Sichtbarkeits-Upgrade
+# MIETY Sichtbarkeits-Fix — Tiles mit echtem Inhalt befuellen
 
-## Ueberblick
+## Problem-Analyse
 
-MIETY wird von 6 leeren "Blueprint"-Kacheln zu einem echten Zuhause-Dossier-System umgebaut. Nach dem Anlegen eines Zuhause-Objekts sieht der Nutzer sofort eine befuellte Akte mit Dokumentenbaum, Sections, Quick Actions und Fortschrittsanzeigen — nie eine leere Seite.
+Der Code wurde zwar erstellt, aber die 5 Tile-Seiten (Dokumente, Kommunikation, Zaehlerstaende, Versorgung, Versicherungen) zeigen alle nur leere `ModuleTilePage`-Platzhalter mit `status="empty"`. Das Dossier existiert unter `/portal/miety/zuhause/:homeId`, aber die Tiles verlinken nur schwach darauf ("Zur Uebersicht"). Der User sieht daher auf jedem Tab nur "leer".
 
-## 1. Datenbank-Migration
+**Kern-Problem:** Alle 5 Tiles nutzen `ModuleTilePage` mit `status="empty"` — ein generischer Blueprint-Platzhalter. Keine Tile zeigt echte Daten oder leitet intelligent zum Dossier weiter.
 
-### Tabelle: `miety_homes` (Zuhause-Objekte)
+## Loesung
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| `id` | uuid PK | |
-| `tenant_id` | uuid FK organizations | Mandant |
-| `user_id` | uuid | Ersteller |
-| `name` | text | Freitext ("Mein Zuhause") |
-| `address` | text | Strasse |
-| `address_house_no` | text | Hausnummer |
-| `zip` | text | PLZ |
-| `city` | text | Stadt |
-| `ownership_type` | text | 'eigentum' oder 'miete' |
-| `property_type` | text | 'wohnung', 'haus', 'zimmer' |
-| `area_sqm` | numeric | Wohnflaeche |
-| `rooms_count` | numeric | Zimmeranzahl |
-| `move_in_date` | date | Einzugsdatum |
-| `notes` | text | Notizen |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
+Alle 5 Tiles werden von generischen Platzhaltern zu funktionalen Seiten umgebaut, die:
 
-### Tabelle: `miety_contracts` (Vertraege am Zuhause)
+1. **Wenn Homes existieren:** Eine Zusammenfassung der jeweiligen Daten ueber alle Homes + direkte "Zur Akte" Navigation zeigen
+2. **Wenn keine Homes existieren:** Den Create-Flow direkt einbetten (nicht nur "Zur Uebersicht" verlinken)
+3. **Immer:** Quick-Action-Buttons fuer die jeweilige Funktion zeigen
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| `id` | uuid PK | |
-| `home_id` | uuid FK miety_homes CASCADE | |
-| `tenant_id` | uuid FK organizations | |
-| `category` | text | 'strom', 'gas', 'wasser', 'internet', 'hausrat', 'haftpflicht', 'miete', 'sonstige' |
-| `provider_name` | text | Anbietername |
-| `contract_number` | text | Vertragsnummer |
-| `monthly_cost` | numeric | Monatliche Kosten |
-| `start_date` | date | Vertragsbeginn |
-| `end_date` | date | Vertragsende |
-| `cancellation_date` | date | Kuendigungsfrist |
-| `notes` | text | |
-| `created_at` | timestamptz | |
+## Aenderungen
 
-### Tabelle: `miety_meter_readings` (Zaehlerstaende)
+### Datei: `src/pages/portal/MietyPortalPage.tsx`
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| `id` | uuid PK | |
-| `home_id` | uuid FK miety_homes CASCADE | |
-| `tenant_id` | uuid FK organizations | |
-| `meter_type` | text | 'strom', 'gas', 'wasser', 'heizung' |
-| `reading_value` | numeric | Zaehlerstand |
-| `reading_date` | date | Ablesedatum |
-| `notes` | text | |
-| `created_at` | timestamptz | |
+Alle 5 Tile-Funktionen komplett ersetzen:
 
-RLS-Policies: Alle 3 Tabellen mit tenant-basiertem Zugriff (SELECT/INSERT/UPDATE/DELETE via `auth.uid()` gegen `user_roles`).
+**DokumenteTile:** 
+- Zeigt Home-Cards mit Dokumenten-Zaehler pro Home
+- CTA "Akte oeffnen" pro Home
+- Empty State: "Legen Sie zuerst ein Zuhause an" + Create-Button
 
-## 2. Manifest-Erweiterung
+**ZaehlerstaendeTile:**
+- Zeigt letzte Zaehlerstaende aus `miety_meter_readings` ueber alle Homes
+- Kacheln pro Zaehlertyp (Strom/Gas/Wasser/Heizung) mit letztem Wert
+- CTA "Zaehlerstand erfassen" (navigiert zur Akte)
 
-`routesManifest.ts` — MOD-20 bekommt `dynamic_routes`:
+**VersorgungTile:**
+- Zeigt Versorger-Vertraege aus `miety_contracts` (Kategorie strom/gas/wasser/internet)
+- Karten mit Anbieter + Kosten
+- CTA "Vertrag anlegen"
 
-```
-dynamic_routes: [
-  { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
-],
-```
+**VersicherungenTile:**
+- Zeigt Versicherungs-Vertraege aus `miety_contracts` (Kategorie hausrat/haftpflicht)
+- Karten mit Status-Badge
+- CTA "Versicherung hinzufuegen"
 
-## 3. Routing (ManifestRouter.tsx)
+**KommunikationTile:**
+- Bleibt Platzhalter, aber mit besserem Design (kein generisches ModuleTilePage mehr)
+- Zeigt "Kommt bald" mit Teaser-Inhalt
 
-- Lazy-Import fuer `MietyHomeDossier`
-- Registrierung in `portalDynamicComponentMap`
-- Route: `/portal/miety/zuhause/:homeId`
-
-## 4. UebersichtTile → Zuhause-Liste + Create
-
-Die bestehende `UebersichtTile` wird von einer leeren EmptyState-Seite zu einer funktionalen Startseite:
-
-**Wenn keine Homes existieren:**
-- Einladender Empty State mit "Zuhause anlegen" CTA
-- Inline-Formular (kein Popup): Name, Adresse, Typ (Eigentum/Miete), Wohnflaeche
-
-**Wenn Homes existieren:**
-- Card-Grid mit allen angelegten Zuhause-Objekten
-- Jede Card zeigt: Adresse, Badges (Eigentum/Miete), Mini-Fortschritt, "Akte oeffnen" Button
-- "Weiteres Zuhause anlegen" Button
-
-**Nach Create:** Redirect auf `/portal/miety/zuhause/:homeId` (die Dossier-Ansicht)
-
-## 5. MietyHomeDossier — Die Hauptansicht (KERN)
-
-### Layout: 2-Spalten Desktop
+### Gemeinsames Pattern fuer alle Tiles:
 
 ```text
-+----------------------------+--------------------------------------+
-| DOKUMENTENBAUM (links)     | AKTE-INHALT (rechts)                 |
-|                            |                                      |
-| MOD_20/                    | [Header: Adresse + Badges + CTAs]    |
-|   01_Vertraege/            |                                      |
-|   02_Zaehler/              | [Accordion Sections]                 |
-|   03_Versicherungen/       |   A) Ueberblick (Next Steps)         |
-|   04_Versorgung/           |   B) Vertraege                       |
-|   05_Kommunikation/        |   C) Zaehler & Staende               |
-|   06_Sonstiges/            |   D) Versicherungen                  |
-|                            |   E) Versorger                       |
-| [Upload in Ordner]         |   F) Kommunikation (Platzhalter)     |
-|                            |   G) Services (Platzhalter)          |
-+----------------------------+--------------------------------------+
++------------------------------------------+
+| [Icon] Titel                              |
+| Beschreibungstext                         |
++------------------------------------------+
+| [Home-Card 1]  [Home-Card 2]  [Home-Card] |
+|  - Zaehler: 3   - Zaehler: 0             |
+|  [Akte oeffnen] [Akte oeffnen]            |
++------------------------------------------+
+| ODER (wenn keine Homes):                  |
+| "Legen Sie zuerst ein Zuhause an"         |
+| [Zuhause anlegen Button]                  |
++------------------------------------------+
 ```
 
-### 5.1 Header
+### Technische Details:
 
-- Titel: "Zuhause-Akte" + Kurzadresse (Strasse Hausnr, PLZ Stadt)
-- Badges: Eigentum/Miete, Wohnflaeche
-- 3 Quick Action Buttons (oeffnen jeweils einen **DetailDrawer** rechts, kein Popup):
-  - "Dokument hochladen"
-  - "Vertrag anlegen"
-  - "Zaehlerstand eintragen"
+- Jede Tile bekommt einen eigenen `useQuery` Hook fuer die relevanten Daten
+- `miety_homes` wird in allen Tiles abgefragt (als Grundlage)
+- `miety_contracts` wird in Versorgung/Versicherungen gefiltert nach `category`
+- `miety_meter_readings` wird in Zaehlerstaende mit letztem Wert pro Typ abgefragt
+- Navigation zur Akte via `navigate(/portal/miety/zuhause/${home.id})`
+- `ModuleTilePage` Import wird komplett entfernt — keine generischen Platzhalter mehr
 
-### 5.2 Linke Spalte: Dokumentenbaum
+### Padding/Container:
 
-Nutzt das bestehende `storage_nodes`-System. Beim Erstellen eines Homes werden automatisch die Ordner unter `MOD_20/{homeId}/` angelegt:
-- 01_Vertraege
-- 02_Zaehler
-- 03_Versicherungen
-- 04_Versorgung
-- 05_Kommunikation
-- 06_Sonstiges
+Alle Tiles bekommen `container max-w-5xl mx-auto p-4` fuer konsistentes Layout, mit einem schlichten Header (Titel + Beschreibung in `text-h2` + `text-sm text-muted-foreground`).
 
-Darstellung als einfacher Tree (Expand/Collapse), analog zur DMS StorageTab-Logik. Klick auf Ordner zeigt Dokumente rechts.
-
-### 5.3 Rechte Spalte: Accordion-Sections
-
-Jede Section als Accordion-Item (`@radix-ui/react-accordion`):
-
-**A) Ueberblick**
-- Next-Steps Checkliste (6 Items): Vertrag hinterlegen, Zaehlerstand erfassen, Versicherung pruefen, Versorger eintragen, Dokument hochladen, Profil vervollstaendigen
-- Fortschrittsbalken ("2/6 erledigt")
-- Letzte 3 Dokumente (oder Platzhalter)
-
-**B) Vertraege**
-- Karten-Grid der `miety_contracts` (gefiltert nach home_id)
-- Empty State: 3 Platzhalter-Karten (Stromvertrag, Hausrat, Internet) mit "+ Anlegen" CTA
-- CTA: "Vertrag anlegen" → oeffnet DetailDrawer
-
-**C) Zaehler & Staende**
-- Kacheln pro meter_type mit letztem Stand + Datum
-- Empty State: 4 Platzhalter (Strom, Gas, Wasser, Heizung) mit "Erfassen" CTA
-- CTA: "Zaehlerstand eintragen" → oeffnet DetailDrawer
-
-**D) Versicherungen**
-- Gefiltert aus `miety_contracts` wo category IN ('hausrat', 'haftpflicht')
-- Karten mit Status-Badge (aktiv/ablaufend)
-
-**E) Versorger**
-- Gefiltert aus `miety_contracts` wo category IN ('strom', 'gas', 'wasser', 'internet')
-- Karten mit Anbieter + Kosten
-
-**F) Kommunikation** — Platzhalter-Section ("Kommt bald")
-
-**G) Services** — Platzhalter-Section mit Teaser-Kacheln (Strom vergleichen, etc.)
-
-### 5.4 Quick Action Drawers
-
-Alle 3 Quick Actions nutzen den bestehenden `DetailDrawer` (Sheet-basiert, rechts einfahrend):
-
-- **Dokument hochladen:** Ordner-Auswahl + Drag&Drop Upload
-- **Vertrag anlegen:** Formular (Kategorie, Anbieter, Kosten, Laufzeit) → INSERT in `miety_contracts`
-- **Zaehlerstand erfassen:** Formular (Typ, Wert, Datum) → INSERT in `miety_meter_readings`
-
-## 6. Weitere Tiles anpassen
-
-Die 5 restlichen Tiles (Dokumente, Kommunikation, Zaehlerstaende, Versorgung, Versicherungen) werden von leeren Blueprint-Kacheln zu sinnvollen Weiterleitungen:
-
-- Jede Tile zeigt eine Zusammenfassung der entsprechenden Section ueber ALLE Homes hinweg
-- Primaeraktion: "Zur Akte" → navigiert zum jeweiligen Home-Dossier
-
-## 7. Dateien-Uebersicht
+## Dateien
 
 | Datei | Aenderung |
 |---|---|
-| SQL Migration | 3 neue Tabellen + RLS |
-| `src/manifests/routesManifest.ts` | `dynamic_routes` fuer MOD-20 |
-| `src/router/ManifestRouter.tsx` | Lazy-Import + Map-Eintrag fuer MietyHomeDossier |
-| `src/pages/portal/MietyPortalPage.tsx` | UebersichtTile komplett neu (Home-Liste + Create) |
-| `src/pages/portal/miety/MietyHomeDossier.tsx` | **NEU** — 2-Spalten Dossier mit Tree + Accordion |
-| `src/pages/portal/miety/components/MietyDossierHeader.tsx` | **NEU** — Header mit Badges + Quick Actions |
-| `src/pages/portal/miety/components/MietyDocTree.tsx` | **NEU** — Dokumentenbaum (storage_nodes) |
-| `src/pages/portal/miety/components/MietyOverviewSection.tsx` | **NEU** — Next Steps + Progress |
-| `src/pages/portal/miety/components/MietyContractsSection.tsx` | **NEU** — Vertraege CRUD |
-| `src/pages/portal/miety/components/MietyMeterSection.tsx` | **NEU** — Zaehlerstaende CRUD |
-| `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` | **NEU** — Inline-Formular |
-| `src/pages/portal/miety/components/ContractDrawer.tsx` | **NEU** — Vertrag-anlegen Drawer |
-| `src/pages/portal/miety/components/MeterReadingDrawer.tsx` | **NEU** — Zaehlerstand Drawer |
-| `src/pages/portal/miety/components/UploadDrawer.tsx` | **NEU** — Upload Drawer |
+| `src/pages/portal/MietyPortalPage.tsx` | Alle 5 Tile-Funktionen komplett neu schreiben (DokumenteTile, KommunikationTile, ZaehlerstaendeTile, VersorgungTile, VersicherungenTile) — `ModuleTilePage` durch echte Daten-Abfragen + Karten ersetzen |
 
-## 8. Wiederverwendete Komponenten
-
-- `DetailDrawer` (shared) — fuer alle Quick-Action Panels
-- `storage_nodes` Query-Pattern (aus StorageTab) — fuer den Dokumentenbaum
-- `DossierHeader`-Konzept (aus Immobilienakte) — adaptiert fuer Zuhause
-- `Accordion` (Radix) — fuer Sections
-- `EmptyState`, `LoadingState` (shared) — fuer Empty/Loading States
-- `glass-card` Pattern — fuer Kacheln
-- `useAuth()` + `activeTenantId` — fuer alle DB-Queries
+Keine neuen Dateien noetig. Keine Datenbank-Aenderungen.
