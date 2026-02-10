@@ -342,13 +342,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "meine", component: "MeineTab", title: "Meine Leads" },
         { path: "pipeline", component: "PipelineTab", title: "Pipeline" },
         { path: "werbung", component: "WerbungTab", title: "Werbung" },
-        // Selfie Ads Studio (Kaufy Social Media Partner-Beauftragung)
         { path: "selfie-ads", component: "SelfieAdsStudio", title: "Selfie Ads Studio" },
-        { path: "selfie-ads-planen", component: "SelfieAdsPlanen", title: "Kampagne planen" },
-        { path: "selfie-ads-summary", component: "SelfieAdsSummary", title: "Mandat Zusammenfassung" },
-        { path: "selfie-ads-kampagnen", component: "SelfieAdsKampagnen", title: "Meine Kampagnen" },
-        { path: "selfie-ads-performance", component: "SelfieAdsPerformance", title: "Performance" },
-        { path: "selfie-ads-abrechnung", component: "SelfieAdsAbrechnung", title: "Abrechnung" },
       ],
     },
     // =========================================================================
