@@ -1,230 +1,205 @@
 
-# Phase 1: Globaler Outbound-Mail-Fundament-Baustein
+# MOD-14 Serien-E-Mail (Outbound-Light) — Implementierungsplan
 
 ## Zusammenfassung
 
-Dieser Plan implementiert eine zentrale Outbound-E-Mail-Identitaet pro User, verankert im Profil (MOD-01) und genutzt von allen Outbound-Features in Zone 2. Resend bleibt die Versandinfrastruktur, aber die sichtbare Absenderadresse ("From") kommt aus der Profil-Outbound-Kennung.
+Dieses Feature ersetzt die aktuelle Demo-SerienEmailsPage durch eine funktionale Outbound-Light-Loesung: Kampagnen erstellen, Empfaenger aus dem bestehenden `contacts`-System waehlen, personalisiert versenden via `sot-system-mail-send`, und Versandhistorie einsehen. Kein Inbox-Tracking, kein CRM, kein Follow-up.
 
 ---
 
-## Architektur-Uebersicht
+## Architektur
 
 ```text
-+-------------------------------------------------------------------+
-|  PROFIL (MOD-01)                                                  |
-|  +-------------------------------------------------------------+  |
-|  | Outbound-Widget (NEU)                                       |  |
-|  | - Brand-Dropdown (gefiltert nach Rolle)                     |  |
-|  | - From-Email (readonly, aus Brand-Preset)                   |  |
-|  | - Display-Name (editierbar)                                 |  |
-|  | - Info-Text                                                 |  |
-|  +-------------------------------------------------------------+  |
-+-------------------------------------------------------------------+
-         |
-         v
-+-------------------------------------------------------------------+
-|  DB: user_outbound_identities                                     |
-|  user_id | brand_key | from_email | display_name | is_active      |
-+-------------------------------------------------------------------+
-         |
-         v
-+-------------------------------------------------------------------+
-|  Edge Function: sot-system-mail-send (NEU)                        |
-|  - Laedt Active Outbound Identity                                 |
-|  - Setzt From + Reply-To                                          |
-|  - Sendet via Resend API                                          |
-+-------------------------------------------------------------------+
-         |
-         v
-+-------------------------------------------------------------------+
-|  Bestehende Features (Refactor):                                  |
-|  - sot-renovation-outbound -> nutzt sot-system-mail-send          |
-|  - Serien-E-Mail (MOD-14) -> nutzt sot-system-mail-send           |
-+-------------------------------------------------------------------+
+SerienEmailsPage (Dashboard)
+  |
+  +-- CampaignList (DB: mail_campaigns)
+  |     - Name, Status, Created, Sent, Recipients Count
+  |     - CTA: "Neue Serien-E-Mail"
+  |
+  +-- CampaignWizard (4 Steps)
+        |
+        Step 1: Empfaenger
+        |  - Search/Multi-Select aus contacts (tenant_id + scope=zone2_tenant)
+        |  - Kategorie/Tag-Filter (contacts.category + admin_contact_tags)
+        |  - Dedupe by email, exclude null-email
+        |
+        Step 2: Inhalt
+        |  - From: readonly (OutboundIdentity)
+        |  - Subject + Body (Textarea/Markdown)
+        |  - Platzhalter: {{first_name}}, {{last_name}}, {{company}}, {{city}}
+        |  - Signatur-Toggle (aus Profil email_signature)
+        |
+        Step 3: Anhaenge
+        |  - Upload via useUniversalUpload -> tenant-documents bucket
+        |  - Referenz in mail_campaign_attachments
+        |  - Max 5 Dateien, je 10MB
+        |
+        Step 4: Review & Send
+           - Preview (erste 3 Empfaenger personalisiert)
+           - Warnhinweis: Replies in persoenliches Postfach
+           - "Jetzt senden" Button
+           - Ruft Edge Function sot-serien-email-send auf
 ```
 
 ---
 
 ## Schritt 1: Datenbank-Migration
 
-### 1a. Tabelle `user_outbound_identities`
+### Neue Tabellen
 
-```sql
-CREATE TABLE public.user_outbound_identities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  brand_key TEXT NOT NULL,
-  from_email TEXT NOT NULL,
-  display_name TEXT NOT NULL DEFAULT '',
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+**mail_campaigns**
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid PK | |
+| user_id | uuid FK auth.users | Ersteller |
+| org_id | uuid | Tenant |
+| name | text | Kampagnenname |
+| subject_template | text | Betreff mit Platzhaltern |
+| body_template | text | Body mit Platzhaltern |
+| include_signature | boolean | Signatur anhaengen? |
+| status | text | draft / sending / sent / failed |
+| recipients_count | int | Anzahl Empfaenger |
+| sent_count | int | Erfolgreich gesendet |
+| failed_count | int | Fehlgeschlagen |
+| created_at | timestamptz | |
+| sent_at | timestamptz | Versandzeitpunkt |
 
--- Nur eine aktive Identity pro User
-CREATE UNIQUE INDEX idx_user_outbound_active 
-  ON public.user_outbound_identities (user_id) 
-  WHERE is_active = true;
+**mail_campaign_recipients**
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid PK | |
+| campaign_id | uuid FK | |
+| contact_id | uuid nullable | Referenz auf contacts |
+| email | text | Zieladresse |
+| first_name | text | Fuer Personalisierung |
+| last_name | text | |
+| company | text | |
+| city | text | |
+| delivery_status | text | queued / sent / bounced / failed |
+| sent_at | timestamptz | |
+| error | text nullable | Fehlermeldung |
 
--- RLS
-ALTER TABLE public.user_outbound_identities ENABLE ROW LEVEL SECURITY;
+**mail_campaign_attachments**
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid PK | |
+| campaign_id | uuid FK | |
+| storage_path | text | Pfad in tenant-documents |
+| filename | text | Originaldateiname |
+| mime_type | text | |
+| size_bytes | int | |
+| created_at | timestamptz | |
 
-CREATE POLICY "Users can view own outbound identity"
-  ON public.user_outbound_identities FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
+### RLS-Policies
 
-CREATE POLICY "Users can insert own outbound identity"
-  ON public.user_outbound_identities FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own outbound identity"
-  ON public.user_outbound_identities FOR UPDATE
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Service role full access"
-  ON public.user_outbound_identities FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-```
-
-### 1b. RPC-Funktion fuer Edge Functions
-
-```sql
-CREATE OR REPLACE FUNCTION public.get_active_outbound_identity(p_user_id UUID)
-RETURNS TABLE(brand_key TEXT, from_email TEXT, display_name TEXT)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT brand_key, from_email, display_name
-  FROM public.user_outbound_identities
-  WHERE user_id = p_user_id AND is_active = true
-  LIMIT 1;
-$$;
-```
+Alle drei Tabellen: User kann nur eigene Datensaetze sehen/erstellen/aendern (via `user_id` auf mail_campaigns, und campaign_id JOIN fuer Recipients/Attachments).
 
 ---
 
-## Schritt 2: Brand-Konfiguration (Frontend-Konstante)
+## Schritt 2: Edge Function — `sot-serien-email-send`
 
-Neue Datei: `src/config/outboundBrands.ts`
+Dedizierte Edge Function fuer den Massenversand (getrennt von `sot-system-mail-send` um Throttling und Batch-Logik zu kapseln).
 
-Definiert:
-- `OUTBOUND_BRANDS`: Array mit brand_key, label, domain, default_from_template
-- `ROLE_TO_ALLOWED_BRANDS`: Mapping von app_role/org_role auf erlaubte brand_keys
-- `ROLE_TO_DEFAULT_BRAND`: Default-Brand pro Rolle
+**Ablauf:**
+1. Auth-Check
+2. Lade Campaign + Recipients aus DB (status = draft)
+3. Lade Outbound Identity des Users (via `get_active_outbound_identity`)
+4. Lade Profil-Signatur (falls `include_signature = true`)
+5. Fuer jeden Recipient:
+   - Ersetze Platzhalter im Subject + Body
+   - Haenge Signatur an (falls aktiviert)
+   - Sende via Resend API (From = Outbound Identity)
+   - Update recipient delivery_status
+6. Update Campaign: status = sent, sent_at, sent_count, failed_count
+7. Return Zusammenfassung
 
-Konkrete Brands:
-| brand_key | Label | Domain | Rollen |
-|-----------|-------|--------|--------|
-| SOT | System of a Town | systemofatown.com | user (default), alle |
-| KAUFY | Kaufy | kaufi.de | sales_partner |
-| ACQUIARY | Acquiary | acquiary.com | akquise_manager |
-| FUTUREROOM | FutureRoom | futureroom.de | finance_manager |
+**Throttling:** Sequenziell mit kleiner Pause (kein paralleler Burst), ca. 2/Sekunde.
 
-Logik: User sieht nur Brands, die seiner Rolle entsprechen. Hat ein User mehrere Rollen (z.B. user + sales_partner), sieht er die Union.
-
----
-
-## Schritt 3: UI — Outbound-Widget im Profil (ProfilTab.tsx)
-
-Neues `OutboundWidget` als `ProfileWidget` in der bestehenden ProfilTab-Seite, platziert zwischen "E-Mail-Signatur" und "Briefkopf-Daten".
-
-Elemente:
-- **Select/Dropdown**: "Outbound-Kennung" — zeigt nur erlaubte brand_keys (gefiltert ueber Rollen-Query)
-- **Readonly Input**: "Absender E-Mail" — automatisch aus Brand-Preset (z.B. `vorname.nachname@kaufi.de`)
-- **Editierbares Input**: "Anzeigename" — frei editierbar
-- **Info-Box**: Erklaerungstext zum Outbound-Verhalten
-- **Speichern-Button**: Upsert in `user_outbound_identities`
-
-Die Rollen werden ueber eine Query auf `user_roles` UND `organization_members` geholt, dann gegen `ROLE_TO_ALLOWED_BRANDS` gefiltert.
+**Attachments:** Phase 1 — Attachments werden als Links im Body eingefuegt (signed URLs), NICHT als echte E-Mail-Attachments (Resend-Limit und Komplexitaet). In einer spaeteren Phase koennen echte Attachments via Resend hinzugefuegt werden.
 
 ---
 
-## Schritt 4: Edge Function — `sot-system-mail-send`
+## Schritt 3: Frontend-Implementierung
 
-Neue zentrale Edge Function fuer alle System-Outbound-E-Mails.
+### 3a. SerienEmailsPage (Refactor)
 
-Ablauf:
-1. Auth-Check (Bearer Token)
-2. Lade aktive Outbound Identity via `get_active_outbound_identity(user_id)`
-3. Fallback: Falls keine Identity, nutze SOT-Default
-4. Sende via Resend API mit:
-   - `from`: `"${display_name} <${from_email}>"` (Resend unterstuetzt custom From)
-   - `reply_to`: `from_email`
-   - `to`, `subject`, `html`/`text` aus Request-Body
-5. Return success/error
+Die bestehende Demo-Page wird ersetzt durch:
+- **Kampagnenliste**: Tabelle aus `mail_campaigns` (Query via Supabase)
+- **KPI-Cards**: Live-Daten statt Hardcoded (Anzahl Campaigns, Total Recipients, etc.)
+- **CTA**: "Neue Serien-E-Mail" oeffnet den Wizard
 
-Request-Interface:
-```text
-{
-  to: string | string[],
-  subject: string,
-  html?: string,
-  text?: string,
-  context?: string  // z.B. "renovation_tender", "serien_email"
-}
-```
+### 3b. CampaignWizard (neues Component)
 
----
+Neues Component `CampaignWizard.tsx` mit 4 Steps und Step-Navigation.
 
-## Schritt 5: Refactor bestehender Outbound-Features
+**Step 1 — Empfaenger:**
+- Query `contacts` (WHERE tenant_id = user's org, scope = 'zone2_tenant', email IS NOT NULL, deleted_at IS NULL)
+- Suchfeld fuer Name/Email/Company
+- Kategorie-Filter (contacts.category)
+- Tag-Filter (JOIN admin_contact_tags)
+- Multi-Select mit Checkbox-Liste
+- Badge: "X Empfaenger ausgewaehlt"
+- Deduplizierung nach email
 
-### 5a. `sot-renovation-outbound`
+**Step 2 — Inhalt:**
+- Read-only "Von": Display der Outbound Identity (Query `user_outbound_identities`)
+- Subject Textfeld
+- Body Textarea (einfacher Editor, kein Richtext in Phase 1)
+- Platzhalter-Buttons: Klick fuegt `{{first_name}}` etc. ein
+- Toggle "Signatur anhaengen" (laedt email_signature aus profiles)
+- Live-Vorschau Panel
 
-Aktuell: Hardcoded `from: 'Ausschreibung <noreply@systemofatown.de>'`
+**Step 3 — Anhaenge:**
+- FileUploader (bestehende Komponente)
+- Max 5 Dateien, je 10MB, bevorzugt PDF
+- Upload via `useUniversalUpload` in tenant-documents bucket
+- Anzeige der hochgeladenen Dateien mit Loeschen-Option
 
-Aenderung: Statt direkt Resend aufzurufen, laedt die Function die aktive Outbound Identity des sendenden Users und setzt From/Reply-To entsprechend. Die Resend-Logik bleibt in dieser Function (kein Aufruf von sot-system-mail-send aus einer Edge Function heraus), aber die Identity-Aufloesung wird identisch.
+**Step 4 — Review & Send:**
+- Zusammenfassung: Empfaengeranzahl, Betreff, Body-Preview
+- 3 personalisierte Vorschau-Cards (erste 3 Empfaenger)
+- Warnhinweis-Box
+- "Jetzt senden" Button: Speichert Campaign + Recipients in DB, ruft Edge Function auf
 
-### 5b. Frontend-Caller (TenderDraftPanel.tsx)
+### 3c. Role-Gating
 
-Keine Aenderung notwendig — der Edge-Function-Call bleibt gleich, die From-Adresse wird serverseitig aufgeloest.
-
----
-
-## Schritt 6: Auto-Provisioning (Konzept-Ready)
-
-Bei Registrierung oder erstem Login ohne Outbound Identity:
-- ProfilTab prueft ob `user_outbound_identities` leer ist
-- Falls ja: Auto-Insert mit Default-Brand basierend auf Rolle
-- From-Email wird aus Template generiert: `vorname.nachname@domain`
-- Display-Name wird aus Profil uebernommen
-
-Dies wird im Frontend (ProfilTab/OutboundWidget) als Auto-Init implementiert, NICHT als Trigger.
+Die SerienEmailsPage prueft beim Laden, ob der User die Rolle `sales_partner` hat (Query auf `user_roles`). Falls nicht: Zugriff verweigert mit Info-Screen.
 
 ---
 
-## Dateien-Uebersicht
+## Schritt 4: Dateien-Uebersicht
 
 | Aktion | Datei | Beschreibung |
-|--------|-------|--------------|
-| NEU | `src/config/outboundBrands.ts` | Brand-Config + Rollen-Mapping |
-| NEU | `supabase/functions/sot-system-mail-send/index.ts` | Zentrale Outbound-Edge-Function |
-| EDIT | `src/pages/portal/stammdaten/ProfilTab.tsx` | OutboundWidget hinzufuegen |
-| EDIT | `supabase/functions/sot-renovation-outbound/index.ts` | From-Adresse aus Outbound Identity laden |
-| DB | Migration | Tabelle + RLS + RPC |
+|--------|-------|-------------|
+| DB | Migration | 3 Tabellen + RLS + Indizes |
+| NEU | `supabase/functions/sot-serien-email-send/index.ts` | Batch-Versand Edge Function |
+| REWRITE | `src/pages/portal/communication-pro/SerienEmailsPage.tsx` | Dashboard + Wizard |
+| NEU | `src/components/portal/communication-pro/CampaignWizard.tsx` | 4-Step Wizard |
+| NEU | `src/components/portal/communication-pro/RecipientSelector.tsx` | Empfaenger-Auswahl |
+| NEU | `src/hooks/useMailCampaigns.ts` | CRUD Hooks fuer Campaigns |
+| KEINE | `CommunicationProPage.tsx` | Route bleibt `serien-emails` — kein Manifest-Drift |
 
 ---
 
 ## Nicht enthalten (explizit ausgeschlossen)
 
-- Inbox-Tracking / Follow-up-Automatisierung
-- Provider-Integration (Google Workspace / Microsoft) fuer Mailbox-Provisioning
+- Reply-Tracking / Inbox-Handling
+- E-Mail-Sequenzen / Follow-ups
+- Scheduling ("Spaeter senden") — nur "Jetzt senden" in Phase 1
+- Echte E-Mail-Attachments (Phase 1: Links im Body)
+- Bounce-Webhook (dokumentiert als naechster Schritt, nicht implementiert)
+- Richtext-Editor (Phase 1: Plaintext/Markdown Textarea)
 - Neue Routen oder Manifest-Aenderungen
-- Zone 1 Admin Provisioning-UI
-- Aenderungen an MOD-04/MOD-08
 
 ---
 
 ## Abnahmekriterien
 
-1. Profil hat neuen Bereich "Outbound" mit Brand-Auswahl und Speicherung
-2. Rollen-Gating: User sieht nur erlaubte Brands (SOT fuer Standard, KAUFY fuer sales_partner, etc.)
-3. DB-Constraint: genau eine aktive Outbound Identity pro User
-4. sot-renovation-outbound nutzt die gespeicherte Outbound Identity
-5. Zentrale sot-system-mail-send Edge Function existiert und ist einsatzbereit
-6. Keine neuen Routen, kein Manifest-Drift
+1. Serien-E-Mail nur fuer `sales_partner` erreichbar (Role-Gate)
+2. Kampagne erstellen mit Empfaenger-Auswahl aus contacts
+3. Personalisierung mit Platzhaltern funktioniert
+4. Versand ueber `sot-serien-email-send` loggt pro Empfaenger Status
+5. Kampagnen-Dashboard zeigt Historie mit Status
+6. Absender kommt aus Profil-Outbound (read-only im Wizard)
+7. Attachments hochladbar und als Links referenziert
+8. Keine neuen Routen, kein Manifest-Drift
