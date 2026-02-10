@@ -16,6 +16,7 @@ interface LetterRequest {
     name: string;
     company: string;
     address?: string;
+    role?: string;
   };
 }
 
@@ -43,20 +44,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    const senderSignature = senderIdentity
+      ? [
+          '',
+          senderIdentity.name,
+          senderIdentity.role || undefined,
+          senderIdentity.company,
+        ].filter(Boolean).join('\n')
+      : '';
+
     const systemPrompt = `Du bist Armstrong, ein professioneller Briefassistent für deutsche Immobilienverwaltung.
-Deine Aufgabe ist es, formelle, CI-konforme Geschäftsbriefe auf Deutsch zu erstellen.
+Du schreibst AUSSCHLIESSLICH den Briefkörper — KEIN Datum, KEINE Adresse, KEINEN Betreff.
+
+Strikte Ausgabestruktur:
+1. Anrede (z.B. "Sehr geehrter Herr Müller,")
+2. Fließtext in logischen Absätzen (keine Bulletpoints, keine Markdown-Formatierung)
+3. Grußformel ("Mit freundlichen Grüßen")
+4. Signaturblock:
+${senderSignature || '   [Name]\n   [Rolle]\n   [Organisation]'}
 
 Regeln:
-- Verwende immer die Sie-Form und formelle Anrede
-- Strukturiere den Brief klar: Anrede, Einleitung, Hauptteil, Schluss, Grußformel
-- Halte den Ton professionell aber freundlich
-- Füge keine Platzhalter wie [Datum] oder [Adresse] ein - der Brief soll direkt verwendbar sein
-- Der Brief sollte zwischen 150-300 Wörtern lang sein
-
-${senderIdentity ? `Absender-Identität:
-Name: ${senderIdentity.name}
-Firma: ${senderIdentity.company}
-${senderIdentity.address ? `Adresse: ${senderIdentity.address}` : ''}` : ''}`;
+- Sie-Form, formeller Ton, professionell aber freundlich
+- Keine Platzhalter wie [Datum] oder [Adresse]
+- 150–300 Wörter Fließtext
+- Reiner Text, KEINE Markdown-Überschriften, KEINE Emojis
+- KEIN "Betreff:" im Text`;
 
     const userPrompt = `Erstelle einen formellen Geschäftsbrief mit folgenden Angaben:
 
