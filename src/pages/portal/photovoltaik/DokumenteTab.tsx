@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Folder, FolderOpen, FileText, Plus, CheckCircle2, Circle, Upload, Sun,
 } from 'lucide-react';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 const PV_DMS_FOLDERS = [
   '01_Stammdaten',
@@ -28,13 +29,11 @@ export default function DokumenteTab() {
   const hasPlants = plants.length > 0;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dokumente</h2>
-        <p className="text-muted-foreground">
-          {hasPlants ? 'Dokumentenmanagement für Ihre PV-Anlagen' : 'Automatische Dokumentenstruktur pro Anlage'}
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader
+        title="Dokumente"
+        description={hasPlants ? 'Dokumentenmanagement für Ihre PV-Anlagen' : 'Automatische Dokumentenstruktur pro Anlage'}
+      />
 
       {hasPlants ? (
         /* Real DMS view per plant */

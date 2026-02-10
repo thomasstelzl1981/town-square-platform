@@ -14,6 +14,7 @@ import { useMemo } from 'react';
 import { usePvDMS } from '@/hooks/usePvDMS';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 function KPICard({ icon: Icon, label, value, unit, muted = false }: {
   icon: React.ElementType; label: string; value: string; unit: string; muted?: boolean;
@@ -60,13 +61,11 @@ export default function MonitoringTab() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Monitoring</h2>
-        <p className="text-muted-foreground">
-          {hasPlants ? 'Echtzeit-Übersicht aller PV-Anlagen' : 'Live-Monitoring Ihrer PV-Anlagen'}
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader
+        title="Monitoring"
+        description={hasPlants ? 'Echtzeit-Übersicht aller PV-Anlagen' : 'Live-Monitoring Ihrer PV-Anlagen'}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -65,10 +65,10 @@ export default function PortfolioTab() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Projekt-Portfolio</h2>
+          <h2 className="text-2xl font-bold tracking-tight uppercase">Projekt-Portfolio</h2>
           <p className="text-muted-foreground">
             Übersicht aller Bauträger- und Aufteiler-Projekte
           </p>

@@ -47,6 +47,7 @@ export default function FMFaelle({ cases, isLoading }: Props) {
   });
 
   return (
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -143,5 +144,6 @@ export default function FMFaelle({ cases, isLoading }: Props) {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }

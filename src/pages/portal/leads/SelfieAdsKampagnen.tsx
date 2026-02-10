@@ -25,16 +25,11 @@ export default function SelfieAdsKampagnen() {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6 p-1">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Megaphone className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold">Meine Kampagnen</h1>
-            <p className="text-sm text-muted-foreground">Beauftragte Kaufy Selfie Ads Mandate</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Meine Kampagnen</h1>
+          <p className="text-muted-foreground mt-1">Beauftragte Kaufy Selfie Ads Mandate</p>
         </div>
         <Button onClick={() => navigate('/portal/leads/selfie-ads-planen')} className="gap-2">
           <Plus className="h-4 w-4" /> Neue Kampagne
