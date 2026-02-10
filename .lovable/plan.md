@@ -1,87 +1,88 @@
 
+# Armstrong Sprachausgabe (TTS) — Konversationsmodus
 
-# Aktualisierter Plan: Spracheingabe mit ElevenLabs + Komplettreparatur
+## Befund
 
-## Aenderung gegenueber vorherigem Plan
+Armstrong hat aktuell:
+- **STT (Spracheingabe):** ElevenLabs Scribe v2 Realtime — gerade implementiert
+- **TTS (Sprachausgabe):** Komplett fehlend — `isSpeaking` existiert im State, wird aber nie auf `true` gesetzt
 
-Statt Option A (Browser Speech API) wird jetzt **direkt ElevenLabs** implementiert, da ein API-Key vorhanden ist. Die Browser Speech API bleibt als Fallback erhalten.
+Der Nutzer spricht rein, bekommt Text zurueck, aber Armstrong "antwortet" nie per Stimme. Fuer ein echtes Gespraech fehlt die zweite Haelfte.
 
-## Schritt 1: ElevenLabs API-Key als Secret speichern
+## Loesung: ElevenLabs TTS Edge Function + Auto-Speak bei Voice-Modus
 
-- `ELEVENLABS_API_KEY` muss als neues Secret hinterlegt werden (aktuell nicht vorhanden)
-- Danach steht der Key fuer Edge Functions zur Verfuegung
+### Architektur
 
-## Schritt 2: Edge Function fuer ElevenLabs STT Token
+```text
+User spricht → ElevenLabs STT → Transcript → sot-armstrong-advisor → Text-Antwort
+                                                                          ↓
+                                                          elevenlabs-tts Edge Function
+                                                                          ↓
+                                                              Audio Blob → Browser Play
+```
 
-Neue Edge Function `elevenlabs-scribe-token`:
-- Generiert Single-Use-Tokens fuer Realtime-Transkription
-- Ruft `https://api.elevenlabs.io/v1/single-use-token/realtime_scribe` auf
-- Schuetzt den API-Key serverseitig
+Wenn der Nutzer per **Voice** interagiert (nicht per Tastatur), wird die Armstrong-Antwort automatisch vorgelesen. Bei Text-Eingabe bleibt alles still.
 
-## Schritt 3: `useArmstrongVoice.ts` komplett umschreiben
+### Schritt 1: Neue Edge Function `elevenlabs-tts`
 
-Der kaputte WebSocket-Code (430 Zeilen) wird ersetzt durch:
+Datei: `supabase/functions/elevenlabs-tts/index.ts`
 
-1. **Primaer:** ElevenLabs `useScribe` Hook (Realtime STT via `@elevenlabs/react` SDK)
-   - Modell: `scribe_v2_realtime`
-   - Commit-Strategie: VAD (automatische Spracherkennung)
-   - Token wird von der Edge Function geholt
-2. **Fallback:** Browser `SpeechRecognition` API (aus `useArmstrongVoiceBrowser.ts`)
-3. Die Hook-Signatur bleibt identisch — alle 3 Consumer (`ArmstrongContainer`, `ChatPanel`, `ComposeEmailDialog`) funktionieren ohne Aenderung
+- Empfaengt `{ text, voiceId? }` per POST
+- Ruft ElevenLabs TTS API auf: `https://api.elevenlabs.io/v1/text-to-speech/{voiceId}/stream`
+- Modell: `eleven_turbo_v2_5` (niedrige Latenz, ideal fuer Konversation)
+- Stimme: `onwK4e9ZLuTAKqWW03F9` (Daniel — professionelle deutsche Maennerstimme)
+- Gibt Audio-Blob (MP3) zurueck
+- Nutzt den bereits vorhandenen `ELEVENLABS_API_KEY`
 
-Transkribierter Text wird an den bestehenden `sot-armstrong-advisor` gesendet (Text-basiert).
+### Schritt 2: `useArmstrongVoice.ts` erweitern — TTS-Wiedergabe
 
-## Schritt 4: Wiederverwendbare `DictationButton`-Komponente
+Neue Funktion im Hook: `speakResponse(text: string)`
 
-Neue Datei `src/components/shared/DictationButton.tsx`:
-- Kapselt Voice-Logik (ElevenLabs primaer, Browser-Fallback)
-- Props: `onTranscript(text)` Callback
-- Nutzt den existierenden `VoiceButton` fuer die UI
+- Ruft die `elevenlabs-tts` Edge Function auf
+- Empfaengt Audio-Blob
+- Spielt per `new Audio(URL.createObjectURL(blob))` ab
+- Setzt `isSpeaking: true` waehrend der Wiedergabe, `false` wenn fertig
+- Bereinigt Object-URLs nach Abspielen
 
-Einbau in alle relevanten Freitext-Felder (Prioritaet HOCH zuerst):
+### Schritt 3: `ChatPanel.tsx` — Auto-Speak bei Voice-Modus
 
-| Komponente | Feld |
+Neue Logik:
+- Neuer State `voiceMode: boolean` — wird `true` wenn Nutzer per Voice eine Nachricht sendet
+- Wenn `voiceMode === true` und eine neue Assistant-Nachricht eintrifft:
+  - `voice.speakResponse(message.content)` aufrufen
+  - Markdown-Syntax aus dem Text strippen vor TTS (kein `**`, `#`, etc.)
+- Wenn Nutzer per Tastatur schreibt, bleibt `voiceMode = false`
+- Voice-Transcript wird automatisch als Nachricht an den Advisor gesendet (bereits vorhanden, muss nur verbunden werden)
+
+### Schritt 4: Voice-Transcript automatisch senden
+
+Aktuell wird der Voice-Transcript nur angezeigt, aber **nicht automatisch** an den Advisor gesendet. Aenderung in `ChatPanel.tsx`:
+- Wenn `voice.transcript` sich aendert und der Nutzer aufhoert zu sprechen (`isListening` wechselt von `true` auf `false`), wird der gesammelte Transcript als Nachricht gesendet
+- Setzt `voiceMode = true` damit die Antwort vorgelesen wird
+
+### Schritt 5: `ArmstrongContainer.tsx` — Orb-Modus Voice-Konversation
+
+Im Orb-Modus (collapsed) soll eine Sprachkonversation moeglich sein, ohne den Panel zu oeffnen:
+- Nutzer klickt Mic → STT laeuft → Transcript wird an Advisor gesendet
+- Antwort kommt zurueck → TTS spielt ab → Armstrong "spricht"
+- Der Orb zeigt waehrend TTS-Wiedergabe die `Volume2`-Animation (bereits im UI vorhanden, nur `isSpeaking` muss korrekt gesetzt werden)
+
+## Dateien-Uebersicht
+
+| Datei | Aktion |
 |---|---|
-| `CampaignWizard.tsx` | Kampagnen-Nachricht |
-| `ClaimCreateDialog.tsx` | Schadensbeschreibung |
-| `ServiceCaseCreateDialog.tsx` | Kurzbeschreibung |
-| `ScopeDefinitionPanel.tsx` | Sanierungsumfang |
-| `TenderDraftPanel.tsx` | Zusaetzliche Hinweise |
-| `DeliveryTab.tsx` | Praesentationsnotizen |
-| `KontakteTab.tsx` | Kontakt-Notizen |
-| `KundenTab.tsx` | Kunden-Notizen |
-| `MietyPortalPage.tsx` | WhatsApp/E-Mail/Uebersetzer |
+| `supabase/functions/elevenlabs-tts/index.ts` | NEU — TTS Streaming Edge Function |
+| `src/hooks/useArmstrongVoice.ts` | ERWEITERN — `speakResponse()` Funktion hinzufuegen |
+| `src/components/chat/ChatPanel.tsx` | ERWEITERN — Auto-Speak + Auto-Send bei Voice-Modus |
+| `src/components/portal/ArmstrongContainer.tsx` | ERWEITERN — Orb-Modus Voice-Konversation (Transcript → Advisor → TTS) |
 
-## Schritt 5: Acquiary Quicklink im Dashboard
+## Konfiguration
 
-`src/pages/admin/Dashboard.tsx` — Button "Acquiary" im Zone-3-Websites-Grid nach Future Room einfuegen.
+- **Voice ID:** `onwK4e9ZLuTAKqWW03F9` (Daniel) — professionelle deutsche Stimme
+- **Modell:** `eleven_turbo_v2_5` — optimiert fuer niedrige Latenz
+- **Format:** MP3 Streaming (`/stream` Endpunkt)
+- **Secret:** `ELEVENLABS_API_KEY` — bereits vorhanden
 
-## Schritt 6: Dokumentation in Integrations-Seite
+## Keine Datenbank-Aenderung noetig
 
-`src/pages/admin/Integrations.tsx` — Neue Sektion "Spracheingabe (Voice)":
-- Aktiver Modus: ElevenLabs Scribe v2 Realtime
-- Fallback: Browser Speech API
-- Tabelle aller Felder mit Voice-Integration und Status
-
-## Technische Details
-
-### Neue Abhaengigkeit
-- `@elevenlabs/react` (npm install)
-
-### Neue Dateien
-| Datei | Beschreibung |
-|---|---|
-| `supabase/functions/elevenlabs-scribe-token/index.ts` | Token-Generierung |
-| `src/components/shared/DictationButton.tsx` | Wiederverwendbare Diktat-Komponente |
-
-### Geaenderte Dateien
-| Datei | Aenderung |
-|---|---|
-| `src/hooks/useArmstrongVoice.ts` | Komplett umschreiben: ElevenLabs + Browser-Fallback |
-| `src/pages/admin/Dashboard.tsx` | Acquiary-Quicklink hinzufuegen |
-| `src/pages/admin/Integrations.tsx` | Voice-Dokumentationssektion |
-| 9+ Textarea-Komponenten | DictationButton einbauen |
-
-### Kein Datenbank-Aenderung noetig
 Rein clientseitig + Edge Function. Keine neuen Tabellen oder RLS-Policies.
-
