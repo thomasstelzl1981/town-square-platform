@@ -1,12 +1,12 @@
 /**
  * UnitPreislisteTable — 13-column unit price list for MOD-13 Projekte
- * Inline-editable Verkaufspreis + EUR/m² columns
+ * Inline-editable Verkaufspreis, EUR/m², Stellplatz columns + Status dropdown
  */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Pencil } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DemoUnit } from './demoProjectData';
 
 interface CalculatedUnit extends DemoUnit {
@@ -20,14 +20,18 @@ interface UnitPreislisteTableProps {
   units: CalculatedUnit[];
   projectId: string;
   isDemo?: boolean;
-  onUnitPriceChange?: (unitId: string, field: 'list_price' | 'price_per_sqm', value: number) => void;
+  onUnitPriceChange?: (unitId: string, field: 'list_price' | 'price_per_sqm' | 'parking_price', value: number) => void;
+  onStatusChange?: (unitId: string, status: string) => void;
 }
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  available: { label: 'Frei', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  reserved: { label: 'Reserviert', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
-  sold: { label: 'Verkauft', className: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400' },
-};
+const STATUS_OPTIONS: Array<{ value: string; label: string; className: string }> = [
+  { value: 'available', label: 'Frei', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  { value: 'reserved', label: 'Reserviert', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
+  { value: 'notary', label: 'Notar', className: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400' },
+  { value: 'sold', label: 'Verkauft', className: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400' },
+];
+
+const STATUS_MAP = Object.fromEntries(STATUS_OPTIONS.map(s => [s.value, s]));
 
 function eur(v: number) {
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -104,7 +108,7 @@ function EditableCell({
   );
 }
 
-export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChange }: UnitPreislisteTableProps) {
+export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChange, onStatusChange }: UnitPreislisteTableProps) {
   const navigate = useNavigate();
 
   // Summary row
@@ -138,16 +142,15 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Rendite</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Verkaufspreis ✎</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Provision</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Stellplatz</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Stellplatz ✎</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">EUR/m² ✎</th>
               <th className="px-3 py-2.5 text-center font-semibold text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>
             {units.map((u, idx) => {
-              const badge = STATUS_BADGE[u.status] || STATUS_BADGE.available;
+              const status = STATUS_MAP[u.status] || STATUS_MAP.available;
               const isFirstDemo = isDemo && idx === 0;
-              const canEdit = true;
               return (
                 <tr
                   key={u.id}
@@ -169,21 +172,41 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
                     <EditableCell
                       value={u.effective_price}
                       onCommit={(v) => onUnitPriceChange?.(u.id, 'list_price', v)}
-                      disabled={!canEdit}
                     />
                   </td>
                   <td className="px-3 py-2 text-right">{eur(u.effective_provision)}</td>
-                  <td className="px-3 py-2 text-right">{eur(u.parking_price)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <EditableCell
+                      value={u.parking_price}
+                      onCommit={(v) => onUnitPriceChange?.(u.id, 'parking_price', v)}
+                    />
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <EditableCell
                       value={u.effective_price_per_sqm}
                       suffix="€"
                       onCommit={(v) => onUnitPriceChange?.(u.id, 'price_per_sqm', v)}
-                      disabled={!canEdit}
                     />
                   </td>
-                  <td className="px-3 py-2 text-center">
-                    <Badge className={cn('text-[10px] border-0', badge.className)}>{badge.label}</Badge>
+                  <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={u.status}
+                      onValueChange={(v) => onStatusChange?.(u.id, v)}
+                    >
+                      <SelectTrigger className={cn(
+                        'h-6 w-[90px] text-[10px] font-medium border-0 mx-auto',
+                        status.className
+                      )}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {STATUS_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </td>
                 </tr>
               );
