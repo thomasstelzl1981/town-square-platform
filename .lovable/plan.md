@@ -1,74 +1,80 @@
 
+# MOD-13 Projekte: Analyse und Reparaturplan
 
-# PIN-geschützte Published URL + Admin-Link
+## Befunde
 
-## Zur Frage: Aktualisierung der Published URL
+### 1. Routing: Grundsaetzlich korrekt, aber Legacy-Link fehlerhaft
 
-**Frontend-Änderungen** (UI, Komponenten, Styling) müssen jedes Mal neu publiziert werden ("Update" klicken im Publish-Dialog). Die Published URL zeigt immer den letzten Stand zum Zeitpunkt des Publishings.
+Die Routing-Struktur ist intakt:
+- `/portal/projekte` leitet korrekt auf `/portal/projekte/dashboard` weiter
+- 4 Tiles (Dashboard, Projekte, Vertrieb, Marketing) werden in der SubTabs-Navigation angezeigt -- das entspricht dem 4-Tile-Pattern aus der MOD-13-Spezifikation
+- `kontexte` ist bewusst als "hidden route" konfiguriert (nur ueber Einstellungen erreichbar)
 
-**Backend-Änderungen** (Edge Functions, Datenbank-Migrationen) werden sofort automatisch deployed -- die wirken also auch auf der Published URL ohne erneutes Publishing.
+**Problem gefunden:** Die `ProjectDetailPage` hat einen Back-Button der auf `/portal/projekte/portfolio` zeigt (Zeile 73 und 100). Das ist eine **alte Route**, die per Legacy-Redirect auf `/portal/projekte/projekte` umgeleitet wird. Das funktioniert, erzeugt aber einen unnoetigem Redirect-Hop und wuerde brechen, wenn die Legacy-Redirects irgendwann entfernt werden.
 
-Kurz: Wenn wir am Chat-Widget oder Layout weiterarbeiten, muss danach nochmal "Update" geklickt werden. Wenn wir nur an der Armstrong Edge Function arbeiten, ist das sofort live.
+**Fix:** Back-Links in `ProjectDetailPage.tsx` aendern von `/portal/projekte/portfolio` auf `/portal/projekte/projekte`.
 
----
+### 2. Leere Seiten ohne Seed-Daten: Kein Bug, aber verbesserbar
 
-## Was wird gebaut
+Alle Tabs haben bereits Empty States:
+- **Dashboard:** Zeigt "Laden Sie oben ein Expose hoch" mit Magic-Intake-Widget
+- **Projekte (Portfolio):** Zeigt EmptyState-Komponente mit "Keine Projekte" + Button
+- **Vertrieb:** Zeigt EmptyState "Keine Reservierungen"
+- **Marketing:** Zeigt EmptyState "Keine Projekte"
 
-### 1. PIN-Gate für die Kaufy-Seite (Code: 4409)
+Die Grundstruktur ist also erkennbar. Falls die Seiten aber komplett leer erscheinen, koennte das ein **RLS-Problem** sein (kein `tenantId` im Profil = leere Queries = aber die UI zeigt trotzdem die Struktur). Das muss auf dem echten Account getestet werden.
 
-Eine einfache Zwischenseite, die vor dem Kaufy-Layout erscheint:
-- Eingabe eines 4-stelligen Codes
-- Bei korrektem Code (4409) wird ein Flag in `sessionStorage` gesetzt
-- Solange die Session aktiv ist, kein erneutes Eingeben noetig
-- Bei falschem Code: kurze Fehlermeldung, erneuter Versuch
+### 3. Storage-Tree-Abgleich: DISKREPANZ GEFUNDEN
 
-Das Design bleibt minimal und passt zum Kaufy-Branding (dunkler Hintergrund, zentrierte Eingabe).
+Es gibt eine **Inkonsistenz** zwischen zwei Stellen:
 
-```text
-+----------------------------------+
-|                                  |
-|        KAUFY Preview             |
-|                                  |
-|    Bitte Zugangscode eingeben:   |
-|        [  _ _ _ _  ]            |
-|                                  |
-|        [ Zugang ]               |
-|                                  |
-+----------------------------------+
+**storageManifest.ts (entity_sub_folders fuer MOD_13):**
+```
+01_Expose, 02_Kalkulation, 03_Vertrag, 04_Due_Diligence, 
+05_Gutachten, 06_Fotos, 07_Sonstiges
 ```
 
-### 2. Link im Admin-Dashboard (Zone 1)
+**sot-project-intake Edge Function (PROJECT_FOLDERS):**
+```
+01_expose, 02_preisliste, 03_bilder_marketing, 
+04_kalkulation_exports, 05_reservierungen, 06_vertraege, 99_sonstiges
+```
 
-Im Admin-Dashboard (`/admin`) wird eine kleine Karte oder ein Link-Button eingefuegt:
-- Label: "Kaufy Preview (Published)"
-- Icon: ExternalLink
-- Oeffnet die Published URL `/kaufy2026` in neuem Tab
-- Nur sichtbar fuer Platform Admins
+Die Edge Function ist die **korrekte SSOT** gemaess der Memory-Eintraege. Die `storageManifest.ts` hat noch alte/generische Ordnernamen. Das bedeutet:
+- Wenn ein anderer Code-Pfad (z.B. DMS-Modul, universeller Upload) die `storageManifest.ts` nutzt, wuerden falsche Ordner erstellt werden
+- Die Edge Function selbst nutzt ihre eigenen Konstanten, nicht die aus storageManifest
+
+**Fix:** `storageManifest.ts` MOD_13 `entity_sub_folders` an die Edge Function angleichen.
+
+### 4. Unit-Ordner-Struktur: Korrekt
+
+Die Edge Function erstellt bei Projektanlage:
+- `{projectCode}/` (Projektordner unter MOD_13-Root)
+- `{projectCode}/01_expose/` bis `{projectCode}/99_sonstiges/`
+- `{projectCode}/Einheiten/{WE-001}/01_grundriss/` bis `99_sonstiges/`
+
+Das entspricht exakt der dokumentierten Hierarchie.
 
 ---
 
-## Technische Details
+## Aenderungen
 
-### Neue Datei: `src/components/zone3/kaufy2026/KaufyPinGate.tsx`
+### Datei 1: `src/pages/portal/projekte/ProjectDetailPage.tsx`
+- Zeile 73: `/portal/projekte/portfolio` aendern zu `/portal/projekte/projekte`
+- Zeile 100: `/portal/projekte/portfolio` aendern zu `/portal/projekte/projekte`
 
-- Nutzt die bestehende `InputOTP`-Komponente (4 Slots)
-- Prueft gegen den hardcoded PIN "4409"
-- Setzt `sessionStorage.setItem('kaufy_pin_verified', 'true')` bei Erfolg
-- Zeigt Fehlermeldung bei falschem Code
+### Datei 2: `src/config/storageManifest.ts`
+- MOD_13 `entity_sub_folders` aktualisieren auf die korrekten Ordnernamen:
+```
+'01_expose', '02_preisliste', '03_bilder_marketing',
+'04_kalkulation_exports', '05_reservierungen', '06_vertraege', '99_sonstiges'
+```
+- `required_docs` entsprechend anpassen:
+```
+{ name: 'Projekt-Expose', folder: '01_expose' },
+{ name: 'Preisliste', folder: '02_preisliste' },
+```
 
-### Aenderung: `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`
+### Datei 3: Keine weiteren Aenderungen noetig
 
-- Beim Laden pruefen: `sessionStorage.getItem('kaufy_pin_verified')`
-- Falls nicht verifiziert: `KaufyPinGate` rendern statt `<Outlet />`
-- Falls verifiziert: normales Layout wie bisher
-
-### Aenderung: `src/pages/admin/Dashboard.tsx`
-
-- Neue kleine Card oder Button-Zeile mit Link zur Published URL + `/kaufy2026`
-- Nur sichtbar wenn `isPlatformAdmin`
-- Oeffnet in neuem Tab (`target="_blank"`)
-
-### Sicherheitshinweis
-
-Der PIN ist ein einfacher Sichtschutz fuer die Praesentation, kein echtes Auth-System. Er verhindert, dass zufaellige Besucher die Preview-Seite sehen. Der Code liegt client-seitig -- das ist fuer diesen Zweck ausreichend.
-
+Die 4-Tile-Navigation, das Routing und die Empty States funktionieren korrekt. Es gibt kein Routing-Problem bei den Tabs -- alle 4 Tiles (Dashboard, Projekte, Vertrieb, Marketing) sind im Manifest definiert und werden von der SubTabs-Komponente korrekt gerendert.
