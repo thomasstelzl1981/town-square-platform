@@ -6,6 +6,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/**
+ * System-E-Mail-Adresse für den zentralen Posteingang (Zone 1):
+ * posteingang@inbound.systemofatown.com
+ *
+ * Die eingehende E-Mail enthält im Betreff den Empfänger (Tenant-ID oder Name)
+ * und das Datum. Die PDFs werden extrahiert, als inbound_items gespeichert
+ * und automatisch geroutet, falls eine passende Routing-Regel existiert.
+ */
+const SYSTEM_INBOX_LOCAL = "posteingang";
+const SYSTEM_INBOX_DOMAIN = "inbound.systemofatown.com";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -56,13 +67,13 @@ Deno.serve(async (req) => {
 
       // Lazy provisioning: create mailbox using User-ID if none exists
       if (!mailbox) {
-        const shortId = user.id.split("-")[0]; // first segment of UUID
+        const shortId = user.id.split("-")[0];
         const { data: newMailbox, error: createErr } = await sbAdmin
           .from("inbound_mailboxes")
           .insert({
             tenant_id: profile.active_tenant_id,
             address_local_part: shortId,
-            address_domain: "inbound.systemofatown.com",
+            address_domain: SYSTEM_INBOX_DOMAIN,
             provider: "resend",
             is_active: true,
           })
@@ -74,7 +85,7 @@ Deno.serve(async (req) => {
           return json({ error: "Could not create mailbox" }, 500);
         }
         mailbox = newMailbox;
-        console.log(`Lazy-provisioned mailbox: ${shortId}@inbound.systemofatown.com for tenant ${profile.active_tenant_id}`);
+        console.log(`Lazy-provisioned mailbox: ${shortId}@${SYSTEM_INBOX_DOMAIN} for tenant ${profile.active_tenant_id}`);
       }
 
       return json({
@@ -84,11 +95,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── GET: return system inbox address ───
+    if (req.method === "GET" && action === "system-inbox") {
+      return json({
+        address: `${SYSTEM_INBOX_LOCAL}@${SYSTEM_INBOX_DOMAIN}`,
+        description: "Zentraler Posteingang für Zone 1 — eingehende Post wird als inbound_item erfasst und automatisch geroutet.",
+      });
+    }
+
     // ─── POST: webhook receiver (Resend inbound email) ───
     if (req.method === "POST") {
       const body = await req.json();
 
-      // Resend wraps events in { type, data }
       const eventType = body.type;
       if (eventType !== "email.received") {
         console.log(`Ignoring event type: ${eventType}`);
@@ -102,142 +120,24 @@ Deno.serve(async (req) => {
 
       const sbAdmin = createClient(supabaseUrl, serviceKey);
 
-      // Find matching mailbox from TO recipients
+      // Determine if this is for the SYSTEM inbox or a tenant mailbox
       const toAddresses: string[] = Array.isArray(emailData.to)
         ? emailData.to
         : [emailData.to].filter(Boolean);
 
-      let matchedMailbox: any = null;
-      for (const addr of toAddresses) {
-        const cleanAddr = addr.toLowerCase().trim();
-        const [localPart, domain] = cleanAddr.split("@");
-        if (!localPart || !domain) continue;
+      const isSystemInbox = toAddresses.some((addr) => {
+        const clean = addr.toLowerCase().trim();
+        return clean === `${SYSTEM_INBOX_LOCAL}@${SYSTEM_INBOX_DOMAIN}` ||
+               clean.startsWith(`${SYSTEM_INBOX_LOCAL}@`);
+      });
 
-        const { data } = await sbAdmin
-          .from("inbound_mailboxes")
-          .select("*")
-          .eq("address_local_part", localPart)
-          .eq("address_domain", domain)
-          .eq("is_active", true)
-          .maybeSingle();
-
-        if (data) {
-          matchedMailbox = data;
-          break;
-        }
+      if (isSystemInbox) {
+        // ─── SYSTEM INBOX: Post für Zone 1 Posteingang ───
+        return await handleSystemInbox(sbAdmin, emailData, toAddresses);
       }
 
-      if (!matchedMailbox) {
-        console.warn("No matching mailbox for:", toAddresses);
-        return json({ error: "No matching mailbox" }, 404);
-      }
-
-      const tenantId = matchedMailbox.tenant_id;
-      const providerEmailId =
-        emailData.id || emailData.email_id || crypto.randomUUID();
-      const fromEmail =
-        typeof emailData.from === "string"
-          ? emailData.from
-          : emailData.from?.address || "unknown";
-      const toEmail = toAddresses[0] || "";
-      const subject = emailData.subject || "(Kein Betreff)";
-
-      // Idempotency: skip if already processed
-      const { data: existing } = await sbAdmin
-        .from("inbound_emails")
-        .select("id")
-        .eq("provider_email_id", providerEmailId)
-        .maybeSingle();
-
-      if (existing) {
-        console.log(`Duplicate webhook for ${providerEmailId}, skipping`);
-        return json({ ok: true, duplicate: true });
-      }
-
-      // Parse attachments metadata
-      const rawAttachments: any[] = emailData.attachments || [];
-      const attachmentMeta = rawAttachments.map((a: any) => ({
-        filename: a.filename || a.name || "attachment",
-        mime_type: a.content_type || a.mime_type || "application/octet-stream",
-        size_bytes: a.size || a.content?.length || null,
-        is_pdf:
-          (a.content_type || a.mime_type || "").includes("pdf") ||
-          (a.filename || a.name || "").toLowerCase().endsWith(".pdf"),
-      }));
-
-      const pdfCount = attachmentMeta.filter((a: any) => a.is_pdf).length;
-
-      // Insert inbound_email
-      const { data: inboundEmail, error: emailErr } = await sbAdmin
-        .from("inbound_emails")
-        .insert({
-          tenant_id: tenantId,
-          mailbox_id: matchedMailbox.id,
-          provider: "resend",
-          provider_email_id: providerEmailId,
-          from_email: fromEmail,
-          to_email: toEmail,
-          subject,
-          received_at: emailData.created_at || new Date().toISOString(),
-          attachment_count: attachmentMeta.length,
-          pdf_count: pdfCount,
-          status: pdfCount > 0 ? "processing" : "ready",
-        })
-        .select("id")
-        .single();
-
-      if (emailErr) {
-        console.error("Insert inbound_email error:", emailErr);
-        return json({ error: "DB insert failed" }, 500);
-      }
-
-      // Insert attachment metadata
-      if (attachmentMeta.length > 0) {
-        const attachRows = attachmentMeta.map((a: any) => ({
-          inbound_email_id: inboundEmail.id,
-          tenant_id: tenantId,
-          filename: a.filename,
-          mime_type: a.mime_type,
-          size_bytes: a.size_bytes,
-          is_pdf: a.is_pdf,
-        }));
-
-        await sbAdmin.from("inbound_attachments").insert(attachRows);
-      }
-
-      // Process PDFs: download from Resend & upload to Storage
-      if (pdfCount > 0) {
-        try {
-          await processPdfAttachments(
-            sbAdmin,
-            inboundEmail.id,
-            tenantId,
-            rawAttachments,
-          );
-
-          await sbAdmin
-            .from("inbound_emails")
-            .update({ status: "ready" })
-            .eq("id", inboundEmail.id);
-        } catch (procErr) {
-          console.error("PDF processing error:", procErr);
-          await sbAdmin
-            .from("inbound_emails")
-            .update({
-              status: "error",
-              error_message:
-                procErr instanceof Error
-                  ? procErr.message
-                  : "PDF processing failed",
-            })
-            .eq("id", inboundEmail.id);
-        }
-      }
-
-      console.log(
-        `Inbound email processed: ${inboundEmail.id} (${pdfCount} PDFs)`,
-      );
-      return json({ ok: true, inbound_email_id: inboundEmail.id });
+      // ─── TENANT MAILBOX: Per-Tenant Inbox (bestehende Logik) ───
+      return await handleTenantMailbox(sbAdmin, emailData, toAddresses);
     }
 
     return json({ error: "Method not allowed" }, 405);
@@ -246,6 +146,360 @@ Deno.serve(async (req) => {
     return json({ error: "Internal server error" }, 500);
   }
 });
+
+// ─── SYSTEM INBOX HANDLER ───
+// Eingehende Post wird als inbound_item gespeichert und automatisch geroutet.
+// Der Betreff enthält den Empfänger (Tenant-ID oder Kurzform) und das Datum.
+// Beispiel-Betreff: "D028BC99 | 10.02.2026 | Mietvertrag"
+
+async function handleSystemInbox(
+  sbAdmin: any,
+  emailData: any,
+  _toAddresses: string[],
+) {
+  const subject = emailData.subject || "";
+  const fromEmail = typeof emailData.from === "string"
+    ? emailData.from
+    : emailData.from?.address || "unknown";
+  const providerEmailId = emailData.id || emailData.email_id || crypto.randomUUID();
+
+  // Parse subject for recipient identifier
+  // Expected format: "TENANT_SHORT_ID | DATE | DESCRIPTION"
+  // or just the tenant short ID anywhere in the subject
+  const recipientInfo = parseRecipient(subject);
+
+  // Resolve tenant from recipient identifier
+  let resolvedTenantId: string | null = null;
+  if (recipientInfo.tenantShortId) {
+    const { data: orgs } = await sbAdmin
+      .from("organizations")
+      .select("id, name")
+      .limit(500);
+
+    if (orgs) {
+      // Match by first 8 chars of UUID (case-insensitive)
+      const match = orgs.find((o: any) =>
+        o.id.toLowerCase().startsWith(recipientInfo.tenantShortId!.toLowerCase())
+      );
+      if (match) {
+        resolvedTenantId = match.id;
+      }
+    }
+  }
+
+  // Process PDF attachments
+  const rawAttachments: any[] = emailData.attachments || [];
+  const pdfAttachments = rawAttachments.filter((a: any) => {
+    const mime = a.content_type || a.mime_type || "";
+    const name = a.filename || a.name || "";
+    return mime.includes("pdf") || name.toLowerCase().endsWith(".pdf");
+  });
+
+  if (pdfAttachments.length === 0) {
+    console.log("System inbox: No PDF attachments, creating metadata-only item");
+  }
+
+  // Create one inbound_item per PDF (or one metadata item if no PDFs)
+  const items = pdfAttachments.length > 0 ? pdfAttachments : [null];
+  const createdItemIds: string[] = [];
+
+  for (const att of items) {
+    const filename = att ? (att.filename || att.name || "dokument.pdf") : "Kein Anhang";
+    let storagePath: string | null = null;
+    let fileSize: number | null = null;
+
+    // Upload PDF to storage if content available
+    if (att?.content) {
+      const binaryStr = atob(att.content);
+      const fileBytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        fileBytes[i] = binaryStr.charCodeAt(i);
+      }
+      fileSize = fileBytes.length;
+
+      const now = new Date();
+      const yyyy = now.getFullYear().toString();
+      const mm = (now.getMonth() + 1).toString().padStart(2, "0");
+      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+      storagePath = `system-inbox/${yyyy}/${mm}/${providerEmailId}/${safeName}`;
+
+      const { error: uploadErr } = await sbAdmin.storage
+        .from("tenant-documents")
+        .upload(storagePath, fileBytes, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadErr) {
+        console.error(`System inbox upload failed for ${filename}:`, uploadErr);
+        storagePath = null;
+      }
+    }
+
+    // Create inbound_item
+    const { data: item, error: itemErr } = await sbAdmin
+      .from("inbound_items")
+      .insert({
+        source: "postservice",
+        external_id: providerEmailId,
+        sender_info: { email: fromEmail, subject },
+        recipient_info: {
+          tenant_short_id: recipientInfo.tenantShortId,
+          tenant_id: resolvedTenantId,
+          parsed_date: recipientInfo.date,
+          parsed_description: recipientInfo.description,
+        },
+        file_name: filename,
+        file_path: storagePath,
+        mime_type: att ? "application/pdf" : null,
+        file_size_bytes: fileSize,
+        status: "pending",
+        assigned_tenant_id: resolvedTenantId,
+        metadata: { system_inbox: true, provider_email_id: providerEmailId },
+      })
+      .select("id")
+      .single();
+
+    if (itemErr) {
+      console.error("System inbox item insert error:", itemErr);
+      continue;
+    }
+
+    createdItemIds.push(item.id);
+
+    // Auto-route if tenant resolved and routing rule exists
+    if (resolvedTenantId) {
+      const { data: rules } = await sbAdmin
+        .from("inbound_routing_rules")
+        .select("*")
+        .eq("target_tenant_id", resolvedTenantId)
+        .eq("is_active", true)
+        .order("priority", { ascending: false })
+        .limit(1);
+
+      if (rules && rules.length > 0) {
+        const rule = rules[0];
+        await autoRouteToZone2(sbAdmin, item.id, resolvedTenantId, rule.mandate_id, storagePath, filename, fileSize);
+        console.log(`Auto-routed item ${item.id} to tenant ${resolvedTenantId}`);
+      }
+    }
+  }
+
+  console.log(`System inbox processed: ${createdItemIds.length} items from ${fromEmail}`);
+  return json({ ok: true, items_created: createdItemIds.length, item_ids: createdItemIds });
+}
+
+// Auto-route: create document + document_link + mark as routed
+async function autoRouteToZone2(
+  sbAdmin: any,
+  inboundItemId: string,
+  targetTenantId: string,
+  mandateId: string | null,
+  filePath: string | null,
+  fileName: string,
+  fileSize: number | null,
+) {
+  const publicId = `post-${inboundItemId.slice(0, 8)}-${Date.now()}`;
+
+  const { data: doc, error: docErr } = await sbAdmin
+    .from("documents")
+    .insert({
+      tenant_id: targetTenantId,
+      name: fileName || "Zugestellte Post",
+      file_path: filePath || "",
+      mime_type: "application/pdf",
+      size_bytes: fileSize || 0,
+      source: "postservice",
+      public_id: publicId,
+    })
+    .select("id")
+    .single();
+
+  if (docErr) {
+    console.error("Auto-route doc creation failed:", docErr);
+    return;
+  }
+
+  // Create document_link
+  await sbAdmin.from("document_links").insert({
+    tenant_id: targetTenantId,
+    document_id: doc.id,
+    object_type: "postservice_delivery",
+    object_id: inboundItemId,
+    link_status: "current",
+  });
+
+  // Mark inbound_item as routed
+  const updatePayload: Record<string, unknown> = {
+    status: "assigned",
+    assigned_tenant_id: targetTenantId,
+    routed_to_zone2_at: new Date().toISOString(),
+  };
+  if (mandateId) updatePayload.mandate_id = mandateId;
+
+  await sbAdmin.from("inbound_items").update(updatePayload).eq("id", inboundItemId);
+}
+
+// Parse subject line for recipient info
+// Expected: "D028BC99 | 10.02.2026 | Mietvertrag"
+// Also handles: "D028BC99" alone, or "D028BC99 - 2026-02-10"
+function parseRecipient(subject: string): {
+  tenantShortId: string | null;
+  date: string | null;
+  description: string | null;
+} {
+  const result: { tenantShortId: string | null; date: string | null; description: string | null } = {
+    tenantShortId: null,
+    date: null,
+    description: null,
+  };
+
+  // Try pipe-separated format first: "ID | DATE | DESC"
+  const pipeParts = subject.split("|").map((s) => s.trim());
+  if (pipeParts.length >= 1) {
+    // First part: tenant short ID (8-char hex-like)
+    const idCandidate = pipeParts[0].replace(/[^a-fA-F0-9]/g, "");
+    if (idCandidate.length >= 8) {
+      result.tenantShortId = idCandidate.slice(0, 8);
+    }
+    if (pipeParts.length >= 2) result.date = pipeParts[1];
+    if (pipeParts.length >= 3) result.description = pipeParts.slice(2).join(" | ");
+  }
+
+  // Fallback: look for 8+ char hex pattern anywhere
+  if (!result.tenantShortId) {
+    const hexMatch = subject.match(/[a-fA-F0-9]{8,}/);
+    if (hexMatch) {
+      result.tenantShortId = hexMatch[0].slice(0, 8);
+    }
+  }
+
+  return result;
+}
+
+// ─── TENANT MAILBOX HANDLER (existing logic) ───
+
+async function handleTenantMailbox(
+  sbAdmin: any,
+  emailData: any,
+  toAddresses: string[],
+) {
+  let matchedMailbox: any = null;
+  for (const addr of toAddresses) {
+    const cleanAddr = addr.toLowerCase().trim();
+    const [localPart, domain] = cleanAddr.split("@");
+    if (!localPart || !domain) continue;
+
+    const { data } = await sbAdmin
+      .from("inbound_mailboxes")
+      .select("*")
+      .eq("address_local_part", localPart)
+      .eq("address_domain", domain)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (data) {
+      matchedMailbox = data;
+      break;
+    }
+  }
+
+  if (!matchedMailbox) {
+    console.warn("No matching mailbox for:", toAddresses);
+    return json({ error: "No matching mailbox" }, 404);
+  }
+
+  const tenantId = matchedMailbox.tenant_id;
+  const providerEmailId =
+    emailData.id || emailData.email_id || crypto.randomUUID();
+  const fromEmail =
+    typeof emailData.from === "string"
+      ? emailData.from
+      : emailData.from?.address || "unknown";
+  const toEmail = toAddresses[0] || "";
+  const subject = emailData.subject || "(Kein Betreff)";
+
+  // Idempotency
+  const { data: existing } = await sbAdmin
+    .from("inbound_emails")
+    .select("id")
+    .eq("provider_email_id", providerEmailId)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`Duplicate webhook for ${providerEmailId}, skipping`);
+    return json({ ok: true, duplicate: true });
+  }
+
+  const rawAttachments: any[] = emailData.attachments || [];
+  const attachmentMeta = rawAttachments.map((a: any) => ({
+    filename: a.filename || a.name || "attachment",
+    mime_type: a.content_type || a.mime_type || "application/octet-stream",
+    size_bytes: a.size || a.content?.length || null,
+    is_pdf:
+      (a.content_type || a.mime_type || "").includes("pdf") ||
+      (a.filename || a.name || "").toLowerCase().endsWith(".pdf"),
+  }));
+
+  const pdfCount = attachmentMeta.filter((a: any) => a.is_pdf).length;
+
+  const { data: inboundEmail, error: emailErr } = await sbAdmin
+    .from("inbound_emails")
+    .insert({
+      tenant_id: tenantId,
+      mailbox_id: matchedMailbox.id,
+      provider: "resend",
+      provider_email_id: providerEmailId,
+      from_email: fromEmail,
+      to_email: toEmail,
+      subject,
+      received_at: emailData.created_at || new Date().toISOString(),
+      attachment_count: attachmentMeta.length,
+      pdf_count: pdfCount,
+      status: pdfCount > 0 ? "processing" : "ready",
+    })
+    .select("id")
+    .single();
+
+  if (emailErr) {
+    console.error("Insert inbound_email error:", emailErr);
+    return json({ error: "DB insert failed" }, 500);
+  }
+
+  if (attachmentMeta.length > 0) {
+    const attachRows = attachmentMeta.map((a: any) => ({
+      inbound_email_id: inboundEmail.id,
+      tenant_id: tenantId,
+      filename: a.filename,
+      mime_type: a.mime_type,
+      size_bytes: a.size_bytes,
+      is_pdf: a.is_pdf,
+    }));
+    await sbAdmin.from("inbound_attachments").insert(attachRows);
+  }
+
+  if (pdfCount > 0) {
+    try {
+      await processPdfAttachments(sbAdmin, inboundEmail.id, tenantId, rawAttachments);
+      await sbAdmin
+        .from("inbound_emails")
+        .update({ status: "ready" })
+        .eq("id", inboundEmail.id);
+    } catch (procErr) {
+      console.error("PDF processing error:", procErr);
+      await sbAdmin
+        .from("inbound_emails")
+        .update({
+          status: "error",
+          error_message: procErr instanceof Error ? procErr.message : "PDF processing failed",
+        })
+        .eq("id", inboundEmail.id);
+    }
+  }
+
+  console.log(`Inbound email processed: ${inboundEmail.id} (${pdfCount} PDFs)`);
+  return json({ ok: true, inbound_email_id: inboundEmail.id });
+}
 
 // ─── PDF Processing ───
 
@@ -261,46 +515,34 @@ async function processPdfAttachments(
 
   for (const att of rawAttachments) {
     const filename = att.filename || att.name || "attachment";
-    const mimeType =
-      att.content_type || att.mime_type || "application/octet-stream";
-    const isPdf =
-      mimeType.includes("pdf") || filename.toLowerCase().endsWith(".pdf");
-
+    const mimeType = att.content_type || att.mime_type || "application/octet-stream";
+    const isPdf = mimeType.includes("pdf") || filename.toLowerCase().endsWith(".pdf");
     if (!isPdf) continue;
 
-    // Get the content - Resend may include base64 content inline
     let fileBytes: Uint8Array;
-
     if (att.content) {
-      // Base64 content included in webhook
       const binaryStr = atob(att.content);
       fileBytes = new Uint8Array(binaryStr.length);
       for (let i = 0; i < binaryStr.length; i++) {
         fileBytes[i] = binaryStr.charCodeAt(i);
       }
     } else {
-      // Skip if no content available (would need Resend API fetch)
       console.warn(`No content for attachment ${filename}, skipping`);
       continue;
     }
 
-    // Upload to Storage
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${tenantId}/inbox/${yyyy}/${mm}/${inboundEmailId}/${safeName}`;
 
     const { error: uploadErr } = await sbAdmin.storage
       .from("tenant-documents")
-      .upload(storagePath, fileBytes, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
+      .upload(storagePath, fileBytes, { contentType: "application/pdf", upsert: false });
 
     if (uploadErr) {
       console.error(`Upload failed for ${filename}:`, uploadErr);
       continue;
     }
 
-    // Create documents record
     const { data: doc, error: docErr } = await sbAdmin
       .from("documents")
       .insert({
@@ -318,7 +560,6 @@ async function processPdfAttachments(
       continue;
     }
 
-    // Create document_links record
     await sbAdmin.from("document_links").insert({
       tenant_id: tenantId,
       document_id: doc.id,
@@ -327,13 +568,9 @@ async function processPdfAttachments(
       link_status: "current",
     });
 
-    // Update attachment record with storage_path + document_id
     await sbAdmin
       .from("inbound_attachments")
-      .update({
-        storage_path: storagePath,
-        document_id: doc.id,
-      })
+      .update({ storage_path: storagePath, document_id: doc.id })
       .eq("inbound_email_id", inboundEmailId)
       .eq("filename", filename);
 

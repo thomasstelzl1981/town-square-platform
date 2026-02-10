@@ -62,7 +62,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { matchRoutingRule, routeToZone2 } from '@/lib/postRouting';
+import { matchRoutingRule, routeToZone2, SYSTEM_INBOX_EMAIL } from '@/lib/postRouting';
 
 interface InboundItem {
   id: string;
@@ -406,6 +406,11 @@ export default function InboxPage() {
         <p className="text-muted-foreground">
           Eingehende Post verwalten, Routing-Regeln pflegen und Postservice-Aufträge bearbeiten
         </p>
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">System-Posteingang:</span>
+          <code className="px-2 py-0.5 bg-muted rounded text-xs font-mono">{SYSTEM_INBOX_EMAIL}</code>
+        </div>
       </div>
 
       {error && (
