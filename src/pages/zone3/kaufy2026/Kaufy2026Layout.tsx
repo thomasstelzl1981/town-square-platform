@@ -2,18 +2,32 @@
  * Kaufy2026Layout — Zone 3 Website Layout
  * 
  * Design: 1400px centered container with rounded corners
- * Header: Logo + Nav + Auth buttons
+ * Header: Logo + Nav + Armstrong Toggle + Auth buttons
  * Footer: 5-column grid
+ * Armstrong: Floating AI chat widget with header toggle
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
+
+const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 
 export default function Kaufy2026Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Armstrong toggle — default ON, persisted in localStorage
+  const [armstrongEnabled, setArmstrongEnabled] = useState(() => {
+    const saved = localStorage.getItem(ARMSTRONG_STORAGE_KEY);
+    return saved === null ? true : saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(ARMSTRONG_STORAGE_KEY, String(armstrongEnabled));
+  }, [armstrongEnabled]);
 
   const navLinks = [
     { path: '/kaufy2026', label: 'Suchen', exact: true },
@@ -60,8 +74,32 @@ export default function Kaufy2026Layout() {
               ))}
             </nav>
 
-            {/* Auth Buttons */}
+            {/* Right side: Armstrong Toggle + Auth */}
             <div className="hidden md:flex items-center gap-3">
+              {/* Armstrong Toggle */}
+              <button
+                onClick={() => setArmstrongEnabled(!armstrongEnabled)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+                  armstrongEnabled
+                    ? 'bg-[hsl(210,80%,55%,0.12)] text-[hsl(210,80%,40%)]'
+                    : 'bg-[hsl(210,20%,92%)] text-[hsl(215,16%,55%)]'
+                )}
+                aria-label={armstrongEnabled ? 'Armstrong deaktivieren' : 'Armstrong aktivieren'}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Armstrong</span>
+                <div className={cn(
+                  'relative h-4 w-7 rounded-full transition-colors',
+                  armstrongEnabled ? 'bg-[hsl(210,80%,55%)]' : 'bg-[hsl(210,20%,82%)]'
+                )}>
+                  <div className={cn(
+                    'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
+                    armstrongEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
+                  )} />
+                </div>
+              </button>
+
               <Link to="/auth">
                 <Button variant="ghost" size="sm" className="text-[hsl(220,20%,10%)]">
                   Anmelden
@@ -74,13 +112,35 @@ export default function Kaufy2026Layout() {
               </Link>
             </div>
 
-            {/* Mobile Menu Toggle */}
-            <button
-              className="md:hidden p-2"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            {/* Mobile: Armstrong Toggle + Menu */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                onClick={() => setArmstrongEnabled(!armstrongEnabled)}
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all',
+                  armstrongEnabled
+                    ? 'bg-[hsl(210,80%,55%,0.12)] text-[hsl(210,80%,40%)]'
+                    : 'bg-[hsl(210,20%,92%)] text-[hsl(215,16%,55%)]'
+                )}
+              >
+                <Sparkles className="h-3 w-3" />
+                <div className={cn(
+                  'relative h-3.5 w-6 rounded-full transition-colors',
+                  armstrongEnabled ? 'bg-[hsl(210,80%,55%)]' : 'bg-[hsl(210,20%,82%)]'
+                )}>
+                  <div className={cn(
+                    'absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform shadow-sm',
+                    armstrongEnabled ? 'translate-x-3' : 'translate-x-0.5'
+                  )} />
+                </div>
+              </button>
+              <button
+                className="p-2"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Nav */}
@@ -186,6 +246,9 @@ export default function Kaufy2026Layout() {
           </div>
         </footer>
       </div>
+
+      {/* Armstrong Chat Widget */}
+      <KaufyArmstrongWidget enabled={armstrongEnabled} />
     </div>
   );
 }
