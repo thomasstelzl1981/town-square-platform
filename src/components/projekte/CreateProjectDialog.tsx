@@ -3,16 +3,20 @@
  * MOD-13 PROJEKTE
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useDeveloperContexts } from '@/hooks/useDeveloperContexts';
-import { FolderKanban, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { FolderKanban, Loader2, ChevronRight, ChevronLeft, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -22,10 +26,18 @@ interface Props {
 }
 
 export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultContextId }: Props) {
-  const { contexts, isLoading: loadingContexts } = useDeveloperContexts();
+  const { profile } = useAuth();
+  const { contexts, isLoading: loadingContexts, createContext } = useDeveloperContexts();
   const { createProject, generateProjectCode } = useDevProjects();
   const [step, setStep] = useState(1);
   const [projectCode, setProjectCode] = useState('');
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [contextSearchValue, setContextSearchValue] = useState('');
+  // Track whether user typed a new name (not matching any existing context)
+  const [isNewContext, setIsNewContext] = useState(false);
+  const [newContextName, setNewContextName] = useState('');
+  // We need a temporary projectId for DMS seeding — will be set after project creation
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     developer_context_id: defaultContextId || '',
@@ -66,8 +78,23 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultCont
     e.preventDefault();
     
     try {
+      let contextId = formData.developer_context_id;
+      
+      // If user typed a new context name, create it first
+      if (isNewContext && newContextName.trim()) {
+        const newCtx = await createContext.mutateAsync({
+          name: newContextName.trim(),
+          context_type: 'company',
+        });
+        contextId = newCtx.id;
+      }
+      
+      if (!contextId) {
+        return;
+      }
+      
       const project = await createProject.mutateAsync({
-        developer_context_id: formData.developer_context_id,
+        developer_context_id: contextId,
         project_code: formData.project_code,
         name: formData.name,
         description: formData.description || undefined,
@@ -81,6 +108,58 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultCont
         holding_period_months: parseInt(formData.holding_period_months),
       });
       
+      // Seed DMS tree for the new project
+      try {
+        const { data: dmsResult, error: dmsError } = await supabase
+          .from('storage_nodes')
+          .select('id')
+          .eq('dev_project_id', project.id)
+          .limit(1);
+        
+        // Only seed if no DMS folders exist yet
+        if (!dmsError && (!dmsResult || dmsResult.length === 0)) {
+          // Create project root folder
+          const { data: projectFolder } = await supabase
+            .from('storage_nodes')
+            .insert({
+              name: formData.project_code,
+              node_type: 'folder',
+              tenant_id: profile?.active_tenant_id!,
+              dev_project_id: project.id,
+              object_type: 'dev_project',
+            })
+            .select()
+            .single();
+          
+          if (projectFolder) {
+            const subfolders = [
+              '01_expose', '02_preisliste', '03_bilder_marketing',
+              '04_kalkulation_exports', '05_reservierungen', '06_vertraege', '99_sonstiges'
+            ];
+            await supabase.from('storage_nodes').insert(
+              subfolders.map(name => ({
+                name,
+                node_type: 'folder' as const,
+                parent_id: projectFolder.id,
+                tenant_id: profile?.active_tenant_id!,
+                dev_project_id: project.id,
+              }))
+            );
+            
+            // Create Einheiten folder
+            await supabase.from('storage_nodes').insert({
+              name: 'Einheiten',
+              node_type: 'folder',
+              parent_id: projectFolder.id,
+              tenant_id: profile?.active_tenant_id!,
+              dev_project_id: project.id,
+            });
+          }
+        }
+      } catch (dmsErr) {
+        console.warn('DMS-Seeding fehlgeschlagen, Projekt wurde trotzdem erstellt:', dmsErr);
+      }
+      
       onOpenChange(false);
       resetForm();
       onSuccess?.(project.id);
@@ -92,6 +171,9 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultCont
   const resetForm = () => {
     setStep(1);
     setProjectCode('');
+    setIsNewContext(false);
+    setNewContextName('');
+    setContextSearchValue('');
     setFormData({
       developer_context_id: defaultContextId || '',
       project_code: '',
@@ -108,7 +190,11 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultCont
     });
   };
 
-  const canProceedStep1 = formData.developer_context_id && formData.name && formData.project_code;
+  const selectedContextName = isNewContext 
+    ? newContextName 
+    : contexts.find(c => c.id === formData.developer_context_id)?.name;
+
+  const canProceedStep1 = (formData.developer_context_id || (isNewContext && newContextName.trim())) && formData.name && formData.project_code;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
@@ -127,27 +213,87 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultCont
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="developer_context_id">Verkäufer-Gesellschaft *</Label>
-                <Select
-                  value={formData.developer_context_id}
-                  onValueChange={(v) => setFormData({ ...formData, developer_context_id: v })}
-                  disabled={loadingContexts}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Gesellschaft auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contexts.map((ctx) => (
-                      <SelectItem key={ctx.id} value={ctx.id}>
-                        {ctx.name}
-                        {ctx.is_default && <span className="text-muted-foreground ml-2">(Standard)</span>}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {contexts.length === 0 && !loadingContexts && (
+                <Label>Verkäufer-Gesellschaft *</Label>
+                <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={comboboxOpen}
+                      className="w-full justify-between font-normal"
+                      disabled={loadingContexts}
+                    >
+                      {selectedContextName || 'Gesellschaft auswählen oder eingeben...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Name suchen oder neu eingeben..."
+                        value={contextSearchValue}
+                        onValueChange={setContextSearchValue}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          {contextSearchValue.trim() ? (
+                            <button
+                              type="button"
+                              className="w-full px-4 py-2 text-sm text-left hover:bg-accent cursor-pointer"
+                              onClick={() => {
+                                setIsNewContext(true);
+                                setNewContextName(contextSearchValue.trim());
+                                setFormData(prev => ({ ...prev, developer_context_id: '' }));
+                                setComboboxOpen(false);
+                              }}
+                            >
+                              <span className="font-medium">„{contextSearchValue.trim()}"</span>{' '}
+                              <span className="text-muted-foreground">als neue Gesellschaft anlegen</span>
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground">Keine Gesellschaften gefunden.</span>
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {contexts.map((ctx) => (
+                            <CommandItem
+                              key={ctx.id}
+                              value={ctx.name}
+                              onSelect={() => {
+                                setFormData(prev => ({ ...prev, developer_context_id: ctx.id }));
+                                setIsNewContext(false);
+                                setNewContextName('');
+                                setComboboxOpen(false);
+                              }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', formData.developer_context_id === ctx.id ? 'opacity-100' : 'opacity-0')} />
+                              {ctx.name}
+                              {ctx.is_default && <span className="text-muted-foreground ml-2 text-xs">(Standard)</span>}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        {contextSearchValue.trim() && contexts.length > 0 && !contexts.some(c => c.name.toLowerCase() === contextSearchValue.trim().toLowerCase()) && (
+                          <CommandGroup heading="Neu anlegen">
+                            <CommandItem
+                              value={`__new__${contextSearchValue}`}
+                              onSelect={() => {
+                                setIsNewContext(true);
+                                setNewContextName(contextSearchValue.trim());
+                                setFormData(prev => ({ ...prev, developer_context_id: '' }));
+                                setComboboxOpen(false);
+                              }}
+                            >
+                              „{contextSearchValue.trim()}" als neue Gesellschaft anlegen
+                            </CommandItem>
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {isNewContext && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Bitte legen Sie zuerst eine Verkäufer-Gesellschaft an.
+                    Neue Gesellschaft „{newContextName}" wird beim Speichern automatisch angelegt.
                   </p>
                 )}
               </div>

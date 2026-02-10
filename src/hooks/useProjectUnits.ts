@@ -48,6 +48,57 @@ export function useProjectUnits(projectId: string | undefined) {
       : 0,
   };
 
+  // Helper: seed DMS folders for a unit
+  const seedUnitDMS = async (unit: DevProjectUnit) => {
+    if (!tenantId || !projectId) return;
+    
+    try {
+      // Find the "Einheiten" folder for this project
+      const { data: einheitenFolder } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('dev_project_id', projectId)
+        .eq('name', 'Einheiten')
+        .eq('node_type', 'folder')
+        .limit(1)
+        .single();
+      
+      if (!einheitenFolder) return;
+      
+      // Create unit folder
+      const { data: unitFolder } = await supabase
+        .from('storage_nodes')
+        .insert({
+          name: `WE-${unit.unit_number}`,
+          node_type: 'folder',
+          parent_id: einheitenFolder.id,
+          tenant_id: tenantId,
+          dev_project_id: projectId,
+          dev_project_unit_id: unit.id,
+        })
+        .select()
+        .single();
+      
+      if (!unitFolder) return;
+      
+      // Create unit subfolders
+      const subfolders = ['01_grundriss', '02_bilder', '03_verkaufsunterlagen', '04_vertraege_reservierung', '99_sonstiges'];
+      await supabase.from('storage_nodes').insert(
+        subfolders.map(name => ({
+          name,
+          node_type: 'folder' as const,
+          parent_id: unitFolder.id,
+          tenant_id: tenantId,
+          dev_project_id: projectId,
+          dev_project_unit_id: unit.id,
+        }))
+      );
+    } catch (err) {
+      console.warn('Unit-DMS-Seeding fehlgeschlagen für', unit.unit_number, err);
+    }
+  };
+
   // Create unit
   const createUnit = useMutation({
     mutationFn: async (input: CreateProjectUnitInput) => {
@@ -71,10 +122,12 @@ export function useProjectUnits(projectId: string | undefined) {
       if (error) throw error;
       return data as DevProjectUnit;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
       toast.success('Einheit erstellt');
+      // Seed DMS folders for the new unit
+      seedUnitDMS(data);
     },
     onError: (error: Error) => {
       toast.error('Fehler beim Erstellen: ' + error.message);
@@ -106,6 +159,8 @@ export function useProjectUnits(projectId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
       toast.success(`${data.length} Einheiten erstellt`);
+      // Seed DMS folders for each new unit
+      data.forEach(unit => seedUnitDMS(unit));
     },
     onError: (error: Error) => {
       toast.error('Fehler beim Erstellen: ' + error.message);
