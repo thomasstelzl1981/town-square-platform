@@ -7996,6 +7996,44 @@ export type Database = {
           },
         ]
       }
+      miety_eufy_accounts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          tenant_id: string
+          token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          tenant_id: string
+          token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          tenant_id?: string
+          token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_eufy_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       miety_homes: {
         Row: {
           address: string | null
