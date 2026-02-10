@@ -22,6 +22,9 @@ interface ComposeEmailDialogProps {
   accountId: string;
   accountEmail: string;
   onSent: () => void;
+  initialTo?: string;
+  initialSubject?: string;
+  initialBody?: string;
 }
 
 type DictationTarget = 'subject' | 'body' | null;
@@ -32,15 +35,27 @@ export function ComposeEmailDialog({
   accountId,
   accountEmail,
   onSent,
+  initialTo = '',
+  initialSubject = '',
+  initialBody = '',
 }: ComposeEmailDialogProps) {
-  const [to, setTo] = useState('');
+  const [to, setTo] = useState(initialTo);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [subject, setSubject] = useState(initialSubject);
+  const [body, setBody] = useState(initialBody);
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [dictationTarget, setDictationTarget] = useState<DictationTarget>(null);
+
+  // Sync initial values when they change (reply/forward)
+  useEffect(() => {
+    if (open) {
+      setTo(initialTo);
+      setSubject(initialSubject);
+      setBody(initialBody);
+    }
+  }, [open, initialTo, initialSubject, initialBody]);
 
   const voice = useArmstrongVoice();
   const lastTranscriptRef = useRef('');
