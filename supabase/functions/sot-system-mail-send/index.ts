@@ -35,14 +35,23 @@ serve(async (req) => {
     // Create service client for DB access
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Verify user via anon key client
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
-    const userClient = createClient(SUPABASE_URL, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    // Detect service-role calls (edge-to-edge) — bypass user auth
+    const token = authHeader.replace('Bearer ', '');
+    const isServiceRole = token === SUPABASE_SERVICE_ROLE_KEY;
+    let user: { id: string } | null = null;
+
+    if (isServiceRole) {
+      console.log('[sot-system-mail-send] Service-role call detected — skipping auth.getUser()');
+    } else {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
+      const userClient = createClient(SUPABASE_URL, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user: resolvedUser }, error: authError } = await userClient.auth.getUser();
+      if (authError || !resolvedUser) {
+        throw new Error('Unauthorized');
+      }
+      user = resolvedUser;
     }
 
     const body: SystemMailRequest = await req.json();
@@ -60,7 +69,7 @@ serve(async (req) => {
       fromAddress = `System of a Town <${from_override}>`;
       replyTo = from_override;
       console.log(`[sot-system-mail-send] Using from_override: ${from_override}`);
-    } else {
+    } else if (user) {
       // Resolve outbound identity from user
       const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
         p_user_id: user.id,
