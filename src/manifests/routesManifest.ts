@@ -491,6 +491,9 @@ export const zone2Portal: ZoneDefinition = {
         { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
         { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
       ],
+      dynamic_routes: [
+        { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
+      ],
     },
   },
 };

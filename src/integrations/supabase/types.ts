@@ -7615,6 +7615,179 @@ export type Database = {
           },
         ]
       }
+      miety_contracts: {
+        Row: {
+          cancellation_date: string | null
+          category: string
+          contract_number: string | null
+          created_at: string
+          end_date: string | null
+          home_id: string
+          id: string
+          monthly_cost: number | null
+          notes: string | null
+          provider_name: string | null
+          start_date: string | null
+          tenant_id: string
+        }
+        Insert: {
+          cancellation_date?: string | null
+          category?: string
+          contract_number?: string | null
+          created_at?: string
+          end_date?: string | null
+          home_id: string
+          id?: string
+          monthly_cost?: number | null
+          notes?: string | null
+          provider_name?: string | null
+          start_date?: string | null
+          tenant_id: string
+        }
+        Update: {
+          cancellation_date?: string | null
+          category?: string
+          contract_number?: string | null
+          created_at?: string
+          end_date?: string | null
+          home_id?: string
+          id?: string
+          monthly_cost?: number | null
+          notes?: string | null
+          provider_name?: string | null
+          start_date?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_contracts_home_id_fkey"
+            columns: ["home_id"]
+            isOneToOne: false
+            referencedRelation: "miety_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miety_contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      miety_homes: {
+        Row: {
+          address: string | null
+          address_house_no: string | null
+          area_sqm: number | null
+          city: string | null
+          created_at: string
+          id: string
+          move_in_date: string | null
+          name: string
+          notes: string | null
+          ownership_type: string
+          property_type: string
+          rooms_count: number | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_house_no?: string | null
+          area_sqm?: number | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          move_in_date?: string | null
+          name?: string
+          notes?: string | null
+          ownership_type?: string
+          property_type?: string
+          rooms_count?: number | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_house_no?: string | null
+          area_sqm?: number | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          move_in_date?: string | null
+          name?: string
+          notes?: string | null
+          ownership_type?: string
+          property_type?: string
+          rooms_count?: number | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_homes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      miety_meter_readings: {
+        Row: {
+          created_at: string
+          home_id: string
+          id: string
+          meter_type: string
+          notes: string | null
+          reading_date: string
+          reading_value: number
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          home_id: string
+          id?: string
+          meter_type?: string
+          notes?: string | null
+          reading_date?: string
+          reading_value: number
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          home_id?: string
+          id?: string
+          meter_type?: string
+          notes?: string | null
+          reading_date?: string
+          reading_value?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_meter_readings_home_id_fkey"
+            columns: ["home_id"]
+            isOneToOne: false
+            referencedRelation: "miety_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miety_meter_readings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       msv_bank_accounts: {
         Row: {
           account_name: string
