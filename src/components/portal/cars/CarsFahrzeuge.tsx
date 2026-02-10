@@ -155,7 +155,11 @@ export function CarsFahrzeuge() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">FAHRZEUGE</h1>
+        <p className="text-muted-foreground mt-1">Ihre Fahrzeuge und Flotte verwalten</p>
+      </div>
       {/* Search & Add */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
         <div className="relative flex-1 max-w-sm">

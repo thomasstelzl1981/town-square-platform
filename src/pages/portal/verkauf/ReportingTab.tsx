@@ -162,7 +162,11 @@ const ReportingTab = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">REPORTING</h1>
+        <p className="text-muted-foreground mt-1">Inserate-Performance und Kennzahlen</p>
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

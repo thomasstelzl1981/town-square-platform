@@ -263,8 +263,12 @@ export function ProfilTab() {
     .toUpperCase() || 'U';
 
   return (
-    <form onSubmit={handleSubmit} className="pb-20">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+    <form onSubmit={handleSubmit} className="max-w-7xl mx-auto px-4 py-6 md:px-6 pb-20">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight uppercase">STAMMDATEN</h1>
+        <p className="text-muted-foreground mt-1">Ihr persönliches Profil und Kontaktdaten</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ── Persönliche Daten ── */}
         <ProfileWidget icon={User} title="Persönliche Daten" description="Profilbild, Name und E-Mail">
           <div className="flex items-start gap-4 mb-4">

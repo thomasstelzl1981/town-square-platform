@@ -90,17 +90,12 @@ export function SerienEmailsPage() {
   const sentCampaigns = campaigns.filter(c => c.status === 'sent').length;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Mail className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Serien-E-Mails</h1>
-            <p className="text-xs text-muted-foreground">Personalisierter Massenversand an Ihre Kontakte</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">SERIEN-E-MAILS</h1>
+          <p className="text-muted-foreground mt-1">Personalisierter Massenversand an Ihre Kontakte</p>
         </div>
         <Button onClick={() => setShowWizard(true)}>
           <Plus className="h-4 w-4 mr-2" /> Neue Serien-E-Mail

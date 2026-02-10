@@ -61,12 +61,12 @@ export default function AnlagenTab() {
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-h2 text-foreground">Anlagen</h2>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight uppercase">ANLAGEN</h1>
+          <p className="text-muted-foreground mt-1">
             {hasPlants ? `${plants.length} PV-Anlage${plants.length > 1 ? 'n' : ''}` : 'Ihr PV-Portfolio'}
           </p>
         </div>
