@@ -421,16 +421,16 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-16": {
-      name: "Services",
+      name: "Shops",
       base: "services",
-      icon: "Wrench",
+      icon: "ShoppingCart",
       display_order: 16,
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
-        { path: "katalog", component: "ServicesKatalog", title: "Katalog" },
-        { path: "anfragen", component: "ServicesAnfragen", title: "Anfragen" },
-        { path: "auftraege", component: "ServicesAuftraege", title: "Aufträge" },
-        { path: "settings", component: "ServicesSettings", title: "Einstellungen" },
+        { path: "amazon", component: "ShopsAmazon", title: "Amazon Business" },
+        { path: "otto-office", component: "ShopsOttoOffice", title: "OTTO Office" },
+        { path: "miete24", component: "ShopsMiete24", title: "Miete24" },
+        { path: "bestellungen", component: "ShopsBestellungen", title: "Bestellungen" },
       ],
     },
     "MOD-17": {
