@@ -30,6 +30,8 @@ interface UseArmstrongVoiceReturn extends VoiceState {
   stopListening: () => void;
   toggleVoice: () => void;
   disconnect: () => void;
+  speakResponse: (text: string) => Promise<void>;
+  stopSpeaking: () => void;
 }
 
 // ─── Browser Speech API types ───
@@ -188,6 +190,8 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   const browserRecRef = useRef<SpeechRecognitionType | null>(null);
   const isStoppingRef = useRef(false);
   const providerRef = useRef<'elevenlabs' | 'browser'>('elevenlabs');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   // ── ElevenLabs start ──
   const startElevenLabs = useCallback(async () => {
@@ -365,12 +369,106 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     }
   }, [state.isListening, startListening, stopListening]);
 
+  // ── TTS: speakResponse ──
+  const stopSpeaking = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setState(prev => ({ ...prev, isSpeaking: false }));
+  }, []);
+
+  const speakResponse = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    
+    // Strip markdown syntax for cleaner TTS
+    const cleanText = text
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[-*+]\s/g, '')
+      .replace(/>\s/g, '')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, ' ')
+      .trim();
+    
+    if (!cleanText) return;
+
+    // Stop any current playback
+    stopSpeaking();
+    
+    setState(prev => ({ ...prev, isSpeaking: true }));
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: cleanText }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`TTS request failed: ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl;
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setState(prev => ({ ...prev, isSpeaking: false }));
+        URL.revokeObjectURL(audioUrl);
+        audioUrlRef.current = null;
+        audioRef.current = null;
+      };
+      
+      audio.onerror = () => {
+        console.error('[Voice] TTS playback error');
+        setState(prev => ({ ...prev, isSpeaking: false }));
+        URL.revokeObjectURL(audioUrl);
+        audioUrlRef.current = null;
+        audioRef.current = null;
+      };
+      
+      await audio.play();
+    } catch (e) {
+      console.error('[Voice] TTS error:', e);
+      setState(prev => ({ ...prev, isSpeaking: false }));
+    }
+  }, [stopSpeaking]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       scribeRef.current?.disconnect();
       isStoppingRef.current = true;
       try { browserRecRef.current?.stop(); } catch { /* ignore */ }
+      // Cleanup TTS audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
     };
   }, []);
 
@@ -380,5 +478,7 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     stopListening,
     toggleVoice,
     disconnect,
+    speakResponse,
+    stopSpeaking,
   };
 }
