@@ -1,81 +1,106 @@
 
-# MIETY Uebersicht: 3-Kachel-Layout + Kommunikation-Redesign
+# MOD-16 Shops + Bestellungen — MVP UI Build
 
-## Aenderung 1: Uebersicht — 3 quadratische Kacheln nebeneinander
+## Aenderung 1: Naming Fix + Manifest Update
 
-Die aktuelle Home-Card (eine einzelne breite Karte) wird ersetzt durch **3 gleichgrosse, quadratische Kacheln** nebeneinander (wie Dashboard-Widgets, `aspect-square`):
+**Datei:** `src/manifests/routesManifest.ts`
 
-### Kachel 1: Adresse + Name
-- **Zeile 1:** Vorname + Nachname (aus `profile.first_name` + `profile.last_name`)
-- **Zeile 2:** Strasse + Hausnummer
-- **Zeile 3:** PLZ + Stadt
-- Schrift etwas groesser als bisher, untereinander angeordnet
-- Badges (Miete/Eigentum, Flaeche, Zimmer) darunter
-- "Bearbeiten" Button
+MOD-16 wird umbenannt und die Tiles komplett neu definiert:
 
-### Kachel 2: Foto / Google Street View
-- Quadratisches Feld fuer Foto-Upload (Drag & Drop oder Klick)
-- Wenn kein eigenes Foto: Versuch Google Street View Embed zu laden (`https://www.google.com/maps?q={adresse}&layer=c&output=embed`)
-- Fallback: Upload-Platzhalter mit Kamera-Icon
-
-### Kachel 3: Google Earth / Satellitenansicht
-- Der bisherige kleine Satellite-Embed wird zur eigenen quadratischen Kachel
-- `https://www.google.com/maps?q={adresse}&t=k&z=18&output=embed`
-- Rundung und Overflow wie die anderen Kacheln
-
-**Layout:** `grid grid-cols-1 sm:grid-cols-3 gap-4`, jede Kachel `aspect-square`
-
-## Aenderung 2: Tab-Reihenfolge — Dokumente raus, Kommunikation nach rechts
-
-Die "Dokumente"-Tab wird entfernt (redundant mit den anderen Ordnern). Neue Reihenfolge:
-
-1. Uebersicht
-2. Zaehlerstaende
-3. Versorgung
-4. Versicherungen
-5. Kommunikation (ganz rechts)
-
-### routesManifest.ts MOD-20 tiles:
 ```
-uebersicht, zaehlerstaende, versorgung, versicherungen, kommunikation
+name: "Shops" (statt "Services")
+icon: "ShoppingCart" (statt "Wrench")
+tiles:
+  - { path: "amazon", title: "Amazon Business" }
+  - { path: "otto-office", title: "OTTO Office" }
+  - { path: "miete24", title: "Miete24" }
+  - { path: "bestellungen", title: "Bestellungen" }
 ```
 
-5 Tiles statt 6 (Dokumente entfaellt).
+## Aenderung 2: ServicesPage.tsx komplett neu
 
-## Aenderung 3: Kommunikation-Tab komplett neu (3 Kacheln)
+**Datei:** `src/pages/portal/ServicesPage.tsx`
 
-### Kachel 1: WhatsApp Business
-- WhatsApp-Icon (gruen)
-- Feld fuer Vermieter-Telefonnummer
-- "Nachricht senden" Button
-- Info: "Verfuegbar wenn Ihr Vermieter WhatsApp Business nutzt"
-- Farblich leicht abgehoben wenn verbunden (gruener Rand/Hintergrund)
+Die bisherigen Katalog/Anfragen/Auftraege/Einstellungen Tiles werden ersetzt durch:
 
-### Kachel 2: E-Mail
-- Mail-Icon
-- Feld fuer Vermieter E-Mail-Adresse
-- Betreff + Nachrichtenfeld
-- "E-Mail senden" Button
-- Direkter Versand per `mailto:` Link oder kuenftig ueber Backend
+### Shop-Tabs (Amazon, OTTO Office, Miete24)
 
-### Kachel 3: KI-Uebersetzer
-- Languages/Globe-Icon
-- Textfeld fuer Eingabe
-- Sprachauswahl (Deutsch → Englisch, Tuerkisch, Arabisch, Ukrainisch etc.)
-- "Uebersetzen" Button
-- Uebersetztes Ergebnis mit "Kopieren" Button
-- User kann dann per Copy & Paste in WhatsApp oder E-Mail einfuegen
+Jeder Shop-Tab bekommt dieselbe Struktur:
 
-Die Vermieter-Verlinkung (Einladungscode) bleibt als kleiner Bereich oberhalb der 3 Kacheln. Wenn verbunden, werden die Kontaktdaten des Vermieters automatisch in WhatsApp/E-Mail eingetragen und die Kacheln farblich abgehoben.
+**A) Hero Card:**
+- Shop-Name + Icon/Logo-Platzhalter
+- Kurzbeschreibung (z.B. "Buerobedarf und IT-Zubehoer fuer Ihr Unternehmen")
+- CTA Button "Shop oeffnen" (placeholder Link, `onClick` only)
+
+**B) Integration Card:**
+- Status-Badge: "Nicht verbunden" (disconnected default)
+- Credential-Felder (nur UI, keine Logik):
+  - Amazon: API Key, Partner Tag
+  - OTTO Office: Affiliate ID, API Key
+  - Miete24: Partner ID, API Secret
+- Button "Verbindung testen" (disabled)
+
+### Bestellungen-Tab
+
+**A) Bestellungsliste (links/oben):**
+- Leere Liste mit Empty State
+- Button "Neue Bestellung"
+- Eine leere Bestellung "#---" ist als geoeffneter Tab vorhanden
+
+**B) Tab-Leiste fuer geoeffnete Bestellungen (Widget-Pattern):**
+- Tabs wie Dashboard-Widgets, horizontal scrollbar
+- Default: Ein Tab "Bestellung #---" (aktiv)
+
+**C) Bestell-Detail (im aktiven Tab):**
+
+Header-Felder (2-3 Spalten Grid):
+- Bestell-ID (placeholder "---")
+- Shop (Select: Amazon/OTTO Office/Miete24)
+- Status (Select: Draft/Submitted/Ordered/Shipped/Completed/Cancelled)
+- Auftraggeber (Input, leer)
+- Kostenstelle/Projekt (Input, leer)
+- Lieferadresse, Rechnungsadresse (Textareas, leer)
+- Bestelldatum, Lieferdatum (Date Inputs, leer)
+- Zahlungsart (Select, leer)
+- Notizen (Textarea, leer)
+
+Positionen-Tabelle:
+- 8 leere Zeilen sichtbar
+- Spalten: Pos | Artikel | SKU | Menge | Einheit | Einzelpreis netto | MwSt% | Gesamt netto | Gesamt brutto | Link | Bemerkung
+
+Summenblock:
+- Zwischensumme netto: 0,00 EUR
+- MwSt Summe: 0,00 EUR
+- Gesamt brutto: 0,00 EUR
+
+Verlauf + Anhaenge:
+- Verlauf: leere Liste ("Noch keine Eintraege")
+- Anhaenge: Upload-Dropzone Platzhalter
+
+## Aenderung 3: WorkflowSubbar
+
+**Datei:** `src/components/shared/WorkflowSubbar.tsx`
+
+`SERVICES_WORKFLOW_STEPS` wird aktualisiert auf die neuen Shop-Steps:
+```
+amazon → otto-office → miete24 → bestellungen
+```
+(Labels: "Amazon" → "OTTO Office" → "Miete24" → "Bestellungen")
+
+## Design-Prinzipien
+
+- Alle Karten nutzen das bestehende `glass-card` / `Card` Pattern
+- Keine Beispieldaten — nur leere Felder und Strukturen
+- Desktop-first, Widget-Look fuer die Bestellungs-Tabs
+- Bestehende UI-Komponenten (Input, Select, Card, Badge, Button, Tabs) werden wiederverwendet
 
 ## Technische Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/MietyPortalPage.tsx` | UebersichtTile: 3-Kachel-Grid mit Adresse/Foto/Satellite. KommunikationTile: Komplett neu mit WhatsApp/E-Mail/KI-Uebersetzer. DokumenteTile entfernen. |
-| `src/manifests/routesManifest.ts` | MOD-20 tiles: Dokumente entfernen, Kommunikation ans Ende (5 Tiles) |
+| `src/manifests/routesManifest.ts` | MOD-16: name "Shops", 4 neue Tiles (amazon, otto-office, miete24, bestellungen) |
+| `src/pages/portal/ServicesPage.tsx` | Komplett neu: 3 Shop-Tabs + Bestellungen-Tab mit Widget-Pattern |
+| `src/components/shared/WorkflowSubbar.tsx` | SERVICES_WORKFLOW_STEPS aktualisieren |
 
 ### Keine Datenbank-Aenderungen noetig
-- Profile-Daten werden nur gelesen (SELECT)
-- Google Maps Embeds sind keyless
-- KI-Uebersetzung wird spaeter an Armstrong/Edge Function angebunden (vorerst UI-Platzhalter)
+Reines Frontend-MVP ohne Backend-Anbindung.
