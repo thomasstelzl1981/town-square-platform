@@ -1,13 +1,13 @@
 /**
- * ProjectDMSWidget — Miller-Column DMS for MOD-13 Projekte
- * 3-column navigation with drag-and-drop per folder.
- * Demo mode shows placeholder structure at reduced opacity.
+ * ProjectDMSWidget — Always-open dual-section DMS with column layout.
+ * Section 1: "Allgemein" (2 cols: folders + drop-zone)
+ * Section 2: "Einheiten" (3 cols: units + subfolders + drop-zone)
  */
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FolderOpen, Folder, ChevronRight, Upload, FolderPlus } from 'lucide-react';
+import { FolderOpen, Folder, Upload, FolderPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import type { DemoUnit } from './demoProjectData';
@@ -18,7 +18,6 @@ interface ProjectDMSWidgetProps {
   isDemo?: boolean;
 }
 
-// Standard project-level folders
 const PROJECT_FOLDERS = [
   '01_Exposé',
   '02_Preisliste',
@@ -29,7 +28,6 @@ const PROJECT_FOLDERS = [
   '99_Sonstiges',
 ];
 
-// Standard unit-level folders
 const UNIT_FOLDERS = [
   '01_Grundriss',
   '02_Bilder',
@@ -38,146 +36,88 @@ const UNIT_FOLDERS = [
   '99_Sonstiges',
 ];
 
-interface ColumnItem {
-  id: string;
-  label: string;
-  hasChildren: boolean;
-  count?: number;
-}
-
-interface ColumnProps {
-  items: ColumnItem[];
+interface FolderListProps {
+  items: string[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  isDropTarget?: boolean;
-  onDrop?: (files: File[]) => void;
-  isDemo?: boolean;
+  renderLabel?: (item: string) => string;
 }
 
-function Column({ items, selectedId, onSelect, isDropTarget, onDrop, isDemo }: ColumnProps) {
-  const content = (
-    <div className="flex flex-col gap-0.5 p-1.5 min-h-[280px]">
+function FolderList({ items, selectedId, onSelect, renderLabel }: FolderListProps) {
+  return (
+    <div className="flex flex-col gap-0.5 p-1.5">
       {items.map((item) => (
         <button
-          key={item.id}
-          onClick={() => onSelect(item.id)}
+          key={item}
+          onClick={() => onSelect(item)}
           className={cn(
-            'flex items-center gap-2.5 w-full text-left py-2 px-3 rounded-md text-sm transition-colors group',
-            selectedId === item.id
+            'flex items-center gap-2 w-full text-left py-1.5 px-2.5 rounded-md text-sm transition-colors',
+            selectedId === item
               ? 'bg-primary/10 text-primary font-medium'
               : 'hover:bg-muted/60 text-foreground',
           )}
         >
-          {selectedId === item.id ? (
-            <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+          {selectedId === item ? (
+            <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
           ) : (
-            <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           )}
-          <span className="truncate flex-1">{item.label}</span>
-          {item.count !== undefined && (
-            <span className="text-[11px] text-muted-foreground">{item.count}</span>
-          )}
-          {item.hasChildren && (
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          )}
+          <span className="truncate">{renderLabel ? renderLabel(item) : item}</span>
         </button>
       ))}
-
-      {/* Drop zone hint when this is the active target column */}
-      {isDropTarget && items.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground border border-dashed rounded-lg p-6 m-2">
-          <div className="flex flex-col items-center gap-1.5">
-            <Upload className="h-5 w-5" />
-            <span>Dateien hier ablegen</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  if (isDropTarget && onDrop && !isDemo) {
-    return (
-      <FileDropZone onDrop={onDrop} className="flex-1 min-w-[200px] overflow-y-auto">
-        {content}
-      </FileDropZone>
-    );
-  }
-
-  return (
-    <div className="flex-1 min-w-[200px] overflow-y-auto">
-      {content}
     </div>
   );
 }
 
+interface DropColumnProps {
+  label: string;
+  onDrop: (files: File[]) => void;
+  disabled?: boolean;
+}
+
+function DropColumn({ label, onDrop, disabled }: DropColumnProps) {
+  if (disabled) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground p-4">
+        <div className="flex flex-col items-center gap-1.5 opacity-50">
+          <Upload className="h-5 w-5" />
+          <span className="text-center">Dateien in<br /><strong>{label}</strong><br />ablegen</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <FileDropZone onDrop={onDrop} className="flex-1 min-h-full">
+      <div className="flex items-center justify-center h-full min-h-[120px] text-xs text-muted-foreground p-4">
+        <div className="flex flex-col items-center gap-1.5">
+          <Upload className="h-5 w-5" />
+          <span className="text-center">Dateien in<br /><strong>{label}</strong><br />ablegen</span>
+        </div>
+      </div>
+    </FileDropZone>
+  );
+}
+
 export function ProjectDMSWidget({ projectName, units, isDemo }: ProjectDMSWidgetProps) {
-  // columnPath tracks: [col1Selection, col2Selection]
-  const [col1, setCol1] = useState<string | null>(null);
-  const [col2, setCol2] = useState<string | null>(null);
+  const [selectedGeneralFolder, setSelectedGeneralFolder] = useState<string | null>(PROJECT_FOLDERS[0]);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(units[0]?.id ?? null);
+  const [selectedUnitFolder, setSelectedUnitFolder] = useState<string | null>(UNIT_FOLDERS[0]);
 
-  // === Build column data ===
+  const selectedUnit = units.find((u) => u.id === selectedUnitId);
 
-  // Column 1: Root items
-  const col1Items = useMemo<ColumnItem[]>(() => [
-    { id: 'allgemein', label: 'Allgemein', hasChildren: true, count: PROJECT_FOLDERS.length },
-    { id: 'einheiten', label: `Einheiten (${units.length})`, hasChildren: true, count: units.length },
-  ], [units.length]);
-
-  // Column 2: depends on col1 selection
-  const col2Items = useMemo<ColumnItem[]>(() => {
-    if (col1 === 'allgemein') {
-      return PROJECT_FOLDERS.map((f) => ({
-        id: `pf-${f}`,
-        label: f,
-        hasChildren: false,
-      }));
-    }
-    if (col1 === 'einheiten') {
-      return units.map((u) => ({
-        id: `unit-${u.id}`,
-        label: `${u.unit_number} — ${u.public_id}`,
-        hasChildren: true,
-        count: UNIT_FOLDERS.length,
-      }));
-    }
-    return [];
-  }, [col1, units]);
-
-  // Column 3: depends on col2 selection
-  const col3Items = useMemo<ColumnItem[]>(() => {
-    if (!col2) return [];
-    // If col2 is a unit, show unit folders
-    if (col2.startsWith('unit-')) {
-      return UNIT_FOLDERS.map((f) => ({
-        id: `uf-${col2}-${f}`,
-        label: f,
-        hasChildren: false,
-      }));
-    }
-    // If col2 is a project folder, it's a leaf — no col3
-    return [];
-  }, [col2]);
-
-  // Determine which column is the drop target (the deepest active one)
-  const activeDropColumn = col3Items.length > 0 ? 3 : col2Items.length > 0 ? 2 : 1;
-
-  const handleDrop = (files: File[]) => {
-    // TODO: implement actual upload to project-documents bucket with target node
-    const targetId = col2 || col1 || 'root';
-    console.log('Drop files to folder:', targetId, files);
+  const handleGeneralDrop = (files: File[]) => {
+    console.log('Drop to Allgemein/', selectedGeneralFolder, files);
   };
 
-  const handleCol1Select = (id: string) => {
-    setCol1(id);
-    setCol2(null);
+  const handleUnitDrop = (files: File[]) => {
+    console.log('Drop to Einheit/', selectedUnitId, selectedUnitFolder, files);
   };
 
-  const handleCol2Select = (id: string) => {
-    setCol2(id);
-  };
+  const unitIds = units.map((u) => u.id);
+  const unitLabelMap = Object.fromEntries(units.map((u) => [u.id, `${u.unit_number} — ${u.public_id}`]));
 
-  // Count info for status bar
-  const folderCount = col2Items.length + col3Items.length;
+  const folderCount = PROJECT_FOLDERS.length + UNIT_FOLDERS.length;
 
   return (
     <Card className={cn('overflow-hidden', isDemo && 'opacity-60 select-none')}>
@@ -203,46 +143,68 @@ export function ProjectDMSWidget({ projectName, units, isDemo }: ProjectDMSWidge
       </div>
 
       <CardContent className="p-0">
-        <div className={cn('flex divide-x divide-border min-h-[300px]', isDemo && 'pointer-events-none')}>
-          {/* Column 1: Root */}
-          <Column
-            items={col1Items}
-            selectedId={col1}
-            onSelect={handleCol1Select}
-            isDropTarget={activeDropColumn === 1}
-            onDrop={handleDrop}
-            isDemo={isDemo}
-          />
-
-          {/* Column 2: Subfolder or Units */}
-          {col2Items.length > 0 && (
-            <Column
-              items={col2Items}
-              selectedId={col2}
-              onSelect={handleCol2Select}
-              isDropTarget={activeDropColumn === 2}
-              onDrop={handleDrop}
-              isDemo={isDemo}
+        {/* === ALLGEMEIN === */}
+        <div className="px-4 pt-3 pb-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Allgemein</span>
+        </div>
+        <div className="flex divide-x divide-border border-b">
+          <div className="w-[220px] shrink-0 overflow-y-auto max-h-[260px]">
+            <FolderList
+              items={PROJECT_FOLDERS}
+              selectedId={selectedGeneralFolder}
+              onSelect={setSelectedGeneralFolder}
             />
-          )}
-
-          {/* Column 3: Unit subfolders */}
-          {col3Items.length > 0 && (
-            <Column
-              items={col3Items}
-              selectedId={null}
-              onSelect={() => {}}
-              isDropTarget={activeDropColumn === 3}
-              onDrop={handleDrop}
-              isDemo={isDemo}
+          </div>
+          <div className={cn('flex-1', isDemo && 'pointer-events-none')}>
+            <DropColumn
+              label={selectedGeneralFolder ?? 'Ordner wählen'}
+              onDrop={handleGeneralDrop}
+              disabled={isDemo}
             />
-          )}
+          </div>
+        </div>
+
+        {/* === EINHEITEN === */}
+        <div className="px-4 pt-3 pb-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Einheiten ({units.length})
+          </span>
+        </div>
+        <div className="flex divide-x divide-border border-b">
+          {/* Col 1: Units list */}
+          <div className="w-[220px] shrink-0 overflow-y-auto max-h-[300px]">
+            <FolderList
+              items={unitIds}
+              selectedId={selectedUnitId}
+              onSelect={(id) => {
+                setSelectedUnitId(id);
+                setSelectedUnitFolder(UNIT_FOLDERS[0]);
+              }}
+              renderLabel={(id) => unitLabelMap[id] ?? id}
+            />
+          </div>
+          {/* Col 2: Unit subfolders */}
+          <div className="w-[200px] shrink-0 overflow-y-auto max-h-[300px]">
+            <FolderList
+              items={UNIT_FOLDERS}
+              selectedId={selectedUnitFolder}
+              onSelect={setSelectedUnitFolder}
+            />
+          </div>
+          {/* Col 3: Drop zone */}
+          <div className={cn('flex-1', isDemo && 'pointer-events-none')}>
+            <DropColumn
+              label={`${selectedUnit ? `${selectedUnit.unit_number}` : '…'} / ${selectedUnitFolder ?? '…'}`}
+              onDrop={handleUnitDrop}
+              disabled={isDemo}
+            />
+          </div>
         </div>
 
         {/* Status bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/10 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between px-4 py-2 bg-muted/10 text-xs text-muted-foreground">
           <span>{folderCount} Ordner · 0 Dateien</span>
-          {col1 && <span className="text-[11px]">{col1 === 'allgemein' ? 'Allgemein' : 'Einheiten'}{col2 ? ` › …` : ''}</span>}
+          <span className="text-[11px]">{projectName}</span>
         </div>
       </CardContent>
     </Card>
