@@ -7,6 +7,11 @@
 
 import { AreaKey } from '@/manifests/areaConfig';
 
+import promoBaseKiDocs from '@/assets/promo-base-ki-docs.png';
+import promoMissionsWebinar from '@/assets/promo-missions-webinar.png';
+import promoOperationsPartner from '@/assets/promo-operations-partner.png';
+import promoServicesEnergy from '@/assets/promo-services-energy.png';
+
 export interface AreaPromoContent {
   areaKey: AreaKey;
   headline: string;
@@ -15,6 +20,7 @@ export interface AreaPromoContent {
   ctaRoute?: string;      // Internal route
   ctaUrl?: string;        // External URL
   badge?: string;         // e.g., "NEU", "WEBINAR", "AKTION"
+  imageUrl?: string;      // Promotional image
 }
 
 export const areaPromoContent: Record<AreaKey, AreaPromoContent> = {
@@ -25,6 +31,7 @@ export const areaPromoContent: Record<AreaKey, AreaPromoContent> = {
     ctaLabel: 'Mehr erfahren',
     ctaRoute: '/portal/dms',
     badge: 'NEU',
+    imageUrl: promoBaseKiDocs,
   },
   missions: {
     areaKey: 'missions',
@@ -33,6 +40,7 @@ export const areaPromoContent: Record<AreaKey, AreaPromoContent> = {
     ctaLabel: 'Anmelden',
     ctaUrl: 'https://webinar.example.com',
     badge: 'WEBINAR',
+    imageUrl: promoMissionsWebinar,
   },
   operations: {
     areaKey: 'operations',
@@ -41,13 +49,15 @@ export const areaPromoContent: Record<AreaKey, AreaPromoContent> = {
     ctaLabel: 'Details ansehen',
     ctaRoute: '/portal/vertriebspartner/network',
     badge: 'AKTION',
+    imageUrl: promoOperationsPartner,
   },
   services: {
     areaKey: 'services',
-    headline: 'PV-Offensive 2026',
-    description: '20% Rabatt auf Solar-Beratungen – nur noch bis Ende März.',
-    ctaLabel: 'Jetzt sichern',
-    ctaRoute: '/portal/photovoltaik',
-    badge: 'AKTION',
+    headline: 'Armstrong Energy',
+    description: 'Strom zum Börsenpreis — fair, transparent und günstig. 100% Ökostrom.',
+    ctaLabel: 'Mehr erfahren',
+    ctaRoute: '/portal/energy',
+    badge: 'NEU',
+    imageUrl: promoServicesEnergy,
   },
 };
