@@ -1,24 +1,15 @@
 /**
- * EarthGlobeCard — Google Maps 3D Globe with CSS Fallback
+ * EarthGlobeCard — react-globe.gl based Globe Widget
  *
- * Notes:
- * - We resolve the API key at runtime to avoid Vite build-time env caching.
- * - Uses the official `google.maps.importLibrary('maps3d')` API.
+ * No API key needed. Works in all modern browsers (WebGL1).
+ * Falls back to CSSGlobeFallback on WebGL errors.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Globe, Loader2, ZoomIn } from "lucide-react";
+import { Globe, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { CSSGlobeFallback } from "@/components/dashboard/earth-globe/CSSGlobeFallback";
-import { getGoogleMapsApiKey } from "@/components/dashboard/earth-globe/getGoogleMapsApiKey";
-
-declare global {
-  interface Window {
-    // Google Maps JS injects this at runtime
-    google?: any;
-  }
-}
 
 interface EarthGlobeCardProps {
   latitude: number | null;
@@ -26,191 +17,83 @@ interface EarthGlobeCardProps {
   city?: string;
 }
 
-const GOOGLE_SCRIPT_ATTR = "data-google-maps-js";
-
-async function loadGoogleMapsJs(apiKey: string): Promise<void> {
-  // If already loaded
-  if (window.google?.maps?.importLibrary) return;
-
-  // If script already present
-  const existing = document.querySelector<HTMLScriptElement>(
-    `script[${GOOGLE_SCRIPT_ATTR}]`,
-  );
-  if (existing) {
-    await new Promise<void>((resolve, reject) => {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Script laden fehlgeschlagen")));
-    });
-    return;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.setAttribute(GOOGLE_SCRIPT_ATTR, "true");
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=alpha`;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Google Maps Script konnte nicht geladen werden"));
-    document.head.appendChild(script);
-  });
-}
-
 export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
   const [isZoomedIn, setIsZoomedIn] = useState(false);
+  const [GlobeComponent, setGlobeComponent] = useState<any>(null);
 
+  const globeRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const startRotation = useCallback(() => {
-    const map = mapRef.current;
-    if (!map || isZoomedIn) return;
-
-    try {
-      const camera = {
-        center: { lat: 0, lng: 0, altitude: 0 },
-        range: 25_000_000,
-        tilt: 0,
-        heading: 0,
-      };
-
-      map.flyCameraAround({
-        camera,
-        durationMillis: 120_000,
-        repeatCount: 1_000_000,
+  // Lazy-load react-globe.gl
+  useEffect(() => {
+    let cancelled = false;
+    import("react-globe.gl")
+      .then((mod) => {
+        if (!cancelled) {
+          setGlobeComponent(() => mod.default);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load react-globe.gl:", err);
+        if (!cancelled) {
+          setHasError(true);
+          setIsLoading(false);
+        }
       });
-    } catch (e) {
-      console.warn("Rotation konnte nicht gestartet werden:", e);
+    return () => { cancelled = true; };
+  }, []);
+
+  // Measure container
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setDimensions({ width, height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Auto-rotation
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const controls = globe.controls();
+    if (controls) {
+      controls.autoRotate = !isZoomedIn;
+      controls.autoRotateSpeed = 0.4;
+      controls.enableZoom = false;
     }
-  }, [isZoomedIn]);
+  }, [isZoomedIn, GlobeComponent]);
+
+  // Marker data
+  const markerData = useMemo(() => {
+    if (latitude === null || longitude === null) return [];
+    return [{ lat: latitude, lng: longitude, size: 0.6, color: "#ef4444" }];
+  }, [latitude, longitude]);
 
   const handleZoomIn = useCallback(() => {
-    const map = mapRef.current;
-    console.log('handleZoomIn called', { map: !!map, latitude, longitude });
-    
-    if (!map) {
-      console.warn('Map not ready for zoom');
-      return;
-    }
-    
-    if (latitude === null || longitude === null) {
-      console.warn('No coordinates available for zoom', { latitude, longitude });
-      return;
-    }
+    const globe = globeRef.current;
+    if (!globe || latitude === null || longitude === null) return;
 
-    try {
-      map.stopCameraAnimation?.();
-      setIsZoomedIn(true);
-
-      console.log('Flying to coordinates:', { latitude, longitude });
-      map.flyCameraTo({
-        endCamera: {
-          center: { lat: latitude, lng: longitude, altitude: 0 },
-          range: 500,
-          tilt: 55,
-          heading: 0,
-        },
-        durationMillis: 5000,
-      });
-    } catch (e) {
-      console.warn("Zoom fehlgeschlagen:", e);
-    }
+    setIsZoomedIn(true);
+    globe.pointOfView({ lat: latitude, lng: longitude, altitude: 0.5 }, 2000);
   }, [latitude, longitude]);
 
   const handleZoomOut = useCallback(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    const globe = globeRef.current;
+    if (!globe) return;
 
-    try {
-      map.stopCameraAnimation?.();
-      setIsZoomedIn(false);
-
-      map.flyCameraTo({
-        endCamera: {
-          center: { lat: 0, lng: 0, altitude: 0 },
-          range: 25_000_000,
-          tilt: 0,
-          heading: 0,
-        },
-        durationMillis: 3000,
-      });
-
-      setTimeout(() => startRotation(), 3500);
-    } catch (e) {
-      console.warn("Zoom-out fehlgeschlagen:", e);
-    }
-  }, [startRotation]);
-
-  const init = useCallback(async () => {
-    if (!containerRef.current) return;
-
-    // maps3d ist (Stand heute) nicht zuverlässig in allen Browsern verfügbar (insb. Safari).
-    // In diesen Fällen schalten wir sauber auf den CSS-Fallback, statt „grau“ zu bleiben.
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const isSafari = /safari/i.test(ua) && !/chrome|crios|android/i.test(ua);
-
-    if (isSafari) {
-      setApiError("3D-Globus ist in Safari aktuell nicht unterstützt – Fallback aktiv.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setApiError(null);
-
-      const apiKey = await getGoogleMapsApiKey();
-      await loadGoogleMapsJs(apiKey);
-
-      if (!window.google?.maps?.importLibrary) {
-        throw new Error("Google Maps Library Loader nicht verfügbar");
-      }
-
-      const lib: any = await window.google.maps.importLibrary("maps3d");
-      const Map3DElement = lib?.Map3DElement;
-      const MapMode = lib?.MapMode;
-
-      if (!Map3DElement) {
-        throw new Error("Map3DElement nicht verfügbar (maps3d)");
-      }
-
-      const map = new Map3DElement({
-        center: { lat: 0, lng: 0, altitude: 0 },
-        range: 25_000_000,
-        tilt: 0,
-        heading: 0,
-        gestureHandling: "COOPERATIVE",
-      });
-
-      // Mode must be set for rendering to start
-      map.mode = MapMode?.SATELLITE ?? "SATELLITE";
-
-      containerRef.current.innerHTML = "";
-      containerRef.current.appendChild(map);
-      mapRef.current = map;
-
-      setIsLoading(false);
-      startRotation();
-    } catch (err) {
-      console.error("Google Maps 3D Fehler:", err);
-      setApiError(err instanceof Error ? err.message : "Unbekannter Fehler");
-      setIsLoading(false);
-    }
-  }, [startRotation]);
-
-  useEffect(() => {
-    init();
-
-    return () => {
-      try {
-        mapRef.current?.stopCameraAnimation?.();
-      } catch {
-        // ignore
-      }
-    };
-  }, [init]);
+    setIsZoomedIn(false);
+    globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 2000);
+  }, []);
 
   const formatCoord = (value: number | null, type: "lat" | "lng") => {
     if (value === null) return "--";
@@ -221,11 +104,44 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
   return (
     <Card className="relative h-full aspect-square overflow-hidden border-primary/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 3D Map Container */}
-      <div ref={containerRef} className="absolute inset-0 z-0" />
+      {/* Globe Container */}
+      <div ref={containerRef} className="absolute inset-0 z-0">
+        {GlobeComponent && dimensions.width > 0 && !hasError && (
+          <GlobeComponent
+            ref={globeRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+            backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+            pointsData={markerData}
+            pointLat="lat"
+            pointLng="lng"
+            pointAltitude={0.01}
+            pointRadius="size"
+            pointColor="color"
+            animateIn={true}
+            atmosphereColor="hsl(200, 80%, 60%)"
+            atmosphereAltitude={0.2}
+            onGlobeReady={() => {
+              const globe = globeRef.current;
+              if (globe) {
+                const controls = globe.controls();
+                if (controls) {
+                  controls.autoRotate = true;
+                  controls.autoRotateSpeed = 0.4;
+                  controls.enableZoom = false;
+                }
+                // Initial view
+                globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 0);
+              }
+            }}
+          />
+        )}
+      </div>
 
-      {/* CSS Fallback when API fails */}
-      {apiError && <CSSGlobeFallback />}
+      {/* CSS Fallback when WebGL fails */}
+      {hasError && <CSSGlobeFallback />}
 
       {/* Loading */}
       {isLoading && (
@@ -237,20 +153,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         </div>
       )}
 
-      {/* Error indicator */}
-      {apiError && (
-        <div className="absolute top-2 left-2 z-30 flex items-start gap-1 px-2 py-1 rounded-md bg-yellow-500/20 backdrop-blur-sm max-w-[85%]">
-          <AlertCircle className="h-3 w-3 text-yellow-500 mt-0.5" />
-          <div className="min-w-0">
-            <div className="text-[9px] text-yellow-500 leading-tight">Fallback-Modus</div>
-            <div className="text-[9px] text-yellow-500/90 leading-tight break-words">
-              {apiError}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Overlay content - minimal, only coordinates */}
+      {/* Overlay content */}
       <CardContent className="relative z-20 p-4 h-full flex flex-col justify-between pointer-events-none">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary drop-shadow-lg" />
@@ -265,14 +168,18 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       </CardContent>
 
       {/* Zoom button */}
-      {latitude !== null && longitude !== null && !isLoading && !apiError && (
+      {latitude !== null && longitude !== null && !isLoading && !hasError && (
         <Button
           variant="ghost"
           size="icon"
           className="absolute bottom-3 right-3 z-30 h-8 w-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 transition-all pointer-events-auto"
           onClick={isZoomedIn ? handleZoomOut : handleZoomIn}
         >
-          <ZoomIn className="h-4 w-4 text-white drop-shadow-md" />
+          {isZoomedIn ? (
+            <ZoomOut className="h-4 w-4 text-white drop-shadow-md" />
+          ) : (
+            <ZoomIn className="h-4 w-4 text-white drop-shadow-md" />
+          )}
         </Button>
       )}
     </Card>
