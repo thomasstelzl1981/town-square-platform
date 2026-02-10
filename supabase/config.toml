@@ -116,3 +116,18 @@ verify_jwt = false
 
 [functions.sot-contacts-import]
 verify_jwt = false
+
+[functions.sot-social-mandate-submit]
+verify_jwt = false
+
+[functions.sot-social-payment-create]
+verify_jwt = false
+
+[functions.sot-social-payment-webhook]
+verify_jwt = false
+
+[functions.sot-social-meta-webhook]
+verify_jwt = false
+
+[functions.sot-social-autoresponder]
+verify_jwt = false
