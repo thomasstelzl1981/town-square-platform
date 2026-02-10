@@ -8,8 +8,8 @@ const corsHeaders = {
 interface SearchRequest {
   query: string;
   location?: string;
-  radius?: number; // in meters
-  type?: string; // e.g., "plumber", "electrician"
+  radius?: number;
+  type?: string;
 }
 
 interface PlaceResult {
@@ -27,23 +27,19 @@ interface PlaceResult {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const GOOGLE_PLACES_API_KEY =
+    const GOOGLE_API_KEY =
       Deno.env.get('GOOGLE_PLACES_API_KEY') ??
       Deno.env.get('GOOGLE_MAPS_API_KEY') ??
       Deno.env.get('VITE_GOOGLE_MAPS_API_KEY') ??
       '';
 
-    if (!GOOGLE_PLACES_API_KEY) {
-      console.warn(
-        'No Google API key configured (GOOGLE_PLACES_API_KEY / GOOGLE_MAPS_API_KEY) - returning mock data',
-      );
-      // Return mock data for development/testing
+    if (!GOOGLE_API_KEY) {
+      console.warn('No Google API key configured — returning mock data');
       return new Response(
         JSON.stringify({
           results: [
@@ -94,93 +90,105 @@ serve(async (req) => {
 
     console.log(`Searching for: "${query}" near "${location || 'default'}"`);
 
-    // Step 1: Text Search to find places
-    const searchUrl = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
-    searchUrl.searchParams.set('query', query);
-    searchUrl.searchParams.set('key', GOOGLE_PLACES_API_KEY);
-    searchUrl.searchParams.set('language', 'de');
-    searchUrl.searchParams.set('region', 'de');
-    
-    if (radius) {
-      searchUrl.searchParams.set('radius', radius.toString());
-    }
+    // --- Places API (New) — single request with all details ---
+    const fieldMask = [
+      'places.id',
+      'places.displayName',
+      'places.formattedAddress',
+      'places.nationalPhoneNumber',
+      'places.internationalPhoneNumber',
+      'places.websiteUri',
+      'places.rating',
+      'places.userRatingCount',
+      'places.types',
+      'places.location',
+    ].join(',');
 
-    const searchResponse = await fetch(searchUrl.toString());
-    const searchData = await searchResponse.json();
+    const searchBody: Record<string, unknown> = {
+      textQuery: query,
+      languageCode: 'de',
+      regionCode: 'DE',
+      maxResultCount: 10,
+    };
 
-    if (searchData.status !== 'OK' && searchData.status !== 'ZERO_RESULTS') {
-      console.error('Places API error:', searchData);
-      throw new Error(`Places API error: ${searchData.status}`);
-    }
-
-    const results: PlaceResult[] = [];
-
-    // Step 2: Get details for each place (limited to first 10)
-    const places = (searchData.results || []).slice(0, 10);
-    
-    for (const place of places) {
-      try {
-        const detailsUrl = new URL('https://maps.googleapis.com/maps/api/place/details/json');
-        detailsUrl.searchParams.set('place_id', place.place_id);
-        detailsUrl.searchParams.set('key', GOOGLE_PLACES_API_KEY);
-        detailsUrl.searchParams.set('fields', 'place_id,name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,types,geometry');
-        detailsUrl.searchParams.set('language', 'de');
-
-        const detailsResponse = await fetch(detailsUrl.toString());
-        const detailsData = await detailsResponse.json();
-
-        if (detailsData.status === 'OK' && detailsData.result) {
-          const detail = detailsData.result;
-          results.push({
-            place_id: detail.place_id,
-            name: detail.name,
-            formatted_address: detail.formatted_address,
-            phone_number: detail.formatted_phone_number,
-            website: detail.website,
-            rating: detail.rating,
-            user_ratings_total: detail.user_ratings_total,
-            types: detail.types,
-            geometry: detail.geometry,
-          });
-        }
-      } catch (detailError) {
-        console.error(`Error fetching details for ${place.place_id}:`, detailError);
-        // Still include basic info from search
-        results.push({
-          place_id: place.place_id,
-          name: place.name,
-          formatted_address: place.formatted_address,
-          rating: place.rating,
-          user_ratings_total: place.user_ratings_total,
-          types: place.types,
-        });
+    // Optional: location bias
+    if (location) {
+      // If location looks like "lat,lng" we can use it directly
+      const latLngMatch = location.match(/^([-\d.]+),\s*([-\d.]+)$/);
+      if (latLngMatch) {
+        searchBody.locationBias = {
+          circle: {
+            center: {
+              latitude: parseFloat(latLngMatch[1]),
+              longitude: parseFloat(latLngMatch[2]),
+            },
+            radius: radius,
+          },
+        };
       }
     }
+
+    const apiResponse = await fetch(
+      'https://places.googleapis.com/v1/places:searchText',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_API_KEY,
+          'X-Goog-FieldMask': fieldMask,
+        },
+        body: JSON.stringify(searchBody),
+      },
+    );
+
+    const apiData = await apiResponse.json();
+
+    if (!apiResponse.ok) {
+      console.error('Places API (New) error:', JSON.stringify(apiData));
+      throw new Error(
+        `Places API error: ${apiData.error?.message || apiResponse.status}`,
+      );
+    }
+
+    // Map the new API response to our existing PlaceResult shape
+    const results: PlaceResult[] = (apiData.places || []).map((p: any) => ({
+      place_id: p.id || '',
+      name: p.displayName?.text || '',
+      formatted_address: p.formattedAddress || '',
+      phone_number: p.internationalPhoneNumber || p.nationalPhoneNumber || undefined,
+      website: p.websiteUri || undefined,
+      rating: p.rating ?? undefined,
+      user_ratings_total: p.userRatingCount ?? undefined,
+      types: p.types || [],
+      geometry: p.location
+        ? { location: { lat: p.location.latitude, lng: p.location.longitude } }
+        : undefined,
+    }));
 
     console.log(`Found ${results.length} results`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         results,
-        status: searchData.status,
+        status: 'OK',
         total: results.length,
       }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
     );
   } catch (error) {
     console.error('Error in sot-places-search:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
         results: [],
       }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
     );
   }
 });
