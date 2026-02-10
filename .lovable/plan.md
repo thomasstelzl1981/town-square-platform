@@ -1,133 +1,45 @@
 
-# Kalkulator-Reparatur: Berechnungslogik nach Akquise-Manager-Vorbild
+# Preisliste + Kalkulator: 5 Verbesserungen
 
-## Kernproblem
+## 1. Stellplatzpreise editierbar machen
 
-Die Demo-Daten und die Berechnungslogik passen nicht zusammen:
+In `UnitPreislisteTable.tsx` wird die Stellplatz-Spalte (aktuell nur Anzeige `eur(u.parking_price)`) durch eine `EditableCell` ersetzt. Der Callback `onUnitPriceChange` wird um den Feldtyp `'parking_price'` erweitert.
 
-1. **Demo-Daten**: `annual_net_rent` wird aus `Kaufpreis * 4%` berechnet, aber `list_price` aus `Verkaufspreis-Anteil`. Dadurch ergibt die Rueckrechnung ~2,67% statt 4%.
-2. **targetYield-Slider**: Aendert einen State-Wert, der nirgends in die Preisberechnung einfliesst.
-3. **Provision**: Wird nur als Anzeige berechnet, veraendert aber keine Preise.
+In `PortfolioTab.tsx` wird `handleUnitPriceChange` erweitert, um `parking_price` Overrides zu speichern. Der Override-State `unitOverrides` bekommt ein optionales `parking_price`-Feld. Die `calculatedUnits`-Berechnung uebernimmt den Override oder den Default (20.000 EUR).
 
-## Loesung: Akquise-Manager-Formel uebernehmen
+## 2. Status aenderbar machen (Dropdown)
 
-Die Kernformel aus `AufteilerCalculation.tsx` (Zeile 81):
+Der `DemoUnit`-Typ in `demoProjectData.ts` wird von `status: 'available'` auf `status: 'available' | 'reserved' | 'notary' | 'sold'` erweitert.
 
-```text
-Verkaufspreis_brutto = Jahresnettomiete / (Zielrendite / 100)
-```
+Die Status-Map in `UnitPreislisteTable.tsx` bekommt einen neuen Eintrag `notary` (Label "Notar", blaue Farbe). Die Badge-Zelle wird durch ein klickbares Dropdown (Select) ersetzt. Ein neuer Callback `onStatusChange(unitId, newStatus)` wird vom PortfolioTab durchgereicht.
 
-Diese Formel wird zur Basis fuer die Preisfindung in MOD-13.
+In `PortfolioTab.tsx` wird ein separater State `unitStatusOverrides: Record<string, string>` gefuehrt. Der Status-Override wird in `calculatedUnits` eingeflochten.
 
-## Neue Berechnungskette
+## 3. PieChart durch kompaktes Balkendiagramm ersetzen
 
-```text
-EINGABEN:
-  Investitionskosten        z.B. 4.800.000 EUR
-  Provision (Slider)        5-15%, Default 10%
-  Endkundenrendite (Slider) 2-8%, Default 4.0%
-  Preisanpassung (+/-)      -20% bis +20%, Default 0%
-  Manuelle Einzelpreis-Overrides (Tabelle)
+In `StickyCalculatorPanel.tsx` wird der PieChart (~160px Hoehe) durch ein horizontales gestapeltes Balkendiagramm ersetzt. Dafuer wird `BarChart` aus recharts verwendet. Ein einzelner horizontaler Balken zeigt die drei Segmente (Investitionskosten, Provision, Marge) nebeneinander. Hoehe: ca. 60px statt 160px. Die Legende bleibt darunter.
 
-BERECHNUNG PRO EINHEIT:
-  1. Basispreis = Jahresnetto_i / (Endkundenrendite / 100)
-     → Bei 4% und 7.680 EUR Jahresnetto = 192.000 EUR
+## 4. Kalkulator-Hoehe reduzieren
 
-  2. Falls manueller Override vorhanden → Override-Preis verwenden
+Konkrete Massnahmen in `StickyCalculatorPanel.tsx`:
+- PieChart-Bereich von 160px auf ~60px (Balkendiagramm)
+- Paddings und Margins reduzieren: `space-y-4` auf `space-y-2.5`, `pb-3` auf `pb-2`
+- KPI-Grid kompakter: `space-y-2` auf `space-y-1.5`
+- Gesamthoehe sinkt um ca. 150-200px
 
-  3. Preisanpassung anwenden:
-     effektiver_preis = basispreis * (1 + Preisanpassung/100)
+## 5. Zwei redundante KPI-Zeilen entfernen
 
-  4. Rendite rueckrechnen (fuer Anzeige):
-     ist_rendite = Jahresnetto / effektiver_preis * 100
-
-  5. EUR/m² = effektiver_preis / Flaeche
-
-  6. Provision pro Einheit = effektiver_preis * Provisionssatz
-
-GESAMTKALKULATION:
-  Gesamtverkauf      = Summe aller effektiven Preise
-  Provision_abs      = Gesamtverkauf * Provisionssatz
-  Marge_abs          = Gesamtverkauf - Investitionskosten - Provision_abs
-  Marge_%            = Marge_abs / Gesamtverkauf * 100
-  Gewinn/Einheit     = Marge_abs / Anzahl Einheiten
-  Ø Ist-Rendite      = Durchschnitt aller ist_renditen
-```
-
-### Wie die Slider jetzt wirken
-
-**Endkundenrendite-Slider (NEU - jetzt funktional):**
-- Veraendert den Basispreis aller Einheiten: `Preis = Miete / Rendite`
-- Niedrigere Rendite → hoeherer Preis → hoehere Marge
-- Hoehere Rendite → niedrigerer Preis → niedrigere Marge
-
-**Provision-Slider:**
-- Veraendert die Provisionshoehe, die von der Marge abgezogen wird
-- Preise bleiben gleich, Marge sinkt/steigt
-
-**Preisanpassung (+/-):**
-- Multipliziert alle Preise proportional
-- Ist-Rendite veraendert sich entsprechend
-
-**Manuelle Einzelpreise:**
-- Override pro Einheit, Preisanpassung wirkt NICHT auf Overrides (sind absolut)
-- Ist-Rendite der Einheit wird rueckgerechnet
-
-## Aenderungen
-
-### 1. demoProjectData.ts — Daten korrigieren
-
-Die Demo-Daten muessen konsistent sein. Die `annual_net_rent` bleibt wie sie ist (berechnet aus Kaufpreis-Anteil * 4%). Aber `list_price` wird NICHT mehr aus TOTAL_SALE berechnet, sondern ergibt sich dynamisch aus der Rendite-Formel im PortfolioTab. Die statischen Werte `list_price`, `yield_percent`, `price_per_sqm`, `provision_eur` in den Demo-Daten werden zu Referenzwerten degradiert — die tatsaechlichen Anzeige-Werte kommen aus `calculatedUnits`.
-
-Keine Aenderung an der Datei noetig, da die Berechnung im PortfolioTab die Demo-Werte ueberschreibt.
-
-### 2. PortfolioTab.tsx — Berechnungslogik ueberarbeiten
-
-Der `useMemo`-Block fuer `calculatedUnits` wird komplett neu geschrieben:
-
-```text
-Fuer jede Einheit:
-  1. basispreis = unit.annual_net_rent / targetYield
-  2. Wenn Override vorhanden → Override als Basispreis nehmen
-  3. effektiver_preis = basispreis * (1 + priceAdjustment/100)
-     ABER: Overrides sind absolut, Preisanpassung wirkt NICHT auf sie
-  4. ist_rendite = unit.annual_net_rent / effektiver_preis * 100
-  5. eur_pro_qm = effektiver_preis / unit.area_sqm
-  6. provision = effektiver_preis * provisionRate
-```
-
-### 3. StickyCalculatorPanel.tsx — Anzeige anpassen
-
-Minimale Aenderungen:
-- "Ø Ist-Rendite" zeigt den tatsaechlichen Durchschnitt (rueckgerechnet aus Preisen)
-- "Zielrendite" zeigt den Slider-Wert
-- Farbvergleich bleibt: gruen wenn Ist >= Ziel, rot wenn darunter
-- Die Ist-Rendite wird sich bei Default-Einstellungen (4% Slider, 0% Anpassung) exakt mit der Zielrendite decken
-
-### 4. UnitPreislisteTable.tsx — Override-Logik anpassen
-
-Die `onUnitPriceChange`-Funktion im PortfolioTab muss angepasst werden:
-- Manuelle Preise werden als absolute Overrides gespeichert (OHNE Preisanpassung)
-- Wenn der Nutzer einen Preis manuell eingibt, wird dieser direkt als `effective_price` verwendet
-- Preisanpassung (+/-) wirkt NUR auf Einheiten OHNE Override
+Im KPI-Bereich von `StickyCalculatorPanel.tsx` (Zeilen 203-212) werden die beiden Zeilen "Ø Ist-Rendite" und "Zielrendite" komplett geloescht. Diese Werte sind redundant, da die Endkundenrendite bereits ueber den Slider gesteuert wird und die tatsaechliche Rendite pro Einheit in der Preisliste sichtbar ist. Das spart zusaetzlich Hoehe im Kalkulator.
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` |
-| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` |
-| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` |
-
-## Erwartetes Ergebnis nach Implementierung
-
-Bei Default-Einstellungen (4% Rendite, 10% Provision, 0% Preisanpassung):
-- Gesamtverkauf ≈ 4.800.000 EUR (weil Miete aus Kaufpreis*4% → Preis = Miete/4% = Kaufpreis)
-- Ø Ist-Rendite = 4,00% (exakt)
-- Marge = negativ (weil Verkauf ≈ Kauf, minus Provision)
-
-Das ist korrekt! Der Nutzer muss dann die Rendite senken (z.B. auf 3,5%) damit die Preise steigen und eine positive Marge entsteht. Genau wie im Akquise-Manager.
+| Aendern | `src/components/projekte/demoProjectData.ts` (Status-Typ erweitern) |
+| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` (Stellplatz editierbar, Status-Dropdown) |
+| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` (Balkendiagramm, kompaktere Hoehe, 2 KPI-Zeilen entfernen) |
+| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` (parking + status Overrides) |
 
 ## Risiko
 
-Niedrig-Mittel. Berechnungslogik wird vereinfacht und an bewaehrtes Muster angeglichen. Keine DB-Aenderungen.
+Niedrig. Bestehende Berechnungslogik wird nicht veraendert, nur erweitert (Stellplatz-Override, Status-Override). Chart-Tausch und Zeilen-Entfernung sind rein visuell.
