@@ -264,7 +264,7 @@ export function CarsAngebote() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'leasing' | 'rental')}>
         <TabsList>
           <TabsTrigger value="leasing" className="gap-2">

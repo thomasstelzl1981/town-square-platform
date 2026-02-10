@@ -52,7 +52,7 @@ export default function VertriebTab() {
 
   if (portfolioRows.length === 0) {
     return (
-      <div className="p-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6">
         <EmptyState
           title="Keine Projekte vorhanden"
           description="Erstellen Sie ein Projekt im Portfolio-Tab, um den Vertrieb zu starten."
@@ -107,10 +107,10 @@ export default function VertriebTab() {
   }, {} as Record<string, { name: string; reservations: number; sold: number; volume: number; commission: number }>);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Vertrieb & Reservierungen</h2>
+          <h2 className="text-2xl font-bold tracking-tight uppercase">Vertrieb & Reservierungen</h2>
           <p className="text-muted-foreground">
             Übersicht über Reservierungen und Partner-Performance
           </p>

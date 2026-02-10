@@ -31,7 +31,7 @@ export default function MarketingTab() {
 
   if (projects.length === 0) {
     return (
-      <div className="p-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6">
         <EmptyState
           title="Keine Projekte vorhanden"
           description="Erstellen Sie ein Projekt im Portfolio-Tab, um Marketing-Optionen zu nutzen."
@@ -86,9 +86,9 @@ export default function MarketingTab() {
   const featuredProjects = projects.filter(p => p.kaufy_featured);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">Marketing & Veröffentlichung</h2>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Marketing & Veröffentlichung</h2>
         <p className="text-muted-foreground">
           Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages
         </p>

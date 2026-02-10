@@ -6,14 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Sun, Wifi, Landmark, Settings } from 'lucide-react';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function EinstellungenTab() {
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div>
-        <h2 className="text-h2 text-foreground">Einstellungen</h2>
-        <p className="text-sm text-muted-foreground">Integrationen und Monitoring-Konfiguration</p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="Einstellungen" description="Integrationen und Monitoring-Konfiguration" />
 
       {/* Connectors */}
       <div>
