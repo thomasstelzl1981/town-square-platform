@@ -1,80 +1,67 @@
 
-# Kalkulator-Ueberarbeitung: Reihenfolge + Endkundenrendite-Slider
+# Kalkulator-Fix: Berechnungslogik + Layout + Demo-Editing
 
-## Zwei Aenderungen
+## Gefundene Bugs
 
-### 1. Reihenfolge im Kalkulator umstellen
+### Bug 1: Demo-Modus blockiert Bearbeitung
+In `UnitPreislisteTable.tsx`:
+- Zeile 126: `opacity-40 select-none` auf der ganzen Tabelle
+- Zeile 150: `canEdit = !isDemo || isFirstDemo` — nur Zeile 1 editierbar
+- Zeile 159: `pointer-events-none` auf allen anderen Zeilen
 
-Aktuell: Eingaben → PieChart → KPIs
-Neu: Eingaben → KPIs → PieChart
+**Fix:** Im Demo-Modus die Tabelle trotzdem editierbar machen. Die Opacity und pointer-events-Einschraenkungen entfernen, damit alle Zeilen bearbeitet werden koennen.
 
+### Bug 2: targetYield-Slider hat keine Wirkung
+Der Slider aendert den State `targetYield`, aber dieser Wert wird nirgends in der Berechnung verwendet. Die angezeigte Rendite (`effective_yield`) wird immer rueckwaerts aus dem Preis berechnet (Zeile 100).
+
+**Fix:** targetYield wird als Anzeige-KPI im Kalkulator verwendet. Die tatsaechliche Rendite pro Einheit bleibt rueckgerechnet aus dem Preis. Der Kalkulator zeigt beides: die Zielrendite (Slider) und die tatsaechliche Durchschnittsrendite (berechnet). So sieht der Nutzer die Abweichung.
+
+### Bug 3: Layout falsch
+Kalkulator steht neben der Objektbeschreibung (grid-cols-5, 3+2). Soll unter die Preisliste, volle Breite, aber der Kalkulator nur 1/3 davon.
+
+---
+
+## Aenderungen
+
+### 1. PortfolioTab.tsx — Layout-Umbau
+
+Neue Reihenfolge:
 ```text
-+-------------------------------------------+
-| [Calculator] Kalkulator          [Demo]   |
-+-------------------------------------------+
-| Investitionskosten                        |
-| [ 4.800.000 EUR            ] [Sichern]   |
-+-------------------------------------------+
-| Provision (brutto)             10,0 %    |
-| ===========O============================ |
-+-------------------------------------------+
-| Endkundenrendite               4,0 %     |
-| ====================================O=== |
-|              (2,0% — 8,0%, Step 0,1%)    |
-+-------------------------------------------+
-| Preisanpassung                            |
-|        [ - ]    0 %    [ + ]              |
-+-------------------------------------------+
-|                                           |
-| Gesamtverkauf       7.200.000 EUR        |
-| Investitionskosten  4.800.000 EUR        |
-| Provision (10%)       720.000 EUR        |
-| ---------------------------------------- |
-| Marge            1.680.000 EUR (23,3%)   |
-| Gewinn / Einheit      70.000 EUR        |
-| Ø Endkundenrendite         4,00 %       |
-|                                           |
-+-------------------------------------------+
-|         (PieChart ganz unten)             |
-|       Kosten / Provision / Marge          |
-+-------------------------------------------+
+1. Header + Projekt-Select
+2. Objektbeschreibung (volle Breite)
+3. Preisliste (volle Breite)
+4. Kalkulator-Zeile (volle Breite, grid 1/3 + 2/3)
+   - Links 1/3: Kalkulator
+   - Rechts 2/3: leer (Platz fuer spaetere Erweiterung)
+5. DMS-Widget (volle Breite)
 ```
 
-### 2. Neuer Slider: Endkundenrendite
+Das bisherige `grid-cols-5` Layout (Beschreibung + Kalkulator nebeneinander) wird aufgeloest. Die Objektbeschreibung bekommt volle Breite.
 
-- Position: zwischen Provision-Slider und Preisanpassung-Stepper
-- Range: 2,0% bis 8,0%, Step 0,1%, Default 4,0%
-- **Wirkung: Preise bleiben gleich, Marge veraendert sich**
-- Konkret: Der Slider stellt die Zielrendite ein, die dem Endkunden kommuniziert wird. Er beeinflusst die Berechnung der angezeigten Rendite-KPI und der Marge, veraendert aber nicht die absoluten Verkaufspreise
+### 2. UnitPreislisteTable.tsx — Demo-Editing freischalten
 
-Neue Props am Kalkulator:
-- `targetYield: number` (z.B. 0.04 fuer 4%)
-- `onTargetYieldChange: (v: number) => void`
+- `opacity-40` und `select-none` auf dem aeusseren Container entfernen
+- `pointer-events-none` auf Nicht-Demo-Zeilen entfernen
+- `canEdit` immer auf `true` setzen (alle Zeilen editierbar)
+- Die Row-Navigation (`handleRowClick`) bleibt im Demo auf Zeile 1 beschraenkt, aber das Editieren der Preise funktioniert ueberall
+- Der Demo-Hinweis "Musterdaten" in der Summenzeile bleibt
 
-Neuer State im PortfolioTab:
-- `targetYield` mit Default 0.04
+### 3. StickyCalculatorPanel.tsx — Rendite-Anzeige verbessern
 
-Die Rendite-Berechnung in `calculatedUnits` im PortfolioTab nutzt dann `targetYield` statt der rueckgerechneten Rendite. Die Marge ergibt sich weiterhin aus: `Gesamtverkauf - Investitionskosten - Provision`.
+- Die "Ø Endkundenrendite" KPI zeigt die tatsaechlich berechnete Durchschnittsrendite (aus Preisen)
+- Daneben wird die Zielrendite (Slider-Wert) als Vergleich angezeigt
+- Farbliche Markierung: gruen wenn tatsaechliche Rendite >= Zielrendite, rot wenn darunter
+
+---
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` |
 | Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` |
-
-## Aenderungen im Detail
-
-**StickyCalculatorPanel.tsx:**
-- Neuer Prop `targetYield` + `onTargetYieldChange`
-- Neuer Slider-Block fuer Endkundenrendite (nach Provision, vor Preisanpassung)
-- KPI-Grid nach oben verschieben (direkt nach der letzten Separator nach den Eingaben)
-- PieChart ans Ende verschieben (nach den KPIs)
-
-**PortfolioTab.tsx:**
-- Neuer State `const [targetYield, setTargetYield] = useState(0.04)`
-- Props an StickyCalculatorPanel weitergeben
+| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` |
+| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` |
 
 ## Risiko
 
-Niedrig. Reine UI-Umstellung und ein neuer Slider mit Prop-Durchreichung. Keine Aenderung der Kernberechnungslogik.
+Niedrig. Hauptsaechlich Layout-Verschiebung und Entfernung von Demo-Blockaden. Berechnungslogik bleibt gleich.
