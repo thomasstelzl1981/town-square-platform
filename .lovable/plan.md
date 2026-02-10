@@ -1,80 +1,148 @@
 
-# MOD-13 Projekte: Analyse und Reparaturplan
+# Zone 2 Design-Konsistenz-Audit und Reparatur
 
-## Befunde
+## Analyse: Aktuelle Inkonsistenzen
 
-### 1. Routing: Grundsaetzlich korrekt, aber Legacy-Link fehlerhaft
+Nach systematischem Screenshot und Code-Review aller 20+ Module mit ihren Sub-Tabs zeigt sich folgendes Bild:
 
-Die Routing-Struktur ist intakt:
-- `/portal/projekte` leitet korrekt auf `/portal/projekte/dashboard` weiter
-- 4 Tiles (Dashboard, Projekte, Vertrieb, Marketing) werden in der SubTabs-Navigation angezeigt -- das entspricht dem 4-Tile-Pattern aus der MOD-13-Spezifikation
-- `kontexte` ist bewusst als "hidden route" konfiguriert (nur ueber Einstellungen erreichbar)
+### Identifizierte Layout-Patterns (IST-Zustand)
 
-**Problem gefunden:** Die `ProjectDetailPage` hat einen Back-Button der auf `/portal/projekte/portfolio` zeigt (Zeile 73 und 100). Das ist eine **alte Route**, die per Legacy-Redirect auf `/portal/projekte/projekte` umgeleitet wird. Das funktioniert, erzeugt aber einen unnoetigem Redirect-Hop und wuerde brechen, wenn die Legacy-Redirects irgendwann entfernt werden.
+Es gibt aktuell **6 verschiedene Layout-Patterns** in Zone 2 -- das ist die Ursache fuer die visuelle Unruhe:
 
-**Fix:** Back-Links in `ProjectDetailPage.tsx` aendern von `/portal/projekte/portfolio` auf `/portal/projekte/projekte`.
+| Pattern | Wrapper | Header-Stil | Max-Width | Padding | Verwendet in |
+|---------|---------|------------|-----------|---------|-------------|
+| A (Gut) | `container max-w-7xl mx-auto` | UPPERCASE h1 + muted subtitle | 7xl (80rem) | `px-4 py-6` | AreaOverview, DMS Posteingang/Sortieren |
+| B (Haeufig) | `div` | `text-2xl font-bold` normal | keine | `p-6 space-y-6` | Favoriten, Leads, Akquise, FM-Dashboard, Vertriebspartner, Finanzanalyse, PV, Cars, CommPro |
+| C (Miety) | `container max-w-5xl` | Icon + Title + Subtitle | 5xl (64rem) | `p-4 space-y-6` | Alle Miety-Tabs |
+| D (Spezial) | `div` | Kein Page-Header | keine | variabel | Profil, KI-Office (glass-card), Immobilien Portfolio |
+| E (Dashboard) | `div` | `WELCOME ON BOARD` centered | keine | `p-4 md:p-6 lg:p-8` | PortalDashboard (MOD-00) |
+| F (Stub) | `div p-6 max-w-2xl mx-auto` | Centered Card | 2xl | `p-6` | Nicht-implementierte Module |
 
-### 2. Leere Seiten ohne Seed-Daten: Kein Bug, aber verbesserbar
+### Konkrete Probleme pro Modul
 
-Alle Tabs haben bereits Empty States:
-- **Dashboard:** Zeigt "Laden Sie oben ein Expose hoch" mit Magic-Intake-Widget
-- **Projekte (Portfolio):** Zeigt EmptyState-Komponente mit "Keine Projekte" + Button
-- **Vertrieb:** Zeigt EmptyState "Keine Reservierungen"
-- **Marketing:** Zeigt EmptyState "Keine Projekte"
+**BASE Area:**
+- MOD-01 Stammdaten/Profil: KEIN Page-Header, springt direkt in Widgets -- Pattern D
+- MOD-01 Stammdaten/Vertraege, Abrechnung, Sicherheit: Muessen geprueft werden
+- MOD-02 KI-Office: Kein Page-Header, glassmorphism-Vollflaeche -- Pattern D (KORREKT, soll so bleiben)
+- MOD-03 DMS/Storage: Eigener File-Manager, kein Standard-Header -- Pattern D
+- MOD-03 DMS/Posteingang: Pattern A (gut!) -- mit container + UPPERCASE
+- MOD-03 DMS/Sortieren: Pattern A (gut!)
+- MOD-16 Shops: Pattern B (inkonsistent)
+- MOD-20 Miety: Pattern C (eigener 5xl Container, schmaeler als Rest)
 
-Die Grundstruktur ist also erkennbar. Falls die Seiten aber komplett leer erscheinen, koennte das ein **RLS-Problem** sein (kein `tenantId` im Profil = leere Queries = aber die UI zeigt trotzdem die Struktur). Das muss auf dem echten Account getestet werden.
+**MISSIONS Area:**
+- MOD-04 Immobilien/Portfolio: Pattern D -- kein Page-Header, KPI-Cards direkt
+- MOD-05 MSV: Pattern B
+- MOD-06 Verkauf: Pattern B
+- MOD-07 Finanzierung: Formular-Vollflaeche, kein Header -- akzeptabel
+- MOD-08 Investments: Pattern B -- **NICHT AENDERN** (Investment Engine soll bleiben)
 
-### 3. Storage-Tree-Abgleich: DISKREPANZ GEFUNDEN
+**OPERATIONS Area:**
+- MOD-12 Akquise-Manager: Pattern B
+- MOD-11 Finanzierungsmanager: Pattern B
+- MOD-13 Projekte: Pattern B
+- MOD-09 Vertriebspartner: Pattern B -- **NICHT AENDERN** (Investment Engine Ansicht)
+- MOD-10 Leads: Pattern B
 
-Es gibt eine **Inkonsistenz** zwischen zwei Stellen:
+**SERVICES Area:**
+- MOD-14 CommPro: Pattern B
+- MOD-15 Fortbildung: Pattern B
+- MOD-17 Cars: Pattern B
+- MOD-18 Finanzanalyse: Pattern B
+- MOD-19 Photovoltaik: Pattern B
 
-**storageManifest.ts (entity_sub_folders fuer MOD_13):**
+### Soll-Design (Referenz: Admin Dashboard + AreaOverview)
+
+Das Ziel-Pattern basiert auf dem Admin-Dashboard-Design:
+
+```text
++----------------------------------------------------------+
+|  [Level 3 Tabs: PROFIL  VERTRAEGE  ABRECHNUNG  ...]     |  <-- bereits vorhanden via SubTabNav
++----------------------------------------------------------+
+|                                                          |
+|  MODULNAME                                               |  <-- UPPERCASE, tracking-tight, font-bold
+|  Beschreibung des Moduls in grau                         |  <-- text-muted-foreground, normal-case
+|                                                          |  <-- ~16-24px Abstand
+|  +---------------------+  +---------------------+       |
+|  | Widget/Card 1       |  | Widget/Card 2       |       |
+|  |                     |  |                     |        |
+|  +---------------------+  +---------------------+       |
+|                                                          |  <-- gap-6 zwischen Cards
+|  +---------------------+  +---------------------+       |
+|  | Widget/Card 3       |  | Widget/Card 4       |       |
+|  +---------------------+  +---------------------+       |
++----------------------------------------------------------+
 ```
-01_Expose, 02_Kalkulation, 03_Vertrag, 04_Due_Diligence, 
-05_Gutachten, 06_Fotos, 07_Sonstiges
-```
 
-**sot-project-intake Edge Function (PROJECT_FOLDERS):**
-```
-01_expose, 02_preisliste, 03_bilder_marketing, 
-04_kalkulation_exports, 05_reservierungen, 06_vertraege, 99_sonstiges
-```
-
-Die Edge Function ist die **korrekte SSOT** gemaess der Memory-Eintraege. Die `storageManifest.ts` hat noch alte/generische Ordnernamen. Das bedeutet:
-- Wenn ein anderer Code-Pfad (z.B. DMS-Modul, universeller Upload) die `storageManifest.ts` nutzt, wuerden falsche Ordner erstellt werden
-- Die Edge Function selbst nutzt ihre eigenen Konstanten, nicht die aus storageManifest
-
-**Fix:** `storageManifest.ts` MOD_13 `entity_sub_folders` an die Edge Function angleichen.
-
-### 4. Unit-Ordner-Struktur: Korrekt
-
-Die Edge Function erstellt bei Projektanlage:
-- `{projectCode}/` (Projektordner unter MOD_13-Root)
-- `{projectCode}/01_expose/` bis `{projectCode}/99_sonstiges/`
-- `{projectCode}/Einheiten/{WE-001}/01_grundriss/` bis `99_sonstiges/`
-
-Das entspricht exakt der dokumentierten Hierarchie.
+Abstaende:
+- Page-Padding: `px-4 py-6 md:px-6` (responsive)
+- Header margin-bottom: `mb-6`
+- Card-Gap: `gap-6` (24px)
+- Max-Width: `max-w-7xl mx-auto` (konsistent mit AreaOverview)
 
 ---
 
-## Aenderungen
+## Aenderungsplan
 
-### Datei 1: `src/pages/portal/projekte/ProjectDetailPage.tsx`
-- Zeile 73: `/portal/projekte/portfolio` aendern zu `/portal/projekte/projekte`
-- Zeile 100: `/portal/projekte/portfolio` aendern zu `/portal/projekte/projekte`
+### Ausnahmen (NICHT AENDERN):
+- **MOD-02 KI-Office**: Glassmorphism-Vollflaeche bleibt (eigenes Design-System)
+- **MOD-08 Investments/Suche**: Investment Engine bleibt wie sie ist
+- **MOD-09 Vertriebspartner/Beratung**: Investment Engine Ansicht bleibt
+- **MOD-00 Dashboard**: "WELCOME ON BOARD" zentriert bleibt
+- **MOD-03 DMS/Storage**: File-Manager hat eigenes Layout
+- **MOD-07 Finanzierung/Selbstauskunft**: Scrollbares Formular bleibt
 
-### Datei 2: `src/config/storageManifest.ts`
-- MOD_13 `entity_sub_folders` aktualisieren auf die korrekten Ordnernamen:
-```
-'01_expose', '02_preisliste', '03_bilder_marketing',
-'04_kalkulation_exports', '05_reservierungen', '06_vertraege', '99_sonstiges'
-```
-- `required_docs` entsprechend anpassen:
-```
-{ name: 'Projekt-Expose', folder: '01_expose' },
-{ name: 'Preisliste', folder: '02_preisliste' },
+### Schritt 1: Shared PageHeader-Komponente erstellen
+
+Neue Komponente `src/components/shared/ModulePageHeader.tsx`:
+- Props: `title` (string, uppercase), `description` (string, muted)
+- Optional: `actions` (ReactNode fuer Buttons rechts)
+- Konsistente Abstands-Klassen eingebaut
+- Export ueber `src/components/shared/index.ts`
+
+### Schritt 2: Module-Tabs anpassen (nach Prioritaet)
+
+**Hohe Prioritaet (am sichtbarsten):**
+
+1. **MOD-01 Stammdaten/Profil** -- Page-Header "STAMMDATEN / Ihr persoenliches Profil" hinzufuegen, Container-Wrapper
+2. **MOD-01 Stammdaten/Vertraege, Abrechnung, Sicherheit** -- Gleicher Header-Style
+3. **MOD-20 Miety alle Tabs** -- max-w-5xl auf max-w-7xl angleichen, Header auf UPPERCASE
+4. **MOD-16 Shops** -- Standard-Header hinzufuegen
+5. **MOD-05 MSV** -- Standard-Header
+6. **MOD-06 Verkauf** -- Standard-Header
+
+**Mittlere Prioritaet:**
+
+7. **MOD-04 Immobilien/Portfolio** -- KPI-Section behalten, aber Standard-Header darueber
+8. **MOD-10 Leads alle Tabs** -- Standard-Header
+9. **MOD-12 Akquise-Manager** -- Standard-Header
+10. **MOD-11 Finanzierungsmanager** -- Standard-Header
+11. **MOD-13 Projekte/Dashboard** -- Standard-Header (Projekte/Portfolio bleibt wie MOD-04)
+
+**Niedrige Prioritaet:**
+
+12. **MOD-14 CommPro** -- Standard-Header
+13. **MOD-15 Fortbildung** -- Standard-Header
+14. **MOD-17 Cars** -- Standard-Header
+15. **MOD-18 Finanzanalyse** -- Standard-Header
+16. **MOD-19 Photovoltaik** -- Standard-Header
+
+### Schritt 3: Wrapper-Konsistenz
+
+Alle betroffenen Tabs bekommen ein einheitliches aeusseres Wrapper-Pattern:
+```tsx
+<div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+  <ModulePageHeader title="MODULNAME" description="Beschreibung" />
+  {/* Tab-spezifischer Inhalt */}
+</div>
 ```
 
-### Datei 3: Keine weiteren Aenderungen noetig
+### Geschaetzter Umfang
 
-Die 4-Tile-Navigation, das Routing und die Empty States funktionieren korrekt. Es gibt kein Routing-Problem bei den Tabs -- alle 4 Tiles (Dashboard, Projekte, Vertrieb, Marketing) sind im Manifest definiert und werden von der SubTabs-Komponente korrekt gerendert.
+- 1 neue Datei (ModulePageHeader)
+- ca. 30-40 Tab-Dateien anpassen (Wrapper + Header einfuegen)
+- Kein Datenbank- oder Backend-Eingriff
+
+### Wichtig: Reihenfolge
+
+Da dies ein rein visueller Refactor ist, kann alles in einem Durchgang erfolgen. Die Aenderungen sind isoliert pro Tab-Datei und haben keine Wechselwirkungen untereinander.
