@@ -81,26 +81,12 @@ export default function PortfolioTab() {
         </div>
       </div>
 
-      {/* Globalobjekt-Beschreibung (ImmoScout24-Stil) */}
-      <ProjectOverviewCard isDemo={isDemo} />
-
-      {/* Main Content: Unit Preisliste (left) + Sticky Calculator (right) */}
-      <div className="flex gap-6">
-        {/* Left: Unit Preisliste */}
-        <div className="flex-1 min-w-0">
-          {isLoading ? (
-            <LoadingState />
-          ) : (
-            <UnitPreislisteTable
-              units={DEMO_UNITS}
-              projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
-              isDemo={isDemo}
-            />
-          )}
+      {/* Globalobjekt-Beschreibung + Kalkulator nebeneinander */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3">
+          <ProjectOverviewCard isDemo={isDemo} />
         </div>
-
-        {/* Right: Sticky Calculator */}
-        <div className="hidden lg:block w-[280px] flex-shrink-0">
+        <div className="lg:col-span-2">
           <StickyCalculatorPanel
             totalSaleTarget={isDemo ? DEMO_PROJECT.total_sale_target || undefined : selectedProject?.total_sale_target || undefined}
             purchasePrice={isDemo ? DEMO_PROJECT.purchase_price || undefined : selectedProject?.purchase_price || undefined}
@@ -110,6 +96,17 @@ export default function PortfolioTab() {
           />
         </div>
       </div>
+
+      {/* Preisliste (volle Breite) */}
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <UnitPreislisteTable
+          units={DEMO_UNITS}
+          projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
+          isDemo={isDemo}
+        />
+      )}
 
       {/* Dokumenten-Kachel */}
       <ProjectDMSWidget
