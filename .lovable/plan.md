@@ -1,71 +1,160 @@
 
-# Umbau ProjectOverviewCard: Bilder oben, Facts + Text unten
 
-## Aktuelles Layout
+# Kalkulator + Preisliste: Ueberarbeitete Berechnungslogik
 
-```text
-+-------------------------------+------------------------------------------+
-| Bild-Carousel (2/5)           | Headline + Preis                         |
-|                               | Beschreibungstext (3 Absaetze)           |
-| [Bild-Platzhalter]            | Facts-Grid (6 Items, 3 Spalten)          |
-|                               |                                          |
-| <- Nav-Dots ->                |                                          |
-+-------------------------------+------------------------------------------+
-```
+## Korrigiertes Berechnungsmodell
 
-Bild links, alles andere rechts — der Text wird gequetscht.
-
-## Neues Layout
+Die vorherige Logik war falsch. Hier die korrekten Wirkungsrichtungen:
 
 ```text
-+===========================================================+
-| Headline: Residenz am Stadtpark           7.200.000 EUR   |
-| Musterstr. 12, 80331 Muenchen          Gesamtverkaufspreis|
-+-----------------------------------------------------------+
-| [Bild 1]     [Bild 2]     [Bild 3]     [Bild 4]          |
-|  160px hoch, grid-cols-4, abgerundet, bg-muted            |
-+-----------------------------------------------------------+
-| Facts (links, schmal)    | Beschreibungstext (rechts)     |
-| +---------------------+ | +-----------------------------+|
-| | 24 WE               | | | Die Residenz am Stadtpark   ||
-| | 24 TG               | | | bietet exklusives Wohnen... ||
-| | ca. 1.540 m²        | | |                             ||
-| | Bj. 1998 / San. 2021| | | Die Ausstattung umfasst...  ||
-| | Zentralheizung Gas  | | |                             ||
-| | Energieklasse B     | | | Das Gesamtkonzept richtet...||
-| +---------------------+ | +-----------------------------+|
-+-----------------------------------------------------------+
+EINGABEN:
+  1. Investitionskosten         (Eingabefeld + Sichern)     z.B. 4.800.000 EUR
+  2. Provision brutto           (Slider, 5-15%)             z.B. 10%
+  3. Preisanpassung             (+/- Stepper oder Slider)   z.B. +5%
+  4. Einzelpreise pro Einheit   (Inline-Edit in Tabelle)    individuell
+
+FESTE ANNAHME (nur fuer Anfangswert):
+  Zielmarge = 20% → ergibt initialen Gesamtverkaufspreis
+  Danach passt der Nutzer die Preise selbst an
+
+BERECHNUNGSKETTE:
+  Basis-Verkaufspreis_i   = Jahresnetto_i / 0.04   (Demo: 4% Rendite)
+  Gesamtverkauf           = Summe aller Verkaufspreise
+  Provision_abs           = Gesamtverkauf * Provision%
+  Marge_abs               = Gesamtverkauf - Investitionskosten - Provision_abs
+  Marge_%                 = Marge_abs / Gesamtverkauf * 100
+  Endkundenrendite_i      = Jahresnetto_i / Verkaufspreis_i * 100
+  Ø Endkundenrendite      = Durchschnitt aller Renditen
 ```
 
-## Aenderungen
+### Wie die Steuerungen wirken
 
-**Datei:** `src/components/projekte/ProjectOverviewCard.tsx`
+**Provision-Slider aendert den Gesamtverkaufspreis:**
+Provision wird als Anteil auf den Verkaufspreis aufgeschlagen. Steigt die Provision, steigen alle Verkaufspreise proportional. Sinkt sie, sinken sie. Die Marge bleibt gleich, der Endkunde zahlt mehr/weniger.
 
-### Struktur (von oben nach unten):
+Formel: `Neuer_Preis_i = Alter_Preis_i * (1 + Delta_Provision)`
 
-1. **Headline-Zeile** — bleibt wie bisher (Titel + Adresse links, Preis rechts)
+**Preisanpassung (+/- %) aendert alle Preise gleichmaessig:**
+Alle Verkaufspreise werden prozentual erhoeht oder erniedrigt. Die Marge veraendert sich dadurch.
 
-2. **Bildergalerie** — Umbau von vertikalem Carousel zu **4 horizontale Thumbnails**
-   - `grid grid-cols-4 gap-2`
-   - Jedes Bild: `aspect-[4/3]` oder feste Hoehe ~160px, `rounded-lg`, `bg-muted/30`
-   - Im Demo-Modus: Platzhalter-Icons (Building2) in jedem Feld
-   - Carousel-Navigation (Dots, Pfeile) entfaellt komplett
+**Inline-Edit in der Tabelle ueberschreibt Einzelpreise:**
+Manuell geaenderte Preise gelten als Override. Globale Anpassungen (Provision, +/-) wirken trotzdem proportional auf alle Einheiten.
 
-3. **Facts + Beschreibung** — neuer 2-Spalten-Split
-   - `grid grid-cols-1 md:grid-cols-3 gap-6`
-   - **Linke Spalte (1/3):** Key-Facts als vertikale Liste (Icon + Label + Wert), wie bisher aber vertikal statt Grid
-   - **Rechte Spalte (2/3):** Beschreibungstext-Absaetze
+**Endkundenrendite ist ein ERGEBNIS, kein Slider:**
+Die Rendite berechnet sich rueckwaerts aus dem aktuellen Verkaufspreis: `Rendite = Jahresnetto / Verkaufspreis`. Sie wird in der Tabelle pro Einheit und als Durchschnitt im Kalkulator angezeigt.
 
-### Was entfaellt:
-- Carousel-State (`activeImage`), Prev/Next-Buttons, Dots
-- Das bisherige `grid-cols-5`-Haupt-Layout (Bild links / Rest rechts)
+---
+
+## 1. Kalkulator — Neues Design
+
+```text
++-------------------------------------------+
+| [Calculator] Kalkulator          [Demo]   |
++-------------------------------------------+
+|                                           |
+| Investitionskosten                        |
+| [ 4.800.000 EUR            ] [Sichern]   |
+|                                           |
+| Provision (brutto)             10,0 %    |
+| ===========O============================ |
+|              (5% — 15%, Step 0,5%)       |
+|                                           |
+| Preisanpassung                            |
+|        [ - ]    0 %    [ + ]              |
+|              (Step 1%, Range -20/+20%)   |
++-------------------------------------------+
+|                                           |
+|         +------------------+              |
+|        /                    \             |
+|       /   Investitions-      \            |
+|      |    kosten 62%          |           |
+|      |  +---------+          |            |
+|      |  |Marge 28%|          |            |
+|       \ +---------+         /             |
+|        \ Provision 10%     /              |
+|         +------------------+              |
+|       (Recharts PieChart)                 |
+|                                           |
++-------------------------------------------+
+| Gesamtverkauf       7.200.000 EUR        |
+| Investitionskosten  4.800.000 EUR        |
+| Provision (10%)       720.000 EUR        |
+| ---------------------------------------- |
+| Marge            1.680.000 EUR (23,3%)   |
+| Gewinn / Einheit      70.000 EUR        |
+| Ø Endkundenrendite         3,87 %       |
++-------------------------------------------+
+```
+
+### Aenderungen gegenueber aktuellem Stand:
+
+- **Zielmarge-Slider entfaellt komplett** — Marge ist berechnetes Ergebnis
+- **Neues Eingabefeld "Investitionskosten"** mit "Sichern"-Button (kleiner Save-Icon-Button)
+- **Provision-Slider bleibt** (5-15%, Step 0.5%, Default 10%), aber Aenderung wirkt jetzt auf Gesamtverkaufspreis
+- **Neuer Preisanpassung-Stepper** mit Minus/Plus-Buttons und Prozentanzeige dazwischen. Range -20% bis +20%, Step 1%. Veraendert alle Verkaufspreise proportional
+- **Balkendiagramm wird Recharts PieChart** mit 3 Segmenten (Investitionskosten, Provision, Marge)
+- **Ø Endkundenrendite** wird als berechnete KPI unten angezeigt
+- Neue Props: `units` (fuer Berechnung), `onProvisionChange`, `onPriceAdjustment`, Callbacks nach PortfolioTab
+
+**Datei:** `src/components/projekte/StickyCalculatorPanel.tsx`
+
+---
+
+## 2. Preisliste — Inline-Bearbeitung
+
+Zwei Spalten werden editierbar: **Verkaufspreis** und **EUR/m²**
+
+- Klick auf Verkaufspreis-Zelle → Inline-Input
+- Aenderung Verkaufspreis → EUR/m² berechnet sich automatisch (`Preis / Flaeche`)
+- Klick auf EUR/m²-Zelle → Inline-Input
+- Aenderung EUR/m² → Verkaufspreis berechnet sich automatisch (`EUR/m² * Flaeche`)
+- Rendite berechnet sich rueckwaerts: `Jahresnetto / neuer_Preis * 100`
+- Provision berechnet sich: `neuer_Preis * Provisionssatz`
+- Enter oder Blur speichert den Wert
+- Summenzeile aktualisiert sich sofort
+- Editierbare Zellen bekommen einen dezenten Hover-Effekt und ein kleines Stift-Icon
+
+Neue Props: `provisionRate`, `priceAdjustment`, `onUnitPriceChange(unitId, field, value)`, `unitOverrides`
+
+**Datei:** `src/components/projekte/UnitPreislisteTable.tsx`
+
+---
+
+## 3. PortfolioTab — State-Koordination
+
+Zentraler State:
+
+```text
+investmentCosts: number           Default: 4.800.000 (aus Projekt oder Demo)
+provisionRate: number             Default: 0.10 (10%)
+priceAdjustment: number           Default: 0 (in %)
+unitOverrides: Record<string, {   Manuelle Preisaenderungen pro Einheit
+  list_price?: number
+}>
+```
+
+Die **effektiven Einheiten-Daten** werden als `useMemo` berechnet:
+1. Basis: Demo-Units oder echte Units
+2. Preisanpassung anwenden: `price * (1 + priceAdjustment/100)`
+3. Provision-Anteil auf Preis: `price * (1 + provisionDelta)`
+4. Override-Werte haben Vorrang
+5. Rendite, EUR/m², Provision pro Einheit neu berechnen
+
+Diese berechneten Units werden an Kalkulator UND Tabelle weitergegeben.
+
+**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
+
+---
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| Aendern | `src/components/projekte/ProjectOverviewCard.tsx` |
+| Aendern | `src/components/projekte/StickyCalculatorPanel.tsx` |
+| Aendern | `src/components/projekte/UnitPreislisteTable.tsx` |
+| Aendern | `src/pages/portal/projekte/PortfolioTab.tsx` |
 
 ## Risiko
 
-Sehr niedrig. Reine Layout-Aenderung innerhalb einer Datei, keine Logik betroffen.
+Mittel. Drei Dateien, neues Berechnungsmodell. Keine DB-Aenderungen. Recharts PieChart bereits als Dependency vorhanden.
+
