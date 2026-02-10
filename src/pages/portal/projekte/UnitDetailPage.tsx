@@ -1,8 +1,12 @@
 /**
  * Unit Detail Page - Individual unit dossier within a project
  * MOD-13 PROJEKTE
+ * 
+ * Demo mode: When unitId starts with 'demo-unit-', renders a full
+ * Investment-Engine exposé with live sliders (no DB queries).
  */
 
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,12 +20,217 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ArrowLeft, Home, Euro, FileText, Users, Save, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Home, Euro, FileText, Users, Save, Clock, CheckCircle, XCircle, MapPin, Maximize2, Calendar, Building2, Loader2, ImageIcon, Map } from 'lucide-react';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { UnitStatusBadge } from '@/components/projekte';
+import { cn } from '@/lib/utils';
 import type { DevProjectUnit, DevProjectReservation } from '@/types/projekte';
 
+// Investment Engine imports
+import { useInvestmentEngine, defaultInput } from '@/hooks/useInvestmentEngine';
+import type { CalculationInput } from '@/hooks/useInvestmentEngine';
+import { MasterGraph } from '@/components/investment/MasterGraph';
+import { Haushaltsrechnung } from '@/components/investment/Haushaltsrechnung';
+import { InvestmentSliderPanel } from '@/components/investment/InvestmentSliderPanel';
+import { DetailTable40Jahre } from '@/components/investment/DetailTable40Jahre';
+import { FinanzierungSummary } from '@/components/investment/FinanzierungSummary';
+
+// Demo data
+import { DEMO_UNITS, DEMO_UNIT_DETAIL } from '@/components/projekte/demoProjectData';
+
+// ─── Demo Exposé ────────────────────────────────────────────────────────
+
+function DemoUnitExpose() {
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const demoUnit = DEMO_UNITS[0];
+  const detail = DEMO_UNIT_DETAIL;
+
+  const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
+
+  const [params, setParams] = useState<CalculationInput>({
+    ...defaultInput,
+    purchasePrice: demoUnit.list_price,
+    monthlyRent: demoUnit.rent_monthly,
+    equity: Math.round(demoUnit.list_price * 0.2),
+  });
+
+  useEffect(() => {
+    calculate(params);
+  }, []);
+
+  const handleParamsChange = (newParams: CalculationInput) => {
+    setParams(newParams);
+    calculate(newParams);
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+
+  return (
+    <div className="p-6 space-y-6 relative">
+      {/* Musterdaten Badge */}
+      <div className="absolute top-4 right-4 z-10">
+        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
+          Musterdaten
+        </Badge>
+      </div>
+
+      {/* Back button */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate(`/portal/projekte/${projectId}`)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-semibold">{demoUnit.unit_number} — {detail.title}</h1>
+          <p className="text-muted-foreground mt-1">
+            {DEMO_UNIT_DETAIL.city} · Verkaufsexposé (Demo)
+          </p>
+        </div>
+      </div>
+
+      {/* 3-column grid: content (2/3) + sidebar (1/3) */}
+      <div className="grid lg:grid-cols-3 gap-8 opacity-60">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Image Gallery Placeholder */}
+          <div className="aspect-video rounded-xl bg-muted/50 border-2 border-dashed border-border flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">Beispielbilder</p>
+              <p className="text-xs">Bildergalerie wird bei echten Objekten angezeigt</p>
+            </div>
+          </div>
+
+          {/* Property Header */}
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <Badge className="mb-2">Eigentumswohnung</Badge>
+                <h2 className="text-2xl font-bold">{detail.title}</h2>
+                <p className="flex items-center gap-1 mt-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  {detail.postal_code} {detail.city}, {detail.address}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-primary">
+                  {formatCurrency(demoUnit.list_price)}
+                </p>
+              </div>
+            </div>
+
+            {/* Key Facts Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-muted/50">
+              <div>
+                <p className="text-sm text-muted-foreground">Wohnfläche</p>
+                <p className="font-semibold flex items-center gap-1">
+                  <Maximize2 className="w-4 h-4" /> {demoUnit.area_sqm} m²
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Baujahr</p>
+                <p className="font-semibold flex items-center gap-1">
+                  <Calendar className="w-4 h-4" /> {detail.year_built}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Zimmer</p>
+                <p className="font-semibold">{demoUnit.rooms}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Mieteinnahmen</p>
+                <p className="font-semibold">{formatCurrency(params.monthlyRent)}/Mo</p>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mt-6">
+              <h3 className="font-semibold mb-2">Beschreibung</h3>
+              <p className="text-muted-foreground whitespace-pre-line">{detail.description}</p>
+            </div>
+          </div>
+
+          {/* MasterGraph */}
+          {isCalculating ? (
+            <div className="h-64 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : calcResult ? (
+            <MasterGraph
+              projection={calcResult.projection}
+              title="Wertentwicklung (40 Jahre)"
+              variant="full"
+            />
+          ) : null}
+
+          {/* Haushaltsrechnung */}
+          {calcResult && (
+            <Haushaltsrechnung
+              result={calcResult}
+              variant="ledger"
+              showMonthly={true}
+            />
+          )}
+
+          {/* FinanzierungSummary */}
+          {calcResult && (
+            <FinanzierungSummary
+              purchasePrice={demoUnit.list_price}
+              equity={params.equity}
+              result={calcResult}
+            />
+          )}
+
+          {/* DetailTable40Jahre */}
+          {calcResult && (
+            <DetailTable40Jahre
+              projection={calcResult.projection}
+              defaultOpen={false}
+            />
+          )}
+
+          {/* Map Placeholder */}
+          <div className="aspect-[2/1] rounded-xl bg-muted/50 border-2 border-dashed border-border flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <Map className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">Standort</p>
+              <p className="text-xs">Google Maps wird bei echten Objekten angezeigt</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column — Sticky Slider Panel */}
+        <div className="space-y-6">
+          <div className="sticky top-24">
+            <InvestmentSliderPanel
+              value={params}
+              onChange={handleParamsChange}
+              layout="vertical"
+              showAdvanced={true}
+              purchasePrice={demoUnit.list_price}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Real Unit Detail Page ──────────────────────────────────────────────
+
 export default function UnitDetailPage() {
+  const { projectId, unitId } = useParams<{ projectId: string; unitId: string }>();
+
+  // Demo mode detection
+  if (unitId?.startsWith('demo-unit-')) {
+    return <DemoUnitExpose />;
+  }
+
+  return <RealUnitDetailPage />;
+}
+
+function RealUnitDetailPage() {
   const { projectId, unitId } = useParams<{ projectId: string; unitId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,7 +253,6 @@ export default function UnitDetailPage() {
 
       if (unitError) throw unitError;
 
-      // Fetch reservation if exists (use explicit hint for partner_org)
       const { data: reservation, error: resError } = await supabase
         .from('dev_project_reservations')
         .select(`
@@ -59,7 +267,6 @@ export default function UnitDetailPage() {
 
       if (resError && resError.code !== 'PGRST116') throw resError;
 
-      // Fetch partner org separately if needed
       let partnerOrg = null;
       if (reservation?.partner_org_id) {
         const { data: org } = await supabase
@@ -70,7 +277,6 @@ export default function UnitDetailPage() {
         partnerOrg = org;
       }
 
-      // Fetch DMS folder for this unit
       const { data: dmsFolder } = await supabase
         .from('storage_nodes')
         .select('*')

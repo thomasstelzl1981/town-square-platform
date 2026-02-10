@@ -119,6 +119,22 @@ function buildDemoUnits(): DemoUnit[] {
 
 export const DEMO_UNITS: DemoUnit[] = buildDemoUnits();
 
+// ── Demo Unit Detail (for Expose) ───────────────────────────────────────
+export const DEMO_UNIT_DETAIL = {
+  title: '2-Zimmer-Wohnung, 1. OG links',
+  description:
+    'Helle und moderne 2-Zimmer-Wohnung im 1. Obergeschoss mit Blick auf den Stadtpark. ' +
+    'Die Wohnung verfügt über einen offenen Wohn-/Essbereich mit Zugang zum Balkon, ein separates Schlafzimmer ' +
+    'sowie ein gefliestes Tageslichtbad. Hochwertige Ausstattung mit Eichenparkett und Fußbodenheizung.',
+  year_built: 1998,
+  renovation_year: 2021,
+  heating_type: 'Zentralheizung (Gas)',
+  energy_class: 'B',
+  address: 'Am Stadtpark 12',
+  city: 'München',
+  postal_code: '80331',
+};
+
 // ── Demo Portfolio Row (for table) ──────────────────────────────────────
 // Re-export as array for direct table consumption
 export const DEMO_PORTFOLIO_ROWS: ProjectPortfolioRow[] = [DEMO_PROJECT];

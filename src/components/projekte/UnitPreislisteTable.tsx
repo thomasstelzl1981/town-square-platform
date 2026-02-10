@@ -34,13 +34,13 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
   const avgYield = units.length ? (units.reduce((s, u) => s + u.yield_percent, 0) / units.length) : 0;
   const avgPriceSqm = units.length ? Math.round(totalSalePrice / totalArea) : 0;
 
-  const handleRowClick = (unitId: string) => {
-    if (isDemo) return;
+  const handleRowClick = (unitId: string, index: number) => {
+    if (isDemo && index !== 0) return;
     navigate(`/portal/projekte/${projectId}/einheit/${unitId}`);
   };
 
   return (
-    <div className={cn('rounded-2xl border bg-card overflow-hidden', isDemo && 'opacity-40 select-none pointer-events-none')}>
+    <div className={cn('rounded-2xl border bg-card overflow-hidden', isDemo && 'opacity-40 select-none')}>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -60,13 +60,21 @@ export function UnitPreislisteTable({ units, projectId, isDemo }: UnitPreisliste
             </tr>
           </thead>
           <tbody>
-            {units.map((u) => {
+            {units.map((u, idx) => {
               const badge = STATUS_BADGE[u.status] || STATUS_BADGE.available;
+              const isFirstDemo = isDemo && idx === 0;
               return (
                 <tr
                   key={u.id}
-                  className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors"
-                  onClick={() => handleRowClick(u.id)}
+                  className={cn(
+                    'border-b border-border/50 transition-colors',
+                    isFirstDemo
+                      ? 'bg-primary/5 hover:bg-primary/10 cursor-pointer pointer-events-auto opacity-100'
+                      : isDemo
+                        ? 'pointer-events-none'
+                        : 'hover:bg-muted/20 cursor-pointer'
+                  )}
+                  onClick={() => handleRowClick(u.id, idx)}
                 >
                   <td className="px-3 py-2 font-mono text-[11px] text-primary">{u.public_id}</td>
                   <td className="px-3 py-2 font-medium">{u.unit_number}</td>
