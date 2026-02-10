@@ -1,86 +1,94 @@
 
 
-# IMAP-Parser Fix: RFC-2047-Decoder + Body-Fetch-Fallback
+# Fix: Modul-Einstieg direkt auf ersten Reiter + HowItWorks loeschen
 
-## Problem-Zusammenfassung
+## Problem
 
-Datenbankanalyse zeigt: 11 von 14 E-Mails haben keinen Body-Content. Alle Facebook- und IONOS-Mails sind betroffen. Subject-Zeilen sind teilweise roh encoded (`=?UTF-8?B?...?=`).
+Beim Klick auf ein Modul in der zweiten Menuelinie (Level 2) landet man auf einer "How It Works"-Zwischenseite statt direkt im ersten funktionalen Reiter (Level 3). Das betrifft 17 von 20 Modulen.
 
-**Ursache 1**: `full: true` im IMAP-Fetch liefert `msg.raw` leer zurueck bei vielen Servern.
-**Ursache 2**: Kein RFC-2047-Decoder fuer Subject/From-Name Felder.
-
-## Aenderungen in einer Datei
-
-Alle Fixes betreffen `supabase/functions/sot-mail-sync/index.ts`.
-
-### Fix 1: RFC-2047-Decoder (Zeile ~141, neue Funktion)
-
-Neue Funktion `decodeRfc2047(input: string): string`:
-- Erkennt `=?charset?B?base64text?=` (Base64-Encoding)
-- Erkennt `=?charset?Q?quotedprintable?=` (Quoted-Printable)
-- Behandelt mehrteilige Chunks (mehrere `=?...?=` hintereinander)
-- Wird angewendet auf:
-  - `envelope.subject` (Zeile 460)
-  - `fromName` (Zeile 392)
-
-### Fix 2: Body-Fetch-Fallback (Zeile ~366-443)
-
-Wenn `msg.raw` leer ist, zweiter Fetch-Versuch mit `bodyParts`:
-1. Erst normaler Fetch mit `full: true` (wie bisher)
-2. Wenn `msg.raw` leer: Zweiter Fetch desselben UIDs mit `bodyParts: ['TEXT']`
-3. Das holt `BODY[TEXT]` — den reinen Nachrichteninhalt ohne Header
-4. Fallback-Parsing mit dem gleichen `parseMimeMessage()` angewendet
-5. Logging: Genau protokollieren welcher Pfad genommen wurde
+## SOLL-Zustand
 
 ```text
-Fetch-Ablauf:
-  1. client.fetch(range, { envelope, flags, uid, full: true })
-  2. Fuer jede msg wo msg.raw leer ist:
-     → client.fetch(uid, { bodyParts: ['TEXT'] }, true)  // true = UID-basiert
-     → msg.bodyParts['TEXT'] → parseMimeMessage()
-  3. Falls auch bodyParts leer:
-     → client.fetch(uid, { bodyParts: ['1'] }, true)
-     → Direkt als text/plain behandeln
+Klick auf "Stammdaten" (Level 2)
+        |
+        v
+  /portal/stammdaten          <-- index Route
+        |
+        v
+  <Navigate to="profil" />    <-- sofortige Weiterleitung
+        |
+        v
+  /portal/stammdaten/profil   <-- Reiter 1 direkt sichtbar
 ```
 
-### Fix 3: Verbessertes Logging (durchgaengig)
+## Aenderungen
 
-- Log welcher Fetch-Pfad (raw vs bodyParts TEXT vs bodyParts 1) erfolgreich war
-- Log die Groesse der geholten Daten
-- Log wenn ALLE Pfade fehlschlagen (mit UID und Subject fuer Debugging)
+### Teil 1: HowItWorks-Komponente loeschen
 
-### Fix 4: Re-Sync-Kompatibilitaet
+Die folgenden Dateien werden **komplett geloescht**:
 
-Bestehende Mails werden beim naechsten Sync automatisch aktualisiert, da `onConflict: 'account_id,message_id'` ein UPSERT macht. Subject und Body werden dabei mit den korrigierten Werten ueberschrieben.
+| Datei | Grund |
+|-------|-------|
+| `src/components/portal/HowItWorks/ModuleHowItWorks.tsx` | Zwischenseiten-Komponente, wird nicht mehr genutzt |
+| `src/components/portal/HowItWorks/index.ts` | Re-Export Barrel |
 
-## Technische Details
+**Verbleibende Dateien (werden NICHT geloescht):**
 
-### RFC-2047-Decoder Implementierung
+| Datei | Grund |
+|-------|-------|
+| `src/components/portal/HowItWorks/moduleContents.ts` | Wird von `AreaOverviewPage.tsx` und `AreaModuleCard.tsx` fuer die Level-1-Bereichsuebersichten weiter genutzt |
 
-```text
-Input:  "=?UTF-8?B?SGFzdCBkdSBkaWNo?= =?UTF-8?B?IGdlcmFkZQ==?="
-Output: "Hast du dich gerade"
+`AreaModuleCard.tsx` importiert den Typ `HowItWorksContent` aus `ModuleHowItWorks.tsx`. Da wir die Datei loeschen, muss der Typ nach `moduleContents.ts` verschoben werden. Die Imports in `AreaModuleCard.tsx` und `AreaOverviewPage.tsx` werden angepasst.
 
-Regex: /=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g
-  - Group 1: charset (UTF-8)
-  - Group 2: encoding (B = Base64, Q = Quoted-Printable)
-  - Group 3: encoded text
-```
+### Teil 2: 17 Modul-Seiten umstellen
 
-### Body-Fetch Strategie
+Jede Datei: `ModuleHowItWorks`/`moduleContents` Import entfernen, `content` Variable entfernen, Index-Route aendern.
 
-Die `@workingdevshero/deno-imap` Bibliothek unterstuetzt:
-- `full: true` → RFC822 vollstaendig (funktioniert nicht bei allen Servern)
-- `bodyParts: ['TEXT']` → BODY[TEXT] (nur Body ohne Header)
-- `bodyParts: ['1']` → BODY[1] (erster MIME-Part, meist text/plain)
+| # | Modul | Datei | Ziel-Reiter |
+|---|-------|-------|-------------|
+| 1 | MOD-01 Stammdaten | StammdatenPage.tsx | `profil` |
+| 2 | MOD-02 KI Office | OfficePage.tsx | `email` |
+| 3 | MOD-03 DMS | DMSPage.tsx | `storage` |
+| 4 | MOD-04 Immobilien | ImmobilienPage.tsx | `portfolio` |
+| 5 | MOD-05 MSV | MSVPage.tsx | `objekte` |
+| 6 | MOD-06 Verkauf | VerkaufPage.tsx | `objekte` |
+| 7 | MOD-07 Finanzierung | FinanzierungPage.tsx | `selbstauskunft` |
+| 8 | MOD-08 Investment-Suche | InvestmentsPage.tsx | `suche` |
+| 9 | MOD-09 Vertriebspartner | VertriebspartnerPage.tsx | `katalog` |
+| 10 | MOD-10 Leads | LeadsPage.tsx | `inbox` |
+| 11 | MOD-12 Akquise-Manager | AkquiseManagerPage.tsx | `dashboard` |
+| 12 | MOD-13 Projekte | ProjektePage.tsx | `dashboard` |
+| 13 | MOD-14 Communication Pro | CommunicationProPage.tsx | `serien-emails` |
+| 14 | MOD-15 Fortbildung | FortbildungPage.tsx | `katalog` |
+| 15 | MOD-17 Car-Management | CarsPage.tsx | `fahrzeuge` |
+| 16 | MOD-18 Finanzanalyse | FinanzanalysePage.tsx | `dashboard` |
+| 17 | MOD-19 Photovoltaik | PhotovoltaikPage.tsx | `anlagen` |
 
-Der Fallback nutzt diese drei Stufen sequentiell.
+Bereits korrekt (keine Aenderung):
+- MOD-11 Finanzierungsmanager, MOD-16 Shops, MOD-20 Miety
 
-## Erwartetes Ergebnis nach Deploy + Re-Sync
+### Teil 3: Vertriebspartner-HowItWorks (separates Pattern)
 
-| Vorher | Nachher |
-|--------|---------|
-| 11 Mails ohne Body | Body sollte bei allen vorhanden sein |
-| Encoded Subjects (`=?UTF-8?B?...?=`) | Lesbare deutsche Umlaute |
-| Encoded From-Names | Korrekt dekodierte Absendernamen |
+`src/components/vertriebspartner/HowItWorks.tsx` ist ein **anderes** Pattern (inline Schritt-Erklaerung innerhalb von Tabs wie NetworkTab, KundenTab). Dieses bleibt **unveraendert** — es ist kein Zwischen-Screen, sondern ein eingebettetes UI-Element.
+
+## Risikobewertung
+
+| Risiko | Schwere | Bewertung |
+|--------|---------|-----------|
+| Broken Imports nach Loeschung von ModuleHowItWorks.tsx | Mittel | Alle 17 Dateien werden im selben Schritt umgestellt. `AreaModuleCard` wird auf neuen Import-Pfad umgestellt. Kein Restrisiko. |
+| Bookmarks auf `/portal/stammdaten` (ohne Sub-Pfad) | Kein Risiko | `<Navigate replace />` leitet sofort weiter — besser als vorher |
+| AreaOverviewPage verliert Daten | Kein Risiko | `moduleContents.ts` bleibt erhalten, nur der Import-Pfad fuer den Typ aendert sich |
+| Mobile-Navigation bricht | Kein Risiko | Mobile nutzt Card-Navigation, die direkt auf `defaultRoute` zeigt — kein HowItWorks involviert |
+| Vertriebspartner-HowItWorks bricht | Kein Risiko | Komplett anderes Pattern, anderer Ordner, keine Abhaengigkeit |
+
+**Gesamtrisiko: NIEDRIG.** Alle Aenderungen sind mechanisch (Import entfernen, eine Zeile aendern). Keine Logik-Aenderungen, keine DB-Aenderungen, keine neuen Abhaengigkeiten.
+
+## Zusammenfassung
+
+- 2 Dateien loeschen (ModuleHowItWorks.tsx, index.ts)
+- 1 Datei anpassen (moduleContents.ts — Typ-Definition hinzufuegen)
+- 1 Datei anpassen (AreaModuleCard.tsx — Import-Pfad aendern)
+- 17 Dateien: je 2-3 Zeilen aendern (Import entfernen, Index-Route umstellen)
+- 0 neue Dateien
+- 0 Datenbank-Aenderungen
 
