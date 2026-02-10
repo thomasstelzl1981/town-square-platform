@@ -311,17 +311,23 @@ export function KalenderTab() {
       {/* Calendar View */}
       <div className="col-span-8">
         <Card className="glass-card">
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={goToPrevMonth}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <CardTitle className="text-xl min-w-[180px] text-center">
-                {format(currentMonth, 'MMMM yyyy', { locale: de })}
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={goToNextMonth}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          <CardContent className="p-5 pb-4">
+            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CalendarIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={goToPrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-base font-semibold min-w-[160px] text-center">
+                  {format(currentMonth, 'MMMM yyyy', { locale: de })}
+                </span>
+                <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={goToToday}>
@@ -413,8 +419,8 @@ export function KalenderTab() {
                 </DialogContent>
               </Dialog>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+
             {/* Day headers */}
             <div className="grid grid-cols-7 mb-2">
               {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
@@ -480,13 +486,15 @@ export function KalenderTab() {
       {/* Selected Day Details */}
       <div className="col-span-4 space-y-4">
         <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4" />
-              {format(selectedDate, 'EEEE, d. MMMM yyyy', { locale: de })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">
+                {format(selectedDate, 'EEEE, d. MMMM yyyy', { locale: de })}
+              </h3>
+            </div>
             <ScrollArea className="h-[400px]">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -553,10 +561,14 @@ export function KalenderTab() {
 
         {/* Quick Actions */}
         <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Schnellzugriff</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">Schnellzugriff</h3>
+            </div>
+            <div className="space-y-2">
             <Button variant="outline" className="w-full justify-start gap-2">
               <User className="h-4 w-4" />
               Termin mit Kontakt
@@ -565,6 +577,7 @@ export function KalenderTab() {
               <Building className="h-4 w-4" />
               Besichtigung planen
             </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -570,16 +570,24 @@ export function EmailTab() {
       <Card className="glass-card overflow-hidden">
         <div className="grid grid-cols-12 h-[calc(100vh-220px)]">
         {/* Left Sidebar - Folders */}
-        <div className="col-span-2 border-r p-3 space-y-2">
-          <Button 
-            className="w-full gap-2" 
-            size="sm" 
-            disabled={!hasConnectedAccount}
-            onClick={() => setShowComposeDialog(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Neue E-Mail
-          </Button>
+        <div className="col-span-2 border-r flex flex-col">
+          <div className="p-3 border-b">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Mail className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-xs font-semibold">Postfach</span>
+            </div>
+            <Button 
+              className="w-full gap-2" 
+              size="sm" 
+              disabled={!hasConnectedAccount}
+              onClick={() => setShowComposeDialog(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Neue E-Mail
+            </Button>
+          </div>
           <Separator className="my-3" />
           <ScrollArea className="h-[calc(100%-60px)]">
             <div className="space-y-1">

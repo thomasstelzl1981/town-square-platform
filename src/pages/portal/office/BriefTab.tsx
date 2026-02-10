@@ -293,16 +293,17 @@ ${senderLine}`);
       {/* Main Form */}
       <div className="col-span-8 space-y-6">
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              KI-Briefgenerator
-            </CardTitle>
-            <CardDescription>
-              Erstellen Sie professionelle Geschäftsbriefe mit Unterstützung von Armstrong AI
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">KI-Briefgenerator</h3>
+                <p className="text-xs text-muted-foreground">Professionelle Geschäftsbriefe mit Armstrong AI</p>
+              </div>
+            </div>
+            <div className="space-y-6">
             {/* Step 0: Sender Selection (One-Click) */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
@@ -510,6 +511,7 @@ ${senderLine}`);
                 Senden & Bestätigen
               </Button>
             </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -517,13 +519,13 @@ ${senderLine}`);
       {/* Sidebar - Recent Drafts */}
       <div className="col-span-4 space-y-4">
         <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Letzte Entwürfe
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <History className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">Letzte Entwürfe</h3>
+            </div>
             <ScrollArea className="h-[300px]">
               {recentDrafts.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -556,13 +558,13 @@ ${senderLine}`);
         </Card>
 
         <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Vorlagen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">Vorlagen</h3>
+            </div>
             <div className="space-y-2">
               <Button variant="outline" className="w-full justify-start text-sm h-auto py-2">
                 Mieterhöhung ankündigen
