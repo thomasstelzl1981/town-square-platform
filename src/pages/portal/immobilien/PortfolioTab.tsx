@@ -619,7 +619,7 @@ export function PortfolioTab() {
   }
 
   return (
-    <div className="space-y-6 pt-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* NEW: Context Selection Cards */}
       {contexts.length > 0 && (
         <div className="space-y-3">

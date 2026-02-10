@@ -104,11 +104,11 @@ export default function FavoritenTab() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Meine Favoriten</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Meine Favoriten</h1>
           <p className="text-muted-foreground">
             Ihre vorgemerkten Investmentobjekte
           </p>

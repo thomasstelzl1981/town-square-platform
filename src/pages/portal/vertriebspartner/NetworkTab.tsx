@@ -93,7 +93,7 @@ const NetworkTab = () => {
   const pendingCommissions = commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <HowItWorks variant="network" />
 
       {/* Stats */}

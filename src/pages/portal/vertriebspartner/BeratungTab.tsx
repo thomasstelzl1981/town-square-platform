@@ -229,14 +229,14 @@ const BeratungTab = () => {
   const isLoading = isLoadingListings || isCalculating;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight uppercase flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Kundenberatung
-          </h2>
+          </h1>
           <p className="text-sm text-muted-foreground">
             Finden Sie das perfekte Investment für Ihren Kunden
           </p>

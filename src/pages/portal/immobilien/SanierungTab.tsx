@@ -76,7 +76,7 @@ export function SanierungTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Workflow Visualisierung */}
       <Card>
         <CardHeader className="pb-3">

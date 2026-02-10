@@ -49,10 +49,10 @@ export default function KontexteTab() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Verkäufer-Gesellschaften</h2>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Verkäufer-Gesellschaften</h1>
           <p className="text-muted-foreground">
             Verwalten Sie Ihre Bauträger- und Aufteiler-Gesellschaften
           </p>

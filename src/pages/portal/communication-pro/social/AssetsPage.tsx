@@ -131,10 +131,10 @@ export function AssetsPage() {
   });
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Assets</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">Assets</h1>
           <p className="text-muted-foreground mt-1">
             Lade bis zu {MAX_ASSETS} Fotos hoch und tagge sie — Business, Casual, Outdoor, Speaking.
           </p>
