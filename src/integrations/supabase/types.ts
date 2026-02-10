@@ -11242,6 +11242,138 @@ export type Database = {
           },
         ]
       }
+      social_campaigns: {
+        Row: {
+          budget_cents: number | null
+          campaign_type: string
+          created_at: string
+          creative_ids: string[] | null
+          end_date: string | null
+          id: string
+          name: string
+          owner_role: string
+          platform_targets: Json | null
+          spend_cents: number | null
+          start_date: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          budget_cents?: number | null
+          campaign_type?: string
+          created_at?: string
+          creative_ids?: string[] | null
+          end_date?: string | null
+          id?: string
+          name: string
+          owner_role?: string
+          platform_targets?: Json | null
+          spend_cents?: number | null
+          start_date?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          budget_cents?: number | null
+          campaign_type?: string
+          created_at?: string
+          creative_ids?: string[] | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          owner_role?: string
+          platform_targets?: Json | null
+          spend_cents?: number | null
+          start_date?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_creatives: {
+        Row: {
+          assets_document_ids: string[] | null
+          campaign_id: string | null
+          caption_text: string | null
+          created_at: string
+          cta_variant: string | null
+          id: string
+          mandate_id: string | null
+          rendered_document_ids: string[] | null
+          slideshow_outline: Json | null
+          slot_key: string | null
+          status: string
+          template_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assets_document_ids?: string[] | null
+          campaign_id?: string | null
+          caption_text?: string | null
+          created_at?: string
+          cta_variant?: string | null
+          id?: string
+          mandate_id?: string | null
+          rendered_document_ids?: string[] | null
+          slideshow_outline?: Json | null
+          slot_key?: string | null
+          status?: string
+          template_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assets_document_ids?: string[] | null
+          campaign_id?: string | null
+          caption_text?: string | null
+          created_at?: string
+          cta_variant?: string | null
+          id?: string
+          mandate_id?: string | null
+          rendered_document_ids?: string[] | null
+          slideshow_outline?: Json | null
+          slot_key?: string | null
+          status?: string
+          template_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_creatives_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "social_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_creatives_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "social_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_creatives_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_drafts: {
         Row: {
           assets_used: string[] | null
@@ -11484,6 +11616,179 @@ export type Database = {
           },
         ]
       }
+      social_lead_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          lead_id: string
+          payload: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          lead_id: string
+          payload?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          lead_id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "social_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_leads: {
+        Row: {
+          autoresponder_status: string
+          campaign_id: string | null
+          consent_flags: Json | null
+          created_at: string
+          id: string
+          lead_data: Json | null
+          mandate_id: string | null
+          meta_payload_raw: Json | null
+          partner_user_id: string | null
+          platform: string | null
+          routed_to_zone2: boolean
+          source: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          autoresponder_status?: string
+          campaign_id?: string | null
+          consent_flags?: Json | null
+          created_at?: string
+          id?: string
+          lead_data?: Json | null
+          mandate_id?: string | null
+          meta_payload_raw?: Json | null
+          partner_user_id?: string | null
+          platform?: string | null
+          routed_to_zone2?: boolean
+          source?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          autoresponder_status?: string
+          campaign_id?: string | null
+          consent_flags?: Json | null
+          created_at?: string
+          id?: string
+          lead_data?: Json | null
+          mandate_id?: string | null
+          meta_payload_raw?: Json | null
+          partner_user_id?: string | null
+          platform?: string | null
+          routed_to_zone2?: boolean
+          source?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_leads_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "social_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_mandates: {
+        Row: {
+          audience_preset: Json | null
+          budget_total_cents: number | null
+          created_at: string
+          end_date: string | null
+          id: string
+          partner_display_name: string | null
+          partner_user_id: string
+          payment_ref: Json | null
+          payment_status: string
+          personalization: Json | null
+          publishing_meta: Json | null
+          regions: Json | null
+          start_date: string | null
+          status: string
+          template_slots: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          audience_preset?: Json | null
+          budget_total_cents?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          partner_display_name?: string | null
+          partner_user_id: string
+          payment_ref?: Json | null
+          payment_status?: string
+          personalization?: Json | null
+          publishing_meta?: Json | null
+          regions?: Json | null
+          start_date?: string | null
+          status?: string
+          template_slots?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          audience_preset?: Json | null
+          budget_total_cents?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          partner_display_name?: string | null
+          partner_user_id?: string
+          payment_ref?: Json | null
+          payment_status?: string
+          personalization?: Json | null
+          publishing_meta?: Json | null
+          regions?: Json | null
+          start_date?: string | null
+          status?: string
+          template_slots?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_mandates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_metrics: {
         Row: {
           clicks: number | null
@@ -11575,6 +11880,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "social_personality_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_templates: {
+        Row: {
+          active: boolean
+          ci_rules: Json | null
+          code: string
+          created_at: string
+          editable_fields_schema: Json | null
+          format_type: string
+          id: string
+          name: string
+          preview_document_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          ci_rules?: Json | null
+          code: string
+          created_at?: string
+          editable_fields_schema?: Json | null
+          format_type?: string
+          id?: string
+          name: string
+          preview_document_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          ci_rules?: Json | null
+          code?: string
+          created_at?: string
+          editable_fields_schema?: Json | null
+          format_type?: string
+          id?: string
+          name?: string
+          preview_document_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
