@@ -2,8 +2,8 @@
  * Calculator Panel for Projekte Tab
  * MOD-13 PROJEKTE — P0 Redesign
  *
- * Inputs: Investitionskosten, Provision-Slider, Preisanpassung +/-
- * Outputs: PieChart, KPIs (Marge, Gewinn/Einheit, Ø Rendite)
+ * Inputs: Investitionskosten, Provision-Slider, Endkundenrendite-Slider, Preisanpassung +/-
+ * Outputs: KPIs (Marge, Gewinn/Einheit, Ø Rendite), PieChart
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,10 +28,12 @@ interface StickyCalculatorPanelProps {
   investmentCosts: number;
   provisionRate: number;
   priceAdjustment: number;
+  targetYield: number;
   units: CalculatedUnit[];
   onInvestmentCostsChange: (v: number) => void;
   onProvisionChange: (v: number) => void;
   onPriceAdjustment: (v: number) => void;
+  onTargetYieldChange: (v: number) => void;
   isDemo?: boolean;
 }
 
@@ -39,10 +41,12 @@ export function StickyCalculatorPanel({
   investmentCosts,
   provisionRate,
   priceAdjustment,
+  targetYield,
   units,
   onInvestmentCostsChange,
   onProvisionChange,
   onPriceAdjustment,
+  onTargetYieldChange,
   isDemo = false,
 }: StickyCalculatorPanelProps) {
   const [costsDraft, setCostsDraft] = useState(investmentCosts.toLocaleString('de-DE'));
@@ -56,10 +60,8 @@ export function StickyCalculatorPanel({
     const avgYield = units.length > 0
       ? units.reduce((s, u) => s + u.effective_yield, 0) / units.length
       : 0;
-    const costsPct = totalSale > 0 ? (investmentCosts / totalSale) * 100 : 0;
-    const provPct = provisionRate * 100;
 
-    return { totalSale, provisionAbs, marginAbs, marginPct, profitPerUnit, avgYield, costsPct, provPct };
+    return { totalSale, provisionAbs, marginAbs, marginPct, profitPerUnit, avgYield };
   }, [units, investmentCosts, provisionRate]);
 
   const pieData = [
@@ -128,6 +130,21 @@ export function StickyCalculatorPanel({
           />
         </div>
 
+        {/* Target Yield Slider */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-baseline">
+            <Label className="text-xs text-muted-foreground">Endkundenrendite</Label>
+            <span className="text-xs font-bold text-primary tabular-nums">{(targetYield * 100).toFixed(1)}%</span>
+          </div>
+          <Slider
+            value={[targetYield * 100]}
+            min={2}
+            max={8}
+            step={0.1}
+            onValueChange={([v]) => onTargetYieldChange(v / 100)}
+          />
+        </div>
+
         {/* Price Adjustment Stepper */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Preisanpassung</Label>
@@ -153,42 +170,6 @@ export function StickyCalculatorPanel({
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Pie Chart */}
-        <div className="h-[160px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={35}
-                outerRadius={65}
-                paddingAngle={2}
-                dataKey="value"
-                stroke="none"
-              >
-                {pieData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => fmt(value)}
-                contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-3 -mt-2">
-            {pieData.map((d) => (
-              <div key={d.name} className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                {d.name}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -222,6 +203,42 @@ export function StickyCalculatorPanel({
           <div className="flex justify-between">
             <span className="text-muted-foreground">Ø Endkundenrendite</span>
             <span className="font-medium tabular-nums">{calc.avgYield.toFixed(2)} %</span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Pie Chart — bottom */}
+        <div className="h-[160px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={35}
+                outerRadius={65}
+                paddingAngle={2}
+                dataKey="value"
+                stroke="none"
+              >
+                {pieData.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number) => fmt(value)}
+                contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="flex justify-center gap-3 -mt-2">
+            {pieData.map((d) => (
+              <div key={d.name} className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                {d.name}
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>

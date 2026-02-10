@@ -77,6 +77,7 @@ export default function PortfolioTab() {
   );
   const [provisionRate, setProvisionRate] = useState(0.10); // 10%
   const [priceAdjustment, setPriceAdjustment] = useState(0); // %
+  const [targetYield, setTargetYield] = useState(0.04); // 4%
   const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number }>>({});
 
   // Base units (demo or real)
@@ -162,10 +163,12 @@ export default function PortfolioTab() {
             investmentCosts={investmentCosts}
             provisionRate={provisionRate}
             priceAdjustment={priceAdjustment}
+            targetYield={targetYield}
             units={calculatedUnits}
             onInvestmentCostsChange={setInvestmentCosts}
             onProvisionChange={setProvisionRate}
             onPriceAdjustment={setPriceAdjustment}
+            onTargetYieldChange={setTargetYield}
             isDemo={isDemo || !selectedProject}
           />
         </div>
