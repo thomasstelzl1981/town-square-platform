@@ -13,6 +13,7 @@ import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Mail, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
 
 interface ProfileFormData {
@@ -357,6 +358,9 @@ export function ProfilTab() {
             Vorschlag generieren
           </Button>
         </ProfileWidget>
+
+        {/* ── Outbound-Kennung ── */}
+        <OutboundIdentityWidget />
 
         {/* ── Briefkopf ── */}
         <ProfileWidget icon={Building2} title="Briefkopf-Daten" description="Logo, Firma und Bankverbindung">

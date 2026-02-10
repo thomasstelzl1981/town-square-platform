@@ -12887,6 +12887,39 @@ export type Database = {
           },
         ]
       }
+      user_outbound_identities: {
+        Row: {
+          brand_key: string
+          created_at: string
+          display_name: string
+          from_email: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_key: string
+          created_at?: string
+          display_name?: string
+          from_email: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_key?: string
+          created_at?: string
+          display_name?: string
+          from_email?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -13352,6 +13385,14 @@ export type Database = {
         Returns: string
       }
       generate_public_id: { Args: { prefix: string }; Returns: string }
+      get_active_outbound_identity: {
+        Args: { p_user_id: string }
+        Returns: {
+          brand_key: string
+          display_name: string
+          from_email: string
+        }[]
+      }
       get_user_memberships: {
         Args: { p_user_id: string }
         Returns: {

@@ -42,10 +42,26 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     // Verify user
-    const userClient = createClient(SUPABASE_URL, authHeader.replace('Bearer ', ''));
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
+    const userClient = createClient(SUPABASE_URL, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
       throw new Error('Unauthorized');
+    }
+
+    // Resolve outbound identity for this user
+    const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
+      p_user_id: user.id,
+    });
+    let outboundFrom = 'Ausschreibung <noreply@systemofatown.de>';
+    let outboundReplyTo: string | undefined;
+    if (identityRows && identityRows.length > 0) {
+      const identity = identityRows[0];
+      const displayName = identity.display_name || 'Ausschreibung';
+      outboundFrom = `${displayName} <${identity.from_email}>`;
+      outboundReplyTo = identity.from_email;
     }
 
     const { 
@@ -122,10 +138,11 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Ausschreibung <noreply@systemofatown.de>',
+        from: outboundFrom,
         to: [email.to],
         subject: email.subject,
         text: email.body,
+        ...(outboundReplyTo ? { reply_to: outboundReplyTo } : {}),
         // TODO: Add attachments when storage integration is ready
         // attachments: await fetchAttachments(email.attachment_ids),
       }),
