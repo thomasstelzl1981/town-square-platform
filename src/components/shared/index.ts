@@ -33,6 +33,7 @@ export {
   type PropertyTableEmptyState 
 } from './PropertyTable';
 export { PageShell } from './PageShell';
+export { ModulePageHeader } from './ModulePageHeader';
 export { KPICard } from './KPICard';
 export { WidgetHeader } from './WidgetHeader';
 export { ListRow } from './ListRow';

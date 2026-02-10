@@ -289,7 +289,11 @@ const VorgaengeTab = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">VORGÄNGE</h1>
+        <p className="text-muted-foreground mt-1">Reservierungen und Transaktionen</p>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="reservations">

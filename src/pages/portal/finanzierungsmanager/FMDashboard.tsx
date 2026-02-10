@@ -32,7 +32,11 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   const completedCases = cases.filter(c => c.status === 'completed' || c.status === 'closed');
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">FINANZIERUNGSMANAGER</h1>
+        <p className="text-muted-foreground mt-1">Fälle, Status und Aktionen im Überblick</p>
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="glass-card cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate('faelle')}>

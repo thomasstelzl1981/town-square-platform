@@ -468,7 +468,11 @@ const ObjekteTab = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">MIETVERWALTUNG</h1>
+        <p className="text-muted-foreground mt-1">Alle Objekte und Mietverträge im Überblick</p>
+      </div>
       {/* Header with Context Dropdown */}
       {contexts.length > 0 && (
         <div className="flex items-center gap-3">

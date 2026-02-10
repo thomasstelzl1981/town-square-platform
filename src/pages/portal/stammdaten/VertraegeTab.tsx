@@ -253,7 +253,11 @@ export function VertraegeTab() {
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight uppercase">VERTRÄGE</h1>
+        <p className="text-muted-foreground mt-1">Ihre rechtlichen Vereinbarungen im Überblick</p>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

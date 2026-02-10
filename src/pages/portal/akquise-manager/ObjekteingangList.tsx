@@ -126,12 +126,12 @@ export function ObjekteingangList() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Objekteingang</h1>
-          <p className="text-muted-foreground">Alle eingegangenen Angebote und Exposés</p>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">OBJEKTEINGANG</h1>
+          <p className="text-muted-foreground mt-1">Alle eingegangenen Angebote und Exposés</p>
         </div>
         <Button onClick={() => navigate('/portal/akquise-manager/tools')}>
           <Plus className="h-4 w-4 mr-2" />
