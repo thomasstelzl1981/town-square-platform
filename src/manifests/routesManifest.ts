@@ -365,9 +365,10 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["partner"], requires_role: ["finance_manager"] },
       tiles: [
         { path: "dashboard", component: "FMDashboard", title: "Dashboard", default: true },
-        { path: "faelle", component: "FMFaelle", title: "Finanzierungsakte" },
+        { path: "finanzierungsakte", component: "FMFinanzierungsakte", title: "Finanzierungsakte" },
         { path: "einreichung", component: "FMEinreichung", title: "Einreichung" },
-        { path: "archiv", component: "FMArchiv", title: "Fälle" },
+        { path: "faelle", component: "FMFaelle", title: "Fälle" },
+        { path: "archiv", component: "FMArchiv", title: "Archiv" },
       ],
       dynamic_routes: [
         { path: "faelle/:requestId", component: "FMFallDetail", title: "Finanzierungsakte", dynamic: true },
