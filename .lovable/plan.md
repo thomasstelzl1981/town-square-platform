@@ -1,117 +1,104 @@
 
 
-# E-Mail-Client: Stabilisierung und UI-Verbesserung
+# Widgets: Finanzdaten und News mit freien Daten (ohne API-Key)
 
-## Problem-Analyse
+## Konzept
 
-### 1. E-Mail-Body wird nicht geladen (Hauptproblem)
-**Ursache:** Die `deno-imap` Bibliothek (`jsr:@workingdevshero/deno-imap`) ist unzuverlaessig. Die 3-Tier-Fetch-Strategie fuer den Body scheitert bei 9 von 10 E-Mails. Die Datenbank bestaetigt: `body_text = NULL`, `body_html = NULL` fuer fast alle Nachrichten.
+Beide Widgets werden von "Stub/Coming Soon" auf **live** umgestellt. Design bleibt exakt gleich -- nur die Blur-Effekte und "Coming Soon"-Badges werden entfernt und echte Daten eingesetzt.
 
-**Warum es mal geht und mal nicht:** Die Bibliothek ist experimentell. Ob `full: true` (RFC822) funktioniert, haengt vom IMAP-Server, der Nachrichtengroesse und dem Encoding ab. Es ist nicht deterministisch.
+## Datenquellen (alle kostenlos, kein API-Key)
 
-### 2. Antwort-/Weiterleitungs-/Loeschen-Buttons
-Die Buttons existieren bereits im Code (Zeilen 868-880), sind aber nur sichtbar wenn:
-- Ein E-Mail-Konto verbunden ist
-- Eine E-Mail in der Liste ausgewaehlt wurde
-- Die Buttons befinden sich am unteren Rand des Detail-Panels
+### Finanzdaten
+| Symbol | Quelle | URL |
+|--------|--------|-----|
+| EUR/USD | EZB (ECB SDW) | `https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?lastNObservations=1&format=jsondata` |
+| BTC, ETH | CoinGecko Free API | `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true` |
+| Gold | Frankfurter API (ECB-basiert) | `https://api.frankfurter.app/latest?to=XAU` oder CoinGecko-Commodity |
+| DAX | Nicht frei verfuegbar -- wird als **statischer Richtwert** mit Hinweis "verzögert" angezeigt, oder entfernt |
 
-Da der Body oft nicht geladen wird, sieht man zwar die Buttons, aber Antworten/Weiterleiten funktionieren schlecht (kein Zitat-Text).
+**Strategie:** EUR/USD + BTC + ETH sind live. DAX wird durch einen weiteren Wechselkurs (z.B. EUR/GBP) oder Gold ersetzt, da es keine freie DAX-API gibt.
 
-## Loesung
+### News
+| Quelle | RSS-Feed-URL |
+|--------|-------------|
+| Tagesschau Wirtschaft | `https://www.tagesschau.de/xml/rss2_https/` |
+| Handelsblatt (falls verfuegbar) | Alternative: `https://www.tagesschau.de/wirtschaft/index~rss2.xml` |
 
-### Teil 1: Stabiler IMAP-Body-Fetch (Edge Function)
-
-**Datei:** `supabase/functions/sot-mail-sync/index.ts`
-
-Die aktuelle 3-Tier-Strategie wird durch eine robustere Methode ersetzt:
-
-1. **Primaer: `bodyParts: ['1']`** -- Holt den ersten MIME-Part direkt (funktioniert bei den meisten Servern zuverlaessiger als `full: true`)
-2. **Fallback: `bodyParts: ['1.1', '1.2']`** -- Fuer verschachtelte Multipart-Nachrichten
-3. **Letzter Fallback: `full: true`** -- RFC822 als letzte Option
-4. **Neuer Safety-Fallback: Re-Fetch nach Upsert** -- Wenn nach dem Sync immer noch kein Body da ist, wird ein einzelner On-Demand-Fetch getriggert
-
-Zusaetzlich:
-- Besseres Error-Logging pro Nachricht (UID-basiert)
-- Timeout-Handling pro Fetch (10 Sekunden max)
-- Body wird bei leerem Ergebnis mit dem Envelope-Subject als Mindest-Snippet gefuellt
-
-### Teil 2: On-Demand Body-Fetch (Neue Edge Function)
-
-**Neue Datei:** `supabase/functions/sot-mail-fetch-body/index.ts`
-
-Wenn der Benutzer eine E-Mail oeffnet und kein Body vorhanden ist, wird automatisch ein einzelner Body-Fetch ausgeloest:
-- Frontend erkennt `body_text === null && body_html === null`
-- Ruft `sot-mail-fetch-body` auf mit `messageId` und `uid`
-- Die Edge Function verbindet sich zum IMAP-Server und holt NUR diese eine Nachricht
-- Ergebnis wird in `mail_messages` aktualisiert und im UI angezeigt
-
-Das ist der entscheidende Unterschied: **Statt sich auf den Batch-Sync zu verlassen, wird der Body bei Bedarf einzeln geholt.** Das ist zuverlaessiger, weil:
-- Nur eine Verbindung fuer eine Nachricht
-- Kein Timeout-Druck durch Batch-Verarbeitung
-- Mehrere Fetch-Strategien koennen nacheinander probiert werden
-
-### Teil 3: UI-Verbesserungen (EmailTab.tsx)
-
-**Datei:** `src/pages/portal/office/EmailTab.tsx`
-
-1. **Action-Buttons prominenter machen:**
-   - Antworten, Allen antworten, Weiterleiten, Loeschen werden in die **Header-Zeile** des Detail-Panels verschoben (nicht mehr am unteren Rand)
-   - Ikonleiste direkt neben Betreff sichtbar, ohne scrollen zu muessen
-
-2. **Body-Loading-Indikator:**
-   - Wenn Body leer ist, wird automatisch `sot-mail-fetch-body` aufgerufen
-   - Ein Lade-Spinner zeigt an: "E-Mail-Inhalt wird geladen..."
-   - Bei Fehler: "Inhalt konnte nicht geladen werden. Erneut versuchen?"
-
-3. **Loeschen-Button in Header-Aktionen:**
-   - Trash-Icon neben Star und Archive (bereits vorhanden, bleibt)
+RSS-Feeds werden in der Edge Function als XML geparsed und als JSON an das Frontend geliefert.
 
 ## Betroffene Dateien
 
 | # | Datei | Aenderung |
 |---|---|---|
-| 1 | `supabase/functions/sot-mail-sync/index.ts` | Robustere Body-Fetch-Strategie, besseres Error-Handling |
-| 2 | `supabase/functions/sot-mail-fetch-body/index.ts` | **NEU** -- On-Demand Body-Fetch fuer einzelne E-Mails |
-| 3 | `src/pages/portal/office/EmailTab.tsx` | Action-Buttons in Header verschoben, Auto-Fetch fuer fehlenden Body |
+| 1 | `supabase/functions/sot-finance-proxy/index.ts` | **NEU** -- Holt ECB + CoinGecko Daten, cached 30 Min |
+| 2 | `supabase/functions/sot-news-proxy/index.ts` | **NEU** -- Holt RSS-Feed, parsed XML zu JSON, cached 60 Min |
+| 3 | `src/hooks/useFinanceData.ts` | **NEU** -- React Query Hook fuer Finanzdaten |
+| 4 | `src/hooks/useNewsData.ts` | **NEU** -- React Query Hook fuer News-Headlines |
+| 5 | `src/components/dashboard/widgets/FinanceWidget.tsx` | Blur/Badge entfernen, echte Daten via Hook anzeigen |
+| 6 | `src/components/dashboard/widgets/NewsWidget.tsx` | Blur/Badge entfernen, echte Headlines via Hook anzeigen |
+| 7 | `src/config/systemWidgets.ts` | Status von `stub` auf `live` aendern, data_source aktualisieren |
 
 ## Technische Details
 
-### On-Demand Body-Fetch Ablauf:
+### Edge Function: sot-finance-proxy
 
 ```text
-Benutzer klickt E-Mail
-       |
-       v
-body_text == null?  --NEIN--> Body anzeigen
-       |
-      JA
-       |
-       v
-sot-mail-fetch-body aufrufen
-       |
-       v
-Edge Function: IMAP connect --> SELECT mailbox --> FETCH UID
-       |
-       v
-Versuch 1: bodyParts ['1']
-Versuch 2: bodyParts ['TEXT']
-Versuch 3: full: true (RFC822)
-       |
-       v
-Body in mail_messages updaten
-       |
-       v
-Frontend: refetch + anzeigen
+Request --> Edge Function
+              |
+              +--> CoinGecko: BTC, ETH Preis + 24h Change
+              +--> ECB/Frankfurter: EUR/USD Kurs
+              |
+              v
+           JSON Response:
+           [
+             { symbol: "EUR/USD", value: "1.0892", change: "-0.2%", trend: "down" },
+             { symbol: "BTC", value: "67.4k", change: "+2.1%", trend: "up" },
+             { symbol: "ETH", value: "3.2k", change: "+1.4%", trend: "up" },
+             { symbol: "Gold", value: "2.341", change: "+0.3%", trend: "up" }
+           ]
 ```
 
-### Braucht man eine zusaetzliche API/Software?
+- 30 Minuten serverseitiger Cache (In-Memory)
+- Kein API-Key erforderlich
+- CORS-Headers fuer Frontend-Zugriff
 
-**Nein.** Das Problem ist nicht der IMAP-Standard, sondern die Deno-IMAP-Bibliothek. Die Loesung:
-- On-Demand-Fetch (einzeln statt Batch) umgeht die meisten Bibliotheks-Bugs
-- Mehrere Fetch-Strategien fangen Provider-Unterschiede ab
-- Kein zusaetzlicher Provider oder externe API noetig
+### Edge Function: sot-news-proxy
 
-### Keine DB-Aenderungen
+```text
+Request --> Edge Function
+              |
+              +--> Tagesschau RSS (XML)
+              |
+              v
+           XML parsen --> JSON:
+           [
+             { title: "...", source: "Tagesschau", time: "2 Std.", link: "..." },
+             { title: "...", source: "Tagesschau", time: "4 Std.", link: "..." }
+           ]
+```
 
-Die `mail_messages`-Tabelle hat bereits `body_text`, `body_html` und `snippet` Felder.
+- 60 Minuten serverseitiger Cache
+- XML-Parsing direkt in Deno (kein externer Parser noetig)
+- Maximal 5 Headlines
 
+### Frontend-Widgets
+
+**FinanceWidget.tsx:**
+- Entfernt: `blur-[1px] opacity-60`, "Coming Soon" Badge, Stub-Message
+- Hinzugefuegt: `useFinanceData()` Hook, Lade-Skeleton, Fehler-Fallback auf Demo-Daten
+- Design bleibt identisch (Grid, Farben, Icons)
+
+**NewsWidget.tsx:**
+- Entfernt: `blur-[1px] opacity-60`, "Coming Soon" Badge, Stub-Message
+- Hinzugefuegt: `useNewsData()` Hook, Lade-Skeleton, Fehler-Fallback auf Demo-Daten
+- Klick auf Headline oeffnet Link in neuem Tab
+- Design bleibt identisch
+
+### Caching-Strategie
+
+- Edge Function: In-Memory Cache (30/60 Min)
+- Frontend: React Query `staleTime` (30/60 Min) -- kein Refetch bei Tab-Wechsel
+
+## Keine DB-Aenderungen
+
+Rein API-basiert mit Edge Functions als Proxy. Keine neuen Tabellen noetig.
