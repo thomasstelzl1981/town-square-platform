@@ -31,9 +31,12 @@ export const FINANCE_STATUS_LABELS: Record<string, string> = {
   assigned: 'Zugewiesen',
   delegated: 'Übergeben an Manager',
   
-  // MOD-11 Manager States
+  // MOD-11 Manager States (Pipeline)
   accepted: 'Angenommen',
-  in_processing: 'In Bearbeitung',
+  editing: 'In Bearbeitung',
+  in_processing: 'In Prüfung',
+  ready_for_submission: 'Bereit zur Einreichung',
+  submitted_to_bank: 'Bei Bank eingereicht',
   bank_submitted: 'Bei Bank eingereicht',
   needs_customer_action: 'Aktion erforderlich',
   waiting_for_bank: 'Warte auf Bankentscheidung',
@@ -327,6 +330,22 @@ export interface FinanceMandate {
 
 export type FutureRoomCaseStatus = 'active' | 'missing_docs' | 'ready_to_submit' | 'submitted' | 'closed' | 'completed';
 
+/**
+ * FM Pipeline Steps — visible in the CaseStepper
+ */
+export const FM_PIPELINE_STEPS = [
+  { key: 'delegated', label: 'Delegiert', description: 'Zugewiesen vom Admin' },
+  { key: 'accepted', label: 'Angenommen', description: 'Manager hat akzeptiert' },
+  { key: 'editing', label: 'In Bearbeitung', description: 'Daten werden bearbeitet' },
+  { key: 'ready_for_submission', label: 'Ready', description: 'Bereit zur Einreichung' },
+  { key: 'submitted_to_bank', label: 'Eingereicht', description: 'Bei Bank eingereicht' },
+  { key: 'in_processing', label: 'In Prüfung', description: 'Bank prüft Antrag' },
+  { key: 'completed', label: 'Abgeschlossen', description: 'Erfolgreich abgeschlossen' },
+  { key: 'rejected', label: 'Abgelehnt', description: 'Antrag abgelehnt' },
+] as const;
+
+export type FMPipelineStep = typeof FM_PIPELINE_STEPS[number]['key'];
+
 export interface FutureRoomCase {
   id: string;
   manager_tenant_id: string;
@@ -339,8 +358,13 @@ export interface FutureRoomCase {
   submitted_to_bank_at: string | null;
   bank_response: string | null;
   
-  // Timestamps
+  // Workflow fields
+  submission_channel?: string | null;
+  submission_status?: string | null;
   first_action_at?: string | null;
+  notes?: string | null;
+  
+  // Timestamps
   created_at: string;
   updated_at: string;
   

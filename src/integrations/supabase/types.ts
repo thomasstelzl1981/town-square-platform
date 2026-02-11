@@ -5686,9 +5686,13 @@ export type Database = {
           bank_response: string | null
           created_at: string
           finance_mandate_id: string
+          first_action_at: string | null
           id: string
           manager_tenant_id: string
+          notes: string | null
           status: string
+          submission_channel: string | null
+          submission_status: string | null
           submitted_to_bank_at: string | null
           target_bank_id: string | null
           updated_at: string
@@ -5697,9 +5701,13 @@ export type Database = {
           bank_response?: string | null
           created_at?: string
           finance_mandate_id: string
+          first_action_at?: string | null
           id?: string
           manager_tenant_id: string
+          notes?: string | null
           status?: string
+          submission_channel?: string | null
+          submission_status?: string | null
           submitted_to_bank_at?: string | null
           target_bank_id?: string | null
           updated_at?: string
@@ -5708,9 +5716,13 @@ export type Database = {
           bank_response?: string | null
           created_at?: string
           finance_mandate_id?: string
+          first_action_at?: string | null
           id?: string
           manager_tenant_id?: string
+          notes?: string | null
           status?: string
+          submission_channel?: string | null
+          submission_status?: string | null
           submitted_to_bank_at?: string | null
           target_bank_id?: string | null
           updated_at?: string
