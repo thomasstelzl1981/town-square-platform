@@ -1,12 +1,11 @@
 /**
  * Landing Page — Tab 1: Investment
- * Hero + Unit Kacheln Grid (all visible, no search required)
- * Click on unit → LandingPageUnitExpose
+ * Hero + Preislisten-Tabelle (alle Einheiten)
+ * Click on row → LandingPageUnitExpose (SSOT Investment Engine)
  */
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Home, Ruler, ArrowLeft } from 'lucide-react';
+import { MapPin, Home, Ruler, ArrowRight } from 'lucide-react';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import { DEMO_PROJECT, DEMO_UNITS, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
@@ -22,7 +21,7 @@ interface LandingPageInvestmentTabProps {
 
 export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSelectUnit, onBack }: LandingPageInvestmentTabProps) {
   const p = project || DEMO_PROJECT;
-  const units = DEMO_UNITS; // Always use demo units for now
+  const units = DEMO_UNITS;
   const desc = DEMO_PROJECT_DESCRIPTION;
 
   // If a unit is selected, show the expose detail
@@ -39,6 +38,15 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
   const priceRange = units.length > 0
     ? `${formatCurrency(Math.min(...units.map(u => u.list_price)))} – ${formatCurrency(Math.max(...units.map(u => u.list_price)))}`
     : '–';
+
+  // Estimate monthly burden for each unit (simple: rent - annuity at 3.5% + 2% on 80% LTV)
+  const estimateMonthlyBurden = (unit: DemoUnit) => {
+    const loan = unit.list_price * 0.8;
+    const annualRate = (3.5 + 2) / 100;
+    const monthlyRate = (loan * annualRate) / 12;
+    const mgmt = 25;
+    return unit.rent_monthly - monthlyRate - mgmt;
+  };
 
   return (
     <div className="space-y-8">
@@ -71,63 +79,65 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
         </div>
       </div>
 
-      {/* Unit Grid */}
+      {/* Preisliste Table */}
       <div>
         <h3 className="text-lg font-semibold mb-4">
-          Alle Einheiten ({units.length})
+          Preisliste ({units.length} Einheiten)
         </h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {units.map((unit) => (
-            <UnitCard key={unit.id} unit={unit} onClick={() => onSelectUnit(unit.id)} />
-          ))}
+        <div className="rounded-xl border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Einheit</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Zimmer</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Fläche</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Etage</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Kaufpreis</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">€/m²</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Rendite</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Mtl. Belastung</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Status</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {units.map((unit) => {
+                  const burden = estimateMonthlyBurden(unit);
+                  return (
+                    <tr
+                      key={unit.id}
+                      className="hover:bg-muted/30 cursor-pointer transition-colors group"
+                      onClick={() => onSelectUnit(unit.id)}
+                    >
+                      <td className="px-4 py-3 font-medium">{unit.unit_number}</td>
+                      <td className="px-4 py-3 text-center">{unit.rooms}</td>
+                      <td className="px-4 py-3 text-right">{unit.area_sqm} m²</td>
+                      <td className="px-4 py-3 text-center">{unit.floor}. OG</td>
+                      <td className="px-4 py-3 text-right font-semibold">{formatCurrency(unit.list_price)}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(unit.price_per_sqm)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-primary">{unit.yield_percent}%</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={burden >= 0 ? 'text-primary font-medium' : 'text-destructive font-medium'}>
+                          {burden >= 0 ? '+' : ''}{formatCurrency(Math.round(burden))}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={unit.status === 'available' ? 'outline' : 'secondary'} className="text-xs">
+                          {unit.status === 'available' ? 'Verfügbar' : unit.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function UnitCard({ unit, onClick }: { unit: DemoUnit; onClick: () => void }) {
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
-
-  return (
-    <Card
-      className="cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group"
-      onClick={onClick}
-    >
-      <CardContent className="p-5 space-y-3">
-        {/* Placeholder image area */}
-        <div className="h-32 rounded-lg bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-          <Home className="h-8 w-8 text-muted-foreground/40" />
-        </div>
-
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold">{unit.unit_number}</h4>
-            <Badge variant={unit.status === 'available' ? 'outline' : 'secondary'} className="text-xs">
-              {unit.status === 'available' ? 'Verfügbar' : unit.status}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {unit.rooms} Zi. · {unit.area_sqm} m² · {unit.floor}. OG
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div>
-            <p className="text-lg font-bold">{formatCurrency(unit.list_price)}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(unit.price_per_sqm)}/m²</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold text-primary">{unit.yield_percent}% Rendite</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(unit.rent_monthly)}/Monat</p>
-          </div>
-        </div>
-
-        <Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-          Exposé öffnen
-        </Button>
-      </CardContent>
-    </Card>
   );
 }
