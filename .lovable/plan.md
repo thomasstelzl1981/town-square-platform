@@ -1,274 +1,218 @@
 
+# P0 HARDENING MASTER PLAN — Enterprise GO-Level
 
-# Golden Path Engine — Alle 5 fehlenden GP-Definitionen in einem Schritt
+## Uebersicht
 
----
-
-## Ausgangslage
-
-Die Golden Path Engine (V1.0) ist generisch gebaut. Neue Golden Paths erfordern NUR:
-- 1 TypeScript-Datei in `src/manifests/goldenPaths/`
-- 1 Zeile Registration in `src/manifests/goldenPaths/index.ts`
-- Optional: Neue Ledger-Events in der Whitelist
-
-Engine, Types, Hooks, Guards bleiben UNVERAENDERT.
+Dieses Haertungspaket umfasst 5 Teile ohne Architektur- oder Engine-Aenderungen. Alle Aenderungen sind deklarativ (Golden Path Definitionen), datenbankbasiert (Triggers, Constraints) oder Edge-Function-Implementierungen.
 
 ---
 
-## Was wird erstellt
+## TEIL 1: Golden Path Fail-State Design
+
+### Was wird gemacht?
+Erweiterung der Type-Definitionen und aller 6 Golden Path Definitionen um optionale Fail-State-Felder.
+
+### Aenderungen:
+
+**1a. `src/manifests/goldenPaths/types.ts`** — Neue Typen hinzufuegen:
 
 ```text
-DATEI                                      | GP           | STEPS | KOMPLEXITAET
--------------------------------------------|--------------|-------|-------------
-src/manifests/goldenPaths/MOD_07_11.ts     | Finanzierung | 7-8   | HOCH
-src/manifests/goldenPaths/MOD_08_12.ts     | Akquise      | 6-7   | HOCH
-src/manifests/goldenPaths/MOD_13.ts        | Projekte     | 5-6   | HOCH
-src/manifests/goldenPaths/GP_VERMIETUNG.ts | Vermietung   | 5-6   | MITTEL
-src/manifests/goldenPaths/GP_LEAD.ts       | Lead-Gen     | 4     | NIEDRIG
+FailStateRecovery = 'retry' | 'manual_review' | 'abort' | 'escalate_to_z1' | 'ignore'
+
+interface StepFailState {
+  ledger_event: string        // z.B. "listing.distribution.timeout"
+  status_update: string       // z.B. "timeout"
+  recovery_strategy: FailStateRecovery
+  description: string
+  escalate_to?: string        // z.B. "Z1"
+  max_retries?: number
+  camunda_error_code?: string
+}
+
+// Neues optionales Feld in GoldenPathStep:
+on_timeout?: StepFailState
+on_rejected?: StepFailState
+on_duplicate?: StepFailState
+on_error?: StepFailState
 ```
 
-Plus: Update von `src/manifests/goldenPaths/index.ts` (5 neue Imports + Registrations + Ledger-Events).
+**1b. Alle 6 GP-Definitionen erweitern:**
+
+Fuer jeden Cross-Zone-Step und jeden wait_message/service_task-Step werden `on_timeout`, `on_error` und ggf. `on_rejected`/`on_duplicate` ergaenzt. Beispiel fuer MOD_04 Step `listing_distribution_z1`:
+
+```text
+on_timeout:
+  ledger_event: "listing.distribution.timeout"
+  status_update: "timeout"
+  recovery_strategy: "manual_review"
+  escalate_to: "Z1"
+  
+on_error:
+  ledger_event: "listing.distribution.error"
+  status_update: "error"
+  recovery_strategy: "retry"
+  max_retries: 3
+```
+
+SLA-Zeitraeume (nur als Metadaten im Step, keine Engine-Aenderung):
+- Z2 nach Z1 Handoff: 24h
+- Z1 nach Z2 Assignment: 24h
+- Externer Email Response: 72h
+
+**1c. Ledger-Whitelist erweitern** (`src/manifests/goldenPaths/index.ts`):
+
+Neue Events hinzufuegen:
+- `*.timeout` Patterns fuer jeden GP (z.B. `listing.distribution.timeout`, `finance.request.timeout`, etc.)
+- `*.rejected` Patterns
+- `*.duplicate_detected` Patterns
+- `*.error` Patterns
+- Consent-Events (siehe Teil 2)
+- PII-Events (siehe Teil 2)
+
+**1d. `src/goldenpath/devValidator.ts`** erweitern:
+
+Neue Pruefung (Section 5): Fuer jeden Step mit `contract_refs` oder `task_kind === 'wait_message'` pruefen, dass mindestens `on_timeout` und `on_error` definiert sind. Fehlende Fail-States erzeugen `console.error`.
 
 ---
 
-## GP-02: Finanzierung (MOD_07_11.ts)
+## TEIL 2: DSGVO P0 Hardening
 
-```text
-ID:       gp-finance-lifecycle
-MODULE:   MOD-07 / MOD-11
-VERSION:  1.0.0
-AKTEURE:  Kunde (MOD-07), Admin (Z1 FutureRoom), Manager (MOD-11)
+### 2a. Consent-Events
 
-REQUIRED ENTITIES:
-  - applicant_profiles (Selbstauskunft)
-  - finance_requests (Anfrage-Stammdaten)
+**Ledger-Whitelist erweitern** um:
+- `consent.given`
+- `consent.revoked`
+- `consent.updated`
 
-REQUIRED CONTRACTS:
-  - terms_gate_acceptance (TermsGate 30% Gebuehr, MOD-11)
+**DB-Funktion `log_data_event` aktualisieren** (Migration):
+- Whitelist in der RPC-Funktion um alle neuen Event-Types erweitern (Consent, PII, Fail-State Events)
+- Payload-Keys fuer neue Events definieren
 
-STEPS:
-  Phase 1: Selbstauskunft erstellen (MOD-07, user_task)
-  Phase 2: Selbstauskunft abschliessen (MOD-07, user_task)
-  Phase 3: Anfrage einreichen (MOD-07, user_task)
-           -> CONTRACT_FINANCE_SUBMIT (Z2->Z1)
-  Phase 4: Z1 Triage + Assignment (Z1, wait_message)
-           -> CONTRACT_MANDATE_ASSIGNMENT (Z1->Z2)
-  Phase 5: TermsGate akzeptieren (MOD-11, user_task)
-  Phase 6: Case bearbeiten (MOD-11, user_task)
-  Phase 7: Bank-Einreichung (MOD-11, user_task)
-           -> CONTRACT_FINANCE_DOC_REMINDER (Z2->Z1, optional)
+### 2b. PII Update Tracking via DB-Triggers
 
-SUCCESS STATE:
-  - applicant_profile_complete
-  - finance_request_submitted
-  - mandate_assigned
-  - terms_gate_accepted
-  - bank_submitted
-```
+**Neue DB-Triggers** (Migration):
+
+3 Audit-Triggers erstellen:
+1. `trg_audit_applicant_profiles` — AFTER UPDATE/DELETE on `applicant_profiles`
+2. `trg_audit_contacts` — AFTER UPDATE/DELETE on `contacts`  
+3. `trg_audit_profiles` — AFTER UPDATE/DELETE on `profiles`
+
+Jeder Trigger ruft eine gemeinsame Funktion `fn_audit_pii_change()` auf, die:
+- Die geaenderten Spalten ermittelt (`OLD` vs `NEW`)
+- Einen Eintrag in `data_event_ledger` schreibt mit:
+  - `event_type`: `applicant_profile.updated` / `contact.deleted` etc.
+  - `payload`: `{ "record_id": "...", "table_name": "...", "changed_fields": ["field1","field2"] }`
+  - Keine PII-Werte im Payload — nur Feldnamen
+- Soft-Delete erkennt (`deleted_at` wird gesetzt) und als `*.delete_requested` loggt
 
 ---
 
-## GP-03: Akquise Mandat (MOD_08_12.ts)
+## TEIL 3: Renter Invite Edge Function
 
-```text
-ID:       gp-acquisition-mandate
-MODULE:   MOD-08 / MOD-12
-VERSION:  1.0.0
-AKTEURE:  Investor (MOD-08), Admin (Z1 Acquiary), Manager (MOD-12)
+### Neue Datei: `supabase/functions/sot-renter-invite/index.ts`
 
-REQUIRED ENTITIES:
-  - acq_mandates (Suchmandat)
+Vollstaendige Implementierung basierend auf CONTRACT_RENTER_INVITE.md:
 
-REQUIRED CONTRACTS:
-  - terms_gate_acceptance (TermsGate 30% Gebuehr, MOD-12)
+**Flow:**
+1. Empfaengt POST mit `{ invite_id }` oder `{ lease_id, email, contact_id }`
+2. Service-Role DB-Client erstellt
+3. Validierung:
+   - Lease existiert und gehoert zum Tenant
+   - Email ist gueltig
+   - Kein Duplikat (Pruefung via `idx_renter_invites_pending_per_lease` — bereits als UNIQUE partial index vorhanden)
+4. Falls `invite_id` nicht uebergeben: Insert in `renter_invites` mit Token und 72h Expiry
+5. Ledger-Event: `renter.invite.sent`
+6. Email-Versand via Resend (Pattern aus `sot-system-mail-send`)
+7. Response mit `{ success: true, invite_id }`
 
-STEPS:
-  Phase 1: Suchprofil erstellen (MOD-08, user_task)
-  Phase 2: Mandat einreichen (MOD-08, user_task)
-           -> CONTRACT_ACQ_MANDATE_SUBMIT (Z2->Z1)
-  Phase 3: Z1 Triage + Assignment (Z1, wait_message)
-           -> CONTRACT_MANDATE_ASSIGNMENT (Z1->Z2)
-  Phase 4: TermsGate akzeptieren (MOD-12, user_task)
-  Phase 5: Recherche + Outbound (MOD-12, user_task)
-           -> CONTRACT_ACQ_OUTBOUND_EMAIL (Z2->Z1)
-           -> CONTRACT_ACQ_INBOUND_EMAIL (EXTERN->Z1)
-  Phase 6: Analyse + Reporting (MOD-12, user_task)
+**Acceptance-Endpoint** (separater POST-Pfad via `action` Parameter):
+1. Token validieren
+2. Expiry pruefen (72h) 
+3. Status-Update: `pending` -> `accepted`, `accepted_at = now()`
+4. Renter-Org Provisioning (Insert in `organizations` mit `org_type: 'renter'`)
+5. `lease.renter_org_id` setzen
+6. Data-Room Access Grant erstellen (`access_grants`)
+7. Ledger-Events: `renter.invite.accepted`, `renter.org.provisioned`, `data_room.access.granted`
 
-SUCCESS STATE:
-  - mandate_submitted
-  - mandate_assigned
-  - terms_gate_accepted
-  - offers_created
-```
+**Idempotenz:** 
+- Bereits `accepted` -> ignorieren, return success
+- Der existierende UNIQUE partial index `idx_renter_invites_pending_per_lease` verhindert doppelte pending Invites pro Lease
 
----
+**Timeout:**
+- Expires_at ist bereits auf 14 Tage gesetzt (DB-Default). Wird auf 72h angepasst oder per Parameter konfigurierbar.
+- Expiry-Check bei Acceptance: Token abgelaufen -> `renter.invite.expired` Ledger-Event, Status = `expired`
 
-## GP-05: Projekte (MOD_13.ts)
-
-```text
-ID:       gp-project-lifecycle
-MODULE:   MOD-13
-VERSION:  1.0.0
-AKTEURE:  Bautraeger (MOD-13), System (MOD-04, MOD-06, MOD-09, Z3)
-
-REQUIRED ENTITIES:
-  - dev_projects (Projekt-Stammdaten)
-  - dev_project_units (Einheiten)
-
-STEPS:
-  Phase 1: Projekt anlegen (MOD-13, user_task)
-  Phase 2: Einheiten planen (MOD-13, user_task)
-  Phase 3: Phasenwechsel Bau->Vertrieb (MOD-13, user_task)
-           -> CONTRACT_PROJECT_INTAKE (Z1->Z2, optional)
-  Phase 4: Listing Distribution (service_task)
-           -> CONTRACT_LISTING_PUBLISH (Z2->Z1)
-           -> CONTRACT_LISTING_DISTRIBUTE (Z1->Z2)
-  Phase 5: Landing Page (service_task)
-           -> CONTRACT_LANDING_PAGE_GENERATE (Z1->Z2)
-  Phase 6: Uebergabe + Abschluss (MOD-13, user_task)
-
-SUCCESS STATE:
-  - project_exists
-  - units_created
-  - listings_published
-  - distribution_active
-```
+**Config:** `supabase/config.toml` Eintrag mit `verify_jwt = false` (Token-basierte Acceptance braucht keine Auth).
 
 ---
 
-## GP-10: Vermietung (GP_VERMIETUNG.ts)
+## TEIL 4: Status Transition Hardening
 
+### DB-Validation-Triggers (Migration)
+
+Fuer 4 Tabellen werden Validation-Triggers erstellt (keine CHECK Constraints, da diese immutable sein muessen):
+
+**1. `finance_requests`:**
 ```text
-ID:       gp-rental-lifecycle
-MODULE:   MOD-05 / MOD-20
-VERSION:  1.0.0
-AKTEURE:  Vermieter (MOD-04/05), System (Z1), Mieter (MOD-20)
-
-REQUIRED ENTITIES:
-  - leases (Mietvertrag)
-  - renter_invites (Einladung)
-
-STEPS:
-  Phase 1: Mietvertrag anlegen (MOD-04/05, user_task)
-  Phase 2: Mieter einladen (MOD-05, user_task)
-           -> CONTRACT_RENTER_INVITE (Z2->Z1, NEU — muss als Contract-Datei erstellt werden)
-  Phase 3: Einladung annehmen (MOD-20, wait_message)
-  Phase 4: Datenraum aktivieren (service_task)
-  Phase 5: Portal-Zugang aktiv (MOD-20, service_task)
-
-SUCCESS STATE:
-  - lease_exists
-  - invite_sent
-  - invite_accepted
-  - portal_active
-
-HINWEIS: CONTRACT_RENTER_INVITE.md wird als neue Contract-Datei
-in spec/current/06_api_contracts/ erstellt.
+Erlaubt: draft->submitted, submitted->assigned, assigned->processing,
+         processing->completed, processing->rejected, submitted->timeout
+Blockiert: assigned->draft, completed->processing, rejected->submitted
 ```
+
+**2. `acq_mandates`:**
+```text
+Erlaubt: draft->submitted, submitted->assigned, assigned->active,
+         active->completed, active->rejected, submitted->timeout
+```
+
+**3. `dev_projects`:**
+```text
+Erlaubt: planning->construction, construction->sales, sales->handover,
+         handover->completed
+```
+
+**4. `leases`:**
+```text
+Erlaubt: draft->active, active->terminated, active->expired
+```
+
+Jeder Trigger: `BEFORE UPDATE` — prueft `OLD.status` vs `NEW.status`. Bei ungueltigem Uebergang: `RAISE EXCEPTION 'Invalid status transition: % -> %'`.
 
 ---
 
-## GP-09: Lead-Generierung (GP_LEAD.ts)
+## TEIL 5: Validierung
 
-```text
-ID:       gp-lead-generation
-MODULE:   ZONE-3 / MOD-09 / MOD-10
-VERSION:  1.0.0
-AKTEURE:  Website-Besucher (Z3), System (Z1), Partner (MOD-09/10)
-
-REQUIRED ENTITIES:
-  - leads (Lead-Stammdaten)
-
-STEPS:
-  Phase 1: Lead-Erfassung (Z3, service_task)
-           -> CONTRACT_LEAD_CAPTURE (Z3->Z1)
-  Phase 2: Lead-Qualifizierung (Z1, user_task)
-  Phase 3: Lead-Assignment (Z1, user_task)
-  Phase 4: Lead-Konvertierung (MOD-09/10, user_task)
-
-SUCCESS STATE:
-  - lead_captured
-  - lead_qualified
-  - lead_assigned
-```
+### Automatische Pruefungen nach Umsetzung:
+- devValidator laeuft ohne neue Errors (alle Cross-Zone Steps haben Fail-States)
+- Ledger-Whitelist enthaelt alle neuen Events
+- Build kompiliert ohne TypeScript-Fehler
+- Keine Aenderung an `engine.ts` Core-Logik
+- Keine neuen Routes oder Zonen
+- Edge Function `sot-renter-invite` deployed und aufrufbar
 
 ---
 
-## Aenderungen an index.ts
+## Zusammenfassung der Dateiaenderungen
 
-Neue Imports, Registrations und Ledger-Events:
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/goldenPaths/types.ts` | Neue Fail-State Typen |
+| `src/manifests/goldenPaths/MOD_04.ts` | Fail-States fuer 5 Cross-Zone Steps |
+| `src/manifests/goldenPaths/MOD_07_11.ts` | Fail-States fuer 3 Cross-Zone Steps |
+| `src/manifests/goldenPaths/MOD_08_12.ts` | Fail-States fuer 3 Cross-Zone Steps |
+| `src/manifests/goldenPaths/MOD_13.ts` | Fail-States fuer 2 Cross-Zone Steps |
+| `src/manifests/goldenPaths/GP_VERMIETUNG.ts` | Fail-States fuer 2 Cross-Zone Steps |
+| `src/manifests/goldenPaths/GP_LEAD.ts` | Fail-States fuer 1 Cross-Zone Step |
+| `src/manifests/goldenPaths/index.ts` | Erweiterte Ledger-Whitelist (~30 neue Events) |
+| `src/goldenpath/devValidator.ts` | Neue Pruefung: Fail-State Vollstaendigkeit |
+| `supabase/functions/sot-renter-invite/index.ts` | Neue Edge Function |
+| Migration 1 | `log_data_event` RPC: erweiterte Whitelist + Payload-Keys |
+| Migration 2 | PII Audit Triggers (3 Tabellen) |
+| Migration 3 | Status Transition Triggers (4 Tabellen) |
+| Migration 4 | Renter Invite Ledger-Events in Whitelist |
 
-```text
-NEUE IMPORTS:
-  - MOD_07_11_GOLDEN_PATH from './MOD_07_11'
-  - MOD_08_12_GOLDEN_PATH from './MOD_08_12'
-  - MOD_13_GOLDEN_PATH from './MOD_13'
-  - GP_VERMIETUNG_GOLDEN_PATH from './GP_VERMIETUNG'
-  - GP_LEAD_GOLDEN_PATH from './GP_LEAD'
-
-NEUE REGISTRATIONS:
-  - registerGoldenPath('MOD-07', MOD_07_11)
-  - registerGoldenPath('MOD-08', MOD_08_12)
-  - registerGoldenPath('MOD-13', MOD_13)
-  - registerGoldenPath('GP-VERMIETUNG', GP_VERMIETUNG)
-  - registerGoldenPath('GP-LEAD', GP_LEAD)
-
-NEUE LEDGER EVENTS:
-  - 'finance.request.submitted'
-  - 'finance.mandate.assigned'
-  - 'finance.bank.submitted'
-  - 'acq.mandate.submitted'
-  - 'acq.mandate.assigned'
-  - 'acq.offer.created'
-  - 'project.created'
-  - 'project.phase.changed'
-  - 'renter.invite.sent'
-  - 'renter.invite.accepted'
-  - 'lead.captured'
-  - 'lead.assigned'
-```
-
----
-
-## Neue Contract-Datei
-
-```text
-DATEI: spec/current/06_api_contracts/CONTRACT_RENTER_INVITE.md
-
-Direction:    Z2->Z1
-Trigger:      Vermieter laedt Mieter ein (MOD-05 renter_invites Insert)
-Payload:      { lease_id, tenant_id, contact_id, email, invite_code }
-SoT:          Z1 Governance (Logging, Email-Dispatch via Edge Function)
-```
-
----
-
-## Was NICHT geaendert wird
-
-```text
-src/goldenpath/engine.ts          — Generisch, bleibt
-src/manifests/goldenPaths/types.ts — V1.0, bleibt
-src/goldenpath/useGoldenPath.ts   — Generisch, bleibt
-src/goldenpath/GoldenPathGuard.tsx — Generisch, bleibt
-src/goldenpath/devValidator.ts    — Generisch, bleibt
-src/manifests/goldenPaths/MOD_04.ts — Referenz-GP, bleibt
-```
-
----
-
-## Zusammenfassung
-
-6 neue Dateien, 1 Update:
-
-```text
-NEU:  src/manifests/goldenPaths/MOD_07_11.ts
-NEU:  src/manifests/goldenPaths/MOD_08_12.ts
-NEU:  src/manifests/goldenPaths/MOD_13.ts
-NEU:  src/manifests/goldenPaths/GP_VERMIETUNG.ts
-NEU:  src/manifests/goldenPaths/GP_LEAD.ts
-NEU:  spec/current/06_api_contracts/CONTRACT_RENTER_INVITE.md
-UPD:  src/manifests/goldenPaths/index.ts
-```
-
-Keine Engine-Aenderung. Keine Type-Aenderung. Alles folgt dem MOD-04-Blueprint.
-
+**Keine Aenderungen an:**
+- `src/goldenpath/engine.ts` (Engine-Core bleibt unberuehrt)
+- `src/integrations/supabase/client.ts`
+- `src/integrations/supabase/types.ts`
+- Routing oder Zonen-Architektur
