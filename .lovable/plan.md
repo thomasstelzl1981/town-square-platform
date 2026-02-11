@@ -1,119 +1,70 @@
 
-
-# Virtueller Walkthrough MOD-13 Golden Path: Analyse und Reparaturplan
+# Virtueller Walkthrough MOD-13 Golden Path: Fehleranalyse und Reparaturplan
 
 ## Walkthrough-Ergebnis
 
-Ich habe den gesamten Pfad Schritt fuer Schritt durchgespielt und dabei **6 Probleme** identifiziert — davon **1 kritisch**, **3 mittel** und **2 klein**.
+Der Pfad wurde Schritt fuer Schritt durchgespielt. Es wurden **3 Probleme** identifiziert — davon **1 mittel** und **2 klein**. Der Grossteil des Pfads funktioniert korrekt.
 
 ---
 
-## Bestaetigung: Demo-Projekt
+## Was korrekt funktioniert (bestaetigt)
 
-**PROBLEM (KRITISCH):** Das Demo-Projekt verschwindet, sobald ein echtes Projekt angelegt wird.
-
-Die Funktion `isDemoMode()` in `demoProjectData.ts` (Zeile 8) ist definiert als:
-```text
-export const isDemoMode = (portfolioRows: any[]) => portfolioRows.length === 0;
-```
-
-Sobald ein echtes Projekt existiert, ist `portfolioRows.length > 0` und `isDemoMode` gibt `false` zurueck. Damit verschwindet das Demo-Projekt aus:
-- Dashboard (`ProjekteDashboard.tsx`, Zeile 146)
-- PortfolioTab (`PortfolioTab.tsx`, Zeile 47)
-- VertriebTab (`VertriebTab.tsx`, Zeile 32)
-- LandingPageTab (`LandingPageTab.tsx`, Zeile 19)
-
-**Reparatur:** Das Demo-Projekt muss **immer** als erste Kachel angezeigt werden — unabhaengig davon, ob echte Projekte existieren:
-- `isDemoMode` wird nicht mehr als Schalter zwischen Demo/Echt genutzt
-- Stattdessen wird `DEMO_PROJECT` immer als erstes Element in der Projekt-Liste eingefuegt (mit `isDemo`-Flag)
-- In `PortfolioTab` und `ProjekteDashboard`: Demo-Kachel wird immer gerendert, echte Projekte daneben
-- Wenn Demo-Kachel ausgewaehlt ist, zeigen Preisliste/Calculator die `DEMO_UNITS`
-- Wenn ein echtes Projekt ausgewaehlt ist, werden die echten `dev_project_units` geladen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `PortfolioTab.tsx` | Demo-Kachel immer rendern + echte Kacheln daneben |
-| `ProjekteDashboard.tsx` | Demo-Kachel immer im Grid anzeigen |
-| `VertriebTab.tsx` | Demo-Projekt immer als Option im Selector |
-| `LandingPageTab.tsx` | Projekt-Auswahl ermoeglichen (siehe Problem 2) |
+| Schritt | Status | Begruendung |
+|---------|--------|-------------|
+| Magic Intake: Expose + Preisliste Upload | OK | Projektanlage mit `dev_projects` + `dev_project_units`, Storage-Tree wird erstellt |
+| DMS-Ablage (Expose/Preisliste) | OK | Standardordner (01_expose, 02_preisliste etc.) werden bei Projektanlage geseedet |
+| Preisliste entsteht in PortfolioTab | OK | Echte Units werden aus `dev_project_units` geladen (Fix 2 aus letztem Plan) |
+| Demo-Projekt bleibt permanent | OK | `isDemoProject()` prueft auf feste ID, Demo-Kachel wird immer als erstes Element gerendert |
+| Landing Page Builder | OK | Echte Adressdaten werden durchgereicht, KI-Lagebeschreibung generiert |
+| Landing Page Vorschau mit echten Units | OK | `LandingPagePreview` reicht `units`-Prop durch an `LandingPageWebsite` |
+| Oeffentlicher Landing Page Link | OK | Route `/projekt/:slug` funktioniert, laedt echte Daten via `useProjectDataForLandingPage` |
+| Link zur Website sichtbar | OK | Browser-Frame zeigt `slug.kaufy.app` in URL-Leiste, "Website oeffnen" Button oeffnet `/projekt/{slug}` |
+| Vertriebsaktivierung (direkt, kein Pending) | OK | `SalesApprovalSection` setzt Status `approved`, erstellt Listings + Publications |
+| Kaufy-Toggle | OK | Upsert auf `listing_publications` mit Channel `kaufy`, `dev_projects.kaufy_listed` wird gesetzt |
+| MOD-09 Katalog empfaengt Listings | OK | `KatalogTab` queried `listing_publications` mit `channel: partner_network` + `status: active` — exakt was die Aktivierung erstellt |
+| Zone 3 Kaufy empfaengt Listings | OK | Kaufy sucht via `listing_publications` mit `channel: kaufy` + `status: active` |
+| Zone 1 Kill-Switch | OK | `SalesDesk` zeigt aktive Projekte, Deaktivierung setzt Listings auf `withdrawn` + Publications auf `paused` |
+| Widerrufs-Cleanup | OK | `deactivateVertriebsauftrag()` bereinigt Listings, Publications und `kaufy_listed` Flag |
+| `requested_at` Spalte | OK | Existiert im Schema (`sales_desk_requests.requested_at`), wird korrekt in SalesDesk und SalesApprovalSection referenziert |
 
 ---
 
-## Problem 2: LandingPageTab hat keinen Projekt-Switcher
+## Problem 1: Kein Refresh-Button in der Landing Page Vorschau (MITTEL)
 
-**MITTEL:** `LandingPageTab.tsx` (Zeile 20-21) nimmt immer `projects[0]`:
-```text
-const activeProject = isDemo ? DEMO_PROJECT : (portfolioRows[0] || DEMO_PROJECT);
-const rawProject = isDemo ? null : projects[0];
-```
+**Befund:** `LandingPagePreview.tsx` hat keinen Refresh-Button. Nach Aenderungen am Projekt (z.B. neue Bilder, geaenderte Texte) muss der User die Seite komplett neu laden, um die Vorschau zu aktualisieren. Es fehlt ein expliziter "Aktualisieren"-Button, der die Landing-Page-Daten neu laedt.
 
-Wenn mehrere Projekte existieren, kann der User nicht waehlen, fuer welches Projekt die Landingpage erstellt/angezeigt wird.
+**Reparatur:** Einen `RefreshCw`-Button in die Action-Bar (Zeile 92-101) der `LandingPagePreview` einfuegen. Beim Klick wird der React-Query-Cache fuer die Landing-Page-Daten und die Unit-Daten invalidiert, was ein erneutes Laden der Vorschau ausloest.
 
-**Reparatur:** Einen Projekt-Switcher (ProjectCard-Kacheln, wie in PortfolioTab) oben einfuegen. Beim Klick auf eine Kachel wird `selectedProjectId` gesetzt und die LandingPage-Daten fuer dieses Projekt geladen.
+Zusaetzlich muss `LandingPageTab.tsx` eine `onRefresh`-Callback-Prop an `LandingPagePreview` uebergeben, die `queryClient.invalidateQueries` fuer die relevanten Query-Keys ausfuehrt.
 
 | Datei | Aenderung |
 |-------|-----------|
-| `LandingPageTab.tsx` | ProjectCard-Kacheln + selectedProjectId State |
+| `LandingPagePreview.tsx` | Neuen `onRefresh`-Prop + RefreshCw-Button in Action-Bar |
+| `LandingPageTab.tsx` | `onRefresh`-Callback mit Query-Invalidierung uebergeben |
 
 ---
 
-## Problem 3: LandingPagePreview reicht keine Units durch
+## Problem 2: "Bearbeiten"-Button ohne klare Kommunikation (KLEIN)
 
-**MITTEL:** `LandingPagePreview.tsx` (Zeile 71-76) ruft `LandingPageWebsite` auf, uebergibt aber keine `units`-Prop:
-```text
-<LandingPageWebsite
-  project={project}
-  landingPage={landingPage}
-  isDemo={isDemo}
-/>
-```
+**Befund:** Der "Bearbeiten"-Button in `LandingPagePreview.tsx` (Zeile 93-96) ist `disabled` mit einem "Soon"-Badge. Das ist grundsaetzlich korrekt fuer den aktuellen Scope. Allerdings fehlt ein Tooltip oder eine kurze Erklaerung, was "Soon" bedeutet — der User koennte erwarten, dass dies bereits funktioniert.
 
-In `ProjektLandingPage.tsx` (oeffentliche Route) werden Units korrekt geladen und uebergeben. Aber in der Portal-Vorschau (`LandingPagePreview`) fehlt die `units`-Prop, sodass der InvestmentTab auf `DEMO_UNITS` zurueckfaellt.
-
-**Reparatur:** `LandingPagePreview` um eine `units`-Prop erweitern und in `LandingPageTab` die Units aus `dev_project_units` laden und durchreichen.
+**Reparatur:** Einen Tooltip hinzufuegen: "Inline-Editing wird in einer zukuenftigen Version verfuegbar sein."
 
 | Datei | Aenderung |
 |-------|-----------|
-| `LandingPagePreview.tsx` | Neue `units`-Prop, an LandingPageWebsite weiterreichen |
-| `LandingPageTab.tsx` | Units-Query hinzufuegen, an Preview weiterreichen |
+| `LandingPagePreview.tsx` | Tooltip um den Bearbeiten-Button |
 
 ---
 
-## Problem 4: MarketingTab Kaufy-Toggle widerspricht SalesApprovalSection
+## Problem 3: Landing Page Link nicht als dedizierter klickbarer Link sichtbar (KLEIN)
 
-**MITTEL:** `MarketingTab.tsx` (Zeile 31-38) hat einen eigenen Kaufy-Toggle, der bei Aktivierung eine Toast-Meldung "Kaufy-Listing erfordert Sales Desk Freigabe" zeigt. Gleichzeitig existiert in `SalesApprovalSection.tsx` ein funktionaler Kaufy-Toggle, der direkt Listings verwaltet.
+**Befund:** Der Link zur oeffentlichen Landing Page ist im Browser-Frame als URL-Leiste (`slug.kaufy.app`) sichtbar und ueber den "Website oeffnen"-Button erreichbar. Es gibt jedoch unterhalb der Vorschau keinen eigenen, kopierbaren Link-Bereich — z.B. ein Input-Feld mit "Link kopieren"-Button, damit der User die URL einfach teilen kann.
 
-Diese Dopplung fuehrt zu Verwirrung: Der User koennte den Kaufy-Toggle im MarketingTab betaetigen und wird blockiert, obwohl der Toggle im VertriebTab funktioniert.
-
-**Reparatur:** Den Kaufy-Toggle im MarketingTab als Read-Only-Anzeige umbauen (zeigt nur Status an). Die eigentliche Steuerung erfolgt ausschliesslich ueber die `SalesApprovalSection` im VertriebTab.
+**Reparatur:** In der Action-Bar (unterhalb des Browser-Frames) einen kleinen kopierbaren Link-Bereich einfuegen: Ein `Input`-Feld (read-only) mit der vollen URL und einem "Kopieren"-Icon-Button daneben, der die URL in die Zwischenablage kopiert.
 
 | Datei | Aenderung |
 |-------|-----------|
-| `MarketingTab.tsx` | Kaufy-Toggle als Status-Badge (read-only) |
-
----
-
-## Problem 5: SalesApprovalSection — fehlende `requested_at`-Spalte
-
-**KLEIN:** In `SalesDesk.tsx` (Zeile 159) wird `req.requested_at` referenziert. Die `sales_desk_requests`-Tabelle hat dieses Feld moeglicherweise als `created_at` statt `requested_at`. Falls die Spalte nicht existiert, zeigt die Zone 1 Tabelle "Invalid Date".
-
-**Reparatur:** Pruefen und ggf. auf `req.created_at` aendern oder Spalte abfragen.
-
-| Datei | Aenderung |
-|-------|-----------|
-| `SalesDesk.tsx` | `requested_at` durch `created_at` ersetzen (falls Spalte fehlt) |
-
----
-
-## Problem 6: LandingPagePreview "Bearbeiten"-Button ist disabled
-
-**KLEIN:** In `LandingPagePreview.tsx` (Zeile 90) ist der "Bearbeiten"-Button hardcoded `disabled`. Die Inline-Editing-Funktionalitaet (LandingPageEditOverlay) ist laut Spezifikation vorgesehen, aber nicht angeschlossen.
-
-**Reparatur:** Fuer den aktuellen Scope koennen wir den Button als "Coming Soon" labeln oder entfernen, um keine falsche Erwartung zu wecken. Die volle Edit-Funktionalitaet kann spaeter implementiert werden.
-
-| Datei | Aenderung |
-|-------|-----------|
-| `LandingPagePreview.tsx` | Button mit "Coming Soon" Badge oder entfernen |
+| `LandingPagePreview.tsx` | Kopierbarer Link-Bereich in Action-Bar |
 
 ---
 
@@ -121,24 +72,12 @@ Diese Dopplung fuehrt zu Verwirrung: Der User koennte den Kaufy-Toggle im Market
 
 | # | Datei | Prioritaet | Problem |
 |---|-------|------------|---------|
-| 1 | `demoProjectData.ts` | KRITISCH | Demo-Projekt muss immer sichtbar bleiben |
-| 2 | `PortfolioTab.tsx` | KRITISCH | Demo-Kachel immer rendern |
-| 3 | `ProjekteDashboard.tsx` | KRITISCH | Demo-Kachel immer im Grid |
-| 4 | `LandingPageTab.tsx` | MITTEL | Projekt-Switcher + Units laden |
-| 5 | `LandingPagePreview.tsx` | MITTEL | Units-Prop durchreichen |
-| 6 | `VertriebTab.tsx` | MITTEL | Demo-Projekt immer als Option |
-| 7 | `MarketingTab.tsx` | MITTEL | Kaufy-Toggle read-only |
-| 8 | `SalesDesk.tsx` | KLEIN | requested_at Fix |
-| 9 | `LandingPagePreview.tsx` | KLEIN | Bearbeiten-Button Labeling |
+| 1 | `LandingPagePreview.tsx` | MITTEL | Refresh-Button, kopierbarer Link, Tooltip |
+| 2 | `LandingPageTab.tsx` | MITTEL | onRefresh-Callback uebergeben |
 
-## Was bereits korrekt funktioniert
+## Bestaetigung
 
-- **Vertriebsauftrag-Aktivierung** (SalesApprovalSection): Direkte Aktivierung ohne Zone 1 Gate — korrekt
-- **Listing-Erstellung** (createListingsForProject): Properties, Listings und Publications werden korrekt angelegt — korrekt
-- **Kaufy-Toggle** (SalesApprovalSection): Funktionale Umsetzung mit Upsert-Logik — korrekt
-- **Widerrufs-Logik** (deactivateVertriebsauftrag): Listings + Publications werden bereinigt — korrekt
-- **Zone 1 Kill-Switch** (SalesDesk): Nur Deaktivierung, kein Approval — korrekt
-- **Landing Page Builder** (LandingPageBuilder): Echte Adressdaten werden durchgereicht — korrekt
-- **Oeffentliche Landing Page** (ProjektLandingPage): Echte Daten statt DEMO_PROJECT — korrekt
-- **Edge Function** (sot-generate-landing-page): Empfaengt echte Daten — korrekt
-
+- **Demo-Projekt:** Bleibt permanent als erste Kachel sichtbar, unabhaengig von echten Projekten.
+- **Landing Page Link:** Existiert bereits (Browser-Frame URL + "Website oeffnen" Button), wird durch kopierbaren Link-Bereich ergaenzt.
+- **Vertriebspfad:** Vollstaendig funktional von Aktivierung bis Kaufy/Partner-Katalog.
+- **Zone 1 Kill-Switch:** Funktional, deaktiviert rekursiv alle Kanäle.
