@@ -1,66 +1,69 @@
 
+# Finanzierungsobjekt-Sektion ergaenzen (MOD-11 + MOD-07)
 
-# MOD-11 Restructuring: Finanzierungsakte als leeres Formular
+## Ueberblick
 
-## Problem
+Zwei zusammenhaengende Probleme werden behoben:
 
-1. **"Neuer Fall"-Button** im Dashboard und in der Faelle-Liste verlinkt auf `/portal/finanzierung` (MOD-07 = Kundenmodul). Das ist falsch — der Finanzierungsmanager soll eigenstaendig Faelle anlegen koennen, nicht ueber das Kundenmodul gehen.
+1. **MOD-11 FMFinanzierungsakte**: Unterhalb der Selbstauskunft fehlt die Sektion "Finanzierungsobjekt erfassen" — die Objektdaten (Adresse, Typ, Flaechen, Kosten, Finanzierungsplan) muessen im gleichen tabellarischen Stil wie die Selbstauskunft direkt auf der Seite stehen.
 
-2. **"Finanzierungsakte"-Tile** zeigt aktuell die FMFaelle-Tabelle (Fallliste), nicht ein leeres befuellbares Formular. Erwartet wird: Ein leeres Formular analog zur Selbstauskunft, das der Manager manuell befuellt und mit "Finanzierungsakte erstellen" abspeichert.
-
-3. **MOD-07 Selbstauskunft**: Die persistenten Profile (ohne `finance_request_id`) sind bereits leer — die befuellten Daten (Max Mustermann) haengen am Demo-Request (`00000000-...-04`). Keine DB-Bereinigung noetig.
+2. **MOD-07 AnfrageTab**: Der Einstieg in eine neue Anfrage laeuft ueber ein Popup-Fenster (Dialog), das unuebersichtlich ist. Stattdessen soll die Seite direkt das Formular zeigen — alle Objektdaten inline sichtbar, keine versteckten Flows.
 
 ---
 
-## Loesung
+## Aenderung 1: MOD-11 FMFinanzierungsakte — Objektsektion ergaenzen
 
-### 1. Neue Seite: `FMFinanzierungsakte.tsx` (leeres Formular)
+**Datei:** `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
 
-Eine neue Seite erstellen, die ein **leeres, befuellbares Formular** zeigt — strukturiert nach dem bestehenden FMFallDetail-Muster (Selbstauskunft-Sektionen: Person, Beschaeftigung, Bank, Einkommen, Ausgaben, Vermoegen), aber **ohne vorhandene Daten**.
+Unterhalb des bestehenden Blocks "Selbstauskunft" (Zeile 272) wird ein neuer Block **"Finanzierungsobjekt"** eingefuegt. Die Felder orientieren sich an der AnfrageFormV2-Struktur und am PDF-Bankformular:
 
-Am Ende des Formulars ein Button **"Finanzierungsakte erstellen"**, der:
-- Einen neuen `finance_request` Datensatz erstellt (status: `draft`, tenant_id des Managers)
-- Ein neues `applicant_profile` erstellt (party_role: `primary`, verknuepft mit dem finance_request)
-- Die eingegebenen Formulardaten in das applicant_profile speichert
-- Eine public_id (SOT-F-...) generiert wird (via DB-Trigger)
-- Nach Erstellung: Weiterleitung auf `faelle/:requestId` (den bestehenden FMFallDetail)
+**Sektion: Objektdaten**
+- Objektadresse (Strasse, Hausnummer, PLZ, Ort — getrennte Felder)
+- Objektart (Eigentumswohnung, EFH, ZFH, MFH, Grundstueck, Gewerbe)
+- Baujahr
+- Wohnflaeche (m2)
+- Grundstuecksflaeche (m2)
+- Ausstattungsniveau (Einfach/Mittel/Gehoben/Luxus)
+- Wohnlage (Einfach/Mittel/Gut/Sehr gut)
+- Anzahl Zimmer
+- Anzahl Stellplaetze/Garagen
 
-Das Formular verwendet die bestehenden Komponenten `PersonSection`, `EmploymentSection`, `BankSection`, `IncomeSection`, `ExpensesSection`, `AssetsSection` aus `ApplicantPersonFields.tsx`.
+**Sektion: Kostenzusammenstellung**
+- Kaufpreis / Baukosten
+- Modernisierungskosten
+- Notar und Grundbuch
+- Grunderwerbsteuer
+- Maklerprovision
+- **Gesamtkosten** (automatisch berechnet)
 
-### 2. Dashboard-Button aendern
+**Sektion: Finanzierungsplan**
+- Eigenkapital
+- Darlehenswunsch
+- Zinsbindung (5/10/15/20/25/30 Jahre)
+- Anfaengliche Tilgung (%)
+- Max. Monatsrate
+- **Finanzierungsbedarf** (Gesamtkosten minus Eigenkapital, automatisch berechnet)
 
-**Datei:** `FMDashboard.tsx` (Zeile 74)
+Alle Felder werden im gleichen tabellarischen Stil (TR-Komponente mit Label|Wert) dargestellt wie die Eckdaten oben. Die Daten werden beim "Finanzierungsakte erstellen"-Click in den `finance_request` und ggf. `custom_object_data` gespeichert.
 
-- "Neuer Fall"-Button navigiert nicht mehr zu `/portal/finanzierung`
-- Stattdessen: Navigation zu `/portal/finanzierungsmanager/finanzierungsakte`
+---
 
-### 3. FMFaelle-Button aendern
+## Aenderung 2: MOD-07 AnfrageTab — Dialog entfernen, Inline-Formular
 
-**Datei:** `FMFaelle.tsx` (Zeile 110)
+**Datei:** `src/pages/portal/finanzierung/AnfrageTab.tsx`
 
-- "Eigenen Fall anlegen"-Button navigiert ebenfalls zu `/portal/finanzierungsmanager/finanzierungsakte` statt `/portal/finanzierung`
+Der aktuelle Flow:
+1. Nutzer sieht leere Seite mit "Anfrage starten"-Button
+2. Dialog oeffnet sich mit Objektquellen-Auswahl
+3. Nach Auswahl wird `finance_request` erstellt
+4. Dann wird `AnfrageFormV2` gezeigt
 
-### 4. Routing anpassen
+**Neuer Flow:**
+1. Nutzer sieht direkt das Formular (AnfrageFormV2) — wenn kein Draft existiert, wird automatisch ein leerer Draft erstellt
+2. Kein Dialog mehr
+3. Oberhalb des Formulars: optionale Prefill-Leiste "Objekt aus Portfolio uebernehmen?" (wie bereits in AnfrageFormV2 vorhanden)
 
-**Datei:** `FinanzierungsmanagerPage.tsx`
-
-Neue Route hinzufuegen:
-```text
-/portal/finanzierungsmanager/finanzierungsakte → FMFinanzierungsakte (neues leeres Formular)
-```
-
-### 5. Routes Manifest anpassen
-
-**Datei:** `routesManifest.ts` (Zeile 366-371)
-
-Tiles aktualisieren:
-```text
-Vorher:
-  Dashboard | Finanzierungsakte (=FMFaelle) | Einreichung | Faelle (=Archiv)
-
-Nachher:
-  Dashboard | Finanzierungsakte (=FMFinanzierungsakte, neues Formular) | Einreichung | Faelle (=FMFaelle, Fallliste) | Archiv
-```
+Konkret: Der gesamte Dialog-Block (Zeilen 184-265) wird entfernt. Stattdessen wird bei "kein Draft vorhanden" automatisch ein neuer Draft erstellt und sofort das Formular gezeigt. Der "Anfrage starten"-Button wird zu einem einfachen "Neue Anfrage erstellen"-Button, der direkt den Draft anlegt (ohne Zwischendialog).
 
 ---
 
@@ -68,17 +71,9 @@ Nachher:
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx` | **NEU** — Leeres befuellbares Formular mit "Erstellen"-Button |
-| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | "Neuer Fall"-Button → navigiert zu `finanzierungsakte` |
-| `src/pages/portal/finanzierungsmanager/FMFaelle.tsx` | Button-Link korrigieren, Titel zu "Faelle" |
-| `src/pages/portal/FinanzierungsmanagerPage.tsx` | Neue Route `finanzierungsakte` |
-| `src/manifests/routesManifest.ts` | Tiles-Array anpassen (5 Tiles statt 4) |
-| `src/pages/portal/finanzierungsmanager/index.ts` | Export fuer FMFinanzierungsakte hinzufuegen |
+| `FMFinanzierungsakte.tsx` | Neuer Block "Finanzierungsobjekt" mit 3 Sektionen (Objekt, Kosten, Finanzierung) im tabellarischen Stil |
+| `AnfrageTab.tsx` | Dialog entfernen, direktes Inline-Formular ohne Popup |
 
-## Keine DB-Migration noetig
+## Keine DB-Migration
 
-Die bestehenden Tabellen (`finance_requests`, `applicant_profiles`) und Trigger (`generate_public_id`) genuegen. Das Formular erzeugt Datensaetze ueber die bestehende Supabase-SDK-Logik.
-
-## MOD-07 Selbstauskunft
-
-Kein Reset noetig — die persistenten Profile (`finance_request_id IS NULL`) sind bereits leer. Die befuellten Demo-Daten (Max Mustermann, completion_score: 85) gehoeren zum Demo-Request `SOT-F-DEMO001` und werden korrekt nur dort angezeigt.
+Alle benoetigten Felder existieren bereits in `finance_requests` (object_address, object_type, purchase_price, etc.) und `custom_object_data` (JSONB fuer zusaetzliche Felder wie Zimmeranzahl, Stellplaetze).
