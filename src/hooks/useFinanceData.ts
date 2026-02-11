@@ -1,0 +1,31 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface MarketItem {
+  symbol: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down' | 'neutral';
+}
+
+const DEMO_MARKETS: MarketItem[] = [
+  { symbol: 'BTC', value: '67.4k', change: '+2.1%', trend: 'up' },
+  { symbol: 'ETH', value: '3.2k', change: '+1.4%', trend: 'up' },
+  { symbol: 'EUR/USD', value: '1.0892', change: '—', trend: 'neutral' },
+  { symbol: 'Gold', value: '2.341', change: '+0.3%', trend: 'up' },
+];
+
+async function fetchFinance(): Promise<MarketItem[]> {
+  const { data, error } = await supabase.functions.invoke('sot-finance-proxy');
+  if (error || !Array.isArray(data) || data.length === 0) return DEMO_MARKETS;
+  return data;
+}
+
+export function useFinanceData() {
+  return useQuery({
+    queryKey: ['system-finance'],
+    queryFn: fetchFinance,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}

@@ -1,29 +1,15 @@
 /**
- * NewsWidget — Stub for news briefing
- * 
- * Will show: Economic/Real estate headlines from RSS feeds
- * Data source: RSS Feeds / NewsAPI
+ * NewsWidget — Live news briefing from RSS feeds
+ * Data source: Tagesschau RSS (via Edge Function)
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Newspaper, ExternalLink } from 'lucide-react';
-
-// Demo headlines
-const DEMO_HEADLINES = [
-  {
-    title: 'EZB signalisiert weitere Zinssenkungen',
-    source: 'Tagesschau',
-    time: '2 Std.',
-  },
-  {
-    title: 'Immobilienpreise stabilisieren sich',
-    source: 'Handelsblatt',
-    time: '4 Std.',
-  },
-];
+import { useNewsData } from '@/hooks/useNewsData';
 
 export function NewsWidget() {
+  const { data: headlines = [], isLoading } = useNewsData();
+
   return (
     <Card className="aspect-square bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20 overflow-hidden">
       <CardContent className="h-full flex flex-col p-4">
@@ -33,38 +19,35 @@ export function NewsWidget() {
             <Newspaper className="h-4 w-4 text-purple-500" />
             <span className="text-xs font-medium">News</span>
           </div>
-          <Badge variant="outline" className="text-[9px] h-4 bg-background/50">
-            Coming Soon
-          </Badge>
         </div>
 
-        {/* Headlines Preview */}
-        <div className="flex-1 space-y-2">
-          {DEMO_HEADLINES.map((headline, index) => (
-            <div
-              key={index}
-              className="rounded-lg bg-background/30 p-3 blur-[1px] opacity-60"
-            >
-              <p className="text-xs font-medium line-clamp-2 mb-1">
-                {headline.title}
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  {headline.source}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {headline.time}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Stub Message */}
-        <div className="mt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">
-            News Briefing wird bald verfügbar sein
-          </p>
+        {/* Headlines */}
+        <div className="flex-1 space-y-2 overflow-y-auto">
+          {isLoading
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="rounded-lg bg-background/30 p-3 animate-pulse">
+                  <div className="h-3 w-full bg-muted rounded mb-2" />
+                  <div className="h-2 w-20 bg-muted rounded" />
+                </div>
+              ))
+            : headlines.slice(0, 4).map((headline, index) => (
+                <a
+                  key={index}
+                  href={headline.link || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg bg-background/30 p-3 hover:bg-background/50 transition-colors group"
+                >
+                  <p className="text-xs font-medium line-clamp-2 mb-1">{headline.title}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{headline.source}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">{headline.time}</span>
+                      {headline.link && <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                    </div>
+                  </div>
+                </a>
+              ))}
         </div>
       </CardContent>
     </Card>
