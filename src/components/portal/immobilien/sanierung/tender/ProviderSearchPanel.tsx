@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  Search, MapPin, Phone, Globe, Star, Plus, X, Loader2, Building2, Users
+  Search, MapPin, Phone, Globe, Star, Plus, X, Loader2, Building2, Users, Mail, AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,6 +23,8 @@ export interface PlaceResult {
   rating?: number;
   user_ratings_total?: number;
   types?: string[];
+  email?: string;
+  emailLoading?: boolean;
 }
 
 export interface SelectedProvider {
@@ -36,7 +38,7 @@ export interface SelectedProvider {
 
 interface ProviderSearchPanelProps {
   category: string;
-  location: string; // City/Address for search
+  location: string;
   selectedProviders: SelectedProvider[];
   onProvidersChange: (providers: SelectedProvider[]) => void;
 }
@@ -71,7 +73,45 @@ export function ProviderSearchPanel({
   const hasAutoSearched = useRef(false);
   const [manualEntry, setManualEntry] = useState(false);
   const [manualProvider, setManualProvider] = useState<Partial<SelectedProvider>>({});
+  const [manualEmails, setManualEmails] = useState<Record<string, string>>({});
 
+  // Extract email from a website URL
+  const extractEmail = useCallback(async (placeId: string, websiteUrl: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-extract-email', {
+        body: { url: websiteUrl }
+      });
+
+      if (error) throw error;
+
+      setSearchResults(prev => prev.map(r =>
+        r.place_id === placeId
+          ? { ...r, email: data?.bestEmail || undefined, emailLoading: false }
+          : r
+      ));
+    } catch (err) {
+      console.error(`Email extraction failed for ${websiteUrl}:`, err);
+      setSearchResults(prev => prev.map(r =>
+        r.place_id === placeId ? { ...r, emailLoading: false } : r
+      ));
+    }
+  }, []);
+
+  // Enrich results with emails after search
+  const enrichWithEmails = useCallback((results: PlaceResult[]) => {
+    const enriched = results.map(r => ({
+      ...r,
+      emailLoading: !!r.website,
+    }));
+    setSearchResults(enriched);
+
+    // Fire off email extraction for each result with a website
+    enriched.forEach(r => {
+      if (r.website) {
+        extractEmail(r.place_id, r.website);
+      }
+    });
+  }, [extractEmail]);
 
   // Search for providers via Google Places API (Edge Function)
   const handleSearch = useCallback(async () => {
@@ -93,9 +133,11 @@ export function ProviderSearchPanel({
       if (error) throw error;
 
       if (data?.results) {
-        setSearchResults(data.results);
         if (data.results.length === 0) {
+          setSearchResults([]);
           toast.info('Keine Ergebnisse gefunden. Versuchen Sie einen anderen Suchbegriff.');
+        } else {
+          enrichWithEmails(data.results);
         }
       }
     } catch (error) {
@@ -104,7 +146,7 @@ export function ProviderSearchPanel({
     } finally {
       setIsSearching(false);
     }
-  }, [searchQuery, category, location]);
+  }, [searchQuery, category, location, enrichWithEmails]);
 
   // Auto-search on mount when location is available
   useEffect(() => {
@@ -121,6 +163,7 @@ export function ProviderSearchPanel({
     if (isSelected) {
       onProvidersChange(selectedProviders.filter(p => p.place_id !== place.place_id));
     } else {
+      const email = place.email || manualEmails[place.place_id] || undefined;
       onProvidersChange([
         ...selectedProviders,
         {
@@ -128,6 +171,7 @@ export function ProviderSearchPanel({
           name: place.name,
           address: place.formatted_address,
           phone: place.phone_number,
+          email,
           website: place.website,
         }
       ]);
@@ -161,6 +205,18 @@ export function ProviderSearchPanel({
   // Remove provider
   const removeProvider = (placeId: string) => {
     onProvidersChange(selectedProviders.filter(p => p.place_id !== placeId));
+  };
+
+  // Handle manual email input for a search result
+  const handleManualEmailChange = (placeId: string, email: string) => {
+    setManualEmails(prev => ({ ...prev, [placeId]: email }));
+    // Also update in selected providers if already selected
+    const selected = selectedProviders.find(p => p.place_id === placeId);
+    if (selected) {
+      onProvidersChange(selectedProviders.map(p =>
+        p.place_id === placeId ? { ...p, email } : p
+      ));
+    }
   };
 
   return (
@@ -214,43 +270,75 @@ export function ProviderSearchPanel({
               ))}
             </div>
           ) : searchResults.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {searchResults.map((place) => {
                 const isSelected = selectedProviders.some(p => p.place_id === place.place_id);
+                const hasEmail = !!(place.email || manualEmails[place.place_id]);
                 return (
                   <div
                     key={place.place_id}
-                    className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors
+                    className={`p-3 border rounded-lg transition-colors
                       ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                    onClick={() => toggleProvider(place)}
                   >
-                    <Checkbox checked={isSelected} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{place.name}</div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {place.formatted_address}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        {place.phone_number && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {place.phone_number}
-                          </span>
-                        )}
-                        {place.rating && (
-                          <span className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-yellow-500" />
-                            {place.rating} ({place.user_ratings_total})
-                          </span>
-                        )}
-                        {place.website && (
-                          <span className="flex items-center gap-1">
-                            <Globe className="h-3 w-3" />
-                            Website
-                          </span>
-                        )}
+                    <div
+                      className="flex items-start gap-3 cursor-pointer"
+                      onClick={() => toggleProvider(place)}
+                    >
+                      <Checkbox checked={isSelected} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{place.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {place.formatted_address}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          {place.phone_number && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {place.phone_number}
+                            </span>
+                          )}
+                          {place.rating && (
+                            <span className="flex items-center gap-1">
+                              <Star className="h-3 w-3 text-yellow-500" />
+                              {place.rating} ({place.user_ratings_total})
+                            </span>
+                          )}
+                          {place.website && (
+                            <span className="flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              Website
+                            </span>
+                          )}
+                          {/* Email display */}
+                          {place.emailLoading ? (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              E-Mail wird gesucht…
+                            </span>
+                          ) : place.email ? (
+                            <span className="flex items-center gap-1 text-foreground font-medium">
+                              <Mail className="h-3 w-3" />
+                              {place.email}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Manual email fallback if no email found and not loading */}
+                    {!place.emailLoading && !place.email && (
+                      <div className="mt-2 ml-8 flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="E-Mail manuell eingeben"
+                          type="email"
+                          value={manualEmails[place.place_id] || ''}
+                          onChange={(e) => handleManualEmailChange(place.place_id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -334,7 +422,18 @@ export function ProviderSearchPanel({
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{provider.name}</div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {provider.email || provider.phone || provider.address}
+                      {provider.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {provider.email}
+                        </span>
+                      )}
+                      {!provider.email && (
+                        <span className="flex items-center gap-1 text-amber-500">
+                          <AlertCircle className="h-3 w-3" />
+                          Keine E-Mail
+                        </span>
+                      )}
                     </div>
                   </div>
                   <Button
