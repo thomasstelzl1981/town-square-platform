@@ -21,6 +21,9 @@ interface LandingPageBuilderProps {
   isDemo: boolean;
   projectId?: string;
   organizationId?: string;
+  projectAddress?: string;
+  projectCity?: string;
+  projectPostalCode?: string;
 }
 
 const GENERATION_STEPS = [
@@ -30,7 +33,7 @@ const GENERATION_STEPS = [
   'Website wird zusammengesetzt…',
 ];
 
-export function LandingPageBuilder({ projectName, isDemo, projectId, organizationId }: LandingPageBuilderProps) {
+export function LandingPageBuilder({ projectName, isDemo, projectId, organizationId, projectAddress, projectCity, projectPostalCode }: LandingPageBuilderProps) {
   const [showUrlDialog, setShowUrlDialog] = useState(false);
   const [developerUrl, setDeveloperUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,9 +64,9 @@ export function LandingPageBuilder({ projectName, isDemo, projectId, organizatio
           const { data, error } = await supabase.functions.invoke('sot-generate-landing-page', {
             body: {
               project_name: projectName,
-              address: '', // Will be enriched from project data
-              city: '',
-              postal_code: '',
+              address: projectAddress || '',
+              city: projectCity || '',
+              postal_code: projectPostalCode || '',
             },
           });
           if (!error && data?.location_description) {

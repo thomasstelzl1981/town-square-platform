@@ -1,5 +1,6 @@
 /**
  * Sales Desk — Zone-1 Admin Desk for Sales Operations
+ * Projects: Only deactivation (Kill-Switch), no approval gate.
  */
 import { Routes, Route, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,9 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink } from 'lucide-react';
+import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink, Power } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useSalesDeskListings, useToggleListingBlock, useUpdateListingDistribution } from '@/hooks/useSalesDeskListings';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Dashboard view
 function SalesDeskDashboard() {
@@ -18,6 +22,60 @@ function SalesDeskDashboard() {
   const pendingCount = listings?.filter(l => !l.publications.some(p => p.status === 'active')).length || 0;
   const activeCount = listings?.filter(l => l.publications.some(p => p.status === 'active')).length || 0;
   const blockedCount = listings?.filter(l => l.is_blocked).length || 0;
+
+  // Fetch active project requests
+  const { data: projectRequests } = useQuery({
+    queryKey: ['sales-desk-project-requests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sales_desk_requests')
+        .select('*, dev_projects(name, city, total_units_count)')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  const handleDeactivateProject = async (requestId: string, projectId: string) => {
+    try {
+      // Set request to withdrawn
+      await supabase
+        .from('sales_desk_requests')
+        .update({ status: 'withdrawn' })
+        .eq('id', requestId);
+
+      // Withdraw all listings for this project's units
+      const { data: units } = await supabase
+        .from('dev_project_units')
+        .select('property_id')
+        .eq('project_id', projectId)
+        .not('property_id', 'is', null);
+
+      if (units?.length) {
+        const propertyIds = units.map(u => u.property_id!).filter(Boolean);
+        const { data: projectListings } = await supabase
+          .from('listings')
+          .select('id')
+          .in('property_id', propertyIds);
+
+        if (projectListings?.length) {
+          const listingIds = projectListings.map(l => l.id);
+          await supabase.from('listings').update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() }).in('id', listingIds);
+          await supabase.from('listing_publications').update({ status: 'paused' }).in('listing_id', listingIds);
+        }
+      }
+
+      await supabase.from('dev_projects').update({ kaufy_listed: false }).eq('id', projectId);
+
+      toast.success('Projekt deaktiviert', { description: 'Alle Listings und Publikationen wurden gestoppt.' });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-project-requests'] });
+    } catch {
+      toast.error('Fehler bei der Deaktivierung');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -58,14 +116,67 @@ function SalesDeskDashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Gesamt</CardTitle>
+            <CardTitle className="text-sm font-medium">Aktive Projekte</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{listings?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Alle Listings</p>
+            <div className="text-2xl font-bold">{projectRequests?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">MOD-13 Vertriebsaufträge</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Active Projects — Kill-Switch only */}
+      {projectRequests && projectRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Aktive Projekt-Vertriebsaufträge
+            </CardTitle>
+            <CardDescription>
+              Projekte mit aktivem Vertriebsauftrag. Nur Deaktivierung möglich.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Projekt</TableHead>
+                  <TableHead>Stadt</TableHead>
+                  <TableHead className="text-center">Einheiten</TableHead>
+                  <TableHead>Aktiviert am</TableHead>
+                  <TableHead className="text-center">Aktion</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projectRequests.map((req: any) => (
+                  <TableRow key={req.id}>
+                    <TableCell className="font-medium">
+                      {req.dev_projects?.name || '–'}
+                    </TableCell>
+                    <TableCell>{req.dev_projects?.city || '–'}</TableCell>
+                    <TableCell className="text-center">{req.dev_projects?.total_units_count ?? '–'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(req.requested_at).toLocaleDateString('de-DE')}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => handleDeactivateProject(req.id, req.project_id)}
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        Deaktivieren
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

@@ -95,14 +95,14 @@ export default function MarketingTab() {
         </Card>
       </div>
 
-      {/* Sales Desk Hint */}
+      {/* Governance Hint */}
       <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
         <Shield className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium">Sales Desk Freigabe erforderlich</p>
+          <p className="text-sm font-medium">Vertriebsauftrag erforderlich</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Kaufy-Listings und Vertriebskanäle werden erst nach Freigabe durch den Sales Desk (Zone 1) aktiviert. 
-            Senden Sie eine Freigabe-Anfrage über den Tab „Vertrieb".
+            Aktivieren Sie den Vertriebsauftrag im Reiter „Governance", um Kaufy-Listings und 
+            Vertriebskanäle freizuschalten. Die Aktivierung erfolgt direkt ohne zusätzliche Freigabe.
           </p>
         </div>
       </div>
