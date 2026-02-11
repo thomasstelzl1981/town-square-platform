@@ -5,7 +5,13 @@
 import type { ProjectPortfolioRow } from '@/types/projekte';
 
 // ── Helper ──────────────────────────────────────────────────────────────
+/** @deprecated Use DEMO_PROJECT directly — demo is always visible */
 export const isDemoMode = (portfolioRows: any[]) => portfolioRows.length === 0;
+
+/** Check if a given project ID is the demo project */
+export const isDemoProject = (projectId: string | undefined | null) => projectId === DEMO_PROJECT_ID;
+
+export const DEMO_PROJECT_ID = 'demo-project-001';
 
 // ── Demo Project ────────────────────────────────────────────────────────
 export const DEMO_PROJECT: ProjectPortfolioRow = {

@@ -146,12 +146,12 @@ export default function ProjekteDashboard() {
   const isDemo = isDemoMode(portfolioRows);
 
   const stats = {
-    totalProjects: isDemo ? 1 : portfolioRows.length,
-    activeProjects: isDemo ? 1 : portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length,
-    totalUnits: isDemo ? 24 : portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0),
-    soldUnits: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
-    totalRevenue: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
-    reservedUnits: isDemo ? 0 : portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
+    totalProjects: portfolioRows.length + 1, // +1 for demo
+    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length + 1,
+    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0) + DEMO_PROJECT.total_units_count,
+    soldUnits: portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
+    totalRevenue: portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
+    reservedUnits: portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
   };
 
   return (
@@ -360,13 +360,11 @@ export default function ProjekteDashboard() {
             <LoadingState />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {isDemo ? (
-                <ProjectCard project={DEMO_PROJECT} isDemo />
-              ) : (
-                portfolioRows.slice(0, 5).map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))
-              )}
+              {/* Demo project is ALWAYS shown as first tile */}
+              <ProjectCard project={DEMO_PROJECT} isDemo />
+              {portfolioRows.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
               <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
             </div>
           )}
