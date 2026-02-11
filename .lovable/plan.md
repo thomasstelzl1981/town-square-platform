@@ -1,102 +1,63 @@
 
+# Sanierung-Modul: Navigation + KI-LV-Generierung aus Freitext
 
-# MOD-05 Mietverwaltung (MSV) — UX-Ueberarbeitung
+## Problem 1: Stepper ist nicht navigierbar
 
-## Analyse
+Die Workflow-Schritte in der Sidebar (Leistungsumfang, Dienstleister, Ausschreibung, Angebote) sind aktuell rein visuell. Der aktive Schritt wird aus dem DB-Status (`status`-Feld) abgeleitet — man kann nicht zurueckklicken. Sobald der Leistungsumfang finalisiert ist und der Status auf `scope_finalized` steht, zeigt die UI nur noch "Dienstleister finden" an.
 
-Das MSV-Modul hat 4 Tabs (Objekte, Mieteingang, Vermietung, Einstellungen), die funktional gebaut sind, aber visuell veraltet wirken:
+**Loesung:** Einen lokalen `viewStep`-State einfuehren, der unabhaengig vom DB-Status navigierbar ist. Die Stepper-Eintraege werden klickbar. Man kann jederzeit zu jedem bereits erreichten (oder aktuellen) Schritt zuruecknavigieren. Der DB-Status bestimmt weiterhin, welche Schritte "abgeschlossen" dargestellt werden.
 
-### Probleme
+## Problem 2: Kein KI-Flow aus der Freitextbeschreibung
 
-**1. ObjekteTab** (Startseite)
-- Hat bereits CI-Header ("MIETVERWALTUNG") — aber der ist manuell geschrieben statt via `ModulePageHeader`
-- Kein visueller Kontext was MSV bietet — man sieht sofort eine nackte Tabelle
-- Empty-State verweist auf "MOD-04" (technischer Jargon, nicht nutzertauglich)
-- Kontextfilter-Dropdown ist funktional, aber es fehlt eine Kurzuebersicht (KPIs: Einheiten, Gesamtmiete, Leerstand)
-- Kein visueller Hinweis auf die MSV-Features (Mahnung, Mietbericht etc.)
+Der Nutzer gibt bei der Anlage eine Freitext-Beschreibung ein (z.B. "Bad komplett sanieren, neue Fliesen, neue Armaturen"). Diese wird in `service_cases.description` gespeichert. Aber im ScopeDefinitionPanel startet die KI-Analyse nur ueber DMS-Dokumente — nicht aus dem Freitext.
 
-**2. MieteingangTab**
-- Statistik-Karten sind zu klein und klobig (3er-Grid mit minimaler Info)
-- PaywallBanner ist gut, aber optisch nicht integriert
-- Tabelle ist funktional — aber die Empty-State-Row mit Strichen sieht unprofessionell aus
-- Insgesamt zu trocken fuer eine Praesentation
+Die Edge Function `sot-renovation-scope-ai` unterstuetzt bereits die Generierung aus Kontext (Kategorie + Adresse), aber die UI bietet keinen "Aus Beschreibung generieren"-Button.
 
-**3. VermietungTab**
-- Gut aufgebaut mit PropertyTable, Info-Card am Ende erwaehnt "MOD-04" (technisch)
-- Funktional OK, braucht nur kleine CI-Anpassungen
-
-**4. EinstellungenTab**
-- Gut strukturiert mit glass-card-Pattern
-- Funktional komplett — braucht kaum Aenderungen
-
-### Hauptprobleme zusammengefasst
-- **Fehlende Willkommens-/Feature-Karten** die zeigen was MSV kann
-- **Technische Referenzen** ("MOD-04", "MOD-05") statt nutzerfreundliche Sprache
-- **ObjekteTab** ist zu nackt — es fehlt der "Wow-Faktor" fuer die Praesentation
-- **MieteingangTab** Stats-Karten sind zu klein und haben keine glass-card-Optik
-- **Headers** sind teilweise manuell statt via `ModulePageHeader`-Komponente
-
----
-
-## Ueberarbeitungsplan
-
-### A. ObjekteTab — Aufwertung mit KPI-Leiste und Feature-Hinweis
-
-**Aenderungen:**
-- Header auf `ModulePageHeader` umstellen (mit Beschreibung: "Alle Objekte und Mietvertraege aus Ihrem Portfolio — verwaltet, ueberwacht, automatisiert")
-- **KPI-Leiste** (3er-Grid, glass-card) oberhalb der Tabelle:
-  - Einheiten gesamt (aus units-Query)
-  - Aktive Mietvertraege (aus leases count)
-  - Gesamtmiete kalt (Summe)
-  - Optional: Leerstandsquote
-- **Empty-State** ueberarbeiten: "Noch keine Immobilien vorhanden" mit CTA "Immobilie anlegen" (ohne "MOD-04")
-- Kontextfilter optisch aufwerten (glass-card Wrapper)
-
-### B. MieteingangTab — Statistiken aufwerten
-
-**Aenderungen:**
-- Stats-Karten: `glass-card`-Styling, groessere Zahlen, bessere Proportionen
-- Empty-State: Die haessliche Leer-Zeile mit Strichen entfernen — stattdessen ein einladender zentrierter Empty-State mit Icon
-- "MOD-04" / technische Texte durch nutzerfreundliche Sprache ersetzen
-
-### C. VermietungTab — Kleine CI-Anpassungen
-
-**Aenderungen:**
-- Info-Card am Ende: "MOD-04 Objektdaten" durch "Ihren Immobiliendaten" ersetzen
-- Sonst minimal — der Tab ist bereits gut aufgebaut
-
-### D. EinstellungenTab — Bereits gut
-
-**Aenderungen:**
-- Keine wesentlichen Aenderungen noetig — ist bereits mit glass-card CI aufgebaut
-
-### E. Alle Tabs — Konsistenz
-
-- Alle manuellen h1/p-Bloecke durch `ModulePageHeader` ersetzen (ObjekteTab, MieteingangTab haben es manuell)
-
----
+**Loesung:** Im ScopeDefinitionPanel einen neuen primaeren Flow einfuegen: "Aus Ihrer Beschreibung generieren". Dieser nimmt die `serviceCase.description` (den Freitext aus der Anlage), schickt ihn an die Edge Function mit einer neuen Action `generate_from_description`, und die KI erstellt daraus:
+- Ein strukturiertes Leistungsverzeichnis (Positionen)
+- Eine professionelle Beschreibung
+- Eine Kostenschaetzung
 
 ## Technische Umsetzung
 
-### Geaenderte Dateien (3)
+### Datei 1: `src/pages/portal/immobilien/SanierungTab.tsx`
 
-**1. `src/pages/portal/msv/ObjekteTab.tsx`**
-- Manuellen Header durch `ModulePageHeader` ersetzen (import hinzufuegen)
-- KPI-Leiste (3 glass-cards) mit Einheiten, Mietvertraege, Gesamtmiete einfuegen — berechnet aus bestehender `units`-Query
-- Empty-State-Text aendern: "MOD-04" entfernen, nutzerfreundliche Sprache
-- Beschreibungstext aufwerten
+**Aenderungen am Inline-Stepper:**
+- Neuer State: `viewStep` (number) pro expandiertem Case, default = `activeStep`
+- Die Stepper-Items werden zu klickbaren Buttons (cursor-pointer, hover-Effekt)
+- Klick auf einen Schritt setzt `viewStep` auf den Index dieses Schritts
+- Bedingung: Man kann nur Schritte anklicken die `<= activeStep` sind (also abgeschlossene + aktueller)
+- Der Content-Bereich rendert basierend auf `viewStep` statt `activeStep`
+- Wenn `expandedCaseId` wechselt, wird `viewStep` auf den `activeStep` des neuen Case zurueckgesetzt
 
-**2. `src/pages/portal/msv/MieteingangTab.tsx`**
-- Manuellen Header durch `ModulePageHeader` ersetzen
-- Stats-Karten auf `glass-card` umstellen, groessere Typografie
-- Empty-State (Zeile 317-349): Die Leer-Zeile mit Strichen komplett entfernen, durch zentrierten Empty-State mit Icon und einladendem Text ersetzen
-- Technische Referenzen entfernen
+### Datei 2: `src/components/portal/immobilien/sanierung/scope/ScopeDefinitionPanel.tsx`
 
-**3. `src/pages/portal/msv/VermietungTab.tsx`**
-- Info-Card Zeile 313: "MOD-04 Objektdaten" durch "Ihren Immobiliendaten" ersetzen
-- Header ist bereits gut (hat schon ModulePageHeader-Stil, nur manuell) — auf Komponente umstellen
+**Neuer primaerer KI-Flow:**
+- Oberhalb der bisherigen Tabs ("KI-unterstuetzt" / "Eigenes LV") wird ein neuer prominenter Bereich eingefuegt:
+  - Zeigt die gespeicherte Beschreibung aus `serviceCase.description`
+  - Grosser Button "Leistungsverzeichnis generieren" mit Sparkles-Icon
+  - Klick ruft die Edge Function auf mit Action `generate_from_description`
+  - Waehrend der Generierung: Loader + "KI erstellt Leistungsverzeichnis..."
+  - Nach Erfolg: line_items, scope_description und cost_estimates werden gesetzt
+- Die bisherigen Tabs (DMS-Dokumente / Upload) bleiben als Alternative erhalten, werden aber nach unten verschoben unter "Weitere Optionen" (Collapsible)
+- Wenn bereits line_items existieren, wird statt des "Generieren"-Buttons ein "Erneut generieren"-Link angezeigt
 
-### Keine DB-Aenderungen, keine neuen Dateien
+### Datei 3: `supabase/functions/sot-renovation-scope-ai/index.ts`
 
-Alle Aenderungen sind rein visuell/textlich in den bestehenden 3 Dateien. Die Daten kommen aus den bereits vorhandenen Queries.
+**Neue Action `generate_from_description`:**
+- Nimmt `description` (Freitext), `property_address`, `unit_info` und optional `area_sqm` entgegen
+- Sendet an Lovable AI mit spezifischem Prompt:
+  - "Erstelle aus folgender Freitextbeschreibung ein strukturiertes Leistungsverzeichnis fuer eine Innensanierung"
+  - Gibt JSON zurueck: `line_items[]`, `scope_description`, `room_analysis`
+- Zusaetzlich: Gleich eine Kostenschaetzung mitliefern (`cost_estimate_min/mid/max`)
+- Fallback: Wenn KI nicht verfuegbar, Template-basierte Positionen ableiten
 
+### Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|---|---|
+| `SanierungTab.tsx` | `viewStep`-State, klickbare Stepper-Items, Navigation zwischen Schritten |
+| `ScopeDefinitionPanel.tsx` | Neuer primaerer "Aus Beschreibung generieren"-Flow, bisherige DMS/Upload-Tabs als Alternative |
+| `sot-renovation-scope-ai/index.ts` | Neue Action `generate_from_description` mit Freitext-zu-LV KI-Prompt |
+
+Keine DB-Aenderungen noetig. Keine neuen Dateien. Keine neuen Dependencies.
