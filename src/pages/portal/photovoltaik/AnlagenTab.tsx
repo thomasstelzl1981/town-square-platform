@@ -206,9 +206,9 @@ export default function AnlagenTab() {
               Legen Sie Ihre erste PV-Anlage an und verwalten Sie Monitoring, Dokumente und Stammdaten an einem Ort.
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleSeedDemo} disabled={createPlant.isPending}>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Demo-Anlagen erzeugen
+              <Button onClick={() => navigate('/portal/photovoltaik/neu')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Erste Anlage anlegen
               </Button>
               <Button onClick={() => navigate('/portal/photovoltaik/neu')}>
                 <Plus className="h-4 w-4 mr-2" />
