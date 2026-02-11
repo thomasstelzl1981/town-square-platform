@@ -1,5 +1,6 @@
 /**
  * ProjectOverviewCard — 2-Column: Slideshow + Facts left, Description right
+ * Supports dynamic project data via selectedProject prop
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Home, Car, Ruler, Calendar, Flame, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DEMO_PROJECT_DESCRIPTION, DEMO_PROJECT_IMAGES } from './demoProjectData';
+import type { ProjectPortfolioRow } from '@/types/projekte';
 
 import demoExterior from '@/assets/demo-project-exterior.jpg';
 import demoLivingroom from '@/assets/demo-project-livingroom.jpg';
@@ -22,6 +24,8 @@ const IMAGE_MAP: Record<string, string> = {
 
 interface ProjectOverviewCardProps {
   isDemo?: boolean;
+  selectedProject?: ProjectPortfolioRow;
+  unitCount?: number;
   projectData?: typeof DEMO_PROJECT_DESCRIPTION;
 }
 
@@ -29,16 +33,22 @@ function eur(v: number) {
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 }
 
-export function ProjectOverviewCard({ isDemo, projectData }: ProjectOverviewCardProps) {
+export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, projectData }: ProjectOverviewCardProps) {
   const data = projectData || DEMO_PROJECT_DESCRIPTION;
   const [activeIdx, setActiveIdx] = useState(0);
   const images = DEMO_PROJECT_IMAGES;
+
+  // If we have a real selected project, override headline/address/units
+  const headline = selectedProject?.name || data.headline;
+  const address = selectedProject ? `${selectedProject.postal_code || ''} ${selectedProject.city || ''}`.trim() : `${data.address}, ${data.postal_code} ${data.city}`;
+  const totalUnits = unitCount ?? data.total_units;
+  const totalSalePrice = selectedProject?.purchase_price || data.total_sale_price;
 
   const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));
   const next = () => setActiveIdx((i) => (i === images.length - 1 ? 0 : i + 1));
 
   const keyFacts = [
-    { icon: Home, label: 'Wohneinheiten', value: `${data.total_units} WE` },
+    { icon: Home, label: 'Wohneinheiten', value: `${totalUnits} WE` },
     { icon: Car, label: 'Stellplätze', value: `${data.total_parking_spaces} TG` },
     { icon: Ruler, label: 'Wohnfläche', value: `ca. ${data.total_living_area.toLocaleString('de-DE')} m²` },
     { icon: Calendar, label: 'Baujahr', value: `${data.year_built} / San. ${data.renovation_year}` },
@@ -52,14 +62,14 @@ export function ProjectOverviewCard({ isDemo, projectData }: ProjectOverviewCard
         {/* Headline row */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-xl font-bold tracking-tight">{data.headline}</h3>
+            <h3 className="text-xl font-bold tracking-tight">{headline}</h3>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
               <MapPin className="h-3.5 w-3.5" />
-              <span>{data.address}, {data.postal_code} {data.city}</span>
+              <span>{address}</span>
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-lg font-bold text-primary">{eur(data.total_sale_price)}</p>
+            <p className="text-lg font-bold text-primary">{eur(totalSalePrice)}</p>
             <p className="text-[11px] text-muted-foreground">Gesamtverkaufspreis</p>
           </div>
         </div>

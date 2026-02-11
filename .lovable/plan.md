@@ -8,7 +8,7 @@ Das Demo-Projekt ("Residenz am Stadtpark") wird durch `isDemoMode(portfolioRows)
 
 ---
 
-## Aenderung 1: Projekt-Switcher als Kacheln (PortfolioTab)
+## Aenderung 1: Projekt-Switcher als Kacheln (PortfolioTab) ✅
 
 **Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
 
@@ -24,7 +24,7 @@ Neu: Die bestehende `ProjectCard`-Komponente (bereits vorhanden mit `isSelected`
 
 ---
 
-## Aenderung 2: Echte Units laden (kritischer Fix)
+## Aenderung 2: Echte Units laden (kritischer Fix) ✅
 
 **Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
 
@@ -48,7 +48,7 @@ Neu:
 
 ---
 
-## Aenderung 3: ProjectOverviewCard dynamisch machen
+## Aenderung 3: ProjectOverviewCard dynamisch machen ✅
 
 **Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
 
@@ -71,4 +71,3 @@ Neu: Das ausgewaehlte Projekt (`selectedProject`) als Prop an die OverviewCard u
 - `demoProjectData.ts` (Demo-Logik bleibt)
 - `ProjekteDashboard.tsx` (Dashboard bleibt wie es ist)
 - Datenbankschema (alle Tabellen existieren)
-
