@@ -11,7 +11,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DictationButton } from '@/components/shared/DictationButton';
@@ -22,10 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, Wrench, Zap, Paintbrush, Home, Square, Flame, ClipboardList, Building2, Package } from 'lucide-react';
-import { useCreateServiceCase, ServiceCaseCategory } from '@/hooks/useServiceCases';
+import { Sparkles } from 'lucide-react';
+import { useCreateServiceCase } from '@/hooks/useServiceCases';
 
 // ============================================================================
 // Types
@@ -51,21 +48,6 @@ interface UnitOption {
 }
 
 // ============================================================================
-// Category Config
-// ============================================================================
-const CATEGORIES: { id: ServiceCaseCategory; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'sanitaer', label: 'Sanitär', icon: Wrench },
-  { id: 'elektro', label: 'Elektro', icon: Zap },
-  { id: 'maler', label: 'Maler', icon: Paintbrush },
-  { id: 'dach', label: 'Dach', icon: Home },
-  { id: 'fenster', label: 'Fenster', icon: Square },
-  { id: 'heizung', label: 'Heizung', icon: Flame },
-  { id: 'gutachter', label: 'Gutachter', icon: ClipboardList },
-  { id: 'hausverwaltung', label: 'Hausverwaltung', icon: Building2 },
-  { id: 'sonstige', label: 'Sonstige', icon: Package },
-];
-
-// ============================================================================
 // Component
 // ============================================================================
 export function ServiceCaseCreateDialog({
@@ -77,22 +59,16 @@ export function ServiceCaseCreateDialog({
   const { activeTenantId } = useAuth();
   const createMutation = useCreateServiceCase();
   
-  // Form state
+  // Form state — simplified: no category, no title
   const [propertyId, setPropertyId] = useState<string>(preselectedPropertyId || '');
-  const [unitId, setUnitId] = useState<string>('');
-  const [isWholeProperty, setIsWholeProperty] = useState(false);
-  const [category, setCategory] = useState<ServiceCaseCategory | ''>('');
-  const [title, setTitle] = useState('');
+  const [unitId, setUnitId] = useState<string>('__whole__');
   const [description, setDescription] = useState('');
   
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
       setPropertyId(preselectedPropertyId || '');
-      setUnitId('');
-      setIsWholeProperty(false);
-      setCategory('');
-      setTitle('');
+      setUnitId('__whole__');
       setDescription('');
     }
   }, [open, preselectedPropertyId]);
@@ -115,7 +91,7 @@ export function ServiceCaseCreateDialog({
   });
   
   // Fetch units for selected property
-  const { data: units, isLoading: unitsLoading } = useQuery({
+  const { data: units } = useQuery({
     queryKey: ['units_for_sanierung', propertyId],
     queryFn: async () => {
       if (!propertyId) return [];
@@ -131,14 +107,19 @@ export function ServiceCaseCreateDialog({
   });
   
   const handleSubmit = async () => {
-    if (!propertyId || !category || !title.trim()) return;
+    if (!propertyId || !description.trim()) return;
+    
+    // Generate title from description (first ~60 chars)
+    const autoTitle = description.trim().length > 60
+      ? description.trim().substring(0, 57) + '...'
+      : description.trim();
     
     const result = await createMutation.mutateAsync({
       property_id: propertyId,
-      unit_id: isWholeProperty ? null : unitId || null,
-      category,
-      title: title.trim(),
-      description: description.trim() || undefined,
+      unit_id: unitId === '__whole__' ? null : unitId || null,
+      category: 'sonstige' as const,
+      title: autoTitle,
+      description: description.trim(),
     });
     
     onOpenChange(false);
@@ -147,23 +128,26 @@ export function ServiceCaseCreateDialog({
     }
   };
   
-  const isValid = propertyId && category && title.trim().length > 0;
+  const isValid = propertyId && description.trim().length > 0;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Neuen Sanierungsvorgang anlegen</DialogTitle>
+          <DialogTitle>Sanierung starten</DialogTitle>
           <DialogDescription>
-            Erstellen Sie eine Ausschreibung für Sanitär, Elektro, Maler oder andere Gewerke.
+            Beschreiben Sie Ihr Vorhaben — die KI erstellt daraus ein strukturiertes Leistungsverzeichnis.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-2">
           {/* Property Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="property">Objekt (Pflicht)</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
+          <div className="space-y-1.5">
+            <Label htmlFor="property">Objekt</Label>
+            <Select value={propertyId} onValueChange={(val) => {
+              setPropertyId(val);
+              setUnitId('__whole__');
+            }}>
               <SelectTrigger id="property">
                 <SelectValue placeholder="Objekt auswählen..." />
               </SelectTrigger>
@@ -183,120 +167,46 @@ export function ServiceCaseCreateDialog({
             </Select>
           </div>
           
-          {/* Unit Selection */}
+          {/* Unit Selection — simplified dropdown */}
           {propertyId && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Einheit</Label>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="whole-property" 
-                    checked={isWholeProperty}
-                    onCheckedChange={(checked) => {
-                      setIsWholeProperty(checked === true);
-                      if (checked) setUnitId('');
-                    }}
-                  />
-                  <label 
-                    htmlFor="whole-property" 
-                    className="text-sm text-muted-foreground cursor-pointer"
-                  >
-                    Gesamtes Objekt / keine spezifische Einheit
-                  </label>
-                </div>
-                
-                {!isWholeProperty && (
-                  <Select value={unitId} onValueChange={setUnitId} disabled={unitsLoading}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Einheit auswählen (optional)..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unitsLoading ? (
-                        <SelectItem value="_loading" disabled>Laden...</SelectItem>
-                      ) : units?.length === 0 ? (
-                        <SelectItem value="_empty" disabled>Keine Einheiten vorhanden</SelectItem>
-                      ) : (
-                        units?.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.code || u.unit_number}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              <Select value={unitId} onValueChange={setUnitId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__whole__">Gesamtes Objekt</SelectItem>
+                  {units?.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.code || u.unit_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <Label>Kategorie (Pflicht)</Label>
-            <RadioGroup 
-              value={category} 
-              onValueChange={(val) => setCategory(val as ServiceCaseCategory)}
-              className="grid grid-cols-3 gap-2"
-            >
-              {CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <div key={cat.id}>
-                    <RadioGroupItem
-                      value={cat.id}
-                      id={`cat-${cat.id}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`cat-${cat.id}`}
-                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                    >
-                      <Icon className="mb-1 h-5 w-5" />
-                      <span className="text-xs">{cat.label}</span>
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
-          
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Titel (Pflicht)</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="z.B. Badsanierung komplett"
-              maxLength={100}
-            />
-          </div>
-          
-          {/* Description */}
-          <div className="space-y-2">
+          {/* Description — main field */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="description">Kurzbeschreibung (optional)</Label>
+              <Label htmlFor="description">Was soll gemacht werden?</Label>
               <DictationButton onTranscript={(text) => setDescription(prev => prev + (prev ? ' ' : '') + text)} />
             </div>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Kurze Beschreibung des Vorhabens..."
-              rows={3}
-              maxLength={500}
+              placeholder="Beschreiben Sie, was saniert werden soll. z.B.: Komplettes Bad erneuern, neue Fliesen, Dusche statt Badewanne, neue Armaturen. Böden im Flur und Wohnzimmer erneuern (Vinyl). Malerarbeiten alle Räume."
+              rows={5}
+              className="resize-none"
             />
-            <p className="text-xs text-muted-foreground">
-              Max. 500 Zeichen — wird später durch KI erweitert.
-            </p>
           </div>
           
-          {/* Info Notice */}
-          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-md">
-            <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Dieses System ist für <strong>Wohnungs- und Haussanierungen (Innenbereiche)</strong> konzipiert. 
-              Komplette Gebäudesanierungen (Fassade, Dachstuhl MFH) sind nicht vorgesehen.
-            </p>
+          {/* AI Hint */}
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-primary" />
+            <span>Die KI erstellt aus Ihrer Beschreibung ein strukturiertes Leistungsverzeichnis mit Kostenschätzung.</span>
           </div>
         </div>
         
@@ -308,7 +218,7 @@ export function ServiceCaseCreateDialog({
             onClick={handleSubmit} 
             disabled={!isValid || createMutation.isPending}
           >
-            {createMutation.isPending ? 'Wird angelegt...' : 'Weiter zu Leistungsumfang →'}
+            {createMutation.isPending ? 'Wird angelegt...' : 'Weiter →'}
           </Button>
         </DialogFooter>
       </DialogContent>
