@@ -2,10 +2,11 @@
  * Calculator Panel for Projekte Tab
  * MOD-13 PROJEKTE — P0 Redesign
  *
- * Inputs: Investitionskosten, Provision-Slider, Endkundenrendite-Slider, Preisanpassung +/-
+ * Inputs: Investitionskosten, Gesamtverkaufspreis (Ziel), Provision-Slider, Endkundenrendite-Slider, Preisanpassung +/-
  * Outputs: KPIs (Marge, Gewinn/Einheit), horizontal stacked BarChart
+ * Persistence: Saves both values to dev_projects table
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -14,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, Save, Minus, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { DemoUnit } from './demoProjectData';
 
 interface CalculatedUnit extends DemoUnit {
@@ -26,40 +29,62 @@ interface CalculatedUnit extends DemoUnit {
 
 interface StickyCalculatorPanelProps {
   investmentCosts: number;
+  totalSaleTarget: number;
   provisionRate: number;
   priceAdjustment: number;
   targetYield: number;
   units: CalculatedUnit[];
   onInvestmentCostsChange: (v: number) => void;
+  onTotalSaleTargetChange: (v: number) => void;
   onProvisionChange: (v: number) => void;
   onPriceAdjustment: (v: number) => void;
   onTargetYieldChange: (v: number) => void;
   isDemo?: boolean;
+  projectId: string;
 }
 
 export function StickyCalculatorPanel({
   investmentCosts,
+  totalSaleTarget,
   provisionRate,
   priceAdjustment,
   targetYield,
   units,
   onInvestmentCostsChange,
+  onTotalSaleTargetChange,
   onProvisionChange,
   onPriceAdjustment,
   onTargetYieldChange,
   isDemo = false,
+  projectId,
 }: StickyCalculatorPanelProps) {
   const [costsDraft, setCostsDraft] = useState(investmentCosts.toLocaleString('de-DE'));
+  const [saleDraft, setSaleDraft] = useState(totalSaleTarget > 0 ? totalSaleTarget.toLocaleString('de-DE') : '');
+
+  // Sync drafts when props change (e.g. project switch)
+  useEffect(() => {
+    setCostsDraft(investmentCosts.toLocaleString('de-DE'));
+  }, [investmentCosts]);
+
+  useEffect(() => {
+    setSaleDraft(totalSaleTarget > 0 ? totalSaleTarget.toLocaleString('de-DE') : '');
+  }, [totalSaleTarget]);
+
+  const parseGermanNumber = (s: string): number => {
+    const parsed = Number(s.replace(/\./g, '').replace(',', '.'));
+    return isNaN(parsed) ? -1 : parsed;
+  };
 
   const calc = useMemo(() => {
-    const totalSale = units.reduce((s, u) => s + u.effective_price, 0);
+    const sumUnits = units.reduce((s, u) => s + u.effective_price, 0);
+    const totalSale = totalSaleTarget > 0 ? totalSaleTarget : sumUnits;
     const provisionAbs = totalSale * provisionRate;
     const marginAbs = totalSale - investmentCosts - provisionAbs;
-    const marginPct = totalSale > 0 ? (marginAbs / totalSale) * 100 : 0;
+    const marginPct = investmentCosts > 0 ? (marginAbs / investmentCosts) * 100 : 0;
     const profitPerUnit = units.length > 0 ? marginAbs / units.length : 0;
 
-    return { totalSale, provisionAbs, marginAbs, marginPct, profitPerUnit };
-  }, [units, investmentCosts, provisionRate]);
+    return { totalSale, sumUnits, provisionAbs, marginAbs, marginPct, profitPerUnit };
+  }, [units, investmentCosts, totalSaleTarget, provisionRate]);
 
   // Stacked bar data — single row with 3 segments
   const barData = useMemo(() => {
@@ -82,10 +107,40 @@ export function StickyCalculatorPanel({
   const fmt = (v: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 
-  const handleSaveCosts = () => {
-    const parsed = Number(costsDraft.replace(/\./g, '').replace(',', '.'));
-    if (!isNaN(parsed) && parsed >= 0) {
-      onInvestmentCostsChange(parsed);
+  const handleSave = async () => {
+    const parsedCosts = parseGermanNumber(costsDraft);
+    const parsedSale = saleDraft.trim() === '' ? 0 : parseGermanNumber(saleDraft);
+
+    if (parsedCosts < 0) {
+      toast.error('Ungültiger Wert für Investitionskosten');
+      return;
+    }
+    if (parsedSale < 0) {
+      toast.error('Ungültiger Wert für Gesamtverkaufspreis');
+      return;
+    }
+
+    onInvestmentCostsChange(parsedCosts);
+    onTotalSaleTargetChange(parsedSale);
+
+    // Persist to DB (skip for demo)
+    if (!isDemo && projectId) {
+      const { error } = await supabase
+        .from('dev_projects')
+        .update({
+          purchase_price: parsedCosts,
+          total_sale_target: parsedSale,
+        })
+        .eq('id', projectId);
+
+      if (error) {
+        console.error('Save failed:', error);
+        toast.error('Speichern fehlgeschlagen');
+      } else {
+        toast.success('Kalkulationsdaten gespeichert');
+      }
+    } else {
+      toast.success('Werte übernommen (Demo)');
     }
   };
 
@@ -104,25 +159,37 @@ export function StickyCalculatorPanel({
         {/* Investment Costs Input */}
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Investitionskosten</Label>
-          <div className="flex gap-1.5">
-            <Input
-              value={costsDraft}
-              onChange={(e) => setCostsDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveCosts()}
-              className="h-8 text-xs font-medium tabular-nums"
-              placeholder="z.B. 4.800.000"
-            />
-            <Button
-              size="icon"
-              variant="outline"
-              className="h-8 w-8 shrink-0"
-              onClick={handleSaveCosts}
-              title="Sichern"
-            >
-              <Save className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <Input
+            value={costsDraft}
+            onChange={(e) => setCostsDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            className="h-8 text-xs font-medium tabular-nums"
+            placeholder="z.B. 4.800.000"
+          />
         </div>
+
+        {/* Total Sale Target Input */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Gesamtverkaufspreis (Ziel)</Label>
+          <Input
+            value={saleDraft}
+            onChange={(e) => setSaleDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            className="h-8 text-xs font-medium tabular-nums"
+            placeholder="leer = Summe Einheiten"
+          />
+        </div>
+
+        {/* Single Save Button for both fields */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2"
+          onClick={handleSave}
+        >
+          <Save className="h-3.5 w-3.5" />
+          Sichern
+        </Button>
 
         {/* Provision Slider */}
         <div className="space-y-1.5">
@@ -186,9 +253,19 @@ export function StickyCalculatorPanel({
 
         {/* KPI Grid */}
         <div className="space-y-1.5 text-xs">
+          {totalSaleTarget > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Zielverkaufspreis</span>
+              <span className="font-medium tabular-nums text-primary">{fmt(totalSaleTarget)}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Summe Einheiten</span>
+            <span className="font-medium tabular-nums">{fmt(calc.sumUnits)}</span>
+          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Gesamtverkauf</span>
-            <span className="font-medium tabular-nums">{fmt(calc.totalSale)}</span>
+            <span className="font-medium tabular-nums font-semibold">{fmt(calc.totalSale)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Investitionskosten</span>

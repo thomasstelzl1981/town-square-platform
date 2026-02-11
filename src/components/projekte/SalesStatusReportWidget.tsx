@@ -43,6 +43,7 @@ interface SalesStatusReportWidgetProps {
   units: CalculatedUnit[];
   projectName: string;
   investmentCosts: number;
+  totalSaleTarget: number;
   provisionRate: number;
   targetYield: number;
   developerContext: DeveloperContext;
@@ -52,7 +53,7 @@ interface SalesStatusReportWidgetProps {
 const STORAGE_KEY_PREFIX = 'sot-report-recipients-';
 
 export function SalesStatusReportWidget({
-  units, projectName, investmentCosts, provisionRate, targetYield, developerContext, isDemo,
+  units, projectName, investmentCosts, totalSaleTarget, provisionRate, targetYield, developerContext, isDemo,
 }: SalesStatusReportWidgetProps) {
   const [recipients, setRecipients] = useState<string[]>([]);
   const [newRecipient, setNewRecipient] = useState('');
@@ -81,7 +82,8 @@ export function SalesStatusReportWidget({
 
   // KPIs
   const kpis = useMemo(() => {
-    const totalVolume = units.reduce((s, u) => s + u.effective_price, 0);
+    const sumUnits = units.reduce((s, u) => s + u.effective_price, 0);
+    const totalVolume = totalSaleTarget > 0 ? totalSaleTarget : sumUnits;
     const reservedEur = units.filter(u => u.status === 'reserved').reduce((s, u) => s + u.effective_price, 0);
     const soldEur = units.filter(u => u.status === 'sold' || u.status === 'notary').reduce((s, u) => s + u.effective_price, 0);
     const freeEur = units.filter(u => u.status === 'available').reduce((s, u) => s + u.effective_price, 0);
@@ -89,8 +91,8 @@ export function SalesStatusReportWidget({
       .filter(u => u.status === 'sold' || u.status === 'notary')
       .reduce((s, u) => s + u.effective_provision, 0);
     const grossProfit = totalVolume - investmentCosts - totalProvision;
-    return { totalVolume, reservedEur, soldEur, freeEur, totalProvision, grossProfit };
-  }, [units, investmentCosts]);
+    return { totalVolume, sumUnits, reservedEur, soldEur, freeEur, totalProvision, grossProfit };
+  }, [units, investmentCosts, totalSaleTarget]);
 
   const addRecipient = () => {
     const email = newRecipient.trim().toLowerCase();
