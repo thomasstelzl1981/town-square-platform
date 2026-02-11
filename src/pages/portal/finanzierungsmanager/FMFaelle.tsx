@@ -107,9 +107,9 @@ export default function FMFaelle({ cases, isLoading }: Props) {
         title="FÄLLE"
         description="Alle Finanzierungsfälle — filtern, bearbeiten und einreichen."
         actions={
-          <Button size="sm" onClick={() => navigate('/portal/finanzierung')}>
+          <Button size="sm" onClick={() => navigate('/portal/finanzierungsmanager/finanzierungsakte')}>
             <Plus className="h-4 w-4 mr-1" />
-            Eigenen Fall anlegen
+            Neuer Fall anlegen
           </Button>
         }
       />

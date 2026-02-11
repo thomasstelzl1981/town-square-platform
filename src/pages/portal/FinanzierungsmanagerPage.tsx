@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 // Lazy load sub-pages
 const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'));
+const FMFinanzierungsakte = React.lazy(() => import('./finanzierungsmanager/FMFinanzierungsakte'));
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
 const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
 const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
@@ -44,6 +45,7 @@ export default function FinanzierungsmanagerPage() {
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
+        <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
         <Route path="faelle" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
         <Route path="faelle/:requestId" element={<FMFallDetail />} />
         <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
