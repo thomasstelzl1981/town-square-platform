@@ -3,11 +3,7 @@ import type { GoldenPathDefinition } from './types';
 /**
  * Golden Path MOD-04: Immobilie — Von Anlage bis Vertrieb (V1.0)
  * 
- * SSOT-Definition des idealen Nutzerflusses fuer das Immobilien-Modul.
- * 11 Phasen vom Objektanlegen bis zur Deaktivierung.
- * 
- * V1.0: Erweitert um required_entities, required_contracts, ledger_events,
- * success_state, failure_redirect. Steps unveraendert.
+ * P0 Hardening: Fail-States fuer alle Cross-Zone und wait_message Steps.
  */
 export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
   // --- V1.0 Pflichtfelder ---
@@ -117,6 +113,13 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'unit_visible_in_mod05', source: 'units', check: 'exists', description: 'Einheit erscheint automatisch in MOD-05' },
       ],
+      on_error: {
+        ledger_event: 'mod05.visibility.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'MOD-05 Sichtbarkeit konnte nicht hergestellt werden',
+      },
     },
 
     // PHASE 4: VERKAUFSAUFTRAG AKTIVIEREN
@@ -167,6 +170,7 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       routePattern: '/admin/sales-desk',
       task_kind: 'wait_message',
       camunda_key: 'MOD04_STEP_06_SALES_DESK',
+      sla_hours: 24,
       contract_refs: [
         {
           key: 'CONTRACT_SALES_MANDATE_SUBMIT',
@@ -182,6 +186,20 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'sales_desk_entry_visible', source: 'listings', check: 'exists', description: 'Eintrag in Sales Desk sichtbar' },
       ],
+      on_timeout: {
+        ledger_event: 'sales.desk.submit.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Sales Desk Submission nicht innerhalb 24h verarbeitet',
+      },
+      on_error: {
+        ledger_event: 'sales.desk.submit.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Sales Desk Submission',
+      },
     },
 
     // PHASE 7: MOD-09 KATALOG
@@ -267,6 +285,7 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'service_task',
       camunda_key: 'MOD04_STEP_06B_LISTING_DISTRIBUTE_Z1',
+      sla_hours: 24,
       correlation_keys: ['tenant_id', 'property_id', 'listing_id'],
       contract_refs: [
         {
@@ -289,6 +308,32 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'katalog_visible', source: 'listing_publications', check: 'exists', description: 'Listing in Downstream-Modulen verteilt' },
       ],
+      on_timeout: {
+        ledger_event: 'listing.distribution.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Listing Distribution nicht innerhalb 24h abgeschlossen',
+      },
+      on_rejected: {
+        ledger_event: 'listing.distribution.rejected',
+        status_update: 'rejected',
+        recovery_strategy: 'abort',
+        description: 'Listing wurde von Zone 1 Governance abgelehnt',
+      },
+      on_duplicate: {
+        ledger_event: 'listing.distribution.duplicate_detected',
+        status_update: 'unchanged',
+        recovery_strategy: 'ignore',
+        description: 'Duplicate Listing Distribution Request erkannt',
+      },
+      on_error: {
+        ledger_event: 'listing.distribution.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Listing Distribution',
+      },
     },
 
     // PHASE 12: FINANCE HANDOFF VIA ZONE-1 FUTUREROOM (optional)
@@ -299,6 +344,7 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'wait_message',
       camunda_key: 'MOD04_STEP_12_FINANCE_HANDOFF_Z1',
+      sla_hours: 24,
       correlation_keys: ['tenant_id', 'property_id', 'finance_request_id'],
       contract_refs: [
         {
@@ -318,7 +364,20 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       preconditions: [
         { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
       ],
-      // Keine completion — optional, wird nicht fuer success_state gebraucht
+      on_timeout: {
+        ledger_event: 'finance.handoff.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'escalate_to_z1',
+        escalate_to: 'Z1',
+        description: 'Finance Handoff nicht innerhalb 24h verarbeitet',
+      },
+      on_error: {
+        ledger_event: 'finance.handoff.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Finance Handoff',
+      },
     },
 
     // PHASE 13: PROJECT INTAKE VIA ZONE-1 (optional)
@@ -329,6 +388,7 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'wait_message',
       camunda_key: 'MOD04_STEP_13_PROJECT_INTAKE_Z1',
+      sla_hours: 24,
       correlation_keys: ['tenant_id', 'property_id', 'project_id'],
       contract_refs: [
         {
@@ -342,7 +402,20 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       preconditions: [
         { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
       ],
-      // Keine completion — optional, wird nicht fuer success_state gebraucht
+      on_timeout: {
+        ledger_event: 'project.intake.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Project Intake nicht innerhalb 24h verarbeitet',
+      },
+      on_error: {
+        ledger_event: 'project.intake.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Project Intake',
+      },
     },
 
     // PHASE 11: DEAKTIVIERUNG (WIDERRUF)

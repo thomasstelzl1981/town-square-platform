@@ -3,8 +3,7 @@ import type { GoldenPathDefinition } from './types';
 /**
  * Golden Path GP-09: Lead-Generierung — Vom Website-Besucher bis zur Konvertierung (V1.0)
  * 
- * Cross-Zone: Z3 (Website) -> Z1 (Admin) -> Z2 (MOD-09/10 Partner)
- * Akteure: Website-Besucher (Z3), System (Z1), Partner (MOD-09/10)
+ * P0 Hardening: Fail-States fuer Cross-Zone Steps.
  */
 export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-lead-generation',
@@ -16,33 +15,21 @@ export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
     'Vollstaendiger Lead-Zyklus: Erfassung via Z3-Website, Qualifizierung im Z1 Admin, Zuweisung an Partner, Konvertierung in MOD-09/10.',
 
   required_entities: [
-    {
-      table: 'leads',
-      description: 'Lead-Stammdaten muessen existieren',
-      scope: 'entity_id',
-    },
+    { table: 'leads', description: 'Lead-Stammdaten muessen existieren', scope: 'entity_id' },
   ],
-
   required_contracts: [],
-
   ledger_events: [
     { event_type: 'lead.captured', trigger: 'on_complete' },
     { event_type: 'lead.assigned', trigger: 'on_complete' },
   ],
-
   success_state: {
-    required_flags: [
-      'lead_captured',
-      'lead_qualified',
-      'lead_assigned',
-    ],
+    required_flags: ['lead_captured', 'lead_qualified', 'lead_assigned'],
     description: 'Lead erfasst, qualifiziert und an Partner zugewiesen.',
   },
-
   failure_redirect: '/admin/leads',
 
   steps: [
-    // PHASE 1: LEAD-ERFASSUNG
+    // PHASE 1: LEAD-ERFASSUNG (Cross-Zone Z3->Z1)
     {
       id: 'capture_lead',
       phase: 1,
@@ -61,6 +48,19 @@ export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'lead_captured', source: 'leads', check: 'exists', description: 'Lead wurde in leads-Tabelle erstellt' },
       ],
+      on_duplicate: {
+        ledger_event: 'lead.capture.duplicate_detected',
+        status_update: 'unchanged',
+        recovery_strategy: 'ignore',
+        description: 'Duplicate Lead erkannt (gleiche Email + Listing)',
+      },
+      on_error: {
+        ledger_event: 'lead.capture.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Lead-Erfassung',
+      },
     },
 
     // PHASE 2: LEAD-QUALIFIZIERUNG

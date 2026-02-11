@@ -12,6 +12,31 @@
 
 export type StepType = 'route' | 'action' | 'system';
 
+// ═══════════════════════════════════════════════════════════════
+// Fail-State Building Blocks (P0 Hardening)
+// ═══════════════════════════════════════════════════════════════
+
+/** Recovery-Strategie bei Fehler */
+export type FailStateRecovery = 'retry' | 'manual_review' | 'abort' | 'escalate_to_z1' | 'ignore';
+
+/** Deklarativer Fail-State fuer einen Golden-Path-Step */
+export interface StepFailState {
+  /** Ledger-Event das bei diesem Fail-State geloggt wird */
+  ledger_event: string;
+  /** Status-Update fuer die betroffene Entity */
+  status_update: string;
+  /** Recovery-Strategie */
+  recovery_strategy: FailStateRecovery;
+  /** Menschenlesbare Beschreibung */
+  description: string;
+  /** Eskalationsziel, z.B. 'Z1' */
+  escalate_to?: string;
+  /** Max. Anzahl Retries bei recovery_strategy === 'retry' */
+  max_retries?: number;
+  /** Camunda Error Code fuer BPMN Error Events */
+  camunda_error_code?: string;
+}
+
 /** Camunda-Ready: Mapping zu BPMN Task-Typen */
 export type TaskKind = 'user_task' | 'service_task' | 'wait_message';
 
@@ -97,6 +122,18 @@ export interface GoldenPathStep {
   camunda_key?: string;
   /** Correlation Keys fuer Camunda Message Events */
   correlation_keys?: string[];
+
+  // --- P0 Hardening: Fail-States ---
+  /** Verhalten bei Timeout (kein Response innerhalb SLA) */
+  on_timeout?: StepFailState;
+  /** Verhalten bei expliziter Ablehnung */
+  on_rejected?: StepFailState;
+  /** Verhalten bei Duplikat-Erkennung */
+  on_duplicate?: StepFailState;
+  /** Verhalten bei technischem Fehler */
+  on_error?: StepFailState;
+  /** SLA-Timeout in Stunden (nur Metadaten, keine Engine-Logik) */
+  sla_hours?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
