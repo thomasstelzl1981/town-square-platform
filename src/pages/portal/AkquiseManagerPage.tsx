@@ -9,6 +9,7 @@ import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 're
 import { useAuth } from '@/contexts/AuthContext';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { TermsGatePanel } from '@/components/shared/TermsGatePanel';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,11 +72,8 @@ function AkquiseDashboard() {
   const hasMandates = (pendingMandates?.length || 0) + (activeMandates?.length || 0) + selfCreatedMandates.length > 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Dashboard</h1>
-        <p className="text-muted-foreground">Ihre Akquise-Mandate im Überblick</p>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="AKQUISE-MANAGER" description="Ihre Akquise-Mandate im Überblick" />
 
       {/* Create New Mandate Tile */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -295,7 +293,7 @@ function AkquiseMandateDetail() {
   const needsGate = mandate.status === 'assigned' && !mandate.split_terms_confirmed_at;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/dashboard')}>←</Button>
@@ -434,7 +432,7 @@ function AkquiseMandate() {
   if (isLoading) return <div className="p-6 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   if (!mandates?.length) return <ModuleTilePage title="Mandate" description="Mandatsübersicht" icon={FileText} moduleBase="akquise-manager" status="empty" emptyTitle="Keine Mandate" emptyDescription="Mandate erscheinen nach Zuweisung." emptyIcon={FileText} />;
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-4">
       <h1 className="text-2xl font-bold tracking-tight uppercase">Mandate</h1>
       {mandates.map(m => (
         <Card key={m.id} className="cursor-pointer hover:border-primary/50" onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)}>
@@ -450,13 +448,8 @@ function AkquiseMandate() {
 
 function AkquiseTools() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Akquise-Tools</h1>
-        <p className="text-muted-foreground">
-          Werkzeuge für Recherche, Bewertung und Kalkulation
-        </p>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="AKQUISE-TOOLS" description="Werkzeuge für Recherche, Bewertung und Kalkulation" />
 
       {/* 7.1 Exposé Upload & Analyse */}
       <ExposeDragDropUploader />
@@ -497,7 +490,7 @@ function MandatCreateWizardManager() {
   const navigate = useNavigate();
   
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/mandate')}>←</Button>
         <div>

@@ -1,5 +1,5 @@
 /**
- * FM Fälle — Working Case List with Pipeline Filters + Quick Actions
+ * FM Fälle — Clean Case List with Pipeline Filters
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,14 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { FolderOpen, Search, Loader2, Eye, Plus, ArrowRight } from 'lucide-react';
+import { FolderOpen, Search, Loader2, Plus, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import type { FutureRoomCase } from '@/types/finance';
-import { getStatusLabel, getStatusBadgeVariant, FM_PIPELINE_STEPS } from '@/types/finance';
+import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 
 interface Props {
   cases: FutureRoomCase[];
@@ -115,70 +114,50 @@ export default function FMFaelle({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Filter Chips */}
-      <div className="flex flex-wrap gap-2">
-        {FILTER_CHIPS.map(chip => (
-          <Button
-            key={chip.key}
-            variant={activeFilter === chip.key ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7 rounded-full"
-            onClick={() => setActiveFilter(chip.key)}
-          >
-            {chip.label}
-            {chip.key !== 'all' && (
-              <span className="ml-1 text-[10px] opacity-70">
-                {cases.filter(c => {
-                  const s = getRequestStatus(c);
-                  if (chip.key === 'editing') return ['editing', 'in_processing', 'active'].includes(s);
-                  if (chip.key === 'delegated') return ['delegated', 'assigned'].includes(s);
-                  return s === chip.key;
-                }).length}
-              </span>
-            )}
-          </Button>
-        ))}
+      {/* Filter Chips + Search */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTER_CHIPS.map(chip => (
+            <Button
+              key={chip.key}
+              variant={activeFilter === chip.key ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7 rounded-full"
+              onClick={() => setActiveFilter(chip.key)}
+            >
+              {chip.label}
+            </Button>
+          ))}
+        </div>
+        <div className="relative w-48 ml-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Suchen..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-7 text-xs"
+          />
+        </div>
       </div>
 
       {/* Case Table */}
       <Card className="glass-card">
-        <CardContent className="p-5 space-y-4">
-          <WidgetHeader
-            icon={FolderOpen}
-            title={`${filteredCases.length} Fälle`}
-            description="Ihre zugewiesenen und eigenen Finanzierungsanfragen"
-            action={
-              <div className="relative w-56">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Suchen..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-8 text-sm"
-                />
-              </div>
-            }
-          />
-
+        <CardContent className="p-0">
           {filteredCases.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="font-medium">{search ? 'Keine Ergebnisse gefunden' : 'Keine Fälle vorhanden'}</p>
-              <p className="text-sm mt-1">
-                {!search && 'Erstellen Sie einen neuen Fall oder warten Sie auf zugewiesene Mandate.'}
-              </p>
+              <FolderOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-medium">{search ? 'Keine Ergebnisse' : 'Keine Fälle vorhanden'}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Antragsteller</TableHead>
-                  <TableHead>Betrag</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Nächste Aktion</TableHead>
-                  <TableHead>Alter</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="text-xs">ID</TableHead>
+                  <TableHead className="text-xs">Antragsteller</TableHead>
+                  <TableHead className="text-xs">Betrag</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Nächste Aktion</TableHead>
+                  <TableHead className="text-xs">Alter</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,38 +169,32 @@ export default function FMFaelle({ cases, isLoading }: Props) {
 
                   return (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`${request?.id || c.id}`)}>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-xs py-2">
                         {mandate?.public_id || c.id.slice(0, 8)}
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="text-sm py-2">
                         {applicant?.first_name && applicant?.last_name
                           ? `${applicant.first_name} ${applicant.last_name}`
                           : '—'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm py-2">
                         {applicant?.loan_amount_requested
                           ? eurFormat.format(applicant.loan_amount_requested)
                           : '—'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2">
                         <Badge variant={getStatusBadgeVariant(status)} className="text-[10px]">
                           {getStatusLabel(status)}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <ArrowRight className="h-3 w-3" />
                           {getNextAction(status)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground py-2">
                         {formatDistanceToNow(new Date(c.created_at), { addSuffix: false, locale: de })}
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`${request?.id || c.id}`); }}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          Öffnen
-                        </Button>
                       </TableCell>
                     </TableRow>
                   );

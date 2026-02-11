@@ -1,19 +1,17 @@
 /**
- * FM Dashboard — Finance Manager Overview with Pipeline Board + KPIs
+ * FM Dashboard — Finance Manager Overview (clean, no counters)
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FolderOpen, Clock, AlertCircle, CheckCircle2, Loader2, 
-  Send, FileCheck, ArrowRight, Plus, CalendarClock, Activity
+  FolderOpen, Loader2, ArrowRight, Plus, CalendarClock, Activity
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { KPICard } from '@/components/shared/KPICard';
 import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import type { FutureRoomCase } from '@/types/finance';
@@ -52,22 +50,6 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     );
   }
 
-  // Pipeline counts
-  const delegated = cases.filter(c => {
-    const s = getRequestStatus(c);
-    return s === 'delegated' || s === 'assigned';
-  });
-  const accepted = cases.filter(c => getRequestStatus(c) === 'accepted' || (c.status === 'active' && !c.first_action_at));
-  const editing = cases.filter(c => {
-    const s = getRequestStatus(c);
-    return s === 'editing' || s === 'in_processing' || (c.status === 'active' && !!c.first_action_at);
-  });
-  const needsAction = cases.filter(c => getRequestStatus(c) === 'needs_customer_action');
-  const ready = cases.filter(c => getRequestStatus(c) === 'ready_for_submission' || c.status === 'ready_to_submit');
-  const submitted = cases.filter(c => getRequestStatus(c) === 'submitted_to_bank' || !!c.submitted_to_bank_at);
-  const completed = cases.filter(c => getRequestStatus(c) === 'completed' || c.status === 'completed' || c.status === 'closed');
-  const rejected = cases.filter(c => getRequestStatus(c) === 'rejected');
-
   // Overdue: active cases older than 3 days without first_action
   const overdueCases = cases.filter(c => {
     if (c.status !== 'active') return false;
@@ -84,7 +66,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     <PageShell>
       <ModulePageHeader
         title="FINANZIERUNGSMANAGER"
-        description="Pipeline, Fälle und Aktionen im Überblick — Ihr zentrales Management-Cockpit für alle Finanzierungen."
+        description={`${cases.length} Fälle in Bearbeitung — Ihr zentrales Management-Cockpit.`}
         actions={
           <Button onClick={() => navigate('faelle')} size="sm">
             <Plus className="h-4 w-4 mr-1" />
@@ -93,52 +75,30 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Pipeline KPI Board */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPICard label="Delegiert" value={delegated.length} icon={FolderOpen} onClick={() => navigate('faelle')} />
-        <KPICard label="Angenommen" value={accepted.length} icon={CheckCircle2} onClick={() => navigate('faelle')} />
-        <KPICard label="In Bearbeitung" value={editing.length} icon={Clock} onClick={() => navigate('faelle')} />
-        <KPICard label="Rückfrage" value={needsAction.length} icon={AlertCircle} 
-          subtitleClassName="text-destructive" subtitle={needsAction.length > 0 ? 'Aktion nötig' : undefined}
-          onClick={() => navigate('faelle')} />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPICard label="Ready" value={ready.length} icon={FileCheck} onClick={() => navigate('faelle')} />
-        <KPICard label="Eingereicht" value={submitted.length} icon={Send} onClick={() => navigate('faelle')} />
-        <KPICard label="Abgeschlossen" value={completed.length} icon={CheckCircle2} />
-        <KPICard label="Abgelehnt" value={rejected.length} icon={AlertCircle} />
-      </div>
-
       {/* Two widgets side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Today Due / Overdue */}
         <Card className="glass-card">
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-4 space-y-3">
             <WidgetHeader
               icon={CalendarClock}
-              title="Heute fällig / Überfällig"
-              description={`${overdueCases.length} Fälle benötigen Aufmerksamkeit`}
+              title="Fällig / Überfällig"
+              description={overdueCases.length > 0 ? `${overdueCases.length} Fälle` : 'Keine überfälligen Fälle'}
             />
             {overdueCases.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <CalendarClock className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Keine überfälligen Fälle</p>
-              </div>
+              <p className="text-xs text-muted-foreground text-center py-4">Alles im Zeitplan ✓</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {overdueCases.slice(0, 5).map(c => (
                   <div
                     key={c.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20 cursor-pointer hover:border-destructive/40 transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-md bg-destructive/5 border border-destructive/20 cursor-pointer hover:border-destructive/40 transition-colors text-sm"
                     onClick={() => navigate(`faelle/${c.finance_mandates?.finance_request_id || c.id}`)}
                   >
-                    <div>
-                      <p className="text-sm font-medium">{getApplicantName(c)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Seit {formatDistanceToNow(new Date(c.created_at), { locale: de })}
-                      </p>
-                    </div>
-                    <Badge variant="destructive" className="text-[10px]">Überfällig</Badge>
+                    <span className="font-medium text-sm">{getApplicantName(c)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(c.created_at), { locale: de })}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -148,37 +108,36 @@ export default function FMDashboard({ cases, isLoading }: Props) {
 
         {/* Recent Activity */}
         <Card className="glass-card">
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-4 space-y-3">
             <WidgetHeader
               icon={Activity}
               title="Letzte Aktivitäten"
-              description="Ihre zuletzt bearbeiteten Fälle"
               action={
-                <Button variant="ghost" size="sm" onClick={() => navigate('faelle')}>
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate('faelle')}>
                   Alle <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               }
             />
             {recentCases.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <Activity className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Noch keine Fälle vorhanden</p>
+              <div className="text-center py-4">
+                <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Noch keine Fälle</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {recentCases.map(c => {
                   const status = getRequestStatus(c);
                   return (
                     <div
                       key={c.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30 hover:border-primary/20 transition-colors cursor-pointer"
+                      className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/40 transition-colors cursor-pointer text-sm"
                       onClick={() => navigate(`faelle/${c.finance_mandates?.finance_request_id || c.id}`)}
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{getApplicantName(c)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {getLoanAmount(c) ? eurFormat.format(getLoanAmount(c)!) : 'Kein Betrag'} · {formatDistanceToNow(new Date(c.updated_at || c.created_at), { addSuffix: true, locale: de })}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium text-sm">{getApplicantName(c)}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {getLoanAmount(c) ? eurFormat.format(getLoanAmount(c)!) : ''}
+                        </span>
                       </div>
                       <Badge variant={getStatusBadgeVariant(status)} className="text-[10px] shrink-0 ml-2">
                         {getStatusLabel(status)}
