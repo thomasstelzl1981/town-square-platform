@@ -3,8 +3,7 @@ import type { GoldenPathDefinition } from './types';
 /**
  * Golden Path GP-03: Akquise Mandat — Vom Suchprofil bis zum Angebot (V1.0)
  * 
- * Cross-Modul: MOD-08 (Investor) -> Z1 Acquiary -> MOD-12 (Manager)
- * Akteure: Investor, Admin (Z1), Akquise-Manager (MOD-12)
+ * P0 Hardening: Fail-States fuer Cross-Zone Steps.
  */
 export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-acquisition-mandate',
@@ -16,37 +15,20 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
     'Vollstaendiger Akquise-Zyklus: Suchprofil erstellen, Mandat einreichen, Z1 Triage, Manager-Zuweisung, TermsGate, Recherche/Outbound, Analyse/Reporting.',
 
   required_entities: [
-    {
-      table: 'acq_mandates',
-      description: 'Suchmandat muss existieren',
-      scope: 'entity_id',
-    },
+    { table: 'acq_mandates', description: 'Suchmandat muss existieren', scope: 'entity_id' },
   ],
-
   required_contracts: [
-    {
-      key: 'terms_gate_acquisition',
-      source: 'user_consents',
-      description: 'TermsGate-Akzeptanz (30% Plattformgebuehr) durch Manager',
-    },
+    { key: 'terms_gate_acquisition', source: 'user_consents', description: 'TermsGate-Akzeptanz (30% Plattformgebuehr) durch Manager' },
   ],
-
   ledger_events: [
     { event_type: 'acq.mandate.submitted', trigger: 'on_complete' },
     { event_type: 'acq.mandate.assigned', trigger: 'on_complete' },
     { event_type: 'acq.offer.created', trigger: 'on_complete' },
   ],
-
   success_state: {
-    required_flags: [
-      'mandate_submitted',
-      'mandate_assigned',
-      'terms_gate_accepted',
-      'offers_created',
-    ],
+    required_flags: ['mandate_submitted', 'mandate_assigned', 'terms_gate_accepted', 'offers_created'],
     description: 'Akquise-Mandat vollstaendig bearbeitet, Angebote erstellt.',
   },
-
   failure_redirect: '/portal/investment-suche',
 
   steps: [
@@ -68,7 +50,7 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 2: MANDAT EINREICHEN
+    // PHASE 2: MANDAT EINREICHEN (Cross-Zone Z2->Z1)
     {
       id: 'submit_mandate',
       phase: 2,
@@ -91,9 +73,29 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'mandate_submitted', source: 'acq_mandates', check: 'equals', value: 'submitted', description: 'acq_mandates.status = submitted' },
       ],
+      on_timeout: {
+        ledger_event: 'acq.mandate.submit.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Mandate Submission nicht innerhalb 24h verarbeitet',
+      },
+      on_duplicate: {
+        ledger_event: 'acq.mandate.submit.duplicate_detected',
+        status_update: 'unchanged',
+        recovery_strategy: 'ignore',
+        description: 'Duplicate Mandate Submission erkannt',
+      },
+      on_error: {
+        ledger_event: 'acq.mandate.submit.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Mandate Submission',
+      },
     },
 
-    // PHASE 3: Z1 TRIAGE + ASSIGNMENT
+    // PHASE 3: Z1 TRIAGE + ASSIGNMENT (Cross-Zone Z1->Z2)
     {
       id: 'z1_triage_assignment',
       phase: 3,
@@ -101,6 +103,7 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'wait_message',
       camunda_key: 'GP03_STEP_03_Z1_TRIAGE',
+      sla_hours: 24,
       contract_refs: [
         {
           key: 'CONTRACT_MANDATE_ASSIGNMENT',
@@ -115,6 +118,26 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'mandate_assigned', source: 'acq_mandates', check: 'not_null', description: 'assigned_manager_user_id IS NOT NULL' },
       ],
+      on_timeout: {
+        ledger_event: 'acq.mandate.assignment.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'escalate_to_z1',
+        escalate_to: 'Z1',
+        description: 'Manager-Zuweisung nicht innerhalb 24h erfolgt',
+      },
+      on_rejected: {
+        ledger_event: 'acq.mandate.assignment.rejected',
+        status_update: 'rejected',
+        recovery_strategy: 'abort',
+        description: 'Akquise-Mandat wurde von Z1 abgelehnt',
+      },
+      on_error: {
+        ledger_event: 'acq.mandate.assignment.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Manager-Zuweisung',
+      },
     },
 
     // PHASE 4: TERMSGATE AKZEPTIEREN
@@ -134,7 +157,7 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 5: RECHERCHE + OUTBOUND
+    // PHASE 5: RECHERCHE + OUTBOUND (Cross-Zone)
     {
       id: 'research_outbound',
       phase: 5,
@@ -143,6 +166,7 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       routePattern: '/portal/akquise-manager/:mandateId',
       task_kind: 'user_task',
       camunda_key: 'GP03_STEP_05_RESEARCH_OUTBOUND',
+      sla_hours: 72,
       contract_refs: [
         {
           key: 'CONTRACT_ACQ_OUTBOUND_EMAIL',
@@ -160,6 +184,19 @@ export const MOD_08_12_GOLDEN_PATH: GoldenPathDefinition = {
       preconditions: [
         { key: 'terms_gate_accepted', source: 'user_consents', description: 'TermsGate muss akzeptiert sein' },
       ],
+      on_timeout: {
+        ledger_event: 'acq.outbound.response.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        description: 'Keine externe Antwort innerhalb 72h',
+      },
+      on_error: {
+        ledger_event: 'acq.outbound.send.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Outbound Email',
+      },
     },
 
     // PHASE 6: ANALYSE + REPORTING

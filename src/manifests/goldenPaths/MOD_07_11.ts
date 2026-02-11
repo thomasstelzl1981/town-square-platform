@@ -3,8 +3,7 @@ import type { GoldenPathDefinition } from './types';
 /**
  * Golden Path GP-02: Finanzierung — Vom Antrag bis zur Bankeinreichung (V1.0)
  * 
- * Cross-Modul: MOD-07 (Kunde) -> Z1 FutureRoom -> MOD-11 (Manager)
- * Akteure: Kunde, Admin (Z1), Finanzierungsmanager (MOD-11)
+ * P0 Hardening: Fail-States fuer Cross-Zone Steps.
  */
 export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-finance-lifecycle',
@@ -91,7 +90,7 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 3: ANFRAGE EINREICHEN
+    // PHASE 3: ANFRAGE EINREICHEN (Cross-Zone Z2->Z1)
     {
       id: 'submit_finance_request',
       phase: 3,
@@ -114,9 +113,29 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'finance_request_submitted', source: 'finance_requests', check: 'equals', value: 'submitted', description: 'finance_requests.status = submitted' },
       ],
+      on_timeout: {
+        ledger_event: 'finance.request.submit.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Finance Request Submission nicht innerhalb 24h verarbeitet',
+      },
+      on_duplicate: {
+        ledger_event: 'finance.request.submit.duplicate_detected',
+        status_update: 'unchanged',
+        recovery_strategy: 'ignore',
+        description: 'Duplicate Finance Request erkannt',
+      },
+      on_error: {
+        ledger_event: 'finance.request.submit.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Finance Request Submission',
+      },
     },
 
-    // PHASE 4: Z1 TRIAGE + ASSIGNMENT
+    // PHASE 4: Z1 TRIAGE + ASSIGNMENT (Cross-Zone Z1->Z2)
     {
       id: 'z1_triage_assignment',
       phase: 4,
@@ -124,6 +143,7 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'wait_message',
       camunda_key: 'GP02_STEP_04_Z1_TRIAGE',
+      sla_hours: 24,
       contract_refs: [
         {
           key: 'CONTRACT_MANDATE_ASSIGNMENT',
@@ -138,6 +158,26 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'mandate_assigned', source: 'finance_requests', check: 'not_null', description: 'assigned_manager_user_id IS NOT NULL' },
       ],
+      on_timeout: {
+        ledger_event: 'finance.mandate.assignment.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'escalate_to_z1',
+        escalate_to: 'Z1',
+        description: 'Manager-Zuweisung nicht innerhalb 24h erfolgt',
+      },
+      on_rejected: {
+        ledger_event: 'finance.mandate.assignment.rejected',
+        status_update: 'rejected',
+        recovery_strategy: 'abort',
+        description: 'Finanzierungsanfrage wurde von Z1 abgelehnt',
+      },
+      on_error: {
+        ledger_event: 'finance.mandate.assignment.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Manager-Zuweisung',
+      },
     },
 
     // PHASE 5: TERMSGATE AKZEPTIEREN
@@ -171,7 +211,7 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 7: BANKEINREICHUNG
+    // PHASE 7: BANKEINREICHUNG (Cross-Zone Z2->Z1)
     {
       id: 'submit_to_bank',
       phase: 7,
@@ -194,6 +234,20 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'bank_submitted', source: 'finance_requests', check: 'equals', value: 'submitted_to_bank', description: 'finance_requests.status = submitted_to_bank' },
       ],
+      on_timeout: {
+        ledger_event: 'finance.bank.submit.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Bankeinreichung nicht innerhalb 24h bestaetigt',
+      },
+      on_error: {
+        ledger_event: 'finance.bank.submit.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Bankeinreichung',
+      },
     },
   ],
 };

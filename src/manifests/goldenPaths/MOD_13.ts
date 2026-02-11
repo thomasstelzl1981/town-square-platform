@@ -3,8 +3,7 @@ import type { GoldenPathDefinition } from './types';
 /**
  * Golden Path GP-05: Projekte — Vom Projekt bis zur Distribution (V1.0)
  * 
- * Modul: MOD-13 (Projekte / Bautraeger)
- * Akteure: Bautraeger (MOD-13), System (MOD-04, MOD-06, MOD-09, Z3)
+ * P0 Hardening: Fail-States fuer Cross-Zone Steps.
  */
 export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-project-lifecycle',
@@ -16,36 +15,19 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
     'Vollstaendiger Projektzyklus: Projekt anlegen, Einheiten planen, Phasenwechsel, Listing-Distribution, Landing Page, Uebergabe.',
 
   required_entities: [
-    {
-      table: 'dev_projects',
-      description: 'Projekt-Stammdaten muessen existieren',
-      scope: 'entity_id',
-    },
-    {
-      table: 'dev_project_units',
-      description: 'Mindestens eine Projekteinheit muss existieren',
-      scope: 'entity_id',
-    },
+    { table: 'dev_projects', description: 'Projekt-Stammdaten muessen existieren', scope: 'entity_id' },
+    { table: 'dev_project_units', description: 'Mindestens eine Projekteinheit muss existieren', scope: 'entity_id' },
   ],
-
   required_contracts: [],
-
   ledger_events: [
     { event_type: 'project.created', trigger: 'on_complete' },
     { event_type: 'project.phase.changed', trigger: 'on_complete' },
     { event_type: 'listing.published', trigger: 'on_complete' },
   ],
-
   success_state: {
-    required_flags: [
-      'project_exists',
-      'units_created',
-      'listings_published',
-      'distribution_active',
-    ],
+    required_flags: ['project_exists', 'units_created', 'listings_published', 'distribution_active'],
     description: 'Projekt vollstaendig angelegt, Einheiten erstellt, Listings veroeffentlicht und verteilt.',
   },
-
   failure_redirect: '/portal/projekte',
 
   steps: [
@@ -84,7 +66,7 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 3: PHASENWECHSEL BAU -> VERTRIEB
+    // PHASE 3: PHASENWECHSEL BAU -> VERTRIEB (Cross-Zone Z1->Z2)
     {
       id: 'phase_change_sales',
       phase: 3,
@@ -107,9 +89,23 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'phase_vertrieb', source: 'dev_projects', check: 'equals', value: 'sales', description: 'dev_projects.phase = sales' },
       ],
+      on_timeout: {
+        ledger_event: 'project.phase.change.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Phasenwechsel nicht innerhalb 24h bestaetigt',
+      },
+      on_error: {
+        ledger_event: 'project.phase.change.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Phasenwechsel',
+      },
     },
 
-    // PHASE 4: LISTING DISTRIBUTION
+    // PHASE 4: LISTING DISTRIBUTION (Cross-Zone Z2->Z1->Z2)
     {
       id: 'listing_distribution',
       phase: 4,
@@ -117,6 +113,7 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'system',
       task_kind: 'service_task',
       camunda_key: 'GP05_STEP_04_LISTING_DISTRIBUTE',
+      sla_hours: 24,
       contract_refs: [
         {
           key: 'CONTRACT_LISTING_PUBLISH',
@@ -139,9 +136,29 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
         { key: 'listings_published', source: 'listings', check: 'exists', description: 'Listings fuer Projekteinheiten erstellt' },
         { key: 'distribution_active', source: 'listing_publications', check: 'exists', description: 'Listings in Downstream-Modulen verteilt' },
       ],
+      on_timeout: {
+        ledger_event: 'project.listing.distribution.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Listing Distribution nicht innerhalb 24h abgeschlossen',
+      },
+      on_rejected: {
+        ledger_event: 'project.listing.distribution.rejected',
+        status_update: 'rejected',
+        recovery_strategy: 'abort',
+        description: 'Projekt-Listings wurden von Zone 1 abgelehnt',
+      },
+      on_error: {
+        ledger_event: 'project.listing.distribution.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Listing Distribution',
+      },
     },
 
-    // PHASE 5: LANDING PAGE
+    // PHASE 5: LANDING PAGE (Cross-Zone Z1->Z2)
     {
       id: 'landing_page',
       phase: 5,
@@ -162,6 +179,20 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       preconditions: [
         { key: 'listings_published', source: 'listings', description: 'Listings muessen existieren' },
       ],
+      on_timeout: {
+        ledger_event: 'project.landing_page.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Landing Page Generation nicht innerhalb 24h abgeschlossen',
+      },
+      on_error: {
+        ledger_event: 'project.landing_page.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Technischer Fehler bei Landing Page Generation',
+      },
     },
 
     // PHASE 6: UEBERGABE + ABSCHLUSS

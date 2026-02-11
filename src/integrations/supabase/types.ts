@@ -14122,14 +14122,14 @@ export type Database = {
         | { Args: { _user_id: string }; Returns: boolean }
       log_data_event: {
         Args: {
-          p_direction?: string
-          p_entity_id?: string
-          p_entity_type?: string
-          p_event_type?: string
+          p_direction: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_type: string
           p_payload?: Json
-          p_source?: string
-          p_tenant_id?: string
-          p_zone?: string
+          p_source: string
+          p_tenant_id: string
+          p_zone: string
         }
         Returns: string
       }
