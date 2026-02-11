@@ -35,6 +35,7 @@ export const emptyObjectData: ObjectFormData = {
 interface Props {
   storageKey: string;
   initialData?: Partial<ObjectFormData>;
+  externalData?: Partial<ObjectFormData>;
   readOnly?: boolean;
 }
 
@@ -49,7 +50,7 @@ function TR({ label, children }: { label: string; children: React.ReactNode }) {
 
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
 
-export default function FinanceObjectCard({ storageKey, initialData, readOnly = false }: Props) {
+export default function FinanceObjectCard({ storageKey, initialData, externalData, readOnly = false }: Props) {
   const key = `${storageKey}-object`;
 
   const [data, setData] = useState<ObjectFormData>(() => {
@@ -59,6 +60,13 @@ export default function FinanceObjectCard({ storageKey, initialData, readOnly = 
     } catch {}
     return { ...emptyObjectData, ...initialData };
   });
+
+  // Merge external data when a listing is selected
+  useEffect(() => {
+    if (externalData) {
+      setData(prev => ({ ...prev, ...externalData }));
+    }
+  }, [externalData]);
 
   const set = (field: keyof ObjectFormData, value: string) =>
     setData(prev => ({ ...prev, [field]: value }));

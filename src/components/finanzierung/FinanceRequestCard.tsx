@@ -2,7 +2,7 @@
  * FinanceRequestCard — Reusable financing request card with localStorage persistence.
  * Used identically in MOD-07 (Anfrage) and MOD-11 (Finanzierungsakte).
  */
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ export const emptyFinanceData: FinanceFormData = {
 interface Props {
   storageKey: string;
   initialData?: Partial<FinanceFormData>;
+  externalPurchasePrice?: string;
   readOnly?: boolean;
 }
 
@@ -57,7 +58,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
 
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
 
-export default function FinanceRequestCard({ storageKey, initialData, readOnly = false }: Props) {
+export default function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false }: Props) {
   const key = `${storageKey}-finance`;
 
   const [data, setData] = useState<FinanceFormData>(() => {
@@ -67,6 +68,13 @@ export default function FinanceRequestCard({ storageKey, initialData, readOnly =
     } catch {}
     return { ...emptyFinanceData, ...initialData };
   });
+
+  // Merge external purchase price from listing
+  useEffect(() => {
+    if (externalPurchasePrice !== undefined) {
+      setData(prev => ({ ...prev, purchasePrice: externalPurchasePrice }));
+    }
+  }, [externalPurchasePrice]);
 
   const set = (field: keyof FinanceFormData, value: string) =>
     setData(prev => ({ ...prev, [field]: value }));
