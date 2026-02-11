@@ -1,210 +1,227 @@
 
-# MOD-13 Reiter 4: Landing Page Builder — Implementierungsplan
+# Landing Page Builder: Kompletter Flow aus Sicht des Aufteilers
 
-## Machbarkeitsurteil: REALISTISCH UMSETZBAR
+## Das Problem
 
-Ueber 70% der benoetigten Bausteine existieren bereits im Codebase. Die Investment Engine, Slider, Kacheln, Demo-Daten und DMS-Integration sind fertig und muessen nur zusammengesetzt werden.
+Der aktuelle Zustand ist ein UI-Prototyp: Man klickt "KI-Entwurf generieren", es laeuft ein Fake-Fortschrittsbalken, und danach sieht man Karten mit Demo-Daten. Es entsteht aber keine echte Website. Es gibt keinen Editing-Modus, keinen Publishing-Flow, keinen Buchungsprozess. Der Aufteiler kann nichts damit anfangen.
+
+## Der vollstaendige Flow — Schritt fuer Schritt aus Aufteiler-Sicht
+
+### Phase 1: Website erstellen (der "Magic"-Moment)
+
+**Was der Aufteiler sieht:**
+Der Aufteiler hat sein Projekt bereits angelegt (via Magic Intake oder manuell). Er geht auf den Reiter "Landing Page" und sieht eine Erklaerungsseite mit einem prominenten Button "Website erstellen".
+
+**Optionaler Zwischenschritt — Unternehmens-Website abfragen:**
+Bevor die Generierung startet, erscheint ein einfacher Dialog: "Moechten Sie Ihre Unternehmens-Website angeben? Wir koennen daraus weitere Informationen fuer Ihre Projekt-Website beziehen." Ein Input-Feld fuer die URL, plus "Ueberspringen" und "Weiter". Das ist ein Kann, kein Muss. Die eingegebene URL wird gespeichert und spaeter fuer den Anbieter-Tab verwendet.
+
+**Generierung:**
+Nach Klick auf "Website erstellen" laeuft die Generierung. Der Fortschrittsbalken zeigt echte Schritte an:
+1. "Projektdaten werden geladen..." (Projektdaten aus `dev_projects` und `dev_project_units` lesen)
+2. "Lagebeschreibung wird generiert..." (KI generiert Lagebeschreibung aus Adresse/Stadt)
+3. "Anbieter-Profil wird erstellt..." (aus `developer_contexts` oder der eingegebenen Website-URL)
+4. "Website wird zusammengesetzt..."
+
+Am Ende wird ein Eintrag in der neuen `landing_pages`-Tabelle erstellt mit Status `draft`.
+
+### Phase 2: Website-Vorschau und Bearbeitung
+
+**Was der Aufteiler sieht:**
+Nach der Generierung erscheint die Website als Browser-Frame-Vorschau — ein grosser Container im Querformat (ca. 16:10), der wie ein echtes Browserfenster aussieht:
+
+```text
++-- rounded-2xl shadow-2xl bg-white -----------------------------------------+
+|  [*] [*] [*]  residenz-am-stadtpark.kaufy.app    [Website oeffnen (neuer Tab)]|
+|  =========================================================================== |
+|  [Investment]  [Lage & Umgebung]  [Anbieter]  [Legal]                        |
+|  =========================================================================== |
+|  |                                                                         | |
+|  |  HERO: Residenz am Stadtpark                                            | |
+|  |  Muenchen · 24 Einheiten · 195.000 - 444.000 EUR                       | |
+|  |                                                                         | |
+|  |  PREISLISTE (Tabelle):                                                  | |
+|  |  WE-001 | 2 Zi | 52 m² | 195.000 EUR | 4,2% | -82 EUR/Mo | [>]        | |
+|  |  WE-002 | 3 Zi | 78 m² | 292.500 EUR | 3,9% | -120 EUR/Mo | [>]       | |
+|  |  ...                                                                    | |
+|  |                                                                         | |
+|  =========================================================================== |
++------------------------------------------------------------------------------+
+
+Unterhalb des Frames:
++-- Aktionsleiste -------------------------------------------------------+
+|  [Bearbeiten (Stift-Icon)]  [Vorschau im neuen Tab]  [Veroeffentlichen]|
+|  Status: Entwurf · Erstellt vor 5 Minuten                              |
++------------------------------------------------------------------------+
+```
+
+**Die 4 Seiten der Website:**
+
+1. **Investment (Seite 1):** Hero mit Projektname, Standort, Key Facts und Bildern oben. Darunter eine Preislisten-Tabelle aller Einheiten mit Spalten: Einheit, Zimmer, Flaeche, Etage, Preis, EUR/m2, Rendite, monatliche Belastung, Status. Beim Klick auf eine Zeile oeffnet sich das Verkaufsexpose der jeweiligen Wohnung — mit der **echten SSOT Investment Engine**: InvestmentSliderPanel (Eigenkapital, zvE, Tilgung, Zins, Familienstand, Kirchensteuer), MasterGraph (40-Jahres-Projektion), Haushaltsrechnung (T-Konto), FinanzierungSummary, DetailTable40Jahre. Exakt dasselbe wie bei Kaufy, nur mit den Daten dieses Projekts.
+
+2. **Lage und Umgebung (Seite 2):** KI-generierte Lagebeschreibung (mit Badge "KI-generiert"), basierend auf Adresse und Stadt. Highlights der Umgebung, Infrastruktur, Verkehrsanbindung. Kartenplatzhalter.
+
+3. **Anbieter (Seite 3):** Bautraeger-Profil aus `developer_contexts`. Falls eine Website-URL angegeben wurde, wird diese verlinkt. "Ueber uns"-Text, Kontaktdaten, Referenzen.
+
+4. **Legal und Dokumente (Seite 4):** Anbieterkennzeichnung, Impressum-Pflichtangaben, DMS-Dokumente zum Download.
+
+**Wie kann der Aufteiler die Website bearbeiten?**
+
+Es gibt zwei Editing-Ebenen:
+
+**Ebene 1 — Inline-Editing (sofort verfuegbar, Phase 1):**
+Unterhalb des Browser-Frames gibt es einen "Bearbeiten"-Button. Wenn der Aufteiler darauf klickt, werden die editierbaren Texte innerhalb der Website-Vorschau zu Eingabefeldern:
+- Hero-Headline und Sub-Headline
+- Projektbeschreibung
+- Lagebeschreibung (der KI-generierte Text kann ueberschrieben werden)
+- Anbieter "Ueber uns"-Text
+- Kontaktdaten (E-Mail, Telefon)
+
+Jedes editierbare Feld bekommt einen dezenten Stift-Icon-Overlay. Klick darauf oeffnet ein Inline-Textfeld oder einen kleinen Editor. Aenderungen werden in der `landing_pages`-Tabelle gespeichert (Spalten wie `hero_headline`, `hero_subheadline`, `location_description`, `about_text`, `contact_email`, `contact_phone`).
+
+Es gibt "Speichern" und "Verwerfen"-Buttons im Edit-Modus.
+
+**Ebene 2 — Armstrong KI-Editing (Phase 2, spaeter):**
+In einer spaeteren Phase kann der Aufteiler Armstrong nutzen, um Texte zu verbessern: "Mache die Lagebeschreibung ausfuehrlicher" oder "Fuege einen Absatz ueber die Sanierung hinzu". Das ist eine Erweiterung, die auf dem bestehenden Armstrong-Framework aufbaut und hier nicht implementiert wird.
+
+### Phase 3: Veroeffentlichen und Buchung
+
+**Was der Aufteiler sieht:**
+Wenn der Aufteiler mit der Website zufrieden ist, klickt er auf "Veroeffentlichen". Es erscheint ein Dialog mit drei Optionen:
+
+1. **Kaufy.app Subdomain (kostenlos, 36h Vorschau):** Die Website wird sofort unter `residenz-am-stadtpark.kaufy.app` live geschaltet. Der Aufteiler hat 36 Stunden Vorschauzeit. Danach wird die Website automatisch gesperrt, es sei denn, er bucht das Landing-Page-Paket (200 EUR/Monat laut MOD-13-Spezifikation).
+
+2. **Eigene Domain verbinden:** Der Aufteiler kann seine eigene Domain eingeben (z.B. `www.residenz-am-stadtpark.de`). Die DNS-Einrichtung erfolgt ueber die native Lovable-Domain-Anbindung — A-Record auf 185.158.133.1, TXT-Record zur Verifikation.
+
+3. **Neue Domain buchen:** Platzhalter fuer spaeteren Domain-Registrierungs-Service.
+
+**Der 36-Stunden-Mechanismus:**
+- Bei Klick auf "Veroeffentlichen" wird `published_at = now()` und `preview_expires_at = now() + 36h` gesetzt
+- Status wechselt von `draft` zu `preview`
+- Eine Edge Function (Cron-Job, alle 15 Minuten) prueft: Wenn `preview_expires_at < now()` und Status noch `preview`, wird Status auf `locked` gesetzt
+- Gesperrte Website zeigt: "Diese Website ist nicht mehr verfuegbar. Kontaktieren Sie den Anbieter."
+- Wenn der Aufteiler bucht (manuell oder ueber Buchungs-CTA): Status wechselt zu `active`, `booked_at` wird gesetzt, keine automatische Sperre mehr
+- In Zone 1 kann ein Admin die Sperre auch manuell aufheben
+
+### Phase 4: Zone 1 — Landing Pages verwalten
+
+**Was der Admin in Zone 1 sieht:**
+Im Admin-Bereich gibt es einen neuen Sidebar-Eintrag "Landing Pages" unter der Gruppe "Operative Desks". Dort sieht der Admin eine Tabelle aller Landing Pages:
+
+```text
+| Projekt                   | Kunde (Org)        | URL-Slug                | Status  | Laeuft ab in | Aktionen              |
+|---------------------------|--------------------|-------------------------|---------|--------------|-----------------------|
+| Residenz am Stadtpark     | Stadtpark Wohnen   | residenz-am-stadtpark   | preview | 28:15:22     | [Oeffnen] [Entsperren]|
+| Isar Lofts Sendling       | Isar Immobilien    | isar-lofts-sendling     | active  | —            | [Oeffnen] [Sperren]   |
+```
+
+Quick Action Buttons pro Zeile:
+- "Website oeffnen" — oeffnet die oeffentliche URL im neuen Tab
+- "Portal-Vorschau" — navigiert zum Kunden-Portal-Reiter
+- "Entsperren" / "Sperren" — manueller Status-Override
+- "Deaktivieren" — setzt Status auf `locked`
 
 ---
 
-## Uebersicht der Aenderungen
+## Technische Umsetzung
+
+### Datenbank: Neue Tabelle `landing_pages`
 
 ```text
-BESTEHEND (wiederverwenden)          NEU (bauen)
-─────────────────────────            ──────────────
-InvestmentExposeView                 LandingPageTab.tsx (Hauptkomponente)
-InvestmentResultTile                 LandingPageBuilder.tsx (Entry-State)
-InvestmentSliderPanel                LandingPagePreview.tsx (4-Tab-Ansicht)
-MasterGraph / Haushaltsrechnung      LandingPageInvestmentTab.tsx
-useInvestmentEngine                  LandingPageProjektTab.tsx
-demoProjectData.ts (24 Units)        LandingPageAnbieterTab.tsx
-ProjectDocumentsBlock                LandingPageLegalTab.tsx
-                                     LandingPageUnitExpose.tsx
-                                     LandingPagePublishSection.tsx
+Spalte                   | Typ          | Beschreibung
+-------------------------|--------------|----------------------------------
+id                       | uuid PK      | ID
+project_id               | uuid FK      | FK zu dev_projects
+organization_id          | uuid         | FK zu organizations
+slug                     | text UNIQUE   | URL-Slug (z.B. "residenz-am-stadtpark")
+status                   | text          | draft / preview / active / locked
+developer_website_url    | text          | Bautraeger-Website (optional)
+hero_headline            | text          | Editierbarer Titel
+hero_subheadline         | text          | Editierbare Sub-Headline
+location_description     | text          | KI-generierte oder editierte Lagebeschreibung
+about_text               | text          | Ueber-uns-Text
+contact_email            | text          | Kontakt-E-Mail
+contact_phone            | text          | Kontakt-Telefon
+published_at             | timestamptz   | Zeitpunkt der Veroeffentlichung
+preview_expires_at       | timestamptz   | published_at + 36h
+locked_at                | timestamptz   | Zeitpunkt der Sperrung
+booked_at                | timestamptz   | Zeitpunkt der Buchung
+created_at               | timestamptz   | Standard (default now())
+updated_at               | timestamptz   | Standard (default now())
+created_by               | uuid          | Ersteller
 ```
 
-## Schritt-fuer-Schritt-Plan
+RLS-Policies:
+- SELECT: Org-Members koennen ihre eigenen Landing Pages lesen. Admin-Rolle kann alle lesen.
+- INSERT/UPDATE: Org-Members koennen ihre eigenen erstellen und bearbeiten.
+- Die oeffentliche Route liest via `slug` ohne Auth (anon SELECT auf `status IN ('preview', 'active')`).
 
-### Schritt 1: Routing + Manifest + Hauptkomponente
-
-**routesManifest.ts** — Zeile 400 aendern:
-- `"marketing"` → `"landing-page"` mit Title `"Landing Page"`
-
-**ProjektePage.tsx** — Route anpassen:
-- `marketing` Route → `landing-page` Route
-- Legacy-Redirect von `/marketing` → `/landing-page`
-
-**index.ts** — Export anpassen:
-- `MarketingTab` → `LandingPageTab`
-
-**LandingPageTab.tsx** (ersetzt MarketingTab.tsx):
-- Laedt Projekte via `useDevProjects()`
-- Demo-Fallback wenn keine Projekte existieren
-- Zwei Zustaende: A (kein Entwurf) und B (Entwurf generiert)
-- State `draftGenerated: boolean` (in Step 1 lokal, spaeter persistiert)
-
-### Schritt 2: Entry-State (Zustand A) — Erklaerungskachel
-
-**LandingPageBuilder.tsx** — neue Komponente:
-- Grosse Kachel mit Titel "Landing Page Builder"
-- 2-3 Saetze Erklaerung
-- Mini-Preview der 4 Tabs (nur als Outline/Skeleton sichtbar)
-- Primaer-Button "KI-Entwurf generieren"
-- Sekundaer-Link "Vorschau-Struktur ansehen" (scrollt zu Outlines)
-- Beim Klick auf "KI-Entwurf generieren": kurzer Ladebalken (1-2 Sek simuliert), dann State wechselt auf B
-
-### Schritt 3: 4-Tab-Website-Ansicht (Zustand B)
-
-**LandingPagePreview.tsx** — Superbar mit 4 Tabs:
-- Tabs als horizontale Navigation (nicht Radix TabsList, sondern eigene Superbar im "Website-Look")
-- Globaler Download-CTA "Verkaufsexpose downloaden" auf jedem Tab sichtbar
-
-**Tab 1 — LandingPageInvestmentTab.tsx:**
-- Hero-Bereich: Projektname, Stadt, Key Facts (aus DEMO_PROJECT / echten Daten)
-- Platzhalter-Bild (Gradient oder generisches Rendering)
-- Investment-Kacheln Grid (alle 24 Units):
-  - Wiederverwendung von `InvestmentResultTile` mit angepasstem `linkPrefix`
-  - Investment Engine wird pro Kachel mit Unit-Daten berechnet
-  - Kein Such-Zwang: alle Kacheln direkt sichtbar (Grid 1-3 Spalten responsive)
-- Klick auf Kachel oeffnet Unit-Expose
-
-**Tab 2 — LandingPageProjektTab.tsx:**
-- Projektbeschreibung aus `DEMO_PROJECT_DESCRIPTION` (3 Absaetze)
-- Highlights als Bullet-Liste
-- Bildergalerie-Platzhalter (4 Slots)
-- Lagebeschreibung
-
-**Tab 3 — LandingPageAnbieterTab.tsx:**
-- Anbieterprofil aus `DEMO_DEVELOPER_CONTEXT`
-- Name, Rechtsform, HRB, USt-ID, Geschaeftsfuehrer
-- "Ueber uns" Text (generisch/Demo)
-- Kontakt-Block (UI-only, kein Formular)
-
-**Tab 4 — LandingPageLegalTab.tsx:**
-- Disclaimer-Text (neutraler Standard)
-- Download-Liste: Wiederverwendung der DMS-Logik aus `ProjectDocumentsBlock`
-- Demo-Fallback: Muster-Dokumente (Expose, Preisliste, Grundrisse, Energieausweis)
-
-### Schritt 4: Einheit-Detail (Verkaufsexpose)
-
-**LandingPageUnitExpose.tsx:**
-- Wird als Sub-View innerhalb des Landing Page Tabs angezeigt (kein separater Route-Wechsel, um im Kontext zu bleiben)
-- Zurueck-Button oben
-- Wiederverwendung von `InvestmentExposeView` — die komplette Expose-Komponente:
-  - Bildergalerie
-  - Titel, Adresse, Key Facts
-  - MasterGraph (40-Jahres-Projektion)
-  - Haushaltsrechnung (T-Konto)
-  - InvestmentSliderPanel (ALLE Slider funktionieren)
-  - FinanzierungSummary
-  - DetailTable40Jahre
-- Investment Engine Aufruf via `useInvestmentEngine` mit den Unit-Daten
-- Bei Demo-Daten: "Beispielberechnung" Badge sichtbar
-- Download-CTA bleibt sichtbar
-
-### Schritt 5: Editierbarkeit (MVP)
-
-Inline-Editing ueber einfache Edit-Dialoge (kein CMS):
-- Jeder editierbare Textblock bekommt einen Stift-Icon-Button
-- Klick oeffnet ein Sheet/Dialog mit Textarea
-- Aenderungen werden im lokalen State gespeichert (Step 1)
-- Spaeter: Persistierung in einer `landing_page_drafts`-Tabelle
-- Armstrong-Buttons ("Text verbessern", "kuerzen") werden als Phase-2 markiert (disabled Buttons mit "Coming Soon" Badge)
-
-Editierbare Bereiche:
-- Hero-Headline + Subheadline
-- Projektbeschreibung (Tab 2)
-- Highlights-Liste (Tab 2)
-- Anbieter "Ueber uns" Text (Tab 3)
-
-### Schritt 6: Publishing/Domain UI-Section
-
-**LandingPagePublishSection.tsx:**
-- Unterhalb der 4-Tab-Ansicht
-- 3 Optionen als Cards:
-  - "Domain verbinden" (Cloudflare) — Platzhalter
-  - "Domain buchen" — Platzhalter
-  - "kaufy.app Subdomain" — Platzhalter
-- Status-Badges: "Nicht konfiguriert"
-- Keine echte Funktionalitaet in Step 1
-
----
-
-## Technische Details
-
-### Routing (Manifest-konform)
+### Neue Dateien (6)
 
 ```text
-routesManifest.ts MOD-13 tiles:
-  - dashboard (ProjekteDashboard)
-  - projekte (PortfolioTab)
-  - vertrieb (VertriebTab)
-  - landing-page (LandingPageTab)    ← NEU (ersetzt "marketing")
-```
-
-Unit-Expose wird NICHT als separate Route implementiert, sondern als State-gesteuerte Sub-View innerhalb des Landing Page Tabs. Das haelt den Kontext und vermeidet Route-Konflikte.
-
-### Investment Engine Integration
-
-Fuer jede Unit-Kachel wird die Edge Function `sot-investment-engine` aufgerufen mit:
-- `purchasePrice` = Unit `list_price`
-- `monthlyRent` = Unit `rent_monthly`
-- `equity` + `taxableIncome` = globale Slider-Werte (aus einem uebergeordneten State)
-
-Optimierung: Batch-Berechnung fuer alle 24 Units mit einem globalen Parametersatz, nicht 24 einzelne API-Calls. Alternativ: Client-seitige Approximation fuer die Kacheln, volle Engine nur im Detail.
-
-### Demo-Daten Strategie
-
-- `DEMO_PROJECT` → Hero, Key Facts
-- `DEMO_UNITS` (24 Stueck) → Investment-Kacheln
-- `DEMO_PROJECT_DESCRIPTION` → Tab 2 Texte
-- `DEMO_DEVELOPER_CONTEXT` → Tab 3 Anbieter
-- `DEMO_UNIT_DETAIL` → Unit-Expose Fallback
-- Alle Demo-Elemente erhalten ein dezentes "Beispieldaten" Badge (halbtransparent)
-
-### Neue Dateien (8-9 Dateien)
-
-```text
-src/pages/portal/projekte/LandingPageTab.tsx          (~80 Zeilen)
 src/components/projekte/landing-page/
-  LandingPageBuilder.tsx        (~120 Zeilen, Entry-State)
-  LandingPagePreview.tsx        (~60 Zeilen, Superbar + Tab-Router)
-  LandingPageInvestmentTab.tsx  (~150 Zeilen, Hero + Kacheln)
-  LandingPageProjektTab.tsx     (~100 Zeilen, Beschreibung)
-  LandingPageAnbieterTab.tsx    (~80 Zeilen, Anbieterprofil)
-  LandingPageLegalTab.tsx       (~80 Zeilen, Dokumente)
-  LandingPageUnitExpose.tsx     (~100 Zeilen, Wrapper um InvestmentExposeView)
-  LandingPagePublishSection.tsx (~60 Zeilen, Domain-Platzhalter)
+  LandingPageWebsite.tsx            Kontextfreie Website-Kern-Komponente (4 Tabs)
+  LandingPageEditOverlay.tsx        Inline-Edit-Modus fuer Texte
+
+src/pages/zone3/projekt/
+  ProjektLandingPage.tsx            Oeffentliche Route /projekt/:slug
+  ProjektLandingLayout.tsx          Minimales Layout ohne Portal-Header
+
+src/pages/admin/
+  AdminLandingPages.tsx             Zone 1 Verwaltungstabelle
+
+src/hooks/
+  useLandingPage.ts                 CRUD-Hook fuer landing_pages-Tabelle
 ```
 
-### Geaenderte Dateien (3 Dateien)
+### Geaenderte Dateien (8)
 
 ```text
-src/manifests/routesManifest.ts     — 1 Zeile aendern (marketing → landing-page)
-src/pages/portal/ProjektePage.tsx   — Route-Name aendern + Legacy-Redirect
-src/pages/portal/projekte/index.ts  — Export-Name aendern
+src/components/projekte/landing-page/
+  LandingPageBuilder.tsx            Unternehmens-URL-Dialog vor Generierung + echte DB-Erstellung
+  LandingPagePreview.tsx            Browser-Frame + Edit/Publish-Aktionsleiste
+  LandingPageInvestmentTab.tsx      Preislisten-Tabelle statt Bild-Kacheln + monatl. Belastung
+  LandingPageUnitExpose.tsx         Komplett ersetzen durch InvestmentExposeView (SSOT)
+  LandingPageProjektTab.tsx         Umbenennung "Lage & Umgebung" + KI-Badge + editierbar
+  LandingPageAnbieterTab.tsx        Website-URL-Feld + editierbarer Ueber-uns-Text
+  LandingPagePublishSection.tsx     Echter Publish-Dialog mit 3 Optionen + 36h-Info
+
+src/manifests/routesManifest.ts     Neue Routes: Zone 1 landing-pages + Zone 3 /projekt/:slug
+src/components/admin/AdminSidebar   "Landing Pages" Eintrag
+src/router/ManifestRouter.tsx       Neue Komponenten registrieren
 ```
 
-### Geloeschte Dateien (1 Datei)
+### SSOT Investment Engine Integration
 
-```text
-src/pages/portal/projekte/MarketingTab.tsx  — ersetzt durch LandingPageTab.tsx
+Das aktuelle `LandingPageUnitExpose.tsx` (303 Zeilen mit eigenen Slidern und Recharts-Charts) wird komplett ersetzt. Stattdessen wird die `InvestmentExposeView`-Komponente aus `@/components/investment` eingebettet — exakt wie in `Kaufy2026Expose.tsx`. Der Aufteiler-Kunde und sein Endkunde sehen dann beim Klick auf eine Wohnung dasselbe Expose wie auf Kaufy: Eigenkapital-Slider, zvE-Eingabe, Tilgung, Zins, Familienstand, Kirchensteuer, MasterGraph, Haushaltsrechnung, FinanzierungSummary, DetailTable40Jahre.
+
+Die Unit-Daten (aus `dev_project_units` oder Demo) werden auf das `ListingData`-Interface gemappt:
+- `unit.list_price` wird zu `listing.asking_price`
+- `unit.rent_monthly` wird zu `listing.monthly_rent`
+- `unit.area_sqm` wird zu `listing.total_area_sqm`
+- `unit.unit_number` wird zu `listing.title`
+
+### 36h-Sperr-Logik (Edge Function)
+
+Eine Edge Function `check-landing-page-expiry` wird als Cron-Job registriert (alle 15 Minuten). Sie fuehrt aus:
+
+```sql
+UPDATE landing_pages
+SET status = 'locked', locked_at = now()
+WHERE status = 'preview'
+  AND preview_expires_at < now()
+  AND booked_at IS NULL;
 ```
 
----
+### Oeffentliche Route
 
-## Umsetzungsreihenfolge (3-4 Nachrichten)
+Die Route `/projekt/:slug` wird im `routesManifest.ts` als Zone-3-Route registriert. `ProjektLandingPage.tsx` liest anhand des Slugs die Landing-Page-Daten und die zugehoerigen Projektdaten aus der DB. Wenn der Status `locked` ist, wird eine Platzhalter-Seite angezeigt. Wenn `preview` oder `active`, wird `LandingPageWebsite` gerendert — dieselbe Komponente wie im Portal, nur ohne Browser-Frame.
 
-**Nachricht 1:** Routing + LandingPageTab + Entry-State (Builder) + Tab-Superbar-Grundgeruest
-**Nachricht 2:** Tab 1 Investment (Hero + Kacheln) + Tab 2 Projekt + Tab 3 Anbieter + Tab 4 Legal
-**Nachricht 3:** Unit-Expose mit Investment Engine + Inline-Editing MVP + Publishing Section
+### Umsetzungsreihenfolge (4 Nachrichten)
 
----
+**Nachricht 1:** DB-Migration (`landing_pages` Tabelle + RLS) + `useLandingPage.ts` Hook
 
-## Nicht enthalten (spaetere Phasen)
+**Nachricht 2:** `LandingPageBuilder.tsx` (URL-Dialog + echte Generierung) + `LandingPagePreview.tsx` (Browser-Frame) + `LandingPageWebsite.tsx` (Kern-Komponente)
 
-- Echte KI-Generierung aus PDF (Phase 2)
-- Armstrong-Editing-Integration (Phase 2)
-- Domain-Anbindung / Billing (Phase 2)
-- Persistierung der Drafts in DB (Phase 2)
-- Social Media Tab als Reiter 5 (separater Auftrag)
+**Nachricht 3:** `LandingPageInvestmentTab.tsx` (Preisliste) + `LandingPageUnitExpose.tsx` (SSOT Engine) + `LandingPageProjektTab.tsx` + `LandingPageAnbieterTab.tsx` + `LandingPagePublishSection.tsx` (Publish-Dialog)
+
+**Nachricht 4:** Zone 3 Route (`ProjektLandingPage` + Layout) + Zone 1 Admin (`AdminLandingPages`) + Manifest/Router + Edge Function (Cron)
