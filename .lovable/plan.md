@@ -1,69 +1,82 @@
 
-# Finanzierungsobjekt-Sektion ergaenzen (MOD-11 + MOD-07)
 
-## Ueberblick
+# MOD-07 Anfrage + MOD-11 Finanzierungsakte: Zwei-Kachel-Layout mit Zwischenspeichern
 
-Zwei zusammenhaengende Probleme werden behoben:
+## Konzept
 
-1. **MOD-11 FMFinanzierungsakte**: Unterhalb der Selbstauskunft fehlt die Sektion "Finanzierungsobjekt erfassen" — die Objektdaten (Adresse, Typ, Flaechen, Kosten, Finanzierungsplan) muessen im gleichen tabellarischen Stil wie die Selbstauskunft direkt auf der Seite stehen.
+Beide Module (MOD-07 Anfrage und MOD-11 Finanzierungsakte) zeigen **identisch** zwei Kacheln:
 
-2. **MOD-07 AnfrageTab**: Der Einstieg in eine neue Anfrage laeuft ueber ein Popup-Fenster (Dialog), das unuebersichtlich ist. Stattdessen soll die Seite direkt das Formular zeigen — alle Objektdaten inline sichtbar, keine versteckten Flows.
+1. **Kachel 1: Finanzierungsobjekt** — Alle Objektdaten (Adresse, Typ, Baujahr, Flaechen, Ausstattung, Lage, Zimmer, Stellplaetze)
+2. **Kachel 2: Beantragte Finanzierung** — Kostenzusammenstellung (Kaufpreis, Nebenkosten, Gesamtkosten) und Finanzierungsplan (Eigenkapital, Darlehen, Zinsbindung, Tilgung, Monatsrate, Finanzierungsbedarf)
 
----
+Es entsteht **keine** Finanzierungsakte/Anfrage-ID beim Befuellen. Die Daten werden nur lokal zwischengespeichert (localStorage), bis ein spaeterer Schritt den Datensatz tatsaechlich anlegt.
 
-## Aenderung 1: MOD-11 FMFinanzierungsakte — Objektsektion ergaenzen
-
-**Datei:** `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
-
-Unterhalb des bestehenden Blocks "Selbstauskunft" (Zeile 272) wird ein neuer Block **"Finanzierungsobjekt"** eingefuegt. Die Felder orientieren sich an der AnfrageFormV2-Struktur und am PDF-Bankformular:
-
-**Sektion: Objektdaten**
-- Objektadresse (Strasse, Hausnummer, PLZ, Ort — getrennte Felder)
-- Objektart (Eigentumswohnung, EFH, ZFH, MFH, Grundstueck, Gewerbe)
-- Baujahr
-- Wohnflaeche (m2)
-- Grundstuecksflaeche (m2)
-- Ausstattungsniveau (Einfach/Mittel/Gehoben/Luxus)
-- Wohnlage (Einfach/Mittel/Gut/Sehr gut)
-- Anzahl Zimmer
-- Anzahl Stellplaetze/Garagen
-
-**Sektion: Kostenzusammenstellung**
-- Kaufpreis / Baukosten
-- Modernisierungskosten
-- Notar und Grundbuch
-- Grunderwerbsteuer
-- Maklerprovision
-- **Gesamtkosten** (automatisch berechnet)
-
-**Sektion: Finanzierungsplan**
-- Eigenkapital
-- Darlehenswunsch
-- Zinsbindung (5/10/15/20/25/30 Jahre)
-- Anfaengliche Tilgung (%)
-- Max. Monatsrate
-- **Finanzierungsbedarf** (Gesamtkosten minus Eigenkapital, automatisch berechnet)
-
-Alle Felder werden im gleichen tabellarischen Stil (TR-Komponente mit Label|Wert) dargestellt wie die Eckdaten oben. Die Daten werden beim "Finanzierungsakte erstellen"-Click in den `finance_request` und ggf. `custom_object_data` gespeichert.
+Jede Kachel hat unten einen **"Zwischenspeichern"**-Button, der die Eingaben in localStorage persistiert (Key: `mod07-anfrage-object` / `mod07-anfrage-finance` bzw. `mod11-akte-object` / `mod11-akte-finance`).
 
 ---
 
-## Aenderung 2: MOD-07 AnfrageTab — Dialog entfernen, Inline-Formular
+## Aenderung 1: Gemeinsame Komponente erstellen
+
+**Neue Datei:** `src/components/finanzierung/FinanceObjectCard.tsx`
+
+Eine wiederverwendbare Kachel-Komponente mit allen Objektfeldern im tabellarischen Stil (TR-Rows):
+- Strasse, Hausnummer, PLZ, Ort
+- Objektart (Select)
+- Baujahr, Wohnflaeche, Grundstuecksflaeche
+- Ausstattungsniveau, Wohnlage
+- Anzahl Zimmer, Stellplaetze
+- "Zwischenspeichern"-Button unten
+
+**Neue Datei:** `src/components/finanzierung/FinanceRequestCard.tsx`
+
+Zweite Kachel mit:
+- Finanzierungszweck (Kauf/Neubau/Umschuldung/Modernisierung)
+- **Kostenzusammenstellung**: Kaufpreis, Modernisierung, Notar, Grunderwerbsteuer, Makler, **Gesamtkosten** (berechnet)
+- **Finanzierungsplan**: Eigenkapital, Darlehenswunsch, Zinsbindung, Tilgung, Max. Monatsrate, **Finanzierungsbedarf** (berechnet)
+- "Zwischenspeichern"-Button unten
+
+Beide Komponenten akzeptieren Props:
+- `storageKey: string` (fuer localStorage-Prefix)
+- `initialData?: object` (zum Vorbelegen)
+- `readOnly?: boolean`
+
+---
+
+## Aenderung 2: MOD-07 AnfrageTab umbauen
 
 **Datei:** `src/pages/portal/finanzierung/AnfrageTab.tsx`
 
-Der aktuelle Flow:
-1. Nutzer sieht leere Seite mit "Anfrage starten"-Button
-2. Dialog oeffnet sich mit Objektquellen-Auswahl
-3. Nach Auswahl wird `finance_request` erstellt
-4. Dann wird `AnfrageFormV2` gezeigt
+Kompletter Umbau: Kein Draft-Laden, kein `finance_request` erstellen, kein AnfrageFormV2.
 
-**Neuer Flow:**
-1. Nutzer sieht direkt das Formular (AnfrageFormV2) — wenn kein Draft existiert, wird automatisch ein leerer Draft erstellt
-2. Kein Dialog mehr
-3. Oberhalb des Formulars: optionale Prefill-Leiste "Objekt aus Portfolio uebernehmen?" (wie bereits in AnfrageFormV2 vorhanden)
+Stattdessen:
+```
+max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6
 
-Konkret: Der gesamte Dialog-Block (Zeilen 184-265) wird entfernt. Stattdessen wird bei "kein Draft vorhanden" automatisch ein neuer Draft erstellt und sofort das Formular gezeigt. Der "Anfrage starten"-Button wird zu einem einfachen "Neue Anfrage erstellen"-Button, der direkt den Draft anlegt (ohne Zwischendialog).
+Headline: "Finanzierungsanfrage"
+Subline: "Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch"
+
+[Kachel 1: FinanceObjectCard storageKey="mod07"]
+[Kachel 2: FinanceRequestCard storageKey="mod07"]
+```
+
+Kein "Anfrage erstellen"-Button — das kommt in einem spaeteren Schritt.
+
+---
+
+## Aenderung 3: MOD-11 FMFinanzierungsakte anpassen
+
+**Datei:** `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
+
+Die bestehende Seite wird vereinfacht. Die Eckdaten-Kachel und die Selbstauskunft-Kachel bleiben. Die bestehende "Finanzierungsobjekt"-Sektion wird durch die gleichen zwei Kacheln ersetzt:
+
+```
+[Bestehend: Eckdaten-Kachel]
+[Bestehend: Selbstauskunft-Kachel]
+[Kachel: FinanceObjectCard storageKey="mod11"]
+[Kachel: FinanceRequestCard storageKey="mod11"]
+```
+
+Der "Finanzierungsakte erstellen"-Button bleibt vorerst entfernt — kommt spaeter.
 
 ---
 
@@ -71,9 +84,16 @@ Konkret: Der gesamte Dialog-Block (Zeilen 184-265) wird entfernt. Stattdessen wi
 
 | Datei | Aenderung |
 |---|---|
-| `FMFinanzierungsakte.tsx` | Neuer Block "Finanzierungsobjekt" mit 3 Sektionen (Objekt, Kosten, Finanzierung) im tabellarischen Stil |
-| `AnfrageTab.tsx` | Dialog entfernen, direktes Inline-Formular ohne Popup |
+| `src/components/finanzierung/FinanceObjectCard.tsx` | **NEU** — Wiederverwendbare Objekt-Kachel |
+| `src/components/finanzierung/FinanceRequestCard.tsx` | **NEU** — Wiederverwendbare Finanzierungs-Kachel |
+| `src/pages/portal/finanzierung/AnfrageTab.tsx` | Kompletter Umbau: Zwei Kacheln direkt, kein Draft-Flow |
+| `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx` | Objekt-Sektion durch die zwei gemeinsamen Kacheln ersetzen |
 
-## Keine DB-Migration
+## Stil
 
-Alle benoetigten Felder existieren bereits in `finance_requests` (object_address, object_type, purchase_price, etc.) und `custom_object_data` (JSONB fuer zusaetzliche Felder wie Zimmeranzahl, Stellplaetze).
+Beide Kacheln verwenden den bestehenden tabellarischen Stil (Table/TR mit Label|Wert, `h-7 text-xs` Inputs, `glass-card`). Berechnete Werte (Gesamtkosten, Finanzierungsbedarf) werden als fette Zeilen mit `bg-muted/30` dargestellt.
+
+## Keine DB-Aenderung
+
+Daten werden nur in localStorage zwischengespeichert. Kein `finance_request` wird angelegt.
+
