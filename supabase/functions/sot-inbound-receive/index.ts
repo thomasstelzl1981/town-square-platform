@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -284,6 +285,21 @@ async function handleSystemInbox(
       }
     }
   }
+
+  // DSGVO Ledger
+  await logDataEvent(sbAdmin, {
+    tenant_id: resolvedTenantId || undefined,
+    zone: "EXTERN",
+    event_type: "inbound.email.received",
+    direction: "ingress",
+    source: "resend",
+    entity_type: "inbound_item",
+    payload: {
+      inbound_id: createdItemIds[0] || null,
+      subject_length: (subject || "").length,
+      attachment_count: pdfAttachments.length,
+    },
+  });
 
   console.log(`System inbox processed: ${createdItemIds.length} items from ${fromEmail}`);
   return json({ ok: true, items_created: createdItemIds.length, item_ids: createdItemIds });

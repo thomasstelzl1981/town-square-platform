@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,6 +88,25 @@ Deno.serve(async (req) => {
     } catch {
       results["acq-documents_error"] = -1;
     }
+
+    // DSGVO Ledger: storage reset completed
+    await logDataEvent(adminClient, {
+      tenant_id: tenant_id,
+      zone: "Z1",
+      actor_user_id: user.id,
+      actor_role: "platform_admin",
+      event_type: "tenant.reset.completed",
+      direction: "delete",
+      source: "system",
+      entity_type: "tenant",
+      payload: {
+        tenant_id,
+        reason: "storage_reset",
+        correlation_id: crypto.randomUUID(),
+        storage_deleted: results,
+        duration_ms: 0,
+      },
+    }, req);
 
     return new Response(JSON.stringify({ success: true, deleted: results }), {
       status: 200,

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -199,6 +200,22 @@ serve(async (req) => {
       failed_count: failedCount,
       recipients_count: recipients.length,
     }).eq('id', campaign_id);
+
+    // DSGVO Ledger
+    await logDataEvent(supabase, {
+      zone: "Z2",
+      actor_user_id: user.id,
+      event_type: "outbound.email.sent",
+      direction: "egress",
+      source: "resend",
+      entity_type: "mail_campaign",
+      entity_id: campaign_id,
+      payload: {
+        campaign_id,
+        recipient_count: recipients.length,
+        status: finalStatus,
+      },
+    }, req);
 
     return new Response(
       JSON.stringify({

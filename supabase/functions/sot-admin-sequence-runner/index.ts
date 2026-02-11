@@ -4,6 +4,7 @@
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -285,6 +286,20 @@ serve(async (req) => {
           p_sequence_id: enrollment.sequence_id,
           p_field: "emails_sent",
         });
+
+        // DSGVO Ledger
+        await logDataEvent(supabase, {
+          zone: "Z2",
+          event_type: "outbound.email.sent",
+          direction: "egress",
+          source: "resend",
+          entity_type: "admin_outbound_email",
+          payload: {
+            sequence_id: enrollment.sequence_id,
+            enrollment_id: enrollment.id,
+            step: enrollment.current_step,
+          },
+        }, req);
 
         processed++;
         console.log(`[sequence-runner] Sent email for enrollment ${enrollment.id}, step ${enrollment.current_step}`);
