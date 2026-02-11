@@ -51,7 +51,7 @@ export async function validateTileCatalogSync(): Promise<void> {
   try {
     const { data: tiles, error } = await supabase
       .from('tile_catalog' as any)
-      .select('tile_code, label')
+      .select('tile_code, title')
       .limit(100);
 
     if (error) {
