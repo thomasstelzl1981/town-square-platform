@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { AddBankAccountDialog } from '@/components/shared';
-import { CreditCard, Building2, Bell, Mail, Clock, Star, Coins, ExternalLink, FileText, Plus, Trash2, Loader2 } from 'lucide-react';
+import { CreditCard, Building2, Bell, Mail, Clock, Star, ExternalLink, FileText, Plus, Trash2, Loader2 } from 'lucide-react';
 interface BankAccount {
   id: string;
   account_name: string;
@@ -154,7 +154,7 @@ const EinstellungenTab = () => {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Coins className="h-4 w-4 text-muted-foreground" />
+              
               <div>
                 
                 
