@@ -84,48 +84,17 @@ export function SanierungTab() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <ModulePageHeader title="Sanierung" description="Ausschreibungen, Angebote und Dokumentation Ihrer Sanierungsprojekte" />
-      
-      {/* Compact Workflow Progress */}
-      <div className="flex items-center gap-1">
-        {WORKFLOW_STEPS.map((step, index) => {
-          const count = getStepCount(step.id);
-          return (
-            <div key={step.id} className="flex items-center">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
-                style={{
-                  backgroundColor: count > 0 ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--muted) / 0.5)',
-                  color: count > 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-                }}>
-                <span>{step.label}</span>
-                {count > 0 && (
-                  <span className="bg-primary text-primary-foreground rounded-full h-4 min-w-4 text-[10px] flex items-center justify-center px-1">
-                    {count}
-                  </span>
-                )}
-              </div>
-              {index < WORKFLOW_STEPS.length - 1 && (
-                <div className="w-4 h-px bg-border mx-0.5" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Header + Action */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          Aktive Vorgänge
-          {activeCases.length > 0 && (
-            <Badge variant="outline" className="ml-2">{activeCases.length}</Badge>
-          )}
-        </h2>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Sanierung starten
-        </Button>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader
+        title="Sanierung"
+        description={`${activeCases.length} aktive Vorgänge — Ausschreibungen, Angebote und Dokumentation.`}
+        actions={
+          <Button onClick={() => setCreateDialogOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Sanierung starten
+          </Button>
+        }
+      />
 
       {/* Cases List */}
       {isLoading ? (
