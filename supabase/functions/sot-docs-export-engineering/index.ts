@@ -774,8 +774,7 @@ serve(async (req) => {
     console.log(`ZIP byte size: ${zipBytes.length}`);
 
     // Upload to storage
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `sot-engineering-rfp-export-${stamp}.zip`;
+    const filename = `sot-engineering-rfp-export-${crypto.randomUUID()}.zip`;
 
     const { error: uploadError } = await supabase.storage
       .from('docs-export')

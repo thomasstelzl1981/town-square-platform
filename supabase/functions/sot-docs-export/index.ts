@@ -162,8 +162,7 @@ serve(async (req) => {
 
     // Upload to storage
     // Use a unique filename per export to avoid caching issues when users download multiple times.
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `sot-docs-export-${stamp}.zip`;
+    const filename = `sot-docs-export-${crypto.randomUUID()}.zip`;
     
     const { error: uploadError } = await supabase.storage
       .from('docs-export')

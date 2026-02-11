@@ -213,8 +213,9 @@ export function ProfilTab() {
     try {
       const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('tenant-documents').getPublicUrl(filePath);
-      updateField('avatar_url', urlData.publicUrl);
+      const { data: signedData, error: signError } = await supabase.storage.from('tenant-documents').createSignedUrl(filePath, 31536000);
+      if (signError) throw signError;
+      updateField('avatar_url', signedData.signedUrl);
       toast.success('Avatar hochgeladen');
     } catch { toast.error('Avatar-Upload fehlgeschlagen'); }
   };
@@ -229,8 +230,9 @@ export function ProfilTab() {
     try {
       const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('tenant-documents').getPublicUrl(filePath);
-      updateField('letterhead_logo_url', urlData.publicUrl);
+      const { data: signedData, error: signError } = await supabase.storage.from('tenant-documents').createSignedUrl(filePath, 31536000);
+      if (signError) throw signError;
+      updateField('letterhead_logo_url', signedData.signedUrl);
       toast.success('Logo hochgeladen');
     } catch { toast.error('Logo-Upload fehlgeschlagen'); }
   };
