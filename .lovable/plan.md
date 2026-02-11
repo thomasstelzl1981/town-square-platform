@@ -1,97 +1,49 @@
 
-# Armstrong lernt Projekte anlegen: Neue MOD-13 Action
+# Fix: "Vorschau-Struktur ansehen" Button mit sichtbarem Feedback
 
-## Ausgangslage
+## Problem
 
-- **Upload ueber Armstrong**: Funktioniert bereits. Der ChatPanel hat eine Upload-Zone (`FileUploader` + `useUniversalUpload`), die Dateien in den `tenant-documents` Bucket hochlaedt. Hochgeladene Dateien werden unterhalb des Chat-Eingabefelds als Karten angezeigt.
-- **Fehlende Action**: Es gibt aktuell **keine einzige MOD-13-Action** im Armstrong Manifest. Das bedeutet, Armstrong kennt das Projekte-Modul nicht und kann dort keine Aktionen ausfuehren.
-- **Bestehende Verwechslung**: `ARM.MOD00.CREATE_PROJECT` erstellt nur ein Dashboard-Widget (Projekt-Tracker), **kein** echtes Bautraegerprojekt in `dev_projects`.
+Der Button scrollt zwar korrekt zum Zielbereich, aber:
+1. Wenn der Bereich schon fast sichtbar ist, faellt der Scroll kaum auf
+2. Es gibt kein visuelles Feedback (kein Highlight, kein Pulse), das zeigt "hier ist der Bereich"
 
-## Was gebaut wird
+## Loesung
 
-### 1. Neue Action: `ARM.MOD13.CREATE_DEV_PROJECT`
+Eine kurze Highlight-Animation auf den "Website-Struktur"-Bereich, die nach dem Scroll abgespielt wird:
 
-Eine neue Action im Armstrong Manifest, die den Magic Intake Workflow ausloest:
+### Aenderung in `LandingPageBuilder.tsx`
 
-| Feld | Wert |
-|------|------|
-| action_code | `ARM.MOD13.CREATE_DEV_PROJECT` |
-| title_de | "Bautraegerprojekt anlegen" |
-| execution_mode | `execute_with_confirmation` |
-| risk_level | `high` |
-| cost_model | `metered` (KI-Analyse kostet Credits) |
-| cost_hint_cents | 500 (10 Credits) |
-| module | `MOD-13` |
-| api_contract | Edge Function `sot-project-intake` |
-| data_scopes_write | `dev_projects`, `dev_project_units`, `storage_nodes` |
-| side_effects | `modifies_dev_projects`, `creates_storage_tree`, `credits_consumed` |
+1. **State hinzufuegen**: `const [highlighted, setHighlighted] = useState(false)`
 
-### 2. Zweite Action: `ARM.MOD13.EXPLAIN_MODULE`
+2. **Button onClick erweitern**: Nach dem `scrollIntoView` wird `highlighted` fuer 1.5 Sekunden auf `true` gesetzt
 
-Eine readonly Erklaerung fuer das Projekte-Modul (kostenlos):
+3. **CSS-Klasse auf den Zielbereich**: Wenn `highlighted === true`, bekommt der `div#tab-outline-section` eine `ring-2 ring-primary/50 bg-primary/5 rounded-xl transition-all duration-500` Klasse, die nach 1.5s wieder entfernt wird
 
-| Feld | Wert |
-|------|------|
-| action_code | `ARM.MOD13.EXPLAIN_MODULE` |
-| title_de | "Projekte-Modul erklaeren" |
-| execution_mode | `readonly` |
-| cost_model | `free` |
-
-### 3. Edge Function Erweiterung
-
-Der `sot-armstrong-advisor` muss den neuen Action-Code erkennen und an `sot-project-intake` delegieren. Wenn ein Nutzer Armstrong sagt "Leg ein Projekt an mit diesen Dateien", passiert Folgendes:
+### Konkret
 
 ```text
-Nutzer laedt Expose + Preisliste ueber Armstrong Chat hoch
-    |
-    v
-Nutzer sagt: "Erstelle ein Projekt aus den hochgeladenen Dateien"
-    |
-    v
-Armstrong erkennt Intent -> ACTION
-    |
-    v
-Schlaegt ARM.MOD13.CREATE_DEV_PROJECT vor
-    |
-    v
-Nutzer bestaetigt (Confirm-Gate, 10 Credits)
-    |
-    v
-Armstrong ruft sot-project-intake auf
-    |
-    v
-Projekt + Units + Storage-Tree werden erstellt
-    |
-    v
-Ergebnis wird im Chat angezeigt (Projekt-ID, Anzahl Einheiten)
+// Button onClick (Zeile 176-178):
+onClick={() => {
+  const el = document.getElementById('tab-outline-section');
+  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setHighlighted(true);
+  setTimeout(() => setHighlighted(false), 1500);
+}}
+
+// Zielbereich (Zeile 188):
+<div
+  id="tab-outline-section"
+  className={cn(
+    'space-y-4 p-4 rounded-xl transition-all duration-500',
+    highlighted && 'ring-2 ring-primary/50 bg-primary/5'
+  )}
+>
 ```
 
-### 4. MVP Module List erweitern
-
-In `useArmstrongAdvisor.ts` muss `MOD-13` zur MVP-Liste hinzugefuegt werden, damit Armstrong im Projekte-Modul nicht nur erklaert, sondern auch Actions ausfuehren kann:
-
-```text
-const MVP_MODULES = ['MOD-00', 'MOD-04', 'MOD-07', 'MOD-08', 'MOD-13'];
-```
-
-### 5. Zone 1 Dokumentation
-
-Die neuen Actions erscheinen automatisch im Zone 1 Actions-Katalog (`ArmstrongActions.tsx`), da dieser die `armstrongActions` aus dem Manifest liest. Keine separate Dokumentation noetig.
-
-## Aenderungen
+### Betroffene Datei
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/armstrongManifest.ts` | 2 neue Actions einfuegen: `ARM.MOD13.CREATE_DEV_PROJECT` + `ARM.MOD13.EXPLAIN_MODULE` |
-| `src/hooks/useArmstrongAdvisor.ts` | `MOD-13` zu `MVP_MODULES` hinzufuegen |
-| `supabase/functions/sot-armstrong-advisor/index.ts` | Action-Handler fuer `ARM.MOD13.CREATE_DEV_PROJECT` ergaenzen (delegiert an `sot-project-intake`) |
+| `src/components/projekte/landing-page/LandingPageBuilder.tsx` | State + Highlight-Animation + cn-Import ergaenzen |
 
-## Governance-Konformitaet
-
-| Regel | Eingehalten |
-|-------|-------------|
-| K3: Confirm-Gate fuer Schreibaktionen | Ja — `execute_with_confirmation` |
-| Kosten vor Ausfuehrung | Ja — 10 Credits, `cost_hint_cents: 500` |
-| Audit by Default | Ja — `audit_event_type: ARM_CREATE_DEV_PROJECT` |
-| Zone 1 Sichtbarkeit | Ja — automatisch ueber Manifest |
-| risk_level korrekt | Ja — `high` (erstellt DB-Records + Storage-Tree) |
+Minimaler Eingriff, maximale Wirkung: Der Nutzer sieht sofort, wohin gescrollt wurde.
