@@ -1,29 +1,75 @@
 
 
-# ProviderSearchPanel: Suchfeld vorausfuellen und automatisch suchen
+# E-Mail-Adressen aus Handwerker-Websites extrahieren
 
-## Befund
+## Ausgangslage
 
-- Der **Standort** wird korrekt aus dem Objekt uebernommen (Datenbank: `Leipzig` fuer das aktuelle Objekt). Nicht hart gecodet.
-- Die **Kategorie** wird korrekt uebergeben (`sanitaer`), und es gibt bereits ein Mapping zu `Sanitaer Installateur`.
-- **Problem:** Das Suchfeld startet leer. Der Nutzer muss selbst wissen, was er eintippen soll, obwohl das System die Kategorie bereits kennt.
+Google Places API liefert **keine E-Mail-Adressen**. Das ist eine bekannte Einschraenkung. Google Places liefert aber die **Website-URL** — und auf den Websites der Handwerker steht fast immer eine E-Mail-Adresse im Impressum oder Kontaktbereich.
 
-## Loesung
+## Loesung: Automatisches Website-Scraping per Edge Function
 
-### Datei: `ProviderSearchPanel.tsx`
+Wir erstellen eine schlanke Edge Function, die:
+1. Die Website-URL entgegennimmt
+2. Das HTML abruft (einfacher `fetch`, kein Firecrawl noetig)
+3. E-Mail-Adressen per Regex extrahiert
+4. Die beste E-Mail zurueckgibt
 
-1. **Suchfeld vorausfuellen:** `searchQuery` wird mit `getCategorySearchTerm(category)` initialisiert statt mit leerem String. Bei Kategorie `sanitaer` steht dann sofort `Sanitaer Installateur` im Feld.
+**Keine zusaetzlichen API-Keys noetig** — nur ein normaler HTTP-Request.
 
-2. **Automatische Suche beim Laden:** Ein `useEffect` loest `handleSearch()` beim ersten Rendern aus, sobald `location` vorhanden ist. Der Nutzer sieht sofort Ergebnisse, ohne manuell klicken zu muessen.
+## Technische Umsetzung
 
-3. **Standort prominenter anzeigen:** Die Standort-Anzeige erhaelt den Zusatz mit Adresse und Stadt, damit klar ist, wo gesucht wird (z.B. `Standort: Leipzig`).
+### Neue Datei: `supabase/functions/sot-extract-email/index.ts`
 
-## Technische Details
+Edge Function die:
+- URL empfaengt
+- HTML der Seite abruft (mit Timeout, User-Agent)
+- Regex-Pattern fuer E-Mail-Adressen anwendet (`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+- Gaengige False-Positives filtert (z.B. `wix.com`, `example.com`, `sentry.io`)
+- Priorisierung: `info@`, `kontakt@`, `office@` bevorzugt
+- Array aller gefundenen E-Mails + beste E-Mail zurueckgibt
 
-| Aenderung | Detail |
+### Aenderung: `ProviderSearchPanel.tsx`
+
+**Nach der Google-Places-Suche automatisch E-Mails anreichern:**
+
+1. Fuer jeden Treffer mit `website`-URL: Edge Function `sot-extract-email` aufrufen
+2. Ergebnisse asynchron in die Suchergebnisse einpflegen (E-Mail-Feld befuellen)
+3. Visuell: E-Mail-Adresse unter der Telefonnummer anzeigen (Mail-Icon)
+4. Falls keine E-Mail gefunden: Hinweis "Keine E-Mail gefunden — manuell eingeben" mit kleinem Eingabefeld
+5. Beim Auswaehlen eines Providers wird die E-Mail in `SelectedProvider.email` uebernommen
+
+**UI-Erweiterung der Suchergebnis-Karten:**
+- E-Mail-Adresse anzeigen (oder "wird gesucht..." waehrend des Scrapings)
+- Manuelles E-Mail-Eingabefeld als Fallback
+- Provider ohne E-Mail koennen trotzdem ausgewaehlt werden, aber mit Warnung
+
+### Aenderung: `PlaceResult`-Interface erweitern
+
+```text
+PlaceResult {
+  ...bestehende Felder...
+  email?: string;          // NEU: extrahierte E-Mail
+  emailLoading?: boolean;  // NEU: Scraping laeuft noch
+}
+```
+
+## Ablauf fuer den Nutzer
+
+```text
+1. Panel oeffnet sich → Suche laeuft automatisch (bereits implementiert)
+2. Google Places liefert Ergebnisse mit Website-URLs
+3. Im Hintergrund: fuer jedes Ergebnis mit Website wird die E-Mail extrahiert
+4. Ergebnisse erscheinen mit E-Mail (oder "wird gesucht...")
+5. Nutzer waehlt Dienstleister aus → E-Mail wird uebernommen
+6. Falls keine E-Mail gefunden: manuelles Eingabefeld pro Ergebnis
+```
+
+## Zusammenfassung
+
+| Datei | Aenderung |
 |---|---|
-| `useState('')` bei `searchQuery` | Wird zu `useState(getCategorySearchTerm(category))` |
-| Neuer `useEffect` | Triggert `handleSearch()` einmalig beim Mount wenn `location` existiert |
-| Keine neuen Dependencies | `useEffect` nutzt vorhandene `handleSearch`-Funktion |
+| `supabase/functions/sot-extract-email/index.ts` | NEU: Website-Scraping fuer E-Mail-Extraktion |
+| `ProviderSearchPanel.tsx` | E-Mail-Anreicherung nach Suche, UI-Erweiterung |
 
-Eine Datei, keine DB-Aenderungen, keine neuen Dependencies.
+Keine neuen Dependencies, keine DB-Aenderungen, kein Firecrawl noetig.
+
