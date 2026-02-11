@@ -1,72 +1,92 @@
 import type { GoldenPathDefinition } from './types';
 
 /**
- * Golden Path MOD-04: Immobilie — Von Anlage bis Vertrieb
+ * Golden Path MOD-04: Immobilie — Von Anlage bis Vertrieb (V1.0)
  * 
  * SSOT-Definition des idealen Nutzerflusses fuer das Immobilien-Modul.
  * 11 Phasen vom Objektanlegen bis zur Deaktivierung.
  * 
- * Referenziert ausschliesslich existierende DB-Tabellen und Spalten:
- * - properties, units, storage_nodes
- * - property_features (verkaufsauftrag, kaufy_sichtbarkeit)
- * - listings (status, sales_mandate_consent_id)
- * - listing_publications (channel, status)
- * - user_consents
+ * V1.0: Erweitert um required_entities, required_contracts, ledger_events,
+ * success_state, failure_redirect. Steps unveraendert.
  */
 export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
+  // --- V1.0 Pflichtfelder ---
+  id: 'gp-mod-04-immobilie',
+  module: 'MOD-04',
   moduleCode: 'MOD-04',
   version: '2.0.0',
   label: 'Immobilie — Von Anlage bis Vertrieb',
   description:
     'Vollstaendiger Lebenszyklus einer Immobilie: Anlage, Dossier-Pflege, Vermarktung, Sichtbarkeit in Downstream-Modulen, optionale Kaufy-Aktivierung und Deaktivierung.',
 
+  required_entities: [
+    {
+      table: 'properties',
+      description: 'Immobilien-Stammdaten muessen existieren',
+      scope: 'entity_id',
+    },
+    {
+      table: 'units',
+      description: 'Mindestens eine Einheit (MAIN) muss existieren',
+      scope: 'entity_id',
+    },
+    {
+      table: 'storage_nodes',
+      description: 'Ordnerstruktur fuer Dokumente muss existieren',
+      scope: 'entity_id',
+    },
+  ],
+
+  required_contracts: [
+    {
+      key: 'verkaufsauftrag_consent',
+      source: 'user_consents',
+      description: 'Verkaufsauftrag-Vereinbarung muss akzeptiert werden',
+    },
+  ],
+
+  ledger_events: [
+    { event_type: 'listing.published', trigger: 'on_complete' },
+    { event_type: 'listing.unpublished', trigger: 'on_complete' },
+  ],
+
+  success_state: {
+    required_flags: [
+      'property_exists',
+      'main_unit_exists',
+      'folder_structure_exists',
+      'verkaufsauftrag_active',
+      'listing_active',
+      'partner_network_active',
+    ],
+    description: 'Immobilie ist vollstaendig angelegt, Verkaufsauftrag aktiv, im Partner-Netzwerk sichtbar.',
+  },
+
+  failure_redirect: '/portal/immobilien/portfolio',
+
+  // --- Steps (unveraendert aus V0) ---
   steps: [
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 1: OBJEKT ANLEGEN
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'create_property',
       phase: 1,
       label: 'Immobilie anlegen',
       type: 'action',
       routePattern: '/portal/immobilien/portfolio',
+      task_kind: 'user_task',
+      camunda_key: 'MOD04_STEP_01_CREATE_PROPERTY',
       preconditions: [
-        {
-          key: 'user_authenticated',
-          source: 'auth',
-          description: 'User muss eingeloggt sein',
-        },
-        {
-          key: 'tenant_exists',
-          source: 'organizations',
-          description: 'Tenant/Organisation muss vorhanden sein',
-        },
+        { key: 'user_authenticated', source: 'auth', description: 'User muss eingeloggt sein' },
+        { key: 'tenant_exists', source: 'organizations', description: 'Tenant/Organisation muss vorhanden sein' },
       ],
       completion: [
-        {
-          key: 'property_exists',
-          source: 'properties',
-          check: 'exists',
-          description: 'Property-Row wurde erstellt',
-        },
-        {
-          key: 'main_unit_exists',
-          source: 'units',
-          check: 'exists',
-          description: 'MAIN-Unit wurde durch DB-Trigger erstellt',
-        },
-        {
-          key: 'folder_structure_exists',
-          source: 'storage_nodes',
-          check: 'exists',
-          description: 'Ordnerstruktur (PROPERTY_DOSSIER_V1) wurde durch DB-Trigger erstellt',
-        },
+        { key: 'property_exists', source: 'properties', check: 'exists', description: 'Property-Row wurde erstellt' },
+        { key: 'main_unit_exists', source: 'units', check: 'exists', description: 'MAIN-Unit wurde durch DB-Trigger erstellt' },
+        { key: 'folder_structure_exists', source: 'storage_nodes', check: 'exists', description: 'Ordnerstruktur wurde durch DB-Trigger erstellt' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 2: IMMOBILIENAKTE BEARBEITEN
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'edit_dossier',
       phase: 2,
@@ -74,50 +94,32 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       type: 'route',
       routeId: 'MOD-04::dynamic::/:id',
       routePattern: '/portal/immobilien/:propertyId',
+      task_kind: 'user_task',
+      camunda_key: 'MOD04_STEP_02_EDIT_DOSSIER',
       preconditions: [
-        {
-          key: 'property_exists',
-          source: 'properties',
-          description: 'Property muss existieren',
-        },
+        { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
       ],
-      // Kein Completion-Check — manueller Datenpflege-Schritt
     },
 
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 3: SICHTBARKEIT IN MOD-05 (MIETVERWALTUNG)
-    // ═══════════════════════════════════════════════════════════════
+    // PHASE 3: SICHTBARKEIT IN MOD-05
     {
       id: 'mod05_visibility',
       phase: 3,
       label: 'Sichtbarkeit in Mietverwaltung (MOD-05)',
       type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_03_MOD05_VISIBILITY',
       downstreamModules: ['MOD-05'],
       preconditions: [
-        {
-          key: 'property_exists',
-          source: 'properties',
-          description: 'Property muss existieren',
-        },
-        {
-          key: 'main_unit_exists',
-          source: 'units',
-          description: 'MAIN-Unit muss existieren',
-        },
+        { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
+        { key: 'main_unit_exists', source: 'units', description: 'MAIN-Unit muss existieren' },
       ],
       completion: [
-        {
-          key: 'unit_visible_in_mod05',
-          source: 'units',
-          check: 'exists',
-          description: 'Einheit erscheint automatisch in MOD-05 ObjekteTab (kein Filter)',
-        },
+        { key: 'unit_visible_in_mod05', source: 'units', check: 'exists', description: 'Einheit erscheint automatisch in MOD-05' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 4: VERKAUFSAUFTRAG AKTIVIEREN
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'activate_sales_mandate',
       phase: 4,
@@ -126,156 +128,97 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       routeId: 'MOD-04::dynamic::/:id',
       routePattern: '/portal/immobilien/:id',
       queryParams: { tab: 'verkaufsauftrag' },
+      task_kind: 'user_task',
+      camunda_key: 'MOD04_STEP_04_ACTIVATE_MANDATE',
       preconditions: [
-        {
-          key: 'property_exists',
-          source: 'properties',
-          description: 'Property muss existieren',
-        },
+        { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
       ],
       completion: [
-        {
-          key: 'verkaufsauftrag_active',
-          source: 'property_features',
-          check: 'equals',
-          value: 'active',
-          description: 'property_features.verkaufsauftrag = active',
-        },
-        {
-          key: 'listing_active',
-          source: 'listings',
-          check: 'equals',
-          value: 'active',
-          description: 'listings.status = active',
-        },
-        {
-          key: 'partner_network_active',
-          source: 'listing_publications',
-          check: 'equals',
-          value: 'active',
-          description: 'listing_publications (channel=partner_network) status = active',
-        },
-        {
-          key: 'sales_mandate_consent_linked',
-          source: 'listings',
-          check: 'not_null',
-          description: 'listings.sales_mandate_consent_id IS NOT NULL',
-        },
+        { key: 'verkaufsauftrag_active', source: 'property_features', check: 'equals', value: 'active', description: 'property_features.verkaufsauftrag = active' },
+        { key: 'listing_active', source: 'listings', check: 'equals', value: 'active', description: 'listings.status = active' },
+        { key: 'partner_network_active', source: 'listing_publications', check: 'equals', value: 'active', description: 'listing_publications (partner_network) = active' },
+        { key: 'sales_mandate_consent_linked', source: 'listings', check: 'not_null', description: 'listings.sales_mandate_consent_id IS NOT NULL' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 5: VERTRAG IN STAMMDATEN
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'stammdaten_contract',
       phase: 5,
       label: 'Vertrag in Stammdaten sichtbar',
       type: 'system',
       routePattern: '/portal/stammdaten/vertraege',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_05_STAMMDATEN_CONTRACT',
       preconditions: [
-        {
-          key: 'sales_mandate_consent_linked',
-          source: 'listings',
-          description: 'listings.sales_mandate_consent_id IS NOT NULL',
-        },
+        { key: 'sales_mandate_consent_linked', source: 'listings', description: 'listings.sales_mandate_consent_id IS NOT NULL' },
       ],
       completion: [
-        {
-          key: 'contract_visible',
-          source: 'listings',
-          check: 'not_null',
-          description: 'Verkaufsmandat erscheint in VertraegeTab',
-        },
+        { key: 'contract_visible', source: 'listings', check: 'not_null', description: 'Verkaufsmandat erscheint in VertraegeTab' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 6: SALES DESK SICHTBARKEIT
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'sales_desk_visibility',
       phase: 6,
       label: 'Vertriebsauftrag im Sales Desk sichtbar',
       type: 'system',
       routePattern: '/admin/sales-desk',
-      preconditions: [
+      task_kind: 'wait_message',
+      camunda_key: 'MOD04_STEP_06_SALES_DESK',
+      contract_refs: [
         {
-          key: 'sales_mandate_consent_linked',
-          source: 'listings',
-          description: 'listings.sales_mandate_consent_id IS NOT NULL',
-        },
-        {
-          key: 'listing_active',
-          source: 'listings',
-          description: 'listings.status = active',
+          key: 'CONTRACT_SALES_MANDATE_SUBMIT',
+          direction: 'Z2->Z1',
+          correlation_keys: ['tenant_id', 'property_id', 'listing_id'],
+          description: 'Verkaufsauftrag wird an Zone 1 Sales Desk uebermittelt',
         },
       ],
+      preconditions: [
+        { key: 'sales_mandate_consent_linked', source: 'listings', description: 'listings.sales_mandate_consent_id IS NOT NULL' },
+        { key: 'listing_active', source: 'listings', description: 'listings.status = active' },
+      ],
       completion: [
-        {
-          key: 'sales_desk_entry_visible',
-          source: 'listings',
-          check: 'exists',
-          description: 'Eintrag in ImmobilienVertriebsauftraegeCard sichtbar',
-        },
+        { key: 'sales_desk_entry_visible', source: 'listings', check: 'exists', description: 'Eintrag in Sales Desk sichtbar' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 7: MOD-09 KATALOG
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'mod09_katalog',
       phase: 7,
       label: 'Sichtbarkeit im Partner-Katalog (MOD-09)',
       type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_07_KATALOG',
       downstreamModules: ['MOD-09'],
       preconditions: [
-        {
-          key: 'partner_network_active',
-          source: 'listing_publications',
-          description: 'listing_publications (channel=partner_network) status = active',
-        },
+        { key: 'partner_network_active', source: 'listing_publications', description: 'listing_publications (partner_network) = active' },
       ],
       completion: [
-        {
-          key: 'katalog_visible',
-          source: 'listing_publications',
-          check: 'exists',
-          description: 'Objekt erscheint im KatalogTab',
-        },
+        { key: 'katalog_visible', source: 'listing_publications', check: 'exists', description: 'Objekt erscheint im KatalogTab' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 8: MOD-08 INVESTMENT-SUCHE
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'mod08_suche',
       phase: 8,
       label: 'Sichtbarkeit in Investment-Suche (MOD-08)',
       type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_08_SUCHE',
       downstreamModules: ['MOD-08'],
       preconditions: [
-        {
-          key: 'listing_active',
-          source: 'listings',
-          description: 'listings.status = active',
-        },
+        { key: 'listing_active', source: 'listings', description: 'listings.status = active' },
       ],
       completion: [
-        {
-          key: 'suche_visible',
-          source: 'listings',
-          check: 'exists',
-          description: 'Objekt erscheint in SucheTab',
-        },
+        { key: 'suche_visible', source: 'listings', check: 'exists', description: 'Objekt erscheint in SucheTab' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 9: KAUFY-SICHTBARKEIT AKTIVIEREN (OPTIONAL)
-    // ═══════════════════════════════════════════════════════════════
+    // PHASE 9: KAUFY-SICHTBARKEIT (OPTIONAL)
     {
       id: 'activate_kaufy',
       phase: 9,
@@ -284,60 +227,35 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       routeId: 'MOD-04::dynamic::/:id',
       routePattern: '/portal/immobilien/:id',
       queryParams: { tab: 'verkaufsauftrag' },
+      task_kind: 'user_task',
+      camunda_key: 'MOD04_STEP_09_ACTIVATE_KAUFY',
       preconditions: [
-        {
-          key: 'verkaufsauftrag_active',
-          source: 'property_features',
-          description: 'Verkaufsauftrag muss aktiv sein (dependsOn)',
-        },
+        { key: 'verkaufsauftrag_active', source: 'property_features', description: 'Verkaufsauftrag muss aktiv sein' },
       ],
       completion: [
-        {
-          key: 'kaufy_sichtbarkeit_active',
-          source: 'property_features',
-          check: 'equals',
-          value: 'active',
-          description: 'property_features.kaufy_sichtbarkeit = active',
-        },
-        {
-          key: 'kaufy_publication_active',
-          source: 'listing_publications',
-          check: 'equals',
-          value: 'active',
-          description: 'listing_publications (channel=kaufy) status = active',
-        },
+        { key: 'kaufy_sichtbarkeit_active', source: 'property_features', check: 'equals', value: 'active', description: 'property_features.kaufy_sichtbarkeit = active' },
+        { key: 'kaufy_publication_active', source: 'listing_publications', check: 'equals', value: 'active', description: 'listing_publications (kaufy) = active' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 10: KAUFY-WEBSITE (ZONE 3)
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'kaufy_website',
       phase: 10,
       label: 'Sichtbarkeit auf Kaufy-Website (Zone 3)',
       type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_10_KAUFY_WEBSITE',
       downstreamModules: ['ZONE-3'],
       preconditions: [
-        {
-          key: 'kaufy_publication_active',
-          source: 'listing_publications',
-          description: 'listing_publications (channel=kaufy) status = active',
-        },
+        { key: 'kaufy_publication_active', source: 'listing_publications', description: 'listing_publications (kaufy) = active' },
       ],
       completion: [
-        {
-          key: 'kaufy_website_visible',
-          source: 'listing_publications',
-          check: 'exists',
-          description: 'Objekt erscheint auf oeffentlicher Kaufy-Website',
-        },
+        { key: 'kaufy_website_visible', source: 'listing_publications', check: 'exists', description: 'Objekt auf Kaufy-Website sichtbar' },
       ],
     },
 
-    // ═══════════════════════════════════════════════════════════════
     // PHASE 11: DEAKTIVIERUNG (WIDERRUF)
-    // ═══════════════════════════════════════════════════════════════
     {
       id: 'deactivate_mandate',
       phase: 11,
@@ -346,35 +264,15 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       routeId: 'MOD-04::dynamic::/:id',
       routePattern: '/portal/immobilien/:id',
       queryParams: { tab: 'verkaufsauftrag' },
+      task_kind: 'user_task',
+      camunda_key: 'MOD04_STEP_11_DEACTIVATE',
       preconditions: [
-        {
-          key: 'verkaufsauftrag_active',
-          source: 'property_features',
-          description: 'Verkaufsauftrag muss aktuell aktiv sein',
-        },
+        { key: 'verkaufsauftrag_active', source: 'property_features', description: 'Verkaufsauftrag muss aktuell aktiv sein' },
       ],
       completion: [
-        {
-          key: 'listing_withdrawn',
-          source: 'listings',
-          check: 'equals',
-          value: 'withdrawn',
-          description: 'listings.status = withdrawn',
-        },
-        {
-          key: 'publications_paused',
-          source: 'listing_publications',
-          check: 'equals',
-          value: 'paused',
-          description: 'Alle listing_publications status = paused',
-        },
-        {
-          key: 'features_inactive',
-          source: 'property_features',
-          check: 'equals',
-          value: 'inactive',
-          description: 'Alle property_features (verkaufsauftrag, kaufy_sichtbarkeit) = inactive',
-        },
+        { key: 'listing_withdrawn', source: 'listings', check: 'equals', value: 'withdrawn', description: 'listings.status = withdrawn' },
+        { key: 'publications_paused', source: 'listing_publications', check: 'equals', value: 'paused', description: 'Alle listing_publications = paused' },
+        { key: 'features_inactive', source: 'property_features', check: 'equals', value: 'inactive', description: 'Alle features = inactive' },
       ],
     },
   ],
