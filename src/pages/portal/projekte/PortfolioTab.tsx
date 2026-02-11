@@ -6,12 +6,14 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { ProjectOverviewCard } from '@/components/projekte/ProjectOverviewCard';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
+import { ProjectCard } from '@/components/projekte/ProjectCard';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isDemoMode, DEMO_PROJECT, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
@@ -72,6 +74,22 @@ export default function PortfolioTab() {
     ? portfolioRows.find(p => p.id === selectedProjectId)
     : portfolioRows[0];
 
+  // ── Fetch real units from dev_project_units ────────────────────────────
+  const { data: realUnits } = useQuery({
+    queryKey: ['dev_project_units', selectedProjectId],
+    queryFn: async () => {
+      if (!selectedProjectId) return null;
+      const { data, error } = await supabase
+        .from('dev_project_units')
+        .select('*')
+        .eq('project_id', selectedProjectId)
+        .order('unit_number');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !isDemo && !!selectedProjectId,
+  });
+
   // ── Central calculator state ──────────────────────────────────────────
   const [investmentCosts, setInvestmentCosts] = useState(
     isDemo ? DEMO_PROJECT.purchase_price || 4_800_000 : (selectedProject?.purchase_price || 4_800_000)
@@ -82,8 +100,36 @@ export default function PortfolioTab() {
   const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number; parking_price?: number }>>({});
   const [unitStatusOverrides, setUnitStatusOverrides] = useState<Record<string, string>>({});
 
-  // Base units (demo or real)
-  const baseUnits: DemoUnit[] = isDemo ? DEMO_UNITS : DEMO_UNITS; // TODO: replace with real units
+  // Base units: demo or real mapped to DemoUnit interface
+  const baseUnits: DemoUnit[] = useMemo(() => {
+    if (isDemo || !realUnits || realUnits.length === 0) return DEMO_UNITS;
+
+    return realUnits.map((u) => {
+      const listPrice = u.list_price ?? 0;
+      const areaSqm = u.area_sqm ?? 1;
+      const rentNet = u.rent_net ?? 0;
+      const rentNk = u.rent_nk ?? 0;
+      const annualNetRent = rentNet * 12;
+
+      return {
+        id: u.id,
+        public_id: u.public_id || u.id.substring(0, 8),
+        unit_number: u.unit_number || '—',
+        rooms: u.rooms_count ?? 0,
+        floor: u.floor ?? 0,
+        area_sqm: areaSqm,
+        list_price: listPrice,
+        rent_monthly: rentNet,
+        annual_net_rent: annualNetRent,
+        non_recoverable_costs: rentNk,
+        yield_percent: listPrice > 0 ? (annualNetRent / listPrice) * 100 : 0,
+        price_per_sqm: areaSqm > 0 ? Math.round(listPrice / areaSqm) : 0,
+        provision_eur: u.commission_amount ?? Math.round(listPrice * 0.10),
+        parking_price: 0,
+        status: (u.status === 'verkauft' ? 'sold' : u.status === 'reserviert' ? 'reserved' : 'available') as DemoUnit['status'],
+      };
+    });
+  }, [isDemo, realUnits]);
 
   // Compute effective unit values
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
@@ -150,24 +196,37 @@ export default function PortfolioTab() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight uppercase">Projekt-Portfolio</h2>
-          <p className="text-muted-foreground">Übersicht aller Bauträger- und Aufteiler-Projekte</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={selectedProjectId || 'demo'} onValueChange={(v) => setSelectedProjectId(v === 'demo' ? null : v)}>
-            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Projekt wählen" /></SelectTrigger>
-            <SelectContent>
-              {isDemo && <SelectItem value="demo">Residenz am Stadtpark (Demo)</SelectItem>}
-              {portfolioRows.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Projekt-Portfolio</h2>
+        <p className="text-muted-foreground">Übersicht aller Bauträger- und Aufteiler-Projekte</p>
+      </div>
+
+      {/* Project Switcher — Horizontal Tile Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        {isDemo ? (
+          <ProjectCard
+            project={DEMO_PROJECT}
+            isDemo
+            isSelected
+          />
+        ) : (
+          portfolioRows.map((p) => (
+            <ProjectCard
+              key={p.id}
+              project={p}
+              isSelected={p.id === selectedProjectId}
+              onClick={(id) => setSelectedProjectId(id)}
+            />
+          ))
+        )}
       </div>
 
       {/* Globalobjekt-Beschreibung (volle Breite) */}
-      <ProjectOverviewCard isDemo={isDemo} />
+      <ProjectOverviewCard
+        isDemo={isDemo}
+        selectedProject={!isDemo ? selectedProject : undefined}
+        unitCount={calculatedUnits.length}
+      />
 
       {/* Preisliste (volle Breite) */}
       {isLoading ? (
@@ -214,7 +273,7 @@ export default function PortfolioTab() {
       {/* Dokumenten-Kachel */}
       <ProjectDMSWidget
         projectName={isDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
-        units={DEMO_UNITS}
+        units={isDemo ? DEMO_UNITS : baseUnits}
         isDemo={isDemo}
       />
 
