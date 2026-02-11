@@ -1,25 +1,13 @@
 /**
  * Selfie Ads Studio — Überblick (Zone 2, unter /portal/leads/selfie-ads)
- * Widget-Karten: Aktive Kampagnen, Neue Leads, Performance, Letzte Beauftragungen
+ * Clean empty-state when no campaigns exist, showcase-ready
  */
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Megaphone, TrendingUp, Users, FileText, Plus, ArrowRight, Eye, Target } from 'lucide-react';
+import { Megaphone, Plus, ArrowRight, BarChart3, FileText, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PageShell, KPICard, WidgetHeader, ListRow } from '@/components/shared';
-
-const demoKampagnen = [
-  { id: 1, name: 'Kapitalanleger München Q1', status: 'live', leads: 12, budget: '2.500 €' },
-  { id: 2, name: 'Vermögensaufbau Berlin', status: 'ended', leads: 34, budget: '4.000 €' },
-  { id: 3, name: 'Rendite-Immobilien Hamburg', status: 'scheduled', leads: 0, budget: '3.000 €' },
-];
-
-const demoLeads = [
-  { id: 1, name: 'Max Müller', region: 'München', zeit: 'vor 2h', template: 'T1' },
-  { id: 2, name: 'Anna Schmidt', region: 'Berlin', zeit: 'vor 5h', template: 'T3' },
-  { id: 3, name: 'Peter Weber', region: 'Hamburg', zeit: 'gestern', template: 'T2' },
-];
+import { PageShell, WidgetHeader } from '@/components/shared';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function SelfieAdsStudio() {
   const navigate = useNavigate();
@@ -39,77 +27,77 @@ export default function SelfieAdsStudio() {
         </Button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KPICard label="Aktive Kampagnen" value="2" icon={Megaphone} />
-        <KPICard label="Neue Leads" value="5" icon={Target} />
-        <KPICard label="Ø CPL" value="18,50 €" icon={TrendingUp} />
-        <KPICard label="Beauftragungen" value="3" icon={FileText} />
-      </div>
-
-      {/* Demo Kampagnen */}
-      <Card className="glass-card">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <WidgetHeader
-              icon={Megaphone}
-              title="Letzte Beauftragungen"
-              action={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/portal/leads/selfie-ads-kampagnen')} className="gap-1 text-xs">
-                  Alle anzeigen <ArrowRight className="h-3 w-3" />
-                </Button>
-              }
-            />
-          </div>
-          <div className="space-y-3">
-            {demoKampagnen.map((k) => (
-              <ListRow key={k.id}>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Megaphone className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{k.name}</p>
-                    <p className="text-xs text-muted-foreground">{k.budget} · {k.leads} Leads</p>
-                  </div>
-                </div>
-                <Badge variant={k.status === 'live' ? 'default' : k.status === 'scheduled' ? 'secondary' : 'outline'}>
-                  {k.status === 'live' ? 'Live' : k.status === 'scheduled' ? 'Geplant' : 'Beendet'}
-                </Badge>
-              </ListRow>
-            ))}
-          </div>
+      {/* Empty State */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <EmptyState
+            icon={Megaphone}
+            title="Noch keine Kampagnen beauftragt"
+            description="Planen Sie Ihre erste Selfie Ads Kampagne — Kaufy veröffentlicht sie auf Social Media und liefert Leads direkt in Ihre Inbox."
+            action={{
+              label: 'Erste Kampagne planen',
+              onClick: () => navigate('/portal/leads/selfie-ads-planen'),
+            }}
+          />
         </CardContent>
       </Card>
 
-      {/* Demo Leads */}
-      <Card className="glass-card">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <WidgetHeader
-              icon={Users}
-              title="Neue Leads"
-              action={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/portal/leads/selfie-ads-performance')} className="gap-1 text-xs">
-                  Performance <ArrowRight className="h-3 w-3" />
-                </Button>
-              }
-            />
-          </div>
+      {/* Quick Navigation */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-kampagnen')}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Meine Kampagnen</p>
+              <p className="text-xs text-muted-foreground">Beauftragungen einsehen</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-performance')}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Performance</p>
+              <p className="text-xs text-muted-foreground">Leads & Kennzahlen</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-abrechnung')}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <CreditCard className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Abrechnung</p>
+              <p className="text-xs text-muted-foreground">Zahlungen & Rechnungen</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* How it works */}
+      <Card className="bg-muted/50">
+        <CardContent className="p-5 space-y-3">
+          <p className="text-sm font-medium">So funktioniert Selfie Ads</p>
           <div className="space-y-2">
-            {demoLeads.map((l) => (
-              <ListRow key={l.id}>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{l.name}</p>
-                    <p className="text-xs text-muted-foreground">{l.region} · Slot {l.template} · {l.zeit}</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm"><Eye className="h-3 w-3" /></Button>
-              </ListRow>
+            {[
+              'Wählen Sie Zielgruppe, Region und Budget für Ihre Kampagne.',
+              'Kaufy erstellt und veröffentlicht die Anzeigen auf Meta & Social Media.',
+              'Generierte Leads erscheinen automatisch in Ihrer Inbox.',
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <div className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">{i + 1}</div>
+                <span className="text-muted-foreground">{step}</span>
+              </div>
             ))}
           </div>
         </CardContent>
