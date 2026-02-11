@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { 
-  Upload, BarChart3, Loader2, Trash2, Award, FileText, AlertCircle, CheckCircle2 
+  Upload, BarChart3, Loader2, Trash2, Award, FileText, CheckCircle2 
 } from 'lucide-react';
 import { ServiceCase } from '@/hooks/useServiceCases';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,20 +71,17 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
     setIsLoading(false);
   };
 
-  // Upload and extract offer
   const handleFilesSelected = async (files: File[]) => {
     setIsUploading(true);
     
     for (const file of files) {
       try {
-        // Upload to storage
         const storagePath = `${serviceCase.tenant_id}/sanierung/${serviceCase.id}/offers/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('tenant-documents')
           .upload(storagePath, file);
 
         if (uploadError) {
-          // Try creating bucket first
           if (uploadError.message?.includes('Bucket not found')) {
             toast.error('Storage-Bucket nicht gefunden. Bitte kontaktieren Sie den Support.');
             continue;
@@ -93,7 +89,6 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
           throw uploadError;
         }
 
-        // Create offer record
         const { data: offer, error: insertError } = await supabase
           .from('service_case_offers')
           .insert({
@@ -108,10 +103,8 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
 
         if (insertError) throw insertError;
 
-        // Add to local state
         setOffers(prev => [...prev, { ...offer, positions: [] }]);
 
-        // Trigger AI extraction
         if (offer) {
           extractOffer(offer.id, storagePath, file.name);
         }
@@ -140,7 +133,6 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
 
       if (error) throw error;
 
-      // Reload offers to get extracted data
       await loadOffers();
       toast.success('Angebot ausgelesen');
     } catch (err) {
@@ -170,7 +162,6 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
   };
 
   const handleAwardOffer = async (offerId: string) => {
-    // Set all to rejected, then set the chosen one to accepted
     const { error: rejectError } = await supabase
       .from('service_case_offers')
       .update({ status: 'rejected' })
@@ -194,15 +185,16 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
     }
   };
 
-  // Gather all unique position descriptions across offers
+  // Derived data
   const allPositions = Array.from(
     new Set(offers.flatMap(o => o.positions.map(p => p.description)).filter(Boolean))
   );
 
   const extractedOffers = offers.filter(o => o.extracted_at);
-  const pendingOffers = offers.filter(o => !o.extracted_at);
+  const hasOffers = offers.length > 0;
+  const hasExtracted = extractedOffers.length > 0;
+  const awardedOffer = offers.find(o => o.status === 'accepted');
 
-  // Find cheapest offer
   const cheapestId = extractedOffers.length > 1
     ? extractedOffers.reduce((cheapest, offer) => {
         const total = offer.total_gross || offer.total_net || Infinity;
@@ -211,120 +203,154 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
       }, extractedOffers[0])?.id
     : null;
 
+  // Placeholder columns for empty state
+  const placeholderProviders = ['Anbieter 1', 'Anbieter 2', 'Anbieter 3'];
+  const placeholderPositions = ['Position 1', 'Position 2', 'Position 3', 'Position 4'];
+
   return (
     <div className="space-y-4">
-      {/* Upload Area */}
+      {/* 1. Header Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Angebote hochladen
-          </CardTitle>
-          <CardDescription>
-            Laden Sie die erhaltenen Angebote als PDF, Bild oder Excel hoch — die KI liest sie automatisch aus.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploader
-            onFilesSelected={handleFilesSelected}
-            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-            multiple
-            disabled={isUploading}
-          >
-            <div className="text-center">
-              {isUploading ? (
-                <div className="flex items-center gap-2 justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Wird hochgeladen...</span>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  PDF, Bilder oder Excel-Dateien hierher ziehen
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Angebotsvergleich</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Angebote hochladen, auswerten und vergleichen
                 </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {offers.length} Angebot{offers.length !== 1 ? 'e' : ''}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {extractedOffers.length} ausgewertet
+              </Badge>
+              {awardedOffer && (
+                <Badge className="text-xs bg-green-600">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  {awardedOffer.provider_name || 'Vergeben'}
+                </Badge>
               )}
             </div>
-          </FileUploader>
-        </CardContent>
+          </div>
+        </CardHeader>
       </Card>
 
-      {/* Loading State */}
-      {isLoading && (
-        <Card>
-          <CardContent className="p-4">
-            <Skeleton className="h-24 w-full" />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pending Extractions */}
-      {pendingOffers.length > 0 && (
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            {pendingOffers.map(offer => (
-              <div key={offer.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{offer.file_name}</span>
+      {/* 2. Uploaded Offers List */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Hochgeladene Angebote
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : hasOffers ? (
+            offers.map(offer => (
+              <div key={offer.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{offer.file_name}</p>
+                    {offer.provider_name && (
+                      <p className="text-xs text-muted-foreground">{offer.provider_name}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {extractingIds.has(offer.id) ? (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="text-xs">
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       KI liest aus…
                     </Badge>
+                  ) : offer.extracted_at ? (
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Ausgewertet
+                    </Badge>
                   ) : (
-                    <Badge variant="outline">Hochgeladen</Badge>
+                    <Badge variant="outline" className="text-xs">Hochgeladen</Badge>
                   )}
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteOffer(offer.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+            ))
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-sm text-muted-foreground">Noch keine Angebote hochgeladen</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Comparison Table */}
-      {extractedOffers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Angebotsvergleich
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[200px]">Position</TableHead>
-                    {extractedOffers.map(offer => (
-                      <TableHead key={offer.id} className="min-w-[140px] text-center">
-                        <div className="space-y-1">
-                          <span className={`font-medium ${offer.id === cheapestId ? 'text-green-600' : ''}`}>
-                            {offer.provider_name || offer.file_name}
-                          </span>
-                          {offer.id === cheapestId && (
-                            <Badge variant="secondary" className="block text-[10px] bg-green-100 text-green-700">
-                              Günstigster
-                            </Badge>
-                          )}
-                          {offer.status === 'accepted' && (
-                            <Badge className="block text-[10px]">
-                              <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
-                              Zuschlag
-                            </Badge>
-                          )}
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allPositions.length > 0 ? (
-                    allPositions.map((posDesc, idx) => (
+      {/* 3. Upload Area (compact) */}
+      <Card>
+        <CardContent className="p-4">
+          <FileUploader
+            onFilesSelected={handleFilesSelected}
+            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+            multiple
+            disabled={isUploading}
+            label={isUploading ? 'Wird hochgeladen…' : 'Angebote hochladen'}
+            hint="PDF, Bilder oder Excel hierher ziehen"
+          />
+        </CardContent>
+      </Card>
+
+      {/* 4. Comparison Table (always visible) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Vergleichstabelle
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Position</TableHead>
+                  {hasExtracted
+                    ? extractedOffers.map(offer => (
+                        <TableHead key={offer.id} className="min-w-[140px] text-center">
+                          <div className="space-y-1">
+                            <span className={`font-medium ${offer.id === cheapestId ? 'text-green-600' : ''}`}>
+                              {offer.provider_name || offer.file_name}
+                            </span>
+                            {offer.id === cheapestId && (
+                              <Badge variant="secondary" className="block text-[10px] bg-green-100 text-green-700">
+                                Günstigster
+                              </Badge>
+                            )}
+                            {offer.status === 'accepted' && (
+                              <Badge className="block text-[10px]">
+                                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
+                                Zuschlag
+                              </Badge>
+                            )}
+                          </div>
+                        </TableHead>
+                      ))
+                    : placeholderProviders.map(name => (
+                        <TableHead key={name} className="min-w-[140px] text-center">
+                          <span className="font-medium text-muted-foreground/50">{name}</span>
+                        </TableHead>
+                      ))
+                  }
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {hasExtracted && allPositions.length > 0
+                  ? allPositions.map((posDesc, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium text-sm">{posDesc}</TableCell>
                         {extractedOffers.map(offer => {
@@ -337,36 +363,63 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
                         })}
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell className="text-sm text-muted-foreground">Gesamt</TableCell>
-                      {extractedOffers.map(offer => (
-                        <TableCell key={offer.id} className="text-center text-sm font-medium">
-                          {offer.total_gross ? formatCurrency(offer.total_gross / 100) :
-                           offer.total_net ? formatCurrency(offer.total_net / 100) : '—'}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  )}
-                </TableBody>
-                {allPositions.length > 0 && (
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell className="font-semibold">Gesamt (brutto)</TableCell>
-                      {extractedOffers.map(offer => (
+                  : hasExtracted && allPositions.length === 0
+                    ? (
+                      <TableRow>
+                        <TableCell className="text-sm text-muted-foreground">Gesamt</TableCell>
+                        {extractedOffers.map(offer => (
+                          <TableCell key={offer.id} className="text-center text-sm font-medium">
+                            {offer.total_gross ? formatCurrency(offer.total_gross / 100) :
+                             offer.total_net ? formatCurrency(offer.total_net / 100) : '—'}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )
+                    : placeholderPositions.map((pos, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="text-sm text-muted-foreground/50 border-dashed">{pos}</TableCell>
+                          {placeholderProviders.map(prov => (
+                            <TableCell key={prov} className="text-center text-muted-foreground/30 border-dashed">
+                              —
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                }
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-semibold">Gesamt (brutto)</TableCell>
+                  {hasExtracted
+                    ? extractedOffers.map(offer => (
                         <TableCell key={offer.id} className={`text-center font-semibold ${offer.id === cheapestId ? 'text-green-600' : ''}`}>
                           {offer.total_gross ? formatCurrency(offer.total_gross / 100) :
                            offer.total_net ? formatCurrency(offer.total_net / 100) : '—'}
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableFooter>
-                )}
-              </Table>
-            </div>
+                      ))
+                    : placeholderProviders.map(prov => (
+                        <TableCell key={prov} className="text-center text-muted-foreground/30 border-dashed">
+                          —
+                        </TableCell>
+                      ))
+                  }
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Award Actions */}
-            <div className="p-4 border-t flex flex-wrap gap-2">
+      {/* 5. Award Actions (always visible) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Vergabe
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasExtracted ? (
+            <div className="flex flex-wrap gap-2">
               {extractedOffers.map(offer => (
                 <Button
                   key={offer.id}
@@ -376,25 +429,25 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
                   onClick={() => handleAwardOffer(offer.id)}
                 >
                   <Award className="h-3.5 w-3.5 mr-1.5" />
-                  {offer.status === 'accepted' 
+                  {offer.status === 'accepted'
                     ? `${offer.provider_name || 'Anbieter'} — Zuschlag erteilt`
                     : `Zuschlag: ${offer.provider_name || offer.file_name}`}
                 </Button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && offers.length === 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Noch keine Angebote hochgeladen. Laden Sie die erhaltenen Angebote oben hoch, um sie vergleichen zu können.
-          </AlertDescription>
-        </Alert>
-      )}
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" disabled>
+                <Award className="h-3.5 w-3.5 mr-1.5" />
+                Zuschlag erteilen
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Laden Sie mindestens ein Angebot hoch
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
