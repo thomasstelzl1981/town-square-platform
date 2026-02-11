@@ -1,102 +1,117 @@
 
 
-# Armstrong Redesign: Clean Right-Side Panel
+# E-Mail-Client: Stabilisierung und UI-Verbesserung
 
-## Konzept
+## Problem-Analyse
 
-Wenn Armstrong geoeffnet wird, erscheint er als durchsichtiges, milchiges Panel ueber die gesamte rechte Seite. Der restliche Desktop-Inhalt rutscht nach links, nichts wird verdeckt.
+### 1. E-Mail-Body wird nicht geladen (Hauptproblem)
+**Ursache:** Die `deno-imap` Bibliothek (`jsr:@workingdevshero/deno-imap`) ist unzuverlaessig. Die 3-Tier-Fetch-Strategie fuer den Body scheitert bei 9 von 10 E-Mails. Die Datenbank bestaetigt: `body_text = NULL`, `body_html = NULL` fuer fast alle Nachrichten.
 
-### Expanded State (NEU)
+**Warum es mal geht und mal nicht:** Die Bibliothek ist experimentell. Ob `full: true` (RFC822) funktioniert, haengt vom IMAP-Server, der Nachrichtengroesse und dem Encoding ab. Es ist nicht deterministisch.
 
-```text
-+--SystemBar---------------------------------------------+
-+--TopNav------------------------------------------------+
-|                              |                          |
-|   Main Content               |   A R M S T R O N G     |
-|   (schrumpft)                |                          |
-|                              |   [Drag & Drop Upload]   |
-|                              |                          |
-|                              |   Chat-Nachrichten        |
-|                              |   (ohne Input-Feld)      |
-|                              |                          |
-|                              |      [Mic Button]        |
-|                              |                          |
-+------------------------------+--------------------------+
-```
+### 2. Antwort-/Weiterleitungs-/Loeschen-Buttons
+Die Buttons existieren bereits im Code (Zeilen 868-880), sind aber nur sichtbar wenn:
+- Ein E-Mail-Konto verbunden ist
+- Eine E-Mail in der Liste ausgewaehlt wurde
+- Die Buttons befinden sich am unteren Rand des Detail-Panels
 
-- Breite: ~380px
-- Hintergrund: Milchglas (bg-white/60 dark:bg-black/40 backdrop-blur-xl)
-- Nur "ARMSTRONG" als Wortmarke zentriert oben (wie im Header)
-- Kein Text-Eingabefeld -- nur Voice (Mikrofon-Button)
-- Kein Kontext-Badge / Modulzuordnung
-- Gesamte Flaeche ist Upload-Zone (Drag & Drop)
-- Chat-Verlauf wird angezeigt, aber minimalistisch
-- Close/Minimize Buttons oben rechts
+Da der Body oft nicht geladen wird, sieht man zwar die Buttons, aber Antworten/Weiterleiten funktionieren schlecht (kein Zitat-Text).
 
-### Collapsed State (BLEIBT)
+## Loesung
 
-Der Orb bleibt wie er ist -- keine Aenderung.
+### Teil 1: Stabiler IMAP-Body-Fetch (Edge Function)
+
+**Datei:** `supabase/functions/sot-mail-sync/index.ts`
+
+Die aktuelle 3-Tier-Strategie wird durch eine robustere Methode ersetzt:
+
+1. **Primaer: `bodyParts: ['1']`** -- Holt den ersten MIME-Part direkt (funktioniert bei den meisten Servern zuverlaessiger als `full: true`)
+2. **Fallback: `bodyParts: ['1.1', '1.2']`** -- Fuer verschachtelte Multipart-Nachrichten
+3. **Letzter Fallback: `full: true`** -- RFC822 als letzte Option
+4. **Neuer Safety-Fallback: Re-Fetch nach Upsert** -- Wenn nach dem Sync immer noch kein Body da ist, wird ein einzelner On-Demand-Fetch getriggert
+
+Zusaetzlich:
+- Besseres Error-Logging pro Nachricht (UID-basiert)
+- Timeout-Handling pro Fetch (10 Sekunden max)
+- Body wird bei leerem Ergebnis mit dem Envelope-Subject als Mindest-Snippet gefuellt
+
+### Teil 2: On-Demand Body-Fetch (Neue Edge Function)
+
+**Neue Datei:** `supabase/functions/sot-mail-fetch-body/index.ts`
+
+Wenn der Benutzer eine E-Mail oeffnet und kein Body vorhanden ist, wird automatisch ein einzelner Body-Fetch ausgeloest:
+- Frontend erkennt `body_text === null && body_html === null`
+- Ruft `sot-mail-fetch-body` auf mit `messageId` und `uid`
+- Die Edge Function verbindet sich zum IMAP-Server und holt NUR diese eine Nachricht
+- Ergebnis wird in `mail_messages` aktualisiert und im UI angezeigt
+
+Das ist der entscheidende Unterschied: **Statt sich auf den Batch-Sync zu verlassen, wird der Body bei Bedarf einzeln geholt.** Das ist zuverlaessiger, weil:
+- Nur eine Verbindung fuer eine Nachricht
+- Kein Timeout-Druck durch Batch-Verarbeitung
+- Mehrere Fetch-Strategien koennen nacheinander probiert werden
+
+### Teil 3: UI-Verbesserungen (EmailTab.tsx)
+
+**Datei:** `src/pages/portal/office/EmailTab.tsx`
+
+1. **Action-Buttons prominenter machen:**
+   - Antworten, Allen antworten, Weiterleiten, Loeschen werden in die **Header-Zeile** des Detail-Panels verschoben (nicht mehr am unteren Rand)
+   - Ikonleiste direkt neben Betreff sichtbar, ohne scrollen zu muessen
+
+2. **Body-Loading-Indikator:**
+   - Wenn Body leer ist, wird automatisch `sot-mail-fetch-body` aufgerufen
+   - Ein Lade-Spinner zeigt an: "E-Mail-Inhalt wird geladen..."
+   - Bei Fehler: "Inhalt konnte nicht geladen werden. Erneut versuchen?"
+
+3. **Loeschen-Button in Header-Aktionen:**
+   - Trash-Icon neben Star und Archive (bereits vorhanden, bleibt)
 
 ## Betroffene Dateien
 
 | # | Datei | Aenderung |
 |---|---|---|
-| 1 | `src/components/portal/PortalLayout.tsx` | Main-Content bekommt dynamische rechte Margin wenn Armstrong expanded ist. Armstrong wird als festes Layout-Element statt Portal eingebunden |
-| 2 | `src/components/portal/ArmstrongContainer.tsx` | Expanded-State komplett neu: Full-Height rechte Spalte, milchiger Hintergrund, kein Text-Input, nur Voice + Upload + Chat |
-| 3 | `src/components/chat/ChatPanel.tsx` | Neuer `position="stripe"` Modus: Kein Input-Feld, kein Context-Badge, nur Messages + Voice + Upload |
+| 1 | `supabase/functions/sot-mail-sync/index.ts` | Robustere Body-Fetch-Strategie, besseres Error-Handling |
+| 2 | `supabase/functions/sot-mail-fetch-body/index.ts` | **NEU** -- On-Demand Body-Fetch fuer einzelne E-Mails |
+| 3 | `src/pages/portal/office/EmailTab.tsx` | Action-Buttons in Header verschoben, Auto-Fetch fuer fehlenden Body |
 
 ## Technische Details
 
-### 1. PortalLayout.tsx -- Layout-Shift
-
-Desktop-Layout wird von einer einfachen Spalte zu einem flexiblen 2-Spalten-Layout wenn Armstrong expanded ist:
+### On-Demand Body-Fetch Ablauf:
 
 ```text
-<div className="flex-1 flex overflow-hidden">
-  <main className="flex-1 overflow-y-auto">
-    <Outlet />
-  </main>
-  {armstrongExpanded && <ArmstrongStripe />}
-</div>
+Benutzer klickt E-Mail
+       |
+       v
+body_text == null?  --NEIN--> Body anzeigen
+       |
+      JA
+       |
+       v
+sot-mail-fetch-body aufrufen
+       |
+       v
+Edge Function: IMAP connect --> SELECT mailbox --> FETCH UID
+       |
+       v
+Versuch 1: bodyParts ['1']
+Versuch 2: bodyParts ['TEXT']
+Versuch 3: full: true (RFC822)
+       |
+       v
+Body in mail_messages updaten
+       |
+       v
+Frontend: refetch + anzeigen
 ```
 
-Der Hauptinhalt schrumpft automatisch, Armstrong nimmt ~380px rechts ein. Kein Overlay, kein Portal -- normaler Layoutfluss.
+### Braucht man eine zusaetzliche API/Software?
 
-### 2. ArmstrongContainer.tsx -- Zwei Modi
+**Nein.** Das Problem ist nicht der IMAP-Standard, sondern die Deno-IMAP-Bibliothek. Die Loesung:
+- On-Demand-Fetch (einzeln statt Batch) umgeht die meisten Bibliotheks-Bugs
+- Mehrere Fetch-Strategien fangen Provider-Unterschiede ab
+- Kein zusaetzlicher Provider oder externe API noetig
 
-**Collapsed (Orb):** Bleibt exakt wie bisher -- draggable, Mikrofon, File-Drop.
+### Keine DB-Aenderungen
 
-**Expanded (Stripe):** Komplett neues Design:
-- Feste Breite: `w-[380px]`
-- Volle Hoehe: `h-full`
-- Milchglas: `bg-white/60 dark:bg-black/40 backdrop-blur-xl border-l border-white/20`
-- Header: Nur "ARMSTRONG" Wortmarke (tracking-[0.2em], text-sm, zentriert) + Close-Button
-- Body: ScrollArea mit Chat-Nachrichten
-- Upload-Zone: Gesamter Bereich ist Drag & Drop (subtiler Upload-Hinweis)
-- Footer: Nur Mikrofon-Button (gross, zentriert, wie im Orb)
-- Kein Text-Input
-- Kein Context-Badge
-- Kein Modul-Label
+Die `mail_messages`-Tabelle hat bereits `body_text`, `body_html` und `snippet` Felder.
 
-### 3. ChatPanel.tsx -- Stripe-Modus
-
-Neuer `position="stripe"` Modus:
-- Kein Header (wird von ArmstrongContainer gehandhabt)
-- Kein Context-Badge
-- Kein Input-Feld
-- Kein Upload-Bereich (wird extern gehandhabt)
-- Nur Messages-ScrollArea mit Loading-Indicator
-- Transparenter Hintergrund
-
-## Design-Sprache
-
-- Hintergrund: `bg-white/60 dark:bg-card/40 backdrop-blur-xl`
-- Border: `border-l border-border/30`
-- Wortmarke: `font-sans font-semibold tracking-[0.2em] text-sm text-foreground/70`
-- Upload-Hinweis: Subtiler Text `text-xs text-muted-foreground/40` ("Dateien hierher ziehen")
-- Mikrofon-Button: Gleicher Stil wie im Orb (armstrong-btn-glass), zentriert unten
-- Uebergaenge: `transition-all duration-300` fuer smooth open/close
-
-## Keine DB-Aenderungen
-
-Rein visuelles Redesign.
