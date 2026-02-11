@@ -1,80 +1,102 @@
 
-# Selbstauskunft: 3-Spalten Side-by-Side Layout (MOD-07 + MOD-11)
+
+# Armstrong Redesign: Clean Right-Side Panel
 
 ## Konzept
 
-Beide Antragsteller werden in einer einzigen Tabelle nebeneinander dargestellt:
+Wenn Armstrong geoeffnet wird, erscheint er als durchsichtiges, milchiges Panel ueber die gesamte rechte Seite. Der restliche Desktop-Inhalt rutscht nach links, nichts wird verdeckt.
+
+### Expanded State (NEU)
 
 ```text
-+---------------------+------------------+------------------+
-| Feld                | 1. Antragsteller | 2. Antragsteller |
-+---------------------+------------------+------------------+
-| Anrede              | [Herr ▼]         | [     ▼]         |
-| Vorname             | [Max           ] | [              ] |
-| Nachname            | [Mustermann    ] | [              ] |
-| ...                 | ...              | ...              |
-+---------------------+------------------+------------------+
++--SystemBar---------------------------------------------+
++--TopNav------------------------------------------------+
+|                              |                          |
+|   Main Content               |   A R M S T R O N G     |
+|   (schrumpft)                |                          |
+|                              |   [Drag & Drop Upload]   |
+|                              |                          |
+|                              |   Chat-Nachrichten        |
+|                              |   (ohne Input-Feld)      |
+|                              |                          |
+|                              |      [Mic Button]        |
+|                              |                          |
++------------------------------+--------------------------+
 ```
 
-- Kein Toggle/Switch mehr -- die 2. Spalte ist immer sichtbar
-- Co-Applicant-Profil wird automatisch in der DB erstellt beim ersten Eintrag in Spalte 2
-- Tabelle ist halb so lang und direkt vergleichbar
-- Geteilte Sektionen (Haushalt, Erklaerungen) bleiben einspalttig
+- Breite: ~380px
+- Hintergrund: Milchglas (bg-white/60 dark:bg-black/40 backdrop-blur-xl)
+- Nur "ARMSTRONG" als Wortmarke zentriert oben (wie im Header)
+- Kein Text-Eingabefeld -- nur Voice (Mikrofon-Button)
+- Kein Kontext-Badge / Modulzuordnung
+- Gesamte Flaeche ist Upload-Zone (Drag & Drop)
+- Chat-Verlauf wird angezeigt, aber minimalistisch
+- Close/Minimize Buttons oben rechts
 
-## Wichtig: MOD-11 ist EDITIERBAR
+### Collapsed State (BLEIBT)
 
-Der Finanzierungsmanager in MOD-11 muss die Selbstauskunft bearbeiten und speichern koennen. Das ist seine Kernaufgabe: Unterlagen aufbereiten vor der Einreichung an die Bank. Die Selbstauskunft-Anzeige im FMFallDetail wird daher von Read-Only auf editierbar umgestellt, inklusive Speicher-Button.
+Der Orb bleibt wie er ist -- keine Aenderung.
 
-## Betroffene Dateien (3 Dateien)
+## Betroffene Dateien
 
-### 1. `src/components/finanzierung/ApplicantPersonFields.tsx`
-- `TR`-Komponente erhaelt dritte Spalte (`children2` fuer AS2)
-- `DualHeader`-Komponente fuer konsistente Spaltenkoepfe
-- Alle Sections (Person, Employment, Bank, Income, Expenses, Assets) erhalten `DualApplicantSectionProps`: zwei formData-Saetze, zwei onChange-Handler
-- `onCoFirstInput`-Callback fuer Auto-Create des Co-Applicant-Profils
-
-### 2. `src/components/finanzierung/SelbstauskunftFormV2.tsx`
-- Switch "2. Antragsteller hinzufuegen" wird entfernt
-- Alle Sektions-Aufrufe bekommen `formData` + `coFormData` + `onChange` + `onCoChange`
-- Co-Applicant wird automatisch erstellt beim ersten Input in die rechte Spalte
-- Separatoren und dashed-border Wrapper fuer den 2. AS fallen weg
-
-### 3. `src/pages/portal/finanzierungsmanager/FMFallDetail.tsx`
-- Selbstauskunft-Tab: Umstellung von Read-Only auf editierbar
-- Nutzt die gleichen Section-Komponenten aus `ApplicantPersonFields.tsx`
-- Laedt `applicant_profiles[0]` (AS1) und `applicant_profiles[1]` (AS2) aus dem Request
-- Konvertiert zu `ApplicantFormData` via `profileToFormData`
-- Save-Button speichert Aenderungen zurueck in die DB via `useUpdateApplicantProfile`
-- 3-Spalten-Layout identisch zu MOD-07
-- Geteilte Felder (Haushalt, Erklaerungen) ebenfalls editierbar
+| # | Datei | Aenderung |
+|---|---|---|
+| 1 | `src/components/portal/PortalLayout.tsx` | Main-Content bekommt dynamische rechte Margin wenn Armstrong expanded ist. Armstrong wird als festes Layout-Element statt Portal eingebunden |
+| 2 | `src/components/portal/ArmstrongContainer.tsx` | Expanded-State komplett neu: Full-Height rechte Spalte, milchiger Hintergrund, kein Text-Input, nur Voice + Upload + Chat |
+| 3 | `src/components/chat/ChatPanel.tsx` | Neuer `position="stripe"` Modus: Kein Input-Feld, kein Context-Badge, nur Messages + Voice + Upload |
 
 ## Technische Details
 
-### Neues Interface fuer alle Sections:
-```typescript
-interface DualApplicantSectionProps {
-  formData: ApplicantFormData;       // AS1
-  coFormData: ApplicantFormData;     // AS2
-  onChange: (field, value) => void;  // AS1
-  onCoChange: (field, value) => void; // AS2
-  readOnly: boolean;
-  coReadOnly?: boolean;
-  onCoFirstInput?: () => void;      // Auto-Create trigger
-}
+### 1. PortalLayout.tsx -- Layout-Shift
+
+Desktop-Layout wird von einer einfachen Spalte zu einem flexiblen 2-Spalten-Layout wenn Armstrong expanded ist:
+
+```text
+<div className="flex-1 flex overflow-hidden">
+  <main className="flex-1 overflow-y-auto">
+    <Outlet />
+  </main>
+  {armstrongExpanded && <ArmstrongStripe />}
+</div>
 ```
 
-### MOD-11 Speicher-Logik:
-- State: `formData`, `coFormData`, `sharedData` (wie in SelbstauskunftFormV2)
-- Save: `supabase.from('applicant_profiles').update(...)` fuer beide Profile
-- Der `useUpdateApplicantProfile` Hook existiert bereits und wird genutzt
-- Save-Button im Tab-Header der Selbstauskunft
+Der Hauptinhalt schrumpft automatisch, Armstrong nimmt ~380px rechts ein. Kein Overlay, kein Portal -- normaler Layoutfluss.
 
-### Auto-Create Co-Applicant:
-- `useCoFirstInput` Hook trackt ob bereits getriggert
-- Beim ersten Tastendruck in AS2-Spalte wird `onCoFirstInput()` aufgerufen
-- MOD-07: Erstellt neues `applicant_profiles`-Record mit `party_role: 'co_applicant'`
-- MOD-11: Erstellt neues `applicant_profiles`-Record mit `linked_primary_profile_id` und `finance_request_id`
+### 2. ArmstrongContainer.tsx -- Zwei Modi
+
+**Collapsed (Orb):** Bleibt exakt wie bisher -- draggable, Mikrofon, File-Drop.
+
+**Expanded (Stripe):** Komplett neues Design:
+- Feste Breite: `w-[380px]`
+- Volle Hoehe: `h-full`
+- Milchglas: `bg-white/60 dark:bg-black/40 backdrop-blur-xl border-l border-white/20`
+- Header: Nur "ARMSTRONG" Wortmarke (tracking-[0.2em], text-sm, zentriert) + Close-Button
+- Body: ScrollArea mit Chat-Nachrichten
+- Upload-Zone: Gesamter Bereich ist Drag & Drop (subtiler Upload-Hinweis)
+- Footer: Nur Mikrofon-Button (gross, zentriert, wie im Orb)
+- Kein Text-Input
+- Kein Context-Badge
+- Kein Modul-Label
+
+### 3. ChatPanel.tsx -- Stripe-Modus
+
+Neuer `position="stripe"` Modus:
+- Kein Header (wird von ArmstrongContainer gehandhabt)
+- Kein Context-Badge
+- Kein Input-Feld
+- Kein Upload-Bereich (wird extern gehandhabt)
+- Nur Messages-ScrollArea mit Loading-Indicator
+- Transparenter Hintergrund
+
+## Design-Sprache
+
+- Hintergrund: `bg-white/60 dark:bg-card/40 backdrop-blur-xl`
+- Border: `border-l border-border/30`
+- Wortmarke: `font-sans font-semibold tracking-[0.2em] text-sm text-foreground/70`
+- Upload-Hinweis: Subtiler Text `text-xs text-muted-foreground/40` ("Dateien hierher ziehen")
+- Mikrofon-Button: Gleicher Stil wie im Orb (armstrong-btn-glass), zentriert unten
+- Uebergaenge: `transition-all duration-300` fuer smooth open/close
 
 ## Keine DB-Aenderungen
 
-Die `applicant_profiles`-Tabelle unterstuetzt bereits Co-Applicants ueber `linked_primary_profile_id` und `party_role`.
+Rein visuelles Redesign.
