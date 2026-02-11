@@ -23,6 +23,15 @@ Jeder Cross-Zone-Übergang im System MUSS einen formalen Contract haben (ZBC-R10
 | [Onboarding](CONTRACT_ONBOARDING.md) | Auth → Z2 | User-Signup | SQL Trigger `on_auth_user_created` | Implementiert |
 | [Data Room Access](CONTRACT_DATA_ROOM_ACCESS.md) | Z2 → Z3 | Freigabe-Aktion in MOD-06 | `access_grants` Tabelle | Implementiert |
 | [Email Inbound](CONTRACT_EMAIL_INBOUND.md) | Extern → Z1 | Resend Webhook | `supabase/functions/sot-inbound-receive/` | Implementiert |
+| [Acq Mandate Submit](CONTRACT_ACQ_MANDATE_SUBMIT.md) | Z2 → Z1 | Mandat einreichen MOD-12 | `acq_mandates` Status-Enum | Dokumentiert |
+| [Listing Publish](CONTRACT_LISTING_PUBLISH.md) | Z2 → Z3 | Inserat publizieren MOD-06 | `supabase/functions/sot-listing-publish/` | Dokumentiert |
+| [Social Mandate Submit](CONTRACT_SOCIAL_MANDATE_SUBMIT.md) | Z2 → Z1 | Social-Mandat MOD-14 | `supabase/functions/sot-social-mandate-submit/` | Dokumentiert |
+| [Social Payment](CONTRACT_SOCIAL_PAYMENT.md) | Z2 → Extern → Z1 | Stripe Checkout | `supabase/functions/sot-social-payment-*` | Dokumentiert |
+| [Acq Inbound Email](CONTRACT_ACQ_INBOUND_EMAIL.md) | Extern → Z1 | Resend Webhook (Akquise) | `supabase/functions/sot-acq-inbound-webhook/` | Dokumentiert |
+| [Renovation Outbound](CONTRACT_RENOVATION_OUTBOUND.md) | Z2 → Extern | Tender-Anfrage MOD-04 | `supabase/functions/sot-renovation-outbound/` | Dokumentiert |
+| [Renovation Inbound](CONTRACT_RENOVATION_INBOUND.md) | Extern → Z1 | Resend Webhook (Sanierung) | `supabase/functions/sot-renovation-inbound-webhook/` | Dokumentiert |
+| [WhatsApp Inbound](CONTRACT_WHATSAPP_INBOUND.md) | Extern → Z1 | Meta WABA Webhook | `supabase/functions/sot-whatsapp-webhook/` | Dokumentiert |
+| [Project Intake](CONTRACT_PROJECT_INTAKE.md) | Z1 → Z2 | Armstrong/Direktaufruf | `supabase/functions/sot-project-intake/` | Dokumentiert |
 
 ---
 
