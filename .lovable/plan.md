@@ -1,145 +1,381 @@
 
-
-# Storage Hardening — Bewertung der 4 Ergaenzungen
-
----
-
-## ERGAENZUNG 1 — Public Buckets DSGVO-Minimum
-
-**Sinnvoll? JA**
-
-**Begruendung:**
-
-`social-assets` ist public und enthaelt Tenant-Medien. Aktuell nutzt `AssetsPage.tsx` bereits korrekt `{tenantId}/{documentId}` als Pfad — aber die Storage-Policies erzwingen das nicht. Ein User koennte theoretisch in einen fremden Tenant-Pfad hochladen. `docs-export` ist public und nutzt vorhersagbare Dateinamen (`sot-docs-export-2026-02-...`), die via `getPublicUrl()` ausgegeben werden. Die ZIPs enthalten Spezifikationen (keine PII), aber die Pfade sind erratbar.
-
-**Anpassungen an SBC v1.0:**
-
-Neue Regel **SBC-R07: Public Bucket Governance**
-
-- `social-assets`: Write-Pfad MUSS `{tenant_id}/` als Prefix erzwingen (Storage-Policy). Read bleibt public (Social-Media-Zweck). Keine PII in Dateinamen oder Metadaten.
-- `docs-export`: Dateinamen mit UUID-Suffix statt Timestamp (unguessable). Admin-only Upload bleibt (bereits korrekt). Keine TTL/Rotation in Phase 1 noetig — Dateien enthalten keine PII, nur Specs.
-
-**Plananpassung:**
-
-Schritt 3 (bereits vorhanden: `social-assets` Write-Isolation) deckt den Write-Teil ab. Ergaenzung: `docs-export`-Dateinamen auf UUID umstellen.
-
-| Schritt | Aenderung |
-|---------|-----------|
-| Schritt 3 (bestehend) | Zusaetzlich: Dokumentation in SBC-R07, dass social-assets keine PII in Dateinamen enthalten darf |
-| Schritt 3b (neu, niedrig) | `sot-docs-export/index.ts` und `sot-docs-export-engineering/index.ts`: Dateinamen von `sot-docs-export-${timestamp}` auf `sot-docs-export-${crypto.randomUUID()}` aendern |
+# Golden Tenant und Data Hygiene Hardening — Final Plan v1.0
 
 ---
 
-## ERGAENZUNG 2 — access_grants bis zur Storage-Surface
+## Review-Ergebnis: Drift-Check
 
-**Sinnvoll? JA**
-
-**Begruendung:**
-
-SBC-R03 definiert aktuell nur, dass externer Zugriff ueber `access_grants` laeuft, aber nicht WIE. Die Edge Function `sot-dms-download-url` existiert bereits und implementiert das korrekte Pattern: Auth-User → Tenant-Check → Document-Lookup → Service-Role Signed URL. Fuer Z3/externe Nutzer (Leads ohne Auth) fehlt aber ein aehnlicher Mechanismus. Ohne explizite Definition koennte jemand versucht sein, clientseitig mit anon-Key Signed URLs zu generieren — das waere ein Sicherheitsproblem.
-
-**Anpassungen an SBC v1.0:**
-
-SBC-R03 praezisieren:
-
-> **SBC-R03 (erweitert):** Externer Zugriff auf Tenant-Dokumente erfordert eine Server-seitige Signed URL Issuance:
-> - Authentifizierte User: Via `sot-dms-download-url` (besteht, prueft tenant_id + document ownership)
-> - Externe/Anon-User (Z3): Via dedizierte Edge Function, die `access_grants` validiert (scope, expires_at, revoked_at) und erst dann eine Signed URL mit Service-Role ausstellt
-> - VERBOTEN: Clientseitiges Signing mit anon-Key auf private Buckets
-> - VERBOTEN: Direkte Storage-URLs ohne Grant-Validierung
-
-**Plananpassung:**
-
-Kein neuer Schritt noetig — die Edge Function fuer Z3-Downloads ist Feature-Arbeit (Data Room), nicht Hardening. Die Regel in SBC-R03 stellt sicher, dass bei Implementierung das richtige Pattern verwendet wird.
+| Aspekt | Status | Anmerkung |
+|--------|--------|-----------|
+| `tenant_mode` Spalte existiert? | NEIN | Muss in Schritt 2 angelegt werden |
+| `seed_golden_path_data` Signatur | 0 Argumente | Muss auf `p_tenant_id UUID` erweitert werden (Schritt 4) |
+| `VITE_FORCE_DEV_TENANT` existiert? | NEIN | Neu (Schaerfung S4) |
+| `isDevelopmentEnvironment()` | Return false (Dev-Bypass deaktiviert) | S4 integriert sich hier |
+| Tabellen mit `tenant_id` | ~140 Stueck | S2: dynamische Erkennung via `information_schema` ist korrekt |
+| `test_data_registry` | Existiert, aber nur manueller Import registriert | Schritt 5 erweitert um Seeds |
+| `demoProjectData.ts` | 18 Consumer-Dateien | Schritt 3: Registry + JSDoc-Tags |
+| Orphan-Daten aktuell | 0 (geprueft) | Praeventiver Checker trotzdem sinnvoll |
 
 ---
 
-## ERGAENZUNG 3 — Legacy Bucket `documents`
+## Schaerfungen S1–S4 integriert
 
-**Sinnvoll? JA — Empfehlung: Deprecated + Freeze**
+### S1 — tenant_mode Runtime-Aufloesung
 
-**Begruendung:**
+**Loesung:** SQL-Funktion `get_active_tenant_mode()` (SECURITY DEFINER).
 
-Der Bucket `documents` wird im Frontend-Code NICHT mehr referenziert (keine Treffer). Er hat keine Tenant-Isolation in den Storage-Policies. Er scheint ein Legacy-Artefakt zu sein. Eine Migration bestehender Dateien waere aufwaendig und riskant. Besser: Als deprecated markieren, Write-Policies entfernen (nur Read bleibt fuer eventuelle alte Referenzen), und in der Dokumentation als "frozen" kennzeichnen.
+```text
+Logik:
+  1. auth.uid() → profiles.active_tenant_id
+  2. active_tenant_id → organizations.tenant_mode
+  3. Return: tenant_mode ENUM oder 'production' als Default
+```
 
-**Anpassungen an SBC v1.0:**
+Kein View noetig — die Funktion ist leichtgewichtig und kann vom Client via `supabase.rpc('get_active_tenant_mode')` aufgerufen werden. Der `useTenantReset`-Hook nutzt sie als Gate.
 
-Neue Regel **SBC-R08: Legacy Bucket Governance**
+**Betroffene Dateien:** SQL-Migration (Funktion), `src/hooks/useTenantReset.ts` (Consumer)
 
-- Bucket `documents` ist **deprecated** und **frozen** (kein neuer Upload).
-- INSERT-Policy wird entfernt. SELECT bleibt fuer Abwaertskompatibilitaet.
-- Neue Uploads MUESSEN in `tenant-documents` mit korrektem Pfad-Prefix landen.
-- Bucket wird NICHT geloescht (bestehende Dateien bleiben lesbar).
+### S2 — Reset robust gegen Schema-Aenderungen
 
-**Plananpassung:**
+**Entscheidung: Option B — dynamisch via `information_schema`**
 
-Schritt 1 (bestehend) wird vereinfacht:
+```text
+Logik in reset_sandbox_tenant(p_tenant_id):
+  1. SELECT table_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND column_name = 'tenant_id'
+  2. MINUS keep_list (hartcodiert im Funktionskoerper):
+     - memberships, organizations, subscriptions, tenant_tile_activation,
+       tenant_extraction_settings, storage_nodes, whatsapp_accounts,
+       whatsapp_user_settings, mail_accounts, inbound_mailboxes,
+       widget_preferences, task_widgets, miety_contracts
+  3. Fuer jede verbleibende Tabelle:
+     EXECUTE format('DELETE FROM %I WHERE tenant_id = $1', table_name) USING p_tenant_id
+  4. Storage-Nodes: DELETE WHERE tenant_id = $1 AND parent_id IS NOT NULL
+     (behaelt Root-Ordner)
+```
 
-| Original Schritt 1 | Neu |
-|---------------------|-----|
-| `documents`-Bucket Storage-Policies haerten (tenant-scoped) | `documents`-Bucket einfrieren: INSERT-Policy entfernen, DELETE-Policy entfernen, nur SELECT behalten. Dokumentation als deprecated in SBC-R08. |
+**Akzeptanzkriterien:**
+- Neue Tabellen mit `tenant_id` werden automatisch erfasst
+- Keep-List wird in der Funktion dokumentiert
+- Funktion laeuft fehlerfrei auch wenn Tabellen leer sind
 
-Das ist einfacher, sicherer und vermeidet unnoetige Migration.
+### S3 — Storage Reset serverseitig + gegated
+
+**Gate-Regeln fuer `sot-tenant-storage-reset`:**
+
+```text
+1. Auth: Authorization Header → JWT → auth.uid()
+2. Gate 1: is_platform_admin(auth.uid()) = true
+3. Gate 2: organizations.tenant_mode = 'sandbox' (via Service Role Query)
+4. Gate 3: Request-Body { tenant_id, confirm: true }
+```
+
+**Bucket/Prefix-Loeschlogik:**
+
+| Bucket | Prefix-Strategie |
+|--------|------------------|
+| `tenant-documents` | `{tenant_id}/` — direkter Prefix |
+| `project-documents` | `{tenant_id}/` — direkter Prefix |
+| `acq-documents` | DB-Lookup: `SELECT id FROM acq_mandates WHERE tenant_id = $1` → `{mandate_id}/` je Mandat |
+| `social-assets` | `{tenant_id}/` — direkter Prefix |
+
+**Nicht betroffen:** `docs-export` (Admin-only, kein Tenant-Scope), `audit-reports` (Admin-only), `documents` (frozen/deprecated)
+
+### S4 — DEV Tenant Override abschaltbar
+
+**Logik in `AuthContext.tsx`:**
+
+```text
+// Alte Logik (Zeile 35-37):
+const isDevelopmentEnvironment = () => false;
+
+// Neue Logik:
+const isDevelopmentEnvironment = () => {
+  return import.meta.env.VITE_FORCE_DEV_TENANT === 'true';
+};
+```
+
+Wenn `VITE_FORCE_DEV_TENANT` NICHT gesetzt oder nicht `'true'`: normaler Auth-Flow, kein Mock-Override. Entwickler muessen sich einloggen.
+
+Wenn `VITE_FORCE_DEV_TENANT=true` in `.env.local`: Dev-Bypass aktiv wie bisher (Mock-Org, Mock-Profile, DEV_TENANT_UUID).
+
+**Betroffene Dateien:** `src/contexts/AuthContext.tsx` (1 Zeile), `src/hooks/useOrgContext.ts` (Fallback-Check gegen gleiche Variable)
 
 ---
 
-## ERGAENZUNG 4 — Audit Logging Minimum
+## Finaler Plan — 10 Schritte
 
-**Sinnvoll? JA — erweitertes Minimalset**
+### Schritt 1 — DEV_TENANT_UUID Konsolidierung + S4 Feature Flag (Prio: hoch)
 
-**Begruendung:**
+**Ziel:** Single Source of Truth fuer Dev-Konstanten + abschaltbarer Dev-Override.
 
-`audit_events` wird bereits fuer Business-Events genutzt (FIN_SUBMIT, listing.published, property.created/deleted, lockdown). Das Pattern ist etabliert. Fuer DSGVO-Compliance (Art. 30) und SBC-R04 brauchen wir ein definiertes Minimalset fuer Dokumentenzugriffe. Nur `document.download` reicht nicht — Preview (Ansicht ohne Download) und Grant-Lifecycle sind ebenfalls relevant.
+**Aenderungen:**
+- NEU: `src/config/tenantConstants.ts` — exportiert `DEV_TENANT_UUID`, `DEV_MOCK_ORG`, `DEV_MOCK_PROFILE`, `DEV_MOCK_MEMBERSHIP`
+- EDIT: `src/contexts/AuthContext.tsx`:
+  - Import Konstanten aus `tenantConstants.ts`
+  - `isDevelopmentEnvironment()` liest `import.meta.env.VITE_FORCE_DEV_TENANT === 'true'`
+  - Inline-Definitionen (Zeile 7, 41-102) entfernen
+- EDIT: `src/hooks/useGoldenPathSeeds.ts` — Import `DEV_TENANT_UUID` aus `tenantConstants.ts`, lokale Konstante entfernen
+- EDIT: `src/components/admin/TestDataManager.tsx` — Import-Pfad anpassen
+- EDIT: `src/hooks/useOrgContext.ts` — Dev-Fallback (Zeile 77-86) nur wenn `VITE_FORCE_DEV_TENANT === 'true'`
 
-**Definiertes Minimalset:**
+**Akzeptanzkriterien:**
+- `grep -r "DEV_TENANT_UUID" src/ | grep -v tenantConstants | grep -v "from.*tenantConstants"` liefert 0 Treffer
+- Ohne `VITE_FORCE_DEV_TENANT=true`: Login-Seite erscheint, kein Mock-Data
+- Mit `VITE_FORCE_DEV_TENANT=true`: Dev-Bypass wie bisher
 
-| Event-Type | Trigger | Payload-Minimum |
-|------------|---------|-----------------|
-| `document.view` | Signed URL fuer Preview erstellt | `{ document_id, scope }` |
-| `document.download` | Signed URL fuer Download erstellt | `{ document_id, scope }` |
-| `grant.created` | access_grant INSERT | `{ grant_id, scope_id, subject_id }` |
-| `grant.revoked` | access_grant revoked_at gesetzt | `{ grant_id, scope_id }` |
+### Schritt 2 — tenant_mode ENUM + Spalte + S1 RPC (Prio: hoch)
 
-**Anpassungen an SBC v1.0:**
+**Ziel:** Tenant-Typen in DB verankern + Runtime-Aufloesung.
 
-SBC-R04 praezisieren:
+**SQL-Migration:**
 
-> **SBC-R04 (erweitert):** Audit-Events fuer Dokumentenzugriff:
-> - `document.view` — bei jeder Preview-URL-Erstellung
-> - `document.download` — bei jedem Download-URL-Erstellung
-> - `grant.created` — bei Erstellung eines access_grants
-> - `grant.revoked` — bei Widerruf eines access_grants
-> - Alle Events: `actor_user_id`, `target_org_id`, `payload` (JSON mit IDs)
+```text
+CREATE TYPE public.tenant_mode AS ENUM ('reference', 'sandbox', 'demo', 'production');
 
-**Plananpassung Schritt 8:**
+ALTER TABLE public.organizations
+  ADD COLUMN tenant_mode public.tenant_mode DEFAULT 'production';
 
-| Original Schritt 8 | Neu |
-|---------------------|-----|
-| Nur `document.download` | 4 Event-Types: `document.view`, `document.download`, `grant.created`, `grant.revoked` |
-| Nur `useDocumentAudit.ts` | `useDocumentAudit.ts` (view/download) + `useAccessGrantAudit.ts` oder Integration in bestehenden `access_grants`-Hook |
+UPDATE public.organizations
+  SET tenant_mode = 'sandbox'
+  WHERE id = 'a0000000-0000-4000-a000-000000000001';
 
-**Akzeptanzkriterium (erweitert):** Jeder der 4 Event-Types erzeugt einen `audit_events`-Eintrag mit korrektem `event_type` und `payload`.
+-- S1: Runtime-Aufloesung
+CREATE OR REPLACE FUNCTION public.get_active_tenant_mode()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT COALESCE(o.tenant_mode::text, 'production')
+  FROM profiles p
+  JOIN organizations o ON o.id = p.active_tenant_id
+  WHERE p.id = auth.uid()
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_active_tenant_mode() TO authenticated;
+```
+
+**Akzeptanzkriterien:**
+- `organizations.tenant_mode` existiert, Default = `production`
+- Dev-Tenant hat `sandbox`
+- `supabase.rpc('get_active_tenant_mode')` liefert korrekten Wert fuer eingeloggten User
+
+### Schritt 3 — Demo-Daten-Registry (Prio: hoch)
+
+**Ziel:** Alle Inline-Demo-Daten registrieren und mit JSDoc markieren.
+
+**Aenderungen:**
+- NEU: `src/config/demoDataRegistry.ts` — zentrales Register:
+
+```text
+export const DEMO_DATA_SOURCES = [
+  { path: 'src/components/projekte/demoProjectData.ts', module: 'MOD-13', type: 'hardcoded', entities: ['project','units','developer'] },
+  { path: 'src/components/portal/cars/CarsAngebote.tsx', module: 'MOD-17', type: 'hardcoded', entities: ['leasing_offers','rental_offers'] },
+  { path: 'src/pages/portal/communication-pro/recherche/ResearchCandidatesTray.tsx', module: 'MOD-16', type: 'hardcoded', entities: ['candidates'] },
+  { path: 'src/hooks/useFinanceData.ts', module: 'MOD-06', type: 'fallback', entities: ['markets'] },
+  { path: 'src/hooks/useNewsData.ts', module: 'MOD-06', type: 'fallback', entities: ['headlines'] },
+  { path: 'src/hooks/useGoldenPathSeeds.ts', module: 'SYSTEM', type: 'seed_rpc', entities: ['properties','units','contacts','documents','leases','loans'] },
+] as const;
+```
+
+- EDIT: 5 Quelldateien — `/** @demo-data */` JSDoc-Tag an Demo-Konstanten
+
+**Akzeptanzkriterien:**
+- `demoDataRegistry.ts` listet alle 6 Quellen
+- Jede Demo-Konstante hat `@demo-data` Tag
+
+### Schritt 4 — seed_golden_path_data parametrisieren (Prio: mittel)
+
+**Ziel:** RPC akzeptiert `p_tenant_id` Parameter.
+
+**SQL-Migration:**
+- `DROP FUNCTION IF EXISTS public.seed_golden_path_data();`
+- `CREATE FUNCTION public.seed_golden_path_data(p_tenant_id UUID DEFAULT 'a0000000-0000-4000-a000-000000000001')` — alle internen Referenzen auf `v_tenant_id` ersetzen durch `p_tenant_id`
+- GRANTs beibehalten
+
+**EDIT:** `src/hooks/useGoldenPathSeeds.ts`:
+- `executeSeeds`: `supabase.rpc('seed_golden_path_data', { p_tenant_id: tenantId })`
+- `fetchGoldenPathCounts`: Parameter statt Hardcoded-UUID
+
+**Akzeptanzkriterien:**
+- Seeds fuer beliebigen Tenant ausfuehrbar
+- Default-Wert = DEV_TENANT_UUID (Abwaertskompatibilitaet)
+- Bestehende Seeds funktionieren weiterhin
+
+### Schritt 5 — test_data_registry fuer Seeds erweitern (Prio: mittel)
+
+**Ziel:** Golden Path Seeds registrieren sich automatisch.
+
+**SQL-Migration:** In `seed_golden_path_data` nach allen Upserts:
+
+```text
+INSERT INTO test_data_registry (tenant_id, batch_id, batch_name, entity_type, entity_id, imported_by)
+VALUES
+  (p_tenant_id, 'golden-path-seeds', 'Golden Path Seeds', 'property', <property_id>, auth.uid()),
+  (p_tenant_id, 'golden-path-seeds', 'Golden Path Seeds', 'unit', <unit_id>, auth.uid()),
+  ... (alle Seed-Entities)
+ON CONFLICT DO NOTHING;
+```
+
+**EDIT:** `src/components/admin/TestDataManager.tsx` — Seeds-Batch in UI sichtbar machen (ggf. spezielles Icon)
+
+**Akzeptanzkriterien:**
+- Nach Seed-Run: `test_data_registry` enthaelt Batch "Golden Path Seeds"
+- TestDataManager zeigt den Batch an
+
+### Schritt 6 — Orphan Checker (Prio: mittel)
+
+**Ziel:** DB-Funktion prueft Datenintegritaet.
+
+**SQL-Migration:**
+
+```text
+CREATE FUNCTION public.check_data_orphans(p_tenant_id UUID)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  result jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'extractions_without_document', (SELECT count(*) FROM extractions e LEFT JOIN documents d ON e.document_id = d.id WHERE e.tenant_id = p_tenant_id AND d.id IS NULL),
+    'chunks_without_document', (SELECT count(*) FROM document_chunks dc LEFT JOIN documents d ON dc.document_id = d.id WHERE dc.tenant_id = p_tenant_id AND d.id IS NULL),
+    'links_without_document', (SELECT count(*) FROM document_links dl LEFT JOIN documents d ON dl.document_id = d.id WHERE dl.tenant_id = p_tenant_id AND d.id IS NULL),
+    'links_without_target', 0  -- vereinfacht, da polymorphe targets
+  ) INTO result;
+  RETURN result;
+END $$;
+```
+
+**Neue Dateien:** `src/hooks/useOrphanChecker.ts`
+**EDIT:** `src/components/admin/TestDataManager.tsx` — "Orphan Check" Button + Ergebnis-Badge
+
+**Akzeptanzkriterien:**
+- Funktion liefert JSON mit Orphan-Counts je Kategorie
+- UI zeigt Ergebnisse an (gruen = 0, rot = >0)
+
+### Schritt 7 — Reset Sandbox Tenant (S2 integriert) (Prio: mittel)
+
+**Ziel:** Dynamische, schemarobuste Reset-Funktion.
+
+**SQL-Migration:**
+
+```text
+CREATE FUNCTION public.reset_sandbox_tenant(p_tenant_id UUID)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_mode text;
+  v_table text;
+  v_deleted int;
+  v_result jsonb := '{}'::jsonb;
+  v_keep_list text[] := ARRAY[
+    'memberships','organizations','subscriptions','tenant_tile_activation',
+    'tenant_extraction_settings','whatsapp_accounts','whatsapp_user_settings',
+    'mail_accounts','inbound_mailboxes','widget_preferences','task_widgets',
+    'miety_contracts','integration_registry','msv_templates','msv_communication_prefs'
+  ];
+BEGIN
+  -- Gate: tenant_mode = 'sandbox'
+  SELECT tenant_mode::text INTO v_mode FROM organizations WHERE id = p_tenant_id;
+  IF v_mode IS DISTINCT FROM 'sandbox' THEN
+    RAISE EXCEPTION 'Reset nur fuer sandbox-Tenants erlaubt. Aktuell: %', COALESCE(v_mode, 'NULL');
+  END IF;
+
+  -- Dynamisch: alle Tabellen mit tenant_id, minus keep_list
+  FOR v_table IN
+    SELECT c.table_name
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public' AND c.column_name = 'tenant_id'
+      AND c.table_name != ALL(v_keep_list)
+    ORDER BY c.table_name
+  LOOP
+    EXECUTE format('DELETE FROM %I WHERE tenant_id = $1', v_table) USING p_tenant_id;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object(v_table, v_deleted);
+  END LOOP;
+
+  -- Storage-Nodes: nur Children loeschen (Root-Ordner behalten)
+  DELETE FROM storage_nodes WHERE tenant_id = p_tenant_id AND parent_id IS NOT NULL;
+
+  RETURN v_result;
+END $$;
+```
+
+**Neue Dateien:** `src/hooks/useTenantReset.ts` (mit Confirmation-Dialog, ruft RPC + Storage-Reset auf)
+**EDIT:** Zone-1 Admin-UI — "Reset Tenant" Button (nur wenn `tenant_mode = 'sandbox'`)
+
+**Akzeptanzkriterien:**
+- `production`-Tenant: Funktion wirft Exception
+- `sandbox`-Tenant: alle operativen Daten geloescht, Config bleibt
+- Neue Tabellen mit `tenant_id` werden automatisch erfasst ohne Code-Aenderung
+
+### Schritt 8 — Storage Reset Edge Function (S3 integriert) (Prio: mittel)
+
+**Ziel:** Server-seitige Blob-Loesung mit strikten Gates.
+
+**Neue Datei:** `supabase/functions/sot-tenant-storage-reset/index.ts`
+
+```text
+Gate-Pruefungen (in Reihenfolge):
+1. JWT vorhanden → 401 wenn nicht
+2. is_platform_admin(uid) → 403 wenn nicht
+3. organizations.tenant_mode = 'sandbox' → 403 wenn nicht
+4. Request-Body: { tenant_id: UUID, confirm: true } → 400 wenn nicht
+
+Loeschlogik (Service Role):
+- tenant-documents: list + remove alle unter {tenant_id}/
+- project-documents: list + remove alle unter {tenant_id}/
+- social-assets: list + remove alle unter {tenant_id}/
+- acq-documents: DB-Query acq_mandates.tenant_id → list + remove je {mandate_id}/
+```
+
+**EDIT:** `src/hooks/useTenantReset.ts` — nach DB-Reset die Edge Function aufrufen
+
+**Akzeptanzkriterien:**
+- Ohne platform_admin: 403
+- Ohne sandbox-Mode: 403
+- Nach Ausfuehrung: Storage-Ordner des Tenants leer
+- Andere Tenants nicht betroffen
+
+### Schritt 9 — Spec-Dokumente (Prio: niedrig)
+
+**Neue Dateien:**
+- `spec/current/08_data_provenance/DPR_V1.md` — Data Provenance Rules (DPR-01, DPR-02, DPR-03)
+- `spec/current/08_data_provenance/GOLDEN_TENANT_CONTRACT.md` — Tenant-Typen-Modell, Reset-Regeln, Keep-List
+
+**Akzeptanzkriterien:** Dokumente existieren, alle Regeln beschrieben, Referenzen auf Code-SSOT
+
+### Schritt 10 — architectureValidator: Tenant-Hygiene-Checks (Prio: niedrig)
+
+**EDIT:** `src/validation/architectureValidator.ts`
+
+```text
+export function validateTenantHygiene(): void {
+  if (import.meta.env.PROD) return;
+  // Check 1: VITE_FORCE_DEV_TENANT Status loggen
+  // Check 2: demoDataRegistry importieren und Completeness pruefen
+  console.info('[GTC] Tenant Hygiene: ...');
+}
+```
+
+**EDIT:** `src/App.tsx` — `validateTenantHygiene()` in bestehenden DEV-Block aufrufen
+
+**Akzeptanzkriterien:** DEV-Konsole zeigt Hygiene-Status (Feature-Flag, Demo-Daten-Abdeckung)
 
 ---
 
-## Zusammenfassung der Aenderungen
+## Zusammenfassung
 
-### SBC v1.0 — Neue/Geaenderte Regeln
+| Prio | Schritte | Typ |
+|------|----------|-----|
+| Hoch | 1, 2, 3 | Config-Konsolidierung + DB-Schema + Registry |
+| Mittel | 4, 5, 6, 7, 8 | Seed-Parametrisierung + Orphan-Checker + Reset-Mechanik |
+| Niedrig | 9, 10 | Dokumentation + Dev-Tooling |
 
-| Regel | Status | Aenderung |
-|-------|--------|-----------|
-| SBC-R03 | Erweitert | Server-seitige Signed URL Issuance Pflicht, anon-Signing verboten |
-| SBC-R04 | Erweitert | 4 Event-Types statt 1 (view, download, grant.created, grant.revoked) |
-| SBC-R07 | **Neu** | Public Bucket Governance (social-assets Pfad-Erzwingung, docs-export UUID-Namen) |
-| SBC-R08 | **Neu** | Legacy Bucket `documents` deprecated + frozen |
-
-### Plan — Geaenderte/Neue Schritte
-
-| Schritt | Aenderung |
-|---------|-----------|
-| 1 | Vereinfacht: Bucket `documents` einfrieren statt tenant-scopen |
-| 3 | Ergaenzt um SBC-R07-Dokumentation |
-| 3b (neu) | docs-export Dateinamen auf UUID umstellen (niedrige Prio) |
-| 8 | Erweitert auf 4 Audit-Events + ggf. 2 Hooks |
-| 9 | SBC-R07 und SBC-R08 in Spec-Dokument aufnehmen |
-
+| Metrik | Wert |
+|--------|------|
+| SQL-Migrationen | 4 (ENUM+Spalte+RPC, Seed-Parametrisierung, Orphan-Checker, Reset-Funktion) |
+| Neue Dateien | 6 (`tenantConstants.ts`, `demoDataRegistry.ts`, `useTenantReset.ts`, `useOrphanChecker.ts`, 2 Spec-Docs) |
+| Neue Edge Function | 1 (`sot-tenant-storage-reset`) |
+| Editierte Dateien | 7 (`AuthContext.tsx`, `useGoldenPathSeeds.ts`, `TestDataManager.tsx`, `useOrgContext.ts`, `architectureValidator.ts`, `App.tsx`, 5x JSDoc-Tags) |
