@@ -10,10 +10,10 @@ import {
 
 const socialNavItems = [
   { path: 'overview', label: 'Überblick', icon: LayoutDashboard },
-  { path: 'audit', label: 'Audit', icon: Mic },
-  { path: 'inspiration', label: 'Ideen & Inspiration', icon: Lightbulb },
-  { path: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
-  { path: 'inbound', label: 'Individual Content', icon: Inbox },
+  { path: 'audit', label: 'Mein Profil', icon: Mic },
+  { path: 'inspiration', label: 'Vorbilder', icon: Lightbulb },
+  { path: 'knowledge', label: 'Meine Themen', icon: BookOpen },
+  { path: 'inbound', label: 'Meine Momente', icon: Inbox },
   { path: 'assets', label: 'Assets', icon: ImageIcon },
   { path: 'create', label: 'Content Creation', icon: PenTool },
   { path: 'calendar', label: 'Kalender & Planung', icon: Calendar },

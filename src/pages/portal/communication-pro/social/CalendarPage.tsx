@@ -104,13 +104,25 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Kalender & Planung</h1>
         <p className="text-muted-foreground mt-1">
           Plane deine Drafts und markiere sie als gepostet.
         </p>
       </div>
+
+      {/* Posting-Workflow Hinweis */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="py-3 px-4">
+          <p className="text-sm font-medium mb-1">So funktioniert das Posten:</p>
+          <ol className="text-xs text-muted-foreground space-y-0.5 list-decimal list-inside">
+            <li>Content unter „Content Creation" kopieren</li>
+            <li>In LinkedIn / Instagram / Facebook einfügen und posten</li>
+            <li>Hier als <span className="font-medium text-foreground">✓ gepostet</span> markieren</li>
+          </ol>
+        </CardContent>
+      </Card>
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -131,8 +143,8 @@ export function CalendarPage() {
         )}
       </div>
 
-      {/* Week grid */}
-      <div className="grid grid-cols-7 gap-2">
+      {/* Week grid — hidden on mobile, list view instead */}
+      <div className="hidden md:grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
           const dayDrafts = getDraftsForDay(day);
           return (
@@ -179,6 +191,46 @@ export function CalendarPage() {
                   );
                 })}
               </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Mobile list view */}
+      <div className="md:hidden space-y-2">
+        {weekDays.map((day) => {
+          const dayDrafts = getDraftsForDay(day);
+          if (dayDrafts.length === 0 && !isToday(day)) return null;
+          return (
+            <div key={day.toISOString()} className={`border rounded-lg p-3 ${isToday(day) ? 'border-primary bg-primary/5' : ''}`}>
+              <div className={`text-sm font-medium mb-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}>
+                {format(day, 'EEEE, dd. MMM', { locale: de })}
+              </div>
+              {dayDrafts.length > 0 ? (
+                <div className="space-y-1.5">
+                  {dayDrafts.map((d) => {
+                    const platforms = getPlatforms(d);
+                    const dotColor = STATUS_DOT[d.status] || STATUS_DOT.ready;
+                    return (
+                      <div key={d.id} className={`text-xs border rounded px-3 py-2 flex items-center gap-2 ${STATUS_COLORS[d.status] || ''}`}>
+                        <div className={`h-2 w-2 rounded-full ${dotColor} shrink-0`} />
+                        <span className="truncate font-medium flex-1">{d.draft_title || 'Draft'}</span>
+                        {platforms.map((p) => {
+                          const Icon = PLATFORM_ICONS[p];
+                          return Icon ? <Icon key={p} className="h-3 w-3 text-muted-foreground" /> : null;
+                        })}
+                        {d.status === 'planned' && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => markPosted(d.id)}>
+                            <Check className="h-3.5 w-3.5 text-green-600" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Keine Drafts geplant</p>
+              )}
             </div>
           );
         })}
