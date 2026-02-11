@@ -33,10 +33,13 @@ const queryClient = new QueryClient();
 
 // ZBC Step 9: DEV-only validators on app start
 if (import.meta.env.DEV) {
-  import('./goldenpath/devValidator').then(({ validateGoldenPaths, validateZoneBoundaries, validateTileCatalogSync }) => {
+  import('./goldenpath/devValidator').then(({ validateGoldenPaths }) => {
     validateGoldenPaths();
+  });
+  import('./validation/architectureValidator').then(({ validateZoneBoundaries, validateTileCatalogSync, validateContractCoverage }) => {
     validateZoneBoundaries();
     validateTileCatalogSync();
+    validateContractCoverage();
   });
 }
 
