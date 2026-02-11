@@ -195,6 +195,36 @@ export function OverviewPage() {
         </div>
       </div>
 
+      {/* Workflow-Erklärung */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-5 pb-4 space-y-3">
+          <h2 className="font-semibold text-sm">So funktioniert Social</h2>
+          <p className="text-xs text-muted-foreground">
+            Wir erstellen Content für dich — du postest ihn manuell auf deinen Plattformen und trackst hier deine Ergebnisse.
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+            {[
+              { step: '1', label: 'Profil-Audit', desc: 'Persönlichkeit erfassen' },
+              { step: '2', label: 'Themen festlegen', desc: 'Dein Editorial-Focus' },
+              { step: '3', label: 'Vorbilder analysieren', desc: 'Patterns extrahieren' },
+              { step: '4', label: 'Content erstellen', desc: 'KI-gestützt texten' },
+              { step: '5', label: 'Planen & Posten', desc: 'Manuell veröffentlichen' },
+              { step: '6', label: 'Performance tracken', desc: 'Kennzahlen erfassen' },
+            ].map((s) => (
+              <div key={s.step} className="flex items-center gap-2">
+                <div className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
+                  {s.step}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">{s.label}</span>
+                  <span className="text-muted-foreground ml-1">— {s.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Setup Progress */}
       <Card>
         <CardContent className="pt-6 space-y-3">
@@ -223,10 +253,10 @@ export function OverviewPage() {
         </CardContent>
       </Card>
 
-      {/* Platform Connection Cards */}
+      {/* Platform Profile Cards */}
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Deine Plattformen
+          Deine Profile
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PLATFORMS.map((p) => {
@@ -254,7 +284,7 @@ export function OverviewPage() {
                       <>
                         <Badge variant="outline" className="text-green-600 border-green-300 gap-1">
                           <CheckCircle2 className="h-3 w-3" />
-                          Verbunden
+                          Profil hinterlegt
                         </Badge>
                         {url && (
                           <a
@@ -269,7 +299,7 @@ export function OverviewPage() {
                       </>
                     ) : (
                       <>
-                        <span className="text-sm text-muted-foreground">Nicht verbunden</span>
+                        <span className="text-sm text-muted-foreground">Profil hinterlegen</span>
                         <Link2 className="h-4 w-4 text-muted-foreground" />
                       </>
                     )}
@@ -350,7 +380,7 @@ export function OverviewPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {PLATFORMS.find((p) => p.key === connectDialog)?.label} verbinden
+              {PLATFORMS.find((p) => p.key === connectDialog)?.label} — Profil hinterlegen
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, Plus, Sparkles, Loader2, TrendingUp, Eye, Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,7 +130,7 @@ export function PerformancePage() {
   const avgEngagement = totalImpressions > 0 ? (((totalLikes + totalComments) / totalImpressions) * 100).toFixed(1) : '0';
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Performance</h1>
@@ -152,21 +153,26 @@ export function PerformancePage() {
                 {postedDrafts.length > 0 && (
                   <div>
                     <Label>Post zuordnen</Label>
-                    <select className="w-full border rounded-md p-2 text-sm" value={selectedDraft} onChange={(e) => setSelectedDraft(e.target.value)}>
-                      <option value="">— Kein Post —</option>
-                      {postedDrafts.map((d) => (
-                        <option key={d.id} value={d.id}>{d.draft_title || 'Unbenannt'}</option>
-                      ))}
-                    </select>
+                    <Select value={selectedDraft} onValueChange={setSelectedDraft}>
+                      <SelectTrigger><SelectValue placeholder="— Kein Post —" /></SelectTrigger>
+                      <SelectContent>
+                        {postedDrafts.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>{d.draft_title || 'Unbenannt'}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Plattform</Label>
-                    <select className="w-full border rounded-md p-2 text-sm" value={metricForm.platform} onChange={(e) => setMetricForm((p) => ({ ...p, platform: e.target.value }))}>
-                      <option value="linkedin">LinkedIn</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="facebook">Facebook</option>
-                    </select>
+                    <Select value={metricForm.platform} onValueChange={(v) => setMetricForm((p) => ({ ...p, platform: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="facebook">Facebook</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div><Label>Impressions</Label><Input type="number" value={metricForm.impressions} onChange={(e) => setMetricForm((p) => ({ ...p, impressions: +e.target.value }))} /></div>
                   <div><Label>Likes</Label><Input type="number" value={metricForm.likes} onChange={(e) => setMetricForm((p) => ({ ...p, likes: +e.target.value }))} /></div>

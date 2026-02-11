@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Mic, Sparkles, CheckCircle2, ArrowRight, User, MessageSquare, Palette, ShieldCheck, Clock } from 'lucide-react';
+import { Mic, Sparkles, CheckCircle2, ArrowRight, User, MessageSquare, Palette, ShieldCheck, Clock, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useArmstrongAdvisor, type FlowState } from '@/hooks/useArmstrongAdvisor';
@@ -167,16 +167,27 @@ export function AuditPage() {
           </Card>
         )}
 
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleStartAudit}>
-            <Mic className="h-4 w-4 mr-2" />
-            Audit wiederholen
-          </Button>
-          <Button onClick={() => navigate('../knowledge')} className="gap-2">
-            Weiter zur Knowledge Base
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Nächster Schritt */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-4 px-4 flex items-center gap-4">
+            <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Nächster Schritt: Themen definieren</p>
+              <p className="text-xs text-muted-foreground">Lege bis zu 10 Themen fest, über die du regelmäßig posten möchtest.</p>
+            </div>
+            <Button onClick={() => navigate('../knowledge')} className="gap-2 shrink-0">
+              Weiter
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Button variant="outline" onClick={handleStartAudit} className="gap-2">
+          <Mic className="h-4 w-4" />
+          Audit wiederholen
+        </Button>
       </div>
     );
   }

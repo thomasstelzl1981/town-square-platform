@@ -288,6 +288,19 @@ export function CreatePage() {
             Erstelle und verfeinere Posts — KI-gestützt, in deinem Stil.
           </p>
         </div>
+      </div>
+
+      {/* Posting-Workflow Hinweis */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="py-3 px-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Workflow:</span> Entwurf erstellen → Text kopieren → In LinkedIn / Instagram posten → Im Kalender als gepostet markieren
+          </p>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <div />
         <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Sparkles className="h-4 w-4" /> Neuer Entwurf</Button>
