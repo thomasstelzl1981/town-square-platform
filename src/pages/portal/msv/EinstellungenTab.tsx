@@ -13,21 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { AddBankAccountDialog } from '@/components/shared';
-import { 
-  CreditCard, 
-  Building2, 
-  Bell, 
-  Mail, 
-  Clock,
-  Star,
-  Coins,
-  ExternalLink,
-  FileText,
-  Plus,
-  Trash2,
-  Loader2
-} from 'lucide-react';
-
+import { CreditCard, Building2, Bell, Mail, Clock, Star, Coins, ExternalLink, FileText, Plus, Trash2, Loader2 } from 'lucide-react';
 interface BankAccount {
   id: string;
   account_name: string;
@@ -36,13 +22,22 @@ interface BankAccount {
   is_default: boolean;
   status: 'connected' | 'pending' | 'error';
 }
-
 const EinstellungenTab = () => {
   const queryClient = useQueryClient();
-  const { activeTenantId } = useAuth();
-  const { isPremium, activeUnits, isLoading: premiumLoading } = useMSVPremium();
-  const { prefs, isLoading: prefsLoading, refetch: refetchPrefs } = useMSVCommunicationPrefs();
-  
+  const {
+    activeTenantId
+  } = useAuth();
+  const {
+    isPremium,
+    activeUnits,
+    isLoading: premiumLoading
+  } = useMSVPremium();
+  const {
+    prefs,
+    isLoading: prefsLoading,
+    refetch: refetchPrefs
+  } = useMSVCommunicationPrefs();
+
   // Local state initialized from DB
   const [autoReminders, setAutoReminders] = useState(false);
   const [autoReports, setAutoReports] = useState(false);
@@ -51,7 +46,7 @@ const EinstellungenTab = () => {
   const [reminderChannel, setReminderChannel] = useState<'email' | 'letter'>('email');
   const [hasChanges, setHasChanges] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
-  
+
   // Sync local state with DB prefs
   useEffect(() => {
     if (prefs) {
@@ -59,23 +54,26 @@ const EinstellungenTab = () => {
       setAutoReports(prefs.auto_report_enabled || false);
       setReminderDay(prefs.reminder_day || 10);
       setReportDay(prefs.report_day || 15);
-      setReminderChannel((prefs.preferred_channel as 'email' | 'letter') || 'email');
+      setReminderChannel(prefs.preferred_channel as 'email' | 'letter' || 'email');
     }
   }, [prefs]);
-  
+
   // Fetch bank accounts
-  const { data: bankAccounts = [] } = useQuery({
+  const {
+    data: bankAccounts = []
+  } = useQuery({
     queryKey: ['msv-bank-accounts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('msv_bank_accounts')
-        .select('*')
-        .order('is_default', { ascending: false });
+      const {
+        data,
+        error
+      } = await supabase.from('msv_bank_accounts').select('*').order('is_default', {
+        ascending: false
+      });
       if (error) throw error;
       return (data || []) as BankAccount[];
     }
   });
-  
   const creditsPerUnit = 40;
 
   // Save preferences mutation
@@ -84,10 +82,11 @@ const EinstellungenTab = () => {
       if (!activeTenantId) {
         throw new Error('Keine Organisation aktiv');
       }
-      
       if (!prefs?.id) {
         // No existing prefs - create new
-        const { error } = await supabase.from('msv_communication_prefs').insert([{
+        const {
+          error
+        } = await supabase.from('msv_communication_prefs').insert([{
           tenant_id: activeTenantId,
           scope_type: 'tenant',
           scope_id: activeTenantId,
@@ -100,16 +99,15 @@ const EinstellungenTab = () => {
         if (error) throw error;
       } else {
         // Update existing
-        const { error } = await supabase
-          .from('msv_communication_prefs')
-          .update({
-            preferred_channel: reminderChannel,
-            reminder_day: reminderDay,
-            report_day: reportDay,
-            auto_reminder_enabled: autoReminders,
-            auto_report_enabled: autoReports
-          })
-          .eq('id', prefs.id);
+        const {
+          error
+        } = await supabase.from('msv_communication_prefs').update({
+          preferred_channel: reminderChannel,
+          reminder_day: reminderDay,
+          report_day: reportDay,
+          auto_reminder_enabled: autoReminders,
+          auto_report_enabled: autoReports
+        }).eq('id', prefs.id);
         if (error) throw error;
       }
     },
@@ -122,14 +120,11 @@ const EinstellungenTab = () => {
       toast.error('Fehler beim Speichern');
     }
   });
-
   const handleChange = (setter: (val: any) => void, value: any) => {
     setter(value);
     setHasChanges(true);
   };
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+  return <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight uppercase">EINSTELLUNGEN</h1>
         <p className="text-muted-foreground mt-1">Premium, Automatisierung und Kontoanbindung</p>
@@ -162,9 +157,7 @@ const EinstellungenTab = () => {
               <Coins className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="font-medium">Credits-Verbrauch</p>
-                <p className="text-xs text-muted-foreground">
-                  {creditsPerUnit} Credits / Einheit / Monat
-                </p>
+                
               </div>
             </div>
             <div className="text-right">
@@ -179,15 +172,10 @@ const EinstellungenTab = () => {
             <Button className="flex-1" disabled={activeUnits === 0 || isPremium}>
               {isPremium ? 'Premium aktiv' : 'Premium aktivieren'}
             </Button>
-            {hasChanges && (
-              <Button 
-                onClick={() => savePrefs.mutate()} 
-                disabled={savePrefs.isPending}
-              >
+            {hasChanges && <Button onClick={() => savePrefs.mutate()} disabled={savePrefs.isPending}>
                 {savePrefs.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Speichern
-              </Button>
-            )}
+              </Button>}
           </div>
         </CardContent>
       </Card>
@@ -216,38 +204,19 @@ const EinstellungenTab = () => {
                   </p>
                 </div>
               </div>
-              <Switch 
-                checked={autoReminders} 
-                onCheckedChange={(v) => handleChange(setAutoReminders, v)}
-                disabled={!isPremium}
-              />
+              <Switch checked={autoReminders} onCheckedChange={v => handleChange(setAutoReminders, v)} disabled={!isPremium} />
             </div>
             
-            {autoReminders && (
-              <div className="ml-7 pl-3 border-l space-y-3">
+            {autoReminders && <div className="ml-7 pl-3 border-l space-y-3">
                 <div className="flex items-center gap-3">
                   <Label htmlFor="reminderDay" className="text-sm min-w-[80px]">Mahntag:</Label>
-                  <Input
-                    id="reminderDay"
-                    type="number"
-                    min={1}
-                    max={28}
-                    value={reminderDay}
-                    onChange={(e) => handleChange(setReminderDay, parseInt(e.target.value) || 10)}
-                    className="w-20"
-                    disabled={!isPremium}
-                  />
+                  <Input id="reminderDay" type="number" min={1} max={28} value={reminderDay} onChange={e => handleChange(setReminderDay, parseInt(e.target.value) || 10)} className="w-20" disabled={!isPremium} />
                   <span className="text-sm text-muted-foreground">des Monats</span>
                 </div>
                 
                 <div className="space-y-2">
                   <Label className="text-sm">Kommunikationsweg:</Label>
-                  <RadioGroup 
-                    value={reminderChannel} 
-                    onValueChange={(v) => handleChange(setReminderChannel, v as 'email' | 'letter')}
-                    disabled={!isPremium}
-                    className="flex gap-4"
-                  >
+                  <RadioGroup value={reminderChannel} onValueChange={v => handleChange(setReminderChannel, v as 'email' | 'letter')} disabled={!isPremium} className="flex gap-4">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="email" id="email" />
                       <Label htmlFor="email" className="text-sm font-normal">E-Mail</Label>
@@ -258,8 +227,7 @@ const EinstellungenTab = () => {
                     </div>
                   </RadioGroup>
                 </div>
-              </div>
-            )}
+              </div>}
           </div>
 
           <Separator />
@@ -276,31 +244,16 @@ const EinstellungenTab = () => {
                   </p>
                 </div>
               </div>
-              <Switch 
-                checked={autoReports} 
-                onCheckedChange={(v) => handleChange(setAutoReports, v)}
-                disabled={!isPremium}
-              />
+              <Switch checked={autoReports} onCheckedChange={v => handleChange(setAutoReports, v)} disabled={!isPremium} />
             </div>
             
-            {autoReports && (
-              <div className="ml-7 pl-3 border-l">
+            {autoReports && <div className="ml-7 pl-3 border-l">
                 <div className="flex items-center gap-3">
                   <Label htmlFor="reportDay" className="text-sm min-w-[80px]">Reporttag:</Label>
-                  <Input
-                    id="reportDay"
-                    type="number"
-                    min={1}
-                    max={28}
-                    value={reportDay}
-                    onChange={(e) => handleChange(setReportDay, parseInt(e.target.value) || 15)}
-                    className="w-20"
-                    disabled={!isPremium}
-                  />
+                  <Input id="reportDay" type="number" min={1} max={28} value={reportDay} onChange={e => handleChange(setReportDay, parseInt(e.target.value) || 15)} className="w-20" disabled={!isPremium} />
                   <span className="text-sm text-muted-foreground">des Monats</span>
                 </div>
-              </div>
-            )}
+              </div>}
           </div>
         </CardContent>
       </Card>
@@ -318,13 +271,8 @@ const EinstellungenTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {bankAccounts.length > 0 ? (
-            <div className="space-y-2">
-              {bankAccounts.map((account) => (
-                <div 
-                  key={account.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                >
+          {bankAccounts.length > 0 ? <div className="space-y-2">
+              {bankAccounts.map(account => <div key={account.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                   <div className="flex items-center gap-3">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -335,47 +283,29 @@ const EinstellungenTab = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {account.is_default && (
-                      <Badge variant="outline" className="text-xs">Standard</Badge>
-                    )}
-                    <Badge 
-                      variant={account.status === 'connected' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {account.status === 'connected' ? 'Verbunden' : 
-                       account.status === 'pending' ? 'Ausstehend' : 'Fehler'}
+                    {account.is_default && <Badge variant="outline" className="text-xs">Standard</Badge>}
+                    <Badge variant={account.status === 'connected' ? 'default' : 'secondary'} className="text-xs">
+                      {account.status === 'connected' ? 'Verbunden' : account.status === 'pending' ? 'Ausstehend' : 'Fehler'}
                     </Badge>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg bg-muted/50 p-4 text-center">
+                </div>)}
+            </div> : <div className="rounded-lg bg-muted/50 p-4 text-center">
               <CreditCard className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="font-medium">Keine Konten verbunden</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Verbinden Sie Ihre Mietkonten für automatische Zahlungserkennung.
               </p>
-            </div>
-          )}
+            </div>}
 
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            disabled={!isPremium}
-            onClick={() => setShowAddAccount(true)}
-          >
+          <Button variant="outline" className="w-full" disabled={!isPremium} onClick={() => setShowAddAccount(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Konto hinzufügen
           </Button>
 
-          <AddBankAccountDialog 
-            open={showAddAccount} 
-            onOpenChange={setShowAddAccount} 
-          />
+          <AddBankAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} />
 
           <div className="rounded-lg bg-accent/10 p-3 text-sm">
             <p className="font-medium text-accent-foreground flex items-center gap-2">
@@ -410,8 +340,6 @@ const EinstellungenTab = () => {
           </Button>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default EinstellungenTab;
