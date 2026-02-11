@@ -1,76 +1,57 @@
 
 
-# ScopeDefinitionPanel — Layout und Flow korrigieren
+# Sanierung: Toast-Fix, Dienstleister-Panel einbinden, Ausschreibungs-Panel einbinden
 
-## Problem
+## Problem 1: Toast "Aenderungen gespeichert" ist zu gross und verdeckt UI
 
-Die aktuelle Reihenfolge der Elemente ist unlogisch:
+Der `toast.success('Aenderungen gespeichert')` in Zeile 272 von ScopeDefinitionPanel.tsx erzeugt eine Standard-Sonner-Notification, die offenbar zu lange sichtbar bleibt. Loesung: `duration: 2000` setzen (2 Sekunden statt default ~4s).
 
-1. **Oben**: "Ihre Beschreibung" — nur lesbar, nicht editierbar
-2. **Mitte**: DMS-Optionen (collapsible), dann Leistungsverzeichnis
-3. **Darunter**: Kostenschaetzung
-4. **Ganz unten**: Freitext-Beschreibung fuer Ausschreibung (editierbar)
+## Problem 2: "Dienstleister finden" (Step 1) ist nur ein Placeholder
 
-Der Nutzer kann oben nichts eingeben, die editierbare Beschreibung ist ganz unten versteckt, und die Kostenschaetzung steht vor der Ausschreibungsbeschreibung.
+Zeilen 261-270 in SanierungTab.tsx zeigen nur einen leeren Platzhalter mit "Suche starten"-Button, der nichts tut. Dabei existiert bereits eine fertige Komponente `ProviderSearchPanel` in `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx`, die Google Places Suche, manuelle Eingabe und Auswahl unterstuetzt.
 
-## Neuer Flow (logische Reihenfolge)
+**Loesung:** Den Placeholder ersetzen durch die `ProviderSearchPanel`-Komponente mit:
+- State `selectedProviders` (pro Case)
+- Props: `category` aus serviceCase, `location` aus serviceCase.property.city/address
+- Dazu ein "Weiter zu Ausschreibung"-Button, der `setViewStep(2)` aufruft
 
-```text
-1. Freitext-Eingabe (editierbar)     ← "Was moechten Sie sanieren?"
-   [Leistungsverzeichnis generieren]
-   
-2. KI-generierte Beschreibung       ← Professionelle Ausschreibungsbeschreibung
-   (editierbar, wird von KI befuellt)
+## Problem 3: "Ausschreibung versenden" (Step 2) ist nur ein Placeholder
 
-3. Leistungsverzeichnis              ← Positionen-Tabelle (KI-generiert, editierbar)
+Zeilen 272-278 zeigen ebenfalls einen leeren Platzhalter. Dabei existiert `TenderDraftPanel` in `src/components/portal/immobilien/sanierung/tender/TenderDraftPanel.tsx` — komplett fertig mit E-Mail-Vorschau, Empfaenger-Liste und Sende-Funktion.
 
-4. Kostenschaetzung                  ← KI-gestuetzt, ganz unten
-   [Kostenschaetzung anfordern]
+**Loesung:** Den Placeholder fuer Step 2 ersetzen durch `TenderDraftPanel` mit:
+- Props: `serviceCase`, `selectedProviders` (aus State), `onSendComplete`
 
-5. Weitere Optionen (DMS/Upload)     ← Collapsible, sekundaer
+## Technische Umsetzung
 
-6. Aktions-Leiste                    ← Speichern / Weiter
-```
+### Datei 1: `src/components/portal/immobilien/sanierung/scope/ScopeDefinitionPanel.tsx`
 
-## Technische Aenderungen (1 Datei)
+- Zeile 272: `toast.success('Aenderungen gespeichert')` aendern zu `toast.success('Aenderungen gespeichert', { duration: 2000 })`
 
-**`src/components/portal/immobilien/sanierung/scope/ScopeDefinitionPanel.tsx`**
+### Datei 2: `src/pages/portal/immobilien/SanierungTab.tsx`
 
-### Block 1: Freitext-Eingabe (NEU — editierbar)
-- Die bisherige "Ihre Beschreibung"-Karte wird durch ein editierbares Textarea ersetzt
-- Vorausgefuellt mit `serviceCase.description`
-- Neuer lokaler State `userDescription` (initialisiert aus `serviceCase.description`)
-- Der "Leistungsverzeichnis generieren"-Button nutzt diesen editierbaren Text
-- Diktierfunktion (Mikrofon-Button) daneben
-- Ueberschrift: "Was soll saniert werden?"
+**Neue Imports:**
+- `ProviderSearchPanel` und `SelectedProvider` aus `@/components/portal/immobilien/sanierung/tender`
+- `TenderDraftPanel` aus `@/components/portal/immobilien/sanierung/tender`
 
-### Block 2: Ausschreibungsbeschreibung (nach oben verschoben)
-- Das bisherige Textarea "Freitext-Beschreibung fuer Ausschreibung" wandert von ganz unten direkt unter den Generieren-Button
-- Wird von der KI befuellt, ist aber editierbar
-- Ueberschrift: "Beschreibung fuer Ausschreibung"
-- "Aus LV generieren"-Button bleibt
+**Neuer State:**
+- `selectedProviders: Record<string, SelectedProvider[]>` — pro Case-ID gespeichert, damit bei Case-Wechsel die Auswahl erhalten bleibt
 
-### Block 3: Leistungsverzeichnis (bleibt)
-- Position bleibt gleich (nach der Beschreibung)
-- Keine inhaltlichen Aenderungen
+**Step 1 (Zeilen 261-270) ersetzen:**
+- Statt Placeholder: `ProviderSearchPanel` mit `category={serviceCase.category}`, `location={serviceCase.property?.city || serviceCase.property?.address || ''}`, `selectedProviders`, `onProvidersChange`
+- Darunter: "Weiter zu Ausschreibung"-Button (setzt viewStep auf 2), nur aktiv wenn mindestens 1 Provider gewaehlt
+- "Zurueck zu Leistungsumfang"-Button (setzt viewStep auf 0)
 
-### Block 4: Kostenschaetzung (bleibt unten)
-- Wird nach dem LV angezeigt — passt schon
+**Step 2 (Zeilen 272-278) ersetzen:**
+- Statt Placeholder: `TenderDraftPanel` mit `serviceCase`, `selectedProviders[caseId]`, `onSendComplete`
+- "Zurueck zu Dienstleister"-Button
 
-### Block 5: Weitere Optionen (bleibt collapsible, nach unten)
-- DMS-Dokumente und Upload-Bereich bleiben als Collapsible
-- Werden nach der Kostenschaetzung angezeigt (ganz unten vor den Aktions-Buttons)
+### Zusammenfassung
 
-### Zusammenfassung der Verschiebungen
+| Datei | Aenderung |
+|---|---|
+| ScopeDefinitionPanel.tsx | Toast-Duration auf 2s |
+| SanierungTab.tsx | Step 1: ProviderSearchPanel einbinden, Step 2: TenderDraftPanel einbinden, State fuer selectedProviders |
 
-| Element | Vorher | Nachher |
-|---|---|---|
-| Freitext-Eingabe (editierbar) | -- (nur lesbar oben) | Position 1 |
-| Generieren-Button | Bei "Ihre Beschreibung" | Bei Freitext-Eingabe |
-| Ausschreibungsbeschreibung | Position 5 (ganz unten) | Position 2 |
-| Leistungsverzeichnis | Position 3 | Position 3 (bleibt) |
-| Kostenschaetzung | Position 4 | Position 4 (bleibt) |
-| DMS/Upload (collapsible) | Position 2 | Position 5 (nach unten) |
-
-Keine neuen Dateien, keine DB-Aenderungen, keine neuen Dependencies.
+Keine DB-Aenderungen, keine neuen Dateien, keine neuen Dependencies.
 
