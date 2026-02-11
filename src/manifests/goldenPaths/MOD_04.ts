@@ -255,6 +255,96 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
+    // ═══════════════════════════════════════════════════════════
+    // BACKBONE TOUCHPOINTS (Zone-1-orchestriert, Camunda-ready)
+    // ═══════════════════════════════════════════════════════════
+
+    // PHASE 6b: LISTING DISTRIBUTION VIA ZONE-1 BACKBONE (verbindlich)
+    {
+      id: 'listing_distribution_z1',
+      phase: 6,
+      label: 'Listing Distribution via Zone-1 Backbone',
+      type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'MOD04_STEP_06B_LISTING_DISTRIBUTE_Z1',
+      correlation_keys: ['tenant_id', 'property_id', 'listing_id'],
+      contract_refs: [
+        {
+          key: 'CONTRACT_LISTING_PUBLISH',
+          direction: 'Z2->Z1',
+          correlation_keys: ['tenant_id', 'property_id', 'listing_id'],
+          description: 'Listing-Request wird an Zone 1 Sales Desk / Governance Queue uebermittelt',
+        },
+        {
+          key: 'CONTRACT_LISTING_DISTRIBUTE',
+          direction: 'Z1->Z2',
+          correlation_keys: ['tenant_id', 'property_id', 'listing_id'],
+          description: 'Zone 1 verteilt Listing an Partner-Netzwerk (MOD-09), Investments (MOD-08), Kaufy (Zone 3)',
+        },
+      ],
+      downstreamModules: ['MOD-09', 'MOD-08', 'ZONE-3'],
+      preconditions: [
+        { key: 'sales_desk_entry_visible', source: 'listings', description: 'Listing in Zone 1 Sales Desk sichtbar' },
+      ],
+      completion: [
+        { key: 'katalog_visible', source: 'listing_publications', check: 'exists', description: 'Listing in Downstream-Modulen verteilt' },
+      ],
+    },
+
+    // PHASE 12: FINANCE HANDOFF VIA ZONE-1 FUTUREROOM (optional)
+    {
+      id: 'finance_handoff_z1',
+      phase: 12,
+      label: 'Finanzierung via Zone-1 FutureRoom (optional)',
+      type: 'system',
+      task_kind: 'wait_message',
+      camunda_key: 'MOD04_STEP_12_FINANCE_HANDOFF_Z1',
+      correlation_keys: ['tenant_id', 'property_id', 'finance_request_id'],
+      contract_refs: [
+        {
+          key: 'CONTRACT_FINANCE_SUBMIT',
+          direction: 'Z2->Z1',
+          correlation_keys: ['tenant_id', 'property_id', 'finance_request_id'],
+          description: 'Finanzierungsanfrage wird an Zone 1 FutureRoom Case uebermittelt',
+        },
+        {
+          key: 'CONTRACT_MANDATE_ASSIGNMENT',
+          direction: 'Z1->Z2',
+          correlation_keys: ['tenant_id', 'finance_request_id'],
+          description: 'Zone 1 weist Finanzierungsmandat an MOD-11 Manager zu',
+        },
+      ],
+      downstreamModules: ['MOD-07', 'MOD-11'],
+      preconditions: [
+        { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
+      ],
+      // Keine completion — optional, wird nicht fuer success_state gebraucht
+    },
+
+    // PHASE 13: PROJECT INTAKE VIA ZONE-1 (optional)
+    {
+      id: 'project_intake_z1',
+      phase: 13,
+      label: 'Projekt-Intake via Zone-1 Delegation (optional)',
+      type: 'system',
+      task_kind: 'wait_message',
+      camunda_key: 'MOD04_STEP_13_PROJECT_INTAKE_Z1',
+      correlation_keys: ['tenant_id', 'property_id', 'project_id'],
+      contract_refs: [
+        {
+          key: 'CONTRACT_PROJECT_INTAKE',
+          direction: 'Z1->Z2',
+          correlation_keys: ['tenant_id', 'property_id', 'project_id'],
+          description: 'Projekt-Zuordnung via Zone 1 Delegation an MOD-13',
+        },
+      ],
+      downstreamModules: ['MOD-13'],
+      preconditions: [
+        { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
+      ],
+      // Keine completion — optional, wird nicht fuer success_state gebraucht
+    },
+
     // PHASE 11: DEAKTIVIERUNG (WIDERRUF)
     {
       id: 'deactivate_mandate',
