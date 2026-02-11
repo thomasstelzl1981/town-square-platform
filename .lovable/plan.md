@@ -1,49 +1,63 @@
 
-# Fix: "Vorschau-Struktur ansehen" Button mit sichtbarem Feedback
+# Fix: Verkaufsauftrag im Sales Desk und in Stammdaten/Vertraege sichtbar machen
 
 ## Problem
 
-Der Button scrollt zwar korrekt zum Zielbereich, aber:
-1. Wenn der Bereich schon fast sichtbar ist, faellt der Scroll kaum auf
-2. Es gibt kein visuelles Feedback (kein Highlight, kein Pulse), das zeigt "hier ist der Bereich"
+Bei Aktivierung des Verkaufsauftrags in MOD-04 passieren zwei Dinge NICHT:
+
+1. **Stammdaten/Vertraege** (`/portal/stammdaten/vertraege`): Die Query filtert nach `sales_mandate_consent_id IS NOT NULL` auf der `listings`-Tabelle. Aber der Aktivierungscode in `VerkaufsauftragTab.tsx` schreibt die Consent-ID des `SALES_MANDATE_V2` nie zurueck auf das Listing. Deshalb erscheint der Verkaufsauftrag nie in der Vertraegsliste.
+
+2. **Sales Desk** (`/admin/sales-desk`): Die `VeroeffentlichungenTab` zeigt zwar alle aktiven Listings mit Channel-Toggles, aber es gibt keine dedizierte Ansicht fuer die **Vertriebsauftraege als Vertraege** (wer hat wann aktiviert, Provision, Status).
 
 ## Loesung
 
-Eine kurze Highlight-Animation auf den "Website-Struktur"-Bereich, die nach dem Scroll abgespielt wird:
+### Fix 1: `sales_mandate_consent_id` beim Aktivieren setzen (P0)
 
-### Aenderung in `LandingPageBuilder.tsx`
+**Datei:** `src/components/portfolio/VerkaufsauftragTab.tsx`
 
-1. **State hinzufuegen**: `const [highlighted, setHighlighted] = useState(false)`
-
-2. **Button onClick erweitern**: Nach dem `scrollIntoView` wird `highlighted` fuer 1.5 Sekunden auf `true` gesetzt
-
-3. **CSS-Klasse auf den Zielbereich**: Wenn `highlighted === true`, bekommt der `div#tab-outline-section` eine `ring-2 ring-primary/50 bg-primary/5 rounded-xl transition-all duration-500` Klasse, die nach 1.5s wieder entfernt wird
-
-### Konkret
+In der Consent-Schleife (Zeile 277-297) wird der `SALES_MANDATE_V2`-Consent eingefuegt. Danach muss die ID des eingefuegten Consents auf das Listing geschrieben werden:
 
 ```text
-// Button onClick (Zeile 176-178):
-onClick={() => {
-  const el = document.getElementById('tab-outline-section');
-  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  setHighlighted(true);
-  setTimeout(() => setHighlighted(false), 1500);
-}}
-
-// Zielbereich (Zeile 188):
-<div
-  id="tab-outline-section"
-  className={cn(
-    'space-y-4 p-4 rounded-xl transition-all duration-500',
-    highlighted && 'ring-2 ring-primary/50 bg-primary/5'
-  )}
->
+// Aenderung in der Consent-Schleife:
+// Bei SALES_MANDATE_V2: Insert mit .select('id').single()
+// Danach: listings.update({ sales_mandate_consent_id: consent.id })
 ```
 
-### Betroffene Datei
+Konkret:
+- Den Insert fuer `SALES_MANDATE_V2` mit `.select('id').single()` ausfuehren
+- Die zurueckgegebene Consent-ID auf `listings.sales_mandate_consent_id` schreiben
+- Damit findet `VertraegeTab` den Vertrag ueber seinen bestehenden Filter
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/projekte/landing-page/LandingPageBuilder.tsx` | State + Highlight-Animation + cn-Import ergaenzen |
+### Fix 2: Sales Desk — Vertriebsauftraege-Karte im Dashboard (P1)
 
-Minimaler Eingriff, maximale Wirkung: Der Nutzer sieht sofort, wohin gescrollt wurde.
+**Datei:** `src/pages/admin/desks/SalesDesk.tsx`
+
+Im `SalesDeskDashboard` eine neue Karte "Aktive Vertriebsauftraege (Immobilien)" ergaenzen, die alle Listings mit `sales_mandate_consent_id IS NOT NULL` und `status = 'active'` zeigt:
+
+| Spalte | Quelle |
+|--------|--------|
+| Objekt | listing.property.address, city |
+| Eigentuemer | listing.tenant.name |
+| Provision | listing.commission_rate |
+| Aktiviert am | listing.created_at |
+| Status | listing.status (active/reserved/withdrawn) |
+
+Das ist eine reine Anzeige-Tabelle (Read-Only) — der Kill-Switch bleibt wie bisher beim Projekt-Bereich und den Toggles in der Veroefflichungen-Tabelle.
+
+### Fix 3: Stammdaten/Vertraege — Link zum Objekt (P2, klein)
+
+**Datei:** `src/pages/portal/stammdaten/VertraegeTab.tsx`
+
+Der Link bei Verkaufsmandaten zeigt aktuell auf `/portal/verkauf/objekte`. Besser waere ein direkter Link zum konkreten Objekt: `/portal/immobilien/{property_id}?tab=verkaufsauftrag`. Dafuer muss die Query `property_id` mit-selektieren (ist schon via `properties` Join verfuegbar).
+
+## Zusammenfassung der Aenderungen
+
+| Datei | Aenderung | Prioritaet |
+|-------|-----------|------------|
+| `VerkaufsauftragTab.tsx` | Consent-ID des SALES_MANDATE_V2 auf Listing schreiben | P0 |
+| `SalesDesk.tsx` | Neue Karte "Aktive Vertriebsauftraege" mit Listing-Tabelle | P1 |
+| `VertraegeTab.tsx` | Link zum konkreten Objekt statt generischer Verkaufsseite | P2 |
+
+## Warum das bisher nicht funktioniert hat
+
+Der Code in `VerkaufsauftragTab.tsx` erstellt die Consents korrekt in `user_consents`, aber die Rueckreferenz (`sales_mandate_consent_id`) auf dem Listing wird nie gesetzt. Die `VertraegeTab` filtert genau nach dieser Referenz — deshalb ist die Liste leer. Im Sales Desk fehlt schlicht die Darstellung der Einzelimmobilien-Vertriebsauftraege als Vertrags-Uebersicht.
