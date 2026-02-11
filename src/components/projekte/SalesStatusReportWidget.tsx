@@ -85,7 +85,9 @@ export function SalesStatusReportWidget({
     const reservedEur = units.filter(u => u.status === 'reserved').reduce((s, u) => s + u.effective_price, 0);
     const soldEur = units.filter(u => u.status === 'sold' || u.status === 'notary').reduce((s, u) => s + u.effective_price, 0);
     const freeEur = units.filter(u => u.status === 'available').reduce((s, u) => s + u.effective_price, 0);
-    const totalProvision = units.reduce((s, u) => s + u.effective_provision, 0);
+    const totalProvision = units
+      .filter(u => u.status === 'sold' || u.status === 'notary')
+      .reduce((s, u) => s + u.effective_provision, 0);
     const grossProfit = totalVolume - investmentCosts - totalProvision;
     return { totalVolume, reservedEur, soldEur, freeEur, totalProvision, grossProfit };
   }, [units, investmentCosts]);
