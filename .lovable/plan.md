@@ -1,154 +1,176 @@
 
-# Systemweiter CI-Audit: Breitenabgleich und Aufraeumaktion
+# Systemweiter Schrift- und Eingabe-Audit: Tabellarische Standardisierung
 
-## Referenz-Standard: KI-Office
+## Referenz-Standard: KI-Office (Kontakte-Tab)
 
-Das KI-Office (MOD-02) verwendet durchgehend `max-w-7xl mx-auto px-4 py-6 md:px-6`. Alle Seiten ausserhalb des Dashboards, des Portals und der Investment-Engine sollen diese Breite uebernehmen.
+Das KI-Office nutzt die `DataTable`-Komponente mit dem globalen `Table`-UI-System:
+- Schriftgroesse: `text-sm` (14px) fuer Tabelleninhalte, `text-xs` (12px) fuer Labels/IDs
+- Schriftfarbe: `text-foreground` fuer Werte, `text-muted-foreground` fuer Labels
+- Input-Hoehe: Standard `h-10` (40px) via `Input`-Komponente
+- Keine verteilten Eingabefelder mit grossen Abstaenden
+- Klare tabellarische Struktur mit `border-b` Trennern
 
-**Ausnahmen (bleiben wie sie sind):**
-- Investment-Engine (MOD-08): SucheTab, FavoritenTab, SimulationTab, MandatTab -- haben seitliche Rechner/Filter
-- Projekte PortfolioTab: hat StickyCalculatorPanel an der Seite
-- Immobilien PortfolioTab: hat Kontext-Selektor und breite Tabellen mit vielen Spalten
-- PortalDashboard, AreaOverviewPage: Dashboard-Seiten (explizit ausgeschlossen)
+## Analyse: Drei verschiedene Eingabe-Patterns im System
 
----
+### Pattern A: "Bank-Tabelle" (FMFallDetail.tsx) -- GUT
+```
+TableRow > TableCell (Label, w-[180px], border-r, text-xs) | TableCell (Wert, text-sm)
+```
+- Kompakt, tabellarisch, uebersichtlich
+- Genutzt nur in: FMFallDetail Selbstauskunft-Tab
+- **Bewertung: Referenz-Pattern fuer Datenanzeige (Read-Only)**
 
-## Ergebnis: 73 Seiten geprueft
+### Pattern B: "Label-ueber-Input" mit Grid (SelbstauskunftFormV2, ApplicantPersonFields, AnfrageFormV2) -- PROBLEM
+```
+FormField > Label (text-sm) + Input (h-10, rounded-2xl, text-base)
+grid-cols-4 gap-4
+```
+- Jedes Feld hat ein Label UEBER dem Input
+- Input ist `h-10` (40px hoch), `rounded-2xl`, `text-base` (16px) -- zu gross
+- Grosse Abstaende durch `space-y-6` und `gap-4`
+- **Bewertung: Zu viel Platz, nicht tabellarisch, unuebersichtlich**
 
-### A) Breiten-Abweichungen (muessen auf `max-w-7xl` gebracht werden)
+### Pattern C: "ProfileWidget" mit FormRow (ProfilTab/Stammdaten) -- AKZEPTABEL
+```
+FormRow > grid-cols-2 gap-4 > FormInput (Label + Input)
+```
+- Kompakter als Pattern B, aber immer noch Label-ueber-Input
+- Genutzt in: ProfilTab, Kontakte-Drawer
+- **Bewertung: Akzeptabel fuer Profil-Editing, aber nicht optimal**
 
-| # | Datei | Aktuelle Breite | Aenderung |
-|---|---|---|---|
-| 1 | `finanzierungsmanager/FMDashboard.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 2 | `finanzierungsmanager/FMFaelle.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 3 | `finanzierungsmanager/FMFallDetail.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 4 | `finanzierungsmanager/FMKommunikation.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 5 | `finanzierungsmanager/FMStatus.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 6 | `immobilien/BewertungTab.tsx` | `PageShell` (max-w-5xl) | -> max-w-7xl |
-| 7 | `immobilien/SanierungTab.tsx` | max-w-5xl | -> max-w-7xl |
-| 8 | `AkquiseManagerPage.tsx` | max-w-5xl | -> max-w-7xl |
-| 9 | `communication-pro/social/OverviewPage.tsx` | max-w-4xl, kein mx-auto | -> max-w-7xl mx-auto px-4 py-6 md:px-6 |
-| 10 | `communication-pro/social/AuditPage.tsx` | max-w-3xl (2x) | -> max-w-7xl mx-auto px-4 py-6 md:px-6 |
-| 11 | `leads/SelfieAdsPlanen.tsx` | max-w-4xl | -> max-w-7xl |
-| 12 | `leads/SelfieAdsSummary.tsx` | max-w-3xl | -> max-w-7xl |
-| 13 | `akquise-manager/ObjekteingangDetail.tsx` | p-6 (kein max-w) | -> max-w-7xl mx-auto px-4 py-6 md:px-6 |
-| 14 | `finanzierung/AnfrageDetailPage.tsx` | space-y-6 (kein max-w) | -> max-w-7xl mx-auto px-4 py-6 md:px-6 |
-| 15 | `miety/MietyHomeDossier.tsx` | h-full flex (kein max-w) | -> max-w-7xl mx-auto wrappen |
+## Konkrete Probleme
 
-### B) Seiten mit korrekter Breite (max-w-7xl) -- keine Aenderung noetig
+### 1. Input-Komponente: Zu gross und zu rund
+**Datei:** `src/components/ui/input.tsx`
+- `h-10` (40px) -- zu hoch fuer tabellarische Eingabe
+- `rounded-2xl` -- viel zu rund, wirkt wie ein Suchfeld statt Formularfeld
+- `text-base` auf Mobile, `text-sm` ab `md:` -- inkonsistent
+- `bg-muted/60` mit `backdrop-blur-sm` -- zu viel visuelles Gewicht
+- `shadow-[inset_0_2px_4px]` -- unnoetig bei tabellarischem Layout
+- **Loesung:** `h-8`, `rounded-md`, `text-sm` durchgehend, schlankerer Stil
 
-| # | Datei | Status |
+### 2. Select-Komponente: Zu gross und zu rund
+**Datei:** `src/components/ui/select.tsx`
+- `h-10`, `rounded-2xl` -- gleiche Probleme wie Input
+- **Loesung:** `h-8`, `rounded-md`, passend zum neuen Input
+
+### 3. Textarea-Komponente: Anderer Stil als Input
+**Datei:** `src/components/ui/textarea.tsx`
+- `rounded-md`, `border border-input`, `bg-background` -- komplett anderer Stil als Input
+- **Loesung:** Angleichen an neuen Input-Stil
+
+### 4. MOD-07 Selbstauskunft (SelbstauskunftFormV2 + ApplicantPersonFields): Volle Eingabefelder
+**Dateien:**
+- `src/components/finanzierung/SelbstauskunftFormV2.tsx`
+- `src/components/finanzierung/ApplicantPersonFields.tsx`
+- Verwendet `grid-cols-4 gap-4` mit Label-ueber-Input
+- Grosse Sektions-Header mit Icons und Nummern-Kreise
+- **Loesung:** Umstellen auf tabellarisches Pattern (Table mit Label | Wert Zeilen)
+
+### 5. MOD-07 Finanzierungsanfrage (AnfrageFormV2.tsx): Volle Eingabefelder
+**Datei:** `src/components/finanzierung/AnfrageFormV2.tsx`
+- Eigene `FormField`, `CurrencyInput`, `PercentInput` Komponenten
+- Sektions-Header mit Buchstaben-Badges (A, B, C, D)
+- `max-w-4xl` -- weicht von `max-w-7xl` Standard ab
+- **Loesung:** Tabellarisch umstellen, max-w-7xl
+
+### 6. Kontakte-Dialog (KontakteTab.tsx): Verteilte Felder im Dialog
+**Datei:** `src/pages/portal/office/KontakteTab.tsx`
+- `ContactFormFields` nutzt `Label + Input` mit `space-y-2` und `grid-cols-2 gap-4`
+- Sektions-Header `h4 text-sm`
+- Im Drawer und Create-Dialog verwendet
+- **Bewertung:** Akzeptabel fuer Dialoge, aber Drawer-Bearbeitung koennte tabellarischer sein
+
+### 7. Stammdaten ProfilTab: Widget-Karten mit Eingaben
+**Datei:** `src/pages/portal/stammdaten/ProfilTab.tsx`
+- Nutzt `ProfileWidget` Cards mit `FormSection/FormRow/FormInput`
+- `grid-cols-2` Layout in Cards
+- **Bewertung:** Akzeptabel -- Widget-Karten-Ansatz passt zum Profil-Kontext
+
+### 8. ProjekteDashboard: Dialog-Eingabe
+**Datei:** `src/pages/portal/projekte/ProjekteDashboard.tsx`
+- `grid gap-4 md:grid-cols-2` mit `Label + Input` in Dialogen
+- **Bewertung:** Akzeptabel -- Dialoge sind weniger kritisch
+
+## Aenderungsplan
+
+### Schritt 1: UI-Komponenten schlanker machen (3 Dateien)
+
+**1a. Input.tsx** -- Schlanker, tabellarischer
+- Von: `h-10 rounded-2xl text-base bg-muted/60 shadow-[inset...]`
+- Zu: `h-8 rounded-md text-sm bg-muted/40 border border-border/50`
+- Entfernung des inset-shadows und backdrop-blur
+
+**1b. Select.tsx (SelectTrigger)** -- Angleichen an Input
+- Von: `h-10 rounded-2xl bg-muted/60 backdrop-blur-sm`
+- Zu: `h-8 rounded-md bg-muted/40 border border-border/50`
+
+**1c. Textarea.tsx** -- Angleichen an Input
+- Von: `rounded-md border border-input bg-background`
+- Zu: `rounded-md bg-muted/40 border border-border/50`
+
+### Schritt 2: MOD-07 Selbstauskunft tabellarisch umbauen (2 Dateien)
+
+**2a. ApplicantPersonFields.tsx** -- Kern-Refaktor
+- Umstellung von `grid-cols-4 gap-4` mit einzelnen `FormField > Label > Input`
+- Zu: `Table > TableBody` mit `TableRow > TableCell(label) | TableCell(input)`
+- Jede Sektion (Person, Employment, Bank, Income, Expenses, Assets) wird eine kompakte Tabelle
+- Labels links (`w-[180px]`, `text-xs`, `text-muted-foreground`, `border-r`)
+- Werte rechts (`text-sm`, Input mit `h-6 border-0 bg-transparent`)
+- Pattern identisch zu FMFallDetail.tsx `TR`-Funktion
+
+**2b. SelbstauskunftFormV2.tsx** -- Layout vereinfachen
+- Sektions-Header: Nummern-Kreise bleiben, aber kleiner (`w-7 h-7` statt `w-10 h-10`)
+- `Card > CardContent` bleibt, aber innen tabellarisch statt Grid
+- Abstaende reduzieren: `space-y-4` statt `space-y-8`
+
+### Schritt 3: MOD-07 AnfrageFormV2 tabellarisch umbauen (1 Datei)
+
+**3a. AnfrageFormV2.tsx**
+- `max-w-4xl` zu `max-w-7xl`
+- Sektionen (Vorhaben, Objektdaten, Kosten, Finanzierungsplan) als Tabellen
+- SectionHeader bleibt, aber kompakter
+- FormField/CurrencyInput/PercentInput intern auf Table-Zeilen umstellen
+
+### Schritt 4: Kontakt-Bearbeitung im Drawer verbessern (1 Datei)
+
+**4a. KontakteTab.tsx -- ContactFormFields**
+- Drawer-Ansicht: Tabellarisches Layout (Table mit Label | Input)
+- Dialog-Ansicht: Kann bleiben (Erstellen-Dialog ist weniger kritisch)
+
+### Schritt 5: FormSection-Shared-Komponente aktualisieren (1 Datei)
+
+**5a. FormSection.tsx**
+- `FormSection.title`: von `text-lg` zu `text-sm font-semibold uppercase`
+- `FormRow`: Beibehalten fuer Stellen, wo Grid-Layout passend ist (Profil, Dialoge)
+
+## Zusammenfassung betroffene Dateien
+
+| # | Datei | Art der Aenderung |
 |---|---|---|
-| 1 | `office/EmailTab.tsx` | OK |
-| 2 | `office/BriefTab.tsx` | OK |
-| 3 | `office/KontakteTab.tsx` | OK |
-| 4 | `office/KalenderTab.tsx` | OK |
-| 5 | `office/WhatsAppTab.tsx` | OK |
-| 6 | `office/WidgetsTab.tsx` | OK (via TileShell) |
-| 7 | `dms/StorageTab.tsx` | OK |
-| 8 | `dms/SortierenTab.tsx` | OK |
-| 9 | `dms/EinstellungenTab.tsx` | OK |
-| 10 | `dms/PosteingangTab.tsx` | OK |
-| 11 | `msv/ObjekteTab.tsx` | OK |
-| 12 | `msv/MieteingangTab.tsx` | OK |
-| 13 | `msv/VermietungTab.tsx` | OK |
-| 14 | `msv/EinstellungenTab.tsx` | OK |
-| 15 | `stammdaten/ProfilTab.tsx` | OK |
-| 16 | `stammdaten/SicherheitTab.tsx` | OK |
-| 17 | `stammdaten/VertraegeTab.tsx` | OK |
-| 18 | `stammdaten/AbrechnungTab.tsx` | OK |
-| 19 | `immobilien/KontexteTab.tsx` | OK |
-| 20 | `immobilien/PortfolioTab.tsx` | OK (Ausnahme: breite Tabellen) |
-| 21 | `verkauf/ObjekteTab.tsx` | OK |
-| 22 | `verkauf/AnfragenTab.tsx` | OK |
-| 23 | `verkauf/VorgaengeTab.tsx` | OK |
-| 24 | `verkauf/ReportingTab.tsx` | OK |
-| 25 | `vertriebspartner/KatalogTab.tsx` | OK |
-| 26 | `vertriebspartner/NetworkTab.tsx` | OK |
-| 27 | `vertriebspartner/KundenTab.tsx` | OK |
-| 28 | `vertriebspartner/BeratungTab.tsx` | OK (Investment-Engine-aehnlich) |
-| 29 | `projekte/ProjekteDashboard.tsx` | OK |
-| 30 | `projekte/KontexteTab.tsx` | OK |
-| 31 | `projekte/MarketingTab.tsx` | OK |
-| 32 | `projekte/VertriebTab.tsx` | OK |
-| 33 | `projekte/LandingPageTab.tsx` | OK |
-| 34 | `projekte/PortfolioTab.tsx` | OK (Ausnahme: Rechner) |
-| 35 | `finanzierung/AnfrageTab.tsx` | OK |
-| 36 | `finanzierung/StatusTab.tsx` | OK |
-| 37 | `finanzierung/SelbstauskunftTab.tsx` | OK (delegiert an Komponente) |
-| 38 | `finanzierung/DokumenteTab.tsx` | OK (delegiert an Komponente) |
-| 39 | `photovoltaik/AnlagenTab.tsx` | OK |
-| 40 | `photovoltaik/MonitoringTab.tsx` | OK |
-| 41 | `photovoltaik/DokumenteTab.tsx` | OK |
-| 42 | `photovoltaik/EinstellungenTab.tsx` | OK |
-| 43 | `leads/SelfieAdsStudio.tsx` | OK (via PageShell) |
-| 44 | `leads/SelfieAdsKampagnen.tsx` | OK |
-| 45 | `leads/SelfieAdsPerformance.tsx` | OK |
-| 46 | `leads/SelfieAdsAbrechnung.tsx` | OK |
-| 47 | `communication-pro/SerienEmailsPage.tsx` | OK |
-| 48 | `communication-pro/social/AssetsPage.tsx` | OK |
-| 49 | `communication-pro/social/CreatePage.tsx` | OK |
-| 50 | `communication-pro/social/InboundPage.tsx` | OK |
-| 51 | `communication-pro/recherche/ResearchTab.tsx` | OK (via Card-Wrapper) |
-| 52 | `MietyPortalPage.tsx` (TileShell) | OK |
-| 53 | `ServicesPage.tsx` | OK |
-| 54 | `akquise-manager/ObjekteingangList.tsx` | OK |
-| 55 | `CarsPage.tsx` (4 Sub-Komponenten) | OK |
-| 56 | `FortbildungPage.tsx` | OK (PageShell) |
-| 57 | `FinanzanalysePage.tsx` | OK (ModuleTilePage) |
-| 58 | `stub/ModuleStubPage.tsx` | OK |
+| 1 | `src/components/ui/input.tsx` | h-10 -> h-8, rounded-2xl -> rounded-md, text-base -> text-sm |
+| 2 | `src/components/ui/select.tsx` | SelectTrigger: h-10 -> h-8, rounded-2xl -> rounded-md |
+| 3 | `src/components/ui/textarea.tsx` | Stil angleichen an neuen Input |
+| 4 | `src/components/finanzierung/ApplicantPersonFields.tsx` | Grid -> Tabellarisch (Table/TR-Pattern) |
+| 5 | `src/components/finanzierung/SelbstauskunftFormV2.tsx` | Layout kompakter, Sektions-Header kleiner |
+| 6 | `src/components/finanzierung/AnfrageFormV2.tsx` | max-w-4xl -> max-w-7xl, Formularfelder tabellarisch |
+| 7 | `src/pages/portal/office/KontakteTab.tsx` | Drawer-Ansicht tabellarisch |
+| 8 | `src/components/shared/FormSection.tsx` | Title-Groesse reduzieren |
 
-### C) Shared Component: PageShell muss zurueckgesetzt werden
+## Keine Aenderung bei diesen Seiten (bereits gut)
 
-`PageShell.tsx` wurde im letzten CI-Abgleich auf `max-w-5xl` gesetzt. Das muss zurueck auf `max-w-7xl`, da es jetzt von mehreren Modulen genutzt wird und der Standard max-w-7xl ist.
+- FMFallDetail.tsx Selbstauskunft-Tab (Bank-Tabellen-Pattern -- Referenz)
+- DataTable-basierte Ansichten (ObjekteTab, AnfragenTab, etc.)
+- ProfilTab/Stammdaten (Widget-Cards sind fuer Profil-Editing akzeptabel)
+- Dialoge generell (Erstellen-Formulare in Dialogen sind weniger kritisch)
 
-**Aenderung:** `max-w-5xl` -> `max-w-7xl` in `PageShell.tsx`
+## Reihenfolge
 
-### D) Shared Component: ModuleTilePage
+1. **Schritt 1** (UI-Komponenten) -- betrifft das gesamte System, sofortiger Impact
+2. **Schritt 2** (MOD-07 Selbstauskunft) -- groesstes Formular, hoechste Prioritaet
+3. **Schritt 3** (MOD-07 Anfrage) -- Finanzierungsformular
+4. **Schritt 4+5** (Kontakte + FormSection) -- Feinschliff
 
-`ModuleTilePage.tsx` nutzt `max-w-7xl` -- korrekt, keine Aenderung.
+## Keine DB-Aenderungen noetig
 
----
-
-## Sinnlose / Tote Kacheln und Elemente
-
-| # | Datei | Problem | Empfehlung |
-|---|---|---|---|
-| 1 | `leads/SelfieAdsStudio.tsx` | Hardcoded Demo-Daten (demoKampagnen, demoLeads) die nie durch echte Daten ersetzt werden | Durch Empty-States ersetzen |
-| 2 | `leads/SelfieAdsPerformance.tsx` | Komplett hardcoded Charts und Statistiken (leadsOverTime, regionData) | Durch Empty-State mit Erklaerung ersetzen |
-| 3 | `leads/SelfieAdsAbrechnung.tsx` | Hardcoded demoPayments, keine DB-Anbindung | Durch Empty-State ersetzen |
-| 4 | `leads/SelfieAdsKampagnen.tsx` | Hardcoded Kampagnen-Daten | Durch Empty-State ersetzen |
-| 5 | `FinanzanalysePage.tsx` | 4 Stub-Tiles (Dashboard, Berichte, Szenarien, Einstellungen) -- alle zeigen nur "Keine Daten" mit console.log onClick | Entweder entfernen oder als "Coming Soon" kennzeichnen |
-
----
-
-## Nicht-funktionale Wizards
-
-| # | Datei | Problem | Empfehlung |
-|---|---|---|---|
-| 1 | `leads/SelfieAdsPlanen.tsx` | Wizard speichert nur in sessionStorage, kein DB-Persist, "Generieren" ist ein simulierter Timeout | Als Showcase markieren, kein echter Workflow |
-
----
-
-## Zusammenfassung der Aenderungen
-
-**15 Dateien brauchen Breiten-Korrektur:**
-- 6x PageShell-Nutzer (FM-Module + BewertungTab) -- werden automatisch durch PageShell-Fix behoben
-- 2x direkte max-w-5xl (SanierungTab, AkquiseManagerPage)
-- 4x zu schmale Breite (OverviewPage, AuditPage, SelfieAdsPlanen, SelfieAdsSummary)
-- 3x fehlende max-w Begrenzung (ObjekteingangDetail, AnfrageDetailPage, MietyHomeDossier)
-
-**1 Shared Component:**
-- PageShell.tsx: max-w-5xl -> max-w-7xl
-
-**5 Seiten mit toten Demo-Daten** die durch Empty-States ersetzt werden sollten.
-
-**1 nicht-funktionaler Wizard** (SelfieAdsPlanen) der nur sessionStorage nutzt.
-
-### Technische Umsetzung
-
-Schritt 1: `PageShell.tsx` auf `max-w-7xl` zuruecksetzen (behebt 6 Dateien automatisch)
-
-Schritt 2: Direkte Breiten-Korrekturen in den 9 verbleibenden Dateien
-
-Schritt 3: Demo-Daten in Leads-Modul durch Empty-States ersetzen (optional, separater Schritt)
+Alle Aenderungen sind rein visuell (CSS/Tailwind-Klassen und Layout-Struktur).
