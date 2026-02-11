@@ -1,75 +1,109 @@
 
+# E-Mail bearbeitbar machen, Angebots-Vergleichsmanager bauen
 
-# E-Mail-Adressen aus Handwerker-Websites extrahieren
+## Problem 1: "Bearbeiten"-Button zeigt nicht den E-Mail-Text
 
-## Ausgangslage
+Der Edit-Modus in `TenderDraftPanel.tsx` zeigt nur "Angebotsfrist" und "Zusaetzliche Hinweise", aber nicht den eigentlichen E-Mail-Text. Der Nutzer erwartet, den kompletten E-Mail-Body bearbeiten zu koennen.
 
-Google Places API liefert **keine E-Mail-Adressen**. Das ist eine bekannte Einschraenkung. Google Places liefert aber die **Website-URL** — und auf den Websites der Handwerker steht fast immer eine E-Mail-Adresse im Impressum oder Kontaktbereich.
+**Loesung:** Im Edit-Modus den gesamten E-Mail-Body in einer grossen Textarea anzeigen, die bearbeitbar ist. Dazu einen "Speichern"-Button, der die Aenderungen uebernimmt.
 
-## Loesung: Automatisches Website-Scraping per Edge Function
+### Datei: `TenderDraftPanel.tsx`
 
-Wir erstellen eine schlanke Edge Function, die:
-1. Die Website-URL entgegennimmt
-2. Das HTML abruft (einfacher `fetch`, kein Firecrawl noetig)
-3. E-Mail-Adressen per Regex extrahiert
-4. Die beste E-Mail zurueckgibt
+- Neuer State: `editableBody` (string), initialisiert mit `getEmailBody()` wenn Edit-Modus aktiviert wird
+- Neuer State: `editableSubject` (string), initialisiert mit `getSubject()`
+- Edit-Modus zeigt: Subject-Input + Body-Textarea + Deadline + Custom-Hinweise
+- "Speichern"-Button setzt `isPreviewMode = true` und uebernimmt die editierten Werte
+- `handleSendAll` nutzt `editableBody` / `editableSubject` falls vorhanden, sonst die generierten Werte
 
-**Keine zusaetzlichen API-Keys noetig** — nur ein normaler HTTP-Request.
+## Problem 2: "Angebote vergleichen" nicht klickbar
 
-## Technische Umsetzung
+Der Step ist nur klickbar wenn `idx <= activeStep`. Da `activeStep` aus dem DB-Status kommt und der UI-Workflow diesen Status nie auf `offers_received` setzt, bleibt Step 3 immer gesperrt.
 
-### Neue Datei: `supabase/functions/sot-extract-email/index.ts`
+**Loesung:** Die Navigation-Logik aendern: Alle Steps bis einschliesslich `activeStep + 1` sind klickbar (der naechste Step ist immer erreichbar). Zusaetzlich: Step 3 wird immer erreichbar sobald Ausschreibungen versendet wurden (Step 2 abgeschlossen).
 
-Edge Function die:
-- URL empfaengt
-- HTML der Seite abruft (mit Timeout, User-Agent)
-- Regex-Pattern fuer E-Mail-Adressen anwendet (`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
-- Gaengige False-Positives filtert (z.B. `wix.com`, `example.com`, `sentry.io`)
-- Priorisierung: `info@`, `kontakt@`, `office@` bevorzugt
-- Array aller gefundenen E-Mails + beste E-Mail zurueckgibt
+### Datei: `SanierungTab.tsx`
 
-### Aenderung: `ProviderSearchPanel.tsx`
+- `isReachable` Logik aendern: `idx <= activeStep + 1` oder per viewStep-Tracking
+- Einfacher: Alle Steps immer klickbar machen (`isReachable = true`), da der Stepper rein zur Navigation dient und keine harte Sperre braucht
 
-**Nach der Google-Places-Suche automatisch E-Mails anreichern:**
+## Problem 3: Angebots-Vergleichsmanager (Step 3) ist nur Placeholder
 
-1. Fuer jeden Treffer mit `website`-URL: Edge Function `sot-extract-email` aufrufen
-2. Ergebnisse asynchron in die Suchergebnisse einpflegen (E-Mail-Feld befuellen)
-3. Visuell: E-Mail-Adresse unter der Telefonnummer anzeigen (Mail-Icon)
-4. Falls keine E-Mail gefunden: Hinweis "Keine E-Mail gefunden — manuell eingeben" mit kleinem Eingabefeld
-5. Beim Auswaehlen eines Providers wird die E-Mail in `SelectedProvider.email` uebernommen
+Hier braucht es eine echte Komponente: einen Angebotsvergleichs-Manager mit Upload, KI-Auswertung und Vergleichstabelle.
 
-**UI-Erweiterung der Suchergebnis-Karten:**
-- E-Mail-Adresse anzeigen (oder "wird gesucht..." waehrend des Scrapings)
-- Manuelles E-Mail-Eingabefeld als Fallback
-- Provider ohne E-Mail koennen trotzdem ausgewaehlt werden, aber mit Warnung
+### Neue Datei: `src/components/portal/immobilien/sanierung/offers/OfferComparisonPanel.tsx`
 
-### Aenderung: `PlaceResult`-Interface erweitern
+**Funktionen:**
+
+1. **Upload-Bereich:**
+   - Drag-and-Drop Zone fuer PDF/Bilder/Excel (nutzt vorhandene `FileUploader`-Komponente)
+   - Mehrere Dateien gleichzeitig
+   - Upload in Lovable Cloud Storage (Bucket: `tenant-documents`, Pfad: `{tenantId}/sanierung/{caseId}/offers/`)
+
+2. **KI-Extraktion:**
+   - Nach Upload: Edge Function `sot-extract-offer` aufrufen
+   - KI liest das Angebot aus (Positionen, Preise, Konditionen, Anbieter-Name)
+   - Ergebnis wird in einer neuen DB-Tabelle `service_case_offers` gespeichert
+
+3. **Vergleichstabelle:**
+   - Alle eingegangenen Angebote nebeneinander
+   - Zeilen: Positionen aus dem LV
+   - Spalten: Je ein Anbieter
+   - Zellen: Preis pro Position
+   - Summenzeile unten
+   - Guenstigstes Angebot farblich hervorgehoben
+
+4. **Vergabe-Aktion:**
+   - Button "Zuschlag erteilen" pro Anbieter
+   - Setzt Status auf `awarded`
+
+### Neue DB-Tabelle: `service_case_offers`
 
 ```text
-PlaceResult {
-  ...bestehende Felder...
-  email?: string;          // NEU: extrahierte E-Mail
-  emailLoading?: boolean;  // NEU: Scraping laeuft noch
-}
+id              UUID PRIMARY KEY
+service_case_id UUID REFERENCES service_cases(id)
+tenant_id       UUID
+provider_name   TEXT
+provider_email  TEXT
+file_path       TEXT (Storage-Pfad)
+file_name       TEXT
+total_net       INTEGER (Cent)
+total_gross     INTEGER (Cent)
+positions       JSONB (Array von {description, quantity, unit, unit_price, total})
+conditions      TEXT
+valid_until     DATE
+extracted_at    TIMESTAMPTZ
+status          TEXT DEFAULT 'received' (received, accepted, rejected)
+created_at      TIMESTAMPTZ DEFAULT now()
 ```
 
-## Ablauf fuer den Nutzer
+RLS: Tenant-basiert wie andere service_case-Tabellen.
 
-```text
-1. Panel oeffnet sich → Suche laeuft automatisch (bereits implementiert)
-2. Google Places liefert Ergebnisse mit Website-URLs
-3. Im Hintergrund: fuer jedes Ergebnis mit Website wird die E-Mail extrahiert
-4. Ergebnisse erscheinen mit E-Mail (oder "wird gesucht...")
-5. Nutzer waehlt Dienstleister aus → E-Mail wird uebernommen
-6. Falls keine E-Mail gefunden: manuelles Eingabefeld pro Ergebnis
-```
+### Neue Edge Function: `supabase/functions/sot-extract-offer/index.ts`
+
+- Empfaengt: `file_url` oder `file_path` + `service_case_id`
+- Laedt das Dokument aus Storage
+- Sendet es an Lovable AI (Gemini 2.5 Flash) mit Prompt:
+  - "Extrahiere aus diesem Angebot: Anbietername, Positionen mit Preisen, Gesamtsumme netto/brutto, Konditionen, Gueltigkeitsdatum"
+- Speichert das Ergebnis in `service_case_offers`
+- Gibt die extrahierten Daten zurueck
+
+### Neue Datei: `src/components/portal/immobilien/sanierung/offers/index.ts`
+
+Export der OfferComparisonPanel-Komponente.
+
+### Aenderung: `SanierungTab.tsx`
+
+- Import `OfferComparisonPanel`
+- Step 3 (Zeilen 302-308): Placeholder ersetzen durch `OfferComparisonPanel` mit `serviceCase`-Prop
+- Alle Steps klickbar machen
 
 ## Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/sot-extract-email/index.ts` | NEU: Website-Scraping fuer E-Mail-Extraktion |
-| `ProviderSearchPanel.tsx` | E-Mail-Anreicherung nach Suche, UI-Erweiterung |
-
-Keine neuen Dependencies, keine DB-Aenderungen, kein Firecrawl noetig.
-
+| `TenderDraftPanel.tsx` | E-Mail-Body editierbar, Speichern-Button |
+| `SanierungTab.tsx` | Steps immer klickbar, Step 3 = OfferComparisonPanel |
+| `offers/OfferComparisonPanel.tsx` | NEU: Upload, KI-Extraktion, Vergleichstabelle |
+| `offers/index.ts` | NEU: Export |
+| `sot-extract-offer/index.ts` | NEU: KI-basierte Angebotsauswertung |
+| DB-Migration | NEU: `service_case_offers` Tabelle + RLS |
