@@ -6,7 +6,7 @@ import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { Inbox, User, GitBranch, Megaphone, Plus } from 'lucide-react';
+import { Inbox, User, GitBranch, Megaphone, Plus, ArrowRight } from 'lucide-react';
 
 // Selfie Ads Studio lazy imports
 const SelfieAdsStudio = lazy(() => import('@/pages/portal/leads/SelfieAdsStudio'));
@@ -25,18 +25,23 @@ function LeadsInbox() {
       icon={Inbox}
       moduleBase="leads"
       status="empty"
-      emptyTitle="Keine neuen Leads"
-      emptyDescription="Neue Leads aus Kampagnen und Anfragen erscheinen hier."
+      emptyTitle="Ihre Lead-Inbox ist bereit"
+      emptyDescription="Hier erscheinen automatisch neue Leads aus Kampagnen, Webformularen und Partner-Zuweisungen."
       emptyIcon={Inbox}
       primaryAction={{
-        label: 'Lead manuell anlegen',
-        icon: Plus,
-        onClick: () => console.log('Lead anlegen'),
+        label: 'Selfie Ads Studio öffnen',
+        icon: Megaphone,
+        href: '/portal/leads/selfie-ads',
       }}
       secondaryAction={{
-        label: "So funktioniert's",
-        href: '/portal/leads',
+        label: 'Zur Werbung',
+        href: '/portal/leads/werbung',
       }}
+      quickSteps={[
+        'Erstellen Sie eine Werbekampagne oder teilen Sie Ihr Kontaktformular.',
+        'Eingehende Leads erscheinen automatisch hier.',
+        'Übernehmen und qualifizieren Sie die besten Kontakte.',
+      ]}
     />
   );
 }
@@ -50,13 +55,19 @@ function MeineLeads() {
       icon={User}
       moduleBase="leads"
       status="empty"
-      emptyTitle="Keine zugewiesenen Leads"
-      emptyDescription="Übernehmen Sie Leads aus der Inbox, um sie hier zu sehen."
+      emptyTitle="Noch keine Leads übernommen"
+      emptyDescription="Übernehmen Sie Leads aus der Inbox, um sie persönlich zu bearbeiten."
       emptyIcon={User}
-      secondaryAction={{
+      primaryAction={{
         label: 'Zur Inbox',
+        icon: ArrowRight,
         href: '/portal/leads/inbox',
       }}
+      quickSteps={[
+        'Prüfen Sie eingehende Leads in der Inbox.',
+        'Übernehmen Sie passende Leads.',
+        'Führen Sie sie durch Ihre Pipeline zum Abschluss.',
+      ]}
     />
   );
 }
@@ -70,9 +81,19 @@ function LeadsPipeline() {
       icon={GitBranch}
       moduleBase="leads"
       status="empty"
-      emptyTitle="Pipeline leer"
-      emptyDescription="Qualifizierte Leads werden hier nach Status gruppiert."
+      emptyTitle="Pipeline starten"
+      emptyDescription="Qualifizierte Leads durchlaufen hier Ihre Verkaufsphasen von der Erstansprache bis zum Abschluss."
       emptyIcon={GitBranch}
+      primaryAction={{
+        label: 'Zur Inbox',
+        icon: ArrowRight,
+        href: '/portal/leads/inbox',
+      }}
+      quickSteps={[
+        'Übernehmen Sie Leads aus der Inbox.',
+        'Setzen Sie den Status je nach Gesprächsfortschritt.',
+        'Verfolgen Sie die Conversion pro Phase.',
+      ]}
     />
   );
 }
@@ -86,14 +107,19 @@ function LeadsWerbung() {
       icon={Megaphone}
       moduleBase="leads"
       status="empty"
-      emptyTitle="Keine Kampagnen"
-      emptyDescription="Erstellen Sie Werbekampagnen zur Lead-Generierung."
+      emptyTitle="Werbung & Kampagnen"
+      emptyDescription="Beauftragen Sie Selfie Ads Kampagnen oder verwalten Sie bestehende Lead-Quellen."
       emptyIcon={Megaphone}
       primaryAction={{
-        label: 'Kampagne erstellen',
-        icon: Plus,
-        onClick: () => console.log('Kampagne erstellen'),
+        label: 'Selfie Ads Studio öffnen',
+        icon: Megaphone,
+        href: '/portal/leads/selfie-ads',
       }}
+      quickSteps={[
+        'Planen Sie Ihre erste Kampagne im Selfie Ads Studio.',
+        'Kaufy veröffentlicht Ihre Anzeigen auf Social Media.',
+        'Leads erscheinen automatisch in Ihrer Inbox.',
+      ]}
     />
   );
 }

@@ -41,6 +41,9 @@ interface ModuleTilePageProps {
     href: string;
   };
   
+  // Custom quick steps (overrides default)
+  quickSteps?: string[];
+  
   // Error handling
   onRetry?: () => void;
   
@@ -63,6 +66,7 @@ export function ModuleTilePage({
   emptyIcon,
   primaryAction,
   secondaryAction,
+  quickSteps,
   onRetry,
   children,
   badge,
@@ -153,21 +157,19 @@ export function ModuleTilePage({
         {/* Quick Tips Card */}
         <Card className="bg-muted/50">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Erste Schritte</CardTitle>
+            <CardTitle className="text-sm font-medium">Was passiert als Nächstes?</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex items-start gap-2 text-sm">
-              <div className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">1</div>
-              <span className="text-muted-foreground">Erkunden Sie die "So funktioniert's" Seite für eine Einführung.</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm">
-              <div className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">2</div>
-              <span className="text-muted-foreground">Legen Sie Ihren ersten Eintrag an.</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm">
-              <div className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">3</div>
-              <span className="text-muted-foreground">Nutzen Sie die intelligenten Automatisierungen.</span>
-            </div>
+            {(quickSteps || [
+              'Erkunden Sie die Funktionen für eine Einführung.',
+              'Legen Sie Ihren ersten Eintrag an.',
+              'Nutzen Sie die intelligenten Automatisierungen.',
+            ]).map((step, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <div className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">{i + 1}</div>
+                <span className="text-muted-foreground">{step}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
