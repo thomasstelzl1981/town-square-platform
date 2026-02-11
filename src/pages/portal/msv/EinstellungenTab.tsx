@@ -156,7 +156,7 @@ const EinstellungenTab = () => {
             <div className="flex items-center gap-2">
               <Coins className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="font-medium">Credits-Verbrauch</p>
+                
                 
               </div>
             </div>
