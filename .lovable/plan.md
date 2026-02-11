@@ -1,78 +1,102 @@
 
+# UX/UI-Review: MOD-14 Social — Analyse und Verbesserungsplan
 
-# Fix: Listing-Lifecycle bei Deaktivierung/Reaktivierung
+## Gesamteindruck
 
-## Problem
+Das Social-Modul hat eine solide technische Basis mit 9 Sub-Pages und einer funktionierenden Sidebar-Navigation. Allerdings fehlt es an mehreren Stellen an **Erklaerungen fuer den Nutzer**, einer **klaren Prozessfuehrung** und **visueller Konsistenz**. Der Nutzer wird in ein komplexes System geworfen, ohne zu verstehen, in welcher Reihenfolge er vorgehen soll und was jeder Schritt bewirkt.
 
-Der aktuelle Deaktivierungsprozess setzt Listings auf `withdrawn` und Publikationen auf `paused`. Bei einer erneuten Aktivierung sucht der Code aber nur nach Listings mit Status `draft`, `active` oder `reserved` — das `withdrawn` Listing wird nicht gefunden, und es wird ein **neues** erstellt. So entstehen verwaiste Datensaetze (genau das Problem, das wir gerade manuell bereinigen mussten).
+---
 
-```text
-Aktivierung:    Listing A erstellt (active) + Publikationen (active)
-Deaktivierung:  Listing A → withdrawn, Publikationen → paused
-Reaktivierung:  Listing A wird NICHT gefunden → Listing B erstellt (active)
-                Listing A bleibt als Datenmuell liegen
-```
+## Gefundene Probleme
 
-## Loesung: Hard-Delete bei Deaktivierung
+### 1. Fehlende Onboarding-Erklaerung auf der Overview-Seite
 
-Bei Deaktivierung werden Listings und Publikationen **komplett geloescht** statt nur auf `withdrawn`/`paused` gesetzt. Bei Reaktivierung wird dann immer ein frisches Listing mit frischen Publikationen erstellt.
+**Problem:** Die Overview-Seite zeigt Setup-Fortschritt, Plattform-Karten und Schnellzugriffe — aber erklaert nicht, **was Social ueberhaupt ist** und **wie der Workflow funktioniert**. Ein neuer Nutzer sieht "Baue deine Personal Brand auf" und hat keine Ahnung, was als naechstes passieren soll.
 
-```text
-Aktivierung:    Listing A erstellt (active) + Publikationen (active)
-Deaktivierung:  Listing A + Publikationen GELOESCHT
-Reaktivierung:  Listing B erstellt (active) + Publikationen (active) — sauber
-```
+**Loesung:** Eine **Workflow-Visualisierung** (Stepper/Timeline) einfuegen, die den Golden Path erklaert:
+1. Audit (Persoenlichkeit erfassen)
+2. Themen definieren (Knowledge Base)
+3. Inspiration sammeln
+4. Assets hochladen
+5. Content erstellen
+6. Kalender planen
+7. Manuell posten und Kennzahlen erfassen
 
-## Aenderungen
+### 2. "Plattform verbinden" ist irrefuehrend
 
-### 1. `src/components/portfolio/VerkaufsauftragTab.tsx` — `deactivateVerkaufsauftrag()`
+**Problem:** Die Plattform-Karten (LinkedIn, Facebook, Instagram) suggerieren eine **API-Verbindung** (OAuth), speichern aber nur eine Profil-URL in der `social_inspiration_sources`-Tabelle. Der Nutzer denkt, er verbindet seinen Account — es passiert aber nichts ausser einer URL-Speicherung.
 
-**Vorher (Zeilen 431-454):**
-- Listings werden auf `status: 'withdrawn'` gesetzt
-- Publikationen werden auf `status: 'paused'` gesetzt
+**Loesung:**
+- Titel aendern von "Deine Plattformen" zu "Deine Profile"
+- "Verbunden"-Badge ersetzen durch "Profil hinterlegt"
+- Klartext ergaenzen: "Wir publizieren nicht automatisch — du postest manuell und trackst hier deine Ergebnisse."
 
-**Nachher:**
-- Alle `listing_publications` fuer die Property-Listings werden per `DELETE` entfernt
-- Alle `listings` fuer die Property werden per `DELETE` entfernt (nicht nur status-update)
-- Reihenfolge: erst Publikationen loeschen (FK), dann Listings
+### 3. Sidebar-Labels sind unklar
 
-### 2. `src/pages/admin/desks/SalesDesk.tsx` — `handleDeactivateProject()`
+**Problem:** Einige Navigation-Labels sind nicht selbsterklaerend:
+- "Individual Content" — was ist das? (Es sind persoenliche Momente/Erlebnisse)
+- "Audit" — klingt wie eine Pruefung, nicht wie ein kreatives Gespraech
+- "Knowledge Base" — technischer Fachbegriff
 
-Gleiche Anpassung fuer die Zone-1-seitige Deaktivierung:
-- Publikationen per `DELETE` entfernen
-- Listings per `DELETE` entfernen (statt `withdrawn`-Update)
+**Loesung:** Labels anpassen:
+- "Audit" → "Mein Profil" (oder "Persoenlichkeit")
+- "Individual Content" → "Meine Momente"
+- "Knowledge Base" → "Meine Themen"
+- "Ideen & Inspiration" → "Vorbilder"
 
-### 3. `src/components/projekte/SalesApprovalSection.tsx` — `withdrawListingsForProject()`
+### 4. Inkonsistente max-width und Padding
 
-Gleiche Anpassung:
-- Publikationen per `DELETE` entfernen
-- Listings per `DELETE` entfernen
+**Problem:** Die Sub-Pages verwenden unterschiedliche Layouts:
+- OverviewPage: `max-w-7xl mx-auto px-4 py-6 md:px-6`
+- InspirationPage: `p-6 max-w-3xl` (kein mx-auto!)
+- CalendarPage: `p-6 max-w-4xl` (kein mx-auto!)
+- PerformancePage: `p-6 max-w-2xl` (kein mx-auto!)
+- KnowledgePage, AuditPage, InboundPage, AssetsPage, CreatePage: `max-w-7xl mx-auto px-4 py-6 md:px-6`
 
-### 4. Golden Path Update: `src/manifests/goldenPaths/MOD_04.ts`
+**Loesung:** Einheitlich `max-w-7xl mx-auto px-4 py-6 md:px-6` verwenden (gemaess dem bestehenden UX-Standard "manager-module-visual-standard").
 
-Phase 11 (`deactivate_mandate`): Die Completion-Flags anpassen:
-- `listing_withdrawn` aendern zu `listing_deleted` mit `check: 'not_exists'` (kein aktives Listing mehr vorhanden)
-- `publications_paused` aendern zu `publications_deleted` mit `check: 'not_exists'`
+### 5. Kalender-Seite ist auf Mobile unbrauchbar
 
-### 5. `src/goldenpath/contextResolvers.ts`
+**Problem:** Das 7-Spalten-Grid (`grid-cols-7`) bricht auf kleinen Bildschirmen zusammen. Es gibt keine responsive Anpassung.
 
-Neues Flag hinzufuegen:
-- `listing_deleted`: `true` wenn KEIN aktives Listing fuer die Property existiert (Umkehr-Check)
+**Loesung:** Auf Mobile eine Listenansicht (Tagesansicht) statt Grid anbieten.
 
-## Keine strukturellen Aenderungen
+### 6. Kein "Wie geht es weiter?"-Hinweis nach Abschluss einzelner Schritte
 
-- Keine neuen Dateien
-- Keine neuen Hooks oder Edge Functions
-- Keine DB-Migration noetig (nur Loesch-Logik im Frontend)
-- Die Aktivierungslogik (Zeilen 180-325) bleibt unveraendert — sie erstellt ohnehin ein neues Listing wenn keins gefunden wird
+**Problem:** Nach Abschluss des Audits zeigt die Seite die Dimensionswerte, aber der CTA "Weiter zur Knowledge Base" ist leicht zu uebersehen. Gleiches auf anderen Seiten — es fehlt eine klare **naechste Aktion**.
 
-## Betroffene Dateien
+**Loesung:** Auf jeder Sub-Page nach erfolgreichem Abschluss einen prominenten "Naechster Schritt"-Banner einfuegen, der zum naechsten logischen Schritt im Workflow fuehrt.
+
+### 7. Performance-Seite verwendet native `<select>` statt Radix Select
+
+**Problem:** Die Performance-Seite nutzt `<select>` HTML-Elemente statt der projekteigenen `<Select>`-Komponente aus Radix UI. Das bricht die visuelle Konsistenz.
+
+**Loesung:** Native `<select>` durch `<Select>` Radix-Komponente ersetzen.
+
+### 8. Fehlender Hinweis zum manuellen Posting-Workflow
+
+**Problem:** Nirgends wird klar erklaert, dass der Nutzer seinen Content **manuell auf LinkedIn/Instagram/Facebook posten muss** und dann im System als "gepostet" markiert. Der Workflow "Kopieren → Plattform oeffnen → Posten → Zurueckkommen → Als gepostet markieren" fehlt komplett.
+
+**Loesung:** Im Kalender und in der Content-Creation-Seite einen klaren Hinweis-Banner einfuegen:
+"So funktioniert es: Content kopieren → In LinkedIn/Instagram einfuegen → Hier als gepostet markieren"
+
+---
+
+## Aenderungsplan (Dateien)
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/portfolio/VerkaufsauftragTab.tsx` | `deactivateVerkaufsauftrag()`: DELETE statt UPDATE |
-| `src/pages/admin/desks/SalesDesk.tsx` | `handleDeactivateProject()`: DELETE statt UPDATE |
-| `src/components/projekte/SalesApprovalSection.tsx` | `withdrawListingsForProject()`: DELETE statt UPDATE |
-| `src/manifests/goldenPaths/MOD_04.ts` | Phase 11 Completion-Flags anpassen |
-| `src/goldenpath/contextResolvers.ts` | `listing_deleted` Flag ergaenzen |
+| `SocialSidebar.tsx` | Labels umbenennen (Audit → Mein Profil, etc.) |
+| `OverviewPage.tsx` | Workflow-Stepper ergaenzen, "Deine Plattformen" → "Deine Profile", Badge-Text aendern, Erklaertext zum manuellen Posting |
+| `InspirationPage.tsx` | Layout auf `max-w-7xl mx-auto px-4 py-6 md:px-6` vereinheitlichen |
+| `CalendarPage.tsx` | Layout vereinheitlichen, Mobile-Listenansicht ergaenzen, Posting-Workflow-Hinweis |
+| `PerformancePage.tsx` | Layout vereinheitlichen, native `<select>` durch Radix `<Select>` ersetzen |
+| `AuditPage.tsx` | "Naechster Schritt"-Banner prominenter gestalten |
+| `CreatePage.tsx` | Posting-Hinweis ("Content kopieren → posten → markieren") ergaenzen |
+| `InboundPage.tsx` | Keine Aenderung (bereits konsistent) |
+| `AssetsPage.tsx` | Keine Aenderung (bereits konsistent) |
+| `KnowledgePage.tsx` | Keine Aenderung (bereits konsistent) |
 
+## Keine DB-Aenderungen
+
+Alle Aenderungen sind rein im Frontend (UI/UX-Verbesserungen). Keine Migrationen, keine neuen Edge Functions.
