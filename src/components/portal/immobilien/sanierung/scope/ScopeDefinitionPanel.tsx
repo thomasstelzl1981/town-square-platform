@@ -269,7 +269,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         scope_attachments: selectedDocuments as unknown as Record<string, unknown>[],
         scope_status: 'draft',
       });
-      toast.success('Änderungen gespeichert');
+      toast.success('Änderungen gespeichert', { duration: 2000 });
     } catch (error) {
       console.error('Save error:', error);
     }

@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Plus, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList,
-  ChevronDown, ChevronRight, HardHat, CheckCircle2, Circle, Search, FileText, BarChart3
+  ChevronDown, ChevronRight, HardHat, CheckCircle2, Circle, Search, FileText, BarChart3, ArrowLeft, ArrowRight
 } from 'lucide-react';
+import { ProviderSearchPanel, SelectedProvider } from '@/components/portal/immobilien/sanierung/tender';
+import { TenderDraftPanel } from '@/components/portal/immobilien/sanierung/tender';
 import { useServiceCases, useServiceCaseStats, ServiceCaseCategory } from '@/hooks/useServiceCases';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ServiceCaseStatusBadge } from '@/components/portal/immobilien/sanierung/ServiceCaseStatusBadge';
@@ -68,6 +70,7 @@ export function SanierungTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
   const [viewStep, setViewStep] = useState<number | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<Record<string, SelectedProvider[]>>({});
   const { data: cases, isLoading } = useServiceCases();
   const { data: stats } = useServiceCaseStats();
   
@@ -259,17 +262,44 @@ export function SanierungTab() {
                             />
                           )}
                           {(viewStep ?? activeStep) === 1 && (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                              <Search className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                              <p className="font-medium">Dienstleister finden</p>
-                              <p className="text-sm text-muted-foreground mt-1">Suchen Sie passende Handwerker in der Nähe.</p>
-                              <Button className="mt-4" variant="outline">
-                                <Search className="mr-2 h-4 w-4" />
-                                Suche starten
-                              </Button>
+                            <div className="space-y-4">
+                              <ProviderSearchPanel
+                                category={serviceCase.category}
+                                location={serviceCase.property?.city || serviceCase.property?.address || ''}
+                                selectedProviders={selectedProviders[serviceCase.id] || []}
+                                onProvidersChange={(providers) => setSelectedProviders(prev => ({ ...prev, [serviceCase.id]: providers }))}
+                              />
+                              <div className="flex items-center justify-between pt-2">
+                                <Button variant="outline" onClick={() => setViewStep(0)}>
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Zurück zu Leistungsumfang
+                                </Button>
+                                <Button
+                                  onClick={() => setViewStep(2)}
+                                  disabled={!(selectedProviders[serviceCase.id]?.length > 0)}
+                                >
+                                  Weiter zu Ausschreibung
+                                  <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           )}
-                          {(viewStep ?? activeStep) >= 2 && (
+                          {(viewStep ?? activeStep) === 2 && (
+                            <div className="space-y-4">
+                              <TenderDraftPanel
+                                serviceCase={serviceCase}
+                                selectedProviders={selectedProviders[serviceCase.id] || []}
+                                onSendComplete={() => setViewStep(3)}
+                              />
+                              <div className="flex items-center pt-2">
+                                <Button variant="outline" onClick={() => setViewStep(1)}>
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Zurück zu Dienstleister
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {(viewStep ?? activeStep) >= 3 && (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                               <HardHat className="h-10 w-10 text-muted-foreground/40 mb-3" />
                               <p className="font-medium">{INLINE_WORKFLOW_STEPS[(viewStep ?? activeStep)]?.label}</p>
