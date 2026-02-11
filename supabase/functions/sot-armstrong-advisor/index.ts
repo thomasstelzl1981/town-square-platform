@@ -119,7 +119,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08"];
+const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-13"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -145,6 +145,10 @@ const MVP_EXECUTABLE_ACTIONS = [
   // MOD-08 (Investments) - readonly
   "ARM.MOD08.RUN_SIMULATION",
   "ARM.MOD08.ANALYZE_FAVORITE",
+  
+  // MOD-13 (Projekte) - execute_with_confirmation
+  "ARM.MOD13.CREATE_DEV_PROJECT",
+  "ARM.MOD13.EXPLAIN_MODULE",
   
   // Global Actions (available in all modules)
   "ARM.GLOBAL.EXPLAIN_TERM",
@@ -437,6 +441,43 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 1,
     status: "active",
   },
+  // MOD-13
+  {
+    action_code: "ARM.MOD13.CREATE_DEV_PROJECT",
+    title_de: "Bauträgerprojekt anlegen",
+    description_de: "Erstellt ein neues Bauträgerprojekt aus hochgeladenen Dokumenten via KI-Analyse",
+    zones: ["Z2"],
+    module: "MOD-13",
+    risk_level: "high",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["tenant_documents"],
+    data_scopes_write: ["dev_projects", "dev_project_units", "storage_nodes"],
+    side_effects: ["modifies_dev_projects", "creates_storage_tree", "credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 500,
+    credits_estimate: 10,
+    status: "active",
+  },
+  {
+    action_code: "ARM.MOD13.EXPLAIN_MODULE",
+    title_de: "Projekte-Modul erklären",
+    description_de: "Erklärt Funktionsumfang und Golden Path des Projekte-Moduls",
+    zones: ["Z2"],
+    module: "MOD-13",
+    risk_level: "low",
+    execution_mode: "readonly",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["knowledge_base"],
+    data_scopes_write: [],
+    side_effects: [],
+    cost_model: "free",
+    cost_hint_cents: null,
+    credits_estimate: 0,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -458,7 +499,9 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
   const actionKeywords = [
     "berechne", "prüfe", "analysiere", "validiere", "simulation",
     "aufgabe", "erinnerung", "notiz", "reminder", "task", "note",
-    "kpi", "rendite", "cashflow"
+    "kpi", "rendite", "cashflow",
+    "projekt anlegen", "projekt erstellen", "bauträger", "intake", "magic intake",
+    "exposé", "preisliste", "einheiten"
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -547,6 +590,19 @@ function suggestActionsForMessage(
         (lowerMsg.includes("notiz") || lowerMsg.includes("note"))) {
       relevance += 5;
       why = "Erstellt eine Notiz";
+    }
+    
+    if (action.action_code === "ARM.MOD13.CREATE_DEV_PROJECT" && 
+        (lowerMsg.includes("projekt") || lowerMsg.includes("bauträger") || lowerMsg.includes("intake") || 
+         lowerMsg.includes("exposé") || lowerMsg.includes("preisliste") || lowerMsg.includes("einheiten"))) {
+      relevance += 5;
+      why = "Erstellt ein Bauträgerprojekt aus hochgeladenen Dokumenten";
+    }
+    
+    if (action.action_code === "ARM.MOD13.EXPLAIN_MODULE" && 
+        (lowerMsg.includes("projekte") || lowerMsg.includes("modul 13") || lowerMsg.includes("mod-13") || lowerMsg.includes("golden path"))) {
+      relevance += 5;
+      why = "Erklärt das Projekte-Modul";
     }
     
     if (relevance > 0) {
@@ -805,6 +861,95 @@ async function executeAction(
             status: "draft_created",
             message: `${widgetType === "task" ? "Aufgabe" : widgetType === "reminder" ? "Erinnerung" : "Notiz"} wurde als Entwurf erstellt.`,
             params: params,
+          },
+        };
+      }
+
+      case "ARM.MOD13.CREATE_DEV_PROJECT": {
+        // Delegate to sot-project-intake edge function
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        // Get recent uploads from tenant-documents for this user
+        const { data: recentDocs, error: docsError } = await supabase
+          .from("document_metadata")
+          .select("*")
+          .eq("uploaded_by", userContext.user_id)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (docsError) {
+          console.error("[Armstrong] Error fetching recent docs:", docsError);
+        }
+
+        // Call sot-project-intake
+        try {
+          const intakeResponse = await fetch(`${supabaseUrl}/functions/v1/sot-project-intake`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ...params,
+              user_id: userContext.user_id,
+              org_id: userContext.org_id,
+              source: "armstrong",
+              recent_documents: recentDocs || [],
+            }),
+          });
+
+          if (!intakeResponse.ok) {
+            const errorText = await intakeResponse.text();
+            console.error("[Armstrong] Project intake error:", errorText);
+            return { success: false, error: `Projektanlage fehlgeschlagen: ${intakeResponse.status}` };
+          }
+
+          const intakeResult = await intakeResponse.json();
+          
+          return {
+            success: true,
+            output: {
+              project_id: intakeResult.project_id,
+              project_code: intakeResult.project_code,
+              public_id: intakeResult.public_id,
+              units_count: intakeResult.units_count,
+              storage_tree_created: intakeResult.storage_tree_created,
+              message: `Projekt ${intakeResult.project_code || 'neu'} wurde erfolgreich angelegt mit ${intakeResult.units_count || 0} Einheiten.`,
+            },
+          };
+        } catch (fetchErr) {
+          console.error("[Armstrong] Project intake fetch error:", fetchErr);
+          return { success: false, error: "Verbindung zur Projektanlage fehlgeschlagen" };
+        }
+      }
+
+      case "ARM.MOD13.EXPLAIN_MODULE": {
+        return {
+          success: true,
+          output: {
+            title: "Projekte-Modul (MOD-13)",
+            description: "Das Projekte-Modul ermöglicht die vollständige Verwaltung von Bauträgerprojekten.",
+            golden_path: [
+              "1. Dashboard — Projektübersicht und Kacheln",
+              "2. Magic Intake — KI-gestützte Projektanlage aus Exposé + Preisliste",
+              "3. Objektpräsentation — 2-Spalten-Layout mit Projektdetails",
+              "4. Kalkulation — Investment-Engine mit Sticky Panel",
+              "5. Preisliste — 13-Spalten-Tabelle mit Stellplatz-Overrides",
+              "6. DMS — Projekt- und Einheiten-Dokumentenstruktur",
+              "7. Vertriebsstatusbericht — PDF-Export und Vorschau",
+              "8. Vertriebsauftrag — Aktivierung für Partner-Netzwerk und Kaufy",
+            ],
+            features: [
+              "Automatische Projekt-ID-Vergabe (SOT-BT-XXXXXXXX)",
+              "Storage-Tree mit 7 Projektordnern + 5 Ordner pro Einheit",
+              "Landing Page Builder für öffentliche Projektwebsites",
+              "Integration mit MOD-08 (Investment-Suche) und MOD-09 (Partner-Netzwerk)",
+            ],
           },
         };
       }
