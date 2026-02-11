@@ -91,6 +91,10 @@ export const TOP_30_MVP_ACTION_CODES = [
   
   // Pack H: KB (1)
   'ARM.KB.CREATE_RESEARCH_MEMO',
+  
+  // Pack I: Projekte (2)
+  'ARM.MOD13.CREATE_DEV_PROJECT',
+  'ARM.MOD13.EXPLAIN_MODULE',
 ] as const;
 
 export type Top30MvpActionCode = typeof TOP_30_MVP_ACTION_CODES[number];
@@ -983,6 +987,54 @@ export const armstrongActions: ArmstrongActionV2[] = [
     api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
     ui_entrypoints: ['/portal/investments'],
     audit_event_type: 'ARM_WEB_RESEARCH',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // MOD-13: PROJEKTE (BAUTRÄGER) ACTIONS
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD13.CREATE_DEV_PROJECT',
+    title_de: 'Bauträgerprojekt anlegen',
+    description_de: 'Erstellt ein neues Bauträgerprojekt aus hochgeladenen Dokumenten (Exposé, Preisliste) via KI-Analyse',
+    zones: ['Z2'],
+    module: 'MOD-13',
+    risk_level: 'high',
+    execution_mode: 'execute_with_confirmation',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['tenant_documents'],
+    data_scopes_write: ['dev_projects', 'dev_project_units', 'storage_nodes'],
+    side_effects: ['modifies_dev_projects', 'creates_storage_tree', 'credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 500,
+    api_contract: { type: 'edge_function', endpoint: 'sot-project-intake' },
+    ui_entrypoints: ['/portal/projekte'],
+    audit_event_type: 'ARM_CREATE_DEV_PROJECT',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.MOD13.EXPLAIN_MODULE',
+    title_de: 'Projekte-Modul erklären',
+    description_de: 'Erklärt Funktionsumfang und Golden Path des Projekte-Moduls (MOD-13)',
+    zones: ['Z2'],
+    module: 'MOD-13',
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
+    cost_model: 'free',
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal', endpoint: null },
+    ui_entrypoints: ['/portal/projekte'],
+    audit_event_type: 'ARM_EXPLAIN_MOD13',
     status: 'active',
   },
 
