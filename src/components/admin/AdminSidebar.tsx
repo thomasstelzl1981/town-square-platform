@@ -8,7 +8,7 @@ import {
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
   UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield,
-  Megaphone, Share2
+  Megaphone, Share2, Globe
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -99,6 +99,8 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'SocialMediaLeads': Target,
   'SocialMediaTemplates': FileText,
   'SocialMediaAbrechnung': CreditCard,
+  // Landing Pages
+  'AdminLandingPages': Globe,
 };
 
 // Group configuration for grouping routes
@@ -156,9 +158,10 @@ function getGroupKey(path: string, component: string): string {
   if (path === 'agreements' || path === 'inbox') {
     return 'backbone';
   }
-  // Operative Desks (Desks + LeadPool + Provisionen)
+  // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
-      path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions') {
+      path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions' ||
+      path === 'landing-pages') {
     return 'desks';
   }
   if (path.startsWith('agents')) {

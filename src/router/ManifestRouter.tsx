@@ -168,6 +168,10 @@ import SotDemo from '@/pages/zone3/sot/SotDemo';
 import SotFAQ from '@/pages/zone3/sot/SotFAQ';
 
 // Zone 3: ACQUIARY Website
+
+// Zone 3: Projekt Landing Pages
+import ProjektLandingLayout from '@/pages/zone3/projekt/ProjektLandingLayout';
+import ProjektLandingPage from '@/pages/zone3/projekt/ProjektLandingPage';
 import AcquiaryLayout from '@/pages/zone3/acquiary/AcquiaryLayout';
 import AcquiaryHome from '@/pages/zone3/acquiary/AcquiaryHome';
 import AcquiaryMethodik from '@/pages/zone3/acquiary/AcquiaryMethodik';
@@ -259,6 +263,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   SocialMediaLeads: React.lazy(() => import('@/pages/admin/social-media/SocialMediaLeads')),
   SocialMediaTemplates: React.lazy(() => import('@/pages/admin/social-media/SocialMediaTemplates')),
   SocialMediaAbrechnung: React.lazy(() => import('@/pages/admin/social-media/SocialMediaAbrechnung')),
+  // Landing Pages
+  AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
@@ -388,6 +394,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   FutureRoomLayout,
   SotLayout,
   AcquiaryLayout,
+  ProjektLandingLayout,
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -396,6 +403,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   futureroom: futureroomComponentMap,
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
+  projekt: { ProjektLandingPage },
 };
 
 // =============================================================================
