@@ -53,6 +53,9 @@ export function TenderDraftPanel({
   const [deadlineDate, setDeadlineDate] = useState(
     serviceCase.deadline_offers || format(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
   );
+  const [editableSubject, setEditableSubject] = useState('');
+  const [editableBody, setEditableBody] = useState('');
+  const [hasEdited, setHasEdited] = useState(false);
 
   // Build email subject
   const getSubject = () => {
@@ -177,8 +180,8 @@ Mit freundlichen Grüßen
     }
 
     setIsSending(true);
-    const subject = getSubject();
-    const body = getEmailBody();
+    const subject = hasEdited ? editableSubject : getSubject();
+    const body = hasEdited ? editableBody : getEmailBody();
 
     try {
       for (const provider of providersWithEmail) {
@@ -244,7 +247,14 @@ Mit freundlichen Grüßen
               <Button
                 variant={!isPreviewMode ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setIsPreviewMode(false)}
+                onClick={() => {
+                  if (isPreviewMode) {
+                    // Entering edit mode: initialize editable fields
+                    setEditableSubject(hasEdited ? editableSubject : getSubject());
+                    setEditableBody(hasEdited ? editableBody : getEmailBody());
+                  }
+                  setIsPreviewMode(false);
+                }}
               >
                 <Edit2 className="h-4 w-4 mr-1" />
                 Bearbeiten
@@ -261,7 +271,7 @@ Mit freundlichen Grüßen
               {/* Subject */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Betreff</Label>
-                <div className="font-medium">{getSubject()}</div>
+                <div className="font-medium">{hasEdited ? editableSubject : getSubject()}</div>
               </div>
 
               <Separator />
@@ -270,7 +280,7 @@ Mit freundlichen Grüßen
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Nachricht</Label>
                 <pre className="text-sm whitespace-pre-wrap font-sans bg-muted/50 p-4 rounded-lg max-h-[400px] overflow-y-auto">
-                  {getEmailBody()}
+                  {hasEdited ? editableBody : getEmailBody()}
                 </pre>
               </div>
 
@@ -294,6 +304,28 @@ Mit freundlichen Grüßen
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Editable Subject */}
+              <div className="space-y-2">
+                <Label>Betreff</Label>
+                <Input
+                  value={editableSubject}
+                  onChange={(e) => setEditableSubject(e.target.value)}
+                />
+              </div>
+
+              {/* Editable Body */}
+              <div className="space-y-2">
+                <Label>E-Mail-Text</Label>
+                <Textarea
+                  value={editableBody}
+                  onChange={(e) => setEditableBody(e.target.value)}
+                  rows={16}
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <Separator />
+
               {/* Deadline */}
               <div className="space-y-2">
                 <Label>Angebotsfrist</Label>
@@ -305,18 +337,18 @@ Mit freundlichen Grüßen
                 />
               </div>
 
-              {/* Custom Message */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Zusätzliche Hinweise (optional)</Label>
-                  <DictationButton onTranscript={(text) => setCustomMessage(prev => prev + (prev ? ' ' : '') + text)} />
-                </div>
-                <Textarea
-                  placeholder="z.B. Besichtigungstermin, besondere Anforderungen..."
-                  value={customMessage}
-                  onChange={(e) => setCustomMessage(e.target.value)}
-                  rows={4}
-                />
+              {/* Save Button */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    setHasEdited(true);
+                    setIsPreviewMode(true);
+                    toast.success('Änderungen übernommen');
+                  }}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Speichern
+                </Button>
               </div>
             </div>
           )}

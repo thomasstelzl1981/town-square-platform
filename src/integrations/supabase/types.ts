@@ -11174,12 +11174,16 @@ export type Database = {
       }
       service_case_offers: {
         Row: {
+          conditions: string | null
           contact_id: string | null
           created_at: string
           document_id: string | null
           execution_duration_days: number | null
           execution_end: string | null
           execution_start: string | null
+          extracted_at: string | null
+          file_name: string | null
+          file_path: string | null
           id: string
           inbound_email_id: string | null
           is_selected: boolean | null
@@ -11188,6 +11192,7 @@ export type Database = {
           offer_amount_gross: number | null
           offer_amount_net: number | null
           offer_date: string | null
+          positions: Json | null
           provider_contact_person: string | null
           provider_email: string | null
           provider_mobile: string | null
@@ -11200,15 +11205,21 @@ export type Database = {
           source: string | null
           status: string | null
           tenant_id: string
+          total_gross: number | null
+          total_net: number | null
           valid_until: string | null
         }
         Insert: {
+          conditions?: string | null
           contact_id?: string | null
           created_at?: string
           document_id?: string | null
           execution_duration_days?: number | null
           execution_end?: string | null
           execution_start?: string | null
+          extracted_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
           id?: string
           inbound_email_id?: string | null
           is_selected?: boolean | null
@@ -11217,6 +11228,7 @@ export type Database = {
           offer_amount_gross?: number | null
           offer_amount_net?: number | null
           offer_date?: string | null
+          positions?: Json | null
           provider_contact_person?: string | null
           provider_email?: string | null
           provider_mobile?: string | null
@@ -11229,15 +11241,21 @@ export type Database = {
           source?: string | null
           status?: string | null
           tenant_id: string
+          total_gross?: number | null
+          total_net?: number | null
           valid_until?: string | null
         }
         Update: {
+          conditions?: string | null
           contact_id?: string | null
           created_at?: string
           document_id?: string | null
           execution_duration_days?: number | null
           execution_end?: string | null
           execution_start?: string | null
+          extracted_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
           id?: string
           inbound_email_id?: string | null
           is_selected?: boolean | null
@@ -11246,6 +11264,7 @@ export type Database = {
           offer_amount_gross?: number | null
           offer_amount_net?: number | null
           offer_date?: string | null
+          positions?: Json | null
           provider_contact_person?: string | null
           provider_email?: string | null
           provider_mobile?: string | null
@@ -11258,6 +11277,8 @@ export type Database = {
           source?: string | null
           status?: string | null
           tenant_id?: string
+          total_gross?: number | null
+          total_net?: number | null
           valid_until?: string | null
         }
         Relationships: [

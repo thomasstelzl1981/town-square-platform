@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ProviderSearchPanel, SelectedProvider } from '@/components/portal/immobilien/sanierung/tender';
 import { TenderDraftPanel } from '@/components/portal/immobilien/sanierung/tender';
+import { OfferComparisonPanel } from '@/components/portal/immobilien/sanierung/offers';
 import { useServiceCases, useServiceCaseStats, ServiceCaseCategory } from '@/hooks/useServiceCases';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ServiceCaseStatusBadge } from '@/components/portal/immobilien/sanierung/ServiceCaseStatusBadge';
@@ -223,7 +224,7 @@ export function SanierungTab() {
                             const currentViewStep = viewStep ?? activeStep;
                             const isViewing = idx === currentViewStep;
                             const isDone = idx < activeStep;
-                            const isReachable = idx <= activeStep;
+                            const isReachable = true;
                             return (
                               <button
                                 key={step.id}
@@ -300,10 +301,14 @@ export function SanierungTab() {
                             </div>
                           )}
                           {(viewStep ?? activeStep) >= 3 && (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                              <HardHat className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                              <p className="font-medium">{INLINE_WORKFLOW_STEPS[(viewStep ?? activeStep)]?.label}</p>
-                              <p className="text-sm text-muted-foreground mt-1">{INLINE_WORKFLOW_STEPS[(viewStep ?? activeStep)]?.description}</p>
+                            <div className="space-y-4">
+                              <OfferComparisonPanel serviceCase={serviceCase} />
+                              <div className="flex items-center pt-2">
+                                <Button variant="outline" onClick={() => setViewStep(2)}>
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Zurück zu Ausschreibung
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </div>
