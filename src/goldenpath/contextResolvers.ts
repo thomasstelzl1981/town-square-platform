@@ -109,6 +109,7 @@ const mod04Resolver: ContextResolver = async ({ tenantId, entityId: propertyId }
   const listing = listingRes.data;
   flags.listing_active = listing?.status === 'active';
   flags.listing_withdrawn = listing?.status === 'withdrawn';
+  flags.listing_deleted = !listing; // true wenn kein Listing existiert (hard-deleted)
   flags.sales_mandate_consent_linked = !!listing?.sales_mandate_consent_id;
   flags.contract_visible = !!listing?.sales_mandate_consent_id;
   flags.sales_desk_entry_visible = !!listing?.sales_mandate_consent_id && listing?.status === 'active';

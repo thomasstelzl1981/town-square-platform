@@ -162,8 +162,9 @@ function SalesDeskDashboard() {
 
         if (projectListings?.length) {
           const listingIds = projectListings.map(l => l.id);
-          await supabase.from('listings').update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() }).in('id', listingIds);
-          await supabase.from('listing_publications').update({ status: 'paused' }).in('listing_id', listingIds);
+          // Delete publications first (FK), then listings (hard-delete)
+          await supabase.from('listing_publications').delete().in('listing_id', listingIds);
+          await supabase.from('listings').delete().in('id', listingIds);
         }
       }
 
