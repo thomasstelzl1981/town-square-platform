@@ -24,7 +24,7 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import Auth from "./pages/Auth";
 import AuthResetPassword from "./pages/AuthResetPassword";
 import PresentationPage from "./pages/presentation/PresentationPage";
-import GoldenPathArchitectureAudit from "./pages/presentation/GoldenPathArchitectureAudit";
+
 
 // Manifest-driven router
 import { ManifestRouter } from "./router/ManifestRouter";
@@ -49,7 +49,7 @@ const App = () => (
               
               {/* Special: Presentation (hidden, non-guessable URL) */}
               <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
-              <Route path="/presentation/golden-path-audit" element={<GoldenPathArchitectureAudit />} />
+              
               
               {/* ALL OTHER ROUTES: Delegated to ManifestRouter */}
               <Route path="/*" element={<ManifestRouter />} />
