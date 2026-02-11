@@ -8,6 +8,7 @@ export interface MarketItem {
   trend: 'up' | 'down' | 'neutral';
 }
 
+/** @demo-data Fallback when edge function fails. Registered in demoDataRegistry.ts */
 const DEMO_MARKETS: MarketItem[] = [
   { symbol: 'BTC', value: '67.4k', change: '+2.1%', trend: 'up' },
   { symbol: 'ETH', value: '3.2k', change: '+1.4%', trend: 'up' },

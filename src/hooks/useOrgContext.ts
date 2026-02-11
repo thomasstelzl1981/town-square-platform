@@ -73,8 +73,8 @@ export function useOrgContext(): OrgContextData {
   }, [memberships]);
 
   const availableOrgs = useMemo(() => {
-    if (isDevelopmentMode && memberships.length <= 1) {
-      // In dev mode with mock data, provide sample orgs
+    if (isDevelopmentMode && import.meta.env.VITE_FORCE_DEV_TENANT === 'true' && memberships.length <= 1) {
+      // In dev mode with explicit flag, provide sample orgs
       return [
         {
           id: activeOrganization?.id || 'dev-org',

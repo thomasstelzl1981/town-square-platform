@@ -5,6 +5,8 @@
  * 1. ZBC-R09: Zone-Boundary-Checks (keine Root-Collisions)
  * 2. ZBC-R13: tile_catalog ↔ routesManifest Sync
  * 3. ZBC-R10: Contract-Coverage (jede Edge Function mit Cross-Zone-Charakter)
+ * 4. SBC: Storage Boundary Contract Checks
+ * 5. GTC: Golden Tenant Contract / Data Hygiene Checks
  * 
  * Kein Produktions-Impact — nur console.error/info im DEV-Modus.
  */
@@ -16,10 +18,6 @@ import { supabase } from '@/integrations/supabase/client';
 // ZBC-R09: Root Collision Validator
 // =============================================================================
 
-/**
- * Validiert ZBC-R09: Keine Zone-3-Routen ausserhalb von /website/**.
- * Prueft auch, dass keine unerlaubten Root-Pfade im Manifest existieren.
- */
 export function validateZoneBoundaries(): void {
   if (import.meta.env.PROD) return;
 
@@ -44,13 +42,9 @@ export function validateZoneBoundaries(): void {
 }
 
 // =============================================================================
-// ZBC-R13: tile_catalog ↔ routesManifest Sync Validator (R-002)
+// ZBC-R13: tile_catalog ↔ routesManifest Sync Validator
 // =============================================================================
 
-/**
- * Validiert ZBC-R13: tile_catalog-Eintraege muessen korrespondierende
- * Manifest-Eintraege haben. Keine verwaisten Tiles.
- */
 export async function validateTileCatalogSync(): Promise<void> {
   if (import.meta.env.PROD) return;
 
@@ -99,10 +93,6 @@ export async function validateTileCatalogSync(): Promise<void> {
 // ZBC-R10: Contract Coverage Validator
 // =============================================================================
 
-/**
- * Bekannte Cross-Zone Edge Functions, die einen Contract in
- * spec/current/06_api_contracts/ haben MUESSEN.
- */
 const CROSS_ZONE_EDGE_FUNCTIONS = [
   { fn: 'sot-lead-inbox', contract: 'CONTRACT_LEAD_CAPTURE' },
   { fn: 'sot-inbound-receive', contract: 'CONTRACT_EMAIL_INBOUND' },
@@ -118,14 +108,6 @@ const CROSS_ZONE_EDGE_FUNCTIONS = [
   { fn: 'sot-project-intake', contract: 'CONTRACT_PROJECT_INTAKE' },
 ];
 
-/**
- * Validiert ZBC-R10: Jede Cross-Zone Edge Function muss einen
- * dokumentierten Contract im INDEX haben.
- * 
- * Hinweis: Da wir keinen Dateisystem-Zugriff im Browser haben, validieren
- * wir hier nur gegen die bekannte Registry. Die eigentliche Datei-Existenz
- * wird ueber den devValidator-Ansatz nicht geprueft — dafuer gibt es CI.
- */
 export function validateContractCoverage(): void {
   if (import.meta.env.PROD) return;
 
@@ -139,9 +121,6 @@ export function validateContractCoverage(): void {
 // SBC Validators — Storage Boundary Contract Checks
 // =============================================================================
 
-/**
- * Private Buckets, auf denen getPublicUrl() NICHT verwendet werden darf (SBC-R01).
- */
 const PRIVATE_BUCKETS = [
   'tenant-documents',
   'acq-documents',
@@ -149,16 +128,8 @@ const PRIVATE_BUCKETS = [
   'audit-reports',
 ];
 
-/**
- * Deprecated/Frozen Buckets (SBC-R08) — kein neuer Upload erlaubt.
- */
 const FROZEN_BUCKETS = ['documents'];
 
-/**
- * Validiert SBC-Regeln zur Laufzeit (DEV-only).
- * - SBC-R01: Warnt wenn getPublicUrl auf privaten Buckets gefunden wird
- * - SBC-R08: Warnt wenn frozen Buckets referenziert werden
- */
 export function validateStorageBoundaries(): void {
   if (import.meta.env.PROD) return;
 
@@ -167,4 +138,35 @@ export function validateStorageBoundaries(): void {
     `\n[SBC-R08] ℹ️ Frozen Buckets (kein Upload): ${FROZEN_BUCKETS.join(', ')}`,
     `\n[SBC-R04] ℹ️ Audit-Events: document.view, document.download, grant.created, grant.revoked`
   );
+}
+
+// =============================================================================
+// GTC: Golden Tenant Contract — Tenant Hygiene Checks
+// =============================================================================
+
+export function validateTenantHygiene(): void {
+  if (import.meta.env.PROD) return;
+
+  const forceDevTenant = import.meta.env.VITE_FORCE_DEV_TENANT === 'true';
+
+  console.info(
+    `[GTC] ℹ️ Tenant Hygiene Status:`,
+    `\n  VITE_FORCE_DEV_TENANT: ${forceDevTenant ? '✅ AKTIV (Dev-Bypass enabled)' : '❌ INAKTIV (Login erforderlich)'}`,
+  );
+
+  // Dynamically check demo data registry
+  import('@/config/demoDataRegistry').then(({ DEMO_DATA_SOURCES }) => {
+    const hardcoded = DEMO_DATA_SOURCES.filter(s => s.type === 'hardcoded');
+    const fallback = DEMO_DATA_SOURCES.filter(s => s.type === 'fallback');
+    const seeds = DEMO_DATA_SOURCES.filter(s => s.type === 'seed_rpc');
+
+    console.info(
+      `[GTC] ℹ️ Demo-Daten-Registry: ${DEMO_DATA_SOURCES.length} Quellen registriert`,
+      `\n  Hardcoded: ${hardcoded.length} (${hardcoded.map(s => s.module).join(', ')})`,
+      `\n  Fallback: ${fallback.length} (${fallback.map(s => s.module).join(', ')})`,
+      `\n  Seed RPC: ${seeds.length}`,
+    );
+  }).catch(() => {
+    console.warn('[GTC] ⚠️ demoDataRegistry nicht ladbar');
+  });
 }

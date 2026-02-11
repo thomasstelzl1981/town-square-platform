@@ -32,7 +32,7 @@ interface Offer {
   is_featured: boolean;
 }
 
-// Demo BMW offers
+/** @demo-data BMW demo offers. Registered in demoDataRegistry.ts */
 const DEMO_LEASING_OFFERS: Offer[] = [
   {
     id: 'demo-1',

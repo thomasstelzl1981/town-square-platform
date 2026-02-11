@@ -8,6 +8,7 @@ export interface Headline {
   link: string;
 }
 
+/** @demo-data Fallback when edge function fails. Registered in demoDataRegistry.ts */
 const DEMO_HEADLINES: Headline[] = [
   { title: 'EZB signalisiert weitere Zinssenkungen', source: 'Tagesschau', time: '2 Std.', link: '' },
   { title: 'Immobilienpreise stabilisieren sich', source: 'Tagesschau', time: '4 Std.', link: '' },

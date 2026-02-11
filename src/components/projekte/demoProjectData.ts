@@ -1,6 +1,7 @@
 /**
  * Demo/Musterdaten for MOD-13 Projekte
  * Shown when no real projects exist. Purely UI — never persisted.
+ * @demo-data Registered in src/config/demoDataRegistry.ts
  */
 import type { ProjectPortfolioRow } from '@/types/projekte';
 
