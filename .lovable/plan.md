@@ -1,82 +1,84 @@
 
+# Zwischenueberschrift + Listing-Auswahl fuer MOD-11
 
-# MOD-07 Anfrage + MOD-11 Finanzierungsakte: Zwei-Kachel-Layout mit Zwischenspeichern
+## Aenderungen
 
-## Konzept
+### 1. Zwischenueberschrift in FMFinanzierungsakte.tsx (MOD-11)
 
-Beide Module (MOD-07 Anfrage und MOD-11 Finanzierungsakte) zeigen **identisch** zwei Kacheln:
+Zwischen dem Selbstauskunft-Block (Zeile 157) und dem FinanceObjectCard (Zeile 160) wird eine CI-konforme Ueberschrift eingefuegt:
 
-1. **Kachel 1: Finanzierungsobjekt** — Alle Objektdaten (Adresse, Typ, Baujahr, Flaechen, Ausstattung, Lage, Zimmer, Stellplaetze)
-2. **Kachel 2: Beantragte Finanzierung** — Kostenzusammenstellung (Kaufpreis, Nebenkosten, Gesamtkosten) und Finanzierungsplan (Eigenkapital, Darlehen, Zinsbindung, Tilgung, Monatsrate, Finanzierungsbedarf)
+```text
+Finanzierungsobjekt
+Hier erfassen Sie Ihr Finanzierungsobjekt.
+```
 
-Es entsteht **keine** Finanzierungsakte/Anfrage-ID beim Befuellen. Die Daten werden nur lokal zwischengespeichert (localStorage), bis ein spaeterer Schritt den Datensatz tatsaechlich anlegt.
+Im gleichen Stil wie die bestehende Seiten-Headline (`text-2xl font-bold tracking-tight uppercase` + `text-sm text-muted-foreground`).
 
-Jede Kachel hat unten einen **"Zwischenspeichern"**-Button, der die Eingaben in localStorage persistiert (Key: `mod07-anfrage-object` / `mod07-anfrage-finance` bzw. `mod11-akte-object` / `mod11-akte-finance`).
+### 2. Listing-Auswahl aus Kaufy-Marktplatz (nur MOD-11)
+
+Unterhalb der neuen Ueberschrift wird eine optionale Auswahlleiste eingefuegt — ein kompakter Balken mit:
+- Text: "Objekt aus Marktplatz uebernehmen"
+- Ein Select/Combobox das `v_public_listings` laedt (title, city, asking_price)
+- Bei Auswahl: FinanceObjectCard wird automatisch befuellt (city, postal_code, property_type, year_built, total_area_sqm, asking_price)
+- Alternativ: Keine Auswahl = manuell befuellen wie bisher
+
+Die Daten aus `v_public_listings` werden per Supabase-Query geladen:
+- `title` → Anzeige im Dropdown
+- `city` → city
+- `postal_code` → postalCode
+- `property_type` → objectType (Mapping noetig)
+- `year_built` → yearBuilt
+- `total_area_sqm` → livingArea
+- `asking_price` → Kaufpreis in FinanceRequestCard
+
+Um die Befuellung zu ermoeglichen, erhaelt `FinanceObjectCard` eine neue optionale Prop `externalData` — wenn gesetzt, wird der State ueberschrieben. Gleiches gilt fuer `FinanceRequestCard` (fuer den Kaufpreis).
+
+### 3. MOD-07 AnfrageTab — Keine Aenderung
+
+MOD-07 bekommt **keine** Listing-Auswahl. Der bestehende Flow (manuell befuellen, Objekt aus Portfolio bei Einreichung) bleibt unveraendert. Es wird lediglich die gleiche Zwischenueberschrift ergaenzt:
+
+```text
+Finanzierungsobjekt
+Hier erfassen Sie Ihr Finanzierungsobjekt.
+```
 
 ---
 
-## Aenderung 1: Gemeinsame Komponente erstellen
+## Technische Details
 
-**Neue Datei:** `src/components/finanzierung/FinanceObjectCard.tsx`
+### FinanceObjectCard.tsx — Neue Prop `externalData`
 
-Eine wiederverwendbare Kachel-Komponente mit allen Objektfeldern im tabellarischen Stil (TR-Rows):
-- Strasse, Hausnummer, PLZ, Ort
-- Objektart (Select)
-- Baujahr, Wohnflaeche, Grundstuecksflaeche
-- Ausstattungsniveau, Wohnlage
-- Anzahl Zimmer, Stellplaetze
-- "Zwischenspeichern"-Button unten
-
-**Neue Datei:** `src/components/finanzierung/FinanceRequestCard.tsx`
-
-Zweite Kachel mit:
-- Finanzierungszweck (Kauf/Neubau/Umschuldung/Modernisierung)
-- **Kostenzusammenstellung**: Kaufpreis, Modernisierung, Notar, Grunderwerbsteuer, Makler, **Gesamtkosten** (berechnet)
-- **Finanzierungsplan**: Eigenkapital, Darlehenswunsch, Zinsbindung, Tilgung, Max. Monatsrate, **Finanzierungsbedarf** (berechnet)
-- "Zwischenspeichern"-Button unten
-
-Beide Komponenten akzeptieren Props:
-- `storageKey: string` (fuer localStorage-Prefix)
-- `initialData?: object` (zum Vorbelegen)
-- `readOnly?: boolean`
-
----
-
-## Aenderung 2: MOD-07 AnfrageTab umbauen
-
-**Datei:** `src/pages/portal/finanzierung/AnfrageTab.tsx`
-
-Kompletter Umbau: Kein Draft-Laden, kein `finance_request` erstellen, kein AnfrageFormV2.
-
-Stattdessen:
-```
-max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6
-
-Headline: "Finanzierungsanfrage"
-Subline: "Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch"
-
-[Kachel 1: FinanceObjectCard storageKey="mod07"]
-[Kachel 2: FinanceRequestCard storageKey="mod07"]
+```typescript
+interface Props {
+  storageKey: string;
+  initialData?: Partial<ObjectFormData>;
+  externalData?: Partial<ObjectFormData>; // NEU: ueberschreibt State bei Aenderung
+  readOnly?: boolean;
+}
 ```
 
-Kein "Anfrage erstellen"-Button — das kommt in einem spaeteren Schritt.
+Ein `useEffect` reagiert auf `externalData`-Aenderungen und merged die Werte in den lokalen State.
 
----
+### FinanceRequestCard.tsx — Neue Prop `externalPurchasePrice`
 
-## Aenderung 3: MOD-11 FMFinanzierungsakte anpassen
-
-**Datei:** `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
-
-Die bestehende Seite wird vereinfacht. Die Eckdaten-Kachel und die Selbstauskunft-Kachel bleiben. Die bestehende "Finanzierungsobjekt"-Sektion wird durch die gleichen zwei Kacheln ersetzt:
-
-```
-[Bestehend: Eckdaten-Kachel]
-[Bestehend: Selbstauskunft-Kachel]
-[Kachel: FinanceObjectCard storageKey="mod11"]
-[Kachel: FinanceRequestCard storageKey="mod11"]
+```typescript
+interface Props {
+  storageKey: string;
+  externalPurchasePrice?: string; // NEU: setzt Kaufpreis aus Listing
+  readOnly?: boolean;
+}
 ```
 
-Der "Finanzierungsakte erstellen"-Button bleibt vorerst entfernt — kommt spaeter.
+### FMFinanzierungsakte.tsx — Listing-Query + Mapping
+
+- `useQuery` laedt alle `v_public_listings` Eintraege
+- Bei Auswahl eines Listings wird ein Mapping erstellt:
+  - `city` → `city`
+  - `postal_code` → `postalCode`
+  - `property_type` → `objectType` (z.B. "apartment" → "eigentumswohnung")
+  - `year_built` → `yearBuilt`
+  - `total_area_sqm` → `livingArea`
+  - `asking_price` → wird an FinanceRequestCard weitergegeben
 
 ---
 
@@ -84,16 +86,11 @@ Der "Finanzierungsakte erstellen"-Button bleibt vorerst entfernt — kommt spaet
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/finanzierung/FinanceObjectCard.tsx` | **NEU** — Wiederverwendbare Objekt-Kachel |
-| `src/components/finanzierung/FinanceRequestCard.tsx` | **NEU** — Wiederverwendbare Finanzierungs-Kachel |
-| `src/pages/portal/finanzierung/AnfrageTab.tsx` | Kompletter Umbau: Zwei Kacheln direkt, kein Draft-Flow |
-| `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx` | Objekt-Sektion durch die zwei gemeinsamen Kacheln ersetzen |
+| `FMFinanzierungsakte.tsx` | Zwischenueberschrift + Listing-Select + externalData-Weiterleitung |
+| `FinanceObjectCard.tsx` | Neue Prop `externalData` mit useEffect-Merge |
+| `FinanceRequestCard.tsx` | Neue Prop `externalPurchasePrice` |
+| `AnfrageTab.tsx` | Zwischenueberschrift ergaenzen (keine Listing-Auswahl) |
 
-## Stil
+## Keine DB-Migration
 
-Beide Kacheln verwenden den bestehenden tabellarischen Stil (Table/TR mit Label|Wert, `h-7 text-xs` Inputs, `glass-card`). Berechnete Werte (Gesamtkosten, Finanzierungsbedarf) werden als fette Zeilen mit `bg-muted/30` dargestellt.
-
-## Keine DB-Aenderung
-
-Daten werden nur in localStorage zwischengespeichert. Kein `finance_request` wird angelegt.
-
+`v_public_listings` existiert bereits als View.
