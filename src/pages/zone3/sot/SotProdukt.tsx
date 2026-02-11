@@ -56,8 +56,8 @@ export default function SotProdukt() {
           </span>
           <h1 className="sot-display mb-6">Software für Immobilienverwaltung.</h1>
           <p className="sot-subheadline max-w-2xl mx-auto mb-10">
-            System of a Town bringt Ordnung in Ihre Immobilienverwaltung — mit 15+ Modulen 
-            für Dokumente, Objekte, Mietthemen und mehr.
+            System of a Town bringt Ordnung in Ihre Immobilienverwaltung — mit über 17 Modulen 
+            für Dokumente, Objekte, Finanzen, Projekte und mehr.
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
             <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">
