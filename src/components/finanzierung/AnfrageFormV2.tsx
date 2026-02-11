@@ -159,16 +159,16 @@ function SectionHeader({
   sectionLetter: string;
 }) {
   return (
-    <div className="flex items-start gap-4 mb-6">
-      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-        <span className="font-bold text-lg">{sectionLetter}</span>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-primary shrink-0">
+        <span className="font-bold text-sm">{sectionLetter}</span>
       </div>
       <div className="flex-1">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+        <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
           {title}
         </h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -440,7 +440,7 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
   const isReadOnly = request?.status !== 'draft' && request?.status !== 'collecting';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-24">
+    <div className="space-y-6 pb-24">
       {/* Header with Status */}
       <div className="flex items-center justify-between">
         <div>
@@ -824,7 +824,7 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
       {/* Fixed Save Bar */}
       {!isReadOnly && (
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-50">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
               {isDirty ? (
                 <span className="flex items-center gap-2 text-destructive">

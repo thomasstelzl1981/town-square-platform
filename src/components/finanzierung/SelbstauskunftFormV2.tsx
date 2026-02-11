@@ -80,11 +80,11 @@ function SectionHeader({ number, title, icon: Icon, description }: {
   number: number; title: string; icon: React.ElementType; description?: string;
 }) {
   return (
-    <div className="flex items-start gap-4 mb-6">
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-lg shrink-0">{number}</div>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary font-bold text-sm shrink-0">{number}</div>
       <div className="flex-1">
-        <h2 className="text-xl font-semibold flex items-center gap-2"><Icon className="h-5 w-5" />{title}</h2>
-        {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+        <h2 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2"><Icon className="h-4 w-4" />{title}</h2>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
     </div>
   );
@@ -321,7 +321,7 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
   const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-4 pb-24">
       {/* Context Picker Dialog */}
       <Dialog open={showContextPicker} onOpenChange={setShowContextPicker}>
         <DialogContent>
