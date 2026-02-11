@@ -1,7 +1,15 @@
 /**
  * ROLES MATRIX — Zentrale Rollendefinition (Konsolidiert)
  * 
- * SSOT für Rollen-Dokumentation in Zone 1.
+ * @status seed-only — Runtime-SSOT ist DB tile_catalog / get_tiles_for_role()
+ * 
+ * Diese Datei dient ausschliesslich als initialer Seed fuer tile_catalog
+ * bei Tenant-Erstellung und als Referenz-Dokumentation fuer Zone 1 Admin.
+ * Sie wird NICHT zur Laufzeit fuer Berechtigungspruefungen herangezogen.
+ * Runtime-Code MUSS die DB-Funktion get_tiles_for_role() via RPC nutzen.
+ * 
+ * Siehe: ZBC-R12 in spec/current/02_zones.md
+ * 
  * membership_role steuert Tile-Aktivierung (tenant-bezogen).
  * app_role steuert globale Rechte (Zone-1-Zugang, God Mode).
  * 
@@ -182,14 +190,20 @@ export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
 // HILFSFUNKTIONEN
 // =============================================================================
 
-/** Prüft ob eine Rolle Zugriff auf ein Modul hat */
+/** 
+ * Prüft ob eine Rolle Zugriff auf ein Modul hat.
+ * @deprecated Seed-only — Runtime-Code soll get_tiles_for_role() RPC nutzen (ZBC-R12)
+ */
 export function hasModuleAccess(roleCode: string, moduleCode: string): boolean {
   const allowedRoles = MODULE_ROLE_MATRIX[moduleCode];
   if (!allowedRoles) return false;
   return allowedRoles.includes(roleCode);
 }
 
-/** Gibt alle Module zurück, auf die eine Rolle Zugriff hat */
+/** 
+ * Gibt alle Module zurück, auf die eine Rolle Zugriff hat.
+ * @deprecated Seed-only — Runtime-Code soll get_tiles_for_role() RPC nutzen (ZBC-R12)
+ */
 export function getModulesForRole(roleCode: string): string[] {
   return Object.entries(MODULE_ROLE_MATRIX)
     .filter(([_, roles]) => roles.includes(roleCode))
@@ -206,7 +220,10 @@ export function isBaseTile(moduleCode: string): boolean {
   return BASE_TILES.includes(moduleCode);
 }
 
-/** Gibt die Tiles für eine Rolle zurück (Frontend-Spiegel der DB-Funktion) */
+/** 
+ * Gibt die Tiles für eine Rolle zurück (Frontend-Spiegel der DB-Funktion).
+ * @deprecated Seed-only — Runtime-Code soll get_tiles_for_role() RPC nutzen (ZBC-R12)
+ */
 export function getTilesForRole(roleCode: string): string[] {
   if (roleCode === 'platform_admin' || roleCode === 'super_user') return ALL_TILES;
   const extras = ROLE_EXTRA_TILES[roleCode] || [];

@@ -13,10 +13,11 @@
  * - /portal/immobilien/bewertung → Valuation (global)
  * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
  */
-import React, { Component, ReactNode, lazy } from 'react';
+import React, { Component, ReactNode, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 
 // Direct imports for instant sub-tab navigation
@@ -93,8 +94,14 @@ const ImmobilienPage = () => {
         <Route path="sanierung" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
         
-        {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST */}
-        <Route path=":id" element={<PropertyDetailPage />} />
+        {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST, guarded by GoldenPathGuard */}
+        <Route path=":id" element={
+          <GoldenPathGuard>
+            <Suspense fallback={null}>
+              <PropertyDetailPage />
+            </Suspense>
+          </GoldenPathGuard>
+        } />
         
         {/* Fallback for any unmatched paths */}
         <Route path="*" element={<Navigate to="/portal/immobilien" replace />} />

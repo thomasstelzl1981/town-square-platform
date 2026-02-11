@@ -31,6 +31,15 @@ import { ManifestRouter } from "./router/ManifestRouter";
 
 const queryClient = new QueryClient();
 
+// ZBC Step 9: DEV-only validators on app start
+if (import.meta.env.DEV) {
+  import('./goldenpath/devValidator').then(({ validateGoldenPaths, validateZoneBoundaries, validateTileCatalogSync }) => {
+    validateGoldenPaths();
+    validateZoneBoundaries();
+    validateTileCatalogSync();
+  });
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
