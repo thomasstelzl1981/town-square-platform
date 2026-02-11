@@ -194,7 +194,7 @@ export function useAcqInboundMessages(mandateId: string | undefined) {
         .order('received_at', { ascending: false });
 
       if (error) throw error;
-      return data as AcqInboundMessage[];
+      return data as unknown as AcqInboundMessage[];
     },
     enabled: !!mandateId,
   });
@@ -214,7 +214,7 @@ export function useNeedsRoutingMessages() {
         .order('received_at', { ascending: false });
 
       if (error) throw error;
-      return data as AcqInboundMessage[];
+      return data as unknown as AcqInboundMessage[];
     },
   });
 }

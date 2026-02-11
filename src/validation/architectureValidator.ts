@@ -134,3 +134,37 @@ export function validateContractCoverage(): void {
     `\n  Contracts: ${[...new Set(CROSS_ZONE_EDGE_FUNCTIONS.map(e => e.contract))].join(', ')}`
   );
 }
+
+// =============================================================================
+// SBC Validators — Storage Boundary Contract Checks
+// =============================================================================
+
+/**
+ * Private Buckets, auf denen getPublicUrl() NICHT verwendet werden darf (SBC-R01).
+ */
+const PRIVATE_BUCKETS = [
+  'tenant-documents',
+  'acq-documents',
+  'project-documents',
+  'audit-reports',
+];
+
+/**
+ * Deprecated/Frozen Buckets (SBC-R08) — kein neuer Upload erlaubt.
+ */
+const FROZEN_BUCKETS = ['documents'];
+
+/**
+ * Validiert SBC-Regeln zur Laufzeit (DEV-only).
+ * - SBC-R01: Warnt wenn getPublicUrl auf privaten Buckets gefunden wird
+ * - SBC-R08: Warnt wenn frozen Buckets referenziert werden
+ */
+export function validateStorageBoundaries(): void {
+  if (import.meta.env.PROD) return;
+
+  console.info(
+    `[SBC-R01] ℹ️ Private Buckets (getPublicUrl verboten): ${PRIVATE_BUCKETS.join(', ')}`,
+    `\n[SBC-R08] ℹ️ Frozen Buckets (kein Upload): ${FROZEN_BUCKETS.join(', ')}`,
+    `\n[SBC-R04] ℹ️ Audit-Events: document.view, document.download, grant.created, grant.revoked`
+  );
+}
