@@ -15,8 +15,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { PathNormalizer } from './PathNormalizer';
-
-// =============================================================================
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 // LEGACY REDIRECT COMPONENT — Preserves dynamic parameters
 // =============================================================================
 function LegacyRedirect({ to }: { to: string }) {

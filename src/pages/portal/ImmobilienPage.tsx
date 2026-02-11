@@ -96,7 +96,7 @@ const ImmobilienPage = () => {
         
         {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST, guarded by GoldenPathGuard */}
         <Route path=":id" element={
-          <GoldenPathGuard>
+          <GoldenPathGuard moduleCode="MOD-04" entityIdParam="id">
             <Suspense fallback={null}>
               <PropertyDetailPage />
             </Suspense>

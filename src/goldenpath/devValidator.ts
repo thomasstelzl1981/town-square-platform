@@ -1,17 +1,23 @@
 /**
- * DEV-only: Golden Path Route Validator
+ * DEV-only: Golden Path Validator V1.0
  * 
- * Prueft beim App-Start ob alle routePattern in den Golden-Path-Definitionen
- * gueltige Routen referenzieren.
+ * Prueft beim App-Start:
+ * 1. Route-Pattern Validation (bestehend)
+ * 2. Guard-Registrierung (GP hat mindestens eine Route mit goldenPath im Manifest)
+ * 3. Ledger-Event Validation (event_type in Whitelist)
+ * 4. ContractRef Backbone (keine verbotenen Richtungen)
  * 
- * Architektonische Validierungen (Zone-Boundaries, Tile-Sync, Contract-Coverage)
- * sind nach src/validation/architectureValidator.ts ausgelagert.
- * 
- * Kein Produktions-Impact — nur console.error im DEV-Modus.
+ * Kein Produktions-Impact — nur console.error/warn im DEV-Modus.
  */
 
 import { getAllGoldenPaths } from './engine';
 import { zone2Portal } from '@/manifests/routesManifest';
+import { LEDGER_EVENT_WHITELIST } from '@/manifests/goldenPaths';
+import type { ContractDirection } from '@/manifests/goldenPaths/types';
+
+const ALLOWED_DIRECTIONS: ReadonlySet<ContractDirection> = new Set([
+  'Z2->Z1', 'Z1->Z2', 'Z3->Z1', 'EXTERN->Z1',
+]);
 
 /**
  * Sammelt alle registrierten Route-Patterns aus dem routesManifest.
@@ -23,7 +29,7 @@ function collectManifestRoutes(): Set<string> {
   for (const [, moduleConfig] of Object.entries(modules)) {
     if (!moduleConfig || typeof moduleConfig !== 'object') continue;
     const config = moduleConfig as { base?: string; tiles?: Array<{ path: string }>; dynamic_routes?: Array<{ path: string }> };
-    
+
     const base = config.base;
     if (!base) continue;
 
@@ -40,6 +46,27 @@ function collectManifestRoutes(): Set<string> {
 }
 
 /**
+ * Sammelt alle Module die goldenPath im Manifest haben.
+ */
+function collectGuardedModules(): Set<string> {
+  const guarded = new Set<string>();
+  const modules = zone2Portal.modules ?? {};
+
+  for (const [, moduleConfig] of Object.entries(modules)) {
+    if (!moduleConfig || typeof moduleConfig !== 'object') continue;
+    const config = moduleConfig as { dynamic_routes?: Array<{ goldenPath?: { moduleCode: string } }> };
+
+    for (const dr of config.dynamic_routes ?? []) {
+      if (dr.goldenPath?.moduleCode) {
+        guarded.add(dr.goldenPath.moduleCode);
+      }
+    }
+  }
+
+  return guarded;
+}
+
+/**
  * Normalisiert ein routePattern fuer den Vergleich.
  */
 function normalizePattern(pattern: string): string {
@@ -47,44 +74,101 @@ function normalizePattern(pattern: string): string {
 }
 
 /**
- * Validiert alle Golden-Path-Definitionen gegen das routesManifest.
- * Nur im DEV-Modus aufrufen.
+ * Validiert alle Golden-Path-Definitionen.
  */
 export function validateGoldenPaths(): void {
   if (import.meta.env.PROD) return;
 
   const manifestRoutes = collectManifestRoutes();
   const normalizedManifest = new Set([...manifestRoutes].map(normalizePattern));
+  const guardedModules = collectGuardedModules();
   const goldenPaths = getAllGoldenPaths();
 
   let hasErrors = false;
+  let hasWarnings = false;
 
   for (const gp of goldenPaths) {
+    // ═══════════════════════════════════════════════════════════
+    // 1. Route-Pattern Validation
+    // ═══════════════════════════════════════════════════════════
     for (const step of gp.steps) {
       if (!step.routePattern) continue;
 
       const normalized = normalizePattern(step.routePattern);
-      
-      const found = normalizedManifest.has(normalized) || 
+      const found = normalizedManifest.has(normalized) ||
         normalized.startsWith('/admin/') ||
         normalized.startsWith('/portal/stammdaten/');
-      
+
       if (!found) {
         console.error(
           `[GoldenPath] ❌ Route-Mismatch in ${gp.moduleCode} Step "${step.id}":`,
           `\n  routePattern: "${step.routePattern}"`,
           `\n  Nicht gefunden im routesManifest.`,
-          `\n  Verfuegbare Routen:`,
-          [...manifestRoutes].filter((r) => r.includes(gp.moduleCode.replace('MOD-', '').toLowerCase()) || r.includes('immobilien'))
         );
         hasErrors = true;
       }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // 2. Guard-Registrierung
+    // ═══════════════════════════════════════════════════════════
+    const hasRouteSteps = gp.steps.some((s) => s.type === 'route' || (s.type === 'action' && s.routePattern));
+    if (hasRouteSteps && !guardedModules.has(gp.moduleCode)) {
+      console.warn(
+        `[GoldenPath] ⚠️ GP "${gp.moduleCode}" hat Route-Steps aber KEINE Route im Manifest mit goldenPath.moduleCode="${gp.moduleCode}" registriert.`,
+        '\n  Guard wird nicht automatisch angewendet.',
+      );
+      hasWarnings = true;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 3. Ledger-Event Validation
+    // ═══════════════════════════════════════════════════════════
+    for (const event of gp.ledger_events ?? []) {
+      if (!LEDGER_EVENT_WHITELIST.has(event.event_type)) {
+        console.error(
+          `[GoldenPath] ❌ Ledger-Event "${event.event_type}" in ${gp.moduleCode}`,
+          `ist NICHT in der data_event_ledger Whitelist.`,
+        );
+        hasErrors = true;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 4. ContractRef Backbone Validation
+    // ═══════════════════════════════════════════════════════════
+    for (const step of gp.steps) {
+      if (!step.contract_refs) continue;
+
+      for (const ref of step.contract_refs) {
+        if (!ALLOWED_DIRECTIONS.has(ref.direction)) {
+          console.error(
+            `[GoldenPath] ❌ BACKBONE VIOLATION in ${gp.moduleCode} Step "${step.id}":`,
+            `\n  ContractRef "${ref.key}" hat direction "${ref.direction}"`,
+            `\n  Erlaubt: ${[...ALLOWED_DIRECTIONS].join(', ')}`,
+            `\n  Cross-Zone Kommunikation MUSS über Zone 1 laufen!`,
+          );
+          hasErrors = true;
+        }
+
+        if (!ref.correlation_keys || ref.correlation_keys.length === 0) {
+          console.warn(
+            `[GoldenPath] ⚠️ ContractRef "${ref.key}" in ${gp.moduleCode} Step "${step.id}" hat keine correlation_keys.`,
+          );
+          hasWarnings = true;
+        }
+      }
+    }
   }
 
-  if (!hasErrors) {
+  // Summary
+  if (!hasErrors && !hasWarnings) {
     console.info(
-      `[GoldenPath] ✅ Alle ${goldenPaths.length} Golden Path(s) validiert — keine Route-Mismatches.`
+      `[GoldenPath] ✅ Alle ${goldenPaths.length} Golden Path(s) validiert — keine Fehler.`
+    );
+  } else if (!hasErrors) {
+    console.info(
+      `[GoldenPath] ✅ ${goldenPaths.length} Golden Path(s) validiert — nur Warnings.`
     );
   }
 }

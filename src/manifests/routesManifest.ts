@@ -15,6 +15,11 @@ export interface RouteDefinition {
   component: string;
   title: string;
   dynamic?: boolean;
+  /** V1.0: Golden Path Guard Config — manifest-driven route protection */
+  goldenPath?: {
+    moduleCode: string;
+    entityIdParam?: string;
+  };
 }
 
 export interface SubTile {
@@ -243,7 +248,7 @@ export const zone2Portal: ZoneDefinition = {
         // Create flow: Modal in PortfolioTab, redirect to dossier after creation
         { path: "neu", component: "CreatePropertyRedirect", title: "Neue Immobilie", dynamic: false },
         // Canonical dossier route (SSOT)
-        { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true },
+        { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true, goldenPath: { moduleCode: 'MOD-04', entityIdParam: 'id' } },
       ],
     },
     "MOD-05": {
