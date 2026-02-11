@@ -23,23 +23,34 @@ export async function runInAppAudit(): Promise<AuditResult> {
   const allPortalModules = Object.values(zone2Portal.modules || {});
   const { data: tiles, error: tilesErr } = await supabase
     .from('tile_catalog')
-    .select('code, label, module_id, is_active');
+    .select('tile_code, title, main_tile_route, is_active');
 
   if (tilesErr) {
     findings.push({ severity: 'P1', area: 'Tile Catalog', description: `DB query failed: ${tilesErr.message}` });
   } else if (tiles) {
-    // Check each portal module has tiles in catalog
-    for (const mod of allPortalModules) {
-      if (!mod.tiles || mod.tiles.length === 0) continue;
-      for (const tile of mod.tiles) {
-        const found = tiles.find((t: any) => t.code === tile.path);
-        if (!found) {
-          findings.push({
-            severity: 'P1',
-            area: 'Tile Catalog',
-            description: `Tile "${tile.path}" (${tile.title}) from manifest not found in tile_catalog DB`,
-          });
-        }
+    // Check each manifest module code has a matching tile_catalog entry
+    const manifestModuleCodes = Object.keys(zone2Portal.modules || {});
+    const dbTileCodes = new Set(tiles.map((t: any) => t.tile_code));
+    
+    for (const code of manifestModuleCodes) {
+      if (!dbTileCodes.has(code)) {
+        findings.push({
+          severity: 'P1',
+          area: 'Tile Catalog',
+          description: `Module "${code}" from manifest not found in tile_catalog DB`,
+        });
+      }
+    }
+    
+    // Check reverse: DB entries without manifest counterpart
+    for (const tile of tiles) {
+      const code = (tile as any).tile_code as string;
+      if (!manifestModuleCodes.includes(code)) {
+        findings.push({
+          severity: 'P2',
+          area: 'Tile Catalog',
+          description: `tile_catalog entry "${code}" has no manifest counterpart`,
+        });
       }
     }
   }
