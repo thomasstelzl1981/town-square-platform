@@ -122,13 +122,17 @@ function PortalLayoutInner() {
       {/* Top Navigation (3 levels) */}
       <TopNavigation />
       
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative">
-        <Outlet />
-      </main>
-
-      {/* Armstrong Container - Desktop only */}
-      <ArmstrongContainer />
+      {/* Main Content + Armstrong Stripe */}
+      <div className="flex-1 flex overflow-hidden">
+        <main className={cn(
+          "flex-1 overflow-y-auto relative transition-all duration-300",
+        )}>
+          <Outlet />
+        </main>
+        
+        {/* Armstrong Stripe - inline layout element when expanded */}
+        <ArmstrongContainer />
+      </div>
     </div>
   );
 }
