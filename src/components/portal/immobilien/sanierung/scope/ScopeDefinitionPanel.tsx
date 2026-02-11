@@ -30,6 +30,9 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
   const [isEstimating, setIsEstimating] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   
+  // Editable user description (Block 1)
+  const [userDescription, setUserDescription] = useState(serviceCase.description || '');
+  
   // Parse stored data with proper typing
   const parseLineItems = (items: unknown): LineItem[] => {
     if (!Array.isArray(items)) return [];
@@ -70,13 +73,12 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
   
   const updateCase = useUpdateServiceCase();
   
-  const hasDescription = !!serviceCase.description?.trim();
   const hasLineItems = lineItems.length > 0;
 
-  // ========== NEW: Generate from description ==========
+  // ========== Generate from description ==========
   const handleGenerateFromDescription = async () => {
-    if (!serviceCase.description?.trim()) {
-      toast.error('Keine Beschreibung vorhanden');
+    if (!userDescription.trim()) {
+      toast.error('Bitte beschreiben Sie zuerst, was saniert werden soll');
       return;
     }
     
@@ -93,7 +95,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
           body: JSON.stringify({
             service_case_id: serviceCase.id,
             action: 'generate_from_description',
-            description: serviceCase.description,
+            description: userDescription,
             category: serviceCase.category,
             property_address: serviceCase.property?.address,
             unit_info: serviceCase.unit?.unit_number,
@@ -123,6 +125,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
       // Save to DB
       await updateCase.mutateAsync({
         id: serviceCase.id,
+        description: userDescription,
         scope_status: 'draft',
         scope_source: 'ai_generated',
         scope_line_items: result.line_items || [],
@@ -260,6 +263,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
     try {
       await updateCase.mutateAsync({
         id: serviceCase.id,
+        description: userDescription,
         scope_description: scopeDescription,
         scope_line_items: lineItems as unknown as Record<string, unknown>[],
         scope_attachments: selectedDocuments as unknown as Record<string, unknown>[],
@@ -283,6 +287,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         id: serviceCase.id,
         scope_status: 'finalized',
         status: 'scope_finalized',
+        description: userDescription,
         scope_description: scopeDescription,
         scope_line_items: lineItems as unknown as Record<string, unknown>[],
         scope_attachments: selectedDocuments as unknown as Record<string, unknown>[],
@@ -304,48 +309,99 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         </p>
       </div>
       
-      {/* ========== PRIMARY: Generate from Description ========== */}
-      {hasDescription && (
-        <Card className="border-primary/20 bg-primary/[0.02]">
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0 space-y-3">
+      {/* ========== BLOCK 1: Freitext-Eingabe (editierbar) ========== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Was soll saniert werden?</CardTitle>
+          <CardDescription>Beschreiben Sie das Vorhaben in eigenen Worten — die KI erstellt daraus ein Leistungsverzeichnis</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-end">
+            <DictationButton onTranscript={(text) => setUserDescription(prev => prev + (prev ? ' ' : '') + text)} />
+          </div>
+          <Textarea
+            value={userDescription}
+            onChange={(e) => setUserDescription(e.target.value)}
+            placeholder="z.B. Bad komplett sanieren: neue Fliesen, neue Armaturen, Dusche statt Wanne, Elektrik erneuern..."
+            rows={4}
+          />
+          <div className="flex items-center gap-3">
+            {isGeneratingFromDescription ? (
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10 w-full">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <div>
-                  <p className="font-medium">Ihre Beschreibung</p>
-                  <p className="text-sm text-muted-foreground mt-1 italic">
-                    „{serviceCase.description}"
-                  </p>
+                  <p className="text-sm font-medium">KI erstellt Leistungsverzeichnis...</p>
+                  <p className="text-xs text-muted-foreground">Positionen, Beschreibung und Kostenschätzung werden generiert</p>
                 </div>
-                
-                {isGeneratingFromDescription ? (
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">KI erstellt Leistungsverzeichnis...</p>
-                      <p className="text-xs text-muted-foreground">Positionen, Beschreibung und Kostenschätzung werden generiert</p>
-                    </div>
-                  </div>
-                ) : hasLineItems ? (
-                  <Button variant="ghost" size="sm" onClick={handleGenerateFromDescription}>
-                    <Sparkles className="mr-2 h-3 w-3" />
-                    Erneut generieren
-                  </Button>
-                ) : (
-                  <Button size="lg" onClick={handleGenerateFromDescription} className="w-full sm:w-auto">
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Leistungsverzeichnis generieren
-                  </Button>
-                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            ) : hasLineItems ? (
+              <Button variant="outline" onClick={handleGenerateFromDescription} disabled={!userDescription.trim()}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Erneut generieren
+              </Button>
+            ) : (
+              <Button size="lg" onClick={handleGenerateFromDescription} disabled={!userDescription.trim()} className="w-full sm:w-auto">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Leistungsverzeichnis generieren
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ========== BLOCK 2: Beschreibung für Ausschreibung (KI-generiert, editierbar) ========== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Beschreibung für Ausschreibung</CardTitle>
+          <CardDescription>Professionelle Beschreibung — wird von der KI erstellt und kann angepasst werden</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-end mb-1">
+            <DictationButton onTranscript={(text) => setScopeDescription(prev => prev + (prev ? ' ' : '') + text)} />
+          </div>
+          <Textarea
+            value={scopeDescription}
+            onChange={(e) => setScopeDescription(e.target.value)}
+            placeholder="Wird automatisch aus dem Leistungsverzeichnis generiert..."
+            rows={6}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" size="sm" disabled={!hasLineItems}>
+              <Sparkles className="mr-2 h-3 w-3" />
+              Aus LV generieren
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ========== BLOCK 3: Room Analysis (if available) ========== */}
+      {roomAnalysis && <RoomAnalysisDisplay analysis={roomAnalysis} />}
       
-      {/* ========== SECONDARY: DMS / Upload (collapsible) ========== */}
+      {/* ========== BLOCK 3: Leistungsverzeichnis ========== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span>Leistungsverzeichnis</span>
+            {hasLineItems && <Badge variant="secondary">{lineItems.length} Positionen</Badge>}
+          </CardTitle>
+          <CardDescription>Bearbeiten Sie die Positionen oder fügen Sie weitere hinzu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LineItemsEditor items={lineItems} onChange={setLineItems} category={serviceCase.category} />
+        </CardContent>
+      </Card>
+      
+      {/* ========== BLOCK 4: Kostenschätzung ========== */}
+      <CostEstimateCard
+        min={costEstimates.min}
+        mid={costEstimates.mid}
+        max={costEstimates.max}
+        onEstimate={handleEstimateCosts}
+        isEstimating={isEstimating}
+        hasLineItems={hasLineItems}
+      />
+
+      {/* ========== BLOCK 5: Weitere Optionen (DMS/Upload) — collapsible ========== */}
       <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="text-muted-foreground gap-2">
@@ -433,59 +489,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         </CollapsibleContent>
       </Collapsible>
       
-      {/* Room Analysis Display */}
-      {roomAnalysis && <RoomAnalysisDisplay analysis={roomAnalysis} />}
-      
-      {/* Line Items Editor */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span>Leistungsverzeichnis</span>
-            {hasLineItems && <Badge variant="secondary">{lineItems.length} Positionen</Badge>}
-          </CardTitle>
-          <CardDescription>Bearbeiten Sie die Positionen oder fügen Sie weitere hinzu</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LineItemsEditor items={lineItems} onChange={setLineItems} category={serviceCase.category} />
-        </CardContent>
-      </Card>
-      
-      {/* Cost Estimate */}
-      <CostEstimateCard
-        min={costEstimates.min}
-        mid={costEstimates.mid}
-        max={costEstimates.max}
-        onEstimate={handleEstimateCosts}
-        isEstimating={isEstimating}
-        hasLineItems={hasLineItems}
-      />
-      
-      {/* Scope Description */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Freitext-Beschreibung für Ausschreibung</CardTitle>
-          <CardDescription>Diese Beschreibung wird in der Ausschreibungs-E-Mail verwendet</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-end mb-1">
-            <DictationButton onTranscript={(text) => setScopeDescription(prev => prev + (prev ? ' ' : '') + text)} />
-          </div>
-          <Textarea
-            value={scopeDescription}
-            onChange={(e) => setScopeDescription(e.target.value)}
-            placeholder="Beschreiben Sie den Leistungsumfang..."
-            rows={8}
-          />
-          <div className="flex justify-end mt-2">
-            <Button variant="ghost" size="sm" disabled={!hasLineItems}>
-              <Sparkles className="mr-2 h-3 w-3" />
-              Aus LV generieren
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Actions */}
+      {/* ========== BLOCK 6: Aktions-Leiste ========== */}
       <Separator />
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack}>
