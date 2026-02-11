@@ -1,16 +1,8 @@
 /**
  * MOD-11 Finanzierungsmanager — Finance Manager Workbench (Zone 2)
  * 
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock.
- * 
- * Operational SoT AFTER acceptance/assignment from Zone 1 FutureRoom.
- * Role-gated: requires finance_manager
- * 
- * Sub-Pages:
- * - Dashboard: Overview of assigned cases
- * - Fälle: Case list with details (/faelle, /faelle/:requestId)
- * - Kommunikation: Outbound message log
- * - Status: System view and audit trail
+ * Redesigned: 3 Tiles (Dashboard, Finanzierungsakte, Einreichung)
+ * Vertical flow architecture modeled after MOD-13 (Projekte)
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -21,19 +13,14 @@ import { Card, CardContent } from '@/components/ui/card';
 
 // Lazy load sub-pages
 const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'));
-const FMFaelle = React.lazy(() => import('./finanzierungsmanager/FMFaelle'));
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
-const FMKommunikation = React.lazy(() => import('./finanzierungsmanager/FMKommunikation'));
-const FMStatus = React.lazy(() => import('./finanzierungsmanager/FMStatus'));
+const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
+const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
 
 export default function FinanzierungsmanagerPage() {
-  // Navigation handled by Level 3 SubTabs
   const { data: cases, isLoading } = useFutureRoomCases();
   const { memberships, isPlatformAdmin } = useAuth();
 
-  // Access check:
-  // - finance_manager: operational access
-  // - platform_admin: superuser override (dev/muster account needs full visibility)
   const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
 
   if (!canAccess) {
@@ -54,14 +41,13 @@ export default function FinanzierungsmanagerPage() {
 
   return (
     <div className="space-y-6">
-      {/* Route Content - Navigation handled by Level 3 SubTabs */}
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
-        <Route path="faelle" element={<FMFaelle cases={cases || []} isLoading={isLoading} />} />
+        <Route path="faelle" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
         <Route path="faelle/:requestId" element={<FMFallDetail />} />
-        <Route path="kommunikation" element={<FMKommunikation cases={cases || []} />} />
-        <Route path="status" element={<FMStatus cases={cases || []} />} />
+        <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
+        <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Routes>
     </div>

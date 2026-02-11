@@ -365,12 +365,12 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["partner"], requires_role: ["finance_manager"] },
       tiles: [
         { path: "dashboard", component: "FMDashboard", title: "Dashboard", default: true },
-        { path: "faelle", component: "FMFaelle", title: "Fälle" },
-        { path: "kommunikation", component: "FMKommunikation", title: "Kommunikation" },
-        { path: "status", component: "FMStatus", title: "Status" },
+        { path: "faelle", component: "FMFaelle", title: "Finanzierungsakte" },
+        { path: "einreichung", component: "FMEinreichung", title: "Einreichung" },
       ],
       dynamic_routes: [
-        { path: "faelle/:requestId", component: "FMFallDetail", title: "Fall-Details", dynamic: true },
+        { path: "faelle/:requestId", component: "FMFallDetail", title: "Finanzierungsakte", dynamic: true },
+        { path: "einreichung/:requestId", component: "FMEinreichungDetail", title: "Einreichung Detail", dynamic: true },
       ],
     },
     // =========================================================================
