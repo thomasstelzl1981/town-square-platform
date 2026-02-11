@@ -1,218 +1,108 @@
 
-# P0 HARDENING MASTER PLAN — Enterprise GO-Level
+# MOD-13 Kalkulator — Analyse und Reparaturplan
 
-## Uebersicht
+## IST-Analyse: Die drei Kacheln
 
-Dieses Haertungspaket umfasst 5 Teile ohne Architektur- oder Engine-Aenderungen. Alle Aenderungen sind deklarativ (Golden Path Definitionen), datenbankbasiert (Triggers, Constraints) oder Edge-Function-Implementierungen.
+Das Portfolio-Tab hat drei relevante Kacheln:
 
----
-
-## TEIL 1: Golden Path Fail-State Design
-
-### Was wird gemacht?
-Erweiterung der Type-Definitionen und aller 6 Golden Path Definitionen um optionale Fail-State-Felder.
-
-### Aenderungen:
-
-**1a. `src/manifests/goldenPaths/types.ts`** — Neue Typen hinzufuegen:
-
-```text
-FailStateRecovery = 'retry' | 'manual_review' | 'abort' | 'escalate_to_z1' | 'ignore'
-
-interface StepFailState {
-  ledger_event: string        // z.B. "listing.distribution.timeout"
-  status_update: string       // z.B. "timeout"
-  recovery_strategy: FailStateRecovery
-  description: string
-  escalate_to?: string        // z.B. "Z1"
-  max_retries?: number
-  camunda_error_code?: string
-}
-
-// Neues optionales Feld in GoldenPathStep:
-on_timeout?: StepFailState
-on_rejected?: StepFailState
-on_duplicate?: StepFailState
-on_error?: StepFailState
-```
-
-**1b. Alle 6 GP-Definitionen erweitern:**
-
-Fuer jeden Cross-Zone-Step und jeden wait_message/service_task-Step werden `on_timeout`, `on_error` und ggf. `on_rejected`/`on_duplicate` ergaenzt. Beispiel fuer MOD_04 Step `listing_distribution_z1`:
-
-```text
-on_timeout:
-  ledger_event: "listing.distribution.timeout"
-  status_update: "timeout"
-  recovery_strategy: "manual_review"
-  escalate_to: "Z1"
-  
-on_error:
-  ledger_event: "listing.distribution.error"
-  status_update: "error"
-  recovery_strategy: "retry"
-  max_retries: 3
-```
-
-SLA-Zeitraeume (nur als Metadaten im Step, keine Engine-Aenderung):
-- Z2 nach Z1 Handoff: 24h
-- Z1 nach Z2 Assignment: 24h
-- Externer Email Response: 72h
-
-**1c. Ledger-Whitelist erweitern** (`src/manifests/goldenPaths/index.ts`):
-
-Neue Events hinzufuegen:
-- `*.timeout` Patterns fuer jeden GP (z.B. `listing.distribution.timeout`, `finance.request.timeout`, etc.)
-- `*.rejected` Patterns
-- `*.duplicate_detected` Patterns
-- `*.error` Patterns
-- Consent-Events (siehe Teil 2)
-- PII-Events (siehe Teil 2)
-
-**1d. `src/goldenpath/devValidator.ts`** erweitern:
-
-Neue Pruefung (Section 5): Fuer jeden Step mit `contract_refs` oder `task_kind === 'wait_message'` pruefen, dass mindestens `on_timeout` und `on_error` definiert sind. Fehlende Fail-States erzeugen `console.error`.
+1. **StickyCalculatorPanel** (links, 1/3 Breite) — Stellschrauben mit Slidern
+2. **UnitPreislisteTable** (volle Breite) — Einheiten-Preisliste mit Inline-Editing
+3. **SalesStatusReportWidget** (rechts, 2/3 Breite) — Vertriebsstatus-KPIs und PDF-Report
 
 ---
 
-## TEIL 2: DSGVO P0 Hardening
+## Gefundene Probleme
 
-### 2a. Consent-Events
+### Problem 1: Fehlendes Feld "Gesamtprojektverkaufspreis"
+Der StickyCalculatorPanel hat nur ein Eingabefeld: **Investitionskosten**. Es fehlt ein zweites Feld fuer den **Gesamtprojektverkaufspreis** (total_sale_target). Aktuell wird der Gesamtverkaufspreis ausschliesslich aus der Summe der Einheiten-Preise berechnet (`units.reduce(effective_price)`), was bedeutet:
+- Man kann keinen Top-Down-Zielpreis vorgeben
+- Die Marge-Berechnung haengt komplett von den Einzelpreisen ab, statt umgekehrt
 
-**Ledger-Whitelist erweitern** um:
-- `consent.given`
-- `consent.revoked`
-- `consent.updated`
+### Problem 2: Berechnungslogik-Inkonsistenz zwischen den Kacheln
+Die drei Kacheln verwenden **unterschiedliche Berechnungsmodelle**, die nicht synchronisiert sind:
 
-**DB-Funktion `log_data_event` aktualisieren** (Migration):
-- Whitelist in der RPC-Funktion um alle neuen Event-Types erweitern (Consent, PII, Fail-State Events)
-- Payload-Keys fuer neue Events definieren
+**StickyCalculatorPanel:**
+```
+Marge = totalSale - investmentCosts - provisionAbs
+```
+- `totalSale` = Summe aller `effective_price` der Einheiten
+- `provisionAbs` = totalSale * provisionRate
+- Problem: Investitionskosten beinhalten KEINE Nebenkosten, Sanierung oder Zinsen
 
-### 2b. PII Update Tracking via DB-Triggers
+**ProjectAufteilerCalculation (Projektakte Tab D):**
+```
+netCosts = purchasePrice + ancillaryCosts + renovationBudget + interestCosts - rentIncome
+profit = salesPriceNet - netCosts
+```
+- Wesentlich detailliertere Kalkulation mit Nebenkosten, Zinsen, Mieteinnahmen
+- Nutzt separate Slider und eigene Speicherlogik
 
-**Neue DB-Triggers** (Migration):
+**SalesStatusReportWidget:**
+```
+grossProfit = totalVolume - investmentCosts - totalProvision
+```
+- Provision nur von sold/notary-Einheiten (korrekt laut Spec)
+- Investitionskosten = nur das eine Input-Feld, keine Nebenkosten
 
-3 Audit-Triggers erstellen:
-1. `trg_audit_applicant_profiles` — AFTER UPDATE/DELETE on `applicant_profiles`
-2. `trg_audit_contacts` — AFTER UPDATE/DELETE on `contacts`  
-3. `trg_audit_profiles` — AFTER UPDATE/DELETE on `profiles`
+### Problem 3: Keine Persistenz des Gesamtverkaufspreises im Portfolio-Tab
+Im StickyCalculatorPanel wird der Gesamtverkaufspreis nirgends gespeichert. Der Save-Button speichert nur die Investitionskosten im lokalen State, nicht in die Datenbank.
 
-Jeder Trigger ruft eine gemeinsame Funktion `fn_audit_pii_change()` auf, die:
-- Die geaenderten Spalten ermittelt (`OLD` vs `NEW`)
-- Einen Eintrag in `data_event_ledger` schreibt mit:
-  - `event_type`: `applicant_profile.updated` / `contact.deleted` etc.
-  - `payload`: `{ "record_id": "...", "table_name": "...", "changed_fields": ["field1","field2"] }`
-  - Keine PII-Werte im Payload — nur Feldnamen
-- Soft-Delete erkennt (`deleted_at` wird gesetzt) und als `*.delete_requested` loggt
+### Problem 4: Preisberechnungslogik in der Preisliste
+Die effective_price-Berechnung in PortfolioTab (Zeile 138-139):
+```
+basePrice = annual_net_rent / targetYield
+effectivePrice = basePrice * (1 + priceAdjustment / 100)
+```
+Das ist korrekt fuer eine Rendite-basierte Preisfindung. ABER: Es gibt keinen Rueckkanal — wenn man einen Gesamtverkaufspreis vorgibt, werden die Einzelpreise nicht proportional angepasst.
 
 ---
 
-## TEIL 3: Renter Invite Edge Function
+## Reparatur- und Erweiterungsplan
 
-### Neue Datei: `supabase/functions/sot-renter-invite/index.ts`
+### Schritt 1: StickyCalculatorPanel erweitern
+Neues Eingabefeld **"Gesamtverkaufspreis (Ziel)"** hinzufuegen:
+- Input-Feld mit Save-Button (identisch zum Investitionskosten-Feld)
+- Wenn gesetzt: Wird als `totalSaleTarget` an den Kalkulator uebergeben
+- Die Marge-Berechnung nutzt dann: `max(totalSaleTarget, summe_einheiten)`
+- Neuer State in PortfolioTab: `totalSaleTarget` mit Setter
 
-Vollstaendige Implementierung basierend auf CONTRACT_RENTER_INVITE.md:
+### Schritt 2: Berechnungslogik konsolidieren
+Die Kalkulation im StickyCalculatorPanel wird erweitert um:
+```
+totalSale = totalSaleTarget > 0 ? totalSaleTarget : units.reduce(effective_price)
+provisionAbs = totalSale * provisionRate
+marginAbs = totalSale - investmentCosts - provisionAbs
+marginPct = marginAbs / investmentCosts * 100  (auf Invest bezogen, nicht auf Sale)
+profitPerUnit = marginAbs / units.length
+```
 
-**Flow:**
-1. Empfaengt POST mit `{ invite_id }` oder `{ lease_id, email, contact_id }`
-2. Service-Role DB-Client erstellt
-3. Validierung:
-   - Lease existiert und gehoert zum Tenant
-   - Email ist gueltig
-   - Kein Duplikat (Pruefung via `idx_renter_invites_pending_per_lease` — bereits als UNIQUE partial index vorhanden)
-4. Falls `invite_id` nicht uebergeben: Insert in `renter_invites` mit Token und 72h Expiry
-5. Ledger-Event: `renter.invite.sent`
-6. Email-Versand via Resend (Pattern aus `sot-system-mail-send`)
-7. Response mit `{ success: true, invite_id }`
+### Schritt 3: SalesStatusReportWidget synchronisieren
+- `grossProfit` nutzt den gleichen `totalSaleTarget` statt nur die Summe der Einheiten
+- Die Provision-Berechnung bleibt korrekt (nur sold/notary)
+- Neuer KPI: "Zielverkaufspreis" wird angezeigt
 
-**Acceptance-Endpoint** (separater POST-Pfad via `action` Parameter):
-1. Token validieren
-2. Expiry pruefen (72h) 
-3. Status-Update: `pending` -> `accepted`, `accepted_at = now()`
-4. Renter-Org Provisioning (Insert in `organizations` mit `org_type: 'renter'`)
-5. `lease.renter_org_id` setzen
-6. Data-Room Access Grant erstellen (`access_grants`)
-7. Ledger-Events: `renter.invite.accepted`, `renter.org.provisioned`, `data_room.access.granted`
+### Schritt 4: Persistenz sicherstellen
+Bei Speichern (existierender Save-Button oder neuer) werden beide Werte in `dev_projects` geschrieben:
+- `purchase_price` (Investitionskosten)
+- `total_sale_target` (Gesamtverkaufspreis)
 
-**Idempotenz:** 
-- Bereits `accepted` -> ignorieren, return success
-- Der existierende UNIQUE partial index `idx_renter_invites_pending_per_lease` verhindert doppelte pending Invites pro Lease
+Das Feld `total_sale_target` existiert bereits in der Datenbank und im Typ `ProjectPortfolioRow`.
 
-**Timeout:**
-- Expires_at ist bereits auf 14 Tage gesetzt (DB-Default). Wird auf 72h angepasst oder per Parameter konfigurierbar.
-- Expiry-Check bei Acceptance: Token abgelaufen -> `renter.invite.expired` Ledger-Event, Status = `expired`
-
-**Config:** `supabase/config.toml` Eintrag mit `verify_jwt = false` (Token-basierte Acceptance braucht keine Auth).
+### Schritt 5: Initialisierung aus DB-Daten
+Beim Projektwechsel im Portfolio-Tab werden beide Werte aus dem Projekt geladen:
+- `investmentCosts` = `selectedProject.purchase_price`
+- `totalSaleTarget` = `selectedProject.total_sale_target`
 
 ---
 
-## TEIL 4: Status Transition Hardening
-
-### DB-Validation-Triggers (Migration)
-
-Fuer 4 Tabellen werden Validation-Triggers erstellt (keine CHECK Constraints, da diese immutable sein muessen):
-
-**1. `finance_requests`:**
-```text
-Erlaubt: draft->submitted, submitted->assigned, assigned->processing,
-         processing->completed, processing->rejected, submitted->timeout
-Blockiert: assigned->draft, completed->processing, rejected->submitted
-```
-
-**2. `acq_mandates`:**
-```text
-Erlaubt: draft->submitted, submitted->assigned, assigned->active,
-         active->completed, active->rejected, submitted->timeout
-```
-
-**3. `dev_projects`:**
-```text
-Erlaubt: planning->construction, construction->sales, sales->handover,
-         handover->completed
-```
-
-**4. `leases`:**
-```text
-Erlaubt: draft->active, active->terminated, active->expired
-```
-
-Jeder Trigger: `BEFORE UPDATE` — prueft `OLD.status` vs `NEW.status`. Bei ungueltigem Uebergang: `RAISE EXCEPTION 'Invalid status transition: % -> %'`.
-
----
-
-## TEIL 5: Validierung
-
-### Automatische Pruefungen nach Umsetzung:
-- devValidator laeuft ohne neue Errors (alle Cross-Zone Steps haben Fail-States)
-- Ledger-Whitelist enthaelt alle neuen Events
-- Build kompiliert ohne TypeScript-Fehler
-- Keine Aenderung an `engine.ts` Core-Logik
-- Keine neuen Routes oder Zonen
-- Edge Function `sot-renter-invite` deployed und aufrufbar
-
----
-
-## Zusammenfassung der Dateiaenderungen
+## Technische Dateiaenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/goldenPaths/types.ts` | Neue Fail-State Typen |
-| `src/manifests/goldenPaths/MOD_04.ts` | Fail-States fuer 5 Cross-Zone Steps |
-| `src/manifests/goldenPaths/MOD_07_11.ts` | Fail-States fuer 3 Cross-Zone Steps |
-| `src/manifests/goldenPaths/MOD_08_12.ts` | Fail-States fuer 3 Cross-Zone Steps |
-| `src/manifests/goldenPaths/MOD_13.ts` | Fail-States fuer 2 Cross-Zone Steps |
-| `src/manifests/goldenPaths/GP_VERMIETUNG.ts` | Fail-States fuer 2 Cross-Zone Steps |
-| `src/manifests/goldenPaths/GP_LEAD.ts` | Fail-States fuer 1 Cross-Zone Step |
-| `src/manifests/goldenPaths/index.ts` | Erweiterte Ledger-Whitelist (~30 neue Events) |
-| `src/goldenpath/devValidator.ts` | Neue Pruefung: Fail-State Vollstaendigkeit |
-| `supabase/functions/sot-renter-invite/index.ts` | Neue Edge Function |
-| Migration 1 | `log_data_event` RPC: erweiterte Whitelist + Payload-Keys |
-| Migration 2 | PII Audit Triggers (3 Tabellen) |
-| Migration 3 | Status Transition Triggers (4 Tabellen) |
-| Migration 4 | Renter Invite Ledger-Events in Whitelist |
+| `src/pages/portal/projekte/PortfolioTab.tsx` | Neuer State `totalSaleTarget`, an beide Kacheln weitergeben, Initialisierung aus Projekt-Daten |
+| `src/components/projekte/StickyCalculatorPanel.tsx` | Neues Input-Feld "Gesamtverkaufspreis", erweiterte Props, korrigierte Marge-Berechnung, DB-Save fuer beide Felder |
+| `src/components/projekte/SalesStatusReportWidget.tsx` | Neue Prop `totalSaleTarget`, Rohertrag-Berechnung nutzt den Zielpreis |
 
-**Keine Aenderungen an:**
-- `src/goldenpath/engine.ts` (Engine-Core bleibt unberuehrt)
-- `src/integrations/supabase/client.ts`
-- `src/integrations/supabase/types.ts`
-- Routing oder Zonen-Architektur
+**Keine DB-Migration noetig** — `total_sale_target` existiert bereits auf `dev_projects`.
+
+**Keine neuen Routen, keine Engine-Aenderung.**
