@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -309,6 +309,138 @@ function ConnectionDialog({
   );
 }
 
+// Email Detail Panel with action buttons in header + auto body fetch
+function EmailDetailPanel({
+  email,
+  activeAccount,
+  isLoadingBody,
+  bodyFetchError,
+  onFetchBody,
+  onReply,
+  onReplyAll,
+  onForward,
+  onDelete,
+  onArchive,
+  onToggleStar,
+  isPending,
+}: {
+  email: any;
+  activeAccount: any;
+  isLoadingBody: boolean;
+  bodyFetchError: boolean;
+  onFetchBody: (email: any) => void;
+  onReply: (email: any) => void;
+  onReplyAll: (email: any) => void;
+  onForward: (email: any) => void;
+  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onToggleStar: (id: string, starred: boolean) => void;
+  isPending: { delete: boolean; archive: boolean; star: boolean };
+}) {
+  const [fetchTriggered, setFetchTriggered] = useState(false);
+
+  // Auto-fetch body when email has no content
+  useEffect(() => {
+    if (email && !email.body_text && !email.body_html && !isLoadingBody && !fetchTriggered && !bodyFetchError) {
+      setFetchTriggered(true);
+      onFetchBody(email);
+    }
+  }, [email?.id]);
+
+  // Reset trigger when email changes
+  useEffect(() => {
+    setFetchTriggered(false);
+  }, [email?.id]);
+
+  if (!email) return null;
+
+  const hasBody = email.body_text || email.body_html;
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Email Header with ALL action buttons */}
+      <div className="p-4 border-b space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-lg font-semibold flex-1 min-w-0">{email.subject || '(Kein Betreff)'}</h2>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Reply actions */}
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Antworten" onClick={() => onReply(email)}>
+              <Reply className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Allen antworten" onClick={() => onReplyAll(email)}>
+              <ReplyAll className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Weiterleiten" onClick={() => onForward(email)}>
+              <Forward className="h-4 w-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-5 mx-1" />
+            {/* Management actions */}
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Markieren"
+              onClick={() => onToggleStar(email.id, email.is_starred)} disabled={isPending.star}>
+              <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Archivieren"
+              onClick={() => onArchive(email.id)} disabled={isPending.archive}>
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Löschen"
+              onClick={() => onDelete(email.id)} disabled={isPending.delete}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-sm font-medium text-primary">
+              {(email.from_name || email.from_address || '?')[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{email.from_name || email.from_address}</span>
+              {email.from_name && (
+                <span className="text-sm text-muted-foreground">&lt;{email.from_address}&gt;</span>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              An: {Array.isArray(email.to_addresses) ? email.to_addresses.join(', ') : activeAccount?.email_address}
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground whitespace-nowrap">
+            {new Date(email.received_at).toLocaleString('de-DE', {
+              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })}
+          </div>
+        </div>
+      </div>
+      {/* Email Body */}
+      <ScrollArea className="flex-1 p-4">
+        {isLoadingBody ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm">E-Mail-Inhalt wird geladen...</p>
+          </div>
+        ) : bodyFetchError && !hasBody ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <AlertCircle className="h-8 w-8 mb-3" />
+            <p className="text-sm mb-2">Inhalt konnte nicht geladen werden.</p>
+            <Button variant="outline" size="sm" onClick={() => { setFetchTriggered(false); onFetchBody(email); }}>
+              <RefreshCw className="h-3 w-3 mr-2" />
+              Erneut versuchen
+            </Button>
+          </div>
+        ) : email.body_html ? (
+          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: email.body_html }} />
+        ) : (
+          <pre className="whitespace-pre-wrap text-sm font-sans">
+            {email.body_text || email.snippet || 'Kein Inhalt'}
+          </pre>
+        )}
+      </ScrollArea>
+    </div>
+  );
+}
+
 export function EmailTab() {
   const queryClient = useQueryClient();
   const [selectedFolder, setSelectedFolder] = useState('inbox');
@@ -320,6 +452,8 @@ export function EmailTab() {
   const [composeInitialTo, setComposeInitialTo] = useState('');
   const [composeInitialSubject, setComposeInitialSubject] = useState('');
   const [composeInitialBody, setComposeInitialBody] = useState('');
+  const [isLoadingBody, setIsLoadingBody] = useState(false);
+  const [bodyFetchError, setBodyFetchError] = useState(false);
 
   const openCompose = (to = '', subject = '', body = '') => {
     setComposeInitialTo(to);
@@ -784,104 +918,41 @@ export function EmailTab() {
         {/* Right - Email Detail / Preview */}
         <div className="col-span-6 flex flex-col overflow-hidden">
           {selectedEmail && messages.length > 0 ? (
-            (() => {
-              const email = messages.find((m: any) => m.id === selectedEmail);
-              if (!email) return null;
-              return (
-                <div className="flex flex-col h-full">
-                  {/* Email Header */}
-                  <div className="p-4 border-b space-y-3">
-                    <div className="flex items-start justify-between">
-                      <h2 className="text-lg font-semibold">{email.subject || '(Kein Betreff)'}</h2>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => toggleStarMutation.mutate({ messageId: email.id, isStarred: email.is_starred })}
-                          disabled={toggleStarMutation.isPending}
-                        >
-                          <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => archiveMutation.mutate(email.id)}
-                          disabled={archiveMutation.isPending}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => deleteMutation.mutate(email.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {(email.from_name || email.from_address || '?')[0].toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{email.from_name || email.from_address}</span>
-                          {email.from_name && (
-                            <span className="text-sm text-muted-foreground">&lt;{email.from_address}&gt;</span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          An: {Array.isArray(email.to_addresses) ? email.to_addresses.join(', ') : activeAccount?.email_address}
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(email.received_at).toLocaleString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Email Body */}
-                  <ScrollArea className="flex-1 p-4">
-                    {email.body_html ? (
-                      <div 
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: email.body_html }}
-                      />
-                    ) : (
-                      <pre className="whitespace-pre-wrap text-sm font-sans">
-                        {email.body_text || email.snippet || 'Kein Inhalt'}
-                      </pre>
-                    )}
-                  </ScrollArea>
-                  {/* Email Actions */}
-                  <div className="p-3 border-t flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReply(email)}>
-                      <Reply className="h-4 w-4" />
-                      Antworten
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReplyAll(email)}>
-                      <ReplyAll className="h-4 w-4" />
-                      Allen antworten
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleForward(email)}>
-                      <Forward className="h-4 w-4" />
-                      Weiterleiten
-                    </Button>
-                  </div>
-                </div>
-              );
-            })()
+            <EmailDetailPanel
+              email={messages.find((m: any) => m.id === selectedEmail)}
+              activeAccount={activeAccount}
+              isLoadingBody={isLoadingBody}
+              bodyFetchError={bodyFetchError}
+              onFetchBody={async (email: any) => {
+                setIsLoadingBody(true);
+                setBodyFetchError(false);
+                try {
+                  const { data, error } = await supabase.functions.invoke('sot-mail-fetch-body', {
+                    body: { messageId: email.id, uid: email.message_id },
+                  });
+                  if (error || !data?.success) {
+                    setBodyFetchError(true);
+                  } else {
+                    refetchMessages();
+                  }
+                } catch {
+                  setBodyFetchError(true);
+                } finally {
+                  setIsLoadingBody(false);
+                }
+              }}
+              onReply={handleReply}
+              onReplyAll={handleReplyAll}
+              onForward={handleForward}
+              onDelete={(id: string) => deleteMutation.mutate(id)}
+              onArchive={(id: string) => archiveMutation.mutate(id)}
+              onToggleStar={(id: string, starred: boolean) => toggleStarMutation.mutate({ messageId: id, isStarred: starred })}
+              isPending={{
+                delete: deleteMutation.isPending,
+                archive: archiveMutation.isPending,
+                star: toggleStarMutation.isPending,
+              }}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center text-center p-8">
               {hasConnectedAccount ? (

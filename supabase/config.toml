@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.sot-extract-email]
 verify_jwt = false
+
+[functions.sot-mail-fetch-body]
+verify_jwt = false

@@ -404,13 +404,14 @@ async function syncImapMail(
     
     console.log(`Fetching messages ${range} with full content...`);
 
-    // Fetch messages with envelope, flags (without full body — we fetch body separately per-message)
+    // Fetch messages with envelope, flags, and attempt body via BODY[1] (most reliable single-part fetch)
     const messages = await client.fetch(range, {
       envelope: true,
       flags: true,
       uid: true,
       internalDate: true,
       bodyStructure: true,
+      bodyParts: ['1'],
     });
 
     console.log(`Fetched ${messages.length} messages, parsing content...`);
@@ -456,26 +457,95 @@ async function syncImapMail(
           receivedAt = new Date().toISOString();
         }
 
-        // Parse MIME content — fetch full RFC822 per message for reliable body extraction
+        // Parse MIME content — use inline BODY[1] from batch fetch first, then fallback strategies
         let bodyText = '';
         let bodyHtml = '';
         let snippet = '';
         let hasAttachments = false;
         
-        if (msg.uid) {
-          // === Tier 1: Fetch full RFC822 message (most reliable) ===
+        // === Tier 0: Check inline BODY[1] from batch fetch ===
+        if (msg.bodyParts) {
           try {
-            console.log(`[UID ${msg.uid}] Fetching RFC822...`);
-            const rfcMsgs = await client.fetch(`${msg.uid}`, {
-              full: true,
-            }, true); // UID-based fetch
-            
+            const part = msg.bodyParts?.get?.('1') || msg.bodyParts?.['1'];
+            if (part) {
+              const content = (part instanceof Uint8Array)
+                ? new TextDecoder('utf-8', { fatal: false }).decode(part)
+                : String(part);
+              if (content.length > 10) {
+                if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
+                  bodyHtml = truncate(content, MAX_BODY_SIZE);
+                } else {
+                  bodyText = truncate(content, MAX_BODY_SIZE);
+                }
+                console.log(`[UID ${msg.uid}] Inline BODY[1]: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+              }
+            }
+          } catch (e) {
+            console.error(`[UID ${msg.uid}] Inline BODY[1] parse error:`, e);
+          }
+        }
+        
+        if (msg.uid && !bodyText && !bodyHtml) {
+          // === Tier 1: Fetch BODY[TEXT] ===
+          try {
+            console.log(`[UID ${msg.uid}] Trying BODY[TEXT]...`);
+            const fallbackMsgs = await client.fetch(`${msg.uid}`, { bodyParts: ['TEXT'] }, true);
+            const fbMsg = fallbackMsgs?.[0];
+            const textPart = fbMsg?.bodyParts?.get?.('TEXT') || fbMsg?.bodyParts?.TEXT;
+            if (textPart) {
+              const fbContent = (textPart instanceof Uint8Array) 
+                ? new TextDecoder('utf-8', { fatal: false }).decode(textPart)
+                : String(textPart);
+              if (fbContent.length > 0) {
+                const parsed = parseMimeMessage(fbContent);
+                bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+                bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+                hasAttachments = parsed.hasAttachments;
+                console.log(`[UID ${msg.uid}] BODY[TEXT]: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+              }
+            }
+          } catch (fb2Error) {
+            console.error(`[UID ${msg.uid}] BODY[TEXT] fetch error:`, fb2Error);
+          }
+        }
+          
+        // === Tier 2: Nested MIME parts ===
+        if (msg.uid && !bodyText && !bodyHtml) {
+          for (const partId of ['1.1', '1.2', '2']) {
+            try {
+              const fallbackMsgs = await client.fetch(`${msg.uid}`, { bodyParts: [partId] }, true);
+              const fbMsg = fallbackMsgs?.[0];
+              const part = fbMsg?.bodyParts?.get?.(partId) || fbMsg?.bodyParts?.[partId];
+              if (part) {
+                const fbContent = (part instanceof Uint8Array) 
+                  ? new TextDecoder('utf-8', { fatal: false }).decode(part)
+                  : String(part);
+                if (fbContent.length > 10) {
+                  if (fbContent.includes('<html') || fbContent.includes('<body') || fbContent.includes('<div')) {
+                    bodyHtml = truncate(fbContent, MAX_BODY_SIZE);
+                  } else {
+                    bodyText = truncate(fbContent, MAX_BODY_SIZE);
+                  }
+                  console.log(`[UID ${msg.uid}] BODY[${partId}]: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+                  if (bodyText || bodyHtml) break;
+                }
+              }
+            } catch (fbError) {
+              console.error(`[UID ${msg.uid}] BODY[${partId}] fetch error:`, fbError);
+            }
+          }
+        }
+        
+        // === Tier 3: Full RFC822 as last resort ===
+        if (msg.uid && !bodyText && !bodyHtml) {
+          try {
+            console.log(`[UID ${msg.uid}] Last resort: full RFC822...`);
+            const rfcMsgs = await client.fetch(`${msg.uid}`, { full: true }, true);
             const rfcMsg = rfcMsgs?.[0];
             if (rfcMsg?.raw) {
               const rawMessage = (rfcMsg.raw instanceof Uint8Array)
                 ? new TextDecoder('utf-8', { fatal: false }).decode(rfcMsg.raw)
                 : String(rfcMsg.raw);
-              
               if (rawMessage.length > 0) {
                 const parsed = parseMimeMessage(rawMessage);
                 bodyText = truncate(parsed.text, MAX_BODY_SIZE);
@@ -487,91 +557,10 @@ async function syncImapMail(
           } catch (rfcError) {
             console.error(`[UID ${msg.uid}] RFC822 fetch error:`, rfcError);
           }
-          
-          // === Tier 2: Fallback — fetch BODY[TEXT] via bodyParts ===
-          if (!bodyText && !bodyHtml) {
-            console.log(`[UID ${msg.uid}] RFC822 empty, trying BODY[TEXT]...`);
-            try {
-              const fallbackMsgs = await client.fetch(`${msg.uid}`, {
-                bodyParts: ['TEXT'],
-              }, true);
-              
-              const fbMsg = fallbackMsgs?.[0];
-              const textPart = fbMsg?.bodyParts?.get?.('TEXT') || fbMsg?.bodyParts?.TEXT;
-              
-              if (textPart) {
-                const fbContent = (textPart instanceof Uint8Array) 
-                  ? new TextDecoder('utf-8', { fatal: false }).decode(textPart)
-                  : String(textPart);
-                
-                if (fbContent.length > 0) {
-                  const parsed = parseMimeMessage(fbContent);
-                  bodyText = truncate(parsed.text, MAX_BODY_SIZE);
-                  bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
-                  hasAttachments = parsed.hasAttachments;
-                  console.log(`[UID ${msg.uid}] BODY[TEXT]: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-                }
-              }
-            } catch (fb2Error) {
-              console.error(`[UID ${msg.uid}] BODY[TEXT] fetch error:`, fb2Error);
-            }
-          }
-          
-          // === Tier 3: Fallback — fetch BODY[1] and BODY[1.1] ===
-          if (!bodyText && !bodyHtml) {
-            console.log(`[UID ${msg.uid}] BODY[TEXT] empty, trying BODY[1] + BODY[1.1]...`);
-            for (const partId of ['1', '1.1', '1.2', '2']) {
-              try {
-                const fallbackMsgs = await client.fetch(`${msg.uid}`, {
-                  bodyParts: [partId],
-                }, true);
-                
-                const fbMsg = fallbackMsgs?.[0];
-                const part = fbMsg?.bodyParts?.get?.(partId) || fbMsg?.bodyParts?.[partId];
-                
-                if (part) {
-                  const fbContent = (part instanceof Uint8Array) 
-                    ? new TextDecoder('utf-8', { fatal: false }).decode(part)
-                    : String(part);
-                  
-                  if (fbContent.length > 10) {
-                    // Try to detect if it's HTML or text
-                    if (fbContent.includes('<html') || fbContent.includes('<body') || fbContent.includes('<div')) {
-                      bodyHtml = truncate(fbContent, MAX_BODY_SIZE);
-                    } else {
-                      // Could be transfer-encoded, try to parse as MIME
-                      const parsed = parseMimeMessage(`Content-Type: text/plain\r\n\r\n${fbContent}`);
-                      bodyText = truncate(parsed.text || fbContent, MAX_BODY_SIZE);
-                    }
-                    console.log(`[UID ${msg.uid}] BODY[${partId}]: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-                    if (bodyText || bodyHtml) break;
-                  }
-                }
-              } catch (fbError) {
-                console.error(`[UID ${msg.uid}] BODY[${partId}] fetch error:`, fbError);
-              }
-            }
-          }
-        }
-        
-        // Also try msg.raw from the initial fetch as last resort
-        if (!bodyText && !bodyHtml && msg.raw) {
-          try {
-            const rawMessage = (msg.raw instanceof Uint8Array)
-              ? new TextDecoder('utf-8', { fatal: false }).decode(msg.raw)
-              : String(msg.raw);
-            const parsed = parseMimeMessage(rawMessage);
-            bodyText = truncate(parsed.text, MAX_BODY_SIZE);
-            bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
-            hasAttachments = parsed.hasAttachments;
-            console.log(`[UID ${msg.uid}] initial raw fallback: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-          } catch (parseError) {
-            console.error(`[UID ${msg.uid}] initial raw parse error:`, parseError);
-          }
         }
         
         if (!bodyText && !bodyHtml) {
-          console.warn(`[UID ${msg.uid}] ALL fetch tiers failed — no body content. Subject: ${envelope.subject}`);
+          console.warn(`[UID ${msg.uid}] ALL fetch tiers failed — body will be fetched on-demand. Subject: ${envelope.subject}`);
         }
         
         // Generate snippet from body content
