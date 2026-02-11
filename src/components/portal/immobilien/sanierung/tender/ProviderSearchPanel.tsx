@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,14 +50,7 @@ export function ProviderSearchPanel({
   selectedProviders,
   onProvidersChange,
 }: ProviderSearchPanelProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [manualEntry, setManualEntry] = useState(false);
-  const [manualProvider, setManualProvider] = useState<Partial<SelectedProvider>>({});
-
-  // Build search query based on category
-  const getCategorySearchTerm = (cat: string): string => {
+  const getCategorySearchTerm = useCallback((cat: string): string => {
     const terms: Record<string, string> = {
       sanitaer: 'Sanitär Installateur',
       elektro: 'Elektriker',
@@ -70,7 +63,15 @@ export function ProviderSearchPanel({
       sonstige: 'Handwerker',
     };
     return terms[cat] || 'Handwerker';
-  };
+  }, []);
+
+  const [searchQuery, setSearchQuery] = useState(() => getCategorySearchTerm(category));
+  const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const hasAutoSearched = useRef(false);
+  const [manualEntry, setManualEntry] = useState(false);
+  const [manualProvider, setManualProvider] = useState<Partial<SelectedProvider>>({});
+
 
   // Search for providers via Google Places API (Edge Function)
   const handleSearch = useCallback(async () => {
@@ -104,6 +105,14 @@ export function ProviderSearchPanel({
       setIsSearching(false);
     }
   }, [searchQuery, category, location]);
+
+  // Auto-search on mount when location is available
+  useEffect(() => {
+    if (location && !hasAutoSearched.current) {
+      hasAutoSearched.current = true;
+      handleSearch();
+    }
+  }, [location, handleSearch]);
 
   // Toggle provider selection
   const toggleProvider = (place: PlaceResult) => {
