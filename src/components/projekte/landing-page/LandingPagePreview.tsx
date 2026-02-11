@@ -4,7 +4,11 @@
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ExternalLink, Eye, RefreshCw, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import type { LandingPage } from '@/hooks/useLandingPage';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
@@ -16,6 +20,7 @@ interface LandingPagePreviewProps {
   landingPage: LandingPage | null;
   isDemo: boolean;
   units?: DemoUnit[];
+  onRefresh?: () => void;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -25,11 +30,20 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
   locked: { label: 'Gesperrt', variant: 'destructive' },
 };
 
-export function LandingPagePreview({ project, landingPage, isDemo, units }: LandingPagePreviewProps) {
+export function LandingPagePreview({ project, landingPage, isDemo, units, onRefresh }: LandingPagePreviewProps) {
   const slug = landingPage?.slug || 'mein-projekt';
   const status = landingPage?.status || 'draft';
   const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const publicUrl = `/projekt/${slug}`;
+  const fullUrl = `${window.location.origin}${publicUrl}`;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    toast.success('Link kopiert');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="space-y-4">
@@ -79,6 +93,19 @@ export function LandingPagePreview({ project, landingPage, isDemo, units }: Land
         </div>
       </div>
 
+      {/* Copyable Link */}
+      <div className="flex items-center gap-2 max-w-6xl mx-auto px-1">
+        <Input
+          readOnly
+          value={fullUrl}
+          className="flex-1 text-xs font-mono"
+        />
+        <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={handleCopy}>
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? 'Kopiert' : 'Link kopieren'}
+        </Button>
+      </div>
+
       {/* Action Bar below frame */}
       <div className="flex items-center justify-between gap-4 flex-wrap max-w-6xl mx-auto px-1">
         <div className="flex items-center gap-3">
@@ -90,10 +117,29 @@ export function LandingPagePreview({ project, landingPage, isDemo, units }: Land
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" disabled>
-            Bearbeiten
-            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Soon</Badge>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button variant="outline" size="sm" className="gap-1.5" disabled>
+                    Bearbeiten
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Soon</Badge>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Inline-Editing wird in einer zukünftigen Version verfügbar sein.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {onRefresh && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={onRefresh}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Aktualisieren
+            </Button>
+          )}
+
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(publicUrl, '_blank')}>
             <Eye className="h-3.5 w-3.5" />
             Vorschau

@@ -8,7 +8,7 @@
  * Demo project is always visible as first tile.
  */
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -21,6 +21,7 @@ import type { ProjectPortfolioRow } from '@/types/projekte';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 
 export default function LandingPageTab() {
+  const queryClient = useQueryClient();
   const { projects, isLoading, portfolioRows } = useDevProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEMO_PROJECT_ID);
 
@@ -132,6 +133,10 @@ export default function LandingPageTab() {
           landingPage={landingPage}
           isDemo={isSelectedDemo}
           units={units}
+          onRefresh={() => {
+            queryClient.invalidateQueries({ queryKey: ['landing-page', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['dev_project_units_lp', selectedProjectId] });
+          }}
         />
       )}
     </div>
