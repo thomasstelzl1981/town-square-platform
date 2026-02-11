@@ -136,7 +136,7 @@ export function VertraegeTab() {
       if (!activeTenantId) return [];
       const { data, error } = await supabase
         .from('listings')
-        .select('*, properties(address, city)')
+        .select('*, properties(id, address, city)')
         .eq('tenant_id', activeTenantId)
         .not('sales_mandate_consent_id', 'is', null)
         .order('created_at', { ascending: false });
@@ -209,6 +209,7 @@ export function VertraegeTab() {
       const address = sm.properties?.address 
         ? `${sm.properties.address}${sm.properties.city ? `, ${sm.properties.city}` : ''}`
         : 'Objekt';
+      const propertyId = (sm.properties as any)?.id;
       return {
         id: sm.id,
         type: 'sales_mandate',
@@ -217,7 +218,7 @@ export function VertraegeTab() {
         date: new Date(sm.created_at),
         status: sm.status,
         icon: Tag,
-        link: `/portal/verkauf/objekte`,
+        link: propertyId ? `/portal/immobilien/${propertyId}?tab=verkaufsauftrag` : `/portal/verkauf/objekte`,
       };
     }),
     // Commissions (with new commission_type and reference info)

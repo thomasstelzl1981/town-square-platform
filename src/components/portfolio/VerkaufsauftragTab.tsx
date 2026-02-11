@@ -274,7 +274,8 @@ export function VerkaufsauftragTab({
         if (insertError) throw insertError;
       }
 
-      // 3. Log consents
+      // 3. Log consents (and capture SALES_MANDATE_V2 consent ID for listing reference)
+      let salesMandateConsentId: string | null = null;
       const consentTemplates = ['SALES_MANDATE_V2', 'DATA_ACCURACY_CONSENT', 'SYSTEM_SUCCESS_FEE'];
       for (const code of consentTemplates) {
         const { data: template } = await supabase
@@ -285,15 +286,29 @@ export function VerkaufsauftragTab({
           .maybeSingle();
 
         if (template && user?.id) {
-          await supabase.from('user_consents').insert({
+          const { data: consentRecord } = await supabase.from('user_consents').insert({
             tenant_id: tenantId,
             user_id: user.id,
             template_id: template.id,
             template_version: template.version,
             status: 'accepted',
             consented_at: new Date().toISOString()
-          });
+          }).select('id').single();
+
+          // Capture the SALES_MANDATE_V2 consent ID to link back to the listing
+          if (code === 'SALES_MANDATE_V2' && consentRecord) {
+            salesMandateConsentId = consentRecord.id;
+          }
         }
+      }
+
+      // 4. Write sales_mandate_consent_id back to listing (enables Stammdaten/Verträge visibility)
+      if (salesMandateConsentId && listingId) {
+        const { error: consentLinkError } = await supabase
+          .from('listings')
+          .update({ sales_mandate_consent_id: salesMandateConsentId })
+          .eq('id', listingId);
+        if (consentLinkError) console.warn('sales_mandate_consent_id update failed:', consentLinkError);
       }
 
       toast.success('Verkaufsauftrag erteilt – Objekt ist jetzt zur Vermarktung freigegeben');

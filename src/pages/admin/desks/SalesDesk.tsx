@@ -9,12 +9,111 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink, Power } from 'lucide-react';
+import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink, Power, Home } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useSalesDeskListings, useToggleListingBlock, useUpdateListingDistribution } from '@/hooks/useSalesDeskListings';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Immobilien-Vertriebsaufträge Card (individual property sales mandates)
+function ImmobilienVertriebsauftraegeCard() {
+  const { data: mandateListings, isLoading } = useQuery({
+    queryKey: ['sales-desk-immobilien-mandate'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('id, status, commission_rate, created_at, properties(address, city), tenant:organizations!listings_tenant_id_fkey(name)')
+        .not('sales_mandate_consent_id', 'is', null)
+        .in('status', ['active', 'reserved'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('de-DE');
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Home className="h-5 w-5" />
+            Aktive Vertriebsaufträge (Immobilien)
+          </CardTitle>
+        </CardHeader>
+        <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+      </Card>
+    );
+  }
+
+  if (!mandateListings || mandateListings.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Home className="h-5 w-5" />
+            Aktive Vertriebsaufträge (Immobilien)
+          </CardTitle>
+          <CardDescription>Einzelimmobilien mit aktivem Verkaufsmandat</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground py-4 text-center">Keine aktiven Immobilien-Vertriebsaufträge</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Home className="h-5 w-5" />
+          Aktive Vertriebsaufträge (Immobilien)
+        </CardTitle>
+        <CardDescription>
+          {mandateListings.length} Einzelimmobilie{mandateListings.length !== 1 ? 'n' : ''} mit aktivem Verkaufsmandat
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Objekt</TableHead>
+              <TableHead>Eigentümer</TableHead>
+              <TableHead className="text-right">Provision</TableHead>
+              <TableHead>Aktiviert am</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {mandateListings.map((listing: any) => (
+              <TableRow key={listing.id}>
+                <TableCell>
+                  <div className="font-medium">{listing.properties?.address || '–'}</div>
+                  <div className="text-xs text-muted-foreground">{listing.properties?.city || '–'}</div>
+                </TableCell>
+                <TableCell className="text-sm">{listing.tenant?.name || '–'}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {listing.commission_rate ? `${listing.commission_rate} %` : '–'}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {formatDate(listing.created_at)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge variant={listing.status === 'active' ? 'default' : 'secondary'}>
+                    {listing.status === 'active' ? 'Aktiv' : listing.status === 'reserved' ? 'Reserviert' : listing.status}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
 // Dashboard view
 function SalesDeskDashboard() {
@@ -124,6 +223,9 @@ function SalesDeskDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Active Immobilien-Vertriebsaufträge (individual property mandates) */}
+      <ImmobilienVertriebsauftraegeCard />
 
       {/* Active Projects — Kill-Switch only */}
       {projectRequests && projectRequests.length > 0 && (
