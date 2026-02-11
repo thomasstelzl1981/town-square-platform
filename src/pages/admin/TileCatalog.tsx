@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { TestDataManager } from '@/components/admin/TestDataManager';
+import { ModuleFreezePanel } from '@/components/admin/ModuleFreezePanel';
+import { Shield } from 'lucide-react';
 
 type TileCatalog = Tables<'tile_catalog'>;
 type TenantTileActivation = Tables<'tenant_tile_activation'>;
@@ -239,6 +241,10 @@ export default function TileCatalogPage() {
             <Database className="h-4 w-4" />
             Testdaten
           </TabsTrigger>
+          <TabsTrigger value="freeze" className="gap-2">
+            <Shield className="h-4 w-4" />
+            Module Freeze
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="catalog" className="space-y-4">
@@ -388,6 +394,13 @@ export default function TileCatalogPage() {
 
         <TabsContent value="testdata">
           <TestDataManager />
+        </TabsContent>
+
+        <TabsContent value="freeze">
+          <ModuleFreezePanel
+            tiles={tiles as any}
+            onRefresh={fetchData}
+          />
         </TabsContent>
       </Tabs>
     </div>

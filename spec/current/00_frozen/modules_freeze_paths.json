@@ -1,0 +1,158 @@
+{
+  "version": "1.0",
+  "description": "Maps each module to its protected file paths. When a module is frozen, these paths must NOT be modified.",
+  "modules": {
+    "MOD-00": {
+      "title": "Dashboard",
+      "paths": [
+        "src/pages/portal/Dashboard.tsx",
+        "src/components/dashboard/**"
+      ]
+    },
+    "MOD-01": {
+      "title": "Stammdaten",
+      "paths": [
+        "src/pages/portal/stammdaten/**",
+        "src/components/stammdaten/**"
+      ]
+    },
+    "MOD-02": {
+      "title": "KI Office",
+      "paths": [
+        "src/pages/portal/office/**",
+        "src/components/office/**",
+        "src/components/armstrong/**"
+      ]
+    },
+    "MOD-03": {
+      "title": "DMS",
+      "paths": [
+        "src/pages/portal/dms/**",
+        "src/components/dms/**"
+      ]
+    },
+    "MOD-04": {
+      "title": "Immobilien",
+      "paths": [
+        "src/pages/portal/immobilien/**",
+        "src/components/immobilien/**",
+        "src/components/listings/**"
+      ]
+    },
+    "MOD-05": {
+      "title": "MSV",
+      "paths": [
+        "src/pages/portal/msv/**",
+        "src/components/msv/**",
+        "src/components/renter/**"
+      ]
+    },
+    "MOD-06": {
+      "title": "Verkauf",
+      "paths": [
+        "src/pages/portal/verkauf/**",
+        "src/components/verkauf/**",
+        "src/components/sales/**"
+      ]
+    },
+    "MOD-07": {
+      "title": "Finanzierung",
+      "paths": [
+        "src/pages/portal/finanzierung/**",
+        "src/components/finanzierung/**",
+        "src/components/finance/**"
+      ]
+    },
+    "MOD-08": {
+      "title": "Investment-Suche",
+      "paths": [
+        "src/pages/portal/investments/**",
+        "src/components/investments/**"
+      ]
+    },
+    "MOD-09": {
+      "title": "Vertriebspartner",
+      "paths": [
+        "src/pages/portal/vertriebspartner/**",
+        "src/components/vertriebspartner/**"
+      ]
+    },
+    "MOD-10": {
+      "title": "Leads",
+      "paths": [
+        "src/pages/portal/leads/**",
+        "src/components/leads/**"
+      ]
+    },
+    "MOD-11": {
+      "title": "Finanzierungsmanager",
+      "paths": [
+        "src/pages/portal/finanzierungsmanager/**",
+        "src/components/finanzierungsmanager/**"
+      ]
+    },
+    "MOD-12": {
+      "title": "Akquise-Manager",
+      "paths": [
+        "src/pages/portal/akquise-manager/**",
+        "src/components/akquise/**"
+      ]
+    },
+    "MOD-13": {
+      "title": "Projekte",
+      "paths": [
+        "src/pages/portal/projekte/**",
+        "src/components/projekte/**"
+      ]
+    },
+    "MOD-14": {
+      "title": "Communication Pro",
+      "paths": [
+        "src/pages/portal/communication-pro/**",
+        "src/components/communication/**"
+      ]
+    },
+    "MOD-15": {
+      "title": "Fortbildung",
+      "paths": [
+        "src/pages/portal/fortbildung/**",
+        "src/components/fortbildung/**"
+      ]
+    },
+    "MOD-16": {
+      "title": "Services",
+      "paths": [
+        "src/pages/portal/services/**",
+        "src/components/services/**"
+      ]
+    },
+    "MOD-17": {
+      "title": "Car-Management",
+      "paths": [
+        "src/pages/portal/cars/**",
+        "src/components/cars/**"
+      ]
+    },
+    "MOD-18": {
+      "title": "Finanzanalyse",
+      "paths": [
+        "src/pages/portal/finanzanalyse/**",
+        "src/components/finanzanalyse/**"
+      ]
+    },
+    "MOD-19": {
+      "title": "Photovoltaik",
+      "paths": [
+        "src/pages/portal/photovoltaik/**",
+        "src/components/photovoltaik/**"
+      ]
+    },
+    "MOD-20": {
+      "title": "Miety",
+      "paths": [
+        "src/pages/portal/miety/**",
+        "src/components/miety/**"
+      ]
+    }
+  }
+}

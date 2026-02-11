@@ -13237,6 +13237,10 @@ export type Database = {
           display_order: number
           external_api_refs: string[] | null
           flowchart_mermaid: string | null
+          freeze_enabled: boolean
+          freeze_reason: string | null
+          frozen_at: string | null
+          frozen_by: string | null
           icon_key: string
           id: string
           internal_apis: string[] | null
@@ -13255,6 +13259,10 @@ export type Database = {
           display_order?: number
           external_api_refs?: string[] | null
           flowchart_mermaid?: string | null
+          freeze_enabled?: boolean
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           icon_key?: string
           id?: string
           internal_apis?: string[] | null
@@ -13273,6 +13281,10 @@ export type Database = {
           display_order?: number
           external_api_refs?: string[] | null
           flowchart_mermaid?: string | null
+          freeze_enabled?: boolean
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           icon_key?: string
           id?: string
           internal_apis?: string[] | null

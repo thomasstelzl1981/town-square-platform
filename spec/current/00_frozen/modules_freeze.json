@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-02-11T00:00:00.000Z",
+  "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
+  "modules": {
+    "MOD-00": { "frozen": false },
+    "MOD-01": { "frozen": false },
+    "MOD-02": { "frozen": false },
+    "MOD-03": { "frozen": false },
+    "MOD-04": { "frozen": false },
+    "MOD-05": { "frozen": false },
+    "MOD-06": { "frozen": false },
+    "MOD-07": { "frozen": false },
+    "MOD-08": { "frozen": false },
+    "MOD-09": { "frozen": false },
+    "MOD-10": { "frozen": false },
+    "MOD-11": { "frozen": false },
+    "MOD-12": { "frozen": false },
+    "MOD-13": { "frozen": false },
+    "MOD-14": { "frozen": false },
+    "MOD-15": { "frozen": false },
+    "MOD-16": { "frozen": false },
+    "MOD-17": { "frozen": false },
+    "MOD-18": { "frozen": false },
+    "MOD-19": { "frozen": false },
+    "MOD-20": { "frozen": false }
+  }
+}
