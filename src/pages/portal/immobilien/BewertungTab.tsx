@@ -9,6 +9,7 @@ import {
   ArrowRight, Coins, TrendingUp, FileText, AlertCircle, 
   CheckCircle, Clock, XCircle, Loader2, ExternalLink
 } from 'lucide-react';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 const WORKFLOW_STEPS = [
   { id: 'check', label: 'Daten prüfen' },
@@ -63,6 +64,7 @@ export function BewertungTab() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="Bewertung" description="Marktwertermittlung und Gutachten für Ihre Liegenschaften" />
       {/* Workflow Visualisierung */}
       <Card>
         <CardHeader className="pb-3">

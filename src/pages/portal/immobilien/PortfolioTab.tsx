@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ChartCard } from '@/components/ui/chart-card';
 import { FileUploader } from '@/components/shared';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   PropertyTable, 
   PropertyCodeCell, 
@@ -620,6 +621,7 @@ export function PortfolioTab() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung Ihrer Immobilien und Einheiten" />
       {/* NEW: Context Selection Cards */}
       {contexts.length > 0 && (
         <div className="space-y-3">
