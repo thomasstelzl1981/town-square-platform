@@ -12,10 +12,7 @@
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-// Fixed Dev-Tenant UUID — used by seed_golden_path_data RPC (hard-scoped in backend).
-// Prefer dynamic tenant from AuthContext where possible.
-export const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
+import { DEV_TENANT_UUID } from '@/config/tenantConstants';
 
 // Fixed IDs for idempotent upserts
 const SEED_IDS = {
@@ -162,8 +159,7 @@ export async function getCounts(tenantId: string): Promise<SeedCounts> {
 }
 
 async function executeSeeds(tenantId: string): Promise<{ success: boolean; error?: string; data?: unknown }> {
-  // Use SECURITY DEFINER function to bypass RLS
-  const { data, error } = await supabase.rpc('seed_golden_path_data');
+  const { data, error } = await supabase.rpc('seed_golden_path_data' as any, { p_tenant_id: tenantId });
   
   if (error) {
     console.error('Seed error:', error);

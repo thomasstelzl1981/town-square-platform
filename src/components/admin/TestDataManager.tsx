@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { useGoldenPathSeeds, SEED_IDS, DEV_TENANT_UUID, fetchGoldenPathCounts, type SeedCounts } from '@/hooks/useGoldenPathSeeds';
+import { useGoldenPathSeeds, SEED_IDS, fetchGoldenPathCounts, type SeedCounts } from '@/hooks/useGoldenPathSeeds';
+import { DEV_TENANT_UUID } from '@/config/tenantConstants';
 
 interface TestBatch {
   batch_id: string;

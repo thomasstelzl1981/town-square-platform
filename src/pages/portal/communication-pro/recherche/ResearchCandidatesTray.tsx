@@ -27,6 +27,7 @@ interface ContactCandidate {
   status: 'new' | 'reviewed' | 'imported' | 'rejected';
 }
 
+/** @demo-data Hardcoded research candidates. Registered in demoDataRegistry.ts */
 const DEMO_CANDIDATES: ContactCandidate[] = [
   { id: 'c1', full_name: 'Dr. Klaus Weber', role: 'Geschäftsführer', company: 'Weber Hausverwaltung GmbH', location: 'München', email: 'k.w***@weber-hv.de', phone: '+49 89 ***', domain: 'weber-hv.de', confidence: 0.95, status: 'new' },
   { id: 'c2', full_name: 'Sabine Meier', role: 'Geschäftsführerin', company: 'Meier Immobilien GmbH', location: 'München', email: 's.m***@meier-immo.de', phone: '', domain: 'meier-immo.de', confidence: 0.88, status: 'new' },

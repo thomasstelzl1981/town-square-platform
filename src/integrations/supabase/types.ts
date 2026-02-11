@@ -8924,6 +8924,7 @@ export type Database = {
           slug: string
           storage_plan_id: string | null
           storage_quota_bytes: number | null
+          tenant_mode: Database["public"]["Enums"]["tenant_mode"] | null
           updated_at: string
         }
         Insert: {
@@ -8941,6 +8942,7 @@ export type Database = {
           slug: string
           storage_plan_id?: string | null
           storage_quota_bytes?: number | null
+          tenant_mode?: Database["public"]["Enums"]["tenant_mode"] | null
           updated_at?: string
         }
         Update: {
@@ -8958,6 +8960,7 @@ export type Database = {
           slug?: string
           storage_plan_id?: string | null
           storage_quota_bytes?: number | null
+          tenant_mode?: Database["public"]["Enums"]["tenant_mode"] | null
           updated_at?: string
         }
         Relationships: [
@@ -13961,6 +13964,7 @@ export type Database = {
       }
     }
     Functions: {
+      check_data_orphans: { Args: { p_tenant_id: string }; Returns: Json }
       check_missing_indexes: {
         Args: never
         Returns: {
@@ -13994,6 +13998,7 @@ export type Database = {
           from_email: string
         }[]
       }
+      get_active_tenant_mode: { Args: never; Returns: string }
       get_tiles_for_role: { Args: { p_role: string }; Returns: string[] }
       get_user_memberships: {
         Args: { p_user_id: string }
@@ -14057,6 +14062,7 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
+      reset_sandbox_tenant: { Args: { p_tenant_id: string }; Returns: Json }
       rpc_armstrong_log_action_run: {
         Args: {
           p_action_code: string
@@ -14086,7 +14092,7 @@ export type Database = {
           rank: number
         }[]
       }
-      seed_golden_path_data: { Args: never; Returns: Json }
+      seed_golden_path_data: { Args: { p_tenant_id?: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
@@ -14320,6 +14326,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       subscription_status: "active" | "cancelled" | "past_due" | "trialing"
+      tenant_mode: "reference" | "sandbox" | "demo" | "production"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -14703,6 +14710,7 @@ export const Constants = {
         "cancelled",
       ],
       subscription_status: ["active", "cancelled", "past_due", "trialing"],
+      tenant_mode: ["reference", "sandbox", "demo", "production"],
     },
   },
 } as const
