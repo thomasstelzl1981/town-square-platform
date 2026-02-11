@@ -65,7 +65,7 @@ export default function MietyHomeDossier() {
   if (!home) return <Navigate to="/portal/miety/uebersicht" replace />;
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 h-full flex flex-col gap-4">
       <MietyDossierHeader
         home={home}
         onOpenContractDrawer={() => setContractDrawerOpen(true)}

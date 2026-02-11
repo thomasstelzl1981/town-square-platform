@@ -181,7 +181,7 @@ export function OverviewPage() {
   ];
 
   return (
-    <div className="p-6 space-y-8 max-w-4xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-8">
       {/* Hero */}
       <div className="flex items-start gap-4">
         <div className="rounded-xl bg-primary/10 p-3">

@@ -112,7 +112,7 @@ export function AuditPage() {
       }));
 
     return (
-      <div className="p-6 space-y-6 max-w-3xl">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Persönlichkeits-Audit</h1>
@@ -183,7 +183,7 @@ export function AuditPage() {
 
   // Empty state with explainer cards
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Persönlichkeits-Audit</h1>
         <p className="text-muted-foreground mt-1">

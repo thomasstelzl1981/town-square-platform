@@ -157,7 +157,7 @@ export default function SelfieAdsPlanen() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight uppercase">Kampagne planen</h1>
         <p className="text-muted-foreground mt-1">Kaufy Selfie Ads — Social-Media-Mandat konfigurieren</p>
