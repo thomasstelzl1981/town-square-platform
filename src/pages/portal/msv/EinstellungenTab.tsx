@@ -161,7 +161,7 @@ const EinstellungenTab = () => {
               </div>
             </div>
             <div className="text-right">
-              <p className="font-semibold">{activeUnits * creditsPerUnit} Credits</p>
+              
               
             </div>
           </div>
