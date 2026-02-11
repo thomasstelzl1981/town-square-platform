@@ -67,6 +67,7 @@ function getActiveStep(status: string): number {
 export function SanierungTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
+  const [viewStep, setViewStep] = useState<number | null>(null);
   const { data: cases, isLoading } = useServiceCases();
   const { data: stats } = useServiceCaseStats();
   
@@ -159,7 +160,7 @@ export function SanierungTab() {
               <Collapsible 
                 key={serviceCase.id} 
                 open={isExpanded} 
-                onOpenChange={(open) => setExpandedCaseId(open ? serviceCase.id : null)}
+                onOpenChange={(open) => { setExpandedCaseId(open ? serviceCase.id : null); setViewStep(null); }}
               >
                 <Card className={isExpanded ? 'border-primary/30' : ''}>
                   <CollapsibleTrigger asChild>
@@ -208,50 +209,56 @@ export function SanierungTab() {
                     </CardContent>
                   </CollapsibleTrigger>
                   
-                  <CollapsibleContent>
+                <CollapsibleContent>
                     <div className="border-t px-4 py-5">
                       {/* Vertical Stepper */}
                       <div className="flex gap-6">
-                        {/* Steps sidebar */}
+                        {/* Steps sidebar — clickable */}
                         <div className="w-56 flex-shrink-0 space-y-1">
                           {INLINE_WORKFLOW_STEPS.map((step, idx) => {
                             const StepIcon = step.icon;
-                            const isCurrent = idx === activeStep;
+                            const currentViewStep = viewStep ?? activeStep;
+                            const isViewing = idx === currentViewStep;
                             const isDone = idx < activeStep;
+                            const isReachable = idx <= activeStep;
                             return (
-                              <div key={step.id} className={`flex items-start gap-3 p-2.5 rounded-lg text-sm ${
-                                isCurrent ? 'bg-primary/10 text-primary' : isDone ? 'text-muted-foreground' : 'text-muted-foreground/50'
-                              }`}>
+                              <button
+                                key={step.id}
+                                type="button"
+                                disabled={!isReachable}
+                                onClick={() => isReachable && setViewStep(idx)}
+                                className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-sm text-left transition-colors ${
+                                  isViewing ? 'bg-primary/10 text-primary' : isDone ? 'text-muted-foreground hover:bg-muted/50' : 'text-muted-foreground/50'
+                                } ${isReachable ? 'cursor-pointer' : 'cursor-default'}`}
+                              >
                                 <div className="mt-0.5 flex-shrink-0">
                                   {isDone ? (
                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                  ) : isCurrent ? (
+                                  ) : isViewing ? (
                                     <StepIcon className="h-4 w-4" />
                                   ) : (
                                     <Circle className="h-4 w-4" />
                                   )}
                                 </div>
                                 <div>
-                                  <p className={`font-medium ${isCurrent ? '' : ''}`}>{step.label}</p>
+                                  <p className="font-medium">{step.label}</p>
                                   <p className="text-xs mt-0.5 opacity-70">{step.description}</p>
                                 </div>
-                              </div>
+                              </button>
                             );
                           })}
                         </div>
                         
-                        {/* Active step content */}
+                        {/* Viewed step content */}
                         <div className="flex-1 min-w-0">
-                          {activeStep === 0 && (
+                          {(viewStep ?? activeStep) === 0 && (
                             <ScopeDefinitionPanel
                               serviceCase={serviceCase}
                               onBack={() => setExpandedCaseId(null)}
-                              onNext={() => {
-                                // Refresh will update the status and move to next step
-                              }}
+                              onNext={() => {}}
                             />
                           )}
-                          {activeStep === 1 && (
+                          {(viewStep ?? activeStep) === 1 && (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                               <Search className="h-10 w-10 text-muted-foreground/40 mb-3" />
                               <p className="font-medium">Dienstleister finden</p>
@@ -262,11 +269,11 @@ export function SanierungTab() {
                               </Button>
                             </div>
                           )}
-                          {activeStep >= 2 && (
+                          {(viewStep ?? activeStep) >= 2 && (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                               <HardHat className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                              <p className="font-medium">{INLINE_WORKFLOW_STEPS[activeStep]?.label}</p>
-                              <p className="text-sm text-muted-foreground mt-1">{INLINE_WORKFLOW_STEPS[activeStep]?.description}</p>
+                              <p className="font-medium">{INLINE_WORKFLOW_STEPS[(viewStep ?? activeStep)]?.label}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{INLINE_WORKFLOW_STEPS[(viewStep ?? activeStep)]?.description}</p>
                             </div>
                           )}
                         </div>

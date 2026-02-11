@@ -8,13 +8,15 @@ const corsHeaders = {
 
 interface ScopeRequest {
   service_case_id: string;
-  action: 'analyze_and_generate' | 'estimate_costs' | 'generate_description';
+  action: 'analyze_and_generate' | 'estimate_costs' | 'generate_description' | 'generate_from_description';
   document_ids?: string[];
   line_items?: LineItem[];
   category?: string;
   property_address?: string;
   unit_info?: string;
   location?: string;
+  description?: string;
+  area_sqm?: number;
 }
 
 interface LineItem {
@@ -113,7 +115,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const request: ScopeRequest = await req.json();
-    const { service_case_id, action, document_ids, line_items, category, property_address, unit_info, location } = request;
+    const { service_case_id, action, document_ids, line_items, category, property_address, unit_info, location, description, area_sqm } = request;
     
     if (!service_case_id) {
       return new Response(
@@ -352,6 +354,135 @@ Die Werte sind in Cent. min = günstige Ausführung, mid = Standard, max = Premi
           cost_estimate_mid: estimates.mid,
           cost_estimate_max: estimates.max,
           data_source: `Marktdaten ${new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}`,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      
+    } else if (action === 'generate_from_description') {
+      // Generate LV + description + cost estimate from free-text description
+      console.log('Generating from description for service case:', service_case_id);
+      
+      const freeText = description || serviceCase.description || '';
+      if (!freeText.trim()) {
+        return new Response(
+          JSON.stringify({ error: 'Keine Beschreibung vorhanden' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      let result: { room_analysis?: RoomAnalysis; line_items?: LineItem[]; scope_description?: string; cost_estimate_min?: number; cost_estimate_mid?: number; cost_estimate_max?: number } = {};
+      
+      if (lovableApiKey) {
+        const systemPrompt = `Du bist ein Experte für Sanierungsausschreibungen in Deutschland (Innensanierung).
+Du erstellst aus Freitextbeschreibungen strukturierte Leistungsverzeichnisse mit realistischen Kostenschätzungen.
+Antworte IMMER im JSON-Format.`;
+
+        const areaHint = area_sqm ? `\nFläche: ca. ${area_sqm} m²` : '';
+        const userPrompt = `Erstelle aus folgender Freitextbeschreibung ein strukturiertes Leistungsverzeichnis für eine Innensanierung:
+
+Beschreibung: "${freeText}"
+Kategorie: ${caseCategory}
+Objekt: ${property_address || 'unbekannt'}
+Einheit: ${unit_info || 'Gesamtes Objekt'}${areaHint}
+
+Erstelle:
+1. Eine Raumanalyse (geschätzt aus der Beschreibung)
+2. Ein detailliertes Leistungsverzeichnis mit nummerierten Positionen, Mengen und Einheiten
+3. Eine professionelle Ausschreibungsbeschreibung (max 200 Wörter)
+4. Eine Kostenschätzung in Cent (min/mid/max)
+
+JSON-Format:
+{
+  "room_analysis": {
+    "rooms": [{"name": "Bad", "area_sqm": 6, "doors": 1, "windows": 1, "fixtures": ["Dusche"]}],
+    "total_area_sqm": 6,
+    "total_doors": 1,
+    "total_windows": 1,
+    "condition_notes": ["Fliesen veraltet"],
+    "recommendations": ["Komplettsanierung empfohlen"]
+  },
+  "line_items": [
+    {"id": "1", "position": "1.1", "description": "Demontage Sanitärobjekte", "quantity": 1, "unit": "psch"}
+  ],
+  "scope_description": "Professionelle Beschreibung...",
+  "cost_estimate_min": 500000,
+  "cost_estimate_mid": 800000,
+  "cost_estimate_max": 1200000
+}`;
+
+        try {
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${lovableApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          });
+          
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const content = aiData.choices?.[0]?.message?.content;
+            if (content) {
+              result = JSON.parse(content);
+            }
+          } else {
+            console.error('AI response not ok:', aiResponse.status);
+          }
+        } catch (aiError) {
+          console.error('AI generation from description failed:', aiError);
+        }
+      }
+      
+      // Fallback: template-based
+      if (!result.line_items || result.line_items.length === 0) {
+        const template = CATEGORY_TEMPLATES[caseCategory] || CATEGORY_TEMPLATES.sanitaer;
+        const costRange = COST_RANGES[caseCategory] || COST_RANGES.default;
+        result = {
+          line_items: template.positions.map((desc, i) => ({
+            id: crypto.randomUUID(),
+            position: `${Math.floor(i / 5) + 1}.${(i % 5) + 1}`,
+            description: desc,
+            quantity: 1,
+            unit: 'psch',
+          })),
+          scope_description: `${template.typical_scope} in ${property_address || 'dem Objekt'}. Basierend auf: ${freeText}`,
+          cost_estimate_min: costRange.min * 3,
+          cost_estimate_mid: costRange.mid * 3,
+          cost_estimate_max: costRange.max * 3,
+        };
+      }
+      
+      // Ensure IDs
+      const lineItemsWithIds = (result.line_items || []).map((item, i) => ({
+        ...item,
+        id: item.id || crypto.randomUUID(),
+        position: item.position || `${Math.floor(i / 5) + 1}.${(i % 5) + 1}`,
+        isAiGenerated: true,
+      }));
+      
+      // Round costs
+      const roundTo = 100_00;
+      const costMin = result.cost_estimate_min ? Math.round(result.cost_estimate_min / roundTo) * roundTo : null;
+      const costMid = result.cost_estimate_mid ? Math.round(result.cost_estimate_mid / roundTo) * roundTo : null;
+      const costMax = result.cost_estimate_max ? Math.round(result.cost_estimate_max / roundTo) * roundTo : null;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          room_analysis: result.room_analysis,
+          line_items: lineItemsWithIds,
+          scope_description: result.scope_description,
+          cost_estimate_min: costMin,
+          cost_estimate_mid: costMid,
+          cost_estimate_max: costMax,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

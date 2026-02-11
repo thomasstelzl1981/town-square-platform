@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { DictationButton } from '@/components/shared/DictationButton';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Bot, Upload, FileText, Sparkles,
-  ChevronLeft, ChevronRight, Save, Loader2
+  ChevronLeft, ChevronRight, ChevronDown, Save, Loader2
 } from 'lucide-react';
 import { ServiceCase, useUpdateServiceCase } from '@/hooks/useServiceCases';
 import { LineItemsEditor, LineItem } from './LineItemsEditor';
@@ -24,9 +25,10 @@ interface ScopeDefinitionPanelProps {
 }
 
 export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefinitionPanelProps) {
-  const [activeTab, setActiveTab] = useState<'ai' | 'external'>('ai');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingFromDescription, setIsGeneratingFromDescription] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   
   // Parse stored data with proper typing
   const parseLineItems = (items: unknown): LineItem[] => {
@@ -68,16 +70,88 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
   
   const updateCase = useUpdateServiceCase();
   
-  // Handle AI analysis
+  const hasDescription = !!serviceCase.description?.trim();
+  const hasLineItems = lineItems.length > 0;
+
+  // ========== NEW: Generate from description ==========
+  const handleGenerateFromDescription = async () => {
+    if (!serviceCase.description?.trim()) {
+      toast.error('Keine Beschreibung vorhanden');
+      return;
+    }
+    
+    setIsGeneratingFromDescription(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-renovation-scope-ai`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            service_case_id: serviceCase.id,
+            action: 'generate_from_description',
+            description: serviceCase.description,
+            category: serviceCase.category,
+            property_address: serviceCase.property?.address,
+            unit_info: serviceCase.unit?.unit_number,
+            area_sqm: (serviceCase.unit as any)?.area_sqm,
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Generierung fehlgeschlagen');
+      }
+      
+      const result = await response.json();
+      
+      if (result.room_analysis) setRoomAnalysis(result.room_analysis);
+      if (result.line_items) setLineItems(result.line_items);
+      if (result.scope_description) setScopeDescription(result.scope_description);
+      if (result.cost_estimate_min) {
+        setCostEstimates({
+          min: result.cost_estimate_min,
+          mid: result.cost_estimate_mid,
+          max: result.cost_estimate_max,
+        });
+      }
+      
+      // Save to DB
+      await updateCase.mutateAsync({
+        id: serviceCase.id,
+        scope_status: 'draft',
+        scope_source: 'ai_generated',
+        scope_line_items: result.line_items || [],
+        scope_description: result.scope_description || '',
+        ...(result.cost_estimate_min ? {
+          cost_estimate_min: result.cost_estimate_min,
+          cost_estimate_mid: result.cost_estimate_mid,
+          cost_estimate_max: result.cost_estimate_max,
+        } : {}),
+      });
+      
+      toast.success('Leistungsverzeichnis aus Beschreibung generiert');
+    } catch (error) {
+      console.error('Generate from description error:', error);
+      toast.error(error instanceof Error ? error.message : 'Generierung fehlgeschlagen');
+    } finally {
+      setIsGeneratingFromDescription(false);
+    }
+  };
+
+  // Handle AI analysis (from documents)
   const handleStartAIAnalysis = async () => {
     if (selectedDocuments.length === 0) {
-      toast.error('Bitte wählen Sie mindestens ein Dokument (Grundriss oder Fotos) aus');
+      toast.error('Bitte wählen Sie mindestens ein Dokument aus');
       return;
     }
     
     setIsAnalyzing(true);
     try {
-      // Call edge function for AI analysis
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-renovation-scope-ai`,
         {
@@ -104,18 +178,10 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
       
       const result = await response.json();
       
-      // Update state with AI results
-      if (result.room_analysis) {
-        setRoomAnalysis(result.room_analysis);
-      }
-      if (result.line_items) {
-        setLineItems(result.line_items);
-      }
-      if (result.scope_description) {
-        setScopeDescription(result.scope_description);
-      }
+      if (result.room_analysis) setRoomAnalysis(result.room_analysis);
+      if (result.line_items) setLineItems(result.line_items);
+      if (result.scope_description) setScopeDescription(result.scope_description);
       
-      // Update case in database
       await updateCase.mutateAsync({
         id: serviceCase.id,
         scope_status: 'draft',
@@ -173,7 +239,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         max: result.cost_estimate_max,
       });
       
-      // Update database
       await updateCase.mutateAsync({
         id: serviceCase.id,
         cost_estimate_min: result.cost_estimate_min,
@@ -231,7 +296,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
 
   return (
     <div className="space-y-6">
-      {/* Header — compact, no badge (stepper shows step) */}
+      {/* Header */}
       <div>
         <h2 className="text-lg font-semibold">Leistungsumfang definieren</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
@@ -239,115 +304,149 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         </p>
       </div>
       
-      {/* Method Selection Tabs */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Wie möchten Sie den Leistungsumfang erstellen?</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ai' | 'external')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="ai" className="gap-2">
-                <Bot className="h-4 w-4" />
-                KI-unterstützt
-              </TabsTrigger>
-              <TabsTrigger value="external" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Eigenes LV hochladen
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="ai" className="mt-4 space-y-4">
-              <div className="p-4 border rounded-lg bg-card">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="h-5 w-5 text-primary mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-medium">KI analysiert Ihre Unterlagen</p>
-                    <p className="text-sm text-muted-foreground">
-                      Wählen Sie Grundrisse und Fotos aus dem DMS. Die KI erkennt Räume, 
-                      Ausstattung und Zustand und erstellt ein strukturiertes Leistungsverzeichnis.
-                    </p>
-                  </div>
-                </div>
+      {/* ========== PRIMARY: Generate from Description ========== */}
+      {hasDescription && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
-              
-              {/* DMS Document Selector */}
-              <DMSDocumentSelector
-                propertyId={serviceCase.property_id}
-                selectedDocuments={selectedDocuments}
-                onSelectionChange={setSelectedDocuments}
-              />
-              
-              <Button 
-                onClick={handleStartAIAnalysis}
-                disabled={isAnalyzing || selectedDocuments.length === 0}
-                className="w-full"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analysiere Dokumente...
-                  </>
+              <div className="flex-1 min-w-0 space-y-3">
+                <div>
+                  <p className="font-medium">Ihre Beschreibung</p>
+                  <p className="text-sm text-muted-foreground mt-1 italic">
+                    „{serviceCase.description}"
+                  </p>
+                </div>
+                
+                {isGeneratingFromDescription ? (
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">KI erstellt Leistungsverzeichnis...</p>
+                      <p className="text-xs text-muted-foreground">Positionen, Beschreibung und Kostenschätzung werden generiert</p>
+                    </div>
+                  </div>
+                ) : hasLineItems ? (
+                  <Button variant="ghost" size="sm" onClick={handleGenerateFromDescription}>
+                    <Sparkles className="mr-2 h-3 w-3" />
+                    Erneut generieren
+                  </Button>
                 ) : (
-                  <>
-                    <Bot className="mr-2 h-4 w-4" />
-                    KI-Analyse starten
-                  </>
+                  <Button size="lg" onClick={handleGenerateFromDescription} className="w-full sm:w-auto">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Leistungsverzeichnis generieren
+                  </Button>
                 )}
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="external" className="mt-4 space-y-4">
-              <div className="p-4 border rounded-lg bg-card">
-                <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-primary mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-medium">Externes Leistungsverzeichnis</p>
-                    <p className="text-sm text-muted-foreground">
-                      Laden Sie ein vorhandenes LV als PDF hoch. Das Dokument wird 
-                      der Ausschreibung als Anhang beigefügt.
-                    </p>
-                  </div>
-                </div>
               </div>
-              
-              <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="font-medium">PDF oder Excel hier ablegen</p>
-                <p className="text-sm text-muted-foreground mt-1">oder klicken zum Auswählen</p>
-                <Button variant="outline" className="mt-4">
-                  Datei auswählen
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-      
-      {/* Room Analysis Display (if available) */}
-      {roomAnalysis && (
-        <RoomAnalysisDisplay analysis={roomAnalysis} />
+            </div>
+          </CardContent>
+        </Card>
       )}
+      
+      {/* ========== SECONDARY: DMS / Upload (collapsible) ========== */}
+      <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="text-muted-foreground gap-2">
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`} />
+            Weitere Optionen (DMS-Dokumente, Upload)
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3">
+          <Card>
+            <CardContent className="pt-5">
+              <Tabs defaultValue="ai">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="ai" className="gap-2">
+                    <Bot className="h-4 w-4" />
+                    KI aus Dokumenten
+                  </TabsTrigger>
+                  <TabsTrigger value="external" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Eigenes LV hochladen
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="ai" className="mt-4 space-y-4">
+                  <div className="p-4 border rounded-lg bg-card">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-medium">KI analysiert Ihre Unterlagen</p>
+                        <p className="text-sm text-muted-foreground">
+                          Wählen Sie Grundrisse und Fotos aus dem DMS. Die KI erkennt Räume, 
+                          Ausstattung und Zustand und erstellt ein strukturiertes Leistungsverzeichnis.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <DMSDocumentSelector
+                    propertyId={serviceCase.property_id}
+                    selectedDocuments={selectedDocuments}
+                    onSelectionChange={setSelectedDocuments}
+                  />
+                  
+                  <Button 
+                    onClick={handleStartAIAnalysis}
+                    disabled={isAnalyzing || selectedDocuments.length === 0}
+                    className="w-full"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analysiere Dokumente...
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="mr-2 h-4 w-4" />
+                        KI-Analyse starten
+                      </>
+                    )}
+                  </Button>
+                </TabsContent>
+                
+                <TabsContent value="external" className="mt-4 space-y-4">
+                  <div className="p-4 border rounded-lg bg-card">
+                    <div className="flex items-start gap-3">
+                      <FileText className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-medium">Externes Leistungsverzeichnis</p>
+                        <p className="text-sm text-muted-foreground">
+                          Laden Sie ein vorhandenes LV als PDF hoch.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="font-medium">PDF oder Excel hier ablegen</p>
+                    <p className="text-sm text-muted-foreground mt-1">oder klicken zum Auswählen</p>
+                    <Button variant="outline" className="mt-4">Datei auswählen</Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+      
+      {/* Room Analysis Display */}
+      {roomAnalysis && <RoomAnalysisDisplay analysis={roomAnalysis} />}
       
       {/* Line Items Editor */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <span>Leistungsverzeichnis</span>
-            {lineItems.length > 0 && (
-              <Badge variant="secondary">{lineItems.length} Positionen</Badge>
-            )}
+            {hasLineItems && <Badge variant="secondary">{lineItems.length} Positionen</Badge>}
           </CardTitle>
-          <CardDescription>
-            Bearbeiten Sie die Positionen oder fügen Sie weitere hinzu
-          </CardDescription>
+          <CardDescription>Bearbeiten Sie die Positionen oder fügen Sie weitere hinzu</CardDescription>
         </CardHeader>
         <CardContent>
-          <LineItemsEditor 
-            items={lineItems} 
-            onChange={setLineItems}
-            category={serviceCase.category}
-          />
+          <LineItemsEditor items={lineItems} onChange={setLineItems} category={serviceCase.category} />
         </CardContent>
       </Card>
       
@@ -358,16 +457,14 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         max={costEstimates.max}
         onEstimate={handleEstimateCosts}
         isEstimating={isEstimating}
-        hasLineItems={lineItems.length > 0}
+        hasLineItems={hasLineItems}
       />
       
       {/* Scope Description */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Freitext-Beschreibung für Ausschreibung</CardTitle>
-          <CardDescription>
-            Diese Beschreibung wird in der Ausschreibungs-E-Mail verwendet
-          </CardDescription>
+          <CardDescription>Diese Beschreibung wird in der Ausschreibungs-E-Mail verwendet</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-end mb-1">
@@ -380,14 +477,13 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
             rows={8}
           />
           <div className="flex justify-end mt-2">
-            <Button variant="ghost" size="sm" disabled={!lineItems.length}>
+            <Button variant="ghost" size="sm" disabled={!hasLineItems}>
               <Sparkles className="mr-2 h-3 w-3" />
               Aus LV generieren
             </Button>
           </div>
         </CardContent>
       </Card>
-      
       
       {/* Actions */}
       <Separator />
