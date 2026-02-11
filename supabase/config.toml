@@ -137,3 +137,9 @@ verify_jwt = false
 
 [functions.elevenlabs-tts]
 verify_jwt = false
+
+[functions.sot-extract-offer]
+verify_jwt = false
+
+[functions.sot-extract-email]
+verify_jwt = false
