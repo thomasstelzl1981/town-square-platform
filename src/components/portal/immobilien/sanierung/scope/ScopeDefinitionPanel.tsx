@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DictationButton } from '@/components/shared/DictationButton';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Bot, Upload, FileText, Sparkles, Building2, AlertCircle,
+  Bot, Upload, FileText, Sparkles,
   ChevronLeft, ChevronRight, Save, Loader2
 } from 'lucide-react';
 import { ServiceCase, useUpdateServiceCase } from '@/hooks/useServiceCases';
@@ -231,33 +231,13 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Leistungsumfang definieren</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {serviceCase.tender_id || serviceCase.public_id} — {serviceCase.title}
-          </p>
-        </div>
-        <Badge variant="outline">Schritt 2 von 4</Badge>
+      {/* Header — compact, no badge (stepper shows step) */}
+      <div>
+        <h2 className="text-lg font-semibold">Leistungsumfang definieren</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {serviceCase.property?.address}{serviceCase.unit ? ` · ${serviceCase.unit.code || serviceCase.unit.unit_number}` : ''}
+        </p>
       </div>
-      
-      {/* Property Context */}
-      <Card className="bg-muted/50">
-        <CardContent className="py-3">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-medium">{serviceCase.property?.address}, {serviceCase.property?.postal_code} {serviceCase.property?.city}</p>
-              {serviceCase.unit && (
-                <p className="text-sm text-muted-foreground">
-                  Einheit: {serviceCase.unit.code || serviceCase.unit.unit_number}
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
       
       {/* Method Selection Tabs */}
       <Card>
@@ -408,21 +388,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         </CardContent>
       </Card>
       
-      {/* System Limitation Notice */}
-      <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
-        <CardContent className="flex items-start gap-3 py-4">
-          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-              Hinweis: Wohnungs- und Haussanierungen
-            </p>
-            <p className="text-sm text-amber-700 dark:text-amber-500">
-              Dieses System ist für Innensanierungen konzipiert. Komplette Gebäudesanierungen 
-              (Fassade, Dachstuhl MFH) sind nicht vorgesehen.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
       
       {/* Actions */}
       <Separator />
