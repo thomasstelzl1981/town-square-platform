@@ -24,7 +24,8 @@ Jeder Cross-Zone-Übergang im System MUSS einen formalen Contract haben (ZBC-R10
 | [Data Room Access](CONTRACT_DATA_ROOM_ACCESS.md) | Z2 → Z3 | Freigabe-Aktion in MOD-06 | `access_grants` Tabelle | Implementiert |
 | [Email Inbound](CONTRACT_EMAIL_INBOUND.md) | Extern → Z1 | Resend Webhook | `supabase/functions/sot-inbound-receive/` | Implementiert |
 | [Acq Mandate Submit](CONTRACT_ACQ_MANDATE_SUBMIT.md) | Z2 → Z1 | Mandat einreichen MOD-12 | `acq_mandates` Status-Enum | Dokumentiert |
-| [Listing Publish](CONTRACT_LISTING_PUBLISH.md) | Z2 → Z3 | Inserat publizieren MOD-06 | `supabase/functions/sot-listing-publish/` | Dokumentiert |
+| [Listing Publish](CONTRACT_LISTING_PUBLISH.md) | Z2 → Z1 | Inserat-Request an Zone 1 Governance | `supabase/functions/sot-listing-publish/` | Dokumentiert |
+| [Listing Distribute](CONTRACT_LISTING_DISTRIBUTE.md) | Z1 → Z2/Z3 | Zone 1 verteilt Listing an Consumer | `listings`, `listing_publications` | Dokumentiert |
 | [Social Mandate Submit](CONTRACT_SOCIAL_MANDATE_SUBMIT.md) | Z2 → Z1 | Social-Mandat MOD-14 | `supabase/functions/sot-social-mandate-submit/` | Dokumentiert |
 | [Social Payment](CONTRACT_SOCIAL_PAYMENT.md) | Z2 → Extern → Z1 | Stripe Checkout | `supabase/functions/sot-social-payment-*` | Dokumentiert |
 | [Acq Inbound Email](CONTRACT_ACQ_INBOUND_EMAIL.md) | Extern → Z1 | Resend Webhook (Akquise) | `supabase/functions/sot-acq-inbound-webhook/` | Dokumentiert |
