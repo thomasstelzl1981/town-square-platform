@@ -341,9 +341,43 @@ export function VerkaufsauftragTab({
         if (insertError) throw insertError;
       }
 
+      // If this is the kaufy_sichtbarkeit toggle, also manage listing_publications
+      if (code === 'kaufy_sichtbarkeit') {
+        // Find the active listing for this property
+        const { data: activeListing } = await supabase
+          .from('listings')
+          .select('id')
+          .eq('property_id', propertyId)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (activeListing) {
+          if (currentlyActive) {
+            // Deactivating kaufy → pause kaufy publication
+            await supabase
+              .from('listing_publications')
+              .update({ status: 'paused', removed_at: new Date().toISOString() })
+              .eq('listing_id', activeListing.id)
+              .eq('channel', 'kaufy');
+          } else {
+            // Activating kaufy → upsert kaufy publication as active
+            await supabase
+              .from('listing_publications')
+              .upsert({
+                listing_id: activeListing.id,
+                tenant_id: tenantId,
+                channel: 'kaufy',
+                status: 'active',
+                published_at: new Date().toISOString(),
+              }, { onConflict: 'listing_id,channel' });
+          }
+        }
+      }
+
       const label = FEATURE_CONFIG[code]?.label || code;
       toast.success(currentlyActive ? `${label} deaktiviert` : `${label} aktiviert`);
       await fetchFeatures();
+      queryClient.invalidateQueries({ queryKey: ['listing'] });
       onUpdate?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Fehler beim Aktualisieren';
