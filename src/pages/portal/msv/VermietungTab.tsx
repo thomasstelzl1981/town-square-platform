@@ -23,6 +23,7 @@ import {
   Lightbulb,
   Eye
 } from 'lucide-react';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RentalListingWizard } from '@/components/msv/RentalListingWizard';
 import { RentalPublishDialog } from '@/components/msv/RentalPublishDialog';
 import { 
@@ -272,10 +273,10 @@ const VermietungTab = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">VERMIETUNG</h1>
-        <p className="text-muted-foreground mt-1">Inserate und Exposés für Ihre Mietobjekte</p>
-      </div>
+      <ModulePageHeader
+        title="Vermietung"
+        description="Inserate und Exposés für Ihre Mietobjekte erstellen und veröffentlichen."
+      />
       <PropertyTable
         data={listings || []}
         columns={columns}
@@ -314,7 +315,7 @@ const VermietungTab = () => {
                 exportieren Sie für <strong>Kleinanzeigen</strong>.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Die Exposé-Daten werden aus Ihren MOD-04 Objektdaten übernommen.
+                Die Exposé-Daten werden automatisch aus Ihren Immobiliendaten übernommen.
               </p>
             </div>
           </div>

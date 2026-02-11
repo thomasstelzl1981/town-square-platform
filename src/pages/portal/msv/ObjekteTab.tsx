@@ -28,8 +28,13 @@ import {
   AlertTriangle, 
   ShieldCheck,
   Users,
-  Building2
+  Building2,
+  Home,
+  ScrollText,
+  Euro
 } from 'lucide-react';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { KPICard } from '@/components/shared/KPICard';
 import { useNavigate } from 'react-router-dom';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { LeaseFormDialog } from '@/components/msv/LeaseFormDialog';
@@ -469,11 +474,32 @@ const ObjekteTab = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">MIETVERWALTUNG</h1>
-        <p className="text-muted-foreground mt-1">Alle Objekte und Mietverträge im Überblick</p>
+      <ModulePageHeader
+        title="Mietverwaltung"
+        description="Alle Objekte und Mietverträge aus Ihrem Portfolio — verwaltet, überwacht, automatisiert."
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard
+          label="Einheiten gesamt"
+          value={units?.length ?? 0}
+          icon={Home}
+          subtitle={`${units?.filter(u => u.leasesCount > 0).length ?? 0} vermietet`}
+        />
+        <KPICard
+          label="Aktive Mietverträge"
+          value={units?.reduce((sum, u) => sum + u.leasesCount, 0) ?? 0}
+          icon={ScrollText}
+        />
+        <KPICard
+          label="Gesamtmiete kalt / Monat"
+          value={`${(units?.reduce((sum, u) => sum + u.kaltmiete, 0) ?? 0).toLocaleString('de-DE')} €`}
+          icon={Euro}
+        />
       </div>
-      {/* Header with Context Dropdown */}
+
+      {/* Context Dropdown */}
       {contexts.length > 0 && (
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">Vermietereinheit:</span>
@@ -519,8 +545,8 @@ const ObjekteTab = () => {
           false
         }
         emptyState={{
-          message: 'Keine Immobilien vorhanden — zuerst in MOD-04 anlegen',
-          actionLabel: 'Objekte anlegen (MOD-04)',
+          message: 'Noch keine Immobilien vorhanden — legen Sie Ihr erstes Objekt an.',
+          actionLabel: 'Immobilie anlegen',
           actionRoute: '/portal/immobilien/portfolio'
         }}
         onRowClick={(row) => navigate(`/portal/immobilien/${row.property_id}`)}
