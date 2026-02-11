@@ -88,6 +88,9 @@ export default function PortfolioTab() {
   const [investmentCosts, setInvestmentCosts] = useState(
     isSelectedDemo ? DEMO_PROJECT.purchase_price || 4_800_000 : (selectedProject?.purchase_price || 4_800_000)
   );
+  const [totalSaleTarget, setTotalSaleTarget] = useState(
+    isSelectedDemo ? (DEMO_PROJECT as any).total_sale_target || 0 : (selectedProject?.total_sale_target || 0)
+  );
   const [provisionRate, setProvisionRate] = useState(0.10); // 10%
   const [priceAdjustment, setPriceAdjustment] = useState(0); // %
   const [targetYield, setTargetYield] = useState(0.04); // 4%
@@ -238,15 +241,18 @@ export default function PortfolioTab() {
         <div className="lg:col-span-1">
           <StickyCalculatorPanel
             investmentCosts={investmentCosts}
+            totalSaleTarget={totalSaleTarget}
             provisionRate={provisionRate}
             priceAdjustment={priceAdjustment}
             targetYield={targetYield}
             units={calculatedUnits}
             onInvestmentCostsChange={setInvestmentCosts}
+            onTotalSaleTargetChange={setTotalSaleTarget}
             onProvisionChange={setProvisionRate}
             onPriceAdjustment={setPriceAdjustment}
             onTargetYieldChange={setTargetYield}
             isDemo={isSelectedDemo || !selectedProject}
+            projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
           />
         </div>
         <div className="lg:col-span-2">
@@ -254,6 +260,7 @@ export default function PortfolioTab() {
             units={calculatedUnits}
             projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
             investmentCosts={investmentCosts}
+            totalSaleTarget={totalSaleTarget}
             provisionRate={provisionRate}
             targetYield={targetYield}
             developerContext={DEMO_DEVELOPER_CONTEXT}
