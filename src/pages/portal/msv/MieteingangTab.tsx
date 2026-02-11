@@ -20,6 +20,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { PaywallBanner } from '@/components/msv/PaywallBanner';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { KPICard } from '@/components/shared/KPICard';
 import { TemplateWizard } from '@/components/msv/TemplateWizard';
 import { PaymentBookingDialog } from '@/components/msv/PaymentBookingDialog';
 import { 
@@ -238,48 +240,34 @@ const MieteingangTab = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">MIETEINGANG</h1>
-        <p className="text-muted-foreground mt-1">Zahlungseingänge und Sollmieten kontrollieren</p>
-      </div>
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-status-success" />
-              <div>
-                <p className="text-xs text-muted-foreground">Eingegangen</p>
-                <p className="font-semibold">{stats?.paidAmount?.toLocaleString('de-DE')} €</p>
-                <p className="text-xs text-muted-foreground">{stats?.paidCount} Zahlungen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-status-warning" />
-              <div>
-                <p className="text-xs text-muted-foreground">Offen</p>
-                <p className="font-semibold">{stats?.pendingAmount?.toLocaleString('de-DE')} €</p>
-                <p className="text-xs text-muted-foreground">{stats?.pendingCount} Zahlungen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={stats?.overdueCount ? 'border-status-error/50' : ''}>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-status-error" />
-              <div>
-                <p className="text-xs text-muted-foreground">Überfällig</p>
-                <p className="font-semibold">{stats?.overdueAmount?.toLocaleString('de-DE')} €</p>
-                <p className="text-xs text-muted-foreground">{stats?.overdueCount} Zahlungen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <ModulePageHeader
+        title="Mieteingang"
+        description="Zahlungseingänge und Sollmieten kontrollieren — automatische Mahnung bei Rückstand."
+      />
+
+      {/* Stats — glass-card KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard
+          label="Eingegangen"
+          value={`${(stats?.paidAmount ?? 0).toLocaleString('de-DE')} €`}
+          icon={CheckCircle}
+          subtitle={`${stats?.paidCount ?? 0} Zahlungen`}
+          subtitleClassName="text-status-success"
+        />
+        <KPICard
+          label="Offen"
+          value={`${(stats?.pendingAmount ?? 0).toLocaleString('de-DE')} €`}
+          icon={Clock}
+          subtitle={`${stats?.pendingCount ?? 0} Zahlungen`}
+        />
+        <KPICard
+          label="Überfällig"
+          value={`${(stats?.overdueAmount ?? 0).toLocaleString('de-DE')} €`}
+          icon={AlertCircle}
+          subtitle={`${stats?.overdueCount ?? 0} Zahlungen`}
+          subtitleClassName="text-destructive"
+          className={stats?.overdueCount ? 'border-destructive/30' : ''}
+        />
       </div>
 
       {/* Premium Banner */}
@@ -314,40 +302,22 @@ const MieteingangTab = () => {
                 </TableCell>
               </TableRow>
             ) : propertyPayments?.length === 0 ? (
-              <>
-                {/* Leerzeile mit Platzhaltern - konsistent mit MOD-04 */}
-                <TableRow 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate('/portal/msv/objekte')}
-                >
-                  <TableCell className="text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell className="text-right text-muted-foreground">–</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">–</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-6">
-                    <p className="text-muted-foreground mb-4">
-                      Keine aktiven Mietverhältnisse — Mietvertrag in Objekte anlegen
+              <TableRow>
+                <TableCell colSpan={8} className="h-48">
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <div className="rounded-full bg-muted p-4 mb-4">
+                      <Euro className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium">Keine Mietbewegungen</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                      Sobald aktive Mietverträge bestehen, erscheinen hier die Zahlungseingänge und Sollmieten.
                     </p>
-                    <Button onClick={() => navigate('/portal/msv/objekte')}>
-                      Zu Objekte wechseln
+                    <Button className="mt-4" onClick={() => navigate('/portal/msv/objekte')}>
+                      Objekte & Mietverträge verwalten
                     </Button>
-                  </TableCell>
-                </TableRow>
-              </>
+                  </div>
+                </TableCell>
+              </TableRow>
             ) : (
               propertyPayments?.map((row) => (
                 <Collapsible key={row.id} asChild>
