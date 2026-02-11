@@ -82,7 +82,7 @@ export default function FMEinreichungDetail() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold tracking-tight uppercase truncate">
+          <h2 className="text-2xl font-bold tracking-tight uppercase truncate">
             Einreichung · {request.public_id || request.id.slice(0, 8)}
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -98,8 +98,8 @@ export default function FMEinreichungDetail() {
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
           <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5" /> Finanzierungs-Exposé
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Finanzierungs-Exposé
             </h3>
             <Button size="sm" variant="outline" className="h-7 text-xs">
               <Download className="h-3 w-3 mr-1" /> PDF Export
@@ -124,10 +124,20 @@ export default function FMEinreichungDetail() {
                   Finanzierung
                 </TableCell>
               </TableRow>
-              <TR label="Darlehenswunsch" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
-              <TR label="Eigenkapital" value={applicant?.equity_amount ? eurFormat.format(applicant.equity_amount) : null} />
-              <TR label="Kaufpreis" value={applicant?.purchase_price ? eurFormat.format(applicant.purchase_price) : null} />
-              <TR label="Verwendung" value={applicant?.purpose} />
+              {request.purpose === 'umschuldung' ? (
+                <>
+                  <TR label="Restschuld" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
+                  <TR label="Objektwert" value={property?.purchase_price ? eurFormat.format(property.purchase_price) : null} />
+                  <TR label="Verwendung" value="Prolongation / Umschuldung" />
+                </>
+              ) : (
+                <>
+                  <TR label="Darlehenswunsch" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
+                  <TR label="Eigenkapital" value={applicant?.equity_amount ? eurFormat.format(applicant.equity_amount) : null} />
+                  <TR label="Kaufpreis" value={applicant?.purchase_price ? eurFormat.format(applicant.purchase_price) : null} />
+                  <TR label="Verwendung" value={applicant?.purpose} />
+                </>
+              )}
 
               <TableRow>
                 <TableCell colSpan={2} className="bg-muted/40 text-xs font-semibold uppercase tracking-wide py-1.5 px-3">
@@ -155,8 +165,8 @@ export default function FMEinreichungDetail() {
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
           <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Building2 className="h-3.5 w-3.5" /> Bankauswahl (max. 3)
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4" /> Bankauswahl (max. 3)
             </h3>
             <Button size="sm" variant="ghost" className="h-7 text-xs" disabled>
               <Sparkles className="h-3 w-3 mr-1" /> KI-Empfehlung
@@ -202,8 +212,8 @@ export default function FMEinreichungDetail() {
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
           <div className="px-4 py-2 border-b bg-muted/20">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5" /> E-Mail-Entwürfe ({selectedBankDetails.length})
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Mail className="h-4 w-4" /> E-Mail-Entwürfe ({selectedBankDetails.length})
             </h3>
           </div>
           <div className="p-4 space-y-3">

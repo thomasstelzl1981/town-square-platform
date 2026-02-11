@@ -58,16 +58,6 @@ function TR({ label, value, editable, onChange }: {
   );
 }
 
-function SectionRow({ title }: { title: string }) {
-  return (
-    <TableRow>
-      <TableCell colSpan={2} className="bg-muted/40 text-xs font-semibold uppercase tracking-wide py-1.5 px-3">
-        {title}
-      </TableCell>
-    </TableRow>
-  );
-}
-
 export default function FMFallDetail() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
@@ -118,6 +108,7 @@ export default function FMFallDetail() {
   const coApplicant = request.applicant_profiles?.[1];
   const property = request.properties;
   const currentStatus = request.status;
+  const isProlongation = request.purpose === 'umschuldung';
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -168,9 +159,7 @@ export default function FMFallDetail() {
     }
   };
 
-  // Loan calculation
-  const purchasePrice = Number(loanEdits.purchase_price || applicant?.purchase_price || 0);
-  const equity = Number(loanEdits.equity_amount || applicant?.equity_amount || 0);
+  // Loan calculation — Prolongation uses Objektwert/Restschuld instead of KP/EK
   const loanAmount = Number(loanEdits.loan_amount_requested || applicant?.loan_amount_requested || 0);
   const interestRate = Number(loanEdits.interest_rate || 3.5);
   const repaymentRate = Number(loanEdits.repayment_rate || applicant?.repayment_rate_percent || 2);
@@ -178,6 +167,14 @@ export default function FMFallDetail() {
   const monthlyRate = loanAmount > 0 ? (loanAmount * (interestRate + repaymentRate) / 100 / 12) : 0;
   const yearlyRepayment = loanAmount > 0 ? (loanAmount * repaymentRate / 100) : 0;
   const remainingDebt = loanAmount > 0 ? Math.max(0, loanAmount - (yearlyRepayment * fixedPeriod)) : 0;
+
+  // Prolongation-specific: Objektwert for LTV calculation
+  const objektwert = Number(loanEdits.objektwert || property?.purchase_price || 0);
+  const beleihungsauslauf = objektwert > 0 ? (loanAmount / objektwert * 100) : 0;
+
+  // Neufinanzierung-specific
+  const purchasePrice = Number(loanEdits.purchase_price || applicant?.purchase_price || 0);
+  const equity = Number(loanEdits.equity_amount || applicant?.equity_amount || 0);
 
   const dualProps = formData && coFormData ? {
     formData,
@@ -188,6 +185,8 @@ export default function FMFallDetail() {
     onCoFirstInput: handleCoFirstInput,
   } : null;
 
+  const purposeLabel = isProlongation ? 'Prolongation / Umschuldung' : (applicant?.purpose || 'Finanzierung');
+
   return (
     <PageShell>
       {/* ===== HEADER ===== */}
@@ -196,11 +195,11 @@ export default function FMFallDetail() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold tracking-tight uppercase truncate">
+          <h2 className="text-2xl font-bold tracking-tight uppercase truncate">
             {request.public_id || request.id.slice(0, 8)}
           </h2>
-          <p className="text-xs text-muted-foreground">
-            {applicant?.first_name} {applicant?.last_name} · {applicant?.email || 'Keine E-Mail'}
+          <p className="text-sm text-muted-foreground">
+            {applicant?.first_name} {applicant?.last_name} · {purposeLabel}
           </p>
         </div>
         <Badge variant={getStatusBadgeVariant(currentStatus)} className="text-xs shrink-0">
@@ -255,18 +254,28 @@ export default function FMFallDetail() {
       {/* ===== BLOCK 1: KURZBESCHREIBUNG ===== */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
-          <div className="px-4 py-2 border-b bg-muted/20">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5" /> Kurzbeschreibung
+          <div className="px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Kurzbeschreibung
             </h3>
           </div>
           <Table>
             <TableBody>
               <TR label="Antragsteller" value={`${applicant?.first_name || ''} ${applicant?.last_name || ''}`} />
               <TR label="E-Mail" value={applicant?.email} />
+              <TR label="Zweck" value={purposeLabel} />
               <TR label="Objekt" value={property?.address || applicant?.object_address || 'Kein Objekt'} />
-              <TR label="Darlehenswunsch" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
-              <TR label="Eigenkapital" value={applicant?.equity_amount ? eurFormat.format(applicant.equity_amount) : null} />
+              {isProlongation ? (
+                <>
+                  <TR label="Restschuld" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
+                  <TR label="Objektwert" value={property?.purchase_price ? eurFormat.format(property.purchase_price) : null} />
+                </>
+              ) : (
+                <>
+                  <TR label="Darlehenswunsch" value={applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : null} />
+                  <TR label="Eigenkapital" value={applicant?.equity_amount ? eurFormat.format(applicant.equity_amount) : null} />
+                </>
+              )}
               <TR label="Status" value={getStatusLabel(currentStatus)} />
             </TableBody>
           </Table>
@@ -276,9 +285,9 @@ export default function FMFallDetail() {
       {/* ===== BLOCK 2: SELBSTAUSKUNFT ===== */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <User className="h-3.5 w-3.5" /> Selbstauskunft
+          <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <User className="h-4 w-4" /> Selbstauskunft
             </h3>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Vollständigkeit: {applicant?.completion_score || 0}%</span>
@@ -312,9 +321,9 @@ export default function FMFallDetail() {
       {/* ===== BLOCK 3: OBJEKT ===== */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
-          <div className="px-4 py-2 border-b bg-muted/20">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Building2 className="h-3.5 w-3.5" /> Objekt-Daten
+          <div className="px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4" /> Objekt-Daten
             </h3>
           </div>
           <Table>
@@ -324,7 +333,11 @@ export default function FMFallDetail() {
                   <TR label="Code" value={property.code} />
                   <TR label="Adresse" value={property.address} />
                   <TR label="PLZ / Ort" value={`${property.postal_code || ''} ${property.city || ''}`} />
-                  <TR label="Kaufpreis" value={property.purchase_price ? eurFormat.format(property.purchase_price) : null} />
+                  {isProlongation ? (
+                    <TR label="Objektwert" value={property.purchase_price ? eurFormat.format(property.purchase_price) : null} />
+                  ) : (
+                    <TR label="Kaufpreis" value={property.purchase_price ? eurFormat.format(property.purchase_price) : null} />
+                  )}
                   <TR label="Quelle" value={request.object_source === 'mod04_property' ? 'Aus Bestand (MOD-04)' : 'Eigenes Objekt'} />
                 </>
               ) : request.custom_object_data ? (
@@ -332,7 +345,7 @@ export default function FMFallDetail() {
                   <TR label="Typ" value="Eigenes Objekt" />
                   <TR label="Adresse" value={applicant?.object_address} />
                   <TR label="Objekttyp" value={applicant?.object_type} />
-                  <TR label="Verwendung" value={applicant?.purpose} />
+                  <TR label="Verwendung" value={purposeLabel} />
                 </>
               ) : (
                 <TableRow>
@@ -350,27 +363,44 @@ export default function FMFallDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="glass-card overflow-hidden">
           <CardContent className="p-0">
-            <div className="px-4 py-2 border-b bg-muted/20">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><CreditCard className="h-3.5 w-3.5" /> Darlehensparameter</h3>
+            <div className="px-4 py-2.5 border-b bg-muted/20">
+              <h3 className="text-base font-semibold flex items-center gap-2">
+                <CreditCard className="h-4 w-4" /> {isProlongation ? 'Prolongationsparameter' : 'Darlehensparameter'}
+              </h3>
             </div>
             <Table>
               <TableBody>
-                <TR label="Kaufpreis" value={loanEdits.purchase_price ?? applicant?.purchase_price ?? ''} editable 
-                  onChange={v => setLoanEdits(p => ({ ...p, purchase_price: v }))} />
-                <TR label="Eigenkapital" value={loanEdits.equity_amount ?? applicant?.equity_amount ?? ''} editable 
-                  onChange={v => setLoanEdits(p => ({ ...p, equity_amount: v }))} />
-                <TR label="Darlehenswunsch" value={loanEdits.loan_amount_requested ?? applicant?.loan_amount_requested ?? ''} editable 
-                  onChange={v => setLoanEdits(p => ({ ...p, loan_amount_requested: v }))} />
+                {isProlongation ? (
+                  <>
+                    <TR label="Objektwert" value={loanEdits.objektwert ?? property?.purchase_price ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, objektwert: v }))} />
+                    <TR label="Restschuld" value={loanEdits.loan_amount_requested ?? applicant?.loan_amount_requested ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, loan_amount_requested: v }))} />
+                  </>
+                ) : (
+                  <>
+                    <TR label="Kaufpreis" value={loanEdits.purchase_price ?? applicant?.purchase_price ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, purchase_price: v }))} />
+                    <TR label="Eigenkapital" value={loanEdits.equity_amount ?? applicant?.equity_amount ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, equity_amount: v }))} />
+                    <TR label="Darlehenswunsch" value={loanEdits.loan_amount_requested ?? applicant?.loan_amount_requested ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, loan_amount_requested: v }))} />
+                  </>
+                )}
                 <TR label="Sollzins (%)" value={loanEdits.interest_rate ?? '3.5'} editable 
                   onChange={v => setLoanEdits(p => ({ ...p, interest_rate: v }))} />
                 <TR label="Tilgung (%)" value={loanEdits.repayment_rate ?? applicant?.repayment_rate_percent ?? '2'} editable 
                   onChange={v => setLoanEdits(p => ({ ...p, repayment_rate: v }))} />
                 <TR label="Zinsbindung (Jahre)" value={loanEdits.fixed_rate_period ?? applicant?.fixed_rate_period_years ?? '10'} editable 
                   onChange={v => setLoanEdits(p => ({ ...p, fixed_rate_period: v }))} />
-                <TR label="Nebenkosten" value={loanEdits.ancillary_costs ?? applicant?.ancillary_costs ?? ''} editable 
-                  onChange={v => setLoanEdits(p => ({ ...p, ancillary_costs: v }))} />
-                <TR label="Modernisierung" value={loanEdits.modernization_costs ?? applicant?.modernization_costs ?? ''} editable 
-                  onChange={v => setLoanEdits(p => ({ ...p, modernization_costs: v }))} />
+                {!isProlongation && (
+                  <>
+                    <TR label="Nebenkosten" value={loanEdits.ancillary_costs ?? applicant?.ancillary_costs ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, ancillary_costs: v }))} />
+                    <TR label="Modernisierung" value={loanEdits.modernization_costs ?? applicant?.modernization_costs ?? ''} editable 
+                      onChange={v => setLoanEdits(p => ({ ...p, modernization_costs: v }))} />
+                  </>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -378,8 +408,8 @@ export default function FMFallDetail() {
 
         <Card className="glass-card overflow-hidden">
           <CardContent className="p-0">
-            <div className="px-4 py-2 border-b bg-muted/20">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Calculator className="h-3.5 w-3.5" /> Kalkulation</h3>
+            <div className="px-4 py-2.5 border-b bg-muted/20">
+              <h3 className="text-base font-semibold flex items-center gap-2"><Calculator className="h-4 w-4" /> Kalkulation</h3>
             </div>
             <div className="p-4 border-b bg-primary/5">
               <div className="text-xs text-muted-foreground">Monatliche Rate</div>
@@ -387,13 +417,17 @@ export default function FMFallDetail() {
             </div>
             <Table>
               <TableBody>
-                <TR label="Darlehensbetrag" value={eurFormat.format(loanAmount)} />
+                <TR label={isProlongation ? 'Restschuld (aktuell)' : 'Darlehensbetrag'} value={eurFormat.format(loanAmount)} />
                 <TR label="Sollzins" value={`${interestRate}%`} />
                 <TR label="Tilgung" value={`${repaymentRate}%`} />
                 <TR label="Zinsbindung" value={`${fixedPeriod} Jahre`} />
                 <TR label="Annuität p.a." value={eurFormat.format(monthlyRate * 12)} />
-                <TR label="Restschuld" value={eurFormat.format(remainingDebt)} />
-                <TR label="EK-Quote" value={purchasePrice > 0 ? `${((equity / purchasePrice) * 100).toFixed(1)}%` : '—'} />
+                <TR label="Restschuld (nach Zinsbindung)" value={eurFormat.format(remainingDebt)} />
+                {isProlongation ? (
+                  <TR label="Beleihungsauslauf" value={objektwert > 0 ? `${beleihungsauslauf.toFixed(1)}%` : '—'} />
+                ) : (
+                  <TR label="EK-Quote" value={purchasePrice > 0 ? `${((equity / purchasePrice) * 100).toFixed(1)}%` : '—'} />
+                )}
                 {applicant?.max_monthly_rate && (
                   <TR label="Max. tragbare Rate" value={eurFormatFull.format(applicant.max_monthly_rate)} />
                 )}
@@ -406,7 +440,7 @@ export default function FMFallDetail() {
       {/* ===== BLOCK 5: NOTIZEN ===== */}
       <Card className="glass-card">
         <CardContent className="p-4 space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2"><History className="h-3.5 w-3.5" /> Notizen & Timeline</h3>
+          <h3 className="text-base font-semibold flex items-center gap-2"><History className="h-4 w-4" /> Notizen & Timeline</h3>
           <Textarea
             placeholder="Interne Notiz zum Fall..."
             value={note}
@@ -428,7 +462,7 @@ export default function FMFallDetail() {
       {/* ===== BLOCK 6: FERTIGSTELLEN ===== */}
       <Card className="glass-card border-primary/20">
         <CardContent className="p-6 text-center space-y-3">
-          <h3 className="text-sm font-semibold">Finanzierungsakte fertigstellen</h3>
+          <h3 className="text-base font-semibold">Finanzierungsakte fertigstellen</h3>
           <p className="text-xs text-muted-foreground">
             Wenn alle Daten vollständig sind, markieren Sie die Akte als bereit zur Einreichung.
           </p>
