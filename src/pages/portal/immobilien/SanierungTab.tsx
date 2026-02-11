@@ -255,7 +255,7 @@ export function SanierungTab() {
                             <ScopeDefinitionPanel
                               serviceCase={serviceCase}
                               onBack={() => setExpandedCaseId(null)}
-                              onNext={() => {}}
+                              onNext={() => setViewStep(1)}
                             />
                           )}
                           {(viewStep ?? activeStep) === 1 && (
