@@ -1,25 +1,26 @@
 /**
- * FM Dashboard — Finance Manager Overview (clean, no counters)
+ * FM Dashboard — Widget Cards (analog ProjectCard) + integrated widgets
  */
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FolderOpen, Loader2, ArrowRight, Plus, CalendarClock, Activity
-} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, Plus, CalendarClock, Activity, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetHeader } from '@/components/shared/WidgetHeader';
+import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
+import { Badge } from '@/components/ui/badge';
 import type { FutureRoomCase } from '@/types/finance';
 
 interface Props {
   cases: FutureRoomCase[];
   isLoading: boolean;
 }
+
+const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 function getRequestStatus(c: FutureRoomCase): string {
   return c.finance_mandates?.finance_requests?.status || c.status;
@@ -34,8 +35,6 @@ function getApplicantName(c: FutureRoomCase): string {
 function getLoanAmount(c: FutureRoomCase): number | null {
   return c.finance_mandates?.finance_requests?.applicant_profiles?.[0]?.loan_amount_requested || null;
 }
-
-const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 export default function FMDashboard({ cases, isLoading }: Props) {
   const navigate = useNavigate();
@@ -57,10 +56,14 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     return age > 3 * 24 * 60 * 60 * 1000 && !c.first_action_at;
   });
 
-  // Recent 5 cases
+  // Recent activity
   const recentCases = [...cases].sort((a, b) => 
     new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
   ).slice(0, 6);
+
+  const handleCaseClick = (requestId: string) => {
+    navigate(`faelle/${requestId}`);
+  };
 
   return (
     <PageShell>
@@ -68,16 +71,30 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         title="FINANZIERUNGSMANAGER"
         description={`${cases.length} Fälle in Bearbeitung — Ihr zentrales Management-Cockpit.`}
         actions={
-          <Button onClick={() => navigate('faelle')} size="sm">
+          <Button onClick={() => navigate('/portal/finanzierung')} size="sm">
             <Plus className="h-4 w-4 mr-1" />
             Neuer Fall
           </Button>
         }
       />
 
-      {/* Two widgets side by side */}
+      {/* Case Widget Cards — like ProjectCards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        {cases.map(c => (
+          <FinanceCaseCard
+            key={c.id}
+            caseData={c}
+            onClick={handleCaseClick}
+          />
+        ))}
+        {cases.length === 0 && (
+          <FinanceCaseCardPlaceholder />
+        )}
+      </div>
+
+      {/* Widgets below */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Today Due / Overdue */}
+        {/* Overdue */}
         <Card className="glass-card">
           <CardContent className="p-4 space-y-3">
             <WidgetHeader
@@ -93,7 +110,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                   <div
                     key={c.id}
                     className="flex items-center justify-between py-2 px-3 rounded-md bg-destructive/5 border border-destructive/20 cursor-pointer hover:border-destructive/40 transition-colors text-sm"
-                    onClick={() => navigate(`faelle/${c.finance_mandates?.finance_request_id || c.id}`)}
+                    onClick={() => handleCaseClick(c.finance_mandates?.finance_request_id || c.id)}
                   >
                     <span className="font-medium text-sm">{getApplicantName(c)}</span>
                     <span className="text-xs text-muted-foreground">
@@ -112,17 +129,9 @@ export default function FMDashboard({ cases, isLoading }: Props) {
             <WidgetHeader
               icon={Activity}
               title="Letzte Aktivitäten"
-              action={
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate('faelle')}>
-                  Alle <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              }
             />
             {recentCases.length === 0 ? (
-              <div className="text-center py-4">
-                <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Noch keine Fälle</p>
-              </div>
+              <p className="text-xs text-muted-foreground text-center py-4">Noch keine Fälle</p>
             ) : (
               <div className="space-y-1">
                 {recentCases.map(c => {
@@ -131,7 +140,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                     <div
                       key={c.id}
                       className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/40 transition-colors cursor-pointer text-sm"
-                      onClick={() => navigate(`faelle/${c.finance_mandates?.finance_request_id || c.id}`)}
+                      onClick={() => handleCaseClick(c.finance_mandates?.finance_request_id || c.id)}
                     >
                       <div className="min-w-0 flex-1">
                         <span className="font-medium text-sm">{getApplicantName(c)}</span>
