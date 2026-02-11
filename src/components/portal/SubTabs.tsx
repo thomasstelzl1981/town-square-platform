@@ -44,9 +44,6 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             )}
           >
             {tile.title}
-            {tile.premium && (
-              <span className="ml-1 text-xs text-warning">★</span>
-            )}
           </NavLink>
         );
       })}
