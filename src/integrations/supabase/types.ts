@@ -4157,6 +4157,65 @@ export type Database = {
           },
         ]
       }
+      data_event_ledger: {
+        Row: {
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          direction: string
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string
+          id: string
+          ip_hash: string | null
+          payload: Json
+          source: string
+          tenant_id: string | null
+          user_agent_hash: string | null
+          zone: string
+        }
+        Insert: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          direction: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          payload?: Json
+          source: string
+          tenant_id?: string | null
+          user_agent_hash?: string | null
+          zone: string
+        }
+        Update: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          direction?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          payload?: Json
+          source?: string
+          tenant_id?: string | null
+          user_agent_hash?: string | null
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_event_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_project_calculations: {
         Row: {
           ancillary_cost_percent: number | null
@@ -14061,6 +14120,19 @@ export type Database = {
       is_platform_admin:
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
+      log_data_event: {
+        Args: {
+          p_direction?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_event_type?: string
+          p_payload?: Json
+          p_source?: string
+          p_tenant_id?: string
+          p_zone?: string
+        }
+        Returns: string
+      }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
       reset_sandbox_tenant: { Args: { p_tenant_id: string }; Returns: Json }
       rpc_armstrong_log_action_run: {

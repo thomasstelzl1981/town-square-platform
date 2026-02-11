@@ -1,15 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Copy, Play } from 'lucide-react';
+import { FileText, Copy, Play, ScrollText } from 'lucide-react';
 import AuditReportsTab from './AuditReportsTab';
 import AuditPromptTab from './AuditPromptTab';
 import AuditRunTab from './AuditRunTab';
+import AuditLedgerTab from './AuditLedgerTab';
 
 export default function AuditHub() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold uppercase">Audit Hub</h1>
-        <p className="text-muted-foreground">Reports, Prompt-Templates & Audit-Jobs</p>
+        <p className="text-muted-foreground">Reports, Prompt-Templates, Audit-Jobs & Data Ledger</p>
       </div>
 
       <Tabs defaultValue="reports" className="w-full">
@@ -26,6 +27,10 @@ export default function AuditHub() {
             <Play className="h-4 w-4" />
             <span className="hidden sm:inline">Run / Jobs</span>
           </TabsTrigger>
+          <TabsTrigger value="ledger" className="gap-1.5">
+            <ScrollText className="h-4 w-4" />
+            <span className="hidden sm:inline">Data Ledger</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports" className="mt-4">
@@ -36,6 +41,9 @@ export default function AuditHub() {
         </TabsContent>
         <TabsContent value="run" className="mt-4">
           <AuditRunTab />
+        </TabsContent>
+        <TabsContent value="ledger" className="mt-4">
+          <AuditLedgerTab />
         </TabsContent>
       </Tabs>
     </div>

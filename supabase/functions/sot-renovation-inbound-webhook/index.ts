@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -180,6 +181,22 @@ serve(async (req) => {
     }
 
     console.log(`Stored inbound record: ${inbound.id}`);
+
+    // DSGVO Ledger
+    await logDataEvent(supabase, {
+      tenant_id: tenantId || undefined,
+      zone: "EXTERN",
+      event_type: "inbound.webhook.received",
+      direction: "ingress",
+      source: "resend",
+      entity_type: "service_case_inbound",
+      entity_id: inbound.id,
+      payload: {
+        webhook_type: "renovation_inbound",
+        source_system: "resend",
+        payload_size: JSON.stringify(payload).length,
+      },
+    }, req);
 
     // If matched, update service case status
     if (serviceCaseId) {

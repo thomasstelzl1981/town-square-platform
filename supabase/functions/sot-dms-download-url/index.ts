@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,6 +94,24 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Download URL created for document ${document_id}`);
+
+    // DSGVO Ledger: document signed URL issued
+    await logDataEvent(supabaseAdmin, {
+      tenant_id: profile.active_tenant_id,
+      zone: "Z2",
+      actor_user_id: user.id,
+      event_type: "document.signed_url.view",
+      direction: "egress",
+      source: "ui",
+      entity_type: "document",
+      entity_id: document_id,
+      payload: {
+        document_id,
+        expires_in,
+        mime_type: document.mime_type,
+        size_bytes: document.size_bytes,
+      },
+    }, req);
 
     return new Response(
       JSON.stringify({

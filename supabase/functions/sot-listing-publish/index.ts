@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logDataEvent } from "../_shared/ledger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -304,6 +305,19 @@ Deno.serve(async (req) => {
         event_type: "listing.published",
         payload: { listing_id, partner_visibility, channel },
       });
+
+      // DSGVO Ledger
+      await logDataEvent(supabaseAdmin, {
+        tenant_id: tenantId,
+        zone: "Z2",
+        actor_user_id: user.id,
+        event_type: "listing.published",
+        direction: "egress",
+        source: "ui",
+        entity_type: "listing",
+        entity_id: listing_id,
+        payload: { listing_id, channel, partner_visibility },
+      }, req);
 
       console.log(`Listing published: ${listing_id} on ${channel} with visibility: ${partner_visibility}`);
 
