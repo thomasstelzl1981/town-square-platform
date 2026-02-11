@@ -163,6 +163,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/policies", component: "ArmstrongPolicies", title: "Policies" },
     { path: "armstrong/test", component: "ArmstrongTestHarness", title: "Test Harness" },
     { path: "armstrong/integrations", component: "ArmstrongIntegrations", title: "Widget-Integrationen" },
+    // Landing Pages
+    { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
   ],
 };
 
@@ -570,6 +572,13 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "netzwerk", component: "AcquiaryNetzwerk", title: "Netzwerk" },
       { path: "karriere", component: "AcquiaryKarriere", title: "Karriere" },
       { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
+    ],
+  },
+  projekt: {
+    base: "/projekt",
+    layout: "ProjektLandingLayout",
+    routes: [
+      { path: ":slug", component: "ProjektLandingPage", title: "Projekt-Website", dynamic: true },
     ],
   },
 };
