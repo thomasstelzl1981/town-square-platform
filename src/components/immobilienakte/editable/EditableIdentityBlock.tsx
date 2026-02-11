@@ -157,7 +157,7 @@ export function EditableIdentityBlock({
           </div>
           <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
             <ExternalLink className="h-3 w-3" />
-            Aktivierung erfolgt im Tab "Features"
+            Aktivierung erfolgt im Tab "Verkaufsauftrag"
           </p>
         </div>
       </CardContent>

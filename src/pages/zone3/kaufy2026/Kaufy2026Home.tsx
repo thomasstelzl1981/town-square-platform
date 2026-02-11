@@ -74,6 +74,21 @@ export default function Kaufy2026Home() {
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['kaufy2026-listings', classicParams.city, classicParams.maxPrice],
     queryFn: async () => {
+      // First: get listing IDs with active kaufy publication
+      const { data: kaufyPubs, error: pubError } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'kaufy')
+        .eq('status', 'active');
+
+      if (pubError) {
+        console.error('Kaufy publications query error:', pubError);
+        return [];
+      }
+
+      const kaufyListingIds = (kaufyPubs || []).map(p => p.listing_id);
+      if (kaufyListingIds.length === 0) return [];
+
       let query = supabase
         .from('listings')
         .select(`
@@ -92,6 +107,7 @@ export default function Kaufy2026Home() {
           )
         `)
         .eq('status', 'active')
+        .in('id', kaufyListingIds)
         .order('created_at', { ascending: false })
         .limit(50);
 

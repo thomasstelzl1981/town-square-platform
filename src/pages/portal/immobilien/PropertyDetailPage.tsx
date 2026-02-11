@@ -7,7 +7,7 @@
  * It renders an empty state when no property is found (e.g., for testing with fake IDs).
  */
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,7 +92,9 @@ export default function PropertyDetailPage() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('akte');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'akte';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const contentRef = usePdfContentRef();
 
   // Load the new Immobilienakte data
