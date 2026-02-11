@@ -323,48 +323,6 @@ Mit freundlichen Grüßen
         </CardContent>
       </Card>
 
-      {/* Contact Info Summary */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground">Kontaktdaten in der E-Mail</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {serviceCase.contact_name && (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                {serviceCase.contact_name}
-              </div>
-            )}
-            {serviceCase.contact_phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                {serviceCase.contact_phone}
-              </div>
-            )}
-            {serviceCase.contact_email && (
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                {serviceCase.contact_email}
-              </div>
-            )}
-            {serviceCase.contact_whatsapp && (
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                {serviceCase.contact_whatsapp}
-              </div>
-            )}
-          </div>
-          {!serviceCase.contact_name && !serviceCase.contact_phone && !serviceCase.contact_email && (
-            <Alert variant="destructive" className="mt-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Keine Kontaktdaten hinterlegt. Bitte ergänzen Sie diese im Vorgang.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Recipients */}
       <Card>
