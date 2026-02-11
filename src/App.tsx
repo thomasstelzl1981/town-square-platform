@@ -36,10 +36,11 @@ if (import.meta.env.DEV) {
   import('./goldenpath/devValidator').then(({ validateGoldenPaths }) => {
     validateGoldenPaths();
   });
-  import('./validation/architectureValidator').then(({ validateZoneBoundaries, validateTileCatalogSync, validateContractCoverage }) => {
+  import('./validation/architectureValidator').then(({ validateZoneBoundaries, validateTileCatalogSync, validateContractCoverage, validateStorageBoundaries }) => {
     validateZoneBoundaries();
     validateTileCatalogSync();
     validateContractCoverage();
+    validateStorageBoundaries();
   });
 }
 

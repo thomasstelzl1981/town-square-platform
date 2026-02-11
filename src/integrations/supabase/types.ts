@@ -215,6 +215,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject: string | null
+          tenant_id: string | null
           to_email: string | null
         }
         Insert: {
@@ -237,6 +238,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject?: string | null
+          tenant_id?: string | null
           to_email?: string | null
         }
         Update: {
@@ -259,6 +261,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject?: string | null
+          tenant_id?: string | null
           to_email?: string | null
         }
         Relationships: [
@@ -283,6 +286,13 @@ export type Database = {
             referencedRelation: "acq_mandates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "acq_inbound_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       acq_mandate_events: {
@@ -293,6 +303,7 @@ export type Database = {
           id: string
           mandate_id: string
           payload: Json | null
+          tenant_id: string | null
         }
         Insert: {
           actor_id?: string | null
@@ -301,6 +312,7 @@ export type Database = {
           id?: string
           mandate_id: string
           payload?: Json | null
+          tenant_id?: string | null
         }
         Update: {
           actor_id?: string | null
@@ -309,6 +321,7 @@ export type Database = {
           id?: string
           mandate_id?: string
           payload?: Json | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -316,6 +329,13 @@ export type Database = {
             columns: ["mandate_id"]
             isOneToOne: false
             referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_mandate_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -412,6 +432,7 @@ export type Database = {
           id: string
           metadata: Json | null
           offer_id: string
+          tenant_id: string | null
         }
         Insert: {
           activity_type: string
@@ -421,6 +442,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           offer_id: string
+          tenant_id?: string | null
         }
         Update: {
           activity_type?: string
@@ -430,6 +452,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           offer_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -437,6 +460,13 @@ export type Database = {
             columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_offer_activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -452,6 +482,7 @@ export type Database = {
           mime_type: string | null
           offer_id: string
           storage_path: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -463,6 +494,7 @@ export type Database = {
           mime_type?: string | null
           offer_id: string
           storage_path: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -474,6 +506,7 @@ export type Database = {
           mime_type?: string | null
           offer_id?: string
           storage_path?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -481,6 +514,13 @@ export type Database = {
             columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_offer_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -509,6 +549,7 @@ export type Database = {
           source_type: Database["public"]["Enums"]["acq_offer_source"]
           source_url: string | null
           status: Database["public"]["Enums"]["acq_offer_status"]
+          tenant_id: string | null
           title: string | null
           units_count: number | null
           updated_at: string
@@ -538,6 +579,7 @@ export type Database = {
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["acq_offer_status"]
+          tenant_id?: string | null
           title?: string | null
           units_count?: number | null
           updated_at?: string
@@ -567,6 +609,7 @@ export type Database = {
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["acq_offer_status"]
+          tenant_id?: string | null
           title?: string | null
           units_count?: number | null
           updated_at?: string
@@ -602,6 +645,13 @@ export type Database = {
             referencedRelation: "acq_inbound_messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "acq_offers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       acq_outbound_messages: {
@@ -623,6 +673,7 @@ export type Database = {
           status: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
+          tenant_id: string | null
         }
         Insert: {
           body_html?: string | null
@@ -642,6 +693,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
+          tenant_id?: string | null
         }
         Update: {
           body_html?: string | null
@@ -661,6 +713,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject?: string
           template_code?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -675,6 +728,13 @@ export type Database = {
             columns: ["mandate_id"]
             isOneToOne: false
             referencedRelation: "acq_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acq_outbound_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -6866,6 +6926,7 @@ export type Database = {
           rejected_at: string | null
           rejection_reason: string | null
           status: string | null
+          tenant_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -6877,6 +6938,7 @@ export type Database = {
           rejected_at?: string | null
           rejection_reason?: string | null
           status?: string | null
+          tenant_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -6888,6 +6950,7 @@ export type Database = {
           rejected_at?: string | null
           rejection_reason?: string | null
           status?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -6900,6 +6963,13 @@ export type Database = {
           {
             foreignKeyName: "lead_assignments_partner_org_id_fkey"
             columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -9956,6 +10026,7 @@ export type Database = {
           provider: string
           pv_plant_id: string
           status: string
+          tenant_id: string | null
         }
         Insert: {
           config_json?: Json | null
@@ -9966,6 +10037,7 @@ export type Database = {
           provider: string
           pv_plant_id: string
           status?: string
+          tenant_id?: string | null
         }
         Update: {
           config_json?: Json | null
@@ -9976,6 +10048,7 @@ export type Database = {
           provider?: string
           pv_plant_id?: string
           status?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -9983,6 +10056,13 @@ export type Database = {
             columns: ["pv_plant_id"]
             isOneToOne: false
             referencedRelation: "pv_plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pv_connectors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -9995,6 +10075,7 @@ export type Database = {
           id: string
           pv_plant_id: string
           source: string
+          tenant_id: string | null
           ts: string
         }
         Insert: {
@@ -10004,6 +10085,7 @@ export type Database = {
           id?: string
           pv_plant_id: string
           source?: string
+          tenant_id?: string | null
           ts?: string
         }
         Update: {
@@ -10013,6 +10095,7 @@ export type Database = {
           id?: string
           pv_plant_id?: string
           source?: string
+          tenant_id?: string | null
           ts?: string
         }
         Relationships: [
@@ -10021,6 +10104,13 @@ export type Database = {
             columns: ["pv_plant_id"]
             isOneToOne: false
             referencedRelation: "pv_plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pv_measurements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
