@@ -227,16 +227,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
+    // P0-FIX: On app start, try to refresh the session first to renew expired access tokens.
+    // This prevents users from being logged out after browser restart when the access token
+    // has expired but the refresh token (7+ days) is still valid.
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (existingSession) {
+        // Try refreshing to get a fresh access token
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        const activeSession = refreshedSession || existingSession;
+        setSession(activeSession);
+        setUser(activeSession?.user ?? null);
+        if (activeSession?.user) {
+          fetchUserData(activeSession.user.id);
+        }
       } else if (isDevelopmentMode) {
         setActiveOrgStable(DEV_MOCK_ORG);
         setMemberships([DEV_MOCK_MEMBERSHIP]);
         setProfile(DEV_MOCK_PROFILE);
-        
         fetchDevelopmentData();
       }
       setIsLoading(false);
