@@ -64,7 +64,7 @@ export default function SotProdukt() {
               Kostenlos starten
               <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link to="/sot/module" className="sot-btn-secondary">
+            <Link to="/website/sot/module" className="sot-btn-secondary">
               Module ansehen
             </Link>
           </div>

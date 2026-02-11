@@ -81,7 +81,7 @@ export function SotHeroSection({
           </Link>
           
           {showDemo && (
-            <Link to="/sot/demo" className="sot-btn-secondary justify-center">
+            <Link to="/website/sot/demo" className="sot-btn-secondary justify-center">
               <Play className="w-4 h-4" />
               Demo ansehen
             </Link>

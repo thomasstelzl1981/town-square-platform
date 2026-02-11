@@ -8,9 +8,9 @@ import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
 import '@/styles/acquiary-premium.css';
 
 const navItems = [
-  { label: 'Methodik', href: '/acquiary/methodik' },
-  { label: 'Netzwerk', href: '/acquiary/netzwerk' },
-  { label: 'Karriere', href: '/acquiary/karriere' },
+  { label: 'Methodik', href: '/website/acquiary/methodik' },
+  { label: 'Netzwerk', href: '/website/acquiary/netzwerk' },
+  { label: 'Karriere', href: '/website/acquiary/karriere' },
 ];
 
 export default function AcquiaryLayout() {
@@ -29,7 +29,7 @@ export default function AcquiaryLayout() {
       {/* Header */}
       <header className={`aq-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="aq-header-content">
-          <Link to="/acquiary" className="aq-logo">
+          <Link to="/website/acquiary" className="aq-logo">
             <div className="aq-logo-mark">A</div>
             ACQUIARY
           </Link>
@@ -49,7 +49,7 @@ export default function AcquiaryLayout() {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/acquiary/objekt">
+            <Link to="/website/acquiary/objekt">
               <button className="aq-btn aq-btn-primary">
                 Objekt anbieten
                 <ChevronRight className="h-4 w-4" />
@@ -85,7 +85,7 @@ export default function AcquiaryLayout() {
                 </Link>
               ))}
               <div className="pt-4 px-4">
-                <Link to="/acquiary/objekt" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/website/acquiary/objekt" onClick={() => setMobileMenuOpen(false)}>
                   <button className="aq-btn aq-btn-primary w-full">
                     Objekt anbieten
                   </button>
@@ -105,7 +105,7 @@ export default function AcquiaryLayout() {
       <footer className="aq-footer">
         <div className="aq-footer-grid">
           <div className="aq-footer-brand">
-            <Link to="/acquiary" className="aq-logo" style={{ color: 'hsl(220 20% 92%)' }}>
+            <Link to="/website/acquiary" className="aq-logo" style={{ color: 'hsl(220 20% 92%)' }}>
               <div className="aq-logo-mark">A</div>
               ACQUIARY
             </Link>
@@ -117,10 +117,10 @@ export default function AcquiaryLayout() {
           <div>
             <h4 className="aq-footer-title">Plattform</h4>
             <ul className="aq-footer-links">
-              <li><Link to="/acquiary/methodik">Methodik</Link></li>
-              <li><Link to="/acquiary/netzwerk">Netzwerk</Link></li>
-              <li><Link to="/acquiary/karriere">Karriere</Link></li>
-              <li><Link to="/acquiary/objekt">Objekt anbieten</Link></li>
+              <li><Link to="/website/acquiary/methodik">Methodik</Link></li>
+              <li><Link to="/website/acquiary/netzwerk">Netzwerk</Link></li>
+              <li><Link to="/website/acquiary/karriere">Karriere</Link></li>
+              <li><Link to="/website/acquiary/objekt">Objekt anbieten</Link></li>
             </ul>
           </div>
           <div>

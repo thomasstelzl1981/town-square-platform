@@ -6,12 +6,12 @@ import { Building2, Sun, Moon, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
-  { href: '/sot/produkt', label: 'Produkt' },
-  { href: '/sot/module', label: 'Module' },
-  { href: '/sot/use-cases', label: 'Anwendungsfälle' },
-  { href: '/sot/preise', label: 'Preise' },
-  { href: '/sot/demo', label: 'Demo' },
-  { href: '/sot/faq', label: 'FAQ' },
+  { href: '/website/sot/produkt', label: 'Produkt' },
+  { href: '/website/sot/module', label: 'Module' },
+  { href: '/website/sot/use-cases', label: 'Anwendungsfälle' },
+  { href: '/website/sot/preise', label: 'Preise' },
+  { href: '/website/sot/demo', label: 'Demo' },
+  { href: '/website/sot/faq', label: 'FAQ' },
 ];
 
 interface SotHeaderProps {
@@ -28,7 +28,7 @@ export function SotHeader({ isDark, onToggleTheme }: SotHeaderProps) {
       <div className="zone3-container">
         <nav className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link to="/sot" className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
+          <Link to="/website/sot" className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: 'hsl(var(--z3-accent))' }}

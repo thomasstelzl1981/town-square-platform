@@ -3,12 +3,12 @@ import { MessageCircle, Home } from 'lucide-react';
 import '@/styles/zone3-theme.css';
 
 const navItems = [
-  { href: '/miety', label: 'Startseite' },
-  { href: '/miety/leistungen', label: 'Leistungen' },
-  { href: '/miety/vermieter', label: 'Für Vermieter' },
-  { href: '/miety/app', label: 'Miety-App' },
-  { href: '/miety/preise', label: 'Preise' },
-  { href: '/miety/invite', label: 'Einladung' },
+  { href: '/website/miety', label: 'Startseite' },
+  { href: '/website/miety/leistungen', label: 'Leistungen' },
+  { href: '/website/miety/vermieter', label: 'Für Vermieter' },
+  { href: '/website/miety/app', label: 'Miety-App' },
+  { href: '/website/miety/preise', label: 'Preise' },
+  { href: '/website/miety/invite', label: 'Einladung' },
 ];
 
 export default function MietyLayout() {
@@ -21,7 +21,7 @@ export default function MietyLayout() {
         <div className="zone3-container">
           <nav className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/miety" className="flex items-center gap-2 text-xl font-bold" style={{ color: 'hsl(var(--z3-foreground))' }}>
+            <Link to="/website/miety" className="flex items-center gap-2 text-xl font-bold" style={{ color: 'hsl(var(--z3-foreground))' }}>
               <Home className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
               Miety
             </Link>
@@ -53,7 +53,7 @@ export default function MietyLayout() {
                 Anmelden
               </Link>
               <Link
-                to="/miety/registrieren"
+                to="/website/miety/registrieren"
                 className="zone3-btn-primary text-sm"
                 style={{ backgroundColor: 'hsl(var(--z3-accent))', color: 'hsl(var(--z3-accent-foreground))' }}
               >
@@ -88,10 +88,10 @@ export default function MietyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Produkt</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/miety/leistungen" className="hover:underline">Leistungen</Link></li>
-                <li><Link to="/miety/vermieter" className="hover:underline">Für Vermieter</Link></li>
-                <li><Link to="/miety/app" className="hover:underline">Miety-App</Link></li>
-                <li><Link to="/miety/preise" className="hover:underline">Preise</Link></li>
+                <li><Link to="/website/miety/leistungen" className="hover:underline">Leistungen</Link></li>
+                <li><Link to="/website/miety/vermieter" className="hover:underline">Für Vermieter</Link></li>
+                <li><Link to="/website/miety/app" className="hover:underline">Miety-App</Link></li>
+                <li><Link to="/website/miety/preise" className="hover:underline">Preise</Link></li>
               </ul>
             </div>
 
@@ -99,8 +99,8 @@ export default function MietyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/miety/kontakt" className="hover:underline">Kontakt</Link></li>
-                <li><Link to="/miety/so-funktioniert" className="hover:underline">Hilfe</Link></li>
+                <li><Link to="/website/miety/kontakt" className="hover:underline">Kontakt</Link></li>
+                <li><Link to="/website/miety/so-funktioniert" className="hover:underline">Hilfe</Link></li>
               </ul>
             </div>
 
@@ -108,8 +108,8 @@ export default function MietyLayout() {
             <div>
               <h4 className="font-semibold mb-4">Rechtliches</h4>
               <ul className="space-y-2 zone3-text-small">
-                <li><Link to="/miety/impressum" className="hover:underline">Impressum</Link></li>
-                <li><Link to="/miety/datenschutz" className="hover:underline">Datenschutz</Link></li>
+                <li><Link to="/website/miety/impressum" className="hover:underline">Impressum</Link></li>
+                <li><Link to="/website/miety/datenschutz" className="hover:underline">Datenschutz</Link></li>
               </ul>
             </div>
           </div>

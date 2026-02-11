@@ -210,7 +210,7 @@ export default function SotHome() {
                 ))}
               </ul>
               
-              <Link to="/sot/module" className="sot-btn-primary">
+              <Link to="/website/sot/module" className="sot-btn-primary">
                 Alle Funktionen entdecken
                 <ArrowRight className="w-4 h-4" />
               </Link>
@@ -299,7 +299,7 @@ export default function SotHome() {
           </div>
 
           <div className="text-center mt-10 lg:mt-12">
-            <Link to="/sot/module" className="sot-btn-secondary">
+            <Link to="/website/sot/module" className="sot-btn-secondary">
               Alle {moduleCount} Module entdecken
               <ArrowRight className="w-4 h-4" />
             </Link>

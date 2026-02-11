@@ -36,10 +36,10 @@ export default function Kaufy2026Layout() {
   }
 
   const navLinks = [
-    { path: '/kaufy2026', label: 'Suchen', exact: true },
-    { path: '/kaufy2026/vermieter', label: 'Vermieter' },
-    { path: '/kaufy2026/verkaeufer', label: 'Verkäufer' },
-    { path: '/kaufy2026/vertrieb', label: 'Partner' },
+    { path: '/website/kaufy', label: 'Suchen', exact: true },
+    { path: '/website/kaufy/vermieter', label: 'Vermieter' },
+    { path: '/website/kaufy/verkaeufer', label: 'Verkäufer' },
+    { path: '/website/kaufy/vertrieb', label: 'Partner' },
   ];
 
   const isActive = (path: string, exact = false) => {
@@ -55,7 +55,7 @@ export default function Kaufy2026Layout() {
         <header className="kaufy2026-header">
           <div className="flex items-center justify-between h-16 px-6 lg:px-10">
             {/* Logo */}
-            <Link to="/kaufy2026" className="flex items-center gap-2">
+            <Link to="/website/kaufy" className="flex items-center gap-2">
               <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">KAUFY</span>
               <span className="text-xs font-medium text-[hsl(210,80%,55%)] bg-[hsl(210,80%,55%,0.1)] px-2 py-0.5 rounded-full">
                 beta
@@ -203,11 +203,11 @@ export default function Kaufy2026Layout() {
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Plattform</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Überblick</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Funktionen</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Immo-Wallet</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Vertriebstools</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Automationen</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Überblick</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Funktionen</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Immo-Wallet</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Vertriebstools</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Automationen</Link></li>
                 </ul>
               </div>
 
@@ -215,10 +215,10 @@ export default function Kaufy2026Layout() {
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Für wen</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><Link to="/kaufy2026/vermieter" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vermieter</Link></li>
-                  <li><Link to="/kaufy2026/verkaeufer" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Anbieter</Link></li>
-                  <li><Link to="/kaufy2026/vertrieb" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vertriebspartner</Link></li>
-                  <li><Link to="/kaufy2026" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Investoren</Link></li>
+                  <li><Link to="/website/kaufy/vermieter" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vermieter</Link></li>
+                  <li><Link to="/website/kaufy/verkaeufer" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Anbieter</Link></li>
+                  <li><Link to="/website/kaufy/vertrieb" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vertriebspartner</Link></li>
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Investoren</Link></li>
                   <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Demo anfragen</a></li>
                 </ul>
               </div>

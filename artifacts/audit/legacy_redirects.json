@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-02T00:00:00Z",
-  "total_count": 7,
+  "generated_at": "2026-02-11T00:00:00Z",
+  "total_count": 19,
   "all_param_safe": true,
   "redirects": [
     { "from": "/portfolio", "to": "/portal/immobilien/portfolio", "reason": "Legacy route", "param_safe": true },
@@ -9,6 +9,18 @@
     { "from": "/portal/finanzierung/vorgaenge", "to": "/portal/finanzierung/anfrage", "reason": "MOD-07 tile rename", "param_safe": true },
     { "from": "/portal/finanzierung/readiness", "to": "/portal/finanzierung/selbstauskunft", "reason": "MOD-07 tile rename", "param_safe": true },
     { "from": "/portal/finanzierung/export", "to": "/portal/finanzierung/anfrage", "reason": "MOD-07 tile rename", "param_safe": true },
-    { "from": "/portal/finanzierung/partner", "to": "/portal/finanzierung/status", "reason": "MOD-07 tile rename", "param_safe": true }
+    { "from": "/portal/finanzierung/partner", "to": "/portal/finanzierung/status", "reason": "MOD-07 tile rename", "param_safe": true },
+    { "from": "/kaufy2026", "to": "/website/kaufy", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/kaufy2026/*", "to": "/website/kaufy", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/miety", "to": "/website/miety", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/miety/*", "to": "/website/miety", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/futureroom", "to": "/website/futureroom", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/futureroom/*", "to": "/website/futureroom", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/sot", "to": "/website/sot", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/sot/*", "to": "/website/sot", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/acquiary", "to": "/website/acquiary", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/acquiary/*", "to": "/website/acquiary", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/projekt", "to": "/website/projekt", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true },
+    { "from": "/projekt/*", "to": "/website/projekt", "reason": "ZBC-R08 Z3 prefix migration", "param_safe": true }
   ]
 }

@@ -513,8 +513,8 @@ export const zone2Portal: ZoneDefinition = {
 // ZONE 3: WEBSITES
 // =============================================================================
 export const zone3Websites: Record<string, WebsiteDefinition> = {
-  kaufy2026: {
-    base: "/kaufy2026",
+  kaufy: {
+    base: "/website/kaufy",
     layout: "Kaufy2026Layout",
     routes: [
       { path: "", component: "Kaufy2026Home", title: "KAUFY Home" },
@@ -525,7 +525,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     ],
   },
   miety: {
-    base: "/miety",
+    base: "/website/miety",
     layout: "MietyLayout",
     routes: [
       { path: "", component: "MietyHome", title: "Miety Home" },
@@ -540,7 +540,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     ],
   },
   futureroom: {
-    base: "/futureroom",
+    base: "/website/futureroom",
     layout: "FutureRoomLayout",
     routes: [
       { path: "", component: "FutureRoomHome", title: "Future Room" },
@@ -550,7 +550,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     ],
   },
   sot: {
-    base: "/sot",
+    base: "/website/sot",
     layout: "SotLayout",
     routes: [
       { path: "", component: "SotHome", title: "System of a Town" },
@@ -564,7 +564,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     ],
   },
   acquiary: {
-    base: "/acquiary",
+    base: "/website/acquiary",
     layout: "AcquiaryLayout",
     routes: [
       { path: "", component: "AcquiaryHome", title: "ACQUIARY" },
@@ -575,7 +575,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     ],
   },
   projekt: {
-    base: "/projekt",
+    base: "/website/projekt",
     layout: "ProjektLandingLayout",
     routes: [
       { path: ":slug", component: "ProjektLandingPage", title: "Projekt-Website", dynamic: true },
@@ -610,6 +610,21 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/portal/finanzierungsmanager/selbstauskunft/:id", redirect_to: "/portal/finanzierungsmanager/faelle/:id", reason: "MOD-11 restructure" },
   { path: "/portal/finanzierungsmanager/einreichen", redirect_to: "/portal/finanzierungsmanager/faelle", reason: "MOD-11 restructure" },
   { path: "/portal/finanzierungsmanager/einreichen/:id", redirect_to: "/portal/finanzierungsmanager/faelle/:id", reason: "MOD-11 restructure" },
+  // ==========================================================================
+  // ZBC-R08: Legacy Z3 Root-Pfade → /website/** Migration
+  // ==========================================================================
+  { path: "/kaufy2026", redirect_to: "/website/kaufy", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/kaufy2026/*", redirect_to: "/website/kaufy", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/miety", redirect_to: "/website/miety", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/miety/*", redirect_to: "/website/miety", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/futureroom", redirect_to: "/website/futureroom", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/futureroom/*", redirect_to: "/website/futureroom", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/sot", redirect_to: "/website/sot", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/sot/*", redirect_to: "/website/sot", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/acquiary", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/acquiary/*", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/projekt", redirect_to: "/website/projekt", reason: "ZBC-R08 Z3 prefix migration" },
+  { path: "/projekt/*", redirect_to: "/website/projekt", reason: "ZBC-R08 Z3 prefix migration" },
 ];
 
 // =============================================================================

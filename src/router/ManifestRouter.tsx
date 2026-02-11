@@ -398,7 +398,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
-  kaufy2026: kaufy2026ComponentMap,
+  kaufy: kaufy2026ComponentMap,
   miety: mietyComponentMap,
   futureroom: futureroomComponentMap,
   sot: sotComponentMap,

@@ -6,21 +6,21 @@ import { Building2, Github, Linkedin, Twitter } from 'lucide-react';
 
 const footerLinks = {
   produkt: [
-    { label: 'Überblick', href: '/sot/produkt' },
-    { label: 'Module', href: '/sot/module' },
-    { label: 'Anwendungsfälle', href: '/sot/use-cases' },
-    { label: 'Demo', href: '/sot/demo' },
+    { label: 'Überblick', href: '/website/sot/produkt' },
+    { label: 'Module', href: '/website/sot/module' },
+    { label: 'Anwendungsfälle', href: '/website/sot/use-cases' },
+    { label: 'Demo', href: '/website/sot/demo' },
   ],
   ressourcen: [
-    { label: 'Preise', href: '/sot/preise' },
-    { label: 'FAQ', href: '/sot/faq' },
-    { label: 'Blog', href: '/sot/blog' },
-    { label: 'Changelog', href: '/sot/changelog' },
+    { label: 'Preise', href: '/website/sot/preise' },
+    { label: 'FAQ', href: '/website/sot/faq' },
+    { label: 'Blog', href: '/website/sot/blog' },
+    { label: 'Changelog', href: '/website/sot/changelog' },
   ],
   rechtliches: [
-    { label: 'Impressum', href: '/sot/impressum' },
-    { label: 'Datenschutz', href: '/sot/datenschutz' },
-    { label: 'AGB', href: '/sot/agb' },
+    { label: 'Impressum', href: '/website/sot/impressum' },
+    { label: 'Datenschutz', href: '/website/sot/datenschutz' },
+    { label: 'AGB', href: '/website/sot/agb' },
   ],
 };
 
@@ -31,7 +31,7 @@ export function SotFooter() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link to="/sot" className="flex items-center gap-2.5 mb-4">
+            <Link to="/website/sot" className="flex items-center gap-2.5 mb-4">
               <div 
                 className="w-9 h-9 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: 'hsl(var(--z3-accent))' }}

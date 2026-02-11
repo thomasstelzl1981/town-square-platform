@@ -188,7 +188,7 @@ export default function SotPreise() {
             <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
               Weitere Fragen?
             </p>
-            <Link to="/sot/faq" className="sot-btn-secondary">
+            <Link to="/website/sot/faq" className="sot-btn-secondary">
               <MessageCircle className="w-4 h-4" />
               Alle FAQ ansehen
             </Link>
