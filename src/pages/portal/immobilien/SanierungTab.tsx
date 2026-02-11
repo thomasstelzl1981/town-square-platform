@@ -9,6 +9,7 @@ import {
   ArrowRight, Mail, AlertCircle, ChevronRight
 } from 'lucide-react';
 import { useServiceCases, useServiceCaseStats, ServiceCaseCategory } from '@/hooks/useServiceCases';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ServiceCaseStatusBadge } from '@/components/portal/immobilien/sanierung/ServiceCaseStatusBadge';
 import { ServiceCaseCreateDialog } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateDialog';
 import { formatCurrency } from '@/lib/formatters';
@@ -77,6 +78,7 @@ export function SanierungTab() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <ModulePageHeader title="Sanierung" description="Ausschreibungen, Angebote und Dokumentation Ihrer Sanierungsprojekte" />
       {/* Workflow Visualisierung */}
       <Card>
         <CardHeader className="pb-3">
