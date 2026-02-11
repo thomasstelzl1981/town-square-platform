@@ -14,10 +14,10 @@ import {
 import '@/styles/futureroom-premium.css';
 
 const navItems = [
-  { label: 'Start', href: '/futureroom', icon: Home },
-  { label: 'Finanzierung starten', href: '/futureroom/bonitat', icon: FileText },
-  { label: 'Finanzierungsmanager werden', href: '/futureroom/karriere', icon: Users },
-  { label: 'FAQ', href: '/futureroom/faq', icon: HelpCircle },
+  { label: 'Start', href: '/website/futureroom', icon: Home },
+  { label: 'Finanzierung starten', href: '/website/futureroom/bonitat', icon: FileText },
+  { label: 'Finanzierungsmanager werden', href: '/website/futureroom/karriere', icon: Users },
+  { label: 'FAQ', href: '/website/futureroom/faq', icon: HelpCircle },
 ];
 
 export default function FutureRoomLayout() {
@@ -39,7 +39,7 @@ export default function FutureRoomLayout() {
       <header className={`fr-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="fr-header-content">
           {/* Logo */}
-          <Link to="/futureroom" className="fr-logo">
+          <Link to="/website/futureroom" className="fr-logo">
             <div className="fr-logo-icon">
               <Landmark className="h-5 w-5" />
             </div>
@@ -66,7 +66,7 @@ export default function FutureRoomLayout() {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/futureroom/bonitat">
+            <Link to="/website/futureroom/bonitat">
               <button className="fr-btn fr-btn-primary">
                 Jetzt starten
                 <ChevronRight className="h-4 w-4" />
@@ -107,7 +107,7 @@ export default function FutureRoomLayout() {
                 );
               })}
               <div className="pt-4 px-4">
-                <Link to="/futureroom/bonitat" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/website/futureroom/bonitat" onClick={() => setMobileMenuOpen(false)}>
                   <button className="fr-btn fr-btn-primary w-full">
                     Finanzierung starten
                   </button>
@@ -143,7 +143,7 @@ export default function FutureRoomLayout() {
       <footer className="fr-footer">
         <div className="fr-footer-grid">
           <div className="fr-footer-brand">
-            <Link to="/futureroom" className="fr-logo" style={{ color: 'white' }}>
+            <Link to="/website/futureroom" className="fr-logo" style={{ color: 'white' }}>
               <div className="fr-logo-icon">
                 <Landmark className="h-5 w-5" />
               </div>
@@ -159,9 +159,9 @@ export default function FutureRoomLayout() {
           <div>
             <h4 className="fr-footer-title">Produkt</h4>
             <ul className="fr-footer-links">
-              <li><Link to="/futureroom/bonitat">Finanzierung starten</Link></li>
-              <li><Link to="/futureroom/karriere">Für Finanzierungsmanager</Link></li>
-              <li><Link to="/futureroom/faq">FAQ</Link></li>
+              <li><Link to="/website/futureroom/bonitat">Finanzierung starten</Link></li>
+              <li><Link to="/website/futureroom/karriere">Für Finanzierungsmanager</Link></li>
+              <li><Link to="/website/futureroom/faq">FAQ</Link></li>
             </ul>
           </div>
           <div>

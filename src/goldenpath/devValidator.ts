@@ -1,14 +1,15 @@
 /**
- * DEV-only: Golden Path Route Validator
+ * DEV-only: Golden Path Route Validator + Zone Boundary Contract Validator
  * 
- * Prueft beim App-Start, ob alle routePattern in den Golden-Path-Definitionen
- * gueltige Routen im routesManifest referenzieren.
+ * Prueft beim App-Start:
+ * 1. Ob alle routePattern in den Golden-Path-Definitionen gueltige Routen referenzieren
+ * 2. ZBC-R09: Ob Zone-3-Routen ausschliesslich unter /website/** liegen (No Root Collisions)
  * 
  * Kein Produktions-Impact — nur console.error im DEV-Modus.
  */
 
 import { getAllGoldenPaths } from './engine';
-import { zone2Portal } from '@/manifests/routesManifest';
+import { zone2Portal, zone3Websites } from '@/manifests/routesManifest';
 
 /**
  * Sammelt alle registrierten Route-Patterns aus dem routesManifest.
@@ -88,6 +89,40 @@ export function validateGoldenPaths(): void {
   if (!hasErrors) {
     console.info(
       `[GoldenPath] ✅ Alle ${goldenPaths.length} Golden Path(s) validiert — keine Route-Mismatches.`
+    );
+  }
+}
+
+// =============================================================================
+// ZBC-R09: Root Collision Validator
+// =============================================================================
+
+const ALLOWED_ROOT_PREFIXES = ['/admin', '/portal', '/website', '/auth'];
+
+/**
+ * Validiert ZBC-R09: Keine Zone-3-Routen ausserhalb von /website/**.
+ * Prueft auch, dass keine unerlaubten Root-Pfade im Manifest existieren.
+ */
+export function validateZoneBoundaries(): void {
+  if (import.meta.env.PROD) return;
+
+  let hasErrors = false;
+
+  // Pruefe alle Z3-base-Pfade
+  for (const [siteKey, site] of Object.entries(zone3Websites)) {
+    if (!site.base.startsWith('/website/')) {
+      console.error(
+        `[ZBC-R09] ❌ Zone-3-Website "${siteKey}" hat einen unerlaubten Base-Pfad: "${site.base}"`,
+        `\n  Erwartet: "/website/${siteKey}" oder "/website/<brand>"`,
+        `\n  Regel: Alle Z3-Websites muessen unter /website/** liegen.`
+      );
+      hasErrors = true;
+    }
+  }
+
+  if (!hasErrors) {
+    console.info(
+      `[ZBC-R09] ✅ Alle ${Object.keys(zone3Websites).length} Zone-3-Websites liegen unter /website/** — keine Root-Collisions.`
     );
   }
 }

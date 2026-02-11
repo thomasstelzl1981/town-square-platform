@@ -33,7 +33,7 @@ export default function SotModule() {
                 Kostenlos starten
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link to="/sot/demo" className="sot-btn-secondary">
+              <Link to="/website/sot/demo" className="sot-btn-secondary">
                 <Play className="w-4 h-4" />
                 Demo ansehen
               </Link>
@@ -63,11 +63,11 @@ export default function SotModule() {
               Armstrong kennt alles.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/sot/demo" className="sot-btn-secondary">
+              <Link to="/website/sot/demo" className="sot-btn-secondary">
                 <Play className="w-4 h-4" />
                 Demo erleben
               </Link>
-              <Link to="/sot/preise" className="sot-btn-ghost">
+              <Link to="/website/sot/preise" className="sot-btn-ghost">
                 Preise ansehen →
               </Link>
             </div>

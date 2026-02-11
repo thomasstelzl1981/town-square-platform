@@ -30,7 +30,7 @@ export default function SotModuleDetail() {
         <div className="zone3-container text-center">
           <h1 className="sot-headline mb-4">Modul nicht gefunden</h1>
           <p className="sot-subheadline mb-8">Das gesuchte Modul existiert nicht.</p>
-          <Link to="/sot/module" className="sot-btn-primary">
+          <Link to="/website/sot/module" className="sot-btn-primary">
             <ArrowLeft className="w-4 h-4" />
             Zur Modulübersicht
           </Link>
@@ -56,7 +56,7 @@ export default function SotModuleDetail() {
           ref={heroRef}
           className={`zone3-container relative z-10 sot-fade-in ${heroVisible ? 'visible' : ''}`}
         >
-          <Link to="/sot/module" className="inline-flex items-center gap-2 text-sm mb-8 hover:underline" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+          <Link to="/website/sot/module" className="inline-flex items-center gap-2 text-sm mb-8 hover:underline" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
             <ArrowLeft className="w-4 h-4" />
             Alle Module
           </Link>
@@ -141,7 +141,7 @@ export default function SotModuleDetail() {
                   Kostenlos registrieren
                   <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link to="/sot/demo" className="sot-btn-secondary w-full justify-center">
+                <Link to="/website/sot/demo" className="sot-btn-secondary w-full justify-center">
                   Demo ansehen
                 </Link>
               </div>

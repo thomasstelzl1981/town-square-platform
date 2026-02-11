@@ -179,7 +179,7 @@ export default function SotFAQ() {
             <p className="text-sm mb-6" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
               Kontaktieren Sie uns — wir helfen gerne.
             </p>
-            <Link to="/sot/kontakt" className="sot-btn-secondary">
+            <Link to="/website/sot/kontakt" className="sot-btn-secondary">
               Kontakt aufnehmen
             </Link>
           </div>

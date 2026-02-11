@@ -235,7 +235,7 @@ export default function Kaufy2026Expose() {
     return (
       <div className="p-6 text-center">
         <p className="text-[hsl(215,16%,47%)]">Objekt nicht gefunden</p>
-        <Link to="/kaufy2026">
+        <Link to="/website/kaufy">
           <Button className="mt-4">Zurück zur Suche</Button>
         </Link>
       </div>
