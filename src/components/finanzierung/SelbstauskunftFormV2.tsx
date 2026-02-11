@@ -1,9 +1,9 @@
 /**
  * MOD-07: SelbstauskunftFormV2
  * 
- * Scrollable 9-section form with optional 2nd applicant.
- * Sections 2 (Haushalt) and 9 (Erklärungen) are shared.
- * All other sections are duplicated for the co-applicant.
+ * 3-column side-by-side layout: Label | AS1 | AS2
+ * Sections 2 (Haushalt) and 9 (Erklärungen) are shared (single-column).
+ * Co-applicant column is always visible; auto-created on first input.
  */
 
 import * as React from 'react';
@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -90,7 +89,7 @@ function SectionHeader({ number, title, icon: Icon, description }: {
   );
 }
 
-function profileToFormData(p: ApplicantProfile): ApplicantFormData {
+export function profileToFormData(p: ApplicantProfile): ApplicantFormData {
   return {
     salutation: p.salutation || '', first_name: p.first_name || '', last_name: p.last_name || '',
     birth_name: p.birth_name || '', birth_date: p.birth_date || '', birth_place: p.birth_place || '',
@@ -125,6 +124,8 @@ function profileToFormData(p: ApplicantProfile): ApplicantFormData {
   };
 }
 
+const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+
 export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplicantToggle, onSave, readOnly = false }: SelbstauskunftFormV2Props) {
   const { activeTenantId } = useAuth();
 
@@ -142,23 +143,24 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
     data_correct_confirmed: profile.data_correct_confirmed || false,
   });
 
-  // Co-applicant form state
+  // Co-applicant form state (always initialized)
   const [coFormData, setCoFormData] = React.useState<ApplicantFormData>(() =>
     coApplicantProfile ? profileToFormData(coApplicantProfile) : createEmptyApplicantFormData()
   );
-  const [showSecondApplicant, setShowSecondApplicant] = React.useState(!!coApplicantProfile);
+
+  // Track if co-applicant profile has been auto-created
+  const coCreatedRef = React.useRef(!!coApplicantProfile);
 
   // Update co-form when profile loads
   React.useEffect(() => {
     if (coApplicantProfile) {
       setCoFormData(profileToFormData(coApplicantProfile));
-      setShowSecondApplicant(true);
+      coCreatedRef.current = true;
     }
   }, [coApplicantProfile]);
 
-  // Liabilities for primary
+  // Liabilities
   const [liabilities, setLiabilities] = React.useState<Liability[]>([]);
-  // Liabilities for co-applicant
   const [coLiabilities, setCoLiabilities] = React.useState<Liability[]>([]);
   const [showContextPicker, setShowContextPicker] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -221,17 +223,17 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
   React.useEffect(() => { setLiabilities(existingLiabilities); }, [existingLiabilities]);
   React.useEffect(() => { setCoLiabilities(existingCoLiabilities); }, [existingCoLiabilities]);
 
-  const totalPropertyValue = properties.reduce((sum, p) => sum + (p.market_value || p.purchase_price || 0), 0);
-
   const handleChange = (field: string, value: unknown) => setFormData(prev => ({ ...prev, [field]: value }));
   const handleSharedChange = (field: string, value: unknown) => setSharedData(prev => ({ ...prev, [field]: value }));
   const handleCoChange = (field: string, value: unknown) => setCoFormData(prev => ({ ...prev, [field]: value }));
 
-  // Toggle second applicant
-  const handleToggleSecondApplicant = (checked: boolean) => {
-    setShowSecondApplicant(checked);
-    if (checked) onCoApplicantToggle?.(true);
-  };
+  // Auto-create co-applicant on first input
+  const handleCoFirstInput = React.useCallback(() => {
+    if (!coCreatedRef.current) {
+      coCreatedRef.current = true;
+      onCoApplicantToggle?.(true);
+    }
+  }, [onCoApplicantToggle]);
 
   // Context prefill
   const handlePrefillFromContext = async (contextId: string) => {
@@ -282,16 +284,13 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
     if (readOnly || profile.id === 'dev-mode-profile') return;
     setIsSaving(true);
     try {
-      // Save primary profile (personal + shared fields)
       const { error: profileError } = await supabase.from('applicant_profiles')
         .update({ ...formData, ...sharedData }).eq('id', profile.id);
       if (profileError) throw profileError;
 
-      // Save primary liabilities
       await saveLiabilitiesForProfile(liabilities, profile.id);
 
-      // Save co-applicant if present
-      if (showSecondApplicant && coApplicantProfile?.id) {
+      if (coApplicantProfile?.id) {
         const { error: coError } = await supabase.from('applicant_profiles')
           .update(coFormData).eq('id', coApplicantProfile.id);
         if (coError) throw coError;
@@ -318,7 +317,21 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
   }).length;
   const completionPercent = Math.round((filledRequired / requiredFields.length) * 100);
 
-  const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+  // Check if co-applicant has any data
+  const hasCoData = coApplicantProfile || Object.entries(coFormData).some(([k, v]) => {
+    if (['employment_type', 'contract_type', 'employer_in_germany', 'salary_currency', 'salary_payments_per_year', 'has_side_job', 'vehicles_count', 'birth_country', 'nationality'].includes(k)) return false;
+    return v !== '' && v !== null && v !== undefined && v !== false && v !== 0;
+  });
+
+  // Dual section props
+  const dualProps = {
+    formData,
+    coFormData,
+    onChange: handleChange,
+    onCoChange: handleCoChange,
+    readOnly,
+    onCoFirstInput: handleCoFirstInput,
+  };
 
   return (
     <div className="space-y-4 pb-24">
@@ -358,7 +371,7 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
               {completionPercent >= 80 ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
               {completionPercent}% vollständig
             </Badge>
-            {showSecondApplicant && (
+            {hasCoData && (
               <Badge variant="outline" className="gap-1">
                 <Users className="h-3 w-3" />
                 2 Antragsteller
@@ -382,31 +395,17 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
         <Progress value={completionPercent} className="h-2 mt-4" />
       </div>
 
-      {/* ===== SECTION 1: Person ===== */}
+      {/* ===== SECTION 1: Person (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={1} title="Angaben zur Person" icon={User} description="Persönliche Daten gemäß Ausweisdokument" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-            <span className="text-sm font-medium">2. Antragsteller:in hinzufügen?</span>
-            <Switch checked={showSecondApplicant} onCheckedChange={handleToggleSecondApplicant} disabled={readOnly} />
-          </div>
-
-          <PersonSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
-
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <PersonSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
-              </div>
-            </>
-          )}
+        <CardContent>
+          <PersonSection {...dualProps} />
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 2: Haushalt (shared) ===== */}
+      {/* ===== SECTION 2: Haushalt (shared, single-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={2} title="Haushalt" icon={Home} description="Familiäre Situation (gilt für beide Antragsteller)" />
@@ -442,85 +441,53 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 3: Beschäftigung ===== */}
+      {/* ===== SECTION 3: Beschäftigung (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={3} title="Beschäftigung" icon={Briefcase} description="Angaben zur beruflichen Situation" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <EmploymentSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <EmploymentSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
-              </div>
-            </>
-          )}
+        <CardContent>
+          <EmploymentSection {...dualProps} />
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 4: Bankverbindung ===== */}
+      {/* ===== SECTION 4: Bankverbindung (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={4} title="Bankverbindung" icon={Landmark} description="Kontoverbindung für Gehaltseingänge" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <BankSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <BankSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
-              </div>
-            </>
-          )}
+        <CardContent>
+          <BankSection {...dualProps} />
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 5: Einnahmen ===== */}
+      {/* ===== SECTION 5: Einnahmen (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={5} title="Monatliche Einnahmen" icon={Wallet} description="Regelmäßige Einkünfte pro Monat" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <IncomeSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <IncomeSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
-              </div>
-            </>
-          )}
+        <CardContent>
+          <IncomeSection {...dualProps} />
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 6: Ausgaben ===== */}
+      {/* ===== SECTION 6: Ausgaben (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={6} title="Monatliche Ausgaben" icon={CreditCard} description="Regelmäßige Belastungen pro Monat" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <ExpensesSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <ExpensesSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
-              </div>
-            </>
-          )}
+        <CardContent>
+          <ExpensesSection {...dualProps} />
         </CardContent>
       </Card>
 
-      {/* ===== SECTION 7: Vermögen ===== */}
+      {/* ===== SECTION 7: Vermögen (3-column) ===== */}
       <Card>
         <CardHeader className="pb-4">
           <SectionHeader number={7} title="Vermögen" icon={PiggyBank} description="Vorhandene Vermögenswerte" />
         </CardHeader>
         <CardContent className="space-y-6">
-          <AssetsSection formData={formData} onChange={handleChange} readOnly={readOnly} label="1. Antragsteller:in" />
+          <AssetsSection {...dualProps} />
 
           {/* MOD-04 Properties (read-only, shared) */}
           {properties.length > 0 && (
@@ -554,15 +521,6 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-            </>
-          )}
-
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                <AssetsSection formData={coFormData} onChange={handleCoChange} readOnly={readOnly} label="2. Antragsteller:in" />
               </div>
             </>
           )}
@@ -605,38 +563,34 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
           </div>
 
           {/* Co-applicant liabilities */}
-          {showSecondApplicant && (
-            <>
-              <Separator className="my-6" />
-              <div className="p-4 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5 space-y-4">
-                <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">2. Antragsteller:in</h3>
-                {coLiabilities.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground"><p>Keine Verbindlichkeiten eingetragen.</p></div>
-                ) : (
-                  <div className="space-y-4">
-                    {coLiabilities.map((liability, index) => (
-                      <LiabilityRow key={liability.id} liability={liability} index={index} readOnly={readOnly}
-                        onUpdate={(field, value) => setCoLiabilities(prev => prev.map(l => l.id === liability.id ? { ...l, [field]: value } : l))}
-                        onRemove={() => setCoLiabilities(prev => prev.filter(l => l.id !== liability.id))}
-                      />
-                    ))}
-                  </div>
-                )}
-                {!readOnly && (
-                  <Button variant="outline" onClick={() => setCoLiabilities(prev => [...prev, createLiability()])} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />Verbindlichkeit hinzufügen
-                  </Button>
-                )}
-                <Separator />
-                <div className="flex justify-end">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Summe der Verbindlichkeiten</p>
-                    <p className="text-2xl font-bold text-destructive">{eurFormat.format(coLiabilities.reduce((s, l) => s + (l.remaining_balance || 0), 0))}</p>
-                  </div>
-                </div>
+          <Separator className="my-6" />
+          <div className="space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">2. Antragsteller:in</h3>
+            {coLiabilities.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground"><p>Keine Verbindlichkeiten eingetragen.</p></div>
+            ) : (
+              <div className="space-y-4">
+                {coLiabilities.map((liability, index) => (
+                  <LiabilityRow key={liability.id} liability={liability} index={index} readOnly={readOnly}
+                    onUpdate={(field, value) => setCoLiabilities(prev => prev.map(l => l.id === liability.id ? { ...l, [field]: value } : l))}
+                    onRemove={() => setCoLiabilities(prev => prev.filter(l => l.id !== liability.id))}
+                  />
+                ))}
               </div>
-            </>
-          )}
+            )}
+            {!readOnly && (
+              <Button variant="outline" onClick={() => { handleCoFirstInput(); setCoLiabilities(prev => [...prev, createLiability()]); }} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />Verbindlichkeit hinzufügen (2. AS)
+              </Button>
+            )}
+            <Separator />
+            <div className="flex justify-end">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Summe der Verbindlichkeiten</p>
+                <p className="text-2xl font-bold text-destructive">{eurFormat.format(coLiabilities.reduce((s, l) => s + (l.remaining_balance || 0), 0))}</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
