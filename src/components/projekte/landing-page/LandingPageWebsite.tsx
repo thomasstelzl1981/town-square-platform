@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { BarChart3, Building2, Globe, FileText } from 'lucide-react';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import type { LandingPage } from '@/hooks/useLandingPage';
+import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { LandingPageInvestmentTab } from './LandingPageInvestmentTab';
 import { LandingPageProjektTab } from './LandingPageProjektTab';
 import { LandingPageAnbieterTab } from './LandingPageAnbieterTab';
@@ -25,9 +26,10 @@ interface LandingPageWebsiteProps {
   project: ProjectPortfolioRow | null;
   landingPage: LandingPage | null;
   isDemo: boolean;
+  units?: DemoUnit[];
 }
 
-export function LandingPageWebsite({ project, landingPage, isDemo }: LandingPageWebsiteProps) {
+export function LandingPageWebsite({ project, landingPage, isDemo, units }: LandingPageWebsiteProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('investment');
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
 
@@ -66,6 +68,7 @@ export function LandingPageWebsite({ project, landingPage, isDemo }: LandingPage
             selectedUnitId={selectedUnitId}
             onSelectUnit={setSelectedUnitId}
             onBack={() => setSelectedUnitId(null)}
+            units={units}
           />
         )}
         {activeTab === 'projekt' && <LandingPageProjektTab isDemo={isDemo} landingPage={landingPage} />}

@@ -2,7 +2,8 @@
  * Sales Approval Section - Vertriebsauftrag mit Agreement-Flow
  * MOD-13 PROJEKTE — nach MOD-04 VerkaufsauftragTab Vorbild
  * 
- * Flow: Switch → Agreement Panel expandiert → Consents + Provision → Sales Desk Request → Zone 1
+ * Flow: Switch → Agreement Panel expandiert → Consents + Provision → Direkte Aktivierung → Listings erstellt
+ * Zone 1 hat nur einen Kill-Switch (Deaktivierung), kein Approval-Gate.
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +21,6 @@ import {
   Building2,
   CheckCircle2,
   Lock,
-  Clock,
   Loader2,
   ExternalLink,
 } from 'lucide-react';
@@ -74,9 +74,7 @@ const FEATURE_CONFIG: Record<string, FeatureConfig> = {
 type FeatureCode = keyof typeof FEATURE_CONFIG;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Freigabe ausstehend', color: 'bg-amber-100 text-amber-800 border-amber-200' },
-  approved: { label: 'Freigegeben', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  rejected: { label: 'Abgelehnt', color: 'bg-destructive/10 text-destructive border-destructive/20' },
+  approved: { label: 'Aktiv', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   withdrawn: { label: 'Widerrufen', color: 'bg-muted text-muted-foreground border-border' },
 };
 
@@ -92,7 +90,6 @@ export function SalesApprovalSection({
   const queryClient = useQueryClient();
   const tenantId = profile?.active_tenant_id;
 
-  // Agreement panel state
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   const [agreementState, setAgreementState] = useState({
     dataAccuracy: false,
@@ -102,7 +99,7 @@ export function SalesApprovalSection({
   });
   const [isActivating, setIsActivating] = useState(false);
 
-  // Fetch existing request for this project (skip for demo)
+  // Fetch existing request
   const { data: request } = useQuery({
     queryKey: ['sales-desk-request', projectId],
     queryFn: async () => {
@@ -122,8 +119,24 @@ export function SalesApprovalSection({
 
   const requestStatus = request?.status as string | undefined;
   const isApproved = requestStatus === 'approved';
-  const isPending = requestStatus === 'pending';
-  const isVertriebActive = requestStatus === 'approved' || requestStatus === 'pending';
+  const isVertriebActive = requestStatus === 'approved';
+
+  // Track Kaufy state
+  const { data: projectData } = useQuery({
+    queryKey: ['dev-project-kaufy', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      const { data } = await supabase
+        .from('dev_projects')
+        .select('kaufy_listed')
+        .eq('id', projectId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!projectId && !isDemo,
+  });
+
+  const isKaufyActive = projectData?.kaufy_listed ?? false;
 
   const allAgreementsAccepted = useMemo(() => {
     return agreementState.dataAccuracy && agreementState.salesMandate && agreementState.systemFee;
@@ -141,13 +154,138 @@ export function SalesApprovalSection({
     });
   }
 
+  // ─── Create listings for all project units ───
+  async function createListingsForProject(commissionRate: number) {
+    if (!projectId || !tenantId || !user) return;
+
+    const { data: units, error: unitsError } = await supabase
+      .from('dev_project_units')
+      .select('*')
+      .eq('project_id', projectId);
+    
+    if (unitsError || !units?.length) return;
+
+    const { data: project } = await supabase
+      .from('dev_projects')
+      .select('name, city')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    const citySlug = (project?.city || 'stadt')
+      .toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '-');
+
+    for (const unit of units) {
+      if (unit.status === 'verkauft') continue;
+
+      let propertyId = unit.property_id;
+
+      if (!propertyId) {
+        const unitPublicId = `SOT-I-${unit.unit_number.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const { data: newProperty, error: propError } = await supabase
+          .from('properties')
+          .insert({
+            tenant_id: tenantId,
+            public_id: unitPublicId,
+            code: unit.unit_number,
+            address: projectAddress || 'Adresse nicht angegeben',
+            city: project?.city || 'Stadt',
+          })
+          .select('id')
+          .single();
+
+        if (propError || !newProperty) continue;
+        propertyId = newProperty.id;
+
+        await supabase
+          .from('dev_project_units')
+          .update({ property_id: propertyId })
+          .eq('id', unit.id);
+      }
+
+      const listingTitle = `${project?.name || 'Projekt'} – ${unit.unit_number}`;
+      const { data: listing, error: listingError } = await supabase
+        .from('listings')
+        .insert({
+          tenant_id: tenantId,
+          property_id: propertyId,
+          unit_id: unit.unit_id || null,
+          title: listingTitle,
+          asking_price: unit.list_price,
+          commission_rate: commissionRate,
+          status: 'active',
+          created_by: user.id,
+          published_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (listingError || !listing) continue;
+
+      const publicId = `${citySlug}-${listing.id.substring(0, 8)}`;
+      await supabase
+        .from('listings')
+        .update({ public_id: publicId })
+        .eq('id', listing.id);
+
+      await supabase
+        .from('listing_publications')
+        .insert({
+          listing_id: listing.id,
+          tenant_id: tenantId,
+          channel: 'partner_network',
+          status: 'active',
+          published_at: new Date().toISOString(),
+        });
+    }
+  }
+
+  // ─── Withdraw all listings for project ───
+  async function withdrawListingsForProject() {
+    if (!projectId || !tenantId) return;
+
+    const { data: units } = await supabase
+      .from('dev_project_units')
+      .select('property_id')
+      .eq('project_id', projectId)
+      .not('property_id', 'is', null);
+
+    if (!units?.length) return;
+    const propertyIds = units.map(u => u.property_id!).filter(Boolean);
+
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('id')
+      .in('property_id', propertyIds)
+      .eq('tenant_id', tenantId);
+
+    if (!listings?.length) return;
+    const listingIds = listings.map(l => l.id);
+
+    await supabase
+      .from('listings')
+      .update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() })
+      .in('id', listingIds);
+
+    await supabase
+      .from('listing_publications')
+      .update({ status: 'paused' })
+      .in('listing_id', listingIds);
+
+    await supabase
+      .from('dev_projects')
+      .update({ kaufy_listed: false })
+      .eq('id', projectId);
+  }
+
   // ─── Activate Vertriebsauftrag ───
   async function activateVertriebsauftrag() {
     if (!allAgreementsAccepted) return;
 
     if (isDemo) {
       toast.info('Demo-Modus', {
-        description: 'Im Demo-Modus kann kein echter Vertriebsauftrag erteilt werden. Erstellen Sie ein Projekt, um fortzufahren.',
+        description: 'Im Demo-Modus kann kein echter Vertriebsauftrag erteilt werden.',
       });
       return;
     }
@@ -156,13 +294,14 @@ export function SalesApprovalSection({
 
     setIsActivating(true);
     try {
-      // 1. Insert sales_desk_requests
+      // 1. Insert with status 'approved' directly (no pending)
       const { error: requestError } = await supabase
         .from('sales_desk_requests')
         .insert({
           project_id: projectId,
           tenant_id: tenantId,
           requested_by: user.id,
+          status: 'approved',
           commission_agreement: {
             rate: agreementState.commissionRate[0],
             gross_rate: parseFloat((agreementState.commissionRate[0] * 1.19).toFixed(2)),
@@ -192,12 +331,16 @@ export function SalesApprovalSection({
         }
       }
 
-      toast.success('Vertriebsauftrag erteilt', {
-        description: 'Freigabe durch Sales Desk ausstehend.',
+      // 3. Create listings for all units
+      await createListingsForProject(agreementState.commissionRate[0]);
+
+      toast.success('Vertriebsauftrag aktiviert', {
+        description: 'Projekt ist jetzt im Partnernetzwerk sichtbar.',
       });
       setExpandedFeature(null);
       resetAgreementState();
       queryClient.invalidateQueries({ queryKey: ['sales-desk-request', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Fehler bei der Aktivierung';
       toast.error(message);
@@ -217,13 +360,86 @@ export function SalesApprovalSection({
         .eq('id', request.id);
       if (error) throw error;
 
+      await withdrawListingsForProject();
+
       toast.success('Vertriebsauftrag widerrufen', {
-        description: 'Projekt wurde aus der Vermarktung genommen.',
+        description: 'Alle Listings und Publikationen deaktiviert.',
       });
       queryClient.invalidateQueries({ queryKey: ['sales-desk-request', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Fehler beim Widerruf';
       toast.error(message);
+    }
+    setIsActivating(false);
+  }
+
+  // ─── Kaufy Toggle ───
+  async function handleKaufyToggle(enabled: boolean) {
+    if (!projectId || !tenantId) return;
+    setIsActivating(true);
+    try {
+      const { data: units } = await supabase
+        .from('dev_project_units')
+        .select('property_id')
+        .eq('project_id', projectId)
+        .not('property_id', 'is', null);
+
+      if (units?.length) {
+        const propertyIds = units.map(u => u.property_id!).filter(Boolean);
+        const { data: listings } = await supabase
+          .from('listings')
+          .select('id')
+          .in('property_id', propertyIds)
+          .eq('tenant_id', tenantId)
+          .eq('status', 'active');
+
+        if (listings?.length) {
+          for (const listing of listings) {
+            if (enabled) {
+              const { data: existing } = await supabase
+                .from('listing_publications')
+                .select('id')
+                .eq('listing_id', listing.id)
+                .eq('channel', 'kaufy')
+                .maybeSingle();
+
+              if (existing) {
+                await supabase
+                  .from('listing_publications')
+                  .update({ status: 'active', published_at: new Date().toISOString() })
+                  .eq('id', existing.id);
+              } else {
+                await supabase
+                  .from('listing_publications')
+                  .insert({
+                    listing_id: listing.id,
+                    tenant_id: tenantId,
+                    channel: 'kaufy',
+                    status: 'active',
+                    published_at: new Date().toISOString(),
+                  });
+              }
+            } else {
+              await supabase
+                .from('listing_publications')
+                .update({ status: 'paused' })
+                .eq('listing_id', listing.id)
+                .eq('channel', 'kaufy');
+            }
+          }
+        }
+      }
+
+      await supabase
+        .from('dev_projects')
+        .update({ kaufy_listed: enabled })
+        .eq('id', projectId);
+
+      toast.success(enabled ? 'Auf Kaufy veröffentlicht' : 'Von Kaufy entfernt');
+      queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler');
     }
     setIsActivating(false);
   }
@@ -238,7 +454,9 @@ export function SalesApprovalSection({
         resetAgreementState();
       }
     }
-    // kaufy_projekt and landingpage are simple toggles — placeholder for now
+    if (code === 'kaufy_projekt') {
+      handleKaufyToggle(!isKaufyActive);
+    }
   }
 
   const hasProject = !!projectId || isDemo;
@@ -260,7 +478,9 @@ export function SalesApprovalSection({
         <CardContent className="space-y-4">
           {(Object.keys(FEATURE_CONFIG) as FeatureCode[]).map((code) => {
             const config = FEATURE_CONFIG[code];
-            const isActive = code === 'vertriebsfreigabe' ? isVertriebActive : false;
+            const isActive = code === 'vertriebsfreigabe' ? isVertriebActive
+              : code === 'kaufy_projekt' ? isKaufyActive
+              : false;
             const canActivate = code === 'vertriebsfreigabe'
               ? !config.comingSoon
               : isApproved && !config.comingSoon;
@@ -283,9 +503,14 @@ export function SalesApprovalSection({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Label className="font-medium cursor-pointer">{config.label}</Label>
-                        {isActive && requestStatus && (
+                        {code === 'vertriebsfreigabe' && isActive && requestStatus && (
                           <Badge variant="outline" className={`text-xs ${STATUS_CONFIG[requestStatus]?.color || ''}`}>
                             {STATUS_CONFIG[requestStatus]?.label || requestStatus}
+                          </Badge>
+                        )}
+                        {code === 'kaufy_projekt' && isKaufyActive && (
+                          <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200">
+                            Aktiv
                           </Badge>
                         )}
                         {config.comingSoon && (
@@ -303,14 +528,7 @@ export function SalesApprovalSection({
                       {config.dependsOn && !isApproved && (
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                           <Lock className="h-3 w-3" />
-                          Erfordert: Vertrieb muss freigegeben sein
-                        </p>
-                      )}
-
-                      {code === 'vertriebsfreigabe' && isPending && (
-                        <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Wird von Zone 1 (Sales Desk) geprüft
+                          Erfordert: Vertrieb muss aktiviert sein
                         </p>
                       )}
                     </div>
@@ -462,21 +680,11 @@ export function SalesApprovalSection({
           <CardContent>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between items-center">
-                <span>Vertriebsauftrag beantragt</span>
+                <span>Vertriebsauftrag erteilt</span>
                 <span className="text-muted-foreground text-xs">
                   {new Date(request.requested_at).toLocaleDateString('de-DE')}
                 </span>
               </div>
-              {request.reviewed_at && (
-                <div className="flex justify-between items-center">
-                  <span>
-                    {request.status === 'approved' ? 'Freigegeben' : request.status === 'rejected' ? 'Abgelehnt' : 'Aktualisiert'}
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {new Date(request.reviewed_at).toLocaleDateString('de-DE')}
-                  </span>
-                </div>
-              )}
               {request.status === 'withdrawn' && (
                 <div className="flex justify-between items-center">
                   <span>Widerrufen</span>

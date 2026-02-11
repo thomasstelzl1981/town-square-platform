@@ -42,6 +42,9 @@ export default function LandingPageTab() {
           projectId={projectId}
           organizationId={organizationId}
           isDemo={isDemo}
+          projectAddress={rawProject?.address ?? undefined}
+          projectCity={rawProject?.city ?? undefined}
+          projectPostalCode={rawProject?.postal_code ?? undefined}
         />
       </div>
     );
@@ -60,6 +63,9 @@ export default function LandingPageTab() {
         <LandingPageBuilder
           projectName={projectName}
           isDemo={isDemo}
+          projectAddress={rawProject?.address ?? undefined}
+          projectCity={rawProject?.city ?? undefined}
+          projectPostalCode={rawProject?.postal_code ?? undefined}
         />
       </div>
     );

@@ -17,16 +17,17 @@ interface LandingPageInvestmentTabProps {
   selectedUnitId: string | null;
   onSelectUnit: (unitId: string) => void;
   onBack: () => void;
+  units?: DemoUnit[];
 }
 
-export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSelectUnit, onBack }: LandingPageInvestmentTabProps) {
+export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSelectUnit, onBack, units: unitsProp }: LandingPageInvestmentTabProps) {
   const p = project || DEMO_PROJECT;
-  const units = DEMO_UNITS;
+  const displayUnits = unitsProp || DEMO_UNITS;
   const desc = DEMO_PROJECT_DESCRIPTION;
 
   // If a unit is selected, show the expose detail
   if (selectedUnitId) {
-    const unit = units.find(u => u.id === selectedUnitId);
+    const unit = displayUnits.find(u => u.id === selectedUnitId);
     if (unit) {
       return <LandingPageUnitExpose unit={unit} isDemo={isDemo} onBack={onBack} />;
     }
@@ -35,8 +36,8 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 
-  const priceRange = units.length > 0
-    ? `${formatCurrency(Math.min(...units.map(u => u.list_price)))} – ${formatCurrency(Math.max(...units.map(u => u.list_price)))}`
+  const priceRange = displayUnits.length > 0
+    ? `${formatCurrency(Math.min(...displayUnits.map(u => u.list_price)))} – ${formatCurrency(Math.max(...displayUnits.map(u => u.list_price)))}`
     : '–';
 
   // Estimate monthly burden for each unit (simple: rent - annuity at 3.5% + 2% on 80% LTV)
@@ -82,7 +83,7 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
       {/* Preisliste Table */}
       <div>
         <h3 className="text-lg font-semibold mb-4">
-          Preisliste ({units.length} Einheiten)
+          Preisliste ({displayUnits.length} Einheiten)
         </h3>
         <div className="rounded-xl border overflow-hidden">
           <div className="overflow-x-auto">
@@ -102,7 +103,7 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {units.map((unit) => {
+                {displayUnits.map((unit) => {
                   const burden = estimateMonthlyBurden(unit);
                   return (
                     <tr
