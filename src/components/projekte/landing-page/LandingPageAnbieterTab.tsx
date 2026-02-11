@@ -9,6 +9,7 @@ import { DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
 
 interface LandingPageAnbieterTabProps {
   isDemo: boolean;
+  landingPage?: import('@/hooks/useLandingPage').LandingPage | null;
 }
 
 export function LandingPageAnbieterTab({ isDemo }: LandingPageAnbieterTabProps) {
