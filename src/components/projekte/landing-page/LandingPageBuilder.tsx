@@ -2,7 +2,8 @@
  * LandingPageBuilder — Entry State (Zustand A)
  * Optional URL dialog + real landing page generation with AI location description
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ export function LandingPageBuilder({ projectName, isDemo, projectId, organizatio
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
+  const [structureHighlighted, setStructureHighlighted] = useState(false);
 
   const createLandingPage = useCreateLandingPage();
 
@@ -174,7 +176,9 @@ export function LandingPageBuilder({ projectName, isDemo, projectId, organizatio
                 Website erstellen
               </Button>
               <Button variant="ghost" size="lg" className="gap-2" onClick={() => {
-                document.getElementById('tab-outline-section')?.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('tab-outline-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setStructureHighlighted(true);
+                setTimeout(() => setStructureHighlighted(false), 1500);
               }}>
                 <ArrowDown className="h-4 w-4" />
                 Vorschau-Struktur ansehen
@@ -185,7 +189,10 @@ export function LandingPageBuilder({ projectName, isDemo, projectId, organizatio
       </Card>
 
       {/* Tab Outline Preview */}
-      <div id="tab-outline-section" className="space-y-4">
+      <div id="tab-outline-section" className={cn(
+        'space-y-4 p-4 rounded-xl transition-all duration-500',
+        structureHighlighted && 'ring-2 ring-primary/50 bg-primary/5'
+      )}>
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
           Website-Struktur (4 Seiten)
         </h4>
