@@ -10,6 +10,7 @@
 
 import { getAllGoldenPaths } from './engine';
 import { zone2Portal, zone3Websites } from '@/manifests/routesManifest';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Sammelt alle registrierten Route-Patterns aus dem routesManifest.
@@ -124,5 +125,58 @@ export function validateZoneBoundaries(): void {
     console.info(
       `[ZBC-R09] ✅ Alle ${Object.keys(zone3Websites).length} Zone-3-Websites liegen unter /website/** — keine Root-Collisions.`
     );
+  }
+}
+
+// =============================================================================
+// ZBC-R13: tile_catalog ↔ routesManifest Sync Validator (R-002)
+// =============================================================================
+
+/**
+ * Validiert ZBC-R13: tile_catalog-Eintraege muessen korrespondierende
+ * Manifest-Eintraege haben. Keine verwaisten Tiles.
+ */
+export async function validateTileCatalogSync(): Promise<void> {
+  if (import.meta.env.PROD) return;
+
+  try {
+    const { data: tiles, error } = await supabase
+      .from('tile_catalog' as any)
+      .select('tile_code, label')
+      .limit(100);
+
+    if (error) {
+      console.warn('[ZBC-R13] ⚠️ tile_catalog nicht erreichbar (ggf. nicht eingeloggt):', error.message);
+      return;
+    }
+
+    if (!tiles || tiles.length === 0) {
+      console.info('[ZBC-R13] ℹ️ tile_catalog ist leer — Sync-Check uebersprungen.');
+      return;
+    }
+
+    // Sammle alle Module-Keys aus dem routesManifest
+    const manifestModuleKeys = new Set(Object.keys(zone2Portal.modules ?? {}));
+
+    let hasErrors = false;
+    for (const tile of tiles) {
+      const code = (tile as any).tile_code as string;
+      if (!code) continue;
+      if (!manifestModuleKeys.has(code)) {
+        console.error(
+          `[ZBC-R13] ❌ tile_catalog-Eintrag "${code}" hat keinen korrespondierenden Manifest-Eintrag in routesManifest.ts`,
+          `\n  Verfuegbare Manifest-Keys: ${[...manifestModuleKeys].join(', ')}`
+        );
+        hasErrors = true;
+      }
+    }
+
+    if (!hasErrors) {
+      console.info(
+        `[ZBC-R13] ✅ Alle ${tiles.length} tile_catalog-Eintraege haben Manifest-Korrespondenz.`
+      );
+    }
+  } catch (err) {
+    console.warn('[ZBC-R13] ⚠️ Sync-Validierung fehlgeschlagen:', err);
   }
 }
