@@ -23,7 +23,7 @@ export default function AnfrageDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       {/* Back Navigation */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
