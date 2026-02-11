@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 
 // Preload core modules for instant navigation
 const preloadModules = () => {
@@ -18,7 +18,9 @@ import { ArmstrongContainer } from './ArmstrongContainer';
 import { MobileBottomNav } from './MobileBottomNav';
 import { ArmstrongInputBar } from './ArmstrongInputBar';
 import { ArmstrongSheet } from './ArmstrongSheet';
+import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
+import { getModulesSorted } from '@/manifests/routesManifest';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +42,7 @@ import { cn } from '@/lib/utils';
 function PortalLayoutInner() {
   const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
   const { isMobile } = usePortalLayout();
+  const location = useLocation();
   
   const [armstrongSheetOpen, setArmstrongSheetOpen] = useState(false);
   
@@ -57,6 +60,15 @@ function PortalLayoutInner() {
     const timer = setTimeout(preloadModules, 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Detect active module for mobile SubTabs (same logic as TopNavigation)
+  const activeModule = useMemo(() => {
+    const allModules = getModulesSorted();
+    return allModules.find(({ module }) => {
+      const route = `/portal/${module.base}`;
+      return location.pathname === route || location.pathname.startsWith(route + '/');
+    });
+  }, [location.pathname]);
 
   // P0-FIX: Only show fullscreen loader on INITIAL load, never after
   if (isLoading && !hasInitializedRef.current) {
@@ -94,7 +106,13 @@ function PortalLayoutInner() {
         {/* Content Area - Always use Outlet for consistent routing (Dashboard or Module) */}
         <main className="flex-1 overflow-y-auto pb-28 relative">
           
-          {/* Mobile: Same as Desktop - Outlet renders PortalDashboard or Module content */}
+          {/* Mobile SubTabs: Tile-Navigation when inside a module */}
+          {activeModule && !location.pathname.startsWith('/portal/area/') && (
+            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+              <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+            </div>
+          )}
+          
           <Outlet />
         </main>
         
