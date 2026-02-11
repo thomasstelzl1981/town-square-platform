@@ -1,130 +1,98 @@
 
+# MOD-11 Redesign — Vertikaler Flow mit 3 Tiles
 
-# MODULE FREEZE — Machbarkeitsanalyse und realistischer Implementierungsplan
+## Ueberblick
 
-## Kernproblem: Lovable hat keinen PR-basierten Workflow
+MOD-11 wird von 4 Tabs (Dashboard, Faelle, Kommunikation, Status) auf **3 Tiles** umgebaut — nach dem gleichen Prinzip wie MOD-13 (Projekte): Widget-Cards oben zur Fallauswahl, dann vertikaler Scroll-Flow fuer die Bearbeitung.
 
-Die zentrale Annahme des Prompts — "PRs blockieren via GitHub Actions CI" — funktioniert in der Lovable-Umgebung **nicht**, weil:
-
-1. **Kein `.github/` Verzeichnis existiert** — das Projekt hat keine GitHub Actions.
-2. **Lovable pusht Aenderungen direkt** auf den Default-Branch (bidirektionaler Sync). Es gibt keinen PR-Review-Prozess fuer Lovable-generierte Aenderungen.
-3. **Branch Protection mit Required Status Checks** wuerde Lovable selbst blockieren, da Lovable keinen PR erstellt, sondern direkt committet.
-
-Das bedeutet: **Teil C (freeze-guard.yml) und Teil D (Freeze-PR Edge Function) sind in der aktuellen Lovable-Architektur nicht umsetzbar.**
-
----
-
-## Was IST umsetzbar (und sinnvoll)
-
-### Teil A + B: DB-Freeze-State + Zone-1 Admin UI -- VOLLSTAENDIG MACHBAR
-
-Die Datenbank-Persistenz und das Admin-Panel funktionieren problemlos:
-
-**Datenbankschema** (Erweiterung von `tile_catalog`, da alle 21 Module dort bereits existieren):
-
-| Neues Feld | Typ | Beschreibung |
-|---|---|---|
-| `freeze_enabled` | BOOLEAN DEFAULT false | Freeze aktiv? |
-| `frozen_at` | TIMESTAMPTZ NULL | Zeitpunkt des Freeze |
-| `frozen_by` | UUID NULL | Wer hat gefreezed |
-| `freeze_reason` | TEXT NULL | Begruendung |
-
-**Warum `tile_catalog` statt neue Tabelle?** Alle 21 Module sind dort bereits mit `tile_code`, `title`, `main_tile_route` registriert. Eine zweite Tabelle wuerde Dual-SSOT Drift erzeugen (genau das Risiko R-001 aus dem Architektur-Audit).
-
-**RLS:** Bestehende platform_admin Policies greifen bereits. SELECT/UPDATE nur fuer `is_platform_admin()`.
-
-**Admin UI:** Neuer Tab "Module Freeze" in der bestehenden `TileCatalog.tsx` Seite (Zone 1). Toggle pro Modul, Bulk-Actions, Audit-Trail Anzeige.
-
-**Ledger-Events:** `module.freeze.enabled` und `module.freeze.disabled` mit Payload `{ module_code, new_state, reason, actor_user_id }`.
-
----
-
-## Alternativer Schutz-Mechanismus (statt GitHub Actions)
-
-Da der CI-Guard nicht funktioniert, gibt es zwei realistische Alternativen:
-
-### Alternative 1: Lovable-Kontext-Guard (Software-Governance)
-
-Eine Datei `spec/current/00_frozen/modules_freeze.json` wird im Repo gepflegt. Lovable (der AI-Editor) wird angewiesen, diese Datei vor jeder Aenderung zu pruefen. Dies ist ein **Governance-Dokument**, kein technischer Blocker.
-
-- Vorteil: Sofort umsetzbar, kein externer Tooling-Bedarf
-- Nachteil: Kein harter technischer Block — verlaesst sich auf Prozessdisziplin
-
-### Alternative 2: GitHub-seitiger Schutz (manuell, ausserhalb Lovable)
-
-Falls das Repo mit GitHub verbunden ist, kann der Nutzer **manuell** einrichten:
-- CODEOWNERS-Datei, die bestimmte Pfade schuetzt
-- Branch Protection Rules mit Required Reviews
-- Aber: Dies blockiert auch Lovable selbst und muesste bei jedem Freeze-Wechsel manuell angepasst werden
-
-### Empfehlung: Alternative 1 umsetzen
-
-Die `modules_freeze.json` dient als SSOT. Der Zone-1-Toggle aktualisiert die DB. Ein "Export"-Button generiert die JSON fuer das Repo. Dies ist der einzige Ansatz, der mit Lovables Architektur kompatibel ist.
-
----
-
-## Konkreter Implementierungsplan
-
-### Schritt 1: DB-Migration
-
-Erweiterung `tile_catalog` um 4 Felder (`freeze_enabled`, `frozen_at`, `frozen_by`, `freeze_reason`). Keine neue Tabelle, keine neuen RLS-Policies noetig (bestehende platform_admin Policies decken dies ab).
-
-### Schritt 2: Ledger-Whitelist erweitern
-
-Neue Events `module.freeze.enabled` und `module.freeze.disabled` in die `log_data_event` RPC-Whitelist aufnehmen.
-
-### Schritt 3: TileCatalog.tsx — Neuer Tab "Module Freeze"
-
-Neuer Tab in der bestehenden Admin-Seite mit:
-- Tabelle aller 21 Module mit Freeze-Toggle (Switch-Komponente)
-- Spalten: Modul, Route, Freeze Status, Frozen At, Frozen By, Reason
-- Beim Toggle: DB-Update + Ledger-Event
-- "Freeze All" / "Unfreeze All" Bulk-Actions mit Confirm-Dialog
-- "Export Freeze Config" Button: generiert `modules_freeze.json` Inhalt zum Download
-
-### Schritt 4: Governance-Datei
-
-Erstellung `spec/current/00_frozen/modules_freeze.json` mit initialem State (alle Module unfrozen). Diese Datei dient als Referenz fuer Entwickler und AI-Assistenten.
-
-### Schritt 5: Pfad-Mapping Datei
-
-Erstellung `spec/current/00_frozen/modules_freeze_paths.json` mit den geschuetzten Pfaden pro Modul. Beispiel:
+**Es ist ein reines UI-Redesign.** Keine DB-Migrationen, keine neuen Hooks, keine neuen Edge Functions, keine Aenderungen an anderen Modulen.
 
 ```text
-MOD-04: src/pages/portal/immobilien/**, src/components/immobilien/**
-MOD-13: src/pages/portal/projekte/**, src/components/projekte/**
+Tile 1: Dashboard          — Widget-Cards aller Faelle + Mandate-Eingang
+Tile 2: Finanzierungsakte   — Vertikaler Flow (Zusammenfassung → Selbstauskunft → Objekt → Kalkulator → Notizen → Fertigstellen)
+Tile 3: Einreichung         — Widget-Cards fertiger Faelle → Vertikaler Flow (Zusammenfassung → Bankauswahl → E-Mail-Versand)
 ```
+
+Vorlagen entfaellt vorerst als eigener Tile (kann spaeter ergaenzt werden).
+
+---
+
+## Tile 1: Dashboard (FMDashboard.tsx — Redesign)
+
+**Oben:** Header mit Titel "FINANZIERUNGSMANAGER" + "Neuer Fall" Button
+
+**Widget-Cards** (wie ProjectCard in MOD-13):
+- Horizontales Grid mit allen laufenden Faellen
+- Jede Card zeigt: Antragsteller-Name, Public-ID, Darlehensbetrag, Status-Badge
+- **Neu:** Wo eingereicht (Bankname), wann eingereicht, Bank-Status (Rueckmeldung/Abgelehnt/In Angebotserstellung/Zugesagt)
+- Klick oeffnet die Finanzierungsakte (navigiert zu Tile 2 mit der requestId)
+- Leerer Zustand mit Placeholder-Card wie in MOD-13
+
+**Darunter:** Kompakte Widgets fuer Faellig/Ueberfaellig und Letzte Aktivitaeten (bestehend), plus Pipeline-Status und Kommunikation (bisher eigene Tabs, jetzt hier integriert).
+
+---
+
+## Tile 2: Finanzierungsakte (FMFallDetail.tsx — Komplettumbau)
+
+Wird erreicht durch Klick auf eine Case-Card im Dashboard. Die bisherige Tab-Navigation (Selbstauskunft | Objekt | Finanzierung | Einreichung | Notizen) wird **komplett entfernt**. Stattdessen alle Sektionen vertikal untereinander in einem scrollbaren Container:
+
+| Block | Inhalt |
+|---|---|
+| **Header** | Zurueck-Button, Public-ID, Name, Status-Badge, Status-Actions |
+| **CaseStepper** | Bestehender Stepper (bleibt) |
+| **Kurzbeschreibung** | Neue Card: Zusammenfassung in 4-6 Zeilen (Name, Objekt, Darlehenswunsch, Eingang) |
+| **Selbstauskunft** | Bestehende 3-Spalten Side-by-Side Tabelle (PersonSection, EmploymentSection, BankSection, IncomeSection, ExpensesSection, AssetsSection) mit Speichern-Button |
+| **Objekt-Daten** | Bestehende Objekt-Tabelle (aus Listing oder eigene Eingabe) |
+| **Kalkulator** | 2-Spalten Grid: Links Darlehensparameter (editierbar), Rechts Kalkulations-Ergebnis |
+| **Notizen** | Textarea + Timeline |
+| **Fertigstellen-Button** | Grosser Button: "Finanzierungsakte fertigstellen" — setzt Status auf `ready_for_submission` |
+
+Alles in `space-y-6`, keine Tabs, kein Switching. Einfach runterscrollen und bearbeiten.
+
+---
+
+## Tile 3: Einreichung (FMEinreichung.tsx — Neu)
+
+### Ansicht 1: Uebersicht (Fallauswahl)
+
+Gleiche Widget-Card-Ansicht wie im Dashboard, aber **nur Faelle mit Status `ready_for_submission` oder hoeher**. Klick auf eine Card oeffnet den Einreichungs-Flow.
+
+### Ansicht 2: Vertikaler Einreichungs-Flow (nach Klick auf Fall)
+
+| Block | Inhalt |
+|---|---|
+| **Header** | Zurueck-Button, Public-ID, Name, Status |
+| **Zusammenfassung / Finanzierungs-Expose** | Professionelle Read-only Kurzzusammenfassung: Kundeninformationen, Finanzierungsdaten, Objektdaten, integrierte Selbstauskunft-Ansicht, Link zum DMS-Datenraum. PDF-Export Button (dieses Dokument geht als E-Mail-Anhang mit) |
+| **Bankauswahl** | Bankkontakte aus dem bestehenden Hook `useFinanceBankContacts`. Checkbox-Liste, bis zu 3 Banken anhaekbar. KI-gestuetzte Bankempfehlung (Platzhalter-Button, spaetere Phase). Europace/Hypoport Plattform-Uebergabe (deaktiviert, Platzhalter) |
+| **E-Mail-Versand** | Pro ausgewaehlter Bank ein personalisierter E-Mail-Entwurf (Vorschau). Enthalt automatisch: Betreff, Anschreiben, Finanzierungs-Expose als PDF-Anhang, Datenraum-Link. "Alle senden" Button fuer Serien-Versand |
 
 ---
 
 ## Dateiaenderungen
 
-| Datei | Aenderung |
-|---|---|
-| Migration | `tile_catalog` um 4 Freeze-Felder erweitern |
-| Migration | `log_data_event` Whitelist um Freeze-Events erweitern |
-| `src/pages/admin/TileCatalog.tsx` | Neuer Tab "Module Freeze" mit Toggle-UI |
-| `spec/current/00_frozen/modules_freeze.json` | Neue Datei: initialer Freeze-State |
-| `spec/current/00_frozen/modules_freeze_paths.json` | Neue Datei: Pfad-Scoping pro Modul |
-
-## Was NICHT umgesetzt wird (und warum)
-
-| Teil aus dem Prompt | Status | Grund |
+| Datei | Art | Beschreibung |
 |---|---|---|
-| `.github/workflows/freeze-guard.yml` | Nicht moeglich | Lovable hat keinen PR-Workflow, kein GitHub Actions Support |
-| Edge Function `sot-github-freeze-pr` | Nicht moeglich | Kein GitHub Token konfiguriert, Lovable pusht direkt |
-| Branch Protection Required Checks | Nicht moeglich | Wuerde Lovable selbst blockieren |
-| Auto-Commit auf main (Variante B) | Nicht moeglich | Gleicher Grund |
+| `src/manifests/routesManifest.ts` | Aendern | MOD-11 Tiles: `dashboard`, `faelle` (umbenannt zu Finanzierungsakte), `einreichung`. Dynamic routes: `faelle/:requestId`, `einreichung/:requestId` |
+| `src/pages/portal/FinanzierungsmanagerPage.tsx` | Aendern | Neue Route `einreichung/*` und `einreichung/:requestId` |
+| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Aendern | Widget-Cards (analog ProjectCard) mit Einreichungs-Status. Kommunikation + Status als Widgets integriert |
+| `src/pages/portal/finanzierungsmanager/FMFallDetail.tsx` | Aendern | Tabs entfernen, alle Sektionen vertikal als Card-Bloecke. Neuer Zusammenfassungs-Block oben. Fertigstellen-Button unten |
+| `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` | **Neu** | Einreichungs-Uebersicht (Widget-Cards fertiger Faelle) |
+| `src/pages/portal/finanzierungsmanager/FMEinreichungDetail.tsx` | **Neu** | Vertikaler Einreichungs-Flow: Zusammenfassung + Bankauswahl + E-Mail-Versand |
+| `src/components/finanzierungsmanager/FinanceCaseCard.tsx` | **Neu** | Widget-Card Komponente fuer Finanzierungsfaelle (analog ProjectCard) |
 
-## Konsequenzen
+**Entfaellt als eigene Tiles (Inhalte ins Dashboard integriert):**
+- `FMKommunikation.tsx` — bleibt als Datei, Route wird Redirect auf Dashboard
+- `FMStatus.tsx` — bleibt als Datei, Route wird Redirect auf Dashboard
+- `FMFaelle.tsx` — wird nicht mehr als eigener Tile gebraucht, Dashboard uebernimmt die Fallauswahl
 
-**Was funktioniert nach Umsetzung:**
-- Platform Admins koennen Module als "frozen" markieren (persistent in DB)
-- Jeder Freeze-Wechsel wird im Audit-Ledger protokolliert
-- Die Governance-Datei im Repo dokumentiert den aktuellen Freeze-State
-- Entwickler und AI-Assistenten koennen den Freeze-State vor Aenderungen pruefen
+---
 
-**Was NICHT funktioniert:**
-- Kein automatischer harter Block von Code-Aenderungen an gefrorenen Modulen
-- Der Schutz ist organisatorisch/prozessual, nicht technisch erzwungen
-- Erst wenn das Projekt auf einen echten Git-Workflow (mit PRs und CI) migriert wird, kann der freeze-guard als harter Block implementiert werden
+## Architektur-Auswirkungen
+
+**Keine.** Es aendert sich ausschliesslich die UI-Struktur innerhalb von MOD-11:
+- Keine DB-Migrationen
+- Keine neuen Hooks (bestehende `useFinanceRequest`, `useFutureRoomCases`, `useFinanceBankContacts` decken alles ab)
+- Keine neuen Edge Functions
+- Keine Aenderungen an MOD-07 (Antragsteller-Seite) oder Zone 1
+- Keine Aenderungen an anderen Modulen
+- Zone 3 wird nicht beruehrt
