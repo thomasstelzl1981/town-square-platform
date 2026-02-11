@@ -16,6 +16,14 @@ export default function AnfrageTab() {
         </p>
       </div>
 
+      {/* Section heading: Finanzierungsobjekt */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Hier erfassen Sie Ihr Finanzierungsobjekt.
+        </p>
+      </div>
+
       <FinanceObjectCard storageKey="mod07-anfrage" />
       <FinanceRequestCard storageKey="mod07-anfrage" />
     </div>
