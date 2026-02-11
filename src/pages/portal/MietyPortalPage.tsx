@@ -1077,7 +1077,6 @@ export default function MietyPortalPage() {
       <Route path="versicherungen" element={<VersicherungenTile />} />
       <Route path="smarthome" element={<SmartHomeTile />} />
       <Route path="kommunikation" element={<KommunikationTile />} />
-      <Route path="kommunikation" element={<KommunikationTile />} />
       <Route path="zuhause/:homeId" element={
         <React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
           <MietyHomeDossier />

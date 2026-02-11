@@ -13,7 +13,7 @@
 | **Lovable** | Tool/Arbeitsmodus (ohne "e") | — | — |
 | **System of a Town (SoT)** | Verwaltungs-/KI-Software | Zone 1 + 2 | Ja |
 | **Kaufy** (mit y) | Marktplatz-Marke | Zone 3 + Channel | **NEIN** |
-| **Miety** | Mieter-App (Andockpunkt) | Extern | Nein |
+| **Miety** | Mieter-Portal (Home Dossier) | Zone 2 (MOD-20) | Ja (MOD-20) |
 | **Future Room** | Externes Finanzierungssystem | Extern | Nein |
 
 ---
