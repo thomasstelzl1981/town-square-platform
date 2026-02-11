@@ -6,15 +6,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { SubTabNav } from '@/components/shared/SubTabNav';
+
 import { FortbildungTabContent } from '@/components/portal/fortbildung/FortbildungTabContent';
 
-const TABS = [
-  { title: 'Bücher', route: '/portal/fortbildung/buecher' },
-  { title: 'Fortbildungen', route: '/portal/fortbildung/fortbildungen' },
-  { title: 'Vorträge', route: '/portal/fortbildung/vortraege' },
-  { title: 'Kurse', route: '/portal/fortbildung/kurse' },
-];
+
 
 export default function FortbildungPage() {
   return (
@@ -23,7 +18,7 @@ export default function FortbildungPage() {
         title="Fortbildung"
         description="Bücher, Kurse, Vorträge – kuratiert & durchsuchbar"
       />
-      <SubTabNav tabs={TABS} />
+      
       <Routes>
         <Route index element={<Navigate to="buecher" replace />} />
         <Route path="buecher" element={<FortbildungTabContent tab="books" />} />
