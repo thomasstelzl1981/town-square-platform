@@ -3,7 +3,7 @@
  * MOD-13 PROJEKTE — P0 Redesign
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
 import { ProjectCard } from '@/components/projekte/ProjectCard';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { isDemoMode, DEMO_PROJECT, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
+import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
 import {
@@ -41,17 +41,11 @@ export default function PortfolioTab() {
   const [searchParams] = useSearchParams();
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
   
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  // Default to demo project
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(DEMO_PROJECT_ID);
 
   const isLoading = isLoadingPortfolio;
-  const isDemo = isDemoMode(portfolioRows);
-
-  // Auto-select first project when data loads
-  useEffect(() => {
-    if (!selectedProjectId && portfolioRows.length > 0) {
-      setSelectedProjectId(portfolioRows[0].id);
-    }
-  }, [portfolioRows, selectedProjectId]);
+  const isSelectedDemo = isDemoProject(selectedProjectId);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -70,9 +64,9 @@ export default function PortfolioTab() {
   };
 
   // Get selected project data
-  const selectedProject = selectedProjectId 
-    ? portfolioRows.find(p => p.id === selectedProjectId)
-    : portfolioRows[0];
+  const selectedProject = isSelectedDemo
+    ? DEMO_PROJECT
+    : portfolioRows.find(p => p.id === selectedProjectId) || portfolioRows[0];
 
   // ── Fetch real units from dev_project_units ────────────────────────────
   const { data: realUnits } = useQuery({
@@ -87,12 +81,12 @@ export default function PortfolioTab() {
       if (error) throw error;
       return data;
     },
-    enabled: !isDemo && !!selectedProjectId,
+    enabled: !isSelectedDemo && !!selectedProjectId,
   });
 
   // ── Central calculator state ──────────────────────────────────────────
   const [investmentCosts, setInvestmentCosts] = useState(
-    isDemo ? DEMO_PROJECT.purchase_price || 4_800_000 : (selectedProject?.purchase_price || 4_800_000)
+    isSelectedDemo ? DEMO_PROJECT.purchase_price || 4_800_000 : (selectedProject?.purchase_price || 4_800_000)
   );
   const [provisionRate, setProvisionRate] = useState(0.10); // 10%
   const [priceAdjustment, setPriceAdjustment] = useState(0); // %
@@ -102,7 +96,7 @@ export default function PortfolioTab() {
 
   // Base units: demo or real mapped to DemoUnit interface
   const baseUnits: DemoUnit[] = useMemo(() => {
-    if (isDemo || !realUnits || realUnits.length === 0) return DEMO_UNITS;
+    if (isSelectedDemo || !realUnits || realUnits.length === 0) return DEMO_UNITS;
 
     return realUnits.map((u) => {
       const listPrice = u.list_price ?? 0;
@@ -129,7 +123,7 @@ export default function PortfolioTab() {
         status: (u.status === 'verkauft' ? 'sold' : u.status === 'reserviert' ? 'reserved' : 'available') as DemoUnit['status'],
       };
     });
-  }, [isDemo, realUnits]);
+  }, [isSelectedDemo, realUnits]);
 
   // Compute effective unit values
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
@@ -201,30 +195,28 @@ export default function PortfolioTab() {
         <p className="text-muted-foreground">Übersicht aller Bauträger- und Aufteiler-Projekte</p>
       </div>
 
-      {/* Project Switcher — Horizontal Tile Row */}
+      {/* Project Switcher — Horizontal Tile Row (Demo always first) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {isDemo ? (
+        <ProjectCard
+          project={DEMO_PROJECT}
+          isDemo
+          isSelected={isSelectedDemo}
+          onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
+        />
+        {portfolioRows.map((p) => (
           <ProjectCard
-            project={DEMO_PROJECT}
-            isDemo
-            isSelected
+            key={p.id}
+            project={p}
+            isSelected={p.id === selectedProjectId}
+            onClick={(id) => setSelectedProjectId(id)}
           />
-        ) : (
-          portfolioRows.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              isSelected={p.id === selectedProjectId}
-              onClick={(id) => setSelectedProjectId(id)}
-            />
-          ))
-        )}
+        ))}
       </div>
 
       {/* Globalobjekt-Beschreibung (volle Breite) */}
       <ProjectOverviewCard
-        isDemo={isDemo}
-        selectedProject={!isDemo ? selectedProject : undefined}
+        isDemo={isSelectedDemo}
+        selectedProject={selectedProject}
         unitCount={calculatedUnits.length}
       />
 
@@ -234,8 +226,8 @@ export default function PortfolioTab() {
       ) : (
         <UnitPreislisteTable
           units={calculatedUnits}
-          projectId={isDemo ? 'demo-project-001' : (selectedProject?.id || '')}
-          isDemo={isDemo}
+          projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+          isDemo={isSelectedDemo}
           onUnitPriceChange={handleUnitPriceChange}
           onStatusChange={handleStatusChange}
         />
@@ -254,27 +246,27 @@ export default function PortfolioTab() {
             onProvisionChange={setProvisionRate}
             onPriceAdjustment={setPriceAdjustment}
             onTargetYieldChange={setTargetYield}
-            isDemo={isDemo || !selectedProject}
+            isDemo={isSelectedDemo || !selectedProject}
           />
         </div>
         <div className="lg:col-span-2">
           <SalesStatusReportWidget
             units={calculatedUnits}
-            projectName={isDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+            projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
             investmentCosts={investmentCosts}
             provisionRate={provisionRate}
             targetYield={targetYield}
             developerContext={DEMO_DEVELOPER_CONTEXT}
-            isDemo={isDemo}
+            isDemo={isSelectedDemo}
           />
         </div>
       </div>
 
       {/* Dokumenten-Kachel */}
       <ProjectDMSWidget
-        projectName={isDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
-        units={isDemo ? DEMO_UNITS : baseUnits}
-        isDemo={isDemo}
+        projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+        units={isSelectedDemo ? DEMO_UNITS : baseUnits}
+        isDemo={isSelectedDemo}
       />
 
       {/* Delete Dialog */}

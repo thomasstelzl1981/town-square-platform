@@ -21,28 +21,28 @@ import { CreateReservationDialog } from '@/components/projekte';
 import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { isDemoMode, DEMO_PROJECT, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
+import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
 
 export default function VertriebTab() {
   const navigate = useNavigate();
   const { portfolioRows, isLoadingPortfolio, projects } = useDevProjects();
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string>(DEMO_PROJECT_ID);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const isDemo = isDemoMode(projects);
-  const activeProjectId = isDemo ? DEMO_PROJECT.id : (selectedProject || projects[0]?.id);
-  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(isDemo ? undefined : activeProjectId);
-  const { units } = useProjectUnits(isDemo ? undefined : activeProjectId);
+  const isSelectedDemo = isDemoProject(selectedProject);
+  const activeProjectId = isSelectedDemo ? DEMO_PROJECT.id : selectedProject;
+  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(isSelectedDemo ? undefined : activeProjectId);
+  const { units } = useProjectUnits(isSelectedDemo ? undefined : activeProjectId);
 
   if (isLoadingPortfolio) return <LoadingState />;
 
   // Stats — use demo fallback when no real projects
-  const totalUnits = isDemo ? DEMO_PROJECT.total_units_count : portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0);
-  const totalSold = isDemo ? 0 : portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
-  const totalReserved = isDemo ? 0 : portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
-  const totalAvailable = isDemo ? DEMO_PROJECT.units_available : portfolioRows.reduce((sum, r) => sum + r.units_available, 0);
-  const totalValue = isDemo ? DEMO_PROJECT.total_sale_target : portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0);
-  const soldValue = isDemo ? 0 : portfolioRows.reduce((sum, r) => {
+  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0) + DEMO_PROJECT.total_units_count;
+  const totalSold = portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
+  const totalReserved = portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
+  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0) + DEMO_PROJECT.units_available;
+  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0) + (DEMO_PROJECT.total_sale_target || 0);
+  const soldValue = portfolioRows.reduce((sum, r) => {
     const unitValue = r.total_sale_target && r.total_units_count ? r.total_sale_target / r.total_units_count : 0;
     return sum + (unitValue * r.units_sold);
   }, 0);
@@ -70,7 +70,7 @@ export default function VertriebTab() {
     return acc;
   }, {} as Record<string, { name: string; reservations: number; sold: number; volume: number; commission: number }>);
 
-  const activeProject = isDemo ? null : projects.find(p => p.id === activeProjectId);
+  const activeProjectData = isSelectedDemo ? null : projects.find(p => p.id === activeProjectId);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
@@ -80,20 +80,22 @@ export default function VertriebTab() {
           <p className="text-muted-foreground">Übersicht über Reservierungen und Partner-Performance</p>
         </div>
         <div className="flex items-center gap-3">
-          {projects.length > 1 && (
-            <Select value={activeProjectId || ''} onValueChange={(val) => setSelectedProject(val)}>
-              <SelectTrigger className="w-[260px]">
-                <SelectValue placeholder="Projekt wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}{p.address ? ` — ${p.address}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Project selector — show all projects + demo */}
+          <Select value={selectedProject} onValueChange={(val) => setSelectedProject(val)}>
+            <SelectTrigger className="w-[260px]">
+              <SelectValue placeholder="Projekt wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEMO_PROJECT_ID}>
+                {DEMO_PROJECT.name} (Demo)
+              </SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}{p.address ? ` — ${p.address}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {projects.length > 0 && (
             <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
           )}
@@ -241,11 +243,11 @@ export default function VertriebTab() {
       {/* ═══ Vertriebsauftrag & Distribution ═══ */}
       <SalesApprovalSection
         projectId={activeProjectId}
-        projectName={isDemo ? DEMO_PROJECT.name : activeProject?.name}
-        projectAddress={isDemo ? `${DEMO_PROJECT_DESCRIPTION.address}, ${DEMO_PROJECT_DESCRIPTION.postal_code} ${DEMO_PROJECT_DESCRIPTION.city}` : (activeProject?.address || '')}
+        projectName={isSelectedDemo ? DEMO_PROJECT.name : activeProjectData?.name}
+        projectAddress={isSelectedDemo ? `${DEMO_PROJECT_DESCRIPTION.address}, ${DEMO_PROJECT_DESCRIPTION.postal_code} ${DEMO_PROJECT_DESCRIPTION.city}` : (activeProjectData?.address || '')}
         totalUnits={totalUnits}
         projectVolume={totalValue}
-        isDemo={isDemo}
+        isDemo={isSelectedDemo}
       />
 
       {/* Create Reservation Dialog */}

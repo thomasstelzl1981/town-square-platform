@@ -28,18 +28,10 @@ export default function MarketingTab() {
 
   // NO early return for empty projects — always show structure
 
-  const handleKaufyToggle = async (projectId: string, enabled: boolean) => {
-    // GP-05: Show info that Sales Desk approval is needed
-    if (enabled) {
-      toast.info('Kaufy-Listing erfordert Sales Desk Freigabe', {
-        description: 'Bitte senden Sie zunächst eine Freigabe-Anfrage über den Vertrieb-Tab.',
-      });
-      return;
-    }
-    try {
-      await updateProject.mutateAsync({ id: projectId, kaufy_listed: enabled });
-      toast.success('Von Kaufy entfernt');
-    } catch { toast.error('Fehler beim Aktualisieren'); }
+  // Kaufy toggle is read-only — actual control is in SalesApprovalSection (VertriebTab)
+  const getKaufyStatus = (project: any) => {
+    if (project.kaufy_listed) return { label: 'Aktiv via Vertriebsauftrag', variant: 'default' as const };
+    return { label: 'Nicht aktiv', variant: 'secondary' as const };
   };
 
   const handleFeaturedToggle = async (projectId: string, enabled: boolean) => {
@@ -125,25 +117,21 @@ export default function MarketingTab() {
           ) : activeProjects.length === 0 ? (
             <p className="text-muted-foreground text-sm">Keine aktiven Projekte vorhanden. Aktivieren Sie ein Projekt im Portfolio.</p>
           ) : (
-            activeProjects.map((project) => (
-              <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{project.name}</p>
-                    {project.kaufy_listed && (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><Check className="mr-1 h-3 w-3" />Gelistet</Badge>
-                    )}
+            activeProjects.map((project) => {
+              const kaufyStatus = getKaufyStatus(project);
+              return (
+                <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{project.name}</p>
+                      <Badge variant={kaufyStatus.variant}>{kaufyStatus.label}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{project.city} · {project.total_units_count} Einheiten</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">{project.city} · {project.total_units_count} Einheiten</p>
+                  <p className="text-xs text-muted-foreground">Steuerung über Vertrieb-Tab</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Auf Kaufy listen</span>
-                    <Switch checked={project.kaufy_listed || false} onCheckedChange={(checked) => handleKaufyToggle(project.id, checked)} />
-                  </div>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>

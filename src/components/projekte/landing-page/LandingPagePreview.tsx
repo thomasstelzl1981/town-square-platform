@@ -4,9 +4,10 @@
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Pencil, Eye } from 'lucide-react';
+import { ExternalLink, Eye } from 'lucide-react';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import type { LandingPage } from '@/hooks/useLandingPage';
+import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { LandingPageWebsite } from './LandingPageWebsite';
 import { LandingPagePublishSection } from './LandingPagePublishSection';
 
@@ -14,6 +15,7 @@ interface LandingPagePreviewProps {
   project: ProjectPortfolioRow | null;
   landingPage: LandingPage | null;
   isDemo: boolean;
+  units?: DemoUnit[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -23,7 +25,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
   locked: { label: 'Gesperrt', variant: 'destructive' },
 };
 
-export function LandingPagePreview({ project, landingPage, isDemo }: LandingPagePreviewProps) {
+export function LandingPagePreview({ project, landingPage, isDemo, units }: LandingPagePreviewProps) {
   const slug = landingPage?.slug || 'mein-projekt';
   const status = landingPage?.status || 'draft';
   const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
@@ -72,6 +74,7 @@ export function LandingPagePreview({ project, landingPage, isDemo }: LandingPage
             project={project}
             landingPage={landingPage}
             isDemo={isDemo}
+            units={units}
           />
         </div>
       </div>
@@ -88,8 +91,8 @@ export function LandingPagePreview({ project, landingPage, isDemo }: LandingPage
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" disabled>
-            <Pencil className="h-3.5 w-3.5" />
             Bearbeiten
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Soon</Badge>
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(publicUrl, '_blank')}>
             <Eye className="h-3.5 w-3.5" />
