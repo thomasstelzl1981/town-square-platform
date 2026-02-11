@@ -433,8 +433,8 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
         { key: 'verkaufsauftrag_active', source: 'property_features', description: 'Verkaufsauftrag muss aktuell aktiv sein' },
       ],
       completion: [
-        { key: 'listing_withdrawn', source: 'listings', check: 'equals', value: 'withdrawn', description: 'listings.status = withdrawn' },
-        { key: 'publications_paused', source: 'listing_publications', check: 'equals', value: 'paused', description: 'Alle listing_publications = paused' },
+        { key: 'listing_deleted', source: 'listings', check: 'not_exists', description: 'Kein Listing mehr vorhanden (hard-deleted)' },
+        { key: 'publications_deleted', source: 'listing_publications', check: 'not_exists', description: 'Keine Publikationen mehr vorhanden (hard-deleted)' },
         { key: 'features_inactive', source: 'property_features', check: 'equals', value: 'inactive', description: 'Alle features = inactive' },
       ],
     },

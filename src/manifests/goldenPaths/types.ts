@@ -58,7 +58,7 @@ export interface StepCompletion {
   /** Datenquelle: Tabelle oder Kontext */
   source: string;
   /** Check-Typ */
-  check: 'exists' | 'equals' | 'not_null';
+  check: 'exists' | 'not_exists' | 'equals' | 'not_null';
   /** Erwarteter Wert bei check === 'equals' */
   value?: string;
   /** Menschenlesbare Beschreibung */

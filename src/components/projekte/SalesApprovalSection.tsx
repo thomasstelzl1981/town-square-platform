@@ -263,15 +263,16 @@ export function SalesApprovalSection({
     if (!listings?.length) return;
     const listingIds = listings.map(l => l.id);
 
-    await supabase
-      .from('listings')
-      .update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() })
-      .in('id', listingIds);
-
+    // Delete publications first (FK), then listings (hard-delete)
     await supabase
       .from('listing_publications')
-      .update({ status: 'paused' })
+      .delete()
       .in('listing_id', listingIds);
+
+    await supabase
+      .from('listings')
+      .delete()
+      .in('id', listingIds);
 
     await supabase
       .from('dev_projects')

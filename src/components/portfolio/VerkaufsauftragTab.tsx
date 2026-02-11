@@ -428,29 +428,25 @@ export function VerkaufsauftragTab({
 
       if (updateError) throw updateError;
 
-      // 2. Withdraw listings
-      const { error: listingError } = await supabase
-        .from('listings')
-        .update({ status: 'withdrawn' })
-        .eq('property_id', propertyId)
-        .in('status', ['draft', 'active', 'reserved']);
-
-      if (listingError) throw listingError;
-
-      // 3. Pause all publications
+      // 2. Delete listings and publications (hard-delete to avoid orphans on reactivation)
       const { data: listings } = await supabase
         .from('listings')
         .select('id')
         .eq('property_id', propertyId);
 
       if (listings?.length) {
+        const listingIds = listings.map(l => l.id);
+        // Delete publications first (FK constraint)
         await supabase
           .from('listing_publications')
-          .update({ 
-            status: 'paused', 
-            removed_at: new Date().toISOString() 
-          })
-          .in('listing_id', listings.map(l => l.id));
+          .delete()
+          .in('listing_id', listingIds);
+        // Then delete listings
+        const { error: listingError } = await supabase
+          .from('listings')
+          .delete()
+          .in('id', listingIds);
+        if (listingError) throw listingError;
       }
 
       // 4. Also deactivate Kaufy visibility if active
