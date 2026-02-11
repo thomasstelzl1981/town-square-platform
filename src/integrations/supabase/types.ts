@@ -6588,6 +6588,87 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_pages: {
+        Row: {
+          about_text: string | null
+          booked_at: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          developer_website_url: string | null
+          hero_headline: string | null
+          hero_subheadline: string | null
+          id: string
+          location_description: string | null
+          locked_at: string | null
+          organization_id: string
+          preview_expires_at: string | null
+          project_id: string
+          published_at: string | null
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          about_text?: string | null
+          booked_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          developer_website_url?: string | null
+          hero_headline?: string | null
+          hero_subheadline?: string | null
+          id?: string
+          location_description?: string | null
+          locked_at?: string | null
+          organization_id: string
+          preview_expires_at?: string | null
+          project_id: string
+          published_at?: string | null
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          about_text?: string | null
+          booked_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          developer_website_url?: string | null
+          hero_headline?: string | null
+          hero_subheadline?: string | null
+          id?: string
+          location_description?: string | null
+          locked_at?: string | null
+          organization_id?: string
+          preview_expires_at?: string | null
+          project_id?: string
+          published_at?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_pages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "landing_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landlord_contexts: {
         Row: {
           child_allowance: boolean | null
