@@ -1,5 +1,5 @@
 /**
- * FM Fall Detail — Case Cockpit (tabular, bank-style Selbstauskunft)
+ * FM Fall Detail — Case Cockpit (editable Selbstauskunft, 3-column side-by-side)
  */
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   ArrowLeft, User, Building2, Clock, CheckCircle2, 
   XCircle, AlertCircle, MessageSquare, Loader2, Send, Save,
@@ -22,11 +22,19 @@ import { CaseStepper } from '@/components/finanzierungsmanager/CaseStepper';
 import { PageShell } from '@/components/shared/PageShell';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import { toast } from 'sonner';
+import {
+  PersonSection, EmploymentSection, BankSection, IncomeSection,
+  ExpensesSection, AssetsSection, createEmptyApplicantFormData,
+  type ApplicantFormData, SectionHeaderRow, TR as FieldTR, DualHeader,
+} from '@/components/finanzierung/ApplicantPersonFields';
+import { profileToFormData } from '@/components/finanzierung/SelbstauskunftFormV2';
+import { supabase } from '@/integrations/supabase/client';
+import * as React from 'react';
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const eurFormatFull = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 
-/** Bank-style table row: Label | Value (or editable input) */
+/** Bank-style table row for non-editable sections (Objekt, Finanzierung etc.) */
 function TR({ label, value, editable, onChange }: {
   label: string;
   value: string | number | null | undefined;
@@ -65,16 +73,35 @@ function SectionRow({ title }: { title: string }) {
 export default function FMFallDetail() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
-  const { data: request, isLoading } = useFinanceRequest(requestId);
+  const { data: request, isLoading, refetch: refetchRequest } = useFinanceRequest(requestId);
   const { data: bankContacts } = useFinanceBankContacts();
   const updateStatus = useUpdateRequestStatus();
 
   const [note, setNote] = useState('');
   const [selectedBankId, setSelectedBankId] = useState('');
   const [activeTab, setActiveTab] = useState('antragsteller');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Editable loan fields
   const [loanEdits, setLoanEdits] = useState<Record<string, string>>({});
+
+  // Editable applicant form state (initialized from request data)
+  const [formData, setFormData] = useState<ApplicantFormData | null>(null);
+  const [coFormData, setCoFormData] = useState<ApplicantFormData | null>(null);
+  const [formInitialized, setFormInitialized] = useState(false);
+
+  // Initialize form data from request
+  React.useEffect(() => {
+    if (request && !formInitialized) {
+      const applicant = request.applicant_profiles?.[0];
+      const coApplicant = request.applicant_profiles?.[1];
+      if (applicant) {
+        setFormData(profileToFormData(applicant as any));
+      }
+      setCoFormData(coApplicant ? profileToFormData(coApplicant as any) : createEmptyApplicantFormData());
+      setFormInitialized(true);
+    }
+  }, [request, formInitialized]);
 
   if (isLoading) {
     return (
@@ -100,6 +127,7 @@ export default function FMFallDetail() {
   }
 
   const applicant = request.applicant_profiles?.[0];
+  const coApplicant = request.applicant_profiles?.[1];
   const property = request.properties;
   const currentStatus = request.status;
 
@@ -109,6 +137,51 @@ export default function FMFallDetail() {
       toast.success(`Status → ${getStatusLabel(newStatus)}`);
       setNote('');
     } catch { toast.error('Fehler beim Aktualisieren'); }
+  };
+
+  const handleChange = (field: string, value: unknown) => setFormData(prev => prev ? { ...prev, [field]: value } : prev);
+  const handleCoChange = (field: string, value: unknown) => setCoFormData(prev => prev ? { ...prev, [field]: value } : prev);
+
+  // Auto-create co-applicant profile on first input
+  const handleCoFirstInput = async () => {
+    if (coApplicant || !applicant) return;
+    try {
+      const { error } = await supabase.from('applicant_profiles').insert({
+        tenant_id: (applicant as any).tenant_id,
+        party_role: 'co_applicant',
+        profile_type: 'person',
+        finance_request_id: request.id,
+        linked_primary_profile_id: applicant.id,
+      });
+      if (error) throw error;
+      toast.success('2. Antragsteller angelegt');
+      refetchRequest();
+    } catch (err) {
+      console.error('Co-applicant create error:', err);
+    }
+  };
+
+  // Save applicant data
+  const handleSaveApplicants = async () => {
+    if (!formData || !applicant) return;
+    setIsSaving(true);
+    try {
+      const { error: e1 } = await supabase.from('applicant_profiles').update(formData as any).eq('id', applicant.id);
+      if (e1) throw e1;
+
+      if (coApplicant && coFormData) {
+        const { error: e2 } = await supabase.from('applicant_profiles').update(coFormData as any).eq('id', coApplicant.id);
+        if (e2) throw e2;
+      }
+
+      toast.success('Selbstauskunft gespeichert');
+      refetchRequest();
+    } catch (err) {
+      console.error('Save error:', err);
+      toast.error('Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Simple loan calculation
@@ -124,6 +197,16 @@ export default function FMFallDetail() {
   const remainingDebt = loanAmount > 0 ? Math.max(0, loanAmount - (yearlyRepayment * fixedPeriod)) : 0;
 
   const canSubmit = ['ready_for_submission', 'ready_to_submit', 'editing', 'in_processing', 'active'].includes(currentStatus);
+
+  // Dual section props for editable Selbstauskunft
+  const dualProps = formData && coFormData ? {
+    formData,
+    coFormData,
+    onChange: handleChange,
+    onCoChange: handleCoChange,
+    readOnly: false,
+    onCoFirstInput: handleCoFirstInput,
+  } : null;
 
   return (
     <PageShell>
@@ -199,136 +282,39 @@ export default function FMFallDetail() {
           <TabsTrigger value="notizen" className="text-xs"><History className="h-3 w-3 mr-1" /> Notizen</TabsTrigger>
         </TabsList>
 
-        {/* ===== Tab: Selbstauskunft (Bank-style tabular) ===== */}
+        {/* ===== Tab: Selbstauskunft (Editable, 3-column side-by-side) ===== */}
         <TabsContent value="antragsteller">
           <Card className="glass-card overflow-hidden">
             <CardContent className="p-0">
               <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
                 <h3 className="text-sm font-semibold">Finanzierungsantrag und Selbstauskunft</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">Vollständigkeit: {applicant?.completion_score || 0}%</span>
                   <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full" style={{ width: `${applicant?.completion_score || 0}%` }} />
                   </div>
+                  <Button size="sm" className="h-7 text-xs" onClick={handleSaveApplicants} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                    Speichern
+                  </Button>
                 </div>
               </div>
-              <Table>
-                <TableBody>
-                  {/* Section: Persönliche Daten */}
-                  <SectionRow title="1. Angaben zur Person" />
-                  <TR label="Anrede" value={applicant?.salutation} />
-                  <TR label="Name" value={applicant?.last_name} />
-                  <TR label="Vorname" value={applicant?.first_name} />
-                  <TR label="Geburtsname" value={applicant?.birth_name} />
-                  <TR label="Geburtsdatum" value={applicant?.birth_date} />
-                  <TR label="Geburtsort / -land" value={[applicant?.birth_place, applicant?.birth_country].filter(Boolean).join(', ')} />
-                  <TR label="Staatsangehörigkeit" value={applicant?.nationality} />
-                  <TR label="Familienstand" value={applicant?.marital_status} />
-                  <TR label="Gütertrennung" value={applicant?.property_separation ? 'Ja' : applicant?.property_separation === false ? 'Nein' : null} />
-                  <TR label="Steuer-IdNr." value={applicant?.tax_id} />
-                  <TR label="Ausweisart" value={applicant?.id_document_type} />
-                  <TR label="Ausweisnummer" value={applicant?.id_document_number} />
-                  <TR label="Gültig bis" value={applicant?.id_document_valid_until} />
 
-                  {/* Section: Anschrift */}
-                  <SectionRow title="2. Anschrift & Kontakt" />
-                  <TR label="Straße" value={applicant?.address_street} />
-                  <TR label="PLZ / Ort" value={[applicant?.address_postal_code, applicant?.address_city].filter(Boolean).join(' ')} />
-                  <TR label="Wohnhaft seit" value={applicant?.address_since} />
-                  <TR label="Vorherige Anschrift" value={[applicant?.previous_address_street, applicant?.previous_address_postal_code, applicant?.previous_address_city].filter(Boolean).join(', ')} />
-                  <TR label="Telefon (Festnetz)" value={applicant?.phone} />
-                  <TR label="Telefon (Mobil)" value={applicant?.phone_mobile} />
-                  <TR label="E-Mail" value={applicant?.email} />
-
-                  {/* Section: Haushalt */}
-                  <SectionRow title="3. Haushalt" />
-                  <TR label="Erwachsene im Haushalt" value={applicant?.adults_count} />
-                  <TR label="Kinder (Anzahl)" value={applicant?.children_count} />
-                  <TR label="Geburtsdaten Kinder" value={applicant?.children_birth_dates} />
-                  <TR label="Unterhaltspflicht" value={applicant?.child_support_obligation ? 'Ja' : 'Nein'} />
-                  <TR label="Unterhalt mtl." value={applicant?.child_support_amount_monthly ? eurFormatFull.format(applicant.child_support_amount_monthly) : null} />
-                  <TR label="Kindergeld mtl." value={applicant?.child_benefit_monthly ? eurFormatFull.format(applicant.child_benefit_monthly) : null} />
-
-                  {/* Section: Beschäftigung */}
-                  <SectionRow title="4. Beschäftigung" />
-                  <TR label="Beschäftigungsart" value={applicant?.employment_type} />
-                  <TR label="Arbeitgeber" value={applicant?.employer_name} />
-                  <TR label="Sitz Arbeitgeber" value={applicant?.employer_location} />
-                  <TR label="Branche" value={applicant?.employer_industry} />
-                  <TR label="Position / Beruf" value={applicant?.position} />
-                  <TR label="Beschäftigt seit" value={applicant?.employed_since} />
-                  <TR label="Vertrag" value={applicant?.contract_type} />
-                  <TR label="Probezeit bis" value={applicant?.probation_until} />
-                  <TR label="AG in Deutschland" value={applicant?.employer_in_germany ? 'Ja' : applicant?.employer_in_germany === false ? 'Nein' : null} />
-                  <TR label="Gehaltswährung" value={applicant?.salary_currency} />
-                  <TR label="Gehaltszahlungen/Jahr" value={applicant?.salary_payments_per_year} />
-
-                  {/* Nebentätigkeit */}
-                  {applicant?.has_side_job && (
-                    <>
-                      <SectionRow title="4a. Nebentätigkeit" />
-                      <TR label="Art" value={applicant?.side_job_type} />
-                      <TR label="Seit" value={applicant?.side_job_since} />
-                      <TR label="Einkommen mtl." value={applicant?.side_job_income_monthly ? eurFormatFull.format(applicant.side_job_income_monthly) : null} />
-                    </>
-                  )}
-
-                  {/* Selbstständig */}
-                  {applicant?.employment_type === 'selbststaendig' && (
-                    <>
-                      <SectionRow title="4b. Selbstständigkeit" />
-                      <TR label="Firma" value={applicant?.company_name} />
-                      <TR label="Rechtsform" value={applicant?.company_legal_form} />
-                      <TR label="Adresse" value={applicant?.company_address} />
-                      <TR label="Gegründet" value={applicant?.company_founded} />
-                      <TR label="HR-Nummer" value={applicant?.company_register_number} />
-                      <TR label="USt-IdNr." value={applicant?.company_vat_id} />
-                      <TR label="Branche" value={applicant?.company_industry} />
-                      <TR label="Mitarbeiter" value={applicant?.company_employees} />
-                      <TR label="Anteil %" value={applicant?.company_ownership_percent} />
-                      <TR label="GF" value={applicant?.company_managing_director ? 'Ja' : 'Nein'} />
-                    </>
-                  )}
-
-                  {/* Section: Einnahmen */}
-                  <SectionRow title="5. Monatliche Einnahmen" />
-                  <TR label="Netto-Einkommen" value={applicant?.net_income_monthly ? eurFormatFull.format(applicant.net_income_monthly) : null} />
-                  <TR label="Bonus p.a." value={applicant?.bonus_yearly ? eurFormat.format(applicant.bonus_yearly) : null} />
-                  <TR label="Mieteinnahmen" value={applicant?.rental_income_monthly ? eurFormatFull.format(applicant.rental_income_monthly) : null} />
-                  <TR label="Unterhaltseinkommen" value={applicant?.alimony_income_monthly ? eurFormatFull.format(applicant.alimony_income_monthly) : null} />
-                  <TR label="Sonst. Einkommen" value={applicant?.other_regular_income_monthly ? eurFormatFull.format(applicant.other_regular_income_monthly) : null} />
-                  <TR label="Beschreibung" value={applicant?.other_income_description} />
-
-                  {/* Section: Ausgaben */}
-                  <SectionRow title="6. Monatliche Ausgaben" />
-                  <TR label="Aktuelle Miete" value={applicant?.current_rent_monthly ? eurFormatFull.format(applicant.current_rent_monthly) : null} />
-                  <TR label="Lebenshaltung" value={applicant?.living_expenses_monthly ? eurFormatFull.format(applicant.living_expenses_monthly) : null} />
-                  <TR label="Kfz-Leasing" value={applicant?.car_leasing_monthly ? eurFormatFull.format(applicant.car_leasing_monthly) : null} />
-                  <TR label="Krankenversicherung" value={applicant?.health_insurance_monthly ? eurFormatFull.format(applicant.health_insurance_monthly) : null} />
-                  <TR label="Sonst. Fixkosten" value={applicant?.other_fixed_costs_monthly ? eurFormatFull.format(applicant.other_fixed_costs_monthly) : null} />
-
-                  {/* Section: Vermögen */}
-                  <SectionRow title="7. Vermögenswerte" />
-                  <TR label="Bankguthaben" value={applicant?.bank_savings ? eurFormat.format(applicant.bank_savings) : null} />
-                  <TR label="Wertpapiere" value={applicant?.securities_value ? eurFormat.format(applicant.securities_value) : null} />
-                  <TR label="Bausparvertrag" value={applicant?.building_society_value ? eurFormat.format(applicant.building_society_value) : null} />
-                  <TR label="Lebensversicherung" value={applicant?.life_insurance_value ? eurFormat.format(applicant.life_insurance_value) : null} />
-                  <TR label="Sonstige Vermögen" value={applicant?.other_assets_value ? eurFormat.format(applicant.other_assets_value) : null} />
-                  <TR label="Beschreibung" value={applicant?.other_assets_description} />
-
-                  {/* Section: Bankverbindung */}
-                  <SectionRow title="8. Bankverbindung" />
-                  <TR label="IBAN" value={applicant?.iban} />
-                  <TR label="BIC" value={applicant?.bic} />
-
-                  {/* Section: Erklärungen */}
-                  <SectionRow title="9. Erklärungen" />
-                  <TR label="SCHUFA-Einwilligung" value={applicant?.schufa_consent ? '✓ Ja' : '✗ Nein'} />
-                  <TR label="Keine Insolvenz" value={applicant?.no_insolvency ? '✓ Ja' : '✗ Nein'} />
-                  <TR label="Keine Steuerrückstände" value={applicant?.no_tax_arrears ? '✓ Ja' : '✗ Nein'} />
-                  <TR label="Daten korrekt bestätigt" value={applicant?.data_correct_confirmed ? '✓ Ja' : '✗ Nein'} />
-                </TableBody>
-              </Table>
+              {dualProps ? (
+                <div className="p-4 space-y-6">
+                  <PersonSection {...dualProps} />
+                  <EmploymentSection {...dualProps} />
+                  <BankSection {...dualProps} />
+                  <IncomeSection {...dualProps} />
+                  <ExpensesSection {...dualProps} />
+                  <AssetsSection {...dualProps} />
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p className="text-sm">Daten werden geladen...</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
