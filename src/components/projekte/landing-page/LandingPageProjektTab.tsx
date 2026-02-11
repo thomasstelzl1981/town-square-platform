@@ -9,6 +9,7 @@ import { DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData'
 
 interface LandingPageProjektTabProps {
   isDemo: boolean;
+  landingPage?: import('@/hooks/useLandingPage').LandingPage | null;
 }
 
 const HIGHLIGHTS = [

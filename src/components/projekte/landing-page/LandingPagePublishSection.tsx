@@ -7,7 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Globe, Link2, Server } from 'lucide-react';
 
-export function LandingPagePublishSection() {
+interface LandingPagePublishSectionProps {
+  landingPage?: import('@/hooks/useLandingPage').LandingPage | null;
+}
+
+export function LandingPagePublishSection({ landingPage }: LandingPagePublishSectionProps) {
   const options = [
     {
       icon: Link2,
