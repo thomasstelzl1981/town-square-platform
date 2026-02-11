@@ -1,8 +1,7 @@
 /**
  * MOD-11 Finanzierungsmanager — Finance Manager Workbench (Zone 2)
  * 
- * Redesigned: 3 Tiles (Dashboard, Finanzierungsakte, Einreichung)
- * Vertical flow architecture modeled after MOD-13 (Projekte)
+ * 4 Tiles: Dashboard, Finanzierungsakte, Einreichung, Fälle (Archiv)
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -16,6 +15,7 @@ const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
 const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
 const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
+const FMArchiv = React.lazy(() => import('./finanzierungsmanager/FMArchiv'));
 
 export default function FinanzierungsmanagerPage() {
   const { data: cases, isLoading } = useFutureRoomCases();
@@ -48,6 +48,7 @@ export default function FinanzierungsmanagerPage() {
         <Route path="faelle/:requestId" element={<FMFallDetail />} />
         <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
         <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
+        <Route path="archiv" element={<FMArchiv cases={cases || []} isLoading={isLoading} />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Routes>
     </div>
