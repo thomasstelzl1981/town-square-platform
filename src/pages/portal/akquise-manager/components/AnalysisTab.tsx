@@ -543,17 +543,17 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
                 {bestandResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <KPIBox label="Brutto-Rendite" value={`${bestandResult.grossYield}%`} icon={Percent} color="blue" />
-                      <KPIBox label="Netto-Rendite" value={`${bestandResult.netYield}%`} icon={Percent} color="green" />
+                      <KPIBox label="Brutto-Rendite" value={`${bestandResult.grossYield ?? 0}%`} icon={Percent} color="blue" />
+                      <KPIBox label="Netto-Rendite" value={`${bestandResult.netYield ?? 0}%`} icon={Percent} color="green" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <KPIBox label="Monatl. Cashflow" value={`${bestandResult.monthlyCashflow.toLocaleString('de-DE')} €`} icon={Euro} color={bestandResult.monthlyCashflow >= 0 ? 'green' : 'red'} />
-                      <KPIBox label="Cash-on-Cash" value={`${bestandResult.cashOnCash}%`} icon={TrendingUp} color="purple" />
+                      <KPIBox label="Monatl. Cashflow" value={`${(bestandResult.monthlyCashflow ?? 0).toLocaleString('de-DE')} €`} icon={Euro} color={(bestandResult.monthlyCashflow ?? 0) >= 0 ? 'green' : 'red'} />
+                      <KPIBox label="Cash-on-Cash" value={`${bestandResult.cashOnCash ?? 0}%`} icon={TrendingUp} color="purple" />
                     </div>
                     <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t">
-                      <div><div className="text-lg font-semibold">{bestandResult.ltv}%</div><div className="text-xs text-muted-foreground">LTV</div></div>
-                      <div><div className="text-lg font-semibold">{bestandResult.dscr}</div><div className="text-xs text-muted-foreground">DSCR</div></div>
-                      <div><div className="text-lg font-semibold">{bestandResult.multiplier}x</div><div className="text-xs text-muted-foreground">Faktor</div></div>
+                      <div><div className="text-lg font-semibold">{bestandResult.ltv ?? 0}%</div><div className="text-xs text-muted-foreground">LTV</div></div>
+                      <div><div className="text-lg font-semibold">{bestandResult.dscr ?? 0}</div><div className="text-xs text-muted-foreground">DSCR</div></div>
+                      <div><div className="text-lg font-semibold">{bestandResult.multiplier ?? 0}x</div><div className="text-xs text-muted-foreground">Faktor</div></div>
                     </div>
                   </div>
                 ) : (
@@ -625,17 +625,17 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
                 {aufteilerResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <KPIBox label="Bruttogewinn" value={`${aufteilerResult.grossProfit.toLocaleString('de-DE')} €`} icon={Euro} color={aufteilerResult.grossProfit >= 0 ? 'green' : 'red'} />
-                      <KPIBox label="Marge" value={`${aufteilerResult.profitMarginPercent}%`} icon={Percent} color="blue" />
+                      <KPIBox label="Bruttogewinn" value={`${(aufteilerResult.grossProfit ?? 0).toLocaleString('de-DE')} €`} icon={Euro} color={(aufteilerResult.grossProfit ?? 0) >= 0 ? 'green' : 'red'} />
+                      <KPIBox label="Marge" value={`${aufteilerResult.profitMarginPercent ?? 0}%`} icon={Percent} color="blue" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <KPIBox label="Annualisiert" value={`${aufteilerResult.annualizedReturn}%`} icon={TrendingUp} color="purple" />
-                      <KPIBox label="Gewinn/Einheit" value={`${aufteilerResult.profitPerUnit.toLocaleString('de-DE')} €`} icon={Home} color="green" />
+                      <KPIBox label="Annualisiert" value={`${aufteilerResult.annualizedReturn ?? 0}%`} icon={TrendingUp} color="purple" />
+                      <KPIBox label="Gewinn/Einheit" value={`${(aufteilerResult.profitPerUnit ?? 0).toLocaleString('de-DE')} €`} icon={Home} color="green" />
                     </div>
                     <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t">
-                      <div><div className="text-lg font-semibold">{aufteilerResult.totalSaleProceeds.toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">Verkaufserlös</div></div>
-                      <div><div className="text-lg font-semibold">{aufteilerResult.totalCosts.toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">Gesamtkosten</div></div>
-                      <div><div className="text-lg font-semibold">{aufteilerResult.pricePerUnit.toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">EK/Einheit</div></div>
+                      <div><div className="text-lg font-semibold">{(aufteilerResult.totalSaleProceeds ?? 0).toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">Verkaufserlös</div></div>
+                      <div><div className="text-lg font-semibold">{(aufteilerResult.totalCosts ?? 0).toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">Gesamtkosten</div></div>
+                      <div><div className="text-lg font-semibold">{(aufteilerResult.pricePerUnit ?? 0).toLocaleString('de-DE')} €</div><div className="text-xs text-muted-foreground">EK/Einheit</div></div>
                     </div>
                   </div>
                 ) : (
