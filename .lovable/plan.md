@@ -1,103 +1,130 @@
 
-# Seitenumbau: Eckdaten + Finanzierung nach oben, neue Struktur
+# Aufspaltung Finanzierungskalkulator + neues "Ueberschlaegiges Finanzierungsangebot"
 
-## Neuer Gesamtaufbau der Seite (von oben nach unten)
+## Neuer Aufbau (Block 1, oberhalb Finanzierungsantrag)
 
 ```text
-+------------------------------------------------------------------+
-|  Header: "Neue Finanzierungsakte" + Zurueck-Button               |
-+------------------------------------------------------------------+
++--- Listing-Suche (volle Breite) --------------------------------+
 
-+--- Objekt aus Marktplatz uebernehmen (Suchfeld, volle Breite) ---+
-
-+--- 2-spaltiges Grid -------------------------------------------- +
++--- 2-spaltiges Grid (gleiche Hoehe) ----------------------------+
 |                                |                                  |
-|  ECKDATEN (konsolidierte       |  FINANZIERUNGSKALKULATOR         |
-|  Karte im bisherigen           |  (wie bisher, plus neuer         |
-|  FinanceRequestCard-Design)    |  Button "Eckdaten uebernehmen")  |
+|  ECKDATEN                      |  FINANZIERUNGSKALKULATOR         |
+|  (FinanceRequestCard)          |  (verschlankt)                   |
 |                                |                                  |
 |  - Finanzierungszweck          |  - Darlehensbetrag               |
-|  - Objektart (neu)             |  - Beleihungsauslauf             |
-|  - Nutzungsart (neu)           |  - Zinsbindung                   |
-|  - Mieteinnahmen mtl. (neu)    |  - Zinssatz p.a.                 |
-|  ----                          |  - Tilgung p.a.                  |
+|  - Objektart                   |  - Beleihungsauslauf             |
+|  - Nutzungsart                 |  - Zinsbindung (Select)          |
+|  - Mieteinnahmen               |  - Zinssatz p.a.                 |
+|  ----                          |  - Tilgung p.a. (Input)          |
 |  Kostenzusammenstellung        |  ----                            |
 |  - Kaufpreis                   |  - Monatsrate                    |
-|  - Modernisierung              |  - Jahresrate                    |
-|  - Notar                       |  - Restschuld                    |
-|  - Grunderwerbsteuer           |  ----                            |
-|  - Makler                      |  [Eckdaten in Antrag             |
-|  = Gesamtkosten                |   uebernehmen] Button            |
+|  - Modernisierung              |  - Restschuld (X J.)             |
+|  - Notar                       |                                  |
+|  - Grunderwerbsteuer           |  (KEINE Jahresrate mehr)         |
+|  - Makler                      |  (KEIN Transfer-Button mehr)     |
+|  = Gesamtkosten                |                                  |
 |  ----                          |                                  |
 |  Finanzierungsplan             |                                  |
-|  - Eigenkapital [Berechnen]    |                                  |
+|  - Eigenkapital                |                                  |
 |  - Darlehenswunsch             |                                  |
 |  - Max. Monatsrate             |                                  |
 |  = Finanzierungsbedarf         |                                  |
-|                                |                                  |
 +--------------------------------+----------------------------------+
 
-+------------------------------------------------------------------+
-|  Ueberschrift: FINANZIERUNGSANTRAG                               |
-|  Untertitel: Detaillierte Angaben fuer die Bankeinreichung       |
-+------------------------------------------------------------------+
++--- Neue Karte (volle Breite) -----------------------------------+
+|                                                                   |
+|  UEBERSCHLAEGIGES FINANZIERUNGSANGEBOT                           |
+|                                                                   |
+|  Darlehensbetrag     250.000,00 EUR                              |
+|  Zinssatz nominal    3,50 %                                      |
+|  Zinssatz effektiv   3,57 %    (berechnet)                       |
+|  Tilgung             1,50 %                                      |
+|  Darlehensrate       1.041,67 EUR / Monat                        |
+|  Laufzeit            ca. 28 Jahre                                |
+|                                                                   |
+|  [ Eckdaten in Antrag uebernehmen ]  [ Tilgungsplan anzeigen ]   |
++-------------------------------------------------------------------+
 
-+--- Selbstauskunft (wie bisher, volle Breite) --------------------+
-
-+--- Ueberschrift: Finanzierungsobjekt ----------------------------+
-+--- FinanceObjectCard (wie bisher, volle Breite) -----------------+
-
-+--- Floating Save Button (rechts unten) --------------------------+
++--- Tilgungsplan (nur sichtbar nach Klick) -----------------------+
+|                                                                   |
+|  Zins- und Tilgungsplan                                          |
+|                                                                   |
+|  Jahr | Restschuld   | Zinsen    | Tilgung   | Annuitaet         |
+|  1    | 246.250,00   | 8.750,00  | 3.750,00  | 12.500,00         |
+|  2    | 242.368,75   | 8.618,75  | 3.881,25  | 12.500,00         |
+|  ...  | ...          | ...       | ...       | ...               |
+|                                                                   |
+|  [ Als PDF exportieren ]                                         |
++-------------------------------------------------------------------+
 ```
-
----
 
 ## Technische Umsetzung
 
-### 1. FinanceRequestCard.tsx — Felder ergaenzen
+### 1. FinanceCalculatorCard.tsx — verschlanken
 
-Neue Props:
-- `showObjectFields?: boolean` — wenn true, werden vor der Kostenzusammenstellung drei neue Zeilen angezeigt
+- Zeile "Jahresrate" entfernen
+- Prop `onTransferToApplication` und den zugehoerigen Button entfernen
+- Neue Props exportieren: Die berechneten Werte (interestRate, monthlyRate, remainingDebt, termYears, repaymentRate) muessen dem Parent zugaenglich gemacht werden, damit die neue Angebots-Karte sie nutzen kann
+- Loesung: Neuer Callback-Prop `onCalcUpdate?: (data: CalcData) => void`, der bei jeder Neuberechnung die aktuellen Werte nach oben meldet
 
-Neue Felder (nur bei `showObjectFields=true`, oberhalb von "Kostenzusammenstellung"):
-- **Objektart** (Select: ETW, EFH, ZFH, MFH, Grundstueck, Gewerbe)
-- **Nutzungsart** (Select: Eigengenutzt / Vermietet)
-- **Mieteinnahmen mtl. (EUR)** (Number-Input)
+```typescript
+export interface CalcData {
+  interestRate: number;
+  repaymentRate: number;
+  termYears: number;
+  monthlyRate: number;
+  remainingDebt: number;
+  loanAmount: number;
+}
+```
 
-Dazu wird `FinanceFormData` um drei Felder erweitert:
-- `objectType: string`
-- `usage: string`
-- `rentalIncome: string`
+### 2. Neue Komponente: FinanceOfferCard.tsx
 
-Die Karten-Ueberschrift wird ueber eine neue Prop `title?: string` steuerbar (Default: "Beantragte Finanzierung", MOD-11 setzt "Eckdaten").
+Pfad: `src/components/finanzierung/FinanceOfferCard.tsx`
 
-### 2. FinanceCalculatorCard.tsx — Button hinzufuegen
+Visuelle Darstellung NICHT im Excel-Tabellenstil, sondern als professionelle Angebots-Karte:
+- Groessere Zahlen, klare Abschnitte, etwas grosszuegigerer Abstand
+- Effektivzins wird berechnet (Naeherungsformel: `nominal * (1 + nominal / (4 * 100))` oder exakte Berechnung mit Gebuehren)
+- Geschaetzte Gesamtlaufzeit bis Volltilgung (iterativ berechnet)
+- Zwei Buttons nebeneinander am unteren Rand:
+  - "Eckdaten in Antrag uebernehmen" (uebernimmt den bisherigen Callback)
+  - "Tilgungsplan anzeigen" (toggelt die Sichtbarkeit der Tilgungsplan-Karte)
 
-Neue Prop:
-- `onTransferToApplication?: () => void`
+Props:
+```typescript
+interface FinanceOfferCardProps {
+  calcData: CalcData | null;
+  onTransferToApplication?: () => void;
+  onShowAmortization?: () => void;
+  showAmortizationActive?: boolean;
+}
+```
 
-Am Ende der Karte (nach Restschuld) wird ein Button angezeigt:
-- Text: "Eckdaten in Antrag uebernehmen"
-- Icon: ArrowDown oder Copy
-- Klick ruft `onTransferToApplication()` im Parent auf
+### 3. Neue Komponente: AmortizationScheduleCard.tsx
 
-### 3. FMFinanzierungsakte.tsx — Umbau der Seitenstruktur
+Pfad: `src/components/finanzierung/AmortizationScheduleCard.tsx`
 
-Aenderungen:
-- **Alte Eckdaten-Karte** (Zeilen 152-213) wird komplett entfernt
-- **Listing-Suche** wird an den Anfang verschoben (direkt nach Header)
-- **2-spaltiges Grid** (FinanceRequestCard + FinanceCalculatorCard) kommt direkt nach der Suche
-- FinanceRequestCard erhaelt `showObjectFields={true}` und `title="Eckdaten"`
-- **Neue Ueberschrift** "Finanzierungsantrag" vor dem Selbstauskunft-Block
-- Die alte Ueberschrift "Finanzierungsobjekt" bleibt vor der FinanceObjectCard
-- Der `onTransferToApplication`-Callback befuellt die Selbstauskunft- und ObjectCard-Felder aus den Eckdaten (z.B. Objektart, Nutzungsart, Mieteinnahmen)
+- Wird nur gerendert wenn der Nutzer "Tilgungsplan anzeigen" klickt
+- Tabellarische Darstellung: Jahr | Restschuld Anfang | Zinsen | Tilgung | Annuitaet | Restschuld Ende
+- Berechnung bis Volltilgung (oder max. 40 Jahre)
+- Button "Als PDF exportieren" nutzt das bestehende PDF-Export-System (`usePdfExport` Hook)
+- Da noch keine Kundendaten vorliegen, wird das PDF als "Ueberschlaegiges Finanzierungsangebot" ohne Personendaten erstellt — nur Darlehensdaten und Tilgungstabelle
+- PDF enthaelt: Header mit "System of a Town", Angebotszusammenfassung und die vollstaendige Tilgungstabelle
+
+### 4. FMFinanzierungsakte.tsx — Layout anpassen
+
+- State fuer CalcData: `const [calcData, setCalcData] = useState<CalcData | null>(null)`
+- State fuer Tilgungsplan-Sichtbarkeit: `const [showAmortization, setShowAmortization] = useState(false)`
+- FinanceCalculatorCard erhaelt neuen `onCalcUpdate`-Prop, verliert `onTransferToApplication`
+- Neue FinanceOfferCard unterhalb des 2-spaltigen Grids (volle Breite)
+- AmortizationScheduleCard darunter, conditional gerendert
+- `handleTransferToApplication` Callback bleibt, wird aber an FinanceOfferCard statt FinanceCalculatorCard uebergeben
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `FinanceRequestCard.tsx` | 3 neue Felder in Interface + UI, neue Props `showObjectFields` und `title` |
-| `FinanceCalculatorCard.tsx` | Neuer Button "Eckdaten in Antrag uebernehmen" |
-| `FMFinanzierungsakte.tsx` | Seitenstruktur umbauen, alte Eckdaten-Karte entfernen, Transfer-Callback implementieren |
-
-MOD-07 (`AnfrageTab.tsx`) bleibt unveraendert — dort wird `showObjectFields` nicht gesetzt.
+| `FinanceCalculatorCard.tsx` | Jahresrate entfernen, Transfer-Button entfernen, neuer `onCalcUpdate` Callback |
+| `FinanceOfferCard.tsx` | **Neue Datei** — Angebots-Karte mit Effektivzins, Laufzeit, 2 Buttons |
+| `AmortizationScheduleCard.tsx` | **Neue Datei** — Tilgungstabelle mit PDF-Export |
+| `FMFinanzierungsakte.tsx` | Layout anpassen, neue Komponenten einbinden, State-Management |
