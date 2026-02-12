@@ -10295,6 +10295,104 @@ export type Database = {
           },
         ]
       }
+      public_project_submissions: {
+        Row: {
+          address: string | null
+          agreement_accepted_at: string | null
+          agreement_version: string | null
+          city: string | null
+          company_name: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          converted_at: string | null
+          converted_by: string | null
+          converted_project_id: string | null
+          converted_tenant_id: string | null
+          created_at: string
+          expose_storage_path: string | null
+          extracted_data: Json | null
+          id: string
+          image_paths: Json | null
+          lead_id: string | null
+          postal_code: string | null
+          pricelist_storage_path: string | null
+          project_name: string | null
+          project_type: string | null
+          source_ip: string | null
+          status: string
+          units_count: number | null
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          address?: string | null
+          agreement_accepted_at?: string | null
+          agreement_version?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
+          converted_project_id?: string | null
+          converted_tenant_id?: string | null
+          created_at?: string
+          expose_storage_path?: string | null
+          extracted_data?: Json | null
+          id?: string
+          image_paths?: Json | null
+          lead_id?: string | null
+          postal_code?: string | null
+          pricelist_storage_path?: string | null
+          project_name?: string | null
+          project_type?: string | null
+          source_ip?: string | null
+          status?: string
+          units_count?: number | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          address?: string | null
+          agreement_accepted_at?: string | null
+          agreement_version?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
+          converted_project_id?: string | null
+          converted_tenant_id?: string | null
+          created_at?: string
+          expose_storage_path?: string | null
+          extracted_data?: Json | null
+          id?: string
+          image_paths?: Json | null
+          lead_id?: string | null
+          postal_code?: string | null
+          pricelist_storage_path?: string | null
+          project_name?: string | null
+          project_type?: string | null
+          source_ip?: string | null
+          status?: string
+          units_count?: number | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_project_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pv_connectors: {
         Row: {
           config_json: Json | null
