@@ -2,7 +2,7 @@
  * FM Einreichung — 4 eigenständige Kacheln:
  * 1. Exposé  2. Bankauswahl + E-Mail  3. Status & Ergebnis  4. Europace API
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, FileText, Building2, Mail, Check, Globe,
   Send, AlertTriangle, Archive, Download, X, Plus, Sparkles, Search } from 'lucide-react';
@@ -64,12 +64,16 @@ interface SelectedBank {
   source: 'kontaktbuch' | 'ki' | 'manuell';
 }
 
-// ─── KI-Vorschläge Platzhalter ────────────────────────────────────────
-const AI_SUGGESTIONS: { name: string; email: string }[] = [
-  { name: 'Sparkasse Musterstadt', email: 'finanzierung@sparkasse-musterstadt.de' },
-  { name: 'Volksbank Region', email: 'baufi@voba-region.de' },
-  { name: 'Deutsche Bank Filiale', email: 'baufinanzierung@db-filiale.de' },
-];
+// ─── KI-Vorschläge — Google Places Ergebnistyp ───────────────────────
+interface PlaceResult {
+  place_id: string;
+  name: string;
+  formatted_address: string;
+  phone_number?: string;
+  website?: string;
+  rating?: number;
+  user_ratings_total?: number;
+}
 
 interface Props {
   cases: FutureRoomCase[];
@@ -99,18 +103,56 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
   const [manualBankName, setManualBankName] = useState('');
   const [manualBankEmail, setManualBankEmail] = useState('');
 
+  // ─── KI-Bankensuche State ──────────────────────────────────────────
+  const [aiResults, setAiResults] = useState<PlaceResult[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   const applicant = request?.applicant_profiles?.[0];
   const property = request?.properties;
+
+  // ─── KI-Bankensuche via Google Places ──────────────────────────────
+  const searchBanks = useCallback(async () => {
+    const plz = property?.postal_code || applicant?.address_postal_code || '';
+    const city = property?.city || applicant?.address_city || '';
+    const locationHint = [plz, city].filter(Boolean).join(' ');
+    if (!locationHint) { setAiResults([]); return; }
+
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-places-search', {
+        body: { query: `Bank ${locationHint}`, radius: 50000 },
+      });
+      if (error) throw error;
+      setAiResults((data?.results as PlaceResult[]) || []);
+    } catch (err: any) {
+      console.error('KI-Bankensuche Fehler:', err);
+      setAiError('Bankensuche fehlgeschlagen');
+      toast.error('KI-Bankensuche fehlgeschlagen');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [property?.postal_code, property?.city, applicant?.address_postal_code, applicant?.address_city]);
+
+  // Auto-Suche wenn Fall ausgewählt & Daten geladen
+  useEffect(() => {
+    if (selectedId && !reqLoading && (applicant || property)) {
+      searchBanks();
+    } else {
+      setAiResults([]);
+    }
+  }, [selectedId, reqLoading, searchBanks]);
 
   // ─── Bank helpers ───────────────────────────────────────────────────
   const addBank = (bank: SelectedBank) => {
     if (selectedBanks.length >= MAX_BANKS) { toast.info(`Maximal ${MAX_BANKS} Banken auswählbar`); return; }
-    if (selectedBanks.some(b => b.email === bank.email)) { toast.info('Bank bereits ausgewählt'); return; }
+    if (selectedBanks.some(b => b.id === bank.id)) { toast.info('Bank bereits ausgewählt'); return; }
     setSelectedBanks(prev => [...prev, bank]);
   };
 
-  const removeBank = (email: string) => {
-    setSelectedBanks(prev => prev.filter(b => b.email !== email));
+  const removeBank = (id: string) => {
+    setSelectedBanks(prev => prev.filter(b => b.id !== id));
   };
 
   const addManualBank = () => {
@@ -356,11 +398,12 @@ Mit freundlichen Grüßen`;
             {selectedBanks.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {selectedBanks.map(bank => (
-                  <Badge key={bank.email} variant="secondary" className="pl-2.5 pr-1 py-1 text-xs flex items-center gap-1.5">
+                  <Badge key={bank.id} variant="secondary" className="pl-2.5 pr-1 py-1 text-xs flex items-center gap-1.5">
                     <Building2 className="h-3 w-3" />
                     {bank.name}
-                    <span className="text-muted-foreground">({bank.email})</span>
-                    <button onClick={() => removeBank(bank.email)} className="ml-1 hover:bg-destructive/20 rounded-full p-0.5">
+                    {bank.email && <span className="text-muted-foreground">({bank.email})</span>}
+                    {!bank.email && <span className="text-muted-foreground italic">(E-Mail ergänzen)</span>}
+                    <button onClick={() => removeBank(bank.id)} className="ml-1 hover:bg-destructive/20 rounded-full p-0.5">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -411,34 +454,64 @@ Mit freundlichen Grüßen`;
                 </div>
               </div>
 
-              {/* Quelle 2: KI-Vorschläge */}
+              {/* Quelle 2: KI-Vorschläge — Google Places */}
               <div className="border rounded-md p-3 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
                   KI-Vorschläge (50 km Umkreis)
-                  <Badge variant="outline" className="text-[9px] ml-auto">Coming soon</Badge>
+                  {aiResults.length > 0 && (
+                    <Badge variant="outline" className="text-[9px] ml-auto">{aiResults.length} Treffer</Badge>
+                  )}
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Basierend auf dem Objektstandort werden passende Banken im Umkreis vorgeschlagen.
-                </p>
-                <div className="space-y-1">
-                  {AI_SUGGESTIONS.map((s, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => addBank({
-                        id: `ai-${idx}`,
-                        name: s.name,
-                        email: s.email,
-                        source: 'ki',
-                      })}
-                      disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.email === s.email)}
-                      className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors disabled:opacity-40 flex items-center gap-2"
-                    >
-                      <Sparkles className="h-3 w-3 text-accent-foreground" />
-                      <span className="font-medium">{s.name}</span>
-                    </button>
-                  ))}
-                </div>
+
+                {aiLoading ? (
+                  <div className="flex items-center gap-2 py-4 justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">Lade Banken im Umkreis…</span>
+                  </div>
+                ) : aiError ? (
+                  <div className="text-center py-3 space-y-2">
+                    <p className="text-[10px] text-destructive">{aiError}</p>
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={searchBanks}>
+                      Erneut suchen
+                    </Button>
+                  </div>
+                ) : aiResults.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground text-center py-3">
+                    {selectedId ? 'Keine Banken im Umkreis gefunden' : 'Bitte zuerst eine Akte auswählen'}
+                  </p>
+                ) : (
+                  <>
+                    <div className="max-h-[160px] overflow-y-auto space-y-1">
+                      {aiResults.map((place) => (
+                        <button
+                          key={place.place_id}
+                          onClick={() => addBank({
+                            id: place.place_id,
+                            name: place.name,
+                            email: '',
+                            source: 'ki',
+                          })}
+                          disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.id === place.place_id)}
+                          className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors disabled:opacity-40"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-3 w-3 text-accent-foreground shrink-0" />
+                            <span className="font-medium truncate">{place.name}</span>
+                            <Plus className="h-3 w-3 ml-auto shrink-0 text-muted-foreground" />
+                          </div>
+                          <div className="pl-5 text-[10px] text-muted-foreground truncate">{place.formatted_address}</div>
+                          {place.phone_number && (
+                            <div className="pl-5 text-[10px] text-muted-foreground">{place.phone_number}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px] w-full" onClick={searchBanks}>
+                      <Search className="h-3 w-3 mr-1" /> Erneut suchen
+                    </Button>
+                  </>
+                )}
               </div>
 
               {/* Quelle 3: Manuelle Eingabe */}
