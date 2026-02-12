@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExternalLink, Car, Truck, Star, ShoppingCart, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 type OfferType = 'leasing' | 'rental';
 
@@ -141,7 +143,7 @@ const DEMO_RENTAL_OFFERS: Offer[] = [
   },
 ];
 
-export function CarsAngebote() {
+export default function CarsAngebote() {
   const [activeTab, setActiveTab] = useState<'leasing' | 'rental'>('leasing');
 
   const { data: dbOffers, isLoading } = useQuery({
@@ -264,7 +266,11 @@ export function CarsAngebote() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
+      <ModulePageHeader
+        title="Angebote"
+        description="Leasing-Deals und Mietangebote entdecken"
+      />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'leasing' | 'rental')}>
         <TabsList>
           <TabsTrigger value="leasing" className="gap-2">
@@ -289,6 +295,6 @@ export function CarsAngebote() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

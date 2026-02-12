@@ -16,6 +16,8 @@ import {
   ExternalLink, Sparkles, Car, Euro, Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 type CoverageType = 'liability_only' | 'liability_tk' | 'liability_vk';
 type InsuranceStatus = 'active' | 'expired' | 'cancelled' | 'draft';
@@ -90,7 +92,7 @@ const HECTOR_OFFERS = [
   },
 ];
 
-export function CarsVersicherungen() {
+export default function CarsVersicherungen() {
   const navigate = useNavigate();
   const { activeTenantId } = useAuth();
   const [search, setSearch] = useState('');
@@ -154,7 +156,17 @@ export function CarsVersicherungen() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
+      <ModulePageHeader
+        title="Versicherungen"
+        description="Kfz-Versicherungen verwalten und vergleichen"
+        actions={
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Neue Police
+          </Button>
+        }
+      />
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -165,10 +177,6 @@ export function CarsVersicherungen() {
             className="pl-9"
           />
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Neue Police
-        </Button>
       </div>
 
       {/* Insurance Widget Cards — 2-column: existing | offer */}
@@ -282,6 +290,6 @@ export function CarsVersicherungen() {
           </div>
         ))}
       </div>
-    </div>
+    </PageShell>
   );
 }

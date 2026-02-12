@@ -1,16 +1,16 @@
 /**
  * Car-Management Page (MOD-17) - Full Implementation
+ * P0-FIX: React.lazy for code splitting consistency
  */
 
+import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import { 
-  CarsFahrzeuge, 
-  CarsVersicherungen, 
-  CarsFahrtenbuch, 
-  CarsAngebote,
-  VehicleDetailPage 
-} from '@/components/portal/cars';
+const CarsFahrzeuge = lazy(() => import('@/components/portal/cars/CarsFahrzeuge'));
+const CarsVersicherungen = lazy(() => import('@/components/portal/cars/CarsVersicherungen'));
+const CarsFahrtenbuch = lazy(() => import('@/components/portal/cars/CarsFahrtenbuch'));
+const CarsAngebote = lazy(() => import('@/components/portal/cars/CarsAngebote'));
+const VehicleDetailPage = lazy(() => import('@/components/portal/cars/VehicleDetailPage'));
 
 export default function CarsPage() {
   return (

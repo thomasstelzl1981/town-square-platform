@@ -1,20 +1,17 @@
 /**
  * Projekte Page (MOD-13) - Developer/Aufteiler Project Management
- * Full Golden Path Implementation
- * 
- * Navigation: Dashboard / Projekte / Vertrieb / Marketing
+ * P0-FIX: React.lazy for code splitting consistency
  */
+import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import { 
-  ProjekteDashboard, 
-  PortfolioTab, 
-  VertriebTab, 
-  LandingPageTab, 
-  ProjectDetailPage, 
-  UnitDetailPage,
-  KontexteTab, 
-} from './projekte';
+const ProjekteDashboard = lazy(() => import('./projekte/ProjekteDashboard'));
+const PortfolioTab = lazy(() => import('./projekte/PortfolioTab'));
+const VertriebTab = lazy(() => import('./projekte/VertriebTab'));
+const LandingPageTab = lazy(() => import('./projekte/LandingPageTab'));
+const ProjectDetailPage = lazy(() => import('./projekte/ProjectDetailPage'));
+const UnitDetailPage = lazy(() => import('./projekte/UnitDetailPage'));
+const KontexteTab = lazy(() => import('./projekte/KontexteTab'));
 
 export default function ProjektePage() {
   return (
@@ -27,7 +24,7 @@ export default function ProjektePage() {
       <Route path="vertrieb" element={<VertriebTab />} />
       <Route path="landing-page" element={<LandingPageTab />} />
       
-      {/* Hidden route for managing developer contexts (accessible via settings/Projektakte) */}
+      {/* Hidden route for managing developer contexts */}
       <Route path="kontexte" element={<KontexteTab />} />
       
       {/* Project Detail (Projektakte) */}
@@ -36,7 +33,7 @@ export default function ProjektePage() {
       {/* Unit Detail (Einheiten-Akte) */}
       <Route path=":projectId/einheit/:unitId" element={<UnitDetailPage />} />
       
-      {/* Legacy redirects - old routes redirect to new structure */}
+      {/* Legacy redirects */}
       <Route path="portfolio" element={<Navigate to="/portal/projekte/projekte" replace />} />
       <Route path="uebersicht" element={<Navigate to="/portal/projekte/dashboard" replace />} />
       <Route path="timeline" element={<Navigate to="/portal/projekte/projekte" replace />} />

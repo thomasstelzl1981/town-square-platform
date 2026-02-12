@@ -3,9 +3,9 @@
     "version": "2.0",
     "focus": "CI/Design-Konsistenz — Visuelle und strukturelle Vereinheitlichung aller 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": null,
+    "last_sprint": "Sprint 1 (partial)",
     "total": 24,
-    "done": 0,
+    "done": 3,
     "scan_coverage": "PageShell, ModulePageHeader, Lazy Loading, Suspense, Header-Hierarchie über alle 21 Module",
     "v1_archive": "backlog_v1_architecture_sprint.json (40/47 done, 7 als Roadmap klassifiziert)"
   },
@@ -55,7 +55,7 @@
       "title": "Cars: Alle 4 Sub-Tabs ohne PageShell und ModulePageHeader",
       "fix": "PageShell + ModulePageHeader in CarsFahrzeuge, CarsVersicherungen, CarsFahrtenbuch, CarsAngebote einbauen",
       "effort": "M",
-      "status": "open",
+      "status": "done",
       "files": ["src/components/portal/cars/CarsFahrzeuge.tsx", "src/components/portal/cars/CarsVersicherungen.tsx", "src/components/portal/cars/CarsFahrtenbuch.tsx", "src/components/portal/cars/CarsAngebote.tsx"],
       "origin": "V1 CI-005"
     },
@@ -67,7 +67,7 @@
       "title": "CarsPage: Direct imports statt lazy loading",
       "fix": "Alle 4 Sub-Tab-Imports auf React.lazy() umstellen, Suspense-Pattern wie MOD-05/06 (P0-FIX)",
       "effort": "S",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/CarsPage.tsx"]
     },
     {
@@ -78,7 +78,7 @@
       "title": "ProjektePage: Direct imports statt lazy loading für 6+ Sub-Tabs",
       "fix": "Alle Tab-Imports auf React.lazy() umstellen",
       "effort": "S",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/ProjektePage.tsx"]
     },
     {

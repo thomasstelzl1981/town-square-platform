@@ -24,6 +24,8 @@ import {
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 type TripClassification = 'business' | 'private' | 'commute' | 'unclassified';
 type LogbookStatus = 'not_connected' | 'pending' | 'connected' | 'error';
@@ -95,7 +97,7 @@ const LOGBOOK_OFFERS = [
   },
 ];
 
-export function CarsFahrtenbuch() {
+export default function CarsFahrtenbuch() {
   const { activeTenantId } = useAuth();
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
 
@@ -170,7 +172,11 @@ export function CarsFahrtenbuch() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
+      <ModulePageHeader
+        title="Fahrtenbuch"
+        description="Fahrten erfassen und exportieren"
+      />
       {/* Vehicle Selector Widget */}
       <Card className="glass-card border-primary/10">
         <CardContent className="p-4">
@@ -295,6 +301,6 @@ export function CarsFahrtenbuch() {
           </Card>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
