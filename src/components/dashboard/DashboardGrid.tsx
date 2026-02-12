@@ -57,11 +57,8 @@ export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridP
   if (isMobile) {
     return (
       <div 
-        className="grid gap-4"
-        style={{
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-          justifyContent: 'center',
-        }}
+        className="flex flex-col gap-3"
+        style={{ scrollSnapType: 'y proximity' }}
       >
         {children}
       </div>

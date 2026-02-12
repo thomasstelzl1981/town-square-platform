@@ -76,7 +76,7 @@ export function ModuleTilePage({
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
@@ -91,7 +91,7 @@ export function ModuleTilePage({
   // Error state
   if (status === 'error') {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
@@ -110,7 +110,7 @@ export function ModuleTilePage({
   // Empty state
   if (status === 'empty') {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {Icon && (
@@ -178,7 +178,7 @@ export function ModuleTilePage({
 
   // Ready state (with children)
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {Icon && (

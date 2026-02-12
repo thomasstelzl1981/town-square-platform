@@ -14,7 +14,7 @@ export function QuoteWidget() {
   const { data: quote, isLoading, error, refetch, isRefetching } = useQuote();
 
   return (
-    <Card className="aspect-square bg-gradient-to-br from-pink-500/10 to-rose-600/5 border-pink-500/20 overflow-hidden">
+    <Card className="h-[200px] md:aspect-square md:h-auto bg-gradient-to-br from-pink-500/10 to-rose-600/5 border-pink-500/20 overflow-hidden">
       <CardContent className="h-full flex flex-col p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">

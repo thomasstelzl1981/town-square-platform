@@ -135,7 +135,7 @@ export function ArmstrongGreetingCard({
 
   if (isLoading) {
     return (
-      <Card className="glass-card border-primary/20 aspect-square">
+      <Card className="glass-card border-primary/20 h-[220px] md:aspect-square md:h-auto">
         <CardContent className="p-4 h-full flex flex-col justify-center">
           <div className="flex items-center gap-3 mb-3">
             <Sparkles className="h-5 w-5 text-primary animate-pulse" />
@@ -154,7 +154,7 @@ export function ArmstrongGreetingCard({
 
   return (
     <Card 
-      className="glass-card border-primary/20 aspect-square relative overflow-hidden cursor-pointer transition-all hover:border-primary/40 hover:shadow-lg"
+      className="glass-card border-primary/20 h-[220px] md:aspect-square md:h-auto relative overflow-hidden cursor-pointer transition-all hover:border-primary/40 hover:shadow-lg"
       onClick={handleOpenChat}
     >
       {/* Subtle gradient overlay */}

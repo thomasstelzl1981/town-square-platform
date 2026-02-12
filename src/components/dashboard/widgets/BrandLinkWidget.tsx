@@ -67,7 +67,7 @@ export function BrandLinkWidget({ code }: BrandLinkWidgetProps) {
   if (!config) return null;
 
   return (
-    <Card className="aspect-square overflow-hidden border-0 shadow-card">
+    <Card className="h-[180px] md:aspect-square md:h-auto overflow-hidden border-0 shadow-card">
       <CardContent className="p-0 h-full">
         <a
           href={config.url}

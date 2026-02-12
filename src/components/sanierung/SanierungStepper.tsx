@@ -39,22 +39,27 @@ export function SanierungStepper({ currentStatus, className }: SanierungStepperP
               <div className="flex flex-col items-center gap-1">
                 <div
                   className={cn(
-                    'h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors',
+                    'h-6 w-6 md:h-8 md:w-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold border-2 transition-colors',
                     isDone && 'bg-primary border-primary text-primary-foreground',
                     isCurrent && 'border-primary bg-primary/10 text-primary',
                     !isDone && !isCurrent && 'border-border bg-muted text-muted-foreground'
                   )}
                 >
-                  {isDone ? <Check className="h-4 w-4" /> : idx + 1}
+                  {isDone ? <Check className="h-3 w-3 md:h-4 md:w-4" /> : idx + 1}
                 </div>
                 <span
                   className={cn(
-                    'text-[10px] font-medium text-center max-w-[72px] leading-tight',
+                    'text-[9px] md:text-[10px] font-medium text-center max-w-[52px] md:max-w-[72px] leading-tight hidden md:block',
                     isCurrent ? 'text-primary' : 'text-muted-foreground'
                   )}
                 >
                   {step.label}
                 </span>
+                {isCurrent && (
+                  <span className="text-[9px] font-medium text-primary text-center max-w-[52px] leading-tight md:hidden">
+                    {step.label}
+                  </span>
+                )}
               </div>
               {idx < SANIERUNG_STEPS.length - 1 && (
                 <div

@@ -160,14 +160,14 @@ export default function PortalDashboard() {
   const noTaskWidgets = taskWidgets.length === 0;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="px-2 py-3 md:p-6 lg:p-8">
       {isDevelopmentMode && (
         <p className="text-xs text-status-warn mb-4">
           Entwicklungsmodus aktiv
         </p>
       )}
 
-      <h1 className="text-h1 text-center mb-6 md:mb-8 text-foreground tracking-widest">
+      <h1 className="text-lg md:text-h1 text-center mb-4 md:mb-8 text-foreground tracking-widest">
         WELCOME ON BOARD
       </h1>
 
