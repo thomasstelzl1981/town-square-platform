@@ -119,10 +119,8 @@ export function useUniversalUpload() {
    */
   const getPreviewUrl = useCallback(async (storagePath: string): Promise<string | null> => {
     try {
-      const { data } = await supabase.storage
-        .from(UPLOAD_BUCKET)
-        .createSignedUrl(storagePath, 3600); // 1 hour
-      return data?.signedUrl || null;
+      const { getCachedSignedUrl } = await import('@/lib/imageCache');
+      return await getCachedSignedUrl(storagePath, UPLOAD_BUCKET);
     } catch {
       return null;
     }

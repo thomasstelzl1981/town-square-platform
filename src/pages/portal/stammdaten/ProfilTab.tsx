@@ -213,9 +213,10 @@ export function ProfilTab() {
     try {
       const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: signedData, error: signError } = await supabase.storage.from('tenant-documents').createSignedUrl(filePath, 31536000);
-      if (signError) throw signError;
-      updateField('avatar_url', signedData.signedUrl);
+      const { getCachedSignedUrl } = await import('@/lib/imageCache');
+      const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
+      if (!signedUrl) throw new Error('Signed URL failed');
+      updateField('avatar_url', signedUrl);
       toast.success('Avatar hochgeladen');
     } catch { toast.error('Avatar-Upload fehlgeschlagen'); }
   };
@@ -230,9 +231,10 @@ export function ProfilTab() {
     try {
       const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: signedData, error: signError } = await supabase.storage.from('tenant-documents').createSignedUrl(filePath, 31536000);
-      if (signError) throw signError;
-      updateField('letterhead_logo_url', signedData.signedUrl);
+      const { getCachedSignedUrl } = await import('@/lib/imageCache');
+      const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
+      if (!signedUrl) throw new Error('Signed URL failed');
+      updateField('letterhead_logo_url', signedUrl);
       toast.success('Logo hochgeladen');
     } catch { toast.error('Logo-Upload fehlgeschlagen'); }
   };
