@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
 import { useHomesQuery } from '../shared/useHomesQuery';
 import { demoCameras } from '../shared/demoCameras';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video,
 } from 'lucide-react';
@@ -102,19 +104,16 @@ export default function UebersichtTile() {
     encodeURIComponent([home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' '));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Welcome */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Miety</h1>
-          <p className="text-muted-foreground mt-1">Ihr Zuhause auf einen Blick</p>
-        </div>
-        {homes.length > 0 && (
+    <PageShell>
+      <ModulePageHeader
+        title="Miety"
+        description="Ihr Zuhause auf einen Blick"
+        actions={homes.length > 0 ? (
           <Button onClick={() => setShowCreateForm(true)} size="sm" variant="outline">
             <Plus className="h-4 w-4 mr-1.5" />Weiteres Zuhause
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Home tiles row 1 */}
       {homes.length === 0 ? (
@@ -242,6 +241,6 @@ export default function UebersichtTile() {
           );
         })
       )}
-    </div>
+    </PageShell>
   );
 }

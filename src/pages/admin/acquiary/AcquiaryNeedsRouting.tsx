@@ -14,6 +14,7 @@ import {
   AlertTriangle, Loader2, Mail, User, FileText, 
   CheckCircle2, Link2, Eye
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAcqMandates } from '@/hooks/useAcqMandate';
 
 // TODO: Replace with actual hook when inbound_messages table exists
@@ -43,8 +44,8 @@ export default function AcquiaryNeedsRouting() {
 
   const handleRoute = async () => {
     if (!selectedMessageId || !selectedMandateId) return;
-    // TODO: Implement routing mutation
-    console.log('Route message', selectedMessageId, 'to mandate', selectedMandateId);
+    // STUB: Routing mutation not yet implemented
+    toast.info('Zuordnung wird gespeichert…', { description: 'Diese Funktion wird in einem kommenden Update aktiviert.' });
     setSelectedMessageId(null);
     setSelectedMandateId('');
   };

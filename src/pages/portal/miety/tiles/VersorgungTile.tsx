@@ -10,7 +10,8 @@ import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
 import { ContractDrawer } from '../components/ContractDrawer';
 import { useHomesQuery } from '../shared/useHomesQuery';
 import { NoHomeBanner } from '../shared/NoHomeBanner';
-import { TileShell } from '../shared/TileShell';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   Plus, Zap, Flame, Droplets, Wifi, Gauge, TrendingDown,
 } from 'lucide-react';
@@ -69,7 +70,8 @@ export default function VersorgungTile() {
   ];
 
   return (
-    <TileShell icon={Zap} title="Versorgung" description="Strom, Gas, Wasser & Internet — Verträge und Zählerstände">
+    <PageShell>
+      <ModulePageHeader title="Versorgung" description="Strom, Gas, Wasser & Internet — Verträge und Zählerstände" />
       {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
 
       {supplyCategories.map(({ category, label, icon: SIcon, meterType, meterUnit, hasSoll }) => {
@@ -184,6 +186,6 @@ export default function VersorgungTile() {
       {homes.length > 0 && (
         <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
       )}
-    </TileShell>
+    </PageShell>
   );
 }

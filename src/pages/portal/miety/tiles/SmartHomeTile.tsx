@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { TileShell } from '../shared/TileShell';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { demoCameras } from '../shared/demoCameras';
 import {
   Camera, Plus, ShoppingCart, ExternalLink, Link2, CheckCircle2,
@@ -173,7 +174,8 @@ export default function SmartHomeTile() {
   ];
 
   return (
-    <TileShell icon={Camera} title="Smart Home" description="Kamera-Verwaltung und eufy Smart Home">
+    <PageShell>
+      <ModulePageHeader title="Smart Home" description="Kamera-Verwaltung und eufy Smart Home" />
       {/* Camera Management */}
       <Card className="glass-card">
         <CardContent className="p-5">
@@ -250,6 +252,6 @@ export default function SmartHomeTile() {
 
       {/* eufy Konto verbinden */}
       <EufyConnectCard />
-    </TileShell>
+    </PageShell>
   );
 }
