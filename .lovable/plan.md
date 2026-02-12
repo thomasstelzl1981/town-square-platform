@@ -1,84 +1,103 @@
 
-# Floating "Zwischenspeichern"-Button
+# Seitenumbau: Eckdaten + Finanzierung nach oben, neue Struktur
 
-## Was wird geaendert
+## Neuer Gesamtaufbau der Seite (von oben nach unten)
 
-Die einzelnen "Zwischenspeichern"-Buttons in den Kacheln `FinanceObjectCard` und `FinanceRequestCard` werden entfernt. Stattdessen gibt es einen einzigen Floating-Button, der beim Scrollen immer rechts unten sichtbar bleibt und alle Formulardaten auf einmal zwischenspeichert.
+```text
++------------------------------------------------------------------+
+|  Header: "Neue Finanzierungsakte" + Zurueck-Button               |
++------------------------------------------------------------------+
 
-## Umsetzung
++--- Objekt aus Marktplatz uebernehmen (Suchfeld, volle Breite) ---+
 
-### 1. Buttons aus den Kacheln entfernen
++--- 2-spaltiges Grid -------------------------------------------- +
+|                                |                                  |
+|  ECKDATEN (konsolidierte       |  FINANZIERUNGSKALKULATOR         |
+|  Karte im bisherigen           |  (wie bisher, plus neuer         |
+|  FinanceRequestCard-Design)    |  Button "Eckdaten uebernehmen")  |
+|                                |                                  |
+|  - Finanzierungszweck          |  - Darlehensbetrag               |
+|  - Objektart (neu)             |  - Beleihungsauslauf             |
+|  - Nutzungsart (neu)           |  - Zinsbindung                   |
+|  - Mieteinnahmen mtl. (neu)    |  - Zinssatz p.a.                 |
+|  ----                          |  - Tilgung p.a.                  |
+|  Kostenzusammenstellung        |  ----                            |
+|  - Kaufpreis                   |  - Monatsrate                    |
+|  - Modernisierung              |  - Jahresrate                    |
+|  - Notar                       |  - Restschuld                    |
+|  - Grunderwerbsteuer           |  ----                            |
+|  - Makler                      |  [Eckdaten in Antrag             |
+|  = Gesamtkosten                |   uebernehmen] Button            |
+|  ----                          |                                  |
+|  Finanzierungsplan             |                                  |
+|  - Eigenkapital [Berechnen]    |                                  |
+|  - Darlehenswunsch             |                                  |
+|  - Max. Monatsrate             |                                  |
+|  = Finanzierungsbedarf         |                                  |
+|                                |                                  |
++--------------------------------+----------------------------------+
 
-In `FinanceObjectCard.tsx` und `FinanceRequestCard.tsx` wird der jeweilige Footer-Bereich mit dem "Zwischenspeichern"-Button entfernt. Die Save-Logik (localStorage-Schreiben) bleibt intern erhalten, wird aber ueber eine neue Prop `onSave` nach aussen exponiert, damit der uebergeordnete Container den Speichern-Vorgang ausloesen kann.
++------------------------------------------------------------------+
+|  Ueberschrift: FINANZIERUNGSANTRAG                               |
+|  Untertitel: Detaillierte Angaben fuer die Bankeinreichung       |
++------------------------------------------------------------------+
 
-**Neue Prop in beiden Komponenten:**
-- `onSaveRef?: React.MutableRefObject<(() => void) | null>` — ein Ref, ueber das die Parent-Komponente die interne Save-Funktion aufrufen kann
++--- Selbstauskunft (wie bisher, volle Breite) --------------------+
 
-Alternativ einfacher: Die Karten behalten ihre `handleSave`-Funktion, aber der Button wird ueber eine neue Prop `hideFooter?: boolean` ausgeblendet. Der Floating-Button in der Akte ruft dann direkt `localStorage.setItem` auf (die Keys sind bekannt).
++--- Ueberschrift: Finanzierungsobjekt ----------------------------+
++--- FinanceObjectCard (wie bisher, volle Breite) -----------------+
 
-**Gewaehlt wird der einfachste Ansatz:** Neue Prop `hideFooter?: boolean` in beiden Karten. Wenn `true`, wird der Button-Footer nicht gerendert. Die `handleSave`-Funktion wird ueber ein `ref` (useImperativeHandle) exponiert.
-
-### 2. Floating-Button in FMFinanzierungsakte.tsx
-
-Ein `fixed`-positionierter Button (`fixed bottom-6 right-6 z-50`) mit:
-- Save-Icon + Text "Zwischenspeichern"
-- Glassmorphism-Stil passend zum Design (shadow-lg, backdrop-blur)
-- Klick loest die Save-Funktionen beider Karten aus (ueber Refs)
-- Toast-Bestaetigungsmeldung wie bisher
-
-### 3. MOD-07 AnfrageTab — gleiche Behandlung
-
-Auch in `AnfrageTab.tsx` den gleichen Floating-Button einfuegen, damit das Verhalten konsistent ist.
-
-## Technische Details
-
-### FinanceObjectCard.tsx + FinanceRequestCard.tsx
-
-```typescript
-// Neues Interface
-interface Props {
-  // ... bestehende Props
-  hideFooter?: boolean;
-  saveRef?: React.RefObject<{ save: () => void } | null>;
-}
-
-// useImperativeHandle exponiert save()
-React.useImperativeHandle(saveRef, () => ({
-  save: handleSave,
-}));
-
-// Footer nur rendern wenn !hideFooter
-{!readOnly && !hideFooter && (
-  <div className="px-4 py-3 border-t ...">...</div>
-)}
++--- Floating Save Button (rechts unten) --------------------------+
 ```
 
-### FMFinanzierungsakte.tsx
+---
 
-```typescript
-const objectCardRef = useRef<{ save: () => void }>(null);
-const requestCardRef = useRef<{ save: () => void }>(null);
+## Technische Umsetzung
 
-const handleFloatingSave = () => {
-  objectCardRef.current?.save();
-  requestCardRef.current?.save();
-  toast.success('Daten zwischengespeichert');
-};
+### 1. FinanceRequestCard.tsx — Felder ergaenzen
 
-// Am Ende der Komponente:
-<Button
-  onClick={handleFloatingSave}
-  className="fixed bottom-6 right-6 z-50 shadow-lg gap-2"
->
-  <Save className="h-4 w-4" /> Zwischenspeichern
-</Button>
-```
+Neue Props:
+- `showObjectFields?: boolean` — wenn true, werden vor der Kostenzusammenstellung drei neue Zeilen angezeigt
 
-## Betroffene Dateien
+Neue Felder (nur bei `showObjectFields=true`, oberhalb von "Kostenzusammenstellung"):
+- **Objektart** (Select: ETW, EFH, ZFH, MFH, Grundstueck, Gewerbe)
+- **Nutzungsart** (Select: Eigengenutzt / Vermietet)
+- **Mieteinnahmen mtl. (EUR)** (Number-Input)
+
+Dazu wird `FinanceFormData` um drei Felder erweitert:
+- `objectType: string`
+- `usage: string`
+- `rentalIncome: string`
+
+Die Karten-Ueberschrift wird ueber eine neue Prop `title?: string` steuerbar (Default: "Beantragte Finanzierung", MOD-11 setzt "Eckdaten").
+
+### 2. FinanceCalculatorCard.tsx — Button hinzufuegen
+
+Neue Prop:
+- `onTransferToApplication?: () => void`
+
+Am Ende der Karte (nach Restschuld) wird ein Button angezeigt:
+- Text: "Eckdaten in Antrag uebernehmen"
+- Icon: ArrowDown oder Copy
+- Klick ruft `onTransferToApplication()` im Parent auf
+
+### 3. FMFinanzierungsakte.tsx — Umbau der Seitenstruktur
+
+Aenderungen:
+- **Alte Eckdaten-Karte** (Zeilen 152-213) wird komplett entfernt
+- **Listing-Suche** wird an den Anfang verschoben (direkt nach Header)
+- **2-spaltiges Grid** (FinanceRequestCard + FinanceCalculatorCard) kommt direkt nach der Suche
+- FinanceRequestCard erhaelt `showObjectFields={true}` und `title="Eckdaten"`
+- **Neue Ueberschrift** "Finanzierungsantrag" vor dem Selbstauskunft-Block
+- Die alte Ueberschrift "Finanzierungsobjekt" bleibt vor der FinanceObjectCard
+- Der `onTransferToApplication`-Callback befuellt die Selbstauskunft- und ObjectCard-Felder aus den Eckdaten (z.B. Objektart, Nutzungsart, Mieteinnahmen)
+
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `FinanceObjectCard.tsx` | `hideFooter` + `saveRef` Props, useImperativeHandle, forwardRef |
-| `FinanceRequestCard.tsx` | `hideFooter` + `saveRef` Props, useImperativeHandle, forwardRef |
-| `FMFinanzierungsakte.tsx` | Floating-Button, Refs fuer beide Karten, `hideFooter={true}` |
-| `AnfrageTab.tsx` | Gleicher Floating-Button + Refs |
+| `FinanceRequestCard.tsx` | 3 neue Felder in Interface + UI, neue Props `showObjectFields` und `title` |
+| `FinanceCalculatorCard.tsx` | Neuer Button "Eckdaten in Antrag uebernehmen" |
+| `FMFinanzierungsakte.tsx` | Seitenstruktur umbauen, alte Eckdaten-Karte entfernen, Transfer-Callback implementieren |
+
+MOD-07 (`AnfrageTab.tsx`) bleibt unveraendert — dort wird `showObjectFields` nicht gesetzt.
