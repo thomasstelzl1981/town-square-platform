@@ -127,10 +127,13 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
   return (
     <Card className="glass-card overflow-hidden">
       <CardContent className="p-3">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-1">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-xs font-semibold">Magic Intake</span>
         </div>
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Kundendaten eingeben und Finanzierungsakte sofort anlegen. Der Datenraum wird automatisch erstellt.
+        </p>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <Input
             value={firstName}

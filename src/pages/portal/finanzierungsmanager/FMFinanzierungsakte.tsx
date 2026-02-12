@@ -193,10 +193,13 @@ export default function FMFinanzierungsakte() {
         {/* Listing search */}
         <Card className="glass-card overflow-hidden">
           <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <Search className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs font-semibold">Objekt aus Marktplatz übernehmen</span>
             </div>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              Bestehendes Objekt aus dem Marktplatz suchen und Stammdaten automatisch in die Akte übernehmen.
+            </p>
             <div className="relative" ref={searchRef}>
               <Input
                 value={searchQuery}
