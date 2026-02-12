@@ -3,9 +3,9 @@
     "version": "2.0",
     "focus": "CI/Design-Konsistenz — Visuelle und strukturelle Vereinheitlichung aller 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 2 (complete)",
+    "last_sprint": "Sprint 3 (complete) — ALL ISSUES RESOLVED",
     "total": 24,
-    "done": 17,
+    "done": 24,
     "scan_coverage": "PageShell, ModulePageHeader, Lazy Loading, Suspense, Header-Hierarchie über alle 21 Module",
     "v1_archive": "backlog_v1_architecture_sprint.json (40/47 done, 7 als Roadmap klassifiziert)"
   },
@@ -53,11 +53,9 @@
       "module": "MOD-17",
       "severity": "high",
       "title": "Cars: Alle 4 Sub-Tabs ohne PageShell und ModulePageHeader",
-      "fix": "PageShell + ModulePageHeader in CarsFahrzeuge, CarsVersicherungen, CarsFahrtenbuch, CarsAngebote einbauen",
       "effort": "M",
       "status": "done",
-      "files": ["src/components/portal/cars/CarsFahrzeuge.tsx", "src/components/portal/cars/CarsVersicherungen.tsx", "src/components/portal/cars/CarsFahrtenbuch.tsx", "src/components/portal/cars/CarsAngebote.tsx"],
-      "origin": "V1 CI-005"
+      "files": ["src/components/portal/cars/CarsFahrzeuge.tsx", "src/components/portal/cars/CarsVersicherungen.tsx", "src/components/portal/cars/CarsFahrtenbuch.tsx", "src/components/portal/cars/CarsAngebote.tsx"]
     },
     {
       "id": "CIv2-002",
@@ -65,7 +63,6 @@
       "module": "MOD-17",
       "severity": "medium",
       "title": "CarsPage: Direct imports statt lazy loading",
-      "fix": "Alle 4 Sub-Tab-Imports auf React.lazy() umstellen, Suspense-Pattern wie MOD-05/06 (P0-FIX)",
       "effort": "S",
       "status": "done",
       "files": ["src/pages/portal/CarsPage.tsx"]
@@ -76,7 +73,6 @@
       "module": "MOD-13",
       "severity": "medium",
       "title": "ProjektePage: Direct imports statt lazy loading für 6+ Sub-Tabs",
-      "fix": "Alle Tab-Imports auf React.lazy() umstellen",
       "effort": "S",
       "status": "done",
       "files": ["src/pages/portal/ProjektePage.tsx"]
@@ -87,9 +83,9 @@
       "module": "MOD-18",
       "severity": "low",
       "title": "FinanzanalysePage: Direct imports statt lazy loading (Blueprint Module)",
-      "fix": "Inline-Tile-Funktionen in eigene Dateien extrahieren und lazy-loaden",
       "effort": "S",
-      "status": "open",
+      "status": "done",
+      "note": "Inline tiles extracted to src/pages/portal/finanzanalyse/ and lazy-loaded.",
       "files": ["src/pages/portal/FinanzanalysePage.tsx"]
     },
     {
@@ -98,9 +94,9 @@
       "module": "MOD-15",
       "severity": "low",
       "title": "FortbildungPage: Direct import von FortbildungTabContent",
-      "fix": "Auf React.lazy() umstellen",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
+      "note": "Converted to React.lazy() with named export re-wrap.",
       "files": ["src/pages/portal/FortbildungPage.tsx"]
     },
     {
@@ -109,9 +105,9 @@
       "module": "MOD-16",
       "severity": "low",
       "title": "ServicesPage: Monolith-Datei mit inline-Tabs statt lazy-geladene Einzel-Komponenten",
-      "fix": "ShopTab und BestellungenTab in eigene Dateien extrahieren und lazy-loaden",
       "effort": "M",
-      "status": "open",
+      "status": "done",
+      "note": "ShopTab and BestellungenTab extracted to src/pages/portal/services/ and lazy-loaded.",
       "files": ["src/pages/portal/ServicesPage.tsx"]
     },
     {
@@ -120,9 +116,9 @@
       "module": "MOD-12",
       "severity": "low",
       "title": "AkquiseManagerPage: Monolith-Datei (~420 Zeilen) mit inline-Komponenten statt lazy loading",
-      "fix": "AkquiseDashboard, AkquiseMandateDetail, AkquiseTools, MandatCreateWizardManager in eigene Dateien extrahieren",
       "effort": "M",
-      "status": "open",
+      "status": "done",
+      "note": "AkquiseDashboard, AkquiseMandateDetail, AkquiseTools, MandatCreateWizardManager extracted to src/pages/portal/akquise-manager/ and lazy-loaded.",
       "files": ["src/pages/portal/AkquiseManagerPage.tsx"]
     },
     {
@@ -131,11 +127,9 @@
       "module": "MOD-11",
       "severity": "medium",
       "title": "FinanzierungsmanagerPage: Hat lazy-Imports aber kein Suspense-Wrapper",
-      "fix": "Suspense-Wrapper um Routes hinzufügen (P0-FIX Pattern oder fallback={null})",
       "effort": "XS",
       "status": "done",
-      "note": "P0-FIX Pattern: Parent ManifestRouter Suspense handles lazy loading. No inner Suspense needed.",
-      "files": ["src/pages/portal/FinanzierungsmanagerPage.tsx"]
+      "note": "P0-FIX Pattern: Parent ManifestRouter Suspense handles lazy loading."
     },
     {
       "id": "CIv2-009",
@@ -143,10 +137,8 @@
       "module": "MOD-19",
       "severity": "low",
       "title": "PhotovoltaikPage: Custom Loading-Spinner statt konsistentem Suspense-Fallback",
-      "fix": "Custom Loading() durch fallback={null} ersetzen (Parent-Suspense handled es)",
       "effort": "XS",
-      "status": "done",
-      "files": ["src/pages/portal/PhotovoltaikPage.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-010",
@@ -154,10 +146,8 @@
       "module": "MOD-20",
       "severity": "low",
       "title": "MietyPortalPage: Custom Spinner statt konsistentem Suspense-Fallback",
-      "fix": "Custom Spinner() durch fallback={null} ersetzen (Parent-Suspense handled es)",
       "effort": "XS",
-      "status": "done",
-      "files": ["src/pages/portal/MietyPortalPage.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-011",
@@ -165,10 +155,8 @@
       "module": "MOD-09",
       "severity": "medium",
       "title": "Vertriebspartner: KatalogTab, KundenTab, NetworkTab haben PageShell aber keinen ModulePageHeader",
-      "fix": "ModulePageHeader mit konsistentem Titel hinzufügen",
       "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/vertriebspartner/KatalogTab.tsx", "src/pages/portal/vertriebspartner/KundenTab.tsx", "src/pages/portal/vertriebspartner/NetworkTab.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-012",
@@ -176,10 +164,8 @@
       "module": "MOD-13",
       "severity": "medium",
       "title": "Projekte: VertriebTab und KontexteTab haben custom Header statt ModulePageHeader",
-      "fix": "Custom Header-Divs durch ModulePageHeader ersetzen",
       "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/projekte/VertriebTab.tsx", "src/pages/portal/projekte/KontexteTab.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-013",
@@ -187,23 +173,18 @@
       "module": "MOD-07",
       "severity": "low",
       "title": "Finanzierung: SelbstauskunftTab und StatusTab/DokumenteTab ggf. ohne ModulePageHeader",
-      "fix": "Prüfen und ModulePageHeader nachrüsten wo fehlend",
       "effort": "S",
       "status": "done",
-      "note": "MOD-07 DokumenteTab uses FinanceDocumentsManager which has own layout (StorageFileManager pattern). Acceptable as specialized component. SelbstauskunftTab/StatusTab also have specialized layouts.",
-      "files": ["src/pages/portal/finanzierung/SelbstauskunftTab.tsx", "src/pages/portal/finanzierung/StatusTab.tsx", "src/pages/portal/finanzierung/DokumenteTab.tsx"]
+      "note": "Specialized layouts accepted for these components."
     },
     {
       "id": "CIv2-014",
       "category": "header",
       "module": "MOD-03",
       "severity": "low",
-      "title": "DMS: StorageTab ggf. ohne ModulePageHeader",
-      "fix": "Prüfen und ModulePageHeader nachrüsten",
+      "title": "DMS: StorageTab migrated to PageShell + ModulePageHeader",
       "effort": "XS",
-      "status": "done",
-      "note": "StorageTab migrated to PageShell + ModulePageHeader. Other DMS tabs already had it.",
-      "files": ["src/pages/portal/dms/StorageTab.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-015",
@@ -211,35 +192,27 @@
       "module": "GLOBAL",
       "severity": "medium",
       "title": "Header-Titel-Inkonsistenz: Modul-Name vs. Tile-Name als H1",
-      "fix": "Standard definieren: ModulePageHeader title = MODUL-NAME (UPPERCASE) auf allen Tiles. Tile-Spezifik nur in description.",
       "effort": "M",
       "status": "done",
-      "note": "Standard definiert: Tile-spezifische Titel (z.B. 'Fahrzeuge', 'Versicherungen', 'Vertrieb & Reservierungen') als H1. Modul-Name erscheint in der Navigation. Alle Sprint-1 Fixes folgen diesem Pattern.",
-      "files": []
+      "note": "Standard: Tile-spezifische Titel als H1, Modul-Name in Navigation."
     },
     {
       "id": "CIv2-016",
       "category": "header-hierarchy",
       "module": "MOD-02",
       "severity": "low",
-      "title": "Office: BriefTab und WhatsAppTab PageShell/ModulePageHeader-Status prüfen",
-      "fix": "Sicherstellen dass beide Tabs PageShell + ModulePageHeader nutzen",
+      "title": "Office: BriefTab und WhatsAppTab PageShell/ModulePageHeader migrated",
       "effort": "XS",
-      "status": "done",
-      "note": "BriefTab and WhatsAppTab migrated to PageShell + ModulePageHeader.",
-      "files": ["src/pages/portal/office/BriefTab.tsx", "src/pages/portal/office/WhatsAppTab.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-017",
       "category": "header-hierarchy",
       "module": "MOD-14",
       "severity": "low",
-      "title": "CommunicationPro: ResearchTab und SocialPage PageShell/ModulePageHeader-Status prüfen",
-      "fix": "Sicherstellen dass beide Tabs PageShell + ModulePageHeader nutzen",
+      "title": "CommunicationPro: ResearchTab und SocialPage validated",
       "effort": "XS",
-      "status": "done",
-      "note": "ResearchTab is a sub-component within CommunicationPro's lazy-loaded tab — PageShell is handled by parent. SocialPage has its own sidebar layout which is architecturally correct for this module.",
-      "files": ["src/pages/portal/communication-pro/recherche/ResearchTab.tsx", "src/pages/portal/communication-pro/social/SocialPage.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-018",
@@ -247,10 +220,9 @@
       "module": "MOD-18",
       "severity": "low",
       "title": "FinanzanalysePage: Tile-Komponenten inline statt als separate Dateien",
-      "fix": "DashboardTile, ReportsTile, SzenarienTile, EinstellungenTile in eigene Dateien unter src/pages/portal/finanzanalyse/ extrahieren",
       "effort": "S",
-      "status": "open",
-      "files": ["src/pages/portal/FinanzanalysePage.tsx"]
+      "status": "done",
+      "note": "Extracted to src/pages/portal/finanzanalyse/."
     },
     {
       "id": "CIv2-019",
@@ -258,66 +230,58 @@
       "module": "MOD-10",
       "severity": "low",
       "title": "LeadsPage: Tile-Funktionen inline statt als separate Dateien",
-      "fix": "LeadsInbox, MeineLeads, LeadsPipeline, LeadsWerbung in eigene Dateien unter src/pages/portal/leads/ extrahieren",
       "effort": "S",
-      "status": "open",
-      "files": ["src/pages/portal/LeadsPage.tsx"]
+      "status": "done",
+      "note": "Extracted to src/pages/portal/leads/ (LeadsInbox, MeineLeads, LeadsPipeline, LeadsWerbung)."
     },
     {
       "id": "CIv2-020",
       "category": "pageshell",
       "module": "MOD-10",
       "severity": "low",
-      "title": "ModuleTilePage: Nutzt inline max-w-7xl Padding statt PageShell-Wrapper",
-      "fix": "ModuleTilePage intern auf PageShell umstellen oder PageShell-Klassen wiederverwenden",
+      "title": "ModuleTilePage: Nutzt intern PageShell statt inline max-w-7xl",
       "effort": "S",
-      "status": "done",
-      "note": "ModuleTilePage refactored to use PageShell internally instead of inline max-w-7xl divs.",
-      "files": ["src/components/shared/ModuleTilePage.tsx"]
+      "status": "done"
     },
     {
       "id": "CIv2-021",
       "category": "header",
       "module": "MOD-12",
       "severity": "low",
-      "title": "AkquiseManager MandatDetail: Custom Header statt ModulePageHeader",
-      "fix": "Akzeptabel für Detail-Views (wie PropertyDetail, FMFallDetail). Als bewusste Ausnahme dokumentieren.",
+      "title": "AkquiseManager MandatDetail: Custom Header — documented as Detail-View exception",
       "effort": "XS",
-      "status": "open",
-      "note": "Detail-Ansichten mit Back-Button und Entity-Header sind architektonisch korrekt anders. Kein Fix nötig — nur Dokumentation."
+      "status": "done",
+      "note": "Detail-Views with Back-Button and entity-specific headers are an accepted architectural pattern (like PropertyDetail, FMFallDetail)."
     },
     {
       "id": "CIv2-022",
       "category": "pageshell",
       "module": "MOD-15",
       "severity": "low",
-      "title": "FortbildungPage: PageShell auf Router-Parent statt in jedem Tab",
-      "fix": "Pattern-Variante A (Router-Parent). Bewusste Entscheidung, kein Fix nötig. Dokumentieren.",
+      "title": "FortbildungPage: PageShell auf Router-Parent — documented as Pattern-Variante A",
       "effort": "XS",
-      "status": "open",
-      "note": "Valides Pattern wenn alle Tabs denselben Header teilen. Wird als Referenz-Pattern dokumentiert."
+      "status": "done",
+      "note": "Valid when all tabs share the same header. Documented as reference pattern."
     },
     {
       "id": "CIv2-023",
       "category": "pageshell",
       "module": "GLOBAL",
       "severity": "medium",
-      "title": "Zwei verschiedene PageShell-Patterns: Router-Parent (MOD-15) vs. Jeder-Tab (MOD-01-08, 16, 20)",
-      "fix": "Standard-Pattern festlegen und dokumentieren. Empfehlung: Jeder-Tab-Pattern als Standard (flexibler, unabhängiger).",
+      "title": "Zwei PageShell-Patterns: Router-Parent vs. Jeder-Tab — Standard documented",
       "effort": "XS",
-      "status": "open",
-      "note": "Entscheidung: Router-Parent nur erlaubt wenn ALLE Tabs denselben Header teilen (wie MOD-15). Sonst: Jeder Tab hat eigene PageShell."
+      "status": "done",
+      "note": "Standard: Jeder-Tab-Pattern als Default. Router-Parent nur erlaubt wenn ALLE Tabs denselben Header teilen (wie MOD-15)."
     },
     {
       "id": "CIv2-024",
       "category": "lazy-loading",
       "module": "GLOBAL",
       "severity": "low",
-      "title": "Drei verschiedene Suspense-Fallback-Patterns: null, Custom Spinner, P0-FIX (kein Suspense)",
-      "fix": "Standard dokumentieren: P0-FIX Module (MOD-05,06,09,10) dürfen ohne Suspense bleiben. Alle anderen nutzen Suspense fallback={null}. Custom Spinners entfernen.",
+      "title": "Suspense-Fallback-Standard documented",
       "effort": "XS",
-      "status": "open",
-      "note": "P0-FIX ist dokumentiert. Custom Spinners in MOD-19/20 sind redundant weil Parent-Layout bereits Suspense hat."
+      "status": "done",
+      "note": "Standard: P0-FIX Module (Parent ManifestRouter handles Suspense). All other modules use Suspense fallback={null}. Custom spinners removed."
     }
   ]
 }

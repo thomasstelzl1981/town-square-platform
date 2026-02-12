@@ -3,13 +3,12 @@
  * 4 Tabs: Bücher, Fortbildungen, Vorträge, Kurse
  */
 
+import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
-import { FortbildungTabContent } from '@/components/portal/fortbildung/FortbildungTabContent';
-
-
+const FortbildungTabContent = lazy(() => import('@/components/portal/fortbildung/FortbildungTabContent').then(m => ({ default: m.FortbildungTabContent })));
 
 export default function FortbildungPage() {
   return (
