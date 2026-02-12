@@ -3,7 +3,7 @@
  * Eckdaten + Selbstauskunft + shared Object/Finance cards with localStorage
  */
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ArrowLeft, FileText, User, Building2, Search } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
+import FinanceCalculatorCard from '@/components/finanzierung/FinanceCalculatorCard';
 import {
   PersonSection, EmploymentSection, BankSection, IncomeSection,
   ExpensesSection, AssetsSection, createEmptyApplicantFormData,
@@ -73,10 +74,14 @@ export default function FMFinanzierungsakte() {
     readOnly: false,
   };
 
-  // Listing selection for auto-fill
-  const [selectedListingId, setSelectedListingId] = useState('');
+  // Listing search for auto-fill
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [externalObjectData, setExternalObjectData] = useState<Partial<ObjectFormData> | undefined>();
   const [externalPurchasePrice, setExternalPurchasePrice] = useState<string | undefined>();
+  const [calculatorBedarf, setCalculatorBedarf] = useState(0);
+  const [calculatorPurchasePrice, setCalculatorPurchasePrice] = useState(0);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const { data: listings } = useQuery({
     queryKey: ['v_public_listings'],
@@ -90,15 +95,21 @@ export default function FMFinanzierungsakte() {
     },
   });
 
-  const handleListingSelect = (publicId: string) => {
-    setSelectedListingId(publicId);
-    if (!publicId || publicId === '__none__') {
-      setExternalObjectData(undefined);
-      setExternalPurchasePrice(undefined);
-      return;
-    }
-    const listing = listings?.find(l => l.public_id === publicId);
+  const filteredListings = useMemo(() => {
+    if (!searchQuery.trim() || !listings) return [];
+    const q = searchQuery.toLowerCase();
+    return listings.filter(l =>
+      (l.public_id?.toLowerCase().includes(q)) ||
+      (l.title?.toLowerCase().includes(q)) ||
+      (l.city?.toLowerCase().includes(q)) ||
+      (l.postal_code?.toLowerCase().includes(q))
+    ).slice(0, 8);
+  }, [searchQuery, listings]);
+
+  const handleListingSelect = (listing: NonNullable<typeof listings>[number]) => {
     if (!listing) return;
+    setSearchQuery(`${listing.title ?? ''} — ${listing.city ?? ''}`);
+    setShowDropdown(false);
     setExternalObjectData({
       city: listing.city ?? '',
       postalCode: listing.postal_code ?? '',
@@ -107,6 +118,13 @@ export default function FMFinanzierungsakte() {
       livingArea: listing.total_area_sqm?.toString() ?? '',
     });
     setExternalPurchasePrice(listing.asking_price?.toString() ?? '');
+  };
+
+  const handleCalculate = (bedarf: number) => {
+    setCalculatorBedarf(bedarf);
+    // purchasePrice from external or from FinanceRequestCard data
+    const pp = Number(externalPurchasePrice) || 0;
+    setCalculatorPurchasePrice(pp);
   };
 
   return (
@@ -215,25 +233,42 @@ export default function FMFinanzierungsakte() {
         </p>
       </div>
 
-      {/* Listing selector (MOD-11 only) */}
+      {/* Listing search (MOD-11 only) */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground whitespace-nowrap">Objekt aus Marktplatz übernehmen</span>
-            <Select value={selectedListingId} onValueChange={handleListingSelect}>
-              <SelectTrigger className="h-8 text-xs flex-1">
-                <SelectValue placeholder="Kein Listing — manuell eingeben" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Kein Listing — manuell eingeben</SelectItem>
-                {listings?.map(l => (
-                  <SelectItem key={l.public_id} value={l.public_id ?? ''}>
-                    {l.title ?? 'Ohne Titel'} — {l.city ?? ''}{l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative flex-1" ref={searchRef}>
+              <Input
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                placeholder="Objekt suchen (ID, Ort, Straße...)"
+                className="h-8 text-xs"
+              />
+              {showDropdown && filteredListings.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
+                  {filteredListings.map(l => (
+                    <button
+                      key={l.public_id}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0"
+                      onMouseDown={() => handleListingSelect(l)}
+                    >
+                      <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
+                      <div className="text-muted-foreground">
+                        {l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}
+                        {l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -241,8 +276,19 @@ export default function FMFinanzierungsakte() {
       {/* Block 3: Finanzierungsobjekt (shared card) */}
       <FinanceObjectCard storageKey="mod11-akte" externalData={externalObjectData} />
 
-      {/* Block 4: Beantragte Finanzierung (shared card) */}
-      <FinanceRequestCard storageKey="mod11-akte" externalPurchasePrice={externalPurchasePrice} />
+      {/* Block 4: Finanzierung + Kalkulator (2-spaltig) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FinanceRequestCard
+          storageKey="mod11-akte"
+          externalPurchasePrice={externalPurchasePrice}
+          showCalculator
+          onCalculate={handleCalculate}
+        />
+        <FinanceCalculatorCard
+          finanzierungsbedarf={calculatorBedarf}
+          purchasePrice={calculatorPurchasePrice}
+        />
+      </div>
     </PageShell>
   );
 }
