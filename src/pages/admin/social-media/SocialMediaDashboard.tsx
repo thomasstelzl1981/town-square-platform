@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Megaphone, FileText, Target, CreditCard, TrendingUp, Users, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 
 const demoStats = [
   { label: 'Aktive Kampagnen', value: '5', icon: Megaphone, trend: '+2' },
@@ -47,7 +48,7 @@ export default function SocialMediaDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         {demoStats.map((s) => (
           <Card key={s.label} className="glass-card">
             <CardContent className="p-4">
@@ -116,7 +117,7 @@ export default function SocialMediaDashboard() {
       <Card className="glass-card">
         <CardContent className="p-5">
           <h3 className="font-medium mb-4">Top Templates</h3>
-          <div className="grid grid-cols-5 gap-3">
+          <div className={DESIGN.KPI_GRID.FULL}>
             {['T1: Rendite', 'T2: Portrait', 'T3: Showcase', 'T4: Testimonial', 'T5: Region'].map((t) => (
               <div key={t} className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/admin/social-media/templates')}>
                 <div className="h-12 w-full rounded bg-muted/50 mb-2" />

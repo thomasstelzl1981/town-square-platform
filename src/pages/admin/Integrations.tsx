@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
 import { 
   Plug, 
   Mail, 
@@ -260,7 +261,7 @@ export default function Integrations() {
           <h2 className="text-lg font-semibold">
             {CATEGORY_LABELS[type] || type}
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className={DESIGN.WIDGET_GRID.FULL}>
             {(items as Array<{ id: string; code: string; name: string; status: string; description: string | null; type: string }>).map((integration) => {
               const Icon = ICON_MAP[integration.code] || Plug;
               const hasSecret = isIntegrationActive(integration.code, configuredSecrets);
