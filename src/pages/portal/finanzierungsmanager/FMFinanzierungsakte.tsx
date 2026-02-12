@@ -12,8 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search, Save } from 'lucide-react';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote } from 'lucide-react';
 import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
@@ -21,9 +21,11 @@ import { PageShell } from '@/components/shared/PageShell';
 import FinanceCalculatorCard from '@/components/finanzierung/FinanceCalculatorCard';
 import {
   PersonSection, EmploymentSection, BankSection, IncomeSection,
-  ExpensesSection, AssetsSection, createEmptyApplicantFormData,
+  ExpensesSection, AssetsSection, DualHeader, SectionHeaderRow,
+  createEmptyApplicantFormData,
   type ApplicantFormData,
 } from '@/components/finanzierung/ApplicantPersonFields';
+import { Table, TableBody } from '@/components/ui/table';
 import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } from '@/components/finanzierung/FinanceObjectCard';
 import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -246,7 +248,7 @@ export default function FMFinanzierungsakte() {
         </p>
       </div>
 
-      {/* Block 2: Selbstauskunft */}
+      {/* Block 2a: Selbstauskunft — Person, Beschäftigung, Bankverbindung */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
           <div className="px-4 py-2.5 border-b bg-muted/20">
@@ -254,16 +256,40 @@ export default function FMFinanzierungsakte() {
               <User className="h-4 w-4" /> Selbstauskunft
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Persönliche Daten, Beschäftigung, Einkommen und Vermögen der Antragsteller
+              Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller
             </p>
           </div>
-          <div className="p-4 space-y-6">
-            <PersonSection {...dualProps} />
-            <EmploymentSection {...dualProps} />
-            <BankSection {...dualProps} />
-            <IncomeSection {...dualProps} />
-            <ExpensesSection {...dualProps} />
-            <AssetsSection {...dualProps} />
+          <div className="p-4 space-y-0">
+            {/* Shared DualHeader for Card 1 */}
+            <Table><DualHeader /><TableBody /></Table>
+            <PersonSection {...dualProps} hideHeader />
+            <EmploymentSection {...dualProps} hideHeader />
+            <BankSection {...dualProps} hideHeader />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Block 2b: Einnahmen, Ausgaben & Vermögen */}
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-0">
+          <div className="px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller
+            </p>
+          </div>
+          <div className="p-4 space-y-0">
+            {/* Shared DualHeader for Card 2 */}
+            <Table><DualHeader /><TableBody /></Table>
+            <IncomeSection {...dualProps} hideHeader />
+            <ExpensesSection {...dualProps} hideHeader />
+            {/* Sub-heading for Assets */}
+            <div className="pt-4">
+              <Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table>
+            </div>
+            <AssetsSection {...dualProps} hideHeader />
           </div>
         </CardContent>
       </Card>
@@ -296,6 +322,9 @@ export default function FMFinanzierungsakte() {
         rentalIncome={eckdatenRentalIncome}
         livingArea={Number(externalObjectData?.livingArea) || 0}
       />
+
+      {/* Spacer to prevent floating button overlap */}
+      <div className="h-20" />
 
       {/* Floating save button */}
       <Button

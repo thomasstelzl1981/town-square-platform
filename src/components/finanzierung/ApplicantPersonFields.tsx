@@ -182,6 +182,8 @@ export interface DualApplicantSectionProps {
   readOnly: boolean;
   coReadOnly?: boolean;
   onCoFirstInput?: () => void;
+  /** When true, the section's own DualHeader row is suppressed (rendered once per card instead) */
+  hideHeader?: boolean;
 }
 
 // Legacy single-applicant interface (kept for backward compat)
@@ -244,7 +246,7 @@ export function PersonSection(props: ApplicantSectionProps | DualApplicantSectio
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Persönliche Daten" />
           <TR label="Anrede"
@@ -337,7 +339,7 @@ export function EmploymentSection(props: ApplicantSectionProps | DualApplicantSe
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Beschäftigung" />
           <TR label="Beschäftigungsart"
@@ -483,7 +485,7 @@ export function EmploymentSection(props: ApplicantSectionProps | DualApplicantSe
           )}
 
           {/* Rente */}
-          <SectionHeaderRow title="Rente" />
+          <SectionHeaderRow title="Altersrente" />
           <TR label="Rentenbeginn (geplant)" children2={coField('retirement_date', 'date')}>
             <TInput type="date" value={formData.retirement_date} onChange={e => onChange('retirement_date', e.target.value)} disabled={readOnly} />
           </TR>
@@ -513,7 +515,7 @@ export function BankSection(props: ApplicantSectionProps | DualApplicantSectionP
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Bankverbindung" />
           <TR label="IBAN" required
@@ -564,7 +566,7 @@ export function IncomeSection(props: ApplicantSectionProps | DualApplicantSectio
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Monatliche Einnahmen" />
           <TR label="Nettoeinkommen" required children2={cf('net_income_monthly')}>
@@ -623,7 +625,7 @@ export function ExpensesSection(props: ApplicantSectionProps | DualApplicantSect
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Monatliche Ausgaben" />
           <TR label="Aktuelle Warmmiete" children2={cf('current_rent_monthly')}>
@@ -679,7 +681,7 @@ export function AssetsSection(props: ApplicantSectionProps | DualApplicantSectio
   return (
     <div className="space-y-3">
       <Table>
-        {isDual && <DualHeader />}
+        {isDual && !(props as DualApplicantSectionProps).hideHeader && <DualHeader />}
         <TableBody>
           <SectionHeaderRow title="Vermögenswerte" />
           <TR label="Bank-/Sparguthaben" children2={cf('bank_savings')}>

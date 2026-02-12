@@ -23,7 +23,7 @@ import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Calculator, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Calculator, CheckCircle2, XCircle, Info, AlertTriangle, Bot } from 'lucide-react';
 import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { CalcData } from './FinanceCalculatorCard';
 
@@ -77,6 +77,7 @@ interface HouseholdCalculationCardProps {
   usage: string;
   rentalIncome: number;
   livingArea: number;
+  onOpenArmstrong?: () => void;
 }
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
@@ -151,7 +152,7 @@ const EMPTY_STATE: HHState = {
 };
 
 export default function HouseholdCalculationCard({
-  formData, coFormData, calcData, usage, rentalIncome, livingArea
+  formData, coFormData, calcData, usage, rentalIncome, livingArea, onOpenArmstrong
 }: HouseholdCalculationCardProps) {
   const [state, setState] = useState<HHState>({ ...EMPTY_STATE });
 
@@ -315,6 +316,61 @@ export default function HouseholdCalculationCard({
               </span>
             </div>
           </div>
+
+          {/* Rule-based assessment box */}
+          {totalIncome > 0 && (() => {
+            const allZero = totalIncome === 0 && totalExpenses === 0;
+            const ratio = totalIncome > 0 ? disposable / totalIncome : 0;
+            // Green: disposable >= 0 and ratio > 10%
+            // Yellow: disposable >= 0 but ratio <= 10%
+            // Red: disposable < 0
+            let color: string, bgColor: string, icon: React.ReactNode, title: string, text: string;
+
+            if (allZero) {
+              color = 'text-muted-foreground';
+              bgColor = 'bg-muted/30';
+              icon = <Info className="h-4 w-4 text-muted-foreground shrink-0" />;
+              title = 'Keine Daten';
+              text = 'Bitte erfassen Sie zunächst die Einnahmen und Ausgaben der Antragsteller, bevor Sie die Kapitaldienstfähigkeit berechnen.';
+            } else if (disposable < 0) {
+              color = 'text-red-800 dark:text-red-300';
+              bgColor = 'bg-red-50 dark:bg-red-950/30';
+              icon = <XCircle className="h-4 w-4 text-destructive shrink-0" />;
+              title = 'Nicht tragfähig';
+              text = `Die Kapitaldienstfähigkeit ist nicht gegeben. Es besteht ein monatliches Defizit von ${eurFormat.format(Math.abs(disposable))}. Bitte prüfen Sie die Einnahmen- und Ausgabensituation oder passen Sie die Finanzierungsparameter an.`;
+            } else if (ratio <= 0.10) {
+              color = 'text-yellow-800 dark:text-yellow-300';
+              bgColor = 'bg-yellow-50 dark:bg-yellow-950/30';
+              icon = <AlertTriangle className="h-4 w-4 text-yellow-600 shrink-0" />;
+              title = 'Grenzwertig';
+              text = `Die Finanzierung ist grenzwertig. Der monatliche Überschuss beträgt nur ${eurFormat.format(disposable)} (${(ratio * 100).toFixed(1)}% der Einnahmen). Empfehlung: Prüfen Sie, ob weitere Sicherheiten oder Einkommensquellen vorliegen.`;
+            } else {
+              color = 'text-green-800 dark:text-green-300';
+              bgColor = 'bg-green-50 dark:bg-green-950/30';
+              icon = <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />;
+              title = 'Tragfähig';
+              text = `Nach aktuellem Stand erscheint die Finanzierung vorstellbar. Die Kapitaldienstfähigkeit ist mit einem Überschuss von ${eurFormat.format(disposable)} gegeben. Empfehlung: Unterlagen vollständig einreichen.`;
+            }
+
+            return (
+              <div className={`${bgColor} px-4 py-3 border-b`}>
+                <div className="flex items-start gap-3">
+                  {icon}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-semibold ${color}`}>{title}</p>
+                    <p className={`text-xs ${color} mt-0.5 leading-relaxed`}>{text}</p>
+                  </div>
+                </div>
+                {onOpenArmstrong && (
+                  <div className="flex justify-end mt-2">
+                    <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={onOpenArmstrong}>
+                      <Bot className="h-3.5 w-3.5" /> Armstrong öffnen
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
       </CardContent>
