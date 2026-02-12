@@ -49,7 +49,7 @@ export function RadioWidget() {
   };
 
   return (
-    <Card className="aspect-square bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 overflow-hidden">
+    <Card className="h-[260px] md:aspect-square md:h-auto bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 overflow-hidden">
       <CardContent className="h-full flex flex-col p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">

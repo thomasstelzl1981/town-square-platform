@@ -32,7 +32,7 @@ export function SortableWidget({ id, children, className }: SortableWidgetProps)
 
   // On mobile: Render simple div without DnD attributes
   if (isMobile) {
-    return <div className={className}>{children}</div>;
+    return <div className={cn('w-full snap-start', className)}>{children}</div>;
   }
 
   const style = {

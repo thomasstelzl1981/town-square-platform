@@ -40,21 +40,38 @@ export function FinanceCaseCard({ caseData, isSelected, onClick }: FinanceCaseCa
   return (
     <Card
       className={cn(
-        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group flex flex-col aspect-square',
+        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group',
+        'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
         isSelected && 'ring-2 ring-primary shadow-glow'
       )}
       onClick={() => onClick?.(requestId)}
     >
-      <CardContent className="p-4 flex flex-col h-full justify-between">
-        {/* Top: Status + ID */}
+      {/* Mobile: horizontal row layout */}
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 md:hidden">
+        <Landmark className="h-5 w-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0 md:hidden">
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className="font-semibold text-sm leading-tight truncate">{name}</p>
+          <Badge variant={getStatusBadgeVariant(status)} className="text-[10px] font-medium flex-shrink-0">
+            {getStatusLabel(status)}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="font-mono">{publicId}</span>
+          {amount && <span>· {eurFormat.format(amount)}</span>}
+        </div>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 md:hidden" />
+
+      {/* Desktop: original square layout */}
+      <CardContent className="hidden md:flex p-4 flex-col h-full justify-between">
         <div className="flex items-start justify-between">
           <Badge variant={getStatusBadgeVariant(status)} className="text-[10px] font-medium">
             {getStatusLabel(status)}
           </Badge>
           <span className="text-[10px] font-mono text-muted-foreground">{publicId}</span>
         </div>
-
-        {/* Center: Name + Amount */}
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
             <Landmark className="h-5 w-5 text-primary" />
@@ -64,8 +81,6 @@ export function FinanceCaseCard({ caseData, isSelected, onClick }: FinanceCaseCa
             <p className="text-[11px] text-muted-foreground">{eurFormat.format(amount)}</p>
           )}
         </div>
-
-        {/* Bottom */}
         <div className="flex items-center justify-end text-[10px] text-muted-foreground">
           <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
@@ -77,7 +92,7 @@ export function FinanceCaseCard({ caseData, isSelected, onClick }: FinanceCaseCa
 /** Empty placeholder card */
 export function FinanceCaseCardPlaceholder({ label }: { label?: string }) {
   return (
-    <Card className="glass-card border-dashed border-2 aspect-square flex flex-col items-center justify-center opacity-50">
+    <Card className="glass-card border-dashed border-2 md:aspect-square flex flex-col items-center justify-center opacity-50">
       <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
         <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
           <Landmark className="h-5 w-5 text-muted-foreground" />
