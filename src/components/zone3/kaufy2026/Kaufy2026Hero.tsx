@@ -22,13 +22,14 @@ export function Kaufy2026Hero({
 }: Kaufy2026HeroProps) {
   return (
     <section style={{ padding: 0 }}>
+      {/* Hero Image Container */}
       <div style={{
         position: 'relative',
         width: 'calc(100% - 120px)',
         height: 620,
         margin: '60px 60px 0',
         borderRadius: 20,
-        overflow: 'visible',
+        overflow: 'hidden',
       }}>
         {/* Hero Image */}
         <img
@@ -42,8 +43,6 @@ export function Kaufy2026Hero({
             height: '100%',
             objectFit: 'cover',
             filter: 'grayscale(20%) brightness(0.6)',
-            borderRadius: 20,
-            zIndex: 1,
           }}
         />
 
@@ -89,8 +88,16 @@ export function Kaufy2026Hero({
             </Button>
           </Link>
         </div>
+      </div>
 
-        {/* Floating Search Card */}
+      {/* Search Card — pulled up with negative margin to overlap hero */}
+      <div style={{
+        position: 'relative',
+        zIndex: 10,
+        maxWidth: 900,
+        width: '85%',
+        margin: '-80px auto 0',
+      }}>
         <Kaufy2026SearchBar
           onInvestmentSearch={onInvestmentSearch}
           onClassicSearch={onClassicSearch}

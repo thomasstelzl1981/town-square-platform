@@ -399,11 +399,12 @@ html.theme-sot-dark {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: white;
+  background: #ffffff !important;
   border-radius: 8px;
   padding: 8px 12px;
   flex: 1;
   min-width: 0;
+  color-scheme: light;
 }
 
 .kaufy2026-inline-input label {
@@ -415,13 +416,14 @@ html.theme-sot-dark {
 
 .kaufy2026-inline-input input {
   border: none;
-  background: transparent;
+  background: transparent !important;
   font-size: 15px;
   font-weight: 600;
-  color: hsl(220, 20%, 10%);
+  color: hsl(220, 20%, 10%) !important;
   width: 80px;
   text-align: right;
   outline: none;
+  color-scheme: light;
 }
 
 .kaufy2026-inline-input input::-webkit-outer-spin-button,

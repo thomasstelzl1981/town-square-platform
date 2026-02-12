@@ -68,6 +68,7 @@ export default function Kaufy2026Layout() {
     '--border': '214.3 31.8% 91.4%',
     '--input': '214.3 31.8% 91.4%',
     '--ring': '222.2 84% 4.9%',
+    colorScheme: 'light',
   } as React.CSSProperties;
 
   return (

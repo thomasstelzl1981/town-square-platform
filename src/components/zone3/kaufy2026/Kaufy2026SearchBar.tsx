@@ -73,7 +73,7 @@ export function Kaufy2026SearchBar({
   };
 
   return (
-    <div className="kaufy2026-search-card">
+    <div className="kaufy2026-search-card" style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', width: '100%' }}>
       <Collapsible open={expanded} onOpenChange={setExpanded}>
          <form onSubmit={handleSubmit}>
           {/* Mode Toggle Tabs */}
