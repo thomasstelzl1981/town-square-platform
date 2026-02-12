@@ -1,0 +1,189 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
+import { ContractDrawer } from '../components/ContractDrawer';
+import { useHomesQuery } from '../shared/useHomesQuery';
+import { NoHomeBanner } from '../shared/NoHomeBanner';
+import { TileShell } from '../shared/TileShell';
+import {
+  Plus, Zap, Flame, Droplets, Wifi, Gauge, TrendingDown,
+} from 'lucide-react';
+
+export default function VersorgungTile() {
+  const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
+  const { data: homes = [] } = useHomesQuery();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerCategory, setDrawerCategory] = useState<string>('strom');
+
+  const { data: contracts = [] } = useQuery({
+    queryKey: ['miety-contracts-versorgung', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_contracts').select('*')
+        .eq('tenant_id', activeTenantId)
+        .in('category', ['strom', 'gas', 'wasser', 'internet'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: readings = [] } = useQuery({
+    queryKey: ['miety-meter-readings-all', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_meter_readings').select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('reading_date', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  if (showCreateForm) return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
+
+  const openDrawer = (cat: string) => {
+    if (homes.length === 0) { setShowCreateForm(true); return; }
+    setDrawerCategory(cat);
+    setDrawerOpen(true);
+  };
+
+  const supplyCategories = [
+    { category: 'strom', label: 'Stromvertrag', icon: Zap, meterType: 'strom', meterUnit: 'kWh', hasSoll: true },
+    { category: 'gas', label: 'Gasvertrag', icon: Flame, meterType: 'gas', meterUnit: 'm³', hasSoll: false },
+    { category: 'wasser', label: 'Wasservertrag', icon: Droplets, meterType: 'wasser', meterUnit: 'm³', hasSoll: false },
+    { category: 'internet', label: 'Internet & Telefon', icon: Wifi, meterType: null, meterUnit: null, hasSoll: false },
+  ];
+
+  return (
+    <TileShell icon={Zap} title="Versorgung" description="Strom, Gas, Wasser & Internet — Verträge und Zählerstände">
+      {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
+
+      {supplyCategories.map(({ category, label, icon: SIcon, meterType, meterUnit, hasSoll }) => {
+        const contract = contracts.find(c => c.category === category);
+        const reading = meterType ? readings.find(r => r.meter_type === meterType) : null;
+
+        return (
+          <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* IST Card */}
+            <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} aspect-square`}>
+              <CardContent className="p-5 flex flex-col justify-between h-full">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <SIcon className={`h-5 w-5 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ihr Vertrag</p>
+                    <p className="font-medium text-sm">{label}</p>
+                    {contract ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mt-0.5">{contract.provider_name || 'Anbieter'}</p>
+                        {contract.monthly_cost && (
+                          <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
+                        )}
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
+                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>Details →</Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mt-1">Kein Vertrag hinterlegt</p>
+                        <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2 text-primary" onClick={() => openDrawer(category)}>
+                          <Plus className="h-3 w-3 mr-1" />Vertrag anlegen
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Integrated meter reading */}
+                {meterType && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Zählerstand</span>
+                    </div>
+                    {reading ? (
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <p className="text-lg font-semibold">{Number(reading.reading_value).toLocaleString('de-DE')}</p>
+                        <span className="text-xs text-muted-foreground">{meterUnit} · {new Date(reading.reading_date).toLocaleDateString('de-DE')}</span>
+                        <TrendingDown className="h-3 w-3 text-green-500 ml-auto" />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Noch kein Stand erfasst</p>
+                    )}
+                    <Button size="sm" variant="ghost" className="text-xs mt-1 -ml-2 text-primary"
+                      onClick={() => homes.length > 0 ? navigate(`/portal/miety/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
+                      <Plus className="h-3 w-3 mr-1" />Neuen Stand erfassen
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* SOLL Card */}
+            {hasSoll ? (
+              <Card className="glass-card border-green-500/20 overflow-hidden aspect-square">
+                <div className="h-1.5 bg-gradient-to-r from-green-400 to-emerald-600" />
+                <CardContent className="p-5 flex flex-col justify-between h-full">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <Zap className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-green-600 uppercase tracking-wide mb-1">Unser Angebot</p>
+                      <p className="font-medium text-sm">Rabot Charge — Strom zum Börsenpreis</p>
+                      <p className="text-sm text-muted-foreground mt-1">ca. 28,5 ct/kWh (dynamisch)</p>
+                      {contract?.monthly_cost && (
+                        <div className="mt-3 p-2.5 rounded-lg bg-green-50 dark:bg-green-950/30">
+                          <p className="text-xs text-muted-foreground">Sie zahlen aktuell <strong>{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</strong></p>
+                          <p className="text-xs text-green-700 dark:text-green-400 font-medium mt-0.5">
+                            → mit Rabot ca. {(Number(contract.monthly_cost) * 0.85).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat
+                          </p>
+                        </div>
+                      )}
+                      <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0 text-xs">
+                        bis zu 15% sparen
+                      </Badge>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs">Jetzt wechseln</Button>
+                        <Button size="sm" variant="ghost" className="text-xs">Mehr erfahren</Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-dashed opacity-60 aspect-square">
+                <CardContent className="p-5 flex items-center justify-center h-full">
+                  <p className="text-sm text-muted-foreground text-center">
+                    {category === 'gas' ? 'Gasanbieter-Vergleich — demnächst verfügbar' : 'Vergleich nicht verfügbar'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      })}
+
+      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
+        <Plus className="h-4 w-4 mr-1.5" />Weiteren Vertrag hinzufügen
+      </Button>
+
+      {homes.length > 0 && (
+        <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
+      )}
+    </TileShell>
+  );
+}
