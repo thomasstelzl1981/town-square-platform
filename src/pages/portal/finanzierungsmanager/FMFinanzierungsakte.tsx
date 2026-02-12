@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { useState, useMemo, useRef } from 'react';
 import type { CalcData } from '@/components/finanzierung/FinanceCalculatorCard';
+import HouseholdCalculationCard from '@/components/finanzierung/HouseholdCalculationCard';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -87,6 +88,8 @@ export default function FMFinanzierungsakte() {
   const [calculatorPurchasePrice, setCalculatorPurchasePrice] = useState(0);
   const [calcData, setCalcData] = useState<CalcData | null>(null);
   const [showAmortization, setShowAmortization] = useState(false);
+  const [eckdatenUsage, setEckdatenUsage] = useState('');
+  const [eckdatenRentalIncome, setEckdatenRentalIncome] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
   const objectCardRef = useRef<FinanceObjectCardHandle>(null);
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
@@ -210,6 +213,10 @@ export default function FMFinanzierungsakte() {
           hideFooter
           showObjectFields
           title="Eckdaten"
+          onDataChange={({ usage, rentalIncome }) => {
+            setEckdatenUsage(usage);
+            setEckdatenRentalIncome(rentalIncome);
+          }}
         />
         <FinanceCalculatorCard
           finanzierungsbedarf={calculatorBedarf}
@@ -230,6 +237,16 @@ export default function FMFinanzierungsakte() {
       {showAmortization && calcData && calcData.loanAmount > 0 && calcData.interestRate > 0 && (
         <AmortizationScheduleCard calcData={calcData} />
       )}
+
+      {/* Haushaltsrechnung */}
+      <HouseholdCalculationCard
+        formData={formData}
+        coFormData={coFormData}
+        calcData={calcData}
+        usage={eckdatenUsage}
+        rentalIncome={eckdatenRentalIncome}
+        livingArea={Number(externalObjectData?.livingArea) || 0}
+      />
 
       {/* Section heading: Finanzierungsantrag */}
       <div>
