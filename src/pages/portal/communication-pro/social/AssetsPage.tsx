@@ -2,6 +2,7 @@
  * Social Assets — Photo & Media Library with real file upload
  */
 import { useState, useCallback } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -173,7 +174,7 @@ export function AssetsPage() {
 
       {/* Gallery */}
       {assets.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {assets.map((asset) => {
             const imageUrl = tenantId ? getStorageUrl(tenantId, asset.document_id) : '';
             return (

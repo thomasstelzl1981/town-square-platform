@@ -3,6 +3,7 @@
  * Phase 10: Manual metrics per post, AI analysis
  */
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,7 +192,7 @@ export function PerformancePage() {
 
       {/* Summary cards */}
       {metrics.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={DESIGN.KPI_GRID.FULL}>
           <Card><CardContent className="py-3 text-center">
             <Eye className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
             <div className="text-lg font-bold">{totalImpressions.toLocaleString()}</div>

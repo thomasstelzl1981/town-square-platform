@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -297,7 +298,7 @@ export default function ProjekteDashboard() {
       </Card>
 
       {/* ═══ W3: Stats Cards — ALWAYS visible ═══ */}
-      <div className={cn("grid gap-4 md:grid-cols-4", isDemo && "opacity-50")}>
+      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Projekte</CardTitle>
@@ -357,7 +358,7 @@ export default function ProjekteDashboard() {
           {isLoadingPortfolio ? (
             <LoadingState />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className={DESIGN.WIDGET_GRID.FULL}>
               {/* Demo project is ALWAYS shown as first tile */}
               <ProjectCard project={DEMO_PROJECT} isDemo />
               {portfolioRows.map((project) => (

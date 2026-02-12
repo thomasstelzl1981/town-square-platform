@@ -6,6 +6,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DESIGN } from '@/config/designManifest';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useQuery } from '@tanstack/react-query';
@@ -197,7 +198,7 @@ export default function PortfolioTab() {
       <ModulePageHeader title="PROJEKT-PORTFOLIO" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
 
       {/* Project Switcher — Horizontal Tile Row (Demo always first) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         <ProjectCard
           project={DEMO_PROJECT}
           isDemo

@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,7 +105,7 @@ export function SerienEmailsPage() {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">

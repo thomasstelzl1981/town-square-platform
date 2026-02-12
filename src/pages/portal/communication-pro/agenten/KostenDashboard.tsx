@@ -2,6 +2,7 @@
  * Kosten-Dashboard — Billing KPIs aus armstrong_billing_events
  */
 import { useQuery } from '@tanstack/react-query';
+import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -57,7 +58,7 @@ export function KostenDashboard() {
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="p-3 text-center">
             <DollarSign className="h-5 w-5 mx-auto text-primary mb-1" />

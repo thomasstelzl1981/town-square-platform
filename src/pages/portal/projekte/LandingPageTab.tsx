@@ -8,6 +8,7 @@
  * Demo project is always visible as first tile.
  */
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -96,7 +97,7 @@ export default function LandingPageTab() {
       />
 
       {/* Project Switcher */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         <ProjectCard
           project={DEMO_PROJECT}
           isDemo
