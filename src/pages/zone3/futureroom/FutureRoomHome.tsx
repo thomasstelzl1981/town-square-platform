@@ -5,13 +5,22 @@
  * KI-gestützte Aufbereitung, Online-Antragstellung, fertige Finanzierungsordner
  */
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   ChevronRight, Shield, Clock, CheckCircle2, 
   TrendingUp, Building2, Users, Sparkles, FileText,
   Bot, FolderSync, Workflow, ArrowRight, Landmark
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function FutureRoomHome() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
+  }, []);
   const features = [
     {
       icon: <Workflow className="h-6 w-6" />,
@@ -93,13 +102,13 @@ export default function FutureRoomHome() {
             vollständige Finanzierungsordner, direkte Bankeinreichung. Alles digital.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/futureroom/bonitat">
+            <Link to={isLoggedIn ? "/website/futureroom/akte" : "/website/futureroom/bonitat"}>
               <button className="fr-btn fr-btn-primary text-lg px-8">
-                Finanzierung starten
+                {isLoggedIn ? 'Meine Akte öffnen' : 'Finanzierung starten'}
                 <ChevronRight className="h-5 w-5" />
               </button>
             </Link>
-            <Link to="/futureroom/karriere">
+            <Link to="/website/futureroom/karriere">
               <button className="fr-btn fr-btn-outline text-lg px-8">
                 Finanzierungsmanager werden
               </button>
@@ -194,7 +203,7 @@ export default function FutureRoomHome() {
                 Übernehmen Sie Finanzierungsfälle aus unserem System und profitieren Sie von 
                 fertigen Unterlagen und direkten Bankzugängen.
               </p>
-              <Link to="/futureroom/karriere">
+              <Link to="/website/futureroom/karriere">
                 <button className="fr-btn fr-btn-outline-light">
                   Mehr erfahren
                   <ArrowRight className="h-4 w-4" />
@@ -213,7 +222,7 @@ export default function FutureRoomHome() {
             Starten Sie jetzt Ihre digitale Finanzierungsanfrage. 
             Kostenlos, unverbindlich und vollständig online.
           </p>
-          <Link to="/futureroom/bonitat">
+          <Link to={isLoggedIn ? "/website/futureroom/akte" : "/website/futureroom/bonitat"}>
             <button className="fr-btn fr-btn-primary">
               Jetzt starten
               <ChevronRight className="h-5 w-5" />

@@ -154,6 +154,9 @@ import FutureRoomHome from '@/pages/zone3/futureroom/FutureRoomHome';
 import FutureRoomBonitat from '@/pages/zone3/futureroom/FutureRoomBonitat';
 import FutureRoomKarriere from '@/pages/zone3/futureroom/FutureRoomKarriere';
 import FutureRoomFAQ from '@/pages/zone3/futureroom/FutureRoomFAQ';
+import FutureRoomLogin from '@/pages/zone3/futureroom/FutureRoomLogin';
+import FutureRoomAkte from '@/pages/zone3/futureroom/FutureRoomAkte';
+import FutureRoomAuthGuard from '@/pages/zone3/futureroom/FutureRoomAuthGuard';
 
 // Zone 3: System of a Town Website
 import SotLayout from '@/pages/zone3/sot/SotLayout';
@@ -281,6 +284,8 @@ const FutureRoomManagers = React.lazy(() => import('@/pages/admin/futureroom/Fut
 const FutureRoomBanks = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks'));
 const FutureRoomMonitoring = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomMonitoring'));
 const FutureRoomTemplates = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomTemplates'));
+const FutureRoomWebLeads = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomWebLeads'));
+const FutureRoomContracts = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomContracts'));
 
 // =============================================================================
 // Component Map for Zone 2 Module Pages (with internal routing)
@@ -358,6 +363,10 @@ const futureroomComponentMap: Record<string, React.ComponentType> = {
   FutureRoomBonitat,
   FutureRoomKarriere,
   FutureRoomFAQ,
+  FutureRoomLogin,
+  FutureRoomAkte: (props: any) => (
+    <FutureRoomAuthGuard><FutureRoomAkte {...props} /></FutureRoomAuthGuard>
+  ),
 };
 
 // =============================================================================
@@ -470,6 +479,16 @@ export function ManifestRouter() {
           <Route path="vorlagen" element={
             <React.Suspense fallback={<LoadingFallback />}>
               <FutureRoomTemplates />
+            </React.Suspense>
+          } />
+          <Route path="website-leads" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomWebLeads />
+            </React.Suspense>
+          } />
+          <Route path="contracts" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomContracts />
             </React.Suspense>
           } />
           {/* Catch-all for FutureRoom — redirect to inbox */}
