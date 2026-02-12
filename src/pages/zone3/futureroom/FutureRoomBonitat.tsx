@@ -125,6 +125,7 @@ export default function FutureRoomBonitat() {
     try {
       const { data, error } = await supabase.functions.invoke('sot-futureroom-public-submit', {
         body: {
+          source: 'zone3_futureroom_wizard',
           contact: {
             firstName: formData.firstName,
             lastName: formData.lastName,
@@ -199,8 +200,12 @@ export default function FutureRoomBonitat() {
             <h1 className="text-2xl font-bold mb-2" style={{ color: 'hsl(210 30% 15%)' }}>
               Vielen Dank!
             </h1>
-            <p className="text-gray-500 mb-6">
+            <p className="text-gray-500 mb-4">
               Ihre Finanzierungsanfrage wurde erfolgreich eingereicht. Ein Finanzierungsmanager wird sich innerhalb von 48 Stunden bei Ihnen melden.
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              📧 Sie erhalten in Kürze eine E-Mail mit einer Dokumenten-Checkliste und Ihrer Vorgangsnummer.
+              Senden Sie uns Ihre Unterlagen per E-Mail an <span className="font-medium">finanzierung@futureroom.com</span>.
             </p>
             {publicId && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg mb-6" style={{ background: 'hsl(165 70% 36% / 0.08)' }}>
