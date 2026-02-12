@@ -99,6 +99,21 @@ export default function FinanceObjectCard({ storageKey, initialData, externalDat
 
         <Table>
           <TableBody>
+            <TR label="Nutzungsart">
+              <Select value={data.usage} onValueChange={v => set('usage', v)} disabled={readOnly}>
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Auswählen..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eigengenutzt">Eigengenutzt</SelectItem>
+                  <SelectItem value="vermietet">Vermietet</SelectItem>
+                </SelectContent>
+              </Select>
+            </TR>
+            <TR label="Mieteinnahmen mtl. (EUR)">
+              <Input value={data.rentalIncome} onChange={e => set('rentalIncome', e.target.value)}
+                type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
+            </TR>
             <TR label="Straße">
               <Input value={data.street} onChange={e => set('street', e.target.value)}
                 placeholder="Musterstraße" className={inputCls} readOnly={readOnly} />
@@ -174,21 +189,6 @@ export default function FinanceObjectCard({ storageKey, initialData, externalDat
             </TR>
             <TR label="Stellplätze / Garagen">
               <Input value={data.parking} onChange={e => set('parking', e.target.value)}
-                type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
-            </TR>
-            <TR label="Nutzungsart">
-              <Select value={data.usage} onValueChange={v => set('usage', v)} disabled={readOnly}>
-                <SelectTrigger className={inputCls}>
-                  <SelectValue placeholder="Auswählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="eigengenutzt">Eigengenutzt</SelectItem>
-                  <SelectItem value="vermietet">Vermietet</SelectItem>
-                </SelectContent>
-              </Select>
-            </TR>
-            <TR label="Mieteinnahmen mtl. (EUR)">
-              <Input value={data.rentalIncome} onChange={e => set('rentalIncome', e.target.value)}
                 type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
             </TR>
           </TableBody>
