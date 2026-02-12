@@ -75,7 +75,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
   );
 }
 
-const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
+const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]";
 
 const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
   function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, hideFooter = false, showCalculator = false, onCalculate, showObjectFields = false, title }, ref) {
@@ -226,24 +226,15 @@ const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
           <Table>
             <TableBody>
               <TR label="Eigenkapital (€)">
-                <div className="flex items-center gap-1">
-                  <Input value={data.equity} onChange={e => set('equity', e.target.value)}
-                    type="number" placeholder="0" className={`${inputCls} flex-1`} readOnly={readOnly} />
-                  {showCalculator && !readOnly && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary"
-                      onClick={() => {
-                        const bedarf = finanzierungsbedarf;
-                        set('loanRequest', bedarf.toString());
-                        onCalculate?.(bedarf);
-                      }}
-                    >
-                      <Sparkles className="h-3 w-3" /> Berechnen
-                    </Button>
-                  )}
-                </div>
+                <Input value={data.equity} onChange={e => {
+                  set('equity', e.target.value);
+                  if (showCalculator) {
+                    const bedarf = Math.max(0, gesamtkosten - (Number(e.target.value) || 0));
+                    set('loanRequest', bedarf.toString());
+                    onCalculate?.(bedarf);
+                  }
+                }}
+                  type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
               </TR>
               <TR label="Darlehenswunsch (€)">
                 <Input value={data.loanRequest} onChange={e => set('loanRequest', e.target.value)}
