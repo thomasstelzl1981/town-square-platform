@@ -134,6 +134,7 @@ export interface ApplicantFormData {
   other_regular_income_monthly: number | null;
   // Expenses
   current_rent_monthly: number | null;
+  living_expenses_monthly: number | null;
   health_insurance_monthly: number | null;
   child_support_amount_monthly: number | null;
   car_leasing_monthly: number | null;
@@ -164,7 +165,7 @@ export function createEmptyApplicantFormData(): ApplicantFormData {
     side_job_income_monthly: null, rental_income_monthly: null,
     child_benefit_monthly: null, alimony_income_monthly: null,
     other_regular_income_monthly: null,
-    current_rent_monthly: null, health_insurance_monthly: null,
+    current_rent_monthly: null, living_expenses_monthly: null, health_insurance_monthly: null,
     child_support_amount_monthly: null, car_leasing_monthly: null,
     other_fixed_costs_monthly: null,
     bank_savings: null, securities_value: null, building_society_value: null,
@@ -609,13 +610,13 @@ export function ExpensesSection(props: ApplicantSectionProps | DualApplicantSect
   const coReadOnly = isDual ? (props.coReadOnly ?? false) : true;
   const coChange = useCoChangeWrapper(rawCoChange || (() => {}), isDual ? props.onCoFirstInput : undefined);
 
-  const total = (formData.current_rent_monthly || 0) + (formData.health_insurance_monthly || 0) +
-    (formData.child_support_amount_monthly || 0) + (formData.car_leasing_monthly || 0) +
-    (formData.other_fixed_costs_monthly || 0);
+  const total = (formData.current_rent_monthly || 0) + (formData.living_expenses_monthly || 0) +
+    (formData.health_insurance_monthly || 0) + (formData.child_support_amount_monthly || 0) +
+    (formData.car_leasing_monthly || 0) + (formData.other_fixed_costs_monthly || 0);
 
-  const coTotal = coFormData ? (coFormData.current_rent_monthly || 0) + (coFormData.health_insurance_monthly || 0) +
-    (coFormData.child_support_amount_monthly || 0) + (coFormData.car_leasing_monthly || 0) +
-    (coFormData.other_fixed_costs_monthly || 0) : 0;
+  const coTotal = coFormData ? (coFormData.current_rent_monthly || 0) + (coFormData.living_expenses_monthly || 0) +
+    (coFormData.health_insurance_monthly || 0) + (coFormData.child_support_amount_monthly || 0) +
+    (coFormData.car_leasing_monthly || 0) + (coFormData.other_fixed_costs_monthly || 0) : 0;
 
   const cf = (field: string) => numericCoField(coFormData, coChange, coReadOnly, isDual, field);
 
@@ -627,6 +628,9 @@ export function ExpensesSection(props: ApplicantSectionProps | DualApplicantSect
           <SectionHeaderRow title="Monatliche Ausgaben" />
           <TR label="Aktuelle Warmmiete" children2={cf('current_rent_monthly')}>
             <TInput type="number" step="0.01" placeholder="€" value={formData.current_rent_monthly || ''} onChange={e => onChange('current_rent_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />
+          </TR>
+          <TR label="Lebenshaltungskosten" children2={cf('living_expenses_monthly')}>
+            <TInput type="number" step="0.01" placeholder="€" value={formData.living_expenses_monthly || ''} onChange={e => onChange('living_expenses_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />
           </TR>
           <TR label="Private Krankenversicherung" children2={cf('health_insurance_monthly')}>
             <TInput type="number" step="0.01" placeholder="€" value={formData.health_insurance_monthly || ''} onChange={e => onChange('health_insurance_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />

@@ -55,6 +55,8 @@ interface Props {
   showObjectFields?: boolean;
   /** Override card title (default: "Beantragte Finanzierung") */
   title?: string;
+  /** Callback to report data changes (usage, rentalIncome) to parent */
+  onDataChange?: (data: { usage: string; rentalIncome: number }) => void;
 }
 
 function TR({ label, children }: { label: string; children: React.ReactNode }) {
@@ -78,7 +80,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]";
 
 const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
-  function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, hideFooter = false, showCalculator = false, onCalculate, showObjectFields = false, title }, ref) {
+  function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, hideFooter = false, showCalculator = false, onCalculate, showObjectFields = false, title, onDataChange }, ref) {
     const key = `${storageKey}-finance`;
 
     const [data, setData] = useState<FinanceFormData>(() => {
@@ -95,8 +97,15 @@ const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
       }
     }, [externalPurchasePrice]);
 
-    const set = (field: keyof FinanceFormData, value: string) =>
-      setData(prev => ({ ...prev, [field]: value }));
+    const set = (field: keyof FinanceFormData, value: string) => {
+      setData(prev => {
+        const next = { ...prev, [field]: value };
+        if ((field === 'usage' || field === 'rentalIncome') && onDataChange) {
+          onDataChange({ usage: next.usage, rentalIncome: Number(next.rentalIncome) || 0 });
+        }
+        return next;
+      });
+    };
 
     const n = (v: string) => (v ? Number(v) : 0);
     const fmt = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
