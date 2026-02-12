@@ -2,6 +2,7 @@
  * PV Anlagen Tab — Portfolio list + Showcase Empty State
  */
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
 import { usePvDMS } from '@/hooks/usePvDMS';
@@ -190,7 +191,7 @@ export default function AnlagenTab() {
               </CardTitle>
             </CardHeader>
             <CardContent className="opacity-50 pointer-events-none">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className={DESIGN.KPI_GRID.FULL}>
                 {aktePreviewSections.map((s) => (
                   <div key={s.label} className="flex items-center gap-2 rounded-lg border p-3">
                     <s.icon className="h-4 w-4 text-muted-foreground" />

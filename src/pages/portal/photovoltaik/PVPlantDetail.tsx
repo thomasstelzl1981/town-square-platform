@@ -2,6 +2,7 @@
  * PV Plant Detail — Akte/Dossier view (Sections A-H)
  */
 import { useParams, useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { usePvPlant, usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
 import { generate24hCurve } from '@/components/photovoltaik/DemoLiveGenerator';
@@ -158,7 +159,7 @@ export default function PVPlantDetail() {
         {/* G) Monitoring */}
         <TabsContent value="monitoring">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className={DESIGN.KPI_GRID.FULL}>
               <Card><CardContent className="p-3 text-center">
                 <p className="text-xs text-muted-foreground">Leistung</p>
                 <p className="text-lg font-bold font-mono">{live?.currentPowerW.toLocaleString('de-DE') ?? '—'} <span className="text-xs font-normal">W</span></p>

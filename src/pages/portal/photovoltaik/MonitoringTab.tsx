@@ -2,6 +2,7 @@
  * PV Monitoring Tab — Aggregated live monitoring with showcase empty state
  */
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
 import { generate24hCurve } from '@/components/photovoltaik/DemoLiveGenerator';
@@ -69,7 +70,7 @@ export default function MonitoringTab() {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <KPICard icon={Zap} label="Gesamtleistung" value={hasPlants ? totalPowerW.toLocaleString('de-DE') : '—'} unit="W" muted={!hasPlants} />
         <KPICard icon={Sun} label="Ertrag heute" value={hasPlants ? totalEnergyTodayKwh.toLocaleString('de-DE') : '—'} unit="kWh" muted={!hasPlants} />
         <KPICard icon={TrendingUp} label="Monatsertrag" value={hasPlants ? totalEnergyMonthKwh.toLocaleString('de-DE') : '—'} unit="kWh" muted={!hasPlants} />

@@ -3,10 +3,10 @@
     "version": "3.0",
     "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 3 (MOD-11 bis MOD-15) — DONE",
+    "last_sprint": "Sprint 4 (MOD-16 bis MOD-20) — DONE",
     "total": 30,
-    "done": 21,
-    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads, FinanzierungsManager, AkquiseManager, Projekte, CommunicationPro, Fortbildung"
+    "done": 26,
+    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads, FinanzierungsManager, AkquiseManager, Projekte, CommunicationPro, Fortbildung, Services, Cars, Finanzanalyse, Photovoltaik, Miety"
   },
   "roadmap": [
     {
@@ -281,8 +281,8 @@
       "module": "MOD-16",
       "title": "Services: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/services/ShopTab.tsx", "src/pages/portal/services/BestellungenTab.tsx"]
     },
     {
       "id": "DM-023",
@@ -291,7 +291,8 @@
       "module": "MOD-17",
       "title": "Cars: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Keine ad-hoc Grid-Klassen gefunden — kein Migrationsbedarf",
       "files": []
     },
     {
@@ -301,7 +302,8 @@
       "module": "MOD-18",
       "title": "Finanzanalyse: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Keine ad-hoc Grid-Klassen gefunden — kein Migrationsbedarf",
       "files": []
     },
     {
@@ -311,8 +313,8 @@
       "module": "MOD-19",
       "title": "Photovoltaik: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/photovoltaik/MonitoringTab.tsx", "src/pages/portal/photovoltaik/AnlagenTab.tsx", "src/pages/portal/photovoltaik/DokumenteTab.tsx", "src/pages/portal/photovoltaik/PVPlantDetail.tsx"]
     },
     {
       "id": "DM-026",
@@ -321,8 +323,8 @@
       "module": "MOD-20",
       "title": "Miety: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/miety/tiles/KommunikationTile.tsx", "src/pages/portal/miety/tiles/SmartHomeTile.tsx", "src/pages/portal/miety/components/MietyContractsSection.tsx", "src/pages/portal/miety/components/MietyMeterSection.tsx"]
     },
     {
       "id": "DM-027",

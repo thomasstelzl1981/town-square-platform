@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,7 @@ export default function KommunikationTile() {
       </Card>
 
       {/* Kommunikationskanäle — 3 Kacheln */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         {/* WhatsApp */}
         <Card className="glass-card border-green-500/20">
           <CardContent className="p-5 space-y-4">

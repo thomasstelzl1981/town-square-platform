@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -29,7 +30,7 @@ function OrderDetail() {
 
       <Card>
         <CardContent className="pt-5 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className={DESIGN.KPI_GRID.FULL}>
             <div className="space-y-1">
               <Label className="text-xs">Shop</Label>
               <select className="flex h-9 w-full rounded-xl border-0 bg-muted/60 dark:bg-muted/40 px-3 py-1.5 text-sm">
@@ -69,7 +70,7 @@ function OrderDetail() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div className={`${DESIGN.FORM_GRID.FULL} mt-3`}>
             <div className="space-y-1">
               <Label className="text-xs">Lieferadresse</Label>
               <Textarea placeholder="Straße, PLZ Ort" rows={2} className="text-sm" />
@@ -136,7 +137,7 @@ function OrderDetail() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={DESIGN.FORM_GRID.FULL}>
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm flex items-center gap-2">
