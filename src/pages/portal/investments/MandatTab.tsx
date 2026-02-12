@@ -16,6 +16,8 @@ import { useMyAcqMandates, useSubmitAcqMandate } from '@/hooks/useAcqMandate';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { MANDATE_STATUS_CONFIG, ASSET_FOCUS_OPTIONS } from '@/types/acquisition';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function MandatTab() {
   const navigate = useNavigate();
@@ -63,20 +65,17 @@ export default function MandatTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Suchmandat</h1>
-          <p className="text-muted-foreground">
-            Beauftragen Sie einen AkquiseManager mit der Suche nach Ihrem Wunschobjekt
-          </p>
-        </div>
-        <Button onClick={() => navigate('/portal/investments/mandat/neu')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Neues Mandat erstellen
-        </Button>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="SUCHMANDAT"
+        description="Beauftragen Sie einen AkquiseManager mit der Suche nach Ihrem Wunschobjekt"
+        actions={
+          <Button onClick={() => navigate('/portal/investments/mandat/neu')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Neues Mandat erstellen
+          </Button>
+        }
+      />
 
       {/* No Mandates */}
       {(!mandates || mandates.length === 0) && (
@@ -247,6 +246,6 @@ export default function MandatTab() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

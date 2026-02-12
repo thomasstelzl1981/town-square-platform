@@ -39,6 +39,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { HowItWorks } from '@/components/vertriebspartner';
+import { PageShell } from '@/components/shared/PageShell';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -126,7 +127,7 @@ const KundenTab = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <HowItWorks variant="kunden" />
 
       {/* Filter Bar */}
@@ -312,7 +313,7 @@ const KundenTab = () => {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </PageShell>
   );
 };
 

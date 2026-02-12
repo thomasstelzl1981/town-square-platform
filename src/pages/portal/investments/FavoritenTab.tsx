@@ -28,6 +28,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   useInvestmentFavorites, 
   useUpdateFavoriteNotes, 
@@ -104,21 +106,18 @@ export default function FavoritenTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Meine Favoriten</h1>
-          <p className="text-muted-foreground">
-            Ihre vorgemerkten Investmentobjekte
-          </p>
-        </div>
-        <Button variant="outline" disabled className="gap-2">
-          <RefreshCw className="w-4 h-4" />
-          Kaufy Sync
-          <Badge variant="secondary" className="text-xs">Bald</Badge>
-        </Button>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="MEINE FAVORITEN"
+        description="Ihre vorgemerkten Investmentobjekte"
+        actions={
+          <Button variant="outline" disabled className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Kaufy Sync
+            <Badge variant="secondary" className="text-xs">Bald</Badge>
+          </Button>
+        }
+      />
 
       {/* Favorites List */}
       {favorites.length === 0 ? (
@@ -316,6 +315,6 @@ export default function FavoritenTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

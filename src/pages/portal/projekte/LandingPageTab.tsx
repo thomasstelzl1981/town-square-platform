@@ -8,6 +8,8 @@
  * Demo project is always visible as first tile.
  */
 import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDevProjects } from '@/hooks/useDevProjects';
@@ -85,15 +87,13 @@ export default function LandingPageTab() {
   const showDemoBuilder = !landingPage && isSelectedDemo;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Landing Page</h2>
-        <p className="text-muted-foreground mt-1">
-          {landingPage
-            ? `Projekt-Website für „${projectName}" — ${landingPage.status === 'draft' ? 'Entwurf' : 'Aktiv'}`
-            : 'Erstellen Sie automatisch eine Projekt-Website mit Investment-Rechner'}
-        </p>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="LANDING PAGE"
+        description={landingPage
+          ? `Projekt-Website für „${projectName}" — ${landingPage.status === 'draft' ? 'Entwurf' : 'Aktiv'}`
+          : 'Erstellen Sie automatisch eine Projekt-Website mit Investment-Rechner'}
+      />
 
       {/* Project Switcher */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -139,6 +139,6 @@ export default function LandingPageTab() {
           }}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

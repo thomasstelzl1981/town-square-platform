@@ -24,6 +24,8 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: typeof Send }> = {
   draft: { label: 'Entwurf', variant: 'outline', icon: Clock },
@@ -90,17 +92,16 @@ export function SerienEmailsPage() {
   const sentCampaigns = campaigns.filter(c => c.status === 'sent').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">SERIEN-E-MAILS</h1>
-          <p className="text-muted-foreground mt-1">Personalisierter Massenversand an Ihre Kontakte</p>
-        </div>
-        <Button onClick={() => setShowWizard(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Neue Serien-E-Mail
-        </Button>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="SERIEN-E-MAILS"
+        description="Personalisierter Massenversand an Ihre Kontakte"
+        actions={
+          <Button onClick={() => setShowWizard(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Neue Serien-E-Mail
+          </Button>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -229,6 +230,6 @@ export function SerienEmailsPage() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

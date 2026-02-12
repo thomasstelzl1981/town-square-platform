@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { HowItWorks } from '@/components/vertriebspartner';
+import { PageShell } from '@/components/shared/PageShell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -93,7 +94,7 @@ const NetworkTab = () => {
   const pendingCommissions = commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <HowItWorks variant="network" />
 
       {/* Stats */}
@@ -262,7 +263,7 @@ const NetworkTab = () => {
           </Alert>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 };
 

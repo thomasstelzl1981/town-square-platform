@@ -11,6 +11,7 @@ import {
   Folder, FolderOpen, FileText, Plus, CheckCircle2, Circle, Upload, Sun,
 } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { PageShell } from '@/components/shared/PageShell';
 
 const PV_DMS_FOLDERS = [
   '01_Stammdaten',
@@ -29,7 +30,7 @@ export default function DokumenteTab() {
   const hasPlants = plants.length > 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <ModulePageHeader
         title="Dokumente"
         description={hasPlants ? 'Dokumentenmanagement für Ihre PV-Anlagen' : 'Automatische Dokumentenstruktur pro Anlage'}
@@ -131,6 +132,6 @@ export default function DokumenteTab() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

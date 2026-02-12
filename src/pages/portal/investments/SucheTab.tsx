@@ -7,6 +7,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -323,14 +325,8 @@ export default function SucheTab() {
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Objektsuche</h1>
-        <p className="text-muted-foreground">
-          Finden Sie passende Kapitalanlage-Objekte für Ihre Situation
-        </p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="OBJEKTSUCHE" description="Finden Sie passende Kapitalanlage-Objekte für Ihre Situation" />
 
       {/* Search Mode Toggle */}
       <Card>
@@ -585,6 +581,6 @@ export default function SucheTab() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }
