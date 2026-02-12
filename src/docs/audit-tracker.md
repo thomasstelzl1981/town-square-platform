@@ -51,15 +51,27 @@ gantt
 
 ### Mobile Deep-Test (Teilweise)
 - Login-Screen auf 375px: ✅ Layout korrekt
+- Auth-Seite auf 375px: ✅ Formular korrekt zentriert, responsive
+- Dashboard auf 375px: ✅ Widget-Stack, BottomNav sichtbar
 - Agenten-Tab auf Mobile: ✅ SubTabNav scrollbar, Tabs responsive
-- Zone-3 Seiten: ⚠️ 404 im Browser-Tool (Auth-Problem, nicht Route-Problem)
-- **Vollständiger Test erfordert eingeloggten User im Preview**
+- **Vollständiger Portal-Test erfordert eingeloggten Browser-Session**
 
-### Zone-2 Welle 1 Analyse (Dashboard)
-- Dashboard: Architektonisch sauber, Widget-basiert mit DnD
-- Keine hardcodierten Daten (Showcase Readiness ✅)
-- DB-Anbindung: useTaskWidgets, useWidgetPreferences
-- Custom Padding (px-2 py-3) statt PageShell (korrekt für Dashboard)
+### Zone-2 Welle 1 Code-Analyse (7 Module)
+
+| Modul | Pattern | PageShell | ErrorBoundary | Lazy | Role-Gate | Bewertung |
+|-------|---------|-----------|---------------|------|-----------|-----------|
+| MOD-00 Dashboard | Widget-DnD Grid | ✅ (custom) | — | — | — | ✅ Sauber |
+| MOD-04 Immobilien | Routes+SubTabs | ✅ | ✅ | ✅ Detail | GoldenPath | ✅ Sauber |
+| MOD-07 Finanzierung | 4 Tiles+Detail | ✅ | — | ✅ Detail | — | ✅ Sauber |
+| MOD-08 Investments | 6 Tiles+Exposé | ✅ | — | — | — | ✅ Sauber |
+| MOD-11 FM-Manager | Lazy Tabs+Cases | ⚠️ div only | — | ✅ All | ✅ finance_manager | ⚠️ Kein PageShell |
+| MOD-12 Akquise | FM-Pattern+Stepper | ✅ | — | — | — | ✅ Sauber |
+| MOD-13 Projekte | 4-Tile+Detail+Unit | ✅ | — | — | — | ✅ Sauber |
+
+**Findings:**
+- **MOD-11**: Wrapper ist `<div className="space-y-6">` statt `<PageShell>` — Standardisierungsverstoß
+- Alle anderen Module folgen konsistenten Architektur-Patterns
+- Keine hardcodierten Daten gefunden (Showcase Readiness ✅)
 
 ## Zurückgestellt (eigene Sprints)
 

@@ -42,18 +42,16 @@ export default function FinanzierungsmanagerPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Routes>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
-        <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
-        <Route path="faelle/:requestId" element={<FMFallDetail />} />
-        <Route path="provisionen" element={<FMProvisionen />} />
-        <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
-        <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
-        <Route path="archiv" element={<FMArchiv cases={cases || []} isLoading={isLoading} />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
+      <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
+      <Route path="faelle/:requestId" element={<FMFallDetail />} />
+      <Route path="provisionen" element={<FMProvisionen />} />
+      <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
+      <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
+      <Route path="archiv" element={<FMArchiv cases={cases || []} isLoading={isLoading} />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
   );
 }
