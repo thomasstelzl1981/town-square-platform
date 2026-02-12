@@ -1,106 +1,90 @@
 
 
-# Strategie: Systemweite Bereinigung ohne Kontextverlust
+# Backlog-Status und Empfehlung: Neuer CI-fokussierter Scan
 
-## Das Kernproblem
+## Aktueller Stand: backlog.json
 
-Jede Chat-Session hat ein begrenztes Kontextfenster. Grosse Audit-Plaene werden erstellt, aber nur teilweise umgesetzt. Die naechste Session weiss nichts von den offenen Punkten und startet ein neues Audit -- ein Teufelskreis.
+**40 von 47 Issues erledigt (85%)**. Die verbleibenden **7 Issues** lassen sich klar in zwei Kategorien teilen:
 
-## Die Loesung: Ein maschinenlesbarer Issue-Backlog im Code
+### Kategorie A: Noch nicht fertig entwickelte Module (KEIN Backlog-Thema)
+Diese Issues betreffen Features, die bewusst noch nicht gebaut wurden. Sie gehoeren auf eine Feature-Roadmap, nicht in den Bereinigungs-Backlog:
 
-Statt Findings nur in Freitext-Markdown zu dokumentieren (wie bisher in `audit-tracker.md`), erstellen wir eine **strukturierte JSON-Datei** als zentralen Backlog. Diese Datei ist:
+| ID | Modul | Beschreibung | Warum kein Backlog |
+|----|-------|--------------|-------------------|
+| CI-001 | MOD-10 Leads | Tiles sind ModuleTilePage-Stubs | Feature noch nicht entwickelt |
+| SPEC-002 | Global | 15 Module ohne Spec-Datei | Specs folgen der Entwicklung |
+| DATA-001 | MOD-08 | investment_favorites nicht persistent | Feature-Erweiterung |
+| DATA-002 | MOD-03 | DMS Storage-Usage zeigt 0 Bytes | Erfordert neue Edge Function |
+| UX-003 | MOD-12 | MandatCreateWizardManager Platzhalter | Feature-Erweiterung |
 
-- **Persistent** -- sie lebt im Code und ueberlebt jede Session
-- **Maschinenlesbar** -- ich kann sie bei jedem Gespraechsstart sofort parsen
-- **Priorisiert** -- jedes Issue hat Schwere, Kategorie und geschaetzten Aufwand
-- **Abarbeitbar** -- ich kann Issues der Reihe nach abhaken, ohne den Ueberblick zu verlieren
+### Kategorie B: Echte Bereinigungs-Issues (gehoeren in den Backlog)
+| ID | Modul | Beschreibung | Status |
+|----|-------|--------------|--------|
+| CI-005 | MOD-17 Cars | PageShell fehlt in allen 4 Sub-Tabs | offen (Effort M) |
+| 1 weiteres | - | - | offen |
 
-## Dateistruktur: `src/docs/backlog.json`
+## Deine Beobachtung ist korrekt: CI-Inkonsistenzen bestehen weiter
 
-```text
-{
-  "meta": { "version": "1.0", "last_scan": "2026-02-12", "total": 47, "done": 12 },
-  "issues": [
-    {
-      "id": "CI-001",
-      "zone": "z2",
-      "module": "MOD-20",
-      "category": "architecture",
-      "severity": "medium",
-      "title": "Miety TileShell nicht auf PageShell migriert",
-      "fix": "TileShell.tsx durch PageShell ersetzen",
-      "effort": "S",
-      "status": "open"
-    },
-    ...
-  ]
-}
-```
+Der erste Backlog hat **Architektur und Code-Hygiene** gut abgedeckt, aber **CI/Design-Konsistenz auf Tile-Ebene** wurde nur oberflaechlich geprueft. Konkret sehe ich folgende Muster-Abweichungen, die der alte Scan NICHT erfasst hat:
 
-## Kategorien fuer den Komplett-Scan
+### 1. PageShell + ModulePageHeader Nutzung (inkonsistent)
 
-Der initiale Scan deckt **alle Ebenen** systematisch ab:
+| Muster | Module | Problem |
+|--------|--------|---------|
+| PageShell im Router-Parent | MOD-15 Fortbildung | Header einmal oben, Tabs darunter -- sauber |
+| PageShell in jedem Sub-Tab | MOD-16 Services, MOD-20 Miety | Jeder Tab hat eigenen Header -- auch okay, aber anderes Muster |
+| Kein PageShell | MOD-17 Cars (alle 4 Tabs) | Kein standardisierter Wrapper |
+| Kein PageShell | MOD-13 Projekte (Tabs) | Tabs haben eigene Card-Layouts ohne PageShell |
+| Inline in Monolith | MOD-12 Akquise | PageShell nur in Haupt-Route, Detail-Views mischen |
 
-| Kategorie | Was wird geprueft | Beispiele |
-|-----------|-------------------|-----------|
-| `architecture` | PageShell, Lazy-Loading, Router-Pattern | MOD-20 TileShell, fehlende Suspense |
-| `ci` | Farben, Spacing, Header, Typografie, Icons | Falsche Ueberschriften-Groesse, fehlende ModulePageHeader |
-| `manifest` | routesManifest, areaConfig, armstrongManifest | Fehlende Routen, verwaiste Eintraege |
-| `spec` | API-Contracts, Golden Paths, Zone-Dokumente | Contracts ohne Implementation, veraltete Specs |
-| `data` | DB-Schema, RLS, fehlende Indizes | Fehlender tenant_id Index |
-| `ux` | Empty States, Placeholder-Texte, Mobile | Hardcoded Demo-Daten, fehlende Responsive-Breakpoints |
-| `code-hygiene` | console.log, TODO, unused imports, deprecated | Verbleibende console.log-Aufrufe |
+### 2. Header-Darstellung (inkonsistent)
 
-## Ablauf: 3-Phasen-Modell
+- Manche Module zeigen den **Modul-Titel** im Header (z.B. "SHOPS", "FORTBILDUNG")
+- Manche zeigen den **Tile-Titel** (z.B. "Inbox", "Fahrzeuge")
+- Manche haben **gar keinen ModulePageHeader** und nutzen eigene Card-Titel
+- MOD-17 Cars hat **keinen einheitlichen Header** in den Sub-Tabs
 
-### Phase 1: Komplett-Scan (1 Session)
-Ich scanne systematisch alle Dateien und fuege jedes Finding als Issue in `backlog.json` ein. Kein Fix in dieser Phase -- nur Erfassung. Am Ende steht ein vollstaendiger Backlog mit geschaetztem Aufwand.
+### 3. Lazy Loading (inkonsistent)
 
-### Phase 2: Sprint-Abarbeitung (mehrere Sessions)
-Jede folgende Session beginnt mit:
-1. Lesen von `backlog.json`
-2. Filtern nach `status: "open"`, sortiert nach Severity
-3. Abarbeitung der naechsten 5-10 Issues (je nach Groesse)
-4. Setzen von `status: "done"` fuer jedes erledigte Issue
+| Muster | Module |
+|--------|--------|
+| React.lazy + Suspense | MOD-19 Photovoltaik |
+| React.lazy ohne Suspense (P0-FIX) | MOD-05, 06, 09, 10 |
+| Direct imports (kein lazy) | MOD-13 Projekte, MOD-17 Cars |
+| Lazy in Sprint 2 migriert | MOD-01, 02, 03, 04, 07, 08, 14 |
 
-So geht **nichts verloren** -- selbst nach Kontextwechsel oder Tagen Pause.
+### 4. Kachel-Architektur (3 verschiedene Patterns)
 
-### Phase 3: Validierung
-Nach Abschluss aller Issues ein finaler Durchlauf: Sind alle `done`? Gibt es neue Findings?
+- **Pattern A: ModuleTilePage** -- Leere Platzhalter mit quickSteps (MOD-10, MOD-18)
+- **Pattern B: Eigene Komponenten** -- Voll implementiert mit eigenem Layout (MOD-17, MOD-13, MOD-12)
+- **Pattern C: Hybrid** -- Manche Tabs ModuleTilePage, manche eigene (MOD-06)
 
-## Aufwandsschaetzungen (T-Shirt Sizes)
+## Empfehlung: Neuer, fokussierter CI-Backlog (V2)
 
-| Size | Bedeutung | Typisches Beispiel |
-|------|-----------|-------------------|
-| XS | 1-2 Zeilen aendern | Typo, fehlender Import |
-| S | 5-20 Zeilen | Header hinzufuegen, Wrapper ersetzen |
-| M | 20-100 Zeilen | Neue Komponente, Contract anlegen |
-| L | 100+ Zeilen | Modul-Refactoring, neues Feature |
+Ja, ich empfehle eine **neue backlog.json Version 2.0**, die sich ausschliesslich auf **visuelle und strukturelle Konsistenz** konzentriert. Die alte backlog.json wird als "V1 - Architecture Sprint" archiviert, die neue fokussiert auf:
 
-## Erwarteter Umfang
+### Scan-Scope V2: Nur CI und Darstellung
 
-Basierend auf den bisherigen Audits schaetze ich **40-60 Issues** im initialen Scan, davon:
-- ~15 bereits erledigt (aus Sprint 1+2)
-- ~20 XS/S Issues (schnelle Fixes, 2-3 Sessions)
-- ~10 M Issues (je 1 Session)
-- ~5 L Issues (MOD-18, MOD-20 PageShell, E2E-Tests etc.)
+| Pruefpunkt | Was wird verglichen |
+|------------|---------------------|
+| PageShell-Wrapper | Jeder Sub-Tab muss in PageShell gerendert werden |
+| ModulePageHeader | Einheitliches Format: Modul-Titel UPPERCASE + Beschreibung |
+| Lazy Loading | Konsistentes Pattern (lazy + P0-FIX oder lazy + Suspense) |
+| Tile-Spacing | Gleiche Paddings, Card-Radii, Gap-Werte |
+| Empty States | Konsistente EmptyState-Komponente statt Custom-Leerseiten |
+| Header-Hierarchie | H1 = Modul, H2 = Tile, H3 = Sektionen |
+| Mobile Responsiveness | Gleiche Breakpoints und Stacking-Verhalten |
 
-## Warum das funktioniert
+### Vorgehen
 
-1. **Kein Kontextverlust**: Der Backlog ist eine Datei im Projekt -- nicht im Chat-Verlauf
-2. **Fortschritt ist sichtbar**: `done: 12/47` zeigt sofort den Stand
-3. **Keine Doppelarbeit**: Jedes Issue hat eine eindeutige ID
-4. **Priorisierung**: Kritische Issues zuerst, Kosmetik zuletzt
-5. **Jede Session ist produktiv**: Kein erneutes Audit noetig, direkter Einstieg in Fixes
+1. Die bestehende `backlog.json` wird bereinigt: Kategorie-A-Issues (Features) werden in einen separaten `roadmap`-Block verschoben
+2. Kategorie-B-Issues (CI-005 etc.) bleiben als offene Issues
+3. Ein neuer systematischer CI-Scan ueber alle 21 Module erfasst die oben genannten Pruefpunkte
+4. Ergebnis: Eine saubere V2-backlog.json mit geschaetzt **15-25 neuen CI-Issues**, die in 2-3 Sprints abarbeitbar sind
 
-## Technische Umsetzung
+### Erwarteter Aufwand
 
-### Schritt 1 (diese Session)
-- `src/docs/backlog.json` erstellen mit Meta-Schema
-- Komplett-Scan starten: alle 21 Module, 3 Zonen, Manifeste, Specs, Contracts
-- Jedes Finding als Issue mit ID, Kategorie, Severity und geschaetztem Aufwand eintragen
-
-### Schritt 2 (Folgesessions)
-- Jede Session beginnt mit: "Lies backlog.json und arbeite die naechsten offenen Issues ab"
-- Du kannst auch nach Kategorie filtern: "Nur CI-Issues" oder "Nur Zone 3"
+- Scan: 1 Session
+- Fixes: 2-3 Sessions (hauptsaechlich S/M-Effort: PageShell-Wrapper, Header, Lazy-Loading vereinheitlichen)
+- Ergebnis: Alle 21 Module sehen visuell und strukturell identisch aus
 
