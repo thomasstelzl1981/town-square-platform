@@ -5818,6 +5818,85 @@ export type Database = {
           },
         ]
       }
+      finance_submission_logs: {
+        Row: {
+          bank_contact_id: string | null
+          channel: string
+          conditions_offered: Json | null
+          created_at: string
+          created_by: string | null
+          email_body: string | null
+          email_subject: string | null
+          external_software_name: string | null
+          finance_request_id: string
+          id: string
+          is_selected: boolean
+          response_received_at: string | null
+          status: string
+          submitted_at: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_contact_id?: string | null
+          channel?: string
+          conditions_offered?: Json | null
+          created_at?: string
+          created_by?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          external_software_name?: string | null
+          finance_request_id: string
+          id?: string
+          is_selected?: boolean
+          response_received_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_contact_id?: string | null
+          channel?: string
+          conditions_offered?: Json | null
+          created_at?: string
+          created_by?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          external_software_name?: string | null
+          finance_request_id?: string
+          id?: string
+          is_selected?: boolean
+          response_received_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_submission_logs_bank_contact_id_fkey"
+            columns: ["bank_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_bank_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_submission_logs_finance_request_id_fkey"
+            columns: ["finance_request_id"]
+            isOneToOne: false
+            referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_submission_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fortbildung_curated_items: {
         Row: {
           affiliate_link: string
