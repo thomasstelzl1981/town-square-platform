@@ -229,9 +229,9 @@ function UebersichtTile() {
           const mapQuery = buildMapQuery(home);
           return (
             <div key={home.id} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 {/* Kachel 1: Adresse */}
-                <Card className="glass-card aspect-square flex flex-col">
+                <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col">
                   <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex items-center gap-2 mb-3">
@@ -260,7 +260,7 @@ function UebersichtTile() {
                 </Card>
 
                 {/* Kachel 2: Street View */}
-                <Card className="glass-card aspect-square overflow-hidden">
+                <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto overflow-hidden">
                   <CardContent className="p-0 h-full relative">
                     {(home.city || home.address) ? (
                       <iframe title="Street View" className="w-full h-full" style={{ border: 0 }} loading="lazy"
@@ -276,7 +276,7 @@ function UebersichtTile() {
                 </Card>
 
                 {/* Kachel 3: Satellite */}
-                <Card className="glass-card aspect-square overflow-hidden">
+                <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto overflow-hidden">
                   <CardContent className="p-0 h-full">
                     {(home.city || home.address) ? (
                       <iframe title="Satellitenansicht" className="w-full h-full" style={{ border: 0 }} loading="lazy"
@@ -293,10 +293,10 @@ function UebersichtTile() {
               </div>
 
               {/* Row 2: Camera Widgets */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 {demoCameras.map((cam) => (
                   <Card key={cam.id} className="glass-card overflow-hidden group cursor-pointer">
-                    <CardContent className="p-0 relative aspect-square">
+                    <CardContent className="p-0 relative h-[220px] sm:aspect-square sm:h-auto">
                       <img src={cam.image} alt={cam.name} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       {/* Status badge top left */}

@@ -480,7 +480,7 @@ const ObjekteTab = () => {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
         <KPICard
           label="Einheiten gesamt"
           value={units?.length ?? 0}

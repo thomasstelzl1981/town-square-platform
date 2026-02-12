@@ -44,7 +44,7 @@ function TR({ label, value, editable, onChange }: {
 }) {
   return (
     <TableRow>
-      <TableCell className="text-xs text-muted-foreground py-1.5 px-3 w-[180px] border-r">{label}</TableCell>
+      <TableCell className="text-xs text-muted-foreground py-1.5 px-3 w-[100px] md:w-[180px] border-r">{label}</TableCell>
       <TableCell className="text-sm py-1.5 px-3">
         {editable && onChange ? (
           <Input 
