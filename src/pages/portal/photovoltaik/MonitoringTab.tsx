@@ -13,6 +13,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { useMemo } from 'react';
 import { usePvDMS } from '@/hooks/usePvDMS';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/shared/PageShell';
 import { toast } from 'sonner';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
@@ -61,7 +62,7 @@ export default function MonitoringTab() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <ModulePageHeader
         title="Monitoring"
         description={hasPlants ? 'Echtzeit-Übersicht aller PV-Anlagen' : 'Live-Monitoring Ihrer PV-Anlagen'}
@@ -170,6 +171,6 @@ export default function MonitoringTab() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

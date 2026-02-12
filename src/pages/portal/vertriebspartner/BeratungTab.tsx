@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Building2 } from 'lucide-react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 import { PartnerSearchForm, type PartnerSearchParams } from '@/components/vertriebspartner';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
@@ -229,24 +231,12 @@ const BeratungTab = () => {
   const isLoading = isLoadingListings || isCalculating;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Kundenberatung
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Finden Sie das perfekte Investment für Ihren Kunden
-          </p>
-        </div>
-        {hasSearched && (
-          <Badge variant="secondary">
-            {visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}
-          </Badge>
-        )}
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="KUNDENBERATUNG"
+        description="Finden Sie das perfekte Investment für Ihren Kunden"
+        actions={hasSearched ? <Badge variant="secondary">{visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}</Badge> : undefined}
+      />
 
       {/* Compact Search Form (wie MOD-08) */}
       <PartnerSearchForm
@@ -292,7 +282,7 @@ const BeratungTab = () => {
           </p>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 };
 

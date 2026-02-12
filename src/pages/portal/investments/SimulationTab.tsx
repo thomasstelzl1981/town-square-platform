@@ -26,6 +26,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ChartCard } from '@/components/ui/chart-card';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   Building2, TrendingUp, Wallet, PiggyBank, Plus, Minus,
   Calculator, ChevronDown, ChevronUp, Loader2, FileText
@@ -147,14 +149,8 @@ export default function SimulationTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Investment-Simulation</h1>
-        <p className="text-muted-foreground">
-          Berechnen Sie die Auswirkung eines Neukaufs auf Ihr Gesamtportfolio
-        </p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="INVESTMENT-SIMULATION" description="Berechnen Sie die Auswirkung eines Neukaufs auf Ihr Gesamtportfolio" />
 
       {/* Current Portfolio Section */}
       <Card>
@@ -558,6 +554,6 @@ export default function SimulationTab() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }

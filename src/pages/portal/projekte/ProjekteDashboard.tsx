@@ -32,6 +32,8 @@ import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/Proje
 import { CreateProjectDialog } from '@/components/projekte/CreateProjectDialog';
 import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import type { ProjectPortfolioRow } from '@/types/projekte';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 interface ExtractedProjectData {
   projectName: string;
@@ -155,12 +157,8 @@ export default function ProjekteDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">PROJEKTE</h1>
-        <p className="text-muted-foreground mt-1">Bauträger- und Aufteiler-Projekte verwalten</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="PROJEKTE" description="Bauträger- und Aufteiler-Projekte verwalten" />
 
       {/* ═══ W1: So funktioniert's ═══ */}
       <Card className="glass-card shadow-card overflow-hidden">
@@ -384,6 +382,6 @@ export default function ProjekteDashboard() {
         tenantId={tenantId}
         onConfirmDelete={handleConfirmDelete}
       />
-    </div>
+    </PageShell>
   );
 }

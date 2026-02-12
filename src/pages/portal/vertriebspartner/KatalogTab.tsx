@@ -21,6 +21,7 @@ import {
   PropertyCurrencyCell,
   type PropertyTableColumn 
 } from '@/components/shared';
+import { PageShell } from '@/components/shared/PageShell';
 import {
   Select,
   SelectContent,
@@ -334,7 +335,7 @@ const KatalogTab = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {/* Header with stats */}
       <div className="flex items-center justify-between">
         <div>
@@ -504,7 +505,7 @@ const KatalogTab = () => {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 };
 

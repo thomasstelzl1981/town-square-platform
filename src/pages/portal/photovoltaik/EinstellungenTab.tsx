@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Sun, Wifi, Landmark, Settings } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { PageShell } from '@/components/shared/PageShell';
 
 export default function EinstellungenTab() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <ModulePageHeader title="Einstellungen" description="Integrationen und Monitoring-Konfiguration" />
 
       {/* Connectors */}
@@ -77,6 +78,6 @@ export default function EinstellungenTab() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

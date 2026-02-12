@@ -18,6 +18,8 @@ import {
   Gauge, FolderOpen, ClipboardCheck, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function AnlagenTab() {
   const navigate = useNavigate();
@@ -61,7 +63,7 @@ export default function AnlagenTab() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -218,6 +220,6 @@ export default function AnlagenTab() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -22,6 +22,7 @@ import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
+import { PageShell } from '@/components/shared/PageShell';
 
 export default function VertriebTab() {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ export default function VertriebTab() {
   const activeProjectData = isSelectedDemo ? null : projects.find(p => p.id === activeProjectId);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight uppercase">Vertrieb & Reservierungen</h2>
@@ -260,7 +261,7 @@ export default function VertriebTab() {
           onSuccess={() => setShowCreateDialog(false)}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 

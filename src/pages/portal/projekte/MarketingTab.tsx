@@ -7,6 +7,8 @@
  */
 
 import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,11 +58,8 @@ export default function MarketingTab() {
   const featuredProjects = projects.filter(p => p.kaufy_featured);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Marketing & Veröffentlichung</h2>
-        <p className="text-muted-foreground">Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="MARKETING & VERÖFFENTLICHUNG" description="Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages" />
 
       {/* Stats — ALWAYS visible */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -240,6 +239,6 @@ export default function MarketingTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

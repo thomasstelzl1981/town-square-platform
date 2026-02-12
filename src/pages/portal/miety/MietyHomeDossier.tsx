@@ -18,6 +18,7 @@ import { ContractDrawer } from './components/ContractDrawer';
 import { MeterReadingDrawer } from './components/MeterReadingDrawer';
 import { UploadDrawer } from './components/UploadDrawer';
 import { MessageCircle, Wrench } from 'lucide-react';
+import { PageShell } from '@/components/shared/PageShell';
 
 export default function MietyHomeDossier() {
   const { homeId } = useParams<{ homeId: string }>();
@@ -65,7 +66,7 @@ export default function MietyHomeDossier() {
   if (!home) return <Navigate to="/portal/miety/uebersicht" replace />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 h-full flex flex-col gap-4">
+    <PageShell>
       <MietyDossierHeader
         home={home}
         onOpenContractDrawer={() => setContractDrawerOpen(true)}
@@ -173,6 +174,6 @@ export default function MietyHomeDossier() {
       <ContractDrawer open={contractDrawerOpen} onOpenChange={setContractDrawerOpen} homeId={homeId!} />
       <MeterReadingDrawer open={meterDrawerOpen} onOpenChange={setMeterDrawerOpen} homeId={homeId!} />
       <UploadDrawer open={uploadDrawerOpen} onOpenChange={setUploadDrawerOpen} homeId={homeId!} />
-    </div>
+    </PageShell>
   );
 }

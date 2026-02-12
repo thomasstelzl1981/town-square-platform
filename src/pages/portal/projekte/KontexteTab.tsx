@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +50,7 @@ export default function KontexteTab() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight uppercase">Verkäufer-Gesellschaften</h1>
@@ -122,6 +123,6 @@ export default function KontexteTab() {
       </div>
 
       <CreateDeveloperContextDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </PageShell>
   );
 }
