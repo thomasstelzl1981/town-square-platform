@@ -238,16 +238,6 @@ export default function FMFinanzierungsakte() {
         <AmortizationScheduleCard calcData={calcData} />
       )}
 
-      {/* Haushaltsrechnung */}
-      <HouseholdCalculationCard
-        formData={formData}
-        coFormData={coFormData}
-        calcData={calcData}
-        usage={eckdatenUsage}
-        rentalIncome={eckdatenRentalIncome}
-        livingArea={Number(externalObjectData?.livingArea) || 0}
-      />
-
       {/* Section heading: Finanzierungsantrag */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsantrag</h2>
@@ -288,6 +278,16 @@ export default function FMFinanzierungsakte() {
 
       {/* Block 3: Finanzierungsobjekt (shared card) */}
       <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
+
+      {/* Haushaltsrechnung — ganz unten */}
+      <HouseholdCalculationCard
+        formData={formData}
+        coFormData={coFormData}
+        calcData={calcData}
+        usage={eckdatenUsage}
+        rentalIncome={eckdatenRentalIncome}
+        livingArea={Number(externalObjectData?.livingArea) || 0}
+      />
 
       {/* Floating save button */}
       <Button
