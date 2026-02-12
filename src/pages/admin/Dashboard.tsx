@@ -180,7 +180,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-3">
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/kaufy2026')}
+                onClick={() => navigate('/website/kaufy')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -188,7 +188,7 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/sot')}
+                onClick={() => navigate('/website/sot')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -196,7 +196,7 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/miety')}
+                onClick={() => navigate('/website/miety')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -204,7 +204,7 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/futureroom')}
+                onClick={() => navigate('/website/futureroom')}
                 className="gap-2"
               >
                 <Rocket className="h-4 w-4" />
@@ -212,7 +212,7 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/acquiary')}
+                onClick={() => navigate('/website/acquiary')}
                 className="gap-2"
               >
                 <Building2 className="h-4 w-4" />
@@ -230,7 +230,7 @@ export default function Dashboard() {
               <p className="text-sm font-medium mb-2">Published Preview</p>
               <Button 
                 variant="outline" 
-                onClick={() => window.open(`${window.location.origin}/kaufy2026`, '_blank')}
+                onClick={() => window.open(`${window.location.origin}/website/kaufy`, '_blank')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
