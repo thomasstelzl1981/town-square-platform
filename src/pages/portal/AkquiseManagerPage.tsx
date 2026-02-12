@@ -7,6 +7,7 @@
 
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -75,6 +76,8 @@ function AkquiseDashboard() {
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <ModulePageHeader title="AKQUISE-MANAGER" description="Ihre Akquise-Mandate im Überblick" />
 
+      {/* Brand Widgets: Kaufy, FutureRoom, SoT */}
+      <BrandWidgets />
       {/* Create New Mandate Tile */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card 
