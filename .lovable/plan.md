@@ -1,97 +1,63 @@
 
 
-# Haushaltsrechnung: Korrektur Platzierung, Struktur und Verhalten
+# Haushaltsrechnung: T-Konto-Layout (Einnahmen | Ausgaben nebeneinander)
 
-## 1. Platzierung: Ganz nach unten
+## Aenderung
 
-Die `HouseholdCalculationCard` wird in `FMFinanzierungsakte.tsx` von ihrer aktuellen Position (Zeile 242, oberhalb "Finanzierungsantrag") ans Ende der Seite verschoben -- nach dem `FinanceObjectCard`-Block, also als letztes Element vor dem Floating-Save-Button.
+Die aktuelle vertikale Darstellung (Einnahmen oben, Ausgaben darunter) wird durch ein klassisches **Buchhaltungs-T-Konto** ersetzt: Einnahmen links, Ausgaben rechts -- nebeneinander in zwei Spalten.
 
-## 2. Struktur: Exakt wie Selbstauskunft
-
-Die aktuelle 2-spaltige Tabellen-Struktur (Einnahmen links | Ausgaben rechts) wird komplett ersetzt durch die identische Gitter-Tabellenstruktur der Selbstauskunft:
-
-- **3-Spalten-Layout**: `Label | Wert | (leer oder Summe)` -- analog zu `TR`, `DualHeader`, `SectionHeaderRow` aus `ApplicantPersonFields.tsx`
-- **Einnahmen-Block oben**, dann **Ausgaben-Block darunter** (vertikal, nicht nebeneinander)
-- Summenzeilen wie in der Selbstauskunft (`bg-muted/30`, fett)
-
-### Aufbau der Kachel
+## Neues Layout
 
 ```text
-+--- glass-card ------------------------------------------------+
-| [Calculator] HAUSHALTSRECHNUNG INKL. FINANZIERUNGSOBJEKT       |
-| Simulation der monatl. Einnahmen/Ausgaben nach Finanzierung    |
-+----------------------------------------------------------------+
-|                                                                |
-| Feld                       | Wert                              |
-|----------------------------+-----------------------------------|
-| MONATLICHE EINNAHMEN       | (SectionHeaderRow)                |
-| Nettoeinkommen             | [editierbar]                      |
-| Aus selbstst. Taetigkeit   | [editierbar]                      |
-| Nebentaetigkeit            | [editierbar]                      |
-| Mieteinnahmen (bestehend)  | [editierbar]                      |
-| Kindergeld                 | [editierbar]                      |
-| Unterhaltseinnahmen        | [editierbar]                      |
-| Sonstiges                  | [editierbar]                      |
-|                            |                                   |
-| NEUE FINANZIERUNG (grau)   | (SectionHeaderRow, hellgrau)      |
-| Mieteinnahmen (neu)        | [editierbar, hellgrau Hintergrund]|
-| Steuervorteil (KA)         | [editierbar, hellgrau Hintergrund]|
-|                            |                                   |
-| Summe Einnahmen            | X.XXX,XX EUR  (fett)             |
-|----------------------------+-----------------------------------|
-| MONATLICHE AUSGABEN        | (SectionHeaderRow)                |
-| Lebenshaltungskosten       | [editierbar]                      |
-| Aktuelle Warmmiete         | [0 bei Eigennutzung, disabled]    |
-| Priv. Krankenversicherung  | [editierbar]                      |
-| Unterhaltsverpflichtungen  | [editierbar]                      |
-| Leasing (Kfz)              | [editierbar]                      |
-| Sonstige Fixkosten         | [editierbar]                      |
-|                            |                                   |
-| NEUE FINANZIERUNG (grau)   | (SectionHeaderRow, hellgrau)      |
-| Neue Darlehensrate         | [editierbar, hellgrau Hintergrund]|
-| Nebenkosten (3 EUR/qm)     | [editierbar, hellgrau Hintergrund]|
-|                            |                                   |
-| Summe Ausgaben             | X.XXX,XX EUR  (fett, rot)        |
-|----------------------------+-----------------------------------|
-| ERGEBNIS                   |                                   |
-| Verfuegbares Einkommen     | +/- X.XXX EUR (gruen/rot, fett)  |
-| Kapitaldienstfaehigkeit    | Tragfaehig / Nicht tragfaehig    |
-+----------------------------------------------------------------+
-| [ Haushaltsrechnung berechnen ]                                |
-+----------------------------------------------------------------+
++--- glass-card ------------------------------------------------------------------+
+| [Calculator] HAUSHALTSRECHNUNG INKL. FINANZIERUNGSOBJEKT                         |
+| Simulation der monatl. Einnahmen/Ausgaben nach Finanzierung                      |
++------------------------------------------+---------------------------------------+
+| MONATLICHE EINNAHMEN                     | MONATLICHE AUSGABEN                   |
++------------------------------------------+---------------------------------------+
+| Nettoeinkommen           [________] EUR  | Lebenshaltungskosten    [________] EUR|
+| Aus selbstst. Taetigkeit [________] EUR  | Aktuelle Warmmiete      [________] EUR|
+| Nebentaetigkeit          [________] EUR  | Priv. Krankenversich.   [________] EUR|
+| Mieteinnahmen (best.)    [________] EUR  | Unterhaltsverpflicht.   [________] EUR|
+| Kindergeld               [________] EUR  | Leasing (Kfz)           [________] EUR|
+| Unterhaltseinnahmen      [________] EUR  | Sonstige Fixkosten      [________] EUR|
+| Sonstiges                [________] EUR  |                                       |
++------------------------------------------+---------------------------------------+
+| NEUE FINANZIERUNG (blau)                 | NEUE FINANZIERUNG (blau)              |
++------------------------------------------+---------------------------------------+
+| Mieteinnahmen (neu)      [________] EUR  | Neue Darlehensrate      [________] EUR|
+| Steuervorteil (KA)       [________] EUR  | Nebenkosten (3 EUR/qm)  [________] EUR|
++------------------------------------------+---------------------------------------+
+| Summe Einnahmen       X.XXX,XX EUR (fett)| Summe Ausgaben       X.XXX,XX EUR(rot)|
++------------------------------------------+---------------------------------------+
+| ERGEBNIS                                                                         |
+| Verfuegbares Einkommen: +/- X.XXX EUR (gruen/rot)                               |
+| Kapitaldienstfaehigkeit: Tragfaehig / Nicht tragfaehig                           |
++------------------------------------------+---------------------------------------+
+| [ Haushaltsrechnung berechnen ]   [Info-Hinweis je nach Nutzungsart]             |
++----------------------------------------------------------------------------------+
 ```
-
-## 3. Verhalten: Struktur immer sichtbar
-
-- Die gesamte Tabelle mit allen Zeilen wird **immer angezeigt** (kein leerer Zustand mehr)
-- Alle Felder sind initial leer (Wert 0 oder leer)
-- Der Button "Haushaltsrechnung berechnen" **befuellt** die Felder mit den Daten aus Selbstauskunft und Kalkulator
-- Alle Felder bleiben jederzeit editierbar (ausser Summenzeilen und bei Eigennutzung: Warmmiete = 0, disabled)
-
-## 4. Farbliche Differenzierung "Neue Finanzierung"
-
-- Die Section-Header-Zeilen "Neue Finanzierung" erhalten `bg-blue-50/50 dark:bg-blue-950/20` statt `bg-muted/40`
-- Die Datenzeilen der neuen Finanzierung erhalten `bg-muted/15` als Hintergrund, um sie dezent vom Rest abzuheben
 
 ## Technische Umsetzung
 
-### Datei: `HouseholdCalculationCard.tsx` -- Komplett-Rewrite
+### Datei: `HouseholdCalculationCard.tsx` -- UI-Rewrite
 
-- Verwendet dieselben Table-Komponenten aus `@/components/ui/table`
-- Einspaltige Tabelle (Label | Wert), NICHT die 3-Spalten AS1/AS2 Form (da hier keine zwei Antragsteller, sondern konsolidierte Haushaltswerte)
-- `SectionHeaderRow`-artige Zeilen fuer Abschnitte
-- Summenzeilen analog zur Selbstauskunft
-- State wird initial mit Nullwerten befuellt, "Berechnen"-Button ueberschreibt mit echten Daten
-- Ergebnisblock (Verfuegbares Einkommen + Kapitaldienstfaehigkeit) am Ende der Tabelle integriert
+Die Table-Struktur wird durch ein **CSS-Grid mit zwei Spalten** (`grid grid-cols-2`) ersetzt:
 
-### Datei: `FMFinanzierungsakte.tsx` -- Verschiebung
+- **Linke Spalte**: Einnahmen-Block mit Section-Header, Datenzeilen, "Neue Finanzierung"-Bereich und Summenzeile
+- **Rechte Spalte**: Ausgaben-Block mit identischer Struktur, getrennt durch `border-l`
+- Jede Spalte nutzt intern weiterhin die kompakte `Table`-Komponente (Label | Input)
+- Die kuerzere Spalte (Ausgaben hat weniger Zeilen) wird nach unten mit Leerraum aufgefuellt, damit beide Spalten gleich hoch sind
+- **Ergebnis-Block** spannt ueber die volle Breite (`col-span-2`)
 
-- `HouseholdCalculationCard` wird von Zeile 242 nach unten verschoben: nach dem FinanceObjectCard-Block (nach Zeile 290), als letztes inhaltliches Element
+### Beibehaltene Logik
 
-### Betroffene Dateien
+- Alle State-Felder, `handleCalculate`, Summenberechnung und Kapitaldienstfaehigkeit bleiben unveraendert
+- Nur die Render-Struktur aendert sich von vertikal zu horizontal
+
+### Betroffene Datei
 
 | Datei | Aenderung |
 |---|---|
-| `HouseholdCalculationCard.tsx` | Komplett-Rewrite: Selbstauskunft-Tabellenstruktur, immer sichtbar, Button befuellt nur |
-| `FMFinanzierungsakte.tsx` | Verschiebung der Kachel ans Seitenende |
+| `HouseholdCalculationCard.tsx` | UI-Rewrite: 2-spaltiges T-Konto statt vertikaler Liste |
 
