@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
@@ -26,6 +26,7 @@ import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { PageShell } from '@/components/shared/PageShell';
 
 interface Property {
   id: string;
@@ -95,6 +96,7 @@ export default function PropertyDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'akte';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [splitView, setSplitView] = useState(false);
   const contentRef = usePdfContentRef();
 
   // Load the new Immobilienakte data
@@ -270,106 +272,139 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const simulationData = {
+    purchasePrice: property.purchase_price || property.market_value || 0,
+    marketValue: property.market_value || property.purchase_price || 0,
+    annualRent: (unit?.current_monthly_rent || 0) * 12,
+    outstandingBalance: financing[0]?.current_balance || 0,
+    interestRatePercent: financing[0]?.interest_rate || 0,
+    annuityMonthly: financing[0]?.monthly_rate || 0,
+    buildingSharePercent: accountingData?.building_share_percent || 80,
+    afaRatePercent: accountingData?.afa_rate_percent || 2,
+    afaMethod: accountingData?.afa_method || 'linear',
+    contextName: contextData?.name,
+    marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
+  };
+
   return (
-    <div className="space-y-6">
+    <PageShell fullWidth={splitView}>
       <div ref={contentRef}>
-        {/* Minimaler Header: Nur Back-Button */}
+        {/* Header: Back + Split-View Toggle */}
         <div className="flex items-center gap-2 mb-4">
           <Button variant="ghost" size="sm" asChild className="no-print">
             <Link to="/portal/immobilien/portfolio">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <span className="text-sm text-muted-foreground">Zurück zur Übersicht</span>
+          <span className="text-sm text-muted-foreground flex-1">Zurück zur Übersicht</span>
+
+          {/* Split-View Toggle — lg+ only */}
+          <div className="hidden lg:flex items-center gap-1 border rounded-md p-0.5 bg-muted/30 no-print">
+            <Button
+              variant={splitView ? 'ghost' : 'secondary'}
+              size="sm"
+              className="h-6 text-xs px-2 gap-1"
+              onClick={() => setSplitView(false)}
+            >
+              <LayoutList className="h-3 w-3" /> Standard
+            </Button>
+            <Button
+              variant={splitView ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 text-xs px-2 gap-1"
+              onClick={() => setSplitView(true)}
+            >
+              <LayoutPanelLeft className="h-3 w-3" /> Split-View
+            </Button>
+          </div>
         </div>
 
-        {/* Tabs - Akte is now the default/first tab */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="no-print">
-            <TabsTrigger value="akte" className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              Akte
-            </TabsTrigger>
-            <TabsTrigger value="simulation" className="flex items-center gap-1">
-              <Calculator className="h-4 w-4" />
-              Simulation
-            </TabsTrigger>
-            <TabsTrigger value="expose">Exposé</TabsTrigger>
-            <TabsTrigger value="verkaufsauftrag">Verkaufsauftrag</TabsTrigger>
-            <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
-            <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
-          </TabsList>
+        {splitView ? (
+          /* ═══ SPLIT VIEW: Akte | Simulation ═══ */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 220px)' }}>
+            <div className="overflow-y-auto pr-2 scrollbar-thin">
+              {dossierData ? (
+                <EditableUnitDossierView data={dossierData} />
+              ) : (
+                <div className="flex items-center justify-center py-12 text-muted-foreground">
+                  <p>Keine Akten-Daten verfügbar.</p>
+                </div>
+              )}
+            </div>
+            <div className="overflow-y-auto pl-2 scrollbar-thin">
+              <InventoryInvestmentSimulation data={simulationData} />
+            </div>
+          </div>
+        ) : (
+          /* ═══ STANDARD: Tabs ═══ */
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="no-print">
+              <TabsTrigger value="akte" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Akte
+              </TabsTrigger>
+              <TabsTrigger value="simulation" className="flex items-center gap-1">
+                <Calculator className="h-4 w-4" />
+                Simulation
+              </TabsTrigger>
+              <TabsTrigger value="expose">Exposé</TabsTrigger>
+              <TabsTrigger value="verkaufsauftrag">Verkaufsauftrag</TabsTrigger>
+              <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
+              <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
+            </TabsList>
 
-          {/* NEW: Immobilienakte Tab - SSOT Editable View */}
-          <TabsContent value="akte">
-            {dossierData ? (
-              <EditableUnitDossierView data={dossierData} />
-            ) : (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <p>Keine Akten-Daten verfügbar. Bitte ergänzen Sie die Stammdaten.</p>
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="akte">
+              {dossierData ? (
+                <EditableUnitDossierView data={dossierData} />
+              ) : (
+                <div className="flex items-center justify-center py-12 text-muted-foreground">
+                  <p>Keine Akten-Daten verfügbar. Bitte ergänzen Sie die Stammdaten.</p>
+                </div>
+              )}
+            </TabsContent>
 
-          {/* Investment Simulation Tab - shows for all properties (with or without financing) */}
-          <TabsContent value="simulation">
-            {property ? (
-              <InventoryInvestmentSimulation
-                data={{
-                  purchasePrice: property.purchase_price || property.market_value || 0,
-                  marketValue: property.market_value || property.purchase_price || 0,
-                  annualRent: (unit?.current_monthly_rent || 0) * 12,
-                  // Fallback to 0 if no financing (debt-free property)
-                  outstandingBalance: financing[0]?.current_balance || 0,
-                  interestRatePercent: financing[0]?.interest_rate || 0,
-                  annuityMonthly: financing[0]?.monthly_rate || 0,
-                  buildingSharePercent: accountingData?.building_share_percent || 80,
-                  afaRatePercent: accountingData?.afa_rate_percent || 2,
-                  afaMethod: accountingData?.afa_method || 'linear',
-                  contextName: contextData?.name,
-                  marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
-                }}
+            <TabsContent value="simulation">
+              <InventoryInvestmentSimulation data={simulationData} />
+            </TabsContent>
+
+            <TabsContent value="expose">
+              <ExposeTab 
+                property={property} 
+                financing={financing} 
+                unit={unit}
+                dossierData={dossierData}
               />
-            ) : null}
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="expose">
-            <ExposeTab 
-              property={property} 
-              financing={financing} 
-              unit={unit}
-              dossierData={dossierData}
-            />
-          </TabsContent>
+            <TabsContent value="verkaufsauftrag">
+              <VerkaufsauftragTab 
+                propertyId={property.id} 
+                tenantId={property.tenant_id}
+                unitId={unit?.id}
+                askingPrice={property.market_value || undefined}
+                propertyAddress={property.address}
+                propertyCity={property.city}
+                onUpdate={fetchProperty}
+              />
+            </TabsContent>
 
-          <TabsContent value="verkaufsauftrag">
-            <VerkaufsauftragTab 
-              propertyId={property.id} 
-              tenantId={property.tenant_id}
-              unitId={unit?.id}
-              askingPrice={property.market_value || undefined}
-              propertyAddress={property.address}
-              propertyCity={property.city}
-              onUpdate={fetchProperty}
-            />
-          </TabsContent>
+            <TabsContent value="tenancy">
+              <TenancyTab 
+                propertyId={property.id}
+                tenantId={property.tenant_id}
+                unitId={unit?.id || ''}
+              />
+            </TabsContent>
 
-          <TabsContent value="tenancy">
-            <TenancyTab 
-              propertyId={property.id}
-              tenantId={property.tenant_id}
-              unitId={unit?.id || ''}
-            />
-          </TabsContent>
-
-          <TabsContent value="datenraum">
-            <DatenraumTab 
-              propertyId={property.id}
-              tenantId={property.tenant_id}
-              propertyCode={property.code || undefined}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="datenraum">
+              <DatenraumTab 
+                propertyId={property.id}
+                tenantId={property.tenant_id}
+                propertyCode={property.code || undefined}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <PdfExportFooter 
@@ -377,6 +412,6 @@ export default function PropertyDetailPage() {
         documentTitle={getDocumentTitle()} 
         moduleName="MOD-04 Immobilien – Immobilienakte" 
       />
-    </div>
+    </PageShell>
   );
 }

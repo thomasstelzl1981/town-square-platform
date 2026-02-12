@@ -537,7 +537,7 @@ export default function FMFallDetail() {
   // ═══════════════════════════════════════════════════════════════
 
   return (
-    <PageShell>
+    <PageShell fullWidth={splitView}>
       {headerBlock}
 
       {splitView ? (
