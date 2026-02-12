@@ -21,7 +21,7 @@ export function PVLiveWidget() {
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-br from-yellow-500/5 to-orange-600/5 h-[240px] md:aspect-square md:h-auto"
+      className="cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-br from-yellow-500/5 to-orange-600/5 h-[260px] md:h-auto md:aspect-square"
       onClick={() => navigate('/portal/photovoltaik/monitoring')}
     >
       <CardHeader className="pb-2">

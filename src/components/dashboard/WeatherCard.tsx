@@ -391,7 +391,7 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
 
   if (isLoading) {
     return (
-      <Card className="relative h-[280px] md:aspect-square md:h-auto flex items-center justify-center bg-gradient-to-b from-muted/80 to-muted border-border/50">
+      <Card className="relative h-[260px] md:h-auto md:aspect-square flex items-center justify-center bg-gradient-to-b from-muted/80 to-muted border-border/50">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </Card>
     );
@@ -399,7 +399,7 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
 
   if (error || !weather) {
     return (
-      <Card className="relative h-[280px] md:aspect-square md:h-auto flex items-center justify-center bg-gradient-to-b from-muted/80 to-muted border-border/50">
+      <Card className="relative h-[260px] md:h-auto md:aspect-square flex items-center justify-center bg-gradient-to-b from-muted/80 to-muted border-border/50">
         <p className="text-muted-foreground text-xs">Wetterdaten nicht verfügbar</p>
       </Card>
     );
@@ -411,7 +411,7 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
 
   return (
     <Card 
-      className="relative h-[280px] md:aspect-square md:h-auto overflow-hidden border-border/30 shadow-lg"
+      className="relative h-[260px] md:h-auto md:aspect-square overflow-hidden border-border/30 shadow-lg"
       style={{ background: gradient }}
     >
       {/* Weather Effects Overlay */}

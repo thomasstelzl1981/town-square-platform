@@ -15,7 +15,7 @@ export function SpaceWidget() {
   const { data: apod, isLoading, error, refetch, isRefetching } = useSpaceAPOD();
 
   return (
-    <Card className="h-[300px] md:aspect-square md:h-auto bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border-indigo-500/20 overflow-hidden relative">
+    <Card className="h-[260px] md:h-auto md:aspect-square bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border-indigo-500/20 overflow-hidden relative">
       {/* Background Stars Effect */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         {[...Array(15)].map((_, i) => (

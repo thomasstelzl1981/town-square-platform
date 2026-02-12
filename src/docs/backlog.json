@@ -1,13 +1,12 @@
 {
   "meta": {
-    "version": "2.0",
-    "focus": "CI/Design-Konsistenz — Visuelle und strukturelle Vereinheitlichung aller 21 Module",
+    "version": "3.0",
+    "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 3 (complete) — ALL ISSUES RESOLVED",
-    "total": 24,
-    "done": 24,
-    "scan_coverage": "PageShell, ModulePageHeader, Lazy Loading, Suspense, Header-Hierarchie über alle 21 Module",
-    "v1_archive": "backlog_v1_architecture_sprint.json (40/47 done, 7 als Roadmap klassifiziert)"
+    "last_sprint": "Sprint 0 (Foundation + Dashboard) — DONE",
+    "total": 30,
+    "done": 6,
+    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid"
   },
   "roadmap": [
     {
@@ -48,240 +47,315 @@
   ],
   "issues": [
     {
-      "id": "CIv2-001",
-      "category": "pageshell",
-      "module": "MOD-17",
-      "severity": "high",
-      "title": "Cars: Alle 4 Sub-Tabs ohne PageShell und ModulePageHeader",
-      "effort": "M",
-      "status": "done",
-      "files": ["src/components/portal/cars/CarsFahrzeuge.tsx", "src/components/portal/cars/CarsVersicherungen.tsx", "src/components/portal/cars/CarsFahrtenbuch.tsx", "src/components/portal/cars/CarsAngebote.tsx"]
-    },
-    {
-      "id": "CIv2-002",
-      "category": "lazy-loading",
-      "module": "MOD-17",
-      "severity": "medium",
-      "title": "CarsPage: Direct imports statt lazy loading",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/CarsPage.tsx"]
-    },
-    {
-      "id": "CIv2-003",
-      "category": "lazy-loading",
-      "module": "MOD-13",
-      "severity": "medium",
-      "title": "ProjektePage: Direct imports statt lazy loading für 6+ Sub-Tabs",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/ProjektePage.tsx"]
-    },
-    {
-      "id": "CIv2-004",
-      "category": "lazy-loading",
-      "module": "MOD-18",
-      "severity": "low",
-      "title": "FinanzanalysePage: Direct imports statt lazy loading (Blueprint Module)",
-      "effort": "S",
-      "status": "done",
-      "note": "Inline tiles extracted to src/pages/portal/finanzanalyse/ and lazy-loaded.",
-      "files": ["src/pages/portal/FinanzanalysePage.tsx"]
-    },
-    {
-      "id": "CIv2-005",
-      "category": "lazy-loading",
-      "module": "MOD-15",
-      "severity": "low",
-      "title": "FortbildungPage: Direct import von FortbildungTabContent",
-      "effort": "XS",
-      "status": "done",
-      "note": "Converted to React.lazy() with named export re-wrap.",
-      "files": ["src/pages/portal/FortbildungPage.tsx"]
-    },
-    {
-      "id": "CIv2-006",
-      "category": "lazy-loading",
-      "module": "MOD-16",
-      "severity": "low",
-      "title": "ServicesPage: Monolith-Datei mit inline-Tabs statt lazy-geladene Einzel-Komponenten",
-      "effort": "M",
-      "status": "done",
-      "note": "ShopTab and BestellungenTab extracted to src/pages/portal/services/ and lazy-loaded.",
-      "files": ["src/pages/portal/ServicesPage.tsx"]
-    },
-    {
-      "id": "CIv2-007",
-      "category": "lazy-loading",
-      "module": "MOD-12",
-      "severity": "low",
-      "title": "AkquiseManagerPage: Monolith-Datei (~420 Zeilen) mit inline-Komponenten statt lazy loading",
-      "effort": "M",
-      "status": "done",
-      "note": "AkquiseDashboard, AkquiseMandateDetail, AkquiseTools, MandatCreateWizardManager extracted to src/pages/portal/akquise-manager/ and lazy-loaded.",
-      "files": ["src/pages/portal/AkquiseManagerPage.tsx"]
-    },
-    {
-      "id": "CIv2-008",
-      "category": "suspense",
-      "module": "MOD-11",
-      "severity": "medium",
-      "title": "FinanzierungsmanagerPage: Hat lazy-Imports aber kein Suspense-Wrapper",
-      "effort": "XS",
-      "status": "done",
-      "note": "P0-FIX Pattern: Parent ManifestRouter Suspense handles lazy loading."
-    },
-    {
-      "id": "CIv2-009",
-      "category": "suspense",
-      "module": "MOD-19",
-      "severity": "low",
-      "title": "PhotovoltaikPage: Custom Loading-Spinner statt konsistentem Suspense-Fallback",
-      "effort": "XS",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-010",
-      "category": "suspense",
-      "module": "MOD-20",
-      "severity": "low",
-      "title": "MietyPortalPage: Custom Spinner statt konsistentem Suspense-Fallback",
-      "effort": "XS",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-011",
-      "category": "header",
-      "module": "MOD-09",
-      "severity": "medium",
-      "title": "Vertriebspartner: KatalogTab, KundenTab, NetworkTab haben PageShell aber keinen ModulePageHeader",
-      "effort": "S",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-012",
-      "category": "header",
-      "module": "MOD-13",
-      "severity": "medium",
-      "title": "Projekte: VertriebTab und KontexteTab haben custom Header statt ModulePageHeader",
-      "effort": "S",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-013",
-      "category": "header",
-      "module": "MOD-07",
-      "severity": "low",
-      "title": "Finanzierung: SelbstauskunftTab und StatusTab/DokumenteTab ggf. ohne ModulePageHeader",
-      "effort": "S",
-      "status": "done",
-      "note": "Specialized layouts accepted for these components."
-    },
-    {
-      "id": "CIv2-014",
-      "category": "header",
-      "module": "MOD-03",
-      "severity": "low",
-      "title": "DMS: StorageTab migrated to PageShell + ModulePageHeader",
-      "effort": "XS",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-015",
-      "category": "header-hierarchy",
+      "id": "DM-001",
+      "sprint": 0,
+      "category": "foundation",
       "module": "GLOBAL",
-      "severity": "medium",
-      "title": "Header-Titel-Inkonsistenz: Modul-Name vs. Tile-Name als H1",
-      "effort": "M",
+      "title": "designManifest.ts erstellen — SSOT für Layout-Regeln",
+      "effort": "S",
       "status": "done",
-      "note": "Standard: Tile-spezifische Titel als H1, Modul-Name in Navigation."
+      "files": ["src/config/designManifest.ts"]
     },
     {
-      "id": "CIv2-016",
-      "category": "header-hierarchy",
+      "id": "DM-002",
+      "sprint": 0,
+      "category": "foundation",
+      "module": "GLOBAL",
+      "title": "WidgetGrid.tsx erstellen — Grid-Container Komponente",
+      "effort": "S",
+      "status": "done",
+      "files": ["src/components/shared/WidgetGrid.tsx"]
+    },
+    {
+      "id": "DM-003",
+      "sprint": 0,
+      "category": "foundation",
+      "module": "GLOBAL",
+      "title": "WidgetCell.tsx erstellen — Zellen-Wrapper Komponente",
+      "effort": "S",
+      "status": "done",
+      "files": ["src/components/shared/WidgetCell.tsx"]
+    },
+    {
+      "id": "DM-004",
+      "sprint": 0,
+      "category": "foundation",
+      "module": "Dashboard",
+      "title": "DashboardGrid.tsx auf festes 4-Spalten-Grid migrieren",
+      "effort": "S",
+      "status": "done",
+      "files": ["src/components/dashboard/DashboardGrid.tsx"]
+    },
+    {
+      "id": "DM-005",
+      "sprint": 0,
+      "category": "dashboard",
+      "module": "Dashboard",
+      "title": "Alle 12 Dashboard-Widgets: h-Klassen auf h-[260px] md:h-auto md:aspect-square vereinheitlichen",
+      "effort": "M",
+      "status": "done",
+      "files": [
+        "src/components/dashboard/ArmstrongGreetingCard.tsx",
+        "src/components/dashboard/WeatherCard.tsx",
+        "src/components/dashboard/EarthGlobeCard.tsx",
+        "src/components/dashboard/widgets/FinanceWidget.tsx",
+        "src/components/dashboard/widgets/NewsWidget.tsx",
+        "src/components/dashboard/widgets/SpaceWidget.tsx",
+        "src/components/dashboard/widgets/QuoteWidget.tsx",
+        "src/components/dashboard/widgets/RadioWidget.tsx",
+        "src/components/dashboard/widgets/PVLiveWidget.tsx",
+        "src/components/dashboard/widgets/BrandLinkWidget.tsx"
+      ]
+    },
+    {
+      "id": "DM-006",
+      "sprint": 0,
+      "category": "foundation",
+      "module": "GLOBAL",
+      "title": "shared/index.ts Export von WidgetGrid + WidgetCell",
+      "effort": "XS",
+      "status": "done",
+      "files": ["src/components/shared/index.ts"]
+    },
+    {
+      "id": "DM-007",
+      "sprint": 1,
+      "category": "module-migration",
+      "module": "MOD-01",
+      "title": "Stammdaten: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-008",
+      "sprint": 1,
+      "category": "module-migration",
       "module": "MOD-02",
-      "severity": "low",
-      "title": "Office: BriefTab und WhatsAppTab PageShell/ModulePageHeader migrated",
-      "effort": "XS",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-017",
-      "category": "header-hierarchy",
-      "module": "MOD-14",
-      "severity": "low",
-      "title": "CommunicationPro: ResearchTab und SocialPage validated",
-      "effort": "XS",
-      "status": "done"
-    },
-    {
-      "id": "CIv2-018",
-      "category": "architecture",
-      "module": "MOD-18",
-      "severity": "low",
-      "title": "FinanzanalysePage: Tile-Komponenten inline statt als separate Dateien",
+      "title": "Office: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "done",
-      "note": "Extracted to src/pages/portal/finanzanalyse/."
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-019",
-      "category": "architecture",
+      "id": "DM-009",
+      "sprint": 1,
+      "category": "module-migration",
+      "module": "MOD-03",
+      "title": "DMS: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-010",
+      "sprint": 1,
+      "category": "module-migration",
+      "module": "MOD-04",
+      "title": "Immobilien: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-011",
+      "sprint": 1,
+      "category": "module-migration",
+      "module": "MOD-05",
+      "title": "Kontakte: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-012",
+      "sprint": 2,
+      "category": "module-migration",
+      "module": "MOD-06",
+      "title": "Buchhaltung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-013",
+      "sprint": 2,
+      "category": "module-migration",
+      "module": "MOD-07",
+      "title": "Finanzierung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-014",
+      "sprint": 2,
+      "category": "module-migration",
+      "module": "MOD-08",
+      "title": "Kaufy Portal: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-015",
+      "sprint": 2,
+      "category": "module-migration",
+      "module": "MOD-09",
+      "title": "Vertriebspartner: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-016",
+      "sprint": 2,
+      "category": "module-migration",
       "module": "MOD-10",
-      "severity": "low",
-      "title": "LeadsPage: Tile-Funktionen inline statt als separate Dateien",
+      "title": "Leads: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "done",
-      "note": "Extracted to src/pages/portal/leads/ (LeadsInbox, MeineLeads, LeadsPipeline, LeadsWerbung)."
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-020",
-      "category": "pageshell",
-      "module": "MOD-10",
-      "severity": "low",
-      "title": "ModuleTilePage: Nutzt intern PageShell statt inline max-w-7xl",
+      "id": "DM-017",
+      "sprint": 3,
+      "category": "module-migration",
+      "module": "MOD-11",
+      "title": "Finanzierungsmanager: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "done"
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-021",
-      "category": "header",
+      "id": "DM-018",
+      "sprint": 3,
+      "category": "module-migration",
       "module": "MOD-12",
-      "severity": "low",
-      "title": "AkquiseManager MandatDetail: Custom Header — documented as Detail-View exception",
-      "effort": "XS",
-      "status": "done",
-      "note": "Detail-Views with Back-Button and entity-specific headers are an accepted architectural pattern (like PropertyDetail, FMFallDetail)."
+      "title": "Akquise Manager: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-022",
-      "category": "pageshell",
+      "id": "DM-019",
+      "sprint": 3,
+      "category": "module-migration",
+      "module": "MOD-13",
+      "title": "Projekte: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-020",
+      "sprint": 3,
+      "category": "module-migration",
+      "module": "MOD-14",
+      "title": "Communication Pro: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-021",
+      "sprint": 3,
+      "category": "module-migration",
       "module": "MOD-15",
-      "severity": "low",
-      "title": "FortbildungPage: PageShell auf Router-Parent — documented as Pattern-Variante A",
-      "effort": "XS",
-      "status": "done",
-      "note": "Valid when all tabs share the same header. Documented as reference pattern."
+      "title": "Fortbildung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-023",
-      "category": "pageshell",
-      "module": "GLOBAL",
-      "severity": "medium",
-      "title": "Zwei PageShell-Patterns: Router-Parent vs. Jeder-Tab — Standard documented",
-      "effort": "XS",
-      "status": "done",
-      "note": "Standard: Jeder-Tab-Pattern als Default. Router-Parent nur erlaubt wenn ALLE Tabs denselben Header teilen (wie MOD-15)."
+      "id": "DM-022",
+      "sprint": 4,
+      "category": "module-migration",
+      "module": "MOD-16",
+      "title": "Services: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
     },
     {
-      "id": "CIv2-024",
-      "category": "lazy-loading",
-      "module": "GLOBAL",
-      "severity": "low",
-      "title": "Suspense-Fallback-Standard documented",
+      "id": "DM-023",
+      "sprint": 4,
+      "category": "module-migration",
+      "module": "MOD-17",
+      "title": "Cars: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-024",
+      "sprint": 4,
+      "category": "module-migration",
+      "module": "MOD-18",
+      "title": "Finanzanalyse: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-025",
+      "sprint": 4,
+      "category": "module-migration",
+      "module": "MOD-19",
+      "title": "Photovoltaik: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-026",
+      "sprint": 4,
+      "category": "module-migration",
+      "module": "MOD-20",
+      "title": "Miety: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-027",
+      "sprint": 5,
+      "category": "module-migration",
+      "module": "MOD-21",
+      "title": "Admin/Superadmin: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "S",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-028",
+      "sprint": 5,
+      "category": "module-migration",
+      "module": "MOD-22",
+      "title": "Kalender: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "XS",
-      "status": "done",
-      "note": "Standard: P0-FIX Module (Parent ManifestRouter handles Suspense). All other modules use Suspense fallback={null}. Custom spinners removed."
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-029",
+      "sprint": 5,
+      "category": "module-migration",
+      "module": "MOD-23",
+      "title": "Einstellungen: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "effort": "XS",
+      "status": "todo",
+      "files": []
+    },
+    {
+      "id": "DM-030",
+      "sprint": 5,
+      "category": "documentation",
+      "module": "GLOBAL",
+      "title": "Design Manifest Abschluss-Dokumentation und Memory-Update",
+      "effort": "XS",
+      "status": "todo",
+      "files": ["src/config/designManifest.ts", ".lovable/plan.md"]
     }
   ]
 }
