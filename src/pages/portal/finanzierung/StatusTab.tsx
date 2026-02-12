@@ -12,6 +12,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/shared/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -253,7 +254,7 @@ export default function StatusTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {requests.map(request => {
         const mandate = Array.isArray(request.mandate) ? request.mandate[0] : request.mandate;
         const manager = mandate?.assigned_manager_id 
@@ -418,6 +419,6 @@ export default function StatusTab() {
           </Card>
         );
       })}
-    </div>
+    </PageShell>
   );
 }
