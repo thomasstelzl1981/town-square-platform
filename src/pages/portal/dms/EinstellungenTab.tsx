@@ -93,7 +93,7 @@ export function EinstellungenTab() {
 
   const currentPlanId = orgData?.storage_plan_id || '00000000-0000-0000-0000-000000000001';
   const currentQuota = orgData?.storage_quota_bytes || 5368709120;
-  const usedBytes = 0; // TODO: calculate from actual storage usage
+  const usedBytes = 0; // STUB: Storage-API-Abfrage erfordert Edge Function (DATA-002)
   const usedPercent = Math.round((usedBytes / currentQuota) * 100);
 
   const changePlanMutation = useMutation({

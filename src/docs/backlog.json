@@ -4,7 +4,7 @@
     "last_scan": "2026-02-12",
     "last_sprint": "2026-02-12",
     "total": 47,
-    "done": 29,
+    "done": 40,
     "scan_coverage": "all 21 modules, 3 zones, manifests, specs, contracts"
   },
   "issues": [
@@ -136,8 +136,10 @@
       "severity": "low",
       "title": "TODO: Persist to investment_favorites table (InvestmentExposePage.tsx)",
       "fix": "Favoriten-Toggle an DB anbinden oder als bewussten Stub markieren",
-      "effort": "M",
-      "status": "open"
+      "effort": "XS",
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "TODO durch STUB-Kommentar ersetzt mit Referenz auf DATA-001"
     },
     {
       "id": "HYGIENE-003",
@@ -147,8 +149,10 @@
       "severity": "low",
       "title": "TODO: calculate from actual storage usage (EinstellungenTab.tsx)",
       "fix": "Storage-Usage aus Supabase-Storage lesen oder Stub markieren",
-      "effort": "M",
-      "status": "open"
+      "effort": "XS",
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "TODO durch STUB-Kommentar ersetzt mit Referenz auf DATA-002"
     },
     {
       "id": "HYGIENE-004",
@@ -158,8 +162,10 @@
       "severity": "low",
       "title": "TODO: Save to database when implemented (MasterTemplates.tsx)",
       "fix": "Master-Vorlagen DB-Persistenz oder als Stub markieren",
-      "effort": "M",
-      "status": "open"
+      "effort": "XS",
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "TODO durch STUB-Kommentar ersetzt mit Referenz auf HYGIENE-004"
     },
     {
       "id": "HYGIENE-005",
@@ -169,8 +175,10 @@
       "severity": "low",
       "title": "TODO: Replace with actual hook (AcquiaryNeedsRouting.tsx L19)",
       "fix": "Echten Query-Hook implementieren oder Stub-Banner zeigen",
-      "effort": "M",
-      "status": "open"
+      "effort": "S",
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "Echter useQuery-Hook implementiert: liest acq_inbound_messages mit needs_routing=true"
     },
     {
       "id": "HYGIENE-006",
@@ -194,7 +202,9 @@
       "title": "TODO: Replace with actual inbound needs_routing query (Acquiary.tsx L60)",
       "fix": "Query aus acq_inbound_messages mit needs_routing=true implementieren",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "Echter useQuery-Hook implementiert: liest acq_inbound_messages mit needs_routing=true"
     },
     {
       "id": "HYGIENE-008",
@@ -355,7 +365,9 @@
       "title": "Miety demoCameras Array enthaelt hardcoded Demo-Daten",
       "fix": "Demo-Daten durch leeres Array mit Onboarding-Hinweis ersetzen oder als expliziten Demo-Modus markieren",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "demoCameras.ts als bewussten DEMO-MODE dokumentiert mit Hinweis auf eufy-connect Abloesung"
     },
     {
       "id": "UX-002",
@@ -412,7 +424,9 @@
       "title": "FortbildungPage nutzt PageShell + ModulePageHeader — aber Content ist generischer Stub",
       "fix": "Echter Content oder sauberer Empty-State",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "False positive: FortbildungTabContent hat echten Content (curatedProvider, TopicSection). Kein Stub."
     },
     {
       "id": "CI-005",
@@ -460,7 +474,9 @@
       "title": "Acquiary Sub-Routen nutzen alle denselben Component-Name 'Acquiary'",
       "fix": "Dedizierte Component-Namen (AcquiaryInbox, AcquiaryAssignments etc.) oder Tab-Routing intern",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "Dedizierte Component-Namen (AcquiaryDashboard, AcquiaryInbox etc.) im routesManifest gesetzt"
     },
     {
       "id": "MANIFEST-006",
@@ -483,7 +499,9 @@
       "title": "ServicesPage (Shops): PageShell + ModulePageHeader korrekt, Product-Images hardcoded",
       "fix": "Produkt-Bilder aus Storage oder als bewussten Demo-Datensatz markieren",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "Bewusste Demo-Daten: Product-Images sind intentionale Showcase-Eintraege fuer Shop-Anbindungen"
     },
     {
       "id": "ARCH-011",
@@ -559,7 +577,9 @@
       "title": "Frozen specs Ordner (00_frozen) nicht inventarisiert",
       "fix": "Inhalt pruefen und bei Bedarf archivieren",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "Inventarisiert: 10 Dateien (Governance, Freeze-JSON, Audit-Marker, Go/No-Go). Alle aktuell und relevant."
     },
     {
       "id": "HYGIENE-010",
@@ -570,7 +590,9 @@
       "title": "AkquiseManagerPage: ObjekteingangDetail-Funktion als Inline-Stub",
       "fix": "In eigene Datei extrahieren oder als bewussten Stub markieren",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "ObjekteingangDetail ist korrekt als eigene Datei extrahiert (src/pages/portal/akquise-manager/ObjekteingangDetail.tsx). False positive."
     }
   ]
 }

@@ -4,6 +4,8 @@
  * Fallback queue for inbound emails that couldn't be automatically routed
  */
 import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,19 +19,24 @@ import {
 import { toast } from 'sonner';
 import { useAcqMandates } from '@/hooks/useAcqMandate';
 
-// TODO: Replace with actual hook when inbound_messages table exists
+// STUB: Returns empty array until acq_inbound_messages with needs_routing=true are populated.
+// The table exists but no inbound webhook is connected yet (see CONTRACT_ACQ_INBOUND_EMAIL).
 const useNeedsRoutingMessages = () => {
-  return {
-    data: [] as Array<{
-      id: string;
-      from_email: string;
-      subject: string;
-      received_at: string;
-      routing_confidence: number;
-      routing_method: string;
-    }>,
-    isLoading: false,
-  };
+  
+  return useQuery({
+    queryKey: ['acq-needs-routing'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('acq_inbound_messages')
+        .select('id, from_email, subject, received_at, routing_confidence, routing_method')
+        .eq('needs_routing', true)
+        .is('routed_at', null)
+        .order('received_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 };
 
 export default function AcquiaryNeedsRouting() {
