@@ -21,23 +21,63 @@ export function Kaufy2026Hero({
   isLoading = false,
 }: Kaufy2026HeroProps) {
   return (
-    <section className="kaufy2026-hero">
-      <div className="kaufy2026-hero-wrapper">
+    <section style={{ padding: 0 }}>
+      <div style={{
+        position: 'relative',
+        width: 'calc(100% - 120px)',
+        height: 620,
+        margin: '60px 60px 0',
+        borderRadius: 20,
+        overflow: 'visible',
+      }}>
         {/* Hero Image */}
         <img
           src={heroBackground}
           alt="Kapitalanlageimmobilien"
-          className="kaufy2026-hero-image"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            filter: 'grayscale(20%) brightness(0.6)',
+            borderRadius: 20,
+            zIndex: 1,
+          }}
         />
 
         {/* Overlay Content */}
-        <div className="kaufy2026-hero-overlay">
-          <h1 className="kaufy2026-hero-title">
+        <div style={{
+          position: 'absolute',
+          zIndex: 2,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding: '40px 60px',
+        }}>
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            maxWidth: 600,
+          }}>
             Die KI-Plattform für
             <br />
             Kapitalanlageimmobilien.
           </h1>
-          <p className="kaufy2026-hero-subtitle">
+          <p style={{
+            fontSize: '1.25rem',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginTop: '1rem',
+          }}>
             Marktplatz & digitale Mietsonderverwaltung
           </p>
           <Link to="/auth">
