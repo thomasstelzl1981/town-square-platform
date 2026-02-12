@@ -1,188 +1,298 @@
 
-# Redesign: Sanierung und Akquise-Manager nach dem Finanzierungsmanager-Muster
+# Gesamtplan: Mobile Fullscreen-Feed fuer die komplette Zone 2
 
-## Analyse: Was macht den FM-Flow so gut?
+## Analyse: Aktuelle Mobile-Probleme in Zone 2
 
-Der Finanzierungsmanager hat ein bewaehrtes 3-Stufen-Muster:
+Alle 21 Module (Dashboard + 20 MODs) nutzen dieselben Basis-Bausteine, die auf Mobile suboptimal sind:
+- **PageShell**: `p-4 md:p-6` — funktioniert, aber zu viel seitliches Padding auf kleinen Screens
+- **ModulePageHeader**: Flex-Layout mit Titel + Actions nebeneinander — bricht auf Mobile teilweise
+- **Widget-Grids**: `grid-cols-2` bis `grid-cols-5` — erzeugt kleine, unleserliche Kacheln
+- **aspect-square**: Erzwingt quadratische Form auch auf Mobile — verschwendet Platz
+- **Bank-Tabellen** (`grid-cols-[180px_1fr]`): Label-Spalte zu breit auf Mobile
+- **Split-View**: Zwei Spalten nebeneinander — auf Mobile nicht nutzbar
+- **Formular-Grids**: `grid-cols-2/3/4` fuer Eingabefelder — zu eng auf Mobile
 
-1. **Dashboard** mit Widget-Kacheln (FinanceCaseCard) fuer aktive Faelle, Visitenkarte, Zins-Ticker, BrandWidgets
-2. **Faelle-Liste** als Tabelle mit Filter-Chips, Suche, Status-Badges, "Naechste Aktion"
-3. **Fall-Detail** als durchgehende Akte (vertikaler Flow ohne Tabs) mit Split-View, Stepper, Status-Aktionen
-4. **Einreichung** als eigener Reiter mit Case-Widget-Auswahl oben und darunter die 4 Kacheln (Expose, Bankauswahl, Status, Europace)
+## Strategie: 3 Shared Components aendern, alle Module profitieren
 
-Kernprinzipien:
-- Widget-Kacheln (aspect-square) als visuelle Einstiegspunkte
-- Durchgehende Akte statt Tab-basierter Fragmentierung
-- Stepper zeigt visuell den Workflow-Fortschritt
-- Bank-Tabellen-Design (Label|Wert) fuer alle Datenfelder
-- Split-View fuer komplexe Bearbeitungen
-- PageShell + ModulePageHeader fuer CI-Konsistenz
+Statt alle 86+ Dateien einzeln anzufassen, werden die **zentralen Bausteine** mobile-optimiert. Dadurch erbt jedes Modul automatisch das neue Verhalten.
 
 ---
 
-## Teil 1: Sanierung (MOD-04) — Redesign
+## Ebene 1: Globale Bausteine (wirken auf ALLE Module)
 
-### Ist-Zustand (Probleme)
-- Alles in einer einzigen `SanierungTab.tsx` gepresst
-- Workflow laeuft innerhalb eines Collapsible pro Case — eng, unuebersichtlich
-- Kein Dashboard, keine Widget-Kacheln
-- Kein eigener Detail-View — alles inline
-- Stepper ist eine Sidebar innerhalb des Collapsible statt eines visuellen Headers
-- Kein "Vergabe"-Reiter analog zur Einreichung
+### 1.1 PageShell — Reduziertes Mobile-Padding
 
-### Neues Konzept: 3-Seiten-Architektur (wie FM)
+```
+Vorher: p-4 md:p-6
+Nachher: px-2 py-3 md:p-6
+```
 
-**Seite 1: Sanierung Dashboard** (`/portal/immobilien/sanierung`)
-- ModulePageHeader: "SANIERUNG" + Beschreibung + Button "Sanierung starten"
-- Widget-Kacheln (aspect-square, grid) fuer aktive Vorgaenge — analog zu FinanceCaseCard:
-  - Icon (Kategorie-Icon), Titel, Tender-ID, Objekt-Adresse, Status-Badge, Kostenschaetzung
-  - Klick navigiert zur Detail-Seite
-- Leerer Zustand: Grosses HardHat-Icon + "Erste Sanierung starten"
+Minimales seitliches Padding auf Mobile fuer maximale Inhaltsbreite.
 
-**Seite 2: Sanierung Detail** (`/portal/immobilien/sanierung/:caseId`)
-- Eigene Route statt Inline-Collapsible
-- Header: Zurueck-Button + Titel + Tender-ID + Status-Badge + Aktions-Buttons
-- **Visueller Stepper** im Header (horizontal, wie CaseStepper im FM):
-  - Schritt 1: Leistungsumfang
-  - Schritt 2: Dienstleister
-  - Schritt 3: Ausschreibung
-  - Schritt 4: Angebote & Vergabe
-- Darunter: Durchgehende Akte (vertikaler Flow, keine Tabs):
-  - Kurzbeschreibung (Bank-Tabelle: Objekt, Kategorie, Titel, Budget, Erstellt am)
-  - Leistungsumfang (ScopeDefinitionPanel)
-  - Dienstleister-Suche (ProviderSearchPanel)
-  - Ausschreibungsentwurf (TenderDraftPanel)
-  - Angebotsvergleich (OfferComparisonPanel)
-- Split-View Toggle (lg+): Links Akte, Rechts Dokumente/Uploads
+### 1.2 ModulePageHeader — Vertikales Stacking auf Mobile
 
-**Seite 3: Vergabe** (`/portal/immobilien/sanierung/vergabe`)
-- Analog zu FM Einreichung
-- Oben: Widget-Kacheln fuer Vorgaenge im Status "under_review" oder "awarded"
-- Darunter bei Auswahl:
-  - Kachel 1: Angebotsvergleichs-Zusammenfassung
-  - Kachel 2: Auftragsvergabe (Dienstleister auswaehlen, Auftragsbestaetigung per E-Mail)
-  - Kachel 3: Status-Tracking (in_progress, completed)
+```
+Vorher: flex items-start justify-between gap-4 (immer horizontal)
+Nachher: flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4
+```
 
-### Routing-Aenderung
+Titel und Beschreibung oben, Actions darunter als volle Breite.
 
-Aktuell: `/portal/immobilien/sanierung` zeigt alles in einer Seite.
-Neu: Sub-Routing innerhalb der SanierungTab:
-- `/portal/immobilien/sanierung` — Dashboard
-- `/portal/immobilien/sanierung/:caseId` — Detail-Akte
-- `/portal/immobilien/sanierung/vergabe` — Vergabe-Reiter
+### 1.3 ModuleTilePage — Fullscreen Empty States
+
+Die Template-Komponente fuer leere Tiles bekommt Mobile-optimierte Abstände und volle Breite.
+
+### 1.4 FormSection / FormRow — Mobile-First Stacking
+
+Bank-Tabellen-Zeilen (`grid-cols-[180px_1fr]`) werden auf Mobile zu vertikalem Stack:
+
+```
+Vorher: grid grid-cols-[180px_1fr] (immer)
+Nachher: grid grid-cols-1 md:grid-cols-[180px_1fr]
+```
+
+Label oben, Wert darunter — auf Mobile besser lesbar.
 
 ---
 
-## Teil 2: Akquise-Manager (MOD-12) — Redesign
+## Ebene 2: Dashboard (MOD-00)
 
-### Ist-Zustand (Probleme)
-- Dashboard zeigt nur Mandats-Karten (keine Widget-Kacheln)
-- BrandWidgets werden statisch oben gerendert (soll jetzt ueber System-Widgets laufen)
-- Mandats-Detail nutzt 5-Tab-Layout (Sourcing, Outreach, Eingang, Analyse, Delivery) — fragmentiert
-- Objekteingang-Detail nutzt 6-Tab-Layout — noch fragmentierter
-- Kein visueller Stepper fuer den Golden Path
-- Kein durchgehender Akte-Flow
-- Mandats-Liste ist minimal (nur Code + Badge)
+### 2.1 DashboardGrid — Flex-Column statt Grid
 
-### Neues Konzept: FM-Muster uebertragen
+Mobile: `flex flex-col gap-3` mit optionalem `scroll-snap-type: y proximity`.
+Desktop: Grid wie bisher (unveraendert).
 
-**Dashboard** (`/portal/akquise-manager/dashboard`)
-- ModulePageHeader: "AKQUISE-MANAGER" + Beschreibung + "Neues Mandat"-Button
-- BrandWidgets entfernen (laufen jetzt ueber System-Widgets im Haupt-Dashboard)
-- Widget-Kacheln (aspect-square) fuer aktive Mandate:
-  - Mandat-Code, Client-Name (wenn sichtbar), Asset-Fokus, Preisspanne, Status-Badge, Offer-Count
-  - Klick navigiert zum Mandats-Detail
-- Darunter: Pending-Mandate als Aktions-Karten (wie bisher, aber kompakter)
-- Eigene Mandats-Kacheln neben den Zugewiesenen
+### 2.2 SortableWidget — Snap-Start Container
 
-**Mandats-Detail** (`/portal/akquise-manager/mandate/:mandateId`)
-- Header: Zurueck + Code + Status-Badge + Client-Info + Suchkriterien
-- **Visueller Stepper** (horizontal):
-  - Phase 1: Gate/Annahme
-  - Phase 2: Sourcing & Outreach
-  - Phase 3: Objekteingang & Analyse
-  - Phase 4: Delivery/Praesentation
-- Durchgehende Akte (vertikaler Flow, KEINE Tabs):
-  - TermsGate (wenn noetig, ganz oben)
-  - Suchprofil-Zusammenfassung (Bank-Tabellen-Design)
-  - Sourcing-Bereich (PortalSearch, PropertyResearch inline)
-  - Outreach-Bereich (E-Mail-Versand)
-  - Objekteingang (Liste der Offers als Kompakt-Karten)
-  - Analyse-Bereich (Bestand/Aufteiler Kalkulationen)
-- Split-View Toggle: Links Mandats-Akte, Rechts Objekteingang-Detail
+Mobile: `snap-start w-full` Wrapper ohne DnD-Attribute.
 
-**Objekteingang-Detail** (`/portal/akquise-manager/objekteingang/:offerId`)
-- Header: Zurueck + Titel + Status-Select + Aktions-Buttons
-- **Visueller Stepper**:
-  - Schritt 1: Erfassung (Objektdaten)
-  - Schritt 2: Analyse (Kalkulation)
-  - Schritt 3: Bewertung (Interesse/Absage/Preisvorschlag)
-  - Schritt 4: Delivery (Praesentation an Investor)
-- Durchgehende Akte statt 6 Tabs:
-  - Kurzbeschreibung (Bank-Tabelle: KPIs in einer kompakten Tabelle statt 5 separate Cards)
-  - Objektdaten (Basis, Lage, Investment — als Label|Wert Zeilen)
-  - Kalkulation (Bestand/Aufteiler direkt inline, Sub-Toggle)
-  - Quelle (E-Mail-Viewer)
-  - Dokumente (Dateiliste)
-  - Aktivitaeten (Log)
+### 2.3 Alle Widget-Komponenten — Feste Mobile-Hoehen
 
-**Faelle-/Pipeline-Uebersicht** (`/portal/akquise-manager/objekteingang`)
-- Filter-Chips (wie FM Faelle): Alle, Eingegangen, In Analyse, Analysiert, Praesentiert
-- Tabellen-Design statt grosse Karten (wie FMFaelle)
-- Spalten: Titel, Adresse, Preis, Status, Mandat, Naechste Aktion, Alter
+| Widget | Mobile | Desktop |
+|--------|--------|---------|
+| ArmstrongGreetingCard | `h-[220px]` | `aspect-square` |
+| WeatherCard | `h-[280px]` | `aspect-square` |
+| EarthGlobeCard | `h-[300px]` | `aspect-square` |
+| FinanceWidget | `h-[280px]` | `aspect-square` |
+| NewsWidget | `h-[320px]` | `aspect-square` |
+| SpaceWidget | `h-[300px]` | `aspect-square` |
+| QuoteWidget | `h-[200px]` | `aspect-square` |
+| RadioWidget | `h-[260px]` | `aspect-square` |
+| BrandLinkWidget | `h-[180px]` | `aspect-square` |
+| PVLiveWidget | `h-[240px]` | `aspect-square` |
+
+Alle: `h-[Xpx] md:aspect-square md:h-auto`
+
+### 2.4 PortalDashboard — Mobile Titel
+
+```
+Vorher: text-h1 text-center tracking-widest (gleich auf allen Screens)
+Nachher: text-lg md:text-h1 text-center tracking-widest
+```
 
 ---
 
-## Teil 3: Gemeinsame Komponenten
+## Ebene 3: Workflow-Module mit Case-Cards (MOD-11, MOD-04, MOD-12)
 
-### Neue Komponente: `ServiceCaseCard` (Widget-Kachel fuer Sanierung)
-- Analog zu `FinanceCaseCard`
-- aspect-square, Glass-Card, Kategorie-Icon, Titel, Status-Badge, Kosten
+### 3.1 Case-Card-Grids — Vertikaler Feed auf Mobile
 
-### Neue Komponente: `MandateCaseCard` (Widget-Kachel fuer Akquise)
-- Analog zu `FinanceCaseCard`
-- aspect-square, Glass-Card, Briefcase-Icon, Code, Status, Offer-Count
+Alle Module, die Widget-Kacheln (FinanceCaseCard, ServiceCaseCard, MandateCaseCard) in einem Grid darstellen, werden auf Mobile zu einem vertikalen Feed:
 
-### Neue Komponente: `SanierungStepper` / `AkquiseStepper`
-- Horizontal, analog zu `CaseStepper`
-- Zeigt visuell den Fortschritt im Golden Path
+```
+Vorher: grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4
+Nachher: flex flex-col gap-3 md:grid md:grid-cols-4 lg:grid-cols-5 md:gap-4
+```
+
+### 3.2 Case-Cards — Horizontales Layout auf Mobile
+
+Statt quadratisch (aspect-square) werden die Cards auf Mobile zu breiten, flachen Karten:
+
+```
+Mobile: flex-row Layout (Icon links, Infos rechts, volle Breite, h-auto)
+Desktop: aspect-square (wie bisher)
+```
+
+Betrifft:
+- `FinanceCaseCard` (MOD-11)
+- `ServiceCaseCard` (MOD-04 Sanierung)
+- `MandateCaseCard` (MOD-12)
+
+### 3.3 Stepper — Kompakt auf Mobile
+
+CaseStepper, SanierungStepper, AkquiseStepper:
+
+```
+Vorher: Horizontale Schritte mit Text (immer)
+Nachher Mobile: Nur Icons/Nummern + aktueller Schritt-Name, kompakter Abstand
+Desktop: Wie bisher
+```
+
+### 3.4 Split-View — Automatisch deaktiviert auf Mobile
+
+Split-View-Toggles werden auf Mobile ausgeblendet. Inhalte werden vertikal gestapelt statt nebeneinander.
+
+```
+Vorher: grid grid-cols-2 (wenn splitView aktiv, auch auf Mobile)
+Nachher: grid grid-cols-1 lg:grid-cols-2 (Split nur auf lg+)
+```
+
+Betrifft: FMFallDetail, SanierungDetail, Akquise MandateDetail, PropertyDetailPage
 
 ---
 
-## Technische Aenderungen
+## Ebene 4: Formular-Module (MOD-01, MOD-07, MOD-11 Selbstauskunft)
 
-### Neue Dateien
+### 4.1 Bank-Tabellen-Rows — Vertikales Stacking
 
-| Datei | Inhalt |
-|---|---|
-| `src/components/sanierung/ServiceCaseCard.tsx` | Widget-Kachel fuer Sanierungsvorgaenge |
-| `src/components/sanierung/SanierungStepper.tsx` | Horizontaler Stepper |
-| `src/components/sanierung/SanierungDetail.tsx` | Durchgehende Akte (vertikaler Flow) |
-| `src/components/sanierung/SanierungVergabe.tsx` | Vergabe-Reiter (analog FM Einreichung) |
-| `src/components/akquise/MandateCaseCard.tsx` | Widget-Kachel fuer Mandate |
-| `src/components/akquise/AkquiseStepper.tsx` | Horizontaler Stepper |
+```
+Vorher: grid grid-cols-[180px_1fr] (immer)
+Nachher: flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr]
+```
 
-### Geaenderte Dateien
+Auf Mobile: Label als kleine Ueberschrift, Wert darunter in voller Breite.
+
+### 4.2 Formular-Grids — Einspaltig auf Mobile
+
+Ueberall wo `grid-cols-2`, `grid-cols-3`, `grid-cols-4` fuer Eingabefelder verwendet wird:
+
+```
+Vorher: grid grid-cols-2 gap-2 (oder 3/4)
+Nachher: grid grid-cols-1 md:grid-cols-2 gap-2 (bzw. md:grid-cols-3/4)
+```
+
+---
+
+## Ebene 5: Tabellen-Module (MOD-11 Faelle, MOD-12 Objekteingang, MOD-06 Vorgaenge)
+
+### 5.1 Daten-Tabellen — Card-Stack auf Mobile
+
+Desktop-Tabellen mit vielen Spalten sind auf Mobile unlesbar. Loesung: Auf Mobile werden Tabellenzeilen zu gestapelten Cards:
+
+```
+Mobile: Jede Zeile wird zu einer Card (Titel gross, Metadata klein, Status-Badge, Action-Button)
+Desktop: Table wie bisher
+```
+
+Dies betrifft:
+- FMFaelle (Finanzierungsfaelle-Tabelle)
+- ObjekteingangList (Akquise-Pipeline)
+- VorgaengeTab (Verkauf)
+- MieteingangTab (MSV)
+
+### 5.2 Filter-Chips — Horizontal Scrollbar auf Mobile
+
+```
+Vorher: flex flex-wrap gap-2 (bricht in mehrere Zeilen)
+Nachher: flex overflow-x-auto gap-2 pb-2 scrollbar-none md:flex-wrap
+```
+
+Horizontales Wischen fuer Filter ist akzeptabel (kleine, gezielte Geste), das Haupt-Scrolling bleibt vertikal.
+
+---
+
+## Ebene 6: Spezialmodule
+
+### 6.1 MOD-20 Miety — Zuhause-Kacheln als Feed
+
+Die 3 Kacheln (Adresse, Street View, Satellite) im `grid-cols-3`:
+
+```
+Vorher: grid grid-cols-1 sm:grid-cols-3 gap-4 (mit aspect-square)
+Nachher: flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4
+         Mobile: h-[200px] statt aspect-square
+```
+
+### 6.2 MOD-13 Projekte — Preis-/Einheitenliste
+
+Preislisten-Tabellen bekommen dasselbe Card-Stack-Pattern auf Mobile.
+
+### 6.3 MOD-03 DMS — Storage-Spaltenansicht
+
+Die Spaltenansicht (260px Spalten) wird auf Mobile zu einer einspaltigen Liste mit Breadcrumb-Navigation statt Nebeneinander-Spalten.
+
+### 6.4 MOD-02 KI-Office — Tabs bleiben
+
+Die Tab-Navigation (E-Mail, Brief, Kontakte, Kalender, Widgets) funktioniert auf Mobile als horizontaler Scroll-Tab-Bar — hier kein Aenderungsbedarf.
+
+### 6.5 MOD-09/10/14 — ModuleTilePage erbt automatisch
+
+Module die ausschliesslich ModuleTilePage nutzen (Leads, Vertriebspartner, Communication Pro Sub-Tiles) erben die Verbesserungen automatisch ueber die Komponente.
+
+---
+
+## Zusammenfassung: Geaenderte Dateien
+
+### Globale Bausteine (wirken auf alle Module)
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/immobilien/SanierungTab.tsx` | Komplett umgebaut: Dashboard + Sub-Routing zu Detail/Vergabe |
-| `src/pages/portal/AkquiseManagerPage.tsx` | Dashboard: BrandWidgets entfernen, Widget-Kacheln. Mandats-Detail: Tabs durch vertikalen Flow ersetzen, Stepper hinzufuegen. Objekteingang-Liste: Tabellen-Format |
-| `src/pages/portal/akquise-manager/ObjekteingangDetail.tsx` | 6 Tabs durch durchgehende Akte ersetzen, Stepper hinzufuegen, Metadata-Bar durch Bank-Tabelle ersetzen |
-| `src/pages/portal/akquise-manager/ObjekteingangList.tsx` | Karten-Design durch Tabellen-Design ersetzen, Filter-Chips hinzufuegen |
-| `src/pages/portal/ImmobilienPage.tsx` | Route fuer `/sanierung/:caseId` und `/sanierung/vergabe` hinzufuegen |
+| `src/components/shared/PageShell.tsx` | Mobile Padding: `px-2 py-3 md:p-6` |
+| `src/components/shared/ModulePageHeader.tsx` | Mobile: `flex-col`, Actions volle Breite |
+| `src/components/shared/ModuleTilePage.tsx` | Mobile: Vollbreite, weniger Padding |
+
+### Dashboard (MOD-00)
+
+| Datei | Aenderung |
+|---|---|
+| `src/components/dashboard/DashboardGrid.tsx` | Mobile: `flex flex-col gap-3` + Snap |
+| `src/components/dashboard/SortableWidget.tsx` | Mobile: `snap-start w-full` |
+| `src/pages/portal/PortalDashboard.tsx` | Mobile: `px-2 py-3`, Titel kleiner |
+| `src/components/dashboard/ArmstrongGreetingCard.tsx` | `h-[220px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/WeatherCard.tsx` | `h-[280px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/EarthGlobeCard.tsx` | `h-[300px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/FinanceWidget.tsx` | `h-[280px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/NewsWidget.tsx` | `h-[320px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/SpaceWidget.tsx` | `h-[300px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/QuoteWidget.tsx` | `h-[200px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/RadioWidget.tsx` | `h-[260px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/BrandLinkWidget.tsx` | `h-[180px] md:aspect-square md:h-auto` |
+| `src/components/dashboard/widgets/PVLiveWidget.tsx` | `h-[240px] md:aspect-square md:h-auto` |
+
+### Workflow-Module (MOD-04, MOD-11, MOD-12)
+
+| Datei | Aenderung |
+|---|---|
+| `src/components/finanzierungsmanager/FinanceCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
+| `src/components/sanierung/ServiceCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
+| `src/components/akquise/MandateCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
+| `src/components/finanzierungsmanager/CaseStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
+| `src/components/sanierung/SanierungStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
+| `src/components/akquise/AkquiseStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
+| `src/pages/portal/finanzierungsmanager/FMFallDetail.tsx` | Split-View nur auf lg+, TR-Rows responsive |
+| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Case-Grid als Feed auf Mobile |
+| `src/components/sanierung/SanierungDetail.tsx` | Split-View nur auf lg+ |
+| `src/pages/portal/immobilien/SanierungTab.tsx` | Case-Grid als Feed auf Mobile |
+| `src/pages/portal/AkquiseManagerPage.tsx` | Case-Grid als Feed, Split deaktiviert |
+
+### Tabellen-Module
+
+| Datei | Aenderung |
+|---|---|
+| `src/pages/portal/finanzierungsmanager/FMFaelle.tsx` | Mobile: Card-Stack statt Tabelle |
+| `src/pages/portal/akquise-manager/ObjekteingangList.tsx` | Mobile: Card-Stack statt Tabelle |
+
+### Spezialmodule
+
+| Datei | Aenderung |
+|---|---|
+| `src/pages/portal/MietyPortalPage.tsx` | Kacheln als Feed, aspect-square nur auf sm+ |
+| `src/pages/portal/msv/ObjekteTab.tsx` | KPI-Cards: `grid-cols-1 sm:grid-cols-3` |
+| `src/pages/portal/msv/MieteingangTab.tsx` | Tabelle als Card-Stack auf Mobile |
 
 ### Keine Datenbank-Aenderungen noetig
 
-Die bestehenden Tabellen und Status-Flows bleiben unveraendert. Es handelt sich um ein reines UI-Redesign.
+Reines Frontend/CSS-Redesign. Desktop bleibt vollstaendig unveraendert.
 
 ---
 
-## Zusammenfassung der Designprinzipien
+## Implementierungsreihenfolge
 
-Alle drei Module (FM, Sanierung, Akquise) folgen dann dem gleichen Muster:
+Da die globalen Bausteine (PageShell, ModulePageHeader, ModuleTilePage) auf alle Module wirken, ist die Reihenfolge:
 
-1. **Dashboard** mit Widget-Kacheln + Modul-spezifischen Tools
-2. **Faelle-/Pipeline-Liste** als kompakte Tabelle mit Filter-Chips
-3. **Detail-Akte** als durchgehender vertikaler Flow (keine Tabs) mit Stepper und Split-View
-4. **Einreichung/Vergabe** als eigener Reiter mit Case-Widget-Auswahl + Aktions-Kacheln
+1. **Phase 1** — Globale Bausteine (3 Dateien) — sofortige Wirkung auf alle 20+ Module
+2. **Phase 2** — Dashboard Widgets (13 Dateien) — Fullscreen-Feed
+3. **Phase 3** — Case-Cards + Stepper (6 Dateien) — Workflow-Module
+4. **Phase 4** — Tabellen + Detail-Views (5 Dateien) — Datenintensive Module
+5. **Phase 5** — Spezialmodule (3 Dateien) — Miety, MSV
+
+Gesamtumfang: ca. 30 Dateien, davon nur CSS/Klassen-Aenderungen. Keine Logik-Aenderungen, keine neuen Abhaengigkeiten.
