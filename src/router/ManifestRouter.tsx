@@ -128,58 +128,58 @@ const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPag
 const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
 const AreaOverviewPage = React.lazy(() => import('@/pages/portal/AreaOverviewPage'));
 
-// Zone 3: Kaufy2026 Website
-import Kaufy2026Layout from '@/pages/zone3/kaufy2026/Kaufy2026Layout';
-import Kaufy2026Home from '@/pages/zone3/kaufy2026/Kaufy2026Home';
-import Kaufy2026Expose from '@/pages/zone3/kaufy2026/Kaufy2026Expose';
-import Kaufy2026Vermieter from '@/pages/zone3/kaufy2026/Kaufy2026Vermieter';
-import Kaufy2026Verkaeufer from '@/pages/zone3/kaufy2026/Kaufy2026Verkaeufer';
-import Kaufy2026Vertrieb from '@/pages/zone3/kaufy2026/Kaufy2026Vertrieb';
+// Zone 3: Kaufy2026 Website (lazy loaded)
+const Kaufy2026Layout = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Layout'));
+const Kaufy2026Home = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Home'));
+const Kaufy2026Expose = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Expose'));
+const Kaufy2026Vermieter = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Vermieter'));
+const Kaufy2026Verkaeufer = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Verkaeufer'));
+const Kaufy2026Vertrieb = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Vertrieb'));
 
-// Zone 3: Miety Website
-import MietyLayout from '@/pages/zone3/miety/MietyLayout';
-import MietyHome from '@/pages/zone3/miety/MietyHome';
-import MietyLeistungen from '@/pages/zone3/miety/MietyLeistungen';
-import MietyVermieter from '@/pages/zone3/miety/MietyVermieter';
-import MietyApp from '@/pages/zone3/miety/MietyApp';
-import MietyPreise from '@/pages/zone3/miety/MietyPreise';
-import MietySoFunktioniert from '@/pages/zone3/miety/MietySoFunktioniert';
-import MietyKontakt from '@/pages/zone3/miety/MietyKontakt';
-import MietyRegistrieren from '@/pages/zone3/miety/MietyRegistrieren';
-import MietyInvite from '@/pages/zone3/miety/MietyInvite';
+// Zone 3: Miety Website (lazy loaded)
+const MietyLayout = React.lazy(() => import('@/pages/zone3/miety/MietyLayout'));
+const MietyHome = React.lazy(() => import('@/pages/zone3/miety/MietyHome'));
+const MietyLeistungen = React.lazy(() => import('@/pages/zone3/miety/MietyLeistungen'));
+const MietyVermieter = React.lazy(() => import('@/pages/zone3/miety/MietyVermieter'));
+const MietyApp = React.lazy(() => import('@/pages/zone3/miety/MietyApp'));
+const MietyPreise = React.lazy(() => import('@/pages/zone3/miety/MietyPreise'));
+const MietySoFunktioniert = React.lazy(() => import('@/pages/zone3/miety/MietySoFunktioniert'));
+const MietyKontakt = React.lazy(() => import('@/pages/zone3/miety/MietyKontakt'));
+const MietyRegistrieren = React.lazy(() => import('@/pages/zone3/miety/MietyRegistrieren'));
+const MietyInvite = React.lazy(() => import('@/pages/zone3/miety/MietyInvite'));
 
-// Zone 3: FutureRoom Website
-import FutureRoomLayout from '@/pages/zone3/futureroom/FutureRoomLayout';
-import FutureRoomHome from '@/pages/zone3/futureroom/FutureRoomHome';
-import FutureRoomBonitat from '@/pages/zone3/futureroom/FutureRoomBonitat';
-import FutureRoomKarriere from '@/pages/zone3/futureroom/FutureRoomKarriere';
-import FutureRoomFAQ from '@/pages/zone3/futureroom/FutureRoomFAQ';
-import FutureRoomLogin from '@/pages/zone3/futureroom/FutureRoomLogin';
-import FutureRoomAkte from '@/pages/zone3/futureroom/FutureRoomAkte';
-import FutureRoomAuthGuard from '@/pages/zone3/futureroom/FutureRoomAuthGuard';
+// Zone 3: FutureRoom Website (lazy loaded)
+const FutureRoomLayout = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLayout'));
+const FutureRoomHome = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomHome'));
+const FutureRoomBonitat = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomBonitat'));
+const FutureRoomKarriere = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomKarriere'));
+const FutureRoomFAQ = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomFAQ'));
+const FutureRoomLogin = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLogin'));
+const FutureRoomAkte = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkte'));
+const FutureRoomAuthGuard = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAuthGuard'));
 
-// Zone 3: System of a Town Website
-import SotLayout from '@/pages/zone3/sot/SotLayout';
-import SotHome from '@/pages/zone3/sot/SotHome';
-import SotProdukt from '@/pages/zone3/sot/SotProdukt';
-import SotModule from '@/pages/zone3/sot/SotModule';
-import SotModuleDetail from '@/pages/zone3/sot/SotModuleDetail';
-import SotUseCases from '@/pages/zone3/sot/SotUseCases';
-import SotPreise from '@/pages/zone3/sot/SotPreise';
-import SotDemo from '@/pages/zone3/sot/SotDemo';
-import SotFAQ from '@/pages/zone3/sot/SotFAQ';
+// Zone 3: System of a Town Website (lazy loaded)
+const SotLayout = React.lazy(() => import('@/pages/zone3/sot/SotLayout'));
+const SotHome = React.lazy(() => import('@/pages/zone3/sot/SotHome'));
+const SotProdukt = React.lazy(() => import('@/pages/zone3/sot/SotProdukt'));
+const SotModule = React.lazy(() => import('@/pages/zone3/sot/SotModule'));
+const SotModuleDetail = React.lazy(() => import('@/pages/zone3/sot/SotModuleDetail'));
+const SotUseCases = React.lazy(() => import('@/pages/zone3/sot/SotUseCases'));
+const SotPreise = React.lazy(() => import('@/pages/zone3/sot/SotPreise'));
+const SotDemo = React.lazy(() => import('@/pages/zone3/sot/SotDemo'));
+const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
 
-// Zone 3: ACQUIARY Website
+// Zone 3: ACQUIARY Website (lazy loaded)
+const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
+const AcquiaryHome = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryHome'));
+const AcquiaryMethodik = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryMethodik'));
+const AcquiaryNetzwerk = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryNetzwerk'));
+const AcquiaryKarriere = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKarriere'));
+const AcquiaryObjekt = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryObjekt'));
 
-// Zone 3: Projekt Landing Pages
-import ProjektLandingLayout from '@/pages/zone3/projekt/ProjektLandingLayout';
-import ProjektLandingPage from '@/pages/zone3/projekt/ProjektLandingPage';
-import AcquiaryLayout from '@/pages/zone3/acquiary/AcquiaryLayout';
-import AcquiaryHome from '@/pages/zone3/acquiary/AcquiaryHome';
-import AcquiaryMethodik from '@/pages/zone3/acquiary/AcquiaryMethodik';
-import AcquiaryNetzwerk from '@/pages/zone3/acquiary/AcquiaryNetzwerk';
-import AcquiaryKarriere from '@/pages/zone3/acquiary/AcquiaryKarriere';
-import AcquiaryObjekt from '@/pages/zone3/acquiary/AcquiaryObjekt';
+// Zone 3: Projekt Landing Pages (lazy loaded)
+const ProjektLandingLayout = React.lazy(() => import('@/pages/zone3/projekt/ProjektLandingLayout'));
+const ProjektLandingPage = React.lazy(() => import('@/pages/zone3/projekt/ProjektLandingPage'));
 
 // 404
 import NotFound from '@/pages/NotFound';
@@ -585,7 +585,11 @@ export function ManifestRouter() {
         }
 
         return (
-          <Route key={siteKey} path={site.base} element={<Layout />}>
+          <Route key={siteKey} path={site.base} element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <Layout />
+            </React.Suspense>
+          }>
             {site.routes.map((route) => {
               const Component = componentMap?.[route.component];
               if (!Component) {
@@ -597,7 +601,11 @@ export function ManifestRouter() {
                   key={route.path || 'index'}
                   index={route.path === ''}
                   path={route.path || undefined}
-                  element={<Component />}
+                  element={
+                    <React.Suspense fallback={<LoadingFallback />}>
+                      <Component />
+                    </React.Suspense>
+                  }
                 />
               );
             })}

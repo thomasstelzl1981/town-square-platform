@@ -5,7 +5,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -185,17 +185,9 @@ export default function SucheTab() {
 
           await Promise.all(
             Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
-              const { data: signedUrlData, error: signedErr } = await supabase.storage
-                .from('tenant-documents')
-                .createSignedUrl(best.file_path, 3600);
-
-              if (signedErr) {
-                console.warn('Signed URL error (tile):', signedErr);
-                return;
-              }
-
-              if (signedUrlData?.signedUrl) {
-                imageMap.set(objectId, resolveStorageSignedUrl(signedUrlData.signedUrl));
+              const url = await getCachedSignedUrl(best.file_path);
+              if (url) {
+                imageMap.set(objectId, url);
               }
             })
           );

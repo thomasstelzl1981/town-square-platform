@@ -8,7 +8,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Loader2, Building2 } from 'lucide-react';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
@@ -180,12 +180,9 @@ export default function Kaufy2026Home() {
 
           await Promise.all(
             Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
-              const { data: signedUrlData } = await supabase.storage
-                .from('tenant-documents')
-                .createSignedUrl(best.file_path, 3600);
-
-              if (signedUrlData?.signedUrl) {
-                imageMap.set(objectId, resolveStorageSignedUrl(signedUrlData.signedUrl));
+              const url = await getCachedSignedUrl(best.file_path);
+              if (url) {
+                imageMap.set(objectId, url);
               }
             })
           );
