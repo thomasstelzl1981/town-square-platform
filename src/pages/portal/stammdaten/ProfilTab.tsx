@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
+import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
@@ -273,7 +274,7 @@ export function ProfilTab() {
     <PageShell>
     <form onSubmit={handleSubmit} className="space-y-6 pb-20">
       <ModulePageHeader title="Stammdaten" description="Ihr persönliches Profil und Kontaktdaten" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={DESIGN.FORM_GRID.FULL}>
         {/* ── Persönliche Daten ── */}
         <ProfileWidget icon={User} title="Persönliche Daten" description="Profilbild, Name und E-Mail">
           <div className="flex items-start gap-4 mb-4">

@@ -21,6 +21,7 @@ import {
 import { Cpu, Plus, Pencil, Copy, Trash2, X, AlertTriangle, Loader2, LayoutGrid } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
 
 // ── Types ──
@@ -300,7 +301,7 @@ export function SortierenTab() {
       <ModulePageHeader title="Sortieren" description="Erstelle Sortierkacheln. Diese erzeugen Vorschläge im Posteingang." />
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         {containers.map((c) => (
           <Card key={c.id} className="glass-card flex flex-col overflow-hidden">
             <CardContent className="p-5 flex-1 flex flex-col gap-3">

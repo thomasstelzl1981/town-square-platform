@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -218,7 +219,7 @@ export function EinstellungenTab() {
       <ModulePageHeader title="Einstellungen" description="Speicher, Postservice und Dokumenten-Auslesung verwalten" />
 
       {/* 3-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
 
         {/* ═══ KACHEL A: SPEICHERPLATZ ═══ */}
         <Card className="glass-card flex flex-col overflow-hidden">

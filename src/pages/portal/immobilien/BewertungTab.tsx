@@ -9,6 +9,7 @@ import { TrendingUp, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetHeader } from '@/components/shared/WidgetHeader';
+import { DESIGN } from '@/config/designManifest';
 
 export function BewertungTab() {
   const { activeOrganization } = useAuth();
@@ -57,7 +58,7 @@ export function BewertungTab() {
         description="Marktwertermittlung via Sprengnetter — professionelle Gutachten für Ihre Liegenschaften. Wählen Sie ein Objekt aus, starten Sie die Bewertung und erhalten Sie Ihr Gutachten als PDF."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={DESIGN.FORM_GRID.FULL}>
         {/* Linkes Widget: Bewertbare Objekte */}
         <Card>
           <CardContent className="pt-6 space-y-4">
