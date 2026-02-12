@@ -1,8 +1,9 @@
 /**
  * ListRow — Unified row component for lists inside widgets
- * Consistent padding, border, hover state
+ * Uses DESIGN.LIST from Design Manifest V4.0
  */
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import type { ReactNode } from 'react';
 
 interface ListRowProps {
@@ -15,8 +16,8 @@ export function ListRow({ children, onClick, className }: ListRowProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30',
-        onClick && 'cursor-pointer hover:border-primary/20 transition-colors',
+        DESIGN.LIST.ROW,
+        onClick && DESIGN.LIST.ROW_HOVER,
         className
       )}
       onClick={onClick}

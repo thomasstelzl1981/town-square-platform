@@ -1,9 +1,10 @@
 /**
  * KPICard — Unified KPI card component for all modules
- * Golden standard: glass-card, p-5, icon right, label top, value below
+ * Uses DESIGN.CARD.KPI, DESIGN.TYPOGRAPHY, DESIGN.HEADER from Design Manifest V4.0
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import type { LucideIcon } from 'lucide-react';
 
 interface KPICardProps {
@@ -20,7 +21,7 @@ export function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName,
   return (
     <Card
       className={cn(
-        'glass-card',
+        DESIGN.CARD.KPI,
         onClick && 'cursor-pointer hover:border-primary/40 transition-colors',
         className
       )}
@@ -29,15 +30,15 @@ export function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName,
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
+            <p className={DESIGN.TYPOGRAPHY.LABEL}>{label}</p>
+            <p className={cn(DESIGN.TYPOGRAPHY.VALUE, 'mt-1')}>{value}</p>
             {subtitle && (
-              <p className={cn('text-xs text-muted-foreground mt-0.5', subtitleClassName)}>
+              <p className={cn(DESIGN.TYPOGRAPHY.HINT, 'mt-0.5', subtitleClassName)}>
                 {subtitle}
               </p>
             )}
           </div>
-          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <div className={DESIGN.HEADER.WIDGET_ICON_BOX}>
             <Icon className="h-4 w-4 text-primary" />
           </div>
         </div>
