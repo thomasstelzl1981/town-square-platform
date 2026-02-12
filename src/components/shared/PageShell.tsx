@@ -8,11 +8,12 @@ import type { ReactNode } from 'react';
 interface PageShellProps {
   children: ReactNode;
   className?: string;
+  fullWidth?: boolean;
 }
 
-export function PageShell({ children, className }: PageShellProps) {
+export function PageShell({ children, className, fullWidth }: PageShellProps) {
   return (
-    <div className={cn('max-w-7xl mx-auto p-4 md:p-6 space-y-6', className)}>
+    <div className={cn(fullWidth ? 'max-w-full' : 'max-w-7xl', 'mx-auto p-4 md:p-6 space-y-6', className)}>
       {children}
     </div>
   );

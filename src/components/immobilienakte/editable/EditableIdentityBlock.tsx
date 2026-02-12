@@ -58,35 +58,37 @@ export function EditableIdentityBlock({
 }: EditableIdentityBlockProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building2 className="h-4 w-4" />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Building2 className="h-3.5 w-3.5" />
           Identität & Stammdaten
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Read-only Code */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Akten-ID</Label>
-            <Input value={unitCode} disabled className="font-mono bg-muted" />
+      <CardContent className="space-y-2 px-4 pb-3">
+        {/* Row 1: Code + Baujahr */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Akten-ID</Label>
+            <Input value={unitCode} disabled className="h-7 text-xs font-mono bg-muted" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Baujahr</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Baujahr</Label>
             <Input 
               type="number" 
               value={buildYear || ''} 
               onChange={(e) => onFieldChange('buildYear', e.target.value ? parseInt(e.target.value) : undefined)}
               placeholder="z.B. 1985"
+              className="h-7 text-xs"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Objektart</Label>
+        {/* Row 2: Objektart + Status */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Objektart</Label>
             <Select value={propertyType || ''} onValueChange={(v) => onFieldChange('propertyType', v)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue placeholder="Auswählen..." />
               </SelectTrigger>
               <SelectContent>
@@ -96,10 +98,10 @@ export function EditableIdentityBlock({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Status</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Status</Label>
             <Select value={status} onValueChange={(v) => onFieldChange('propertyStatus', v as PropertyStatus)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -111,11 +113,12 @@ export function EditableIdentityBlock({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Reporting</Label>
+        {/* Row 3: Reporting + WEG in one row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Reporting</Label>
             <Select value={reportingRegime} onValueChange={(v) => onFieldChange('reportingRegime', v as ReportingRegime)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -125,13 +128,13 @@ export function EditableIdentityBlock({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Wohnungseigentum (WEG)</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">WEG</Label>
             <Select 
               value={wegFlag ? 'ja' : 'nein'} 
               onValueChange={(v) => onFieldChange('wegFlag', v === 'ja')}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -142,23 +145,11 @@ export function EditableIdentityBlock({
           </div>
         </div>
 
-        {/* Module Status (Read-only Indicators) */}
-        <div className="pt-3 border-t">
-          <Label className="text-xs text-muted-foreground mb-2 block">Modul-Status</Label>
-          <div className="flex flex-wrap gap-6">
-            <StatusIndicator 
-              label="Verkauf" 
-              status={getModuleStatus(saleEnabled)} 
-            />
-            <StatusIndicator 
-              label="Vermietung" 
-              status={getModuleStatus(rentalManaged)} 
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <ExternalLink className="h-3 w-3" />
-            Aktivierung erfolgt im Tab "Verkaufsauftrag"
-          </p>
+        {/* Module Status — compact single line */}
+        <div className="flex items-center gap-4 pt-1 border-t text-xs">
+          <span className="text-muted-foreground">Module:</span>
+          <StatusIndicator label="Verkauf" status={getModuleStatus(saleEnabled)} />
+          <StatusIndicator label="Vermietung" status={getModuleStatus(rentalManaged)} />
         </div>
       </CardContent>
     </Card>

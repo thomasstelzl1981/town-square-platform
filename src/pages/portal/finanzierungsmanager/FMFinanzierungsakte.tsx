@@ -199,7 +199,7 @@ export default function FMFinanzierungsakte() {
   };
 
   return (
-    <PageShell>
+    <PageShell fullWidth={splitView}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>

@@ -115,155 +115,147 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         </Alert>
       )}
 
-      {/* Main Grid: Left (Core Blocks) + Right (KPIs & Docs) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Editable Blocks */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Block A: Identity */}
-          <EditableIdentityBlock
-            unitCode={formData.unitCode}
-            propertyType={formData.propertyType}
-            status={formData.propertyStatus}
-            saleEnabled={formData.saleEnabled}
-            rentalManaged={formData.rentalManaged}
-            reportingRegime={formData.reportingRegime}
-            buildYear={formData.buildYear}
-            wegFlag={formData.wegFlag}
-            onFieldChange={handleFieldChange}
-          />
+      {/* ROW 1: 3 compact tiles — Identity | Building | KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <EditableIdentityBlock
+          unitCode={formData.unitCode}
+          propertyType={formData.propertyType}
+          status={formData.propertyStatus}
+          saleEnabled={formData.saleEnabled}
+          rentalManaged={formData.rentalManaged}
+          reportingRegime={formData.reportingRegime}
+          buildYear={formData.buildYear}
+          wegFlag={formData.wegFlag}
+          onFieldChange={handleFieldChange}
+        />
 
-          {/* Block B: Lage & Beschreibung */}
-          <EditableAddressBlock
-            street={formData.street}
-            houseNumber={formData.houseNumber}
-            postalCode={formData.postalCode}
-            city={formData.city}
-            locationLabel={formData.locationLabel}
-            description={formData.description}
-            latitude={formData.latitude}
-            longitude={formData.longitude}
-            propertyType={formData.propertyType}
-            buildYear={formData.buildYear}
-            totalAreaSqm={formData.areaLivingSqm}
-            heatingType={formData.heatingType}
-            energySource={formData.energySource}
-            onFieldChange={handleFieldChange}
-          />
+        <EditableBuildingBlock
+          usageType={formData.usageType}
+          areaLivingSqm={formData.areaLivingSqm}
+          areaUsableSqm={formData.areaUsableSqm}
+          roomsCount={formData.roomsCount}
+          bathroomsCount={formData.bathroomsCount}
+          floor={formData.floor}
+          unitNumber={formData.unitNumber}
+          heatingType={formData.heatingType}
+          energySource={formData.energySource}
+          energyCertType={formData.energyCertType}
+          energyCertValue={formData.energyCertValue}
+          energyCertValidUntil={formData.energyCertValidUntil}
+          featuresTags={formData.featuresTags}
+          onFieldChange={handleFieldChange}
+        />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Block C: Building */}
-            <EditableBuildingBlock
-              usageType={formData.usageType}
-              areaLivingSqm={formData.areaLivingSqm}
-              areaUsableSqm={formData.areaUsableSqm}
-              roomsCount={formData.roomsCount}
-              bathroomsCount={formData.bathroomsCount}
-              floor={formData.floor}
-              unitNumber={formData.unitNumber}
-              heatingType={formData.heatingType}
-              energySource={formData.energySource}
-              energyCertType={formData.energyCertType}
-              energyCertValue={formData.energyCertValue}
-              energyCertValidUntil={formData.energyCertValidUntil}
-              featuresTags={formData.featuresTags}
-              onFieldChange={handleFieldChange}
-            />
+        <InvestmentKPIBlock
+          purchasePriceEur={formData.purchasePriceEur}
+          purchaseCostsEur={formData.purchaseCostsEur}
+          valuationEur={formData.valuationEur}
+          netColdRentPaEur={formData.netColdRentPaEur}
+          nonAllocCostsPaEur={formData.nonAllocCostsPaEur}
+          cashflowPreTaxMonthlyEur={formData.cashflowPreTaxMonthlyEur}
+          grossYieldPercent={formData.grossYieldPercent}
+          netYieldPercent={formData.netYieldPercent}
+        />
+      </div>
 
-            {/* Block D: Legal */}
-            <EditableLegalBlock
-              landRegisterCourt={formData.landRegisterCourt}
-              landRegisterOf={formData.landRegisterOf}
-              landRegisterSheet={formData.landRegisterSheet}
-              landRegisterVolume={formData.landRegisterVolume}
-              parcelNumber={formData.parcelNumber}
-              teNumber={formData.teNumber}
-              purchaseDate={formData.purchaseDate}
-              purchasePrice={formData.purchasePrice}
-              marketValue={formData.marketValue}
-              acquisitionCosts={formData.acquisitionCosts}
-              onFieldChange={handleFieldChange}
-            />
-          </div>
+      {/* ROW 2: Full-width — Address & Description */}
+      <EditableAddressBlock
+        street={formData.street}
+        houseNumber={formData.houseNumber}
+        postalCode={formData.postalCode}
+        city={formData.city}
+        locationLabel={formData.locationLabel}
+        description={formData.description}
+        latitude={formData.latitude}
+        longitude={formData.longitude}
+        propertyType={formData.propertyType}
+        buildYear={formData.buildYear}
+        totalAreaSqm={formData.areaLivingSqm}
+        heatingType={formData.heatingType}
+        energySource={formData.energySource}
+        onFieldChange={handleFieldChange}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Block F: Tenancy Summary */}
-            <TenancySummaryBlock
-              tenancyStatus={formData.tenancyStatus}
-              activeLeasesCount={formData.activeLeasesCount || (formData.tenancyStatus === 'ACTIVE' ? 1 : 0)}
-              totalRentWarmEur={
-                (formData.rentColdEur || 0) + 
-                (formData.nkAdvanceEur || 0) + 
-                (formData.heatingAdvanceEur || 0)
-              }
-              tenantName={formData.tenantName}
-              tenantSince={formData.startDate}
-            />
+      {/* ROW 3: 2 columns — Legal | Financing */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <EditableLegalBlock
+          landRegisterCourt={formData.landRegisterCourt}
+          landRegisterOf={formData.landRegisterOf}
+          landRegisterSheet={formData.landRegisterSheet}
+          landRegisterVolume={formData.landRegisterVolume}
+          parcelNumber={formData.parcelNumber}
+          teNumber={formData.teNumber}
+          purchaseDate={formData.purchaseDate}
+          purchasePrice={formData.purchasePrice}
+          marketValue={formData.marketValue}
+          acquisitionCosts={formData.acquisitionCosts}
+          onFieldChange={handleFieldChange}
+        />
 
-            {/* Block G: WEG/NK */}
-            <EditableWEGBlock
-              wegFlag={formData.wegFlag}
-              meaShare={formData.meaShare}
-              meaTotal={formData.meaTotal}
-              hausgeldMonthlyEur={formData.hausgeldMonthlyEur}
-              allocationKeyDefault={formData.allocationKeyDefault}
-              periodCurrent={formData.periodCurrent}
-              lastSettlementDate={formData.lastSettlementDate}
-              lastSettlementBalanceEur={formData.lastSettlementBalanceEur}
-              allocatablePaEur={formData.allocatablePaEur}
-              nonAllocatablePaEur={formData.nonAllocatablePaEur}
-              onFieldChange={handleFieldChange}
-            />
-          </div>
+        <EditableFinancingBlock
+          bankName={formData.bankName}
+          loanNumber={formData.loanNumber}
+          originalAmountEur={formData.originalAmountEur}
+          outstandingBalanceEur={formData.outstandingBalanceEur}
+          outstandingBalanceAsof={formData.outstandingBalanceAsof}
+          interestRatePercent={formData.interestRatePercent}
+          fixedInterestEndDate={formData.fixedInterestEndDate}
+          annuityMonthlyEur={formData.annuityMonthlyEur}
+          repaymentRatePercent={formData.repaymentRatePercent}
+          specialRepaymentRight={formData.specialRepaymentRight}
+          contactPerson={formData.loanContactPerson}
+          onFieldChange={handleFieldChange}
+        />
+      </div>
 
-          {/* Block H: Financing */}
-          <EditableFinancingBlock
-            bankName={formData.bankName}
-            loanNumber={formData.loanNumber}
-            originalAmountEur={formData.originalAmountEur}
-            outstandingBalanceEur={formData.outstandingBalanceEur}
-            outstandingBalanceAsof={formData.outstandingBalanceAsof}
-            interestRatePercent={formData.interestRatePercent}
-            fixedInterestEndDate={formData.fixedInterestEndDate}
-            annuityMonthlyEur={formData.annuityMonthlyEur}
-            repaymentRatePercent={formData.repaymentRatePercent}
-            specialRepaymentRight={formData.specialRepaymentRight}
-            contactPerson={formData.loanContactPerson}
-            onFieldChange={handleFieldChange}
-          />
-        </div>
+      {/* ROW 4: 2 columns — Tenancy | WEG */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TenancySummaryBlock
+          tenancyStatus={formData.tenancyStatus}
+          activeLeasesCount={formData.activeLeasesCount || (formData.tenancyStatus === 'ACTIVE' ? 1 : 0)}
+          totalRentWarmEur={
+            (formData.rentColdEur || 0) + 
+            (formData.nkAdvanceEur || 0) + 
+            (formData.heatingAdvanceEur || 0)
+          }
+          tenantName={formData.tenantName}
+          tenantSince={formData.startDate}
+        />
 
-        {/* Right Column: KPIs & Documents (Read-only) */}
-        <div className="space-y-4">
-          {/* Block E: Investment KPIs */}
-          <InvestmentKPIBlock
-            purchasePriceEur={formData.purchasePriceEur}
-            purchaseCostsEur={formData.purchaseCostsEur}
-            valuationEur={formData.valuationEur}
-            netColdRentPaEur={formData.netColdRentPaEur}
-            nonAllocCostsPaEur={formData.nonAllocCostsPaEur}
-            cashflowPreTaxMonthlyEur={formData.cashflowPreTaxMonthlyEur}
-            grossYieldPercent={formData.grossYieldPercent}
-            netYieldPercent={formData.netYieldPercent}
-          />
+        <EditableWEGBlock
+          wegFlag={formData.wegFlag}
+          meaShare={formData.meaShare}
+          meaTotal={formData.meaTotal}
+          hausgeldMonthlyEur={formData.hausgeldMonthlyEur}
+          allocationKeyDefault={formData.allocationKeyDefault}
+          periodCurrent={formData.periodCurrent}
+          lastSettlementDate={formData.lastSettlementDate}
+          lastSettlementBalanceEur={formData.lastSettlementBalanceEur}
+          allocatablePaEur={formData.allocatablePaEur}
+          nonAllocatablePaEur={formData.nonAllocatablePaEur}
+          onFieldChange={handleFieldChange}
+        />
+      </div>
 
-          {/* Block J: Documents */}
+      {/* ROW 5: Documents Checklist */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
           <DocumentChecklist documents={formData.documents} />
-
-          {/* Multi-Lease Info if applicable */}
-          {(formData as any).leasesCount > 1 && (
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-sm text-blue-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>
-                    Diese Einheit hat {(formData as any).leasesCount} aktive Mietverträge.
-                    Die angezeigten Werte sind Summen aller Verträge.
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
+        {/* Multi-Lease Info if applicable */}
+        {(formData as any).leasesCount > 1 && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <AlertTriangle className="h-4 w-4" />
+                <span>
+                  Diese Einheit hat {(formData as any).leasesCount} aktive Mietverträge.
+                  Die angezeigten Werte sind Summen aller Verträge.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Sticky Save Bar */}

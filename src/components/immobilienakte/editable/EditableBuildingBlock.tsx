@@ -69,19 +69,19 @@ export function EditableBuildingBlock({
 }: EditableBuildingBlockProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Home className="h-4 w-4" />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Home className="h-3.5 w-3.5" />
           Gebäude & Flächen
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 px-4 pb-3">
         {/* Usage & Areas */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Nutzung</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Nutzung</Label>
             <Select value={usageType} onValueChange={(v) => onFieldChange('usageType', v as UsageType)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -91,146 +91,81 @@ export function EditableBuildingBlock({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Wohnfläche (m²)</Label>
-            <Input 
-              type="number"
-              step="0.01"
-              value={areaLivingSqm || ''} 
-              onChange={(e) => onFieldChange('areaLivingSqm', e.target.value ? parseFloat(e.target.value) : 0)}
-            />
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Wohnfl. (m²)</Label>
+            <Input type="number" step="0.01" value={areaLivingSqm || ''} onChange={(e) => onFieldChange('areaLivingSqm', e.target.value ? parseFloat(e.target.value) : 0)} className="h-7 text-xs" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Nutzfläche (m²)</Label>
-            <Input 
-              type="number"
-              step="0.01"
-              value={areaUsableSqm || ''} 
-              onChange={(e) => onFieldChange('areaUsableSqm', e.target.value ? parseFloat(e.target.value) : undefined)}
-            />
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Nutzfl. (m²)</Label>
+            <Input type="number" step="0.01" value={areaUsableSqm || ''} onChange={(e) => onFieldChange('areaUsableSqm', e.target.value ? parseFloat(e.target.value) : undefined)} className="h-7 text-xs" />
           </div>
         </div>
 
-        {/* Rooms */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Zimmer</Label>
-            <Input 
-              type="number"
-              step="0.5"
-              value={roomsCount || ''} 
-              onChange={(e) => onFieldChange('roomsCount', e.target.value ? parseFloat(e.target.value) : undefined)}
-            />
+        {/* Rooms — 4 cols */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Zimmer</Label>
+            <Input type="number" step="0.5" value={roomsCount || ''} onChange={(e) => onFieldChange('roomsCount', e.target.value ? parseFloat(e.target.value) : undefined)} className="h-7 text-xs" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Bäder</Label>
-            <Input 
-              type="number"
-              value={bathroomsCount || ''} 
-              onChange={(e) => onFieldChange('bathroomsCount', e.target.value ? parseInt(e.target.value) : undefined)}
-            />
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Bäder</Label>
+            <Input type="number" value={bathroomsCount || ''} onChange={(e) => onFieldChange('bathroomsCount', e.target.value ? parseInt(e.target.value) : undefined)} className="h-7 text-xs" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Etage</Label>
-            <Input 
-              type="number"
-              value={floor || ''} 
-              onChange={(e) => onFieldChange('floor', e.target.value ? parseInt(e.target.value) : undefined)}
-            />
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Etage</Label>
+            <Input type="number" value={floor || ''} onChange={(e) => onFieldChange('floor', e.target.value ? parseInt(e.target.value) : undefined)} className="h-7 text-xs" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Whg.-Nr.</Label>
-            <Input 
-              value={unitNumber || ''} 
-              onChange={(e) => onFieldChange('unitNumber', e.target.value)}
-              placeholder="z.B. 4.OG links"
-            />
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Whg.-Nr.</Label>
+            <Input value={unitNumber || ''} onChange={(e) => onFieldChange('unitNumber', e.target.value)} placeholder="z.B. 4.OG" className="h-7 text-xs" />
           </div>
         </div>
 
-        {/* Heating & Energy */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-            <Thermometer className="h-4 w-4" />
-            <span className="text-xs font-medium">Heizung & Energie</span>
+        {/* Heating + Energy — compact 2-col */}
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Thermometer className="h-3 w-3" />Heizart</Label>
+            <Select value={heatingType || ''} onValueChange={(v) => onFieldChange('heatingType', v)}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+              <SelectContent>{HEATING_TYPES.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Heizart</Label>
-              <Select value={heatingType || ''} onValueChange={(v) => onFieldChange('heatingType', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Auswählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {HEATING_TYPES.map(h => (
-                    <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Energieträger</Label>
-              <Select value={energySource || ''} onValueChange={(v) => onFieldChange('energySource', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Auswählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENERGY_SOURCES.map(e => (
-                    <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3" />Energieträger</Label>
+            <Select value={energySource || ''} onValueChange={(v) => onFieldChange('energySource', v)}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+              <SelectContent>{ENERGY_SOURCES.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Energy Certificate */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-            <Zap className="h-4 w-4" />
-            <span className="text-xs font-medium">Energieausweis</span>
+        {/* Energy Certificate — single row with 3 fields */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Ausweis-Typ</Label>
+            <Select value={energyCertType || ''} onValueChange={(v) => onFieldChange('energyCertType', v)}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+              <SelectContent>{ENERGY_CERT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Typ</Label>
-              <Select value={energyCertType || ''} onValueChange={(v) => onFieldChange('energyCertType', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="–" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENERGY_CERT_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Wert (kWh/m²a)</Label>
-              <Input 
-                type="number"
-                step="0.1"
-                value={energyCertValue || ''} 
-                onChange={(e) => onFieldChange('energyCertValue', e.target.value ? parseFloat(e.target.value) : undefined)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Gültig bis</Label>
-              <Input 
-                type="date"
-                value={energyCertValidUntil || ''} 
-                onChange={(e) => onFieldChange('energyCertValidUntil', e.target.value)}
-              />
-            </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">kWh/m²a</Label>
+            <Input type="number" step="0.1" value={energyCertValue || ''} onChange={(e) => onFieldChange('energyCertValue', e.target.value ? parseFloat(e.target.value) : undefined)} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Gültig bis</Label>
+            <Input type="date" value={energyCertValidUntil || ''} onChange={(e) => onFieldChange('energyCertValidUntil', e.target.value)} className="h-7 text-xs" />
           </div>
         </div>
 
-        {/* Features (simplified) */}
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Ausstattung (kommagetrennt)</Label>
+        {/* Features */}
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Ausstattung</Label>
           <Input 
             value={featuresTags?.join(', ') || ''} 
             onChange={(e) => onFieldChange('featuresTags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
             placeholder="Balkon, Aufzug, Keller, ..."
+            className="h-7 text-xs"
           />
         </div>
       </CardContent>
