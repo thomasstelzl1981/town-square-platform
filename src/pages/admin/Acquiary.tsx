@@ -21,6 +21,7 @@ import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Activity, Loader2
 import { useAcqMandatesInbox, useAcqMandates } from '@/hooks/useAcqMandate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { DESIGN } from '@/config/designManifest';
 
 // Lazy load sub-pages
 const AcquiaryInbox = React.lazy(() => import('./acquiary/AcquiaryInbox'));
@@ -99,12 +100,12 @@ export default function AcquiaryPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`${DESIGN.CONTAINER.PADDING} ${DESIGN.SPACING.SECTION}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Acquiary</h1>
-          <p className="text-muted-foreground">
+          <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Acquiary</h1>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>
             Zentrale Governance für Akquise-Mandate — SoT nach Einreichung bis Zuweisung
           </p>
         </div>

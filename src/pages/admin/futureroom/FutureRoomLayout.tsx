@@ -20,6 +20,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Inbox, Link2, Users, Building2, BarChart3, Globe, FileText, Layout } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
 import { useFinanceMandates, useFinanceBankContacts } from '@/hooks/useFinanceMandate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,12 +66,12 @@ export default function FutureRoomLayout() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`${DESIGN.CONTAINER.PADDING} ${DESIGN.SPACING.SECTION}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Future Room</h1>
-          <p className="text-muted-foreground">
+          <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Future Room</h1>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>
             Zentrale Governance für Finanzierungsanfragen — SoT nach Einreichung bis Zuweisung
           </p>
         </div>

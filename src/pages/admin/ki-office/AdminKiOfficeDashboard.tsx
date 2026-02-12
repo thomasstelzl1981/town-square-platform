@@ -3,6 +3,7 @@
  * Shows KPIs, recent activity, and quick actions
  */
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
@@ -132,17 +133,17 @@ export default function AdminKiOfficeDashboard() {
   const isLoading = emailLoading || sequenceLoading || contactLoading;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className={`${DESIGN.CONTAINER.PADDING} ${DESIGN.SPACING.SECTION}`}>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">KI-Office Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>KI-Office Dashboard</h1>
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>
           Marketing-Automatisierung & Kommunikation
         </p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -151,8 +152,8 @@ export default function AdminKiOfficeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{emailStats?.sent || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className={DESIGN.TYPOGRAPHY.VALUE}>{emailStats?.sent || 0}</div>
+            <p className={DESIGN.TYPOGRAPHY.HINT}>
               {emailStats?.openRate || 0}% Öffnungsrate
             </p>
           </CardContent>
@@ -166,8 +167,8 @@ export default function AdminKiOfficeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{emailStats?.replied || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className={DESIGN.TYPOGRAPHY.VALUE}>{emailStats?.replied || 0}</div>
+            <p className={DESIGN.TYPOGRAPHY.HINT}>
               {emailStats?.replyRate || 0}% Antwortrate
             </p>
           </CardContent>
@@ -181,8 +182,8 @@ export default function AdminKiOfficeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{sequenceStats?.active || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className={DESIGN.TYPOGRAPHY.VALUE}>{sequenceStats?.active || 0}</div>
+            <p className={DESIGN.TYPOGRAPHY.HINT}>
               {sequenceStats?.enrolled || 0} eingeschrieben
             </p>
           </CardContent>
@@ -196,8 +197,8 @@ export default function AdminKiOfficeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{contactStats?.total || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className={DESIGN.TYPOGRAPHY.VALUE}>{contactStats?.total || 0}</div>
+            <p className={DESIGN.TYPOGRAPHY.HINT}>
               +{contactStats?.newThisWeek || 0} diese Woche
             </p>
           </CardContent>
@@ -205,7 +206,7 @@ export default function AdminKiOfficeDashboard() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <Card className="col-span-1">
           <CardHeader>
@@ -311,7 +312,7 @@ export default function AdminKiOfficeDashboard() {
       </div>
 
       {/* Module Links */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         {[
           { title: 'E-Mail', icon: Mail, path: '/admin/ki-office-email', desc: 'Konversationen' },
           { title: 'Sequenzen', icon: Target, path: '/admin/ki-office-sequenzen', desc: 'Drip-Kampagnen' },

@@ -4,6 +4,7 @@
  * MOD-17 CAR MANAGEMENT
  */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -235,7 +236,7 @@ export default function MasterTemplatesFahrzeugakte() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card><CardHeader className="pb-2"><CardTitle className="text-2xl">{blocks.length}</CardTitle><CardDescription>Blöcke (A–I)</CardDescription></CardHeader></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-2xl">{totalFields}</CardTitle><CardDescription>Felder gesamt</CardDescription></CardHeader></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-2xl">{entities.size}</CardTitle><CardDescription>Entitäten</CardDescription></CardHeader></Card>

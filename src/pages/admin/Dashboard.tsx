@@ -146,10 +146,10 @@ export default function Dashboard() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="space-y-6" ref={contentRef}>
+    <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Dashboard</h2>
-        <p className="text-muted-foreground">Welcome to the System of a Town Admin Portal</p>
+        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Dashboard</h2>
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>Welcome to the System of a Town Admin Portal</p>
       </div>
 
       {/* Quick Actions */}
