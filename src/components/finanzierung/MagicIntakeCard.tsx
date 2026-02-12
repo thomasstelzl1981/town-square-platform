@@ -132,7 +132,7 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
           <span className="text-xs font-semibold">Magic Intake</span>
         </div>
         <p className="text-[11px] text-muted-foreground mb-2">
-          Kundendaten eingeben und Finanzierungsakte sofort anlegen. Der Datenraum wird automatisch erstellt.
+          Name und E-Mail genügen — Magic Intake erstellt sofort eine vollständige Finanzierungsakte mit Public-ID, strukturiertem Datenraum und Dokumenten-Checkliste. Ihr Kunde kann direkt loslegen.
         </p>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <Input
