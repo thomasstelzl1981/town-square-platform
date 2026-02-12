@@ -3,6 +3,8 @@
  * Data layer only — delegates all UI to StorageFileManager
  */
 import { useState, useEffect, useMemo } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -292,12 +294,8 @@ export function StorageTab() {
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Dateien</h1>
-        <p className="text-sm text-muted-foreground mt-1">Verwalten Sie Ihre Dokumente und Ordner.</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Dateien" description="Verwalten Sie Ihre Dokumente und Ordner." />
       {/* Upload feedback */}
       {uploadedFiles.length > 0 && (
         <UploadResultList
@@ -327,6 +325,6 @@ export function StorageTab() {
         isDeleting={deleteMutation.isPending}
         isCreatingFolder={createFolderMutation.isPending}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -3,9 +3,9 @@
     "version": "2.0",
     "focus": "CI/Design-Konsistenz — Visuelle und strukturelle Vereinheitlichung aller 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 1 (complete)",
+    "last_sprint": "Sprint 2 (complete)",
     "total": 24,
-    "done": 7,
+    "done": 17,
     "scan_coverage": "PageShell, ModulePageHeader, Lazy Loading, Suspense, Header-Hierarchie über alle 21 Module",
     "v1_archive": "backlog_v1_architecture_sprint.json (40/47 done, 7 als Roadmap klassifiziert)"
   },
@@ -145,7 +145,7 @@
       "title": "PhotovoltaikPage: Custom Loading-Spinner statt konsistentem Suspense-Fallback",
       "fix": "Custom Loading() durch fallback={null} ersetzen (Parent-Suspense handled es)",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/PhotovoltaikPage.tsx"]
     },
     {
@@ -156,7 +156,7 @@
       "title": "MietyPortalPage: Custom Spinner statt konsistentem Suspense-Fallback",
       "fix": "Custom Spinner() durch fallback={null} ersetzen (Parent-Suspense handled es)",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/MietyPortalPage.tsx"]
     },
     {
@@ -189,7 +189,8 @@
       "title": "Finanzierung: SelbstauskunftTab und StatusTab/DokumenteTab ggf. ohne ModulePageHeader",
       "fix": "Prüfen und ModulePageHeader nachrüsten wo fehlend",
       "effort": "S",
-      "status": "open",
+      "status": "done",
+      "note": "MOD-07 DokumenteTab uses FinanceDocumentsManager which has own layout (StorageFileManager pattern). Acceptable as specialized component. SelbstauskunftTab/StatusTab also have specialized layouts.",
       "files": ["src/pages/portal/finanzierung/SelbstauskunftTab.tsx", "src/pages/portal/finanzierung/StatusTab.tsx", "src/pages/portal/finanzierung/DokumenteTab.tsx"]
     },
     {
@@ -200,7 +201,8 @@
       "title": "DMS: StorageTab ggf. ohne ModulePageHeader",
       "fix": "Prüfen und ModulePageHeader nachrüsten",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
+      "note": "StorageTab migrated to PageShell + ModulePageHeader. Other DMS tabs already had it.",
       "files": ["src/pages/portal/dms/StorageTab.tsx"]
     },
     {
@@ -223,7 +225,8 @@
       "title": "Office: BriefTab und WhatsAppTab PageShell/ModulePageHeader-Status prüfen",
       "fix": "Sicherstellen dass beide Tabs PageShell + ModulePageHeader nutzen",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
+      "note": "BriefTab and WhatsAppTab migrated to PageShell + ModulePageHeader.",
       "files": ["src/pages/portal/office/BriefTab.tsx", "src/pages/portal/office/WhatsAppTab.tsx"]
     },
     {
@@ -234,7 +237,8 @@
       "title": "CommunicationPro: ResearchTab und SocialPage PageShell/ModulePageHeader-Status prüfen",
       "fix": "Sicherstellen dass beide Tabs PageShell + ModulePageHeader nutzen",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
+      "note": "ResearchTab is a sub-component within CommunicationPro's lazy-loaded tab — PageShell is handled by parent. SocialPage has its own sidebar layout which is architecturally correct for this module.",
       "files": ["src/pages/portal/communication-pro/recherche/ResearchTab.tsx", "src/pages/portal/communication-pro/social/SocialPage.tsx"]
     },
     {
@@ -267,7 +271,8 @@
       "title": "ModuleTilePage: Nutzt inline max-w-7xl Padding statt PageShell-Wrapper",
       "fix": "ModuleTilePage intern auf PageShell umstellen oder PageShell-Klassen wiederverwenden",
       "effort": "S",
-      "status": "open",
+      "status": "done",
+      "note": "ModuleTilePage refactored to use PageShell internally instead of inline max-w-7xl divs.",
       "files": ["src/components/shared/ModuleTilePage.tsx"]
     },
     {

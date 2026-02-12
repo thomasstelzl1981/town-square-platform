@@ -8,6 +8,7 @@
  */
 
 import { ReactNode } from 'react';
+import { PageShell } from './PageShell';
 import { LucideIcon, Plus, ArrowRight, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,7 +77,7 @@ export function ModuleTilePage({
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
+      <PageShell>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
@@ -84,14 +85,14 @@ export function ModuleTilePage({
           </div>
         </div>
         <LoadingState variant="card" rows={3} />
-      </div>
+      </PageShell>
     );
   }
 
   // Error state
   if (status === 'error') {
     return (
-      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
+      <PageShell>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
@@ -103,14 +104,14 @@ export function ModuleTilePage({
             <ErrorState onRetry={onRetry} />
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   // Empty state
   if (status === 'empty') {
     return (
-      <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
+      <PageShell>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {Icon && (
@@ -172,13 +173,13 @@ export function ModuleTilePage({
             ))}
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   // Ready state (with children)
   return (
-    <div className="max-w-7xl mx-auto px-2 py-3 md:px-6 md:py-6 space-y-4 md:space-y-6">
+    <PageShell>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {Icon && (
@@ -213,6 +214,6 @@ export function ModuleTilePage({
       </div>
       
       {children}
-    </div>
+    </PageShell>
   );
 }

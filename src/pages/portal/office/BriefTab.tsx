@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -449,11 +451,8 @@ ${senderLine}`);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Briefgenerator</h1>
-        <p className="text-muted-foreground mt-1">KI-gestützte Briefe erstellen und versenden</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Briefgenerator" description="KI-gestützte Briefe erstellen und versenden" />
       <div className="grid grid-cols-12 gap-6">
       {/* Main Form */}
       <div className="col-span-7 space-y-6">
@@ -867,6 +866,6 @@ ${senderLine}`);
         onOpenChange={setShowCreateContext} 
       />
     </div>
-    </div>
+    </PageShell>
   );
 }
