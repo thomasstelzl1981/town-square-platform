@@ -63,6 +63,18 @@ export function useSubmitFinanceRequest() {
         throw new Error(`Selbstauskunft ist erst zu ${completionScore}% vollständig. Mindestens 80% erforderlich.`);
       }
 
+      // 2b. Create applicant snapshot for handoff
+      const { data: fullProfile } = await supabase
+        .from('applicant_profiles')
+        .select('*')
+        .eq('tenant_id', activeOrganization.id)
+        .eq('party_role', 'primary')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const applicantSnapshot = fullProfile ? { ...fullProfile, snapshot_at: new Date().toISOString() } : null;
+
       // 3. Update finance_request status to submitted_to_zone1
       const { error: updateError } = await supabase
         .from('finance_requests')
@@ -70,7 +82,8 @@ export function useSubmitFinanceRequest() {
           status: 'submitted_to_zone1',
           submitted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        })
+          applicant_snapshot: applicantSnapshot,
+        } as any)
         .eq('id', requestId);
 
       if (updateError) {

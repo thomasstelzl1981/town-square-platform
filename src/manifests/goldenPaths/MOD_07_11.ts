@@ -4,12 +4,13 @@ import type { GoldenPathDefinition } from './types';
  * Golden Path GP-02: Finanzierung — Vom Antrag bis zur Bankeinreichung (V1.0)
  * 
  * P0 Hardening: Fail-States fuer Cross-Zone Steps.
+ * V1.1: Snapshot-Contract bei Einreichung, §34i-Visitenkarte
  */
 export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-finance-lifecycle',
   module: 'MOD-07/MOD-11',
   moduleCode: 'MOD-07',
-  version: '1.0.0',
+  version: '1.1.0',
   label: 'Finanzierung — Vom Antrag bis zur Bankeinreichung',
   description:
     'Vollstaendiger Finanzierungszyklus: Selbstauskunft erstellen, Anfrage einreichen, Z1 Triage, Manager-Zuweisung, TermsGate, Case-Bearbeitung, Bankeinreichung.',
@@ -112,6 +113,7 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
       ],
       completion: [
         { key: 'finance_request_submitted', source: 'finance_requests', check: 'equals', value: 'submitted', description: 'finance_requests.status = submitted' },
+        { key: 'applicant_snapshot_created', source: 'finance_requests', check: 'not_null', description: 'finance_requests.applicant_snapshot IS NOT NULL (Snapshot fuer FM)' },
       ],
       on_timeout: {
         ledger_event: 'finance.request.submit.timeout',

@@ -5696,6 +5696,7 @@ export type Database = {
       }
       finance_requests: {
         Row: {
+          applicant_snapshot: Json | null
           broker_fee: number | null
           created_at: string
           created_by: string | null
@@ -5729,6 +5730,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applicant_snapshot?: Json | null
           broker_fee?: number | null
           created_at?: string
           created_by?: string | null
@@ -5762,6 +5764,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applicant_snapshot?: Json | null
           broker_fee?: number | null
           created_at?: string
           created_by?: string | null
@@ -9674,6 +9677,8 @@ export type Database = {
           first_name: string | null
           house_number: string | null
           id: string
+          insurance_policy_no: string | null
+          insurance_provider: string | null
           is_business: boolean | null
           last_name: string | null
           letterhead_bank_name: string | null
@@ -9688,6 +9693,10 @@ export type Database = {
           phone_mobile: string | null
           phone_whatsapp: string | null
           postal_code: string | null
+          reg_34i_authority: string | null
+          reg_34i_ihk: string | null
+          reg_34i_number: string | null
+          reg_vermittler_id: string | null
           spouse_profile_id: string | null
           street: string | null
           tax_id: string | null
@@ -9707,6 +9716,8 @@ export type Database = {
           first_name?: string | null
           house_number?: string | null
           id: string
+          insurance_policy_no?: string | null
+          insurance_provider?: string | null
           is_business?: boolean | null
           last_name?: string | null
           letterhead_bank_name?: string | null
@@ -9721,6 +9732,10 @@ export type Database = {
           phone_mobile?: string | null
           phone_whatsapp?: string | null
           postal_code?: string | null
+          reg_34i_authority?: string | null
+          reg_34i_ihk?: string | null
+          reg_34i_number?: string | null
+          reg_vermittler_id?: string | null
           spouse_profile_id?: string | null
           street?: string | null
           tax_id?: string | null
@@ -9740,6 +9755,8 @@ export type Database = {
           first_name?: string | null
           house_number?: string | null
           id?: string
+          insurance_policy_no?: string | null
+          insurance_provider?: string | null
           is_business?: boolean | null
           last_name?: string | null
           letterhead_bank_name?: string | null
@@ -9754,6 +9771,10 @@ export type Database = {
           phone_mobile?: string | null
           phone_whatsapp?: string | null
           postal_code?: string | null
+          reg_34i_authority?: string | null
+          reg_34i_ihk?: string | null
+          reg_34i_number?: string | null
+          reg_vermittler_id?: string | null
           spouse_profile_id?: string | null
           street?: string | null
           tax_id?: string | null

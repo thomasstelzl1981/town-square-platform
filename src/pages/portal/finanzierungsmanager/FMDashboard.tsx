@@ -1,17 +1,24 @@
 /**
- * FM Dashboard — (A) Fälle in Bearbeitung, (B) Finanzierungsmandate, (C) Manager-Visitenkarte
+ * FM Dashboard — (A) Fälle in Bearbeitung, (B) Finanzierungsmandate, (C) Manager-Visitenkarte mit §34i
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
-import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+} from '@/components/ui/sheet';
 
 import { toast } from 'sonner';
 import type { FutureRoomCase } from '@/types/finance';
@@ -37,11 +44,116 @@ function getLoanAmount(c: FutureRoomCase): number | null {
   return c.finance_mandates?.finance_requests?.applicant_profiles?.[0]?.loan_amount_requested || null;
 }
 
+// Editable profile fields for the business card
+interface EditableProfile {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_mobile: string;
+  phone_landline: string;
+  street: string;
+  house_number: string;
+  postal_code: string;
+  city: string;
+  letterhead_company_line: string;
+  letterhead_website: string;
+  reg_34i_number: string;
+  reg_34i_ihk: string;
+  reg_34i_authority: string;
+  reg_vermittler_id: string;
+  insurance_provider: string;
+  insurance_policy_no: string;
+}
+
+function EditRow({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div className="grid grid-cols-[180px_1fr] items-center border-b py-1.5 px-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
+
 export default function FMDashboard({ cases, isLoading }: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const acceptMandate = useAcceptMandate();
   const updateStatus = useUpdateMandateStatus();
+  const [editOpen, setEditOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [editData, setEditData] = useState<EditableProfile>({
+    first_name: '', last_name: '', email: '', phone_mobile: '', phone_landline: '',
+    street: '', house_number: '', postal_code: '', city: '',
+    letterhead_company_line: '', letterhead_website: '',
+    reg_34i_number: '', reg_34i_ihk: '', reg_34i_authority: '',
+    reg_vermittler_id: '', insurance_provider: '', insurance_policy_no: '',
+  });
+
+  const openEditSheet = () => {
+    if (profile) {
+      setEditData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+        phone_mobile: profile.phone_mobile || '',
+        phone_landline: profile.phone_landline || '',
+        street: profile.street || '',
+        house_number: profile.house_number || '',
+        postal_code: profile.postal_code || '',
+        city: profile.city || '',
+        letterhead_company_line: profile.letterhead_company_line || '',
+        letterhead_website: profile.letterhead_website || '',
+        reg_34i_number: (profile as any).reg_34i_number || '',
+        reg_34i_ihk: (profile as any).reg_34i_ihk || '',
+        reg_34i_authority: (profile as any).reg_34i_authority || '',
+        reg_vermittler_id: (profile as any).reg_vermittler_id || '',
+        insurance_provider: (profile as any).insurance_provider || '',
+        insurance_policy_no: (profile as any).insurance_policy_no || '',
+      });
+    }
+    setEditOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        first_name: editData.first_name || null,
+        last_name: editData.last_name || null,
+        email: editData.email || null,
+        phone_mobile: editData.phone_mobile || null,
+        phone_landline: editData.phone_landline || null,
+        street: editData.street || null,
+        house_number: editData.house_number || null,
+        postal_code: editData.postal_code || null,
+        city: editData.city || null,
+        letterhead_company_line: editData.letterhead_company_line || null,
+        letterhead_website: editData.letterhead_website || null,
+        reg_34i_number: editData.reg_34i_number || null,
+        reg_34i_ihk: editData.reg_34i_ihk || null,
+        reg_34i_authority: editData.reg_34i_authority || null,
+        reg_vermittler_id: editData.reg_vermittler_id || null,
+        insurance_provider: editData.insurance_provider || null,
+        insurance_policy_no: editData.insurance_policy_no || null,
+      } as any).eq('id', user.id);
+      if (error) throw error;
+      toast.success('Profil gespeichert');
+      setEditOpen(false);
+      window.location.reload();
+    } catch (err) {
+      toast.error('Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof EditableProfile) => (value: string) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
 
   // Filter: only cases NOT yet submitted
   const SUBMITTED_STATUSES = ['submitted_to_bank', 'completed', 'rejected', 'archived'];
@@ -88,6 +200,9 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   const address = [profile?.street, profile?.house_number].filter(Boolean).join(' ');
   const cityLine = [profile?.postal_code, profile?.city].filter(Boolean).join(' ');
   const fullAddress = [address, cityLine].filter(Boolean).join(', ');
+  const reg34i = (profile as any)?.reg_34i_number;
+  const regIhk = (profile as any)?.reg_34i_ihk;
+  const insProvider = (profile as any)?.insurance_provider;
 
   return (
     <PageShell>
@@ -102,7 +217,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Manager Visitenkarte */}
+      {/* Manager Visitenkarte — Professionell */}
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
@@ -113,10 +228,22 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                 <User className="h-6 w-6 text-primary" />
               )}
             </div>
-            <div className="flex-1 min-w-0 space-y-1">
-              <h3 className="text-lg font-semibold">{fullName}</h3>
-              <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 pt-2">
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{fullName}</h3>
+                  <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditSheet}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Contact details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
                 {profile?.email && (
                   <div className="flex items-center gap-2 text-xs">
                     <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -141,19 +268,99 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                     <span className="truncate">{fullAddress}</span>
                   </div>
                 )}
+                {profile?.letterhead_website && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{profile.letterhead_website}</span>
+                  </div>
+                )}
                 {profile?.letterhead_company_line && (
-                  <div className="flex items-center gap-2 text-xs col-span-full">
-                    <span className="text-muted-foreground">{profile.letterhead_company_line}</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{profile.letterhead_company_line}</span>
                   </div>
                 )}
               </div>
-            </div>
-            <div className="text-right shrink-0">
-              <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
+
+              {/* Regulatory info */}
+              {(reg34i || regIhk || insProvider) && (
+                <>
+                  <Separator className="my-1" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+                    {reg34i && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span>§34i: {reg34i}</span>
+                      </div>
+                    )}
+                    {regIhk && (
+                      <div className="text-xs text-muted-foreground">IHK: {regIhk}</div>
+                    )}
+                    {insProvider && (
+                      <div className="text-xs text-muted-foreground">VSH: {insProvider}</div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Sheet */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Profil bearbeiten</SheetTitle>
+            <SheetDescription>Kontaktdaten und §34i-Pflichtangaben</SheetDescription>
+          </SheetHeader>
+
+          <div className="py-4 space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Kontaktdaten</h4>
+              <div className="border rounded-lg">
+                <EditRow label="Vorname" value={editData.first_name} onChange={handleFieldChange('first_name')} />
+                <EditRow label="Nachname" value={editData.last_name} onChange={handleFieldChange('last_name')} />
+                <EditRow label="E-Mail" value={editData.email} onChange={handleFieldChange('email')} />
+                <EditRow label="Mobil" value={editData.phone_mobile} onChange={handleFieldChange('phone_mobile')} placeholder="+49 ..." />
+                <EditRow label="Festnetz" value={editData.phone_landline} onChange={handleFieldChange('phone_landline')} placeholder="+49 ..." />
+                <EditRow label="Straße" value={editData.street} onChange={handleFieldChange('street')} />
+                <EditRow label="Hausnummer" value={editData.house_number} onChange={handleFieldChange('house_number')} />
+                <EditRow label="PLZ" value={editData.postal_code} onChange={handleFieldChange('postal_code')} />
+                <EditRow label="Ort" value={editData.city} onChange={handleFieldChange('city')} />
+                <EditRow label="Firma" value={editData.letterhead_company_line} onChange={handleFieldChange('letterhead_company_line')} />
+                <EditRow label="Website" value={editData.letterhead_website} onChange={handleFieldChange('letterhead_website')} placeholder="https://..." />
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">§34i Gewerbeerlaubnis</h4>
+              <div className="border rounded-lg">
+                <EditRow label="Registrierungsnr." value={editData.reg_34i_number} onChange={handleFieldChange('reg_34i_number')} placeholder="D-F-XXX-XXXX-XX" />
+                <EditRow label="Zuständige IHK" value={editData.reg_34i_ihk} onChange={handleFieldChange('reg_34i_ihk')} placeholder="z.B. IHK München" />
+                <EditRow label="Erlaubnisbehörde" value={editData.reg_34i_authority} onChange={handleFieldChange('reg_34i_authority')} placeholder="z.B. Gewerbeamt München" />
+                <EditRow label="Vermittlerregister-Nr." value={editData.reg_vermittler_id} onChange={handleFieldChange('reg_vermittler_id')} placeholder="D-W-XXX-XXXX-XX" />
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Berufshaftpflicht</h4>
+              <div className="border rounded-lg">
+                <EditRow label="Versicherer" value={editData.insurance_provider} onChange={handleFieldChange('insurance_provider')} placeholder="z.B. HDI Versicherung" />
+                <EditRow label="Policen-Nr." value={editData.insurance_policy_no} onChange={handleFieldChange('insurance_policy_no')} />
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Abbrechen</Button>
+            <Button onClick={handleSaveProfile} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Speichern
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Section A: Fälle in Bearbeitung */}
       <div className="space-y-3">

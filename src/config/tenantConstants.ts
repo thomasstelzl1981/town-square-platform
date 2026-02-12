@@ -96,4 +96,10 @@ export const DEV_MOCK_PROFILE: Profile = {
   letterhead_bic: null,
   letterhead_website: null,
   deleted_at: null,
+  reg_34i_number: null,
+  reg_34i_ihk: null,
+  reg_34i_authority: null,
+  reg_vermittler_id: null,
+  insurance_provider: null,
+  insurance_policy_no: null,
 };

@@ -14,6 +14,10 @@ interface FinanceManager {
   user_id: string;
   email: string;
   display_name: string | null;
+  phone_mobile: string | null;
+  letterhead_company_line: string | null;
+  letterhead_website: string | null;
+  reg_34i_number: string | null;
   active_cases: number;
   accepted_cases: number;
 }
@@ -37,7 +41,7 @@ export default function FutureRoomManagers() {
       // Get profiles for these users (without phone - not in schema)
       const { data: profiles, error: profError } = await supabase
         .from('profiles')
-        .select('id, email, display_name')
+        .select('id, email, display_name, phone_mobile, phone_landline, letterhead_website, letterhead_company_line, reg_34i_number, reg_34i_ihk')
         .in('id', userIds);
 
       if (profError) throw profError;
@@ -68,6 +72,10 @@ export default function FutureRoomManagers() {
         user_id: p.id,
         email: p.email || '',
         display_name: p.display_name,
+        phone_mobile: (p as any).phone_mobile || null,
+        letterhead_company_line: (p as any).letterhead_company_line || null,
+        letterhead_website: (p as any).letterhead_website || null,
+        reg_34i_number: (p as any).reg_34i_number || null,
         active_cases: countMap[p.id]?.active || 0,
         accepted_cases: countMap[p.id]?.accepted || 0,
       }));
@@ -158,6 +166,15 @@ export default function FutureRoomManagers() {
                       <Mail className="h-3 w-3" />
                       <span className="truncate">{manager.email}</span>
                     </div>
+                    {manager.phone_mobile && (
+                      <div className="text-xs text-muted-foreground mt-0.5">{manager.phone_mobile}</div>
+                    )}
+                    {manager.letterhead_company_line && (
+                      <div className="text-xs text-muted-foreground mt-0.5">{manager.letterhead_company_line}</div>
+                    )}
+                    {manager.reg_34i_number && (
+                      <div className="text-xs text-muted-foreground mt-0.5">§34i: {manager.reg_34i_number}</div>
+                    )}
                   </div>
                 </div>
 
