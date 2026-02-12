@@ -158,8 +158,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
-    // Finance Desk (legacy, redirects to FutureRoom)
-    { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
+    // Finance Desk removed — legacy route handled via redirects in legacyRedirects[]
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
     // =========================================================================
