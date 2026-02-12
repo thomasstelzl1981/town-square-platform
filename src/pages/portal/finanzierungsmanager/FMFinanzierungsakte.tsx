@@ -3,7 +3,7 @@
  * Eckdaten + Selbstauskunft + shared Object/Finance cards with localStorage
  */
 import * as React from 'react';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import type { CalcData } from '@/components/finanzierung/FinanceCalculatorCard';
 import HouseholdCalculationCard from '@/components/finanzierung/HouseholdCalculationCard';
 import { useNavigate } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag, X, CheckCircle2, Loader2 } from 'lucide-react';
 import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
@@ -101,6 +101,11 @@ export default function FMFinanzierungsakte() {
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
   const generateCaseRef = useRef<HTMLDivElement>(null);
 
+  // Multi-select Kaufy listings
+  type SelectedListing = { public_id: string; title: string | null; city: string | null; postal_code: string | null; property_type: string | null; asking_price: number | null; total_area_sqm: number | null; year_built: number | null };
+  const [selectedListings, setSelectedListings] = useState<SelectedListing[]>([]);
+  const [kaufyAdopted, setKaufyAdopted] = useState(false);
+
   // Magic Intake state
   const [magicIntakeResult, setMagicIntakeResult] = useState<MagicIntakeResult | null>(null);
 
@@ -135,17 +140,40 @@ export default function FMFinanzierungsakte() {
 
   const handleListingSelect = (listing: NonNullable<typeof listings>[number]) => {
     if (!listing) return;
-    setSearchQuery(`${listing.title ?? ''} — ${listing.city ?? ''}`);
+    // Prevent duplicates
+    if (selectedListings.some(s => s.public_id === listing.public_id)) return;
+    setSelectedListings(prev => [...prev, {
+      public_id: listing.public_id,
+      title: listing.title,
+      city: listing.city,
+      postal_code: listing.postal_code,
+      property_type: listing.property_type,
+      asking_price: listing.asking_price,
+      total_area_sqm: listing.total_area_sqm,
+      year_built: listing.year_built,
+    }]);
+    setSearchQuery('');
     setShowDropdown(false);
-    setExternalObjectData({
-      city: listing.city ?? '',
-      postalCode: listing.postal_code ?? '',
-      objectType: mapPropertyType(listing.property_type),
-      yearBuilt: listing.year_built?.toString() ?? '',
-      livingArea: listing.total_area_sqm?.toString() ?? '',
-    });
-    setExternalPurchasePrice(listing.asking_price?.toString() ?? '');
   };
+
+  const handleRemoveListing = (publicId: string) => {
+    setSelectedListings(prev => prev.filter(s => s.public_id !== publicId));
+  };
+
+  const handleAdoptObjects = useCallback(() => {
+    if (selectedListings.length === 0) return;
+    const primary = selectedListings[0];
+    setExternalObjectData({
+      city: primary.city ?? '',
+      postalCode: primary.postal_code ?? '',
+      objectType: mapPropertyType(primary.property_type),
+      yearBuilt: primary.year_built?.toString() ?? '',
+      livingArea: primary.total_area_sqm?.toString() ?? '',
+    });
+    setExternalPurchasePrice(primary.asking_price?.toString() ?? '');
+    setKaufyAdopted(true);
+    toast.success(`${selectedListings.length} Objekt${selectedListings.length > 1 ? 'e' : ''} übernommen`);
+  }, [selectedListings]);
 
   const handleCalculate = (bedarf: number) => {
     setCalculatorBedarf(bedarf);
@@ -186,48 +214,94 @@ export default function FMFinanzierungsakte() {
         {/* Magic Intake */}
         <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
 
-        {/* Listing search */}
-        <Card className="glass-card overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingBag className="h-4 w-4 text-primary" />
-              <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
-            </div>
-            <p className="text-[11px] text-muted-foreground mb-2">
-              Durchsuchen Sie den Marktplatz nach Objekt-ID, Ort oder Straße — alle Stammdaten wie Adresse, Fläche und Kaufpreis werden automatisch in die Finanzierungsakte übernommen.
-            </p>
-            <div className="relative" ref={searchRef}>
-              <Input
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  setShowDropdown(true);
-                }}
-                onFocus={() => searchQuery.trim() && setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                placeholder="Objekt suchen (ID, Ort, Straße...)"
-                className="h-7 text-xs"
-              />
-              {showDropdown && filteredListings.length > 0 && (
-                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
-                  {filteredListings.map(l => (
-                    <button
+        {/* Kaufy Objekte — 3-line design matching MagicIntakeCard */}
+        {kaufyAdopted ? (
+          <Card className="glass-card overflow-hidden border-green-500/30">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+                <span className="text-xs text-muted-foreground">({selectedListings.length})</span>
+              </div>
+              <div className="mt-1.5 space-y-1">
+                {selectedListings.map(l => (
+                  <p key={l.public_id} className="text-[11px] text-muted-foreground">
+                    {l.postal_code} {l.city} — {l.property_type ?? 'Objekt'} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                  </p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="glass-card overflow-hidden">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingBag className="h-4 w-4 text-primary" />
+                <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
+              </p>
+              <div className="relative" ref={searchRef}>
+                <Input
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                  onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  placeholder="Objekt suchen (ID, Ort, Straße...)"
+                  className="h-7 text-xs"
+                />
+                {showDropdown && filteredListings.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
+                    {filteredListings.map(l => (
+                      <button
+                        key={l.public_id}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0"
+                        onMouseDown={() => handleListingSelect(l)}
+                      >
+                        <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
+                        <div className="text-muted-foreground">
+                          {l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}
+                          {l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Selected listings as chips */}
+              {selectedListings.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {selectedListings.map(l => (
+                    <span
                       key={l.public_id}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0"
-                      onMouseDown={() => handleListingSelect(l)}
+                      className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1"
                     >
-                      <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
-                      <div className="text-muted-foreground">
-                        {l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}
-                        {l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
-                      </div>
-                    </button>
+                      {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                      <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
                   ))}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+              <Button
+                size="sm"
+                disabled={selectedListings.length === 0}
+                onClick={handleAdoptObjects}
+                className="w-full gap-1.5 h-7 text-xs mt-2"
+              >
+                <ShoppingBag className="h-3 w-3" />
+                {selectedListings.length <= 1
+                  ? 'Objekt übernehmen'
+                  : `${selectedListings.length} Objekte übernehmen`}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* GenerateCaseCard — oben wenn Magic Intake aktiviert */}
