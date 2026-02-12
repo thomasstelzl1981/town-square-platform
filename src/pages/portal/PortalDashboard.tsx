@@ -30,6 +30,7 @@ import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
 import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
 import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
 import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
+import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings2, Inbox } from 'lucide-react';
@@ -161,6 +162,11 @@ export default function PortalDashboard() {
       <h1 className="text-h1 text-center mb-6 md:mb-8 text-foreground tracking-widest">
         WELCOME ON BOARD
       </h1>
+
+      {/* Brand Widgets: Kaufy, FutureRoom, SoT */}
+      <div className="mb-6">
+        <BrandWidgets />
+      </div>
 
       <DashboardGrid widgetIds={visibleWidgetIds} onReorder={updateOrder}>
         {visibleWidgetIds.map(widgetId => {

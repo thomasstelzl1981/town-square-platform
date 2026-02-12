@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
@@ -291,8 +292,11 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Manager Visitenkarte + FutureRoom + Zins-Ticker */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Brand Widgets: Kaufy, FutureRoom, SoT */}
+      <BrandWidgets />
+
+      {/* Manager Visitenkarte + Zins-Ticker */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Visitenkarte — with accent gradient header */}
         <Card className="overflow-hidden border-0 shadow-card">
           <div className="h-2 bg-gradient-to-r from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)]" />
@@ -357,44 +361,6 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                 <div className="pt-1">
                   <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* FutureRoom Branding Tile */}
-        <Card className="overflow-hidden border-0 shadow-card">
-          <CardContent className="p-0 h-full">
-            <div className="h-full bg-gradient-to-br from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)] p-5 flex flex-col justify-between text-white">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                    <Landmark className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold tracking-tight">
-                      Future<span className="font-light">Room</span>
-                    </h3>
-                    <p className="text-[10px] text-white/70 uppercase tracking-wider">Finanzierungsorchesterierung</p>
-                  </div>
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  KI-gestützte Aufbereitung und digitale Bankeinreichung.
-                </p>
-              </div>
-              <div className="flex items-center justify-between mt-3">
-                <Badge className="bg-white/20 text-white border-white/30 text-[10px] hover:bg-white/30">
-                  400+ Bankpartner
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-[11px] h-7"
-                  onClick={() => window.open('/website/futureroom', '_blank')}
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Website
-                </Button>
               </div>
             </div>
           </CardContent>
