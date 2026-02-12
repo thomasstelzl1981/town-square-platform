@@ -107,15 +107,21 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
   const [aiResults, setAiResults] = useState<PlaceResult[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSearchInput, setAiSearchInput] = useState('');
 
   const applicant = request?.applicant_profiles?.[0];
   const property = request?.properties;
 
-  // ─── KI-Bankensuche via Google Places ──────────────────────────────
-  const searchBanks = useCallback(async () => {
+  // Default-Suchbegriff aus Falldaten
+  const defaultAiQuery = useMemo(() => {
     const plz = property?.postal_code || applicant?.address_postal_code || '';
     const city = property?.city || applicant?.address_city || '';
-    const locationHint = [plz, city].filter(Boolean).join(' ');
+    return [plz, city].filter(Boolean).join(' ');
+  }, [property?.postal_code, property?.city, applicant?.address_postal_code, applicant?.address_city]);
+
+  // ─── KI-Bankensuche via Google Places ──────────────────────────────
+  const searchBanks = useCallback(async (customQuery?: string) => {
+    const locationHint = customQuery?.trim() || aiSearchInput.trim() || defaultAiQuery;
     if (!locationHint) { setAiResults([]); return; }
 
     setAiLoading(true);
@@ -133,16 +139,19 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
     } finally {
       setAiLoading(false);
     }
-  }, [property?.postal_code, property?.city, applicant?.address_postal_code, applicant?.address_city]);
+  }, [aiSearchInput, defaultAiQuery]);
 
-  // Auto-Suche wenn Fall ausgewählt & Daten geladen
+  // Auto-Suche wenn Fall ausgewählt & Daten geladen + Suchfeld vorbelegen
   useEffect(() => {
     if (selectedId && !reqLoading && (applicant || property)) {
-      searchBanks();
+      setAiSearchInput(defaultAiQuery);
+      searchBanks(defaultAiQuery);
     } else {
       setAiResults([]);
+      setAiSearchInput('');
     }
-  }, [selectedId, reqLoading, searchBanks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, reqLoading, defaultAiQuery]);
 
   // ─── Bank helpers ───────────────────────────────────────────────────
   const addBank = (bank: SelectedBank) => {
@@ -412,29 +421,11 @@ Mit freundlichen Grüßen`;
             </h3>
           </div>
 
-          {/* ── Bankauswahl Bereich ── */}
+          {/* ── Bankauswahl Bereich — 2×2 Grid + Sammlung ── */}
           <div className="p-4 space-y-4">
-            {/* Ausgewählte Banken als Chips */}
-            {selectedBanks.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedBanks.map(bank => (
-                  <Badge key={bank.id} variant="secondary" className="pl-2.5 pr-1 py-1 text-xs flex items-center gap-1.5">
-                    <Building2 className="h-3 w-3" />
-                    {bank.name}
-                    {bank.email && <span className="text-muted-foreground">({bank.email})</span>}
-                    {!bank.email && <span className="text-muted-foreground italic">(E-Mail ergänzen)</span>}
-                    <button onClick={() => removeBank(bank.id)} className="ml-1 hover:bg-destructive/20 rounded-full p-0.5">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <span className="text-[10px] text-muted-foreground self-center">{selectedBanks.length}/{MAX_BANKS}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Quelle 1: Zone-1 Kontaktbuch */}
-              <div className="border rounded-md p-3 space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* ── Quelle 1: Zone-1 Kontaktbuch ── */}
+              <div className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <Search className="h-3.5 w-3.5 text-primary" />
                   Bankkontaktbuch (Zone 1)
@@ -443,13 +434,13 @@ Mit freundlichen Grüßen`;
                   placeholder="Bank suchen..."
                   value={bankSearchQuery}
                   onChange={(e) => setBankSearchQuery(e.target.value)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 />
-                <div className="max-h-[140px] overflow-y-auto space-y-1">
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
                   {filteredBankContacts.length === 0 ? (
-                    <p className="text-[10px] text-muted-foreground text-center py-3">Keine Banken gefunden</p>
+                    <p className="text-[10px] text-muted-foreground text-center py-4">Keine Banken gefunden</p>
                   ) : (
-                    filteredBankContacts.slice(0, 8).map(bank => (
+                    filteredBankContacts.slice(0, 12).map(bank => (
                       <button
                         key={bank.id}
                         onClick={() => addBank({
@@ -474,68 +465,82 @@ Mit freundlichen Grüßen`;
                 </div>
               </div>
 
-              {/* Quelle 2: KI-Vorschläge — Google Places */}
-              <div className="border rounded-md p-3 space-y-2">
+              {/* ── Quelle 2: KI-Suche (Google Places) ── */}
+              <div className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
-                  KI-Vorschläge (50 km Umkreis)
+                  KI-Bankensuche
                   {aiResults.length > 0 && (
                     <Badge variant="outline" className="text-[9px] ml-auto">{aiResults.length} Treffer</Badge>
                   )}
                 </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="PLZ, Ort oder Adresse eingeben…"
+                    value={aiSearchInput}
+                    onChange={(e) => setAiSearchInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchBanks()}
+                    className="h-8 text-xs flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-8 text-xs shrink-0"
+                    onClick={() => searchBanks()}
+                    disabled={aiLoading || !aiSearchInput.trim()}
+                  >
+                    {aiLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                    KI-Suche
+                  </Button>
+                </div>
 
                 {aiLoading ? (
-                  <div className="flex items-center gap-2 py-4 justify-center">
+                  <div className="flex items-center gap-2 py-6 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Lade Banken im Umkreis…</span>
+                    <span className="text-[10px] text-muted-foreground">Suche Banken im Umkreis…</span>
                   </div>
                 ) : aiError ? (
-                  <div className="text-center py-3 space-y-2">
+                  <div className="text-center py-4 space-y-2">
                     <p className="text-[10px] text-destructive">{aiError}</p>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={searchBanks}>
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => searchBanks()}>
                       Erneut suchen
                     </Button>
                   </div>
                 ) : aiResults.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground text-center py-3">
-                    {selectedId ? 'Keine Banken im Umkreis gefunden' : 'Bitte zuerst eine Akte auswählen'}
+                  <p className="text-[10px] text-muted-foreground text-center py-4">
+                    {selectedId ? 'Suchbegriff eingeben und „KI-Suche" klicken' : 'Bitte zuerst eine Akte auswählen'}
                   </p>
                 ) : (
-                  <>
-                    <div className="max-h-[160px] overflow-y-auto space-y-1">
-                      {aiResults.map((place) => (
-                        <button
-                          key={place.place_id}
-                          onClick={() => addBank({
-                            id: place.place_id,
-                            name: place.name,
-                            email: '',
-                            source: 'ki',
-                          })}
-                          disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.id === place.place_id)}
-                          className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors disabled:opacity-40"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="h-3 w-3 text-accent-foreground shrink-0" />
-                            <span className="font-medium truncate">{place.name}</span>
-                            <Plus className="h-3 w-3 ml-auto shrink-0 text-muted-foreground" />
-                          </div>
-                          <div className="pl-5 text-[10px] text-muted-foreground truncate">{place.formatted_address}</div>
-                          {place.phone_number && (
-                            <div className="pl-5 text-[10px] text-muted-foreground">{place.phone_number}</div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px] w-full" onClick={searchBanks}>
-                      <Search className="h-3 w-3 mr-1" /> Erneut suchen
-                    </Button>
-                  </>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1">
+                    {aiResults.map((place) => (
+                      <button
+                        key={place.place_id}
+                        onClick={() => addBank({
+                          id: place.place_id,
+                          name: place.name,
+                          email: '',
+                          source: 'ki',
+                        })}
+                        disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.id === place.place_id)}
+                        className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors disabled:opacity-40"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-3 w-3 text-accent-foreground shrink-0" />
+                          <span className="font-medium truncate">{place.name}</span>
+                          <Plus className="h-3 w-3 ml-auto shrink-0 text-muted-foreground" />
+                        </div>
+                        <div className="pl-5 text-[10px] text-muted-foreground truncate">{place.formatted_address}</div>
+                        {place.phone_number && (
+                          <div className="pl-5 text-[10px] text-muted-foreground">{place.phone_number}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Quelle 3: Manuelle Eingabe */}
-              <div className="border rounded-md p-3 space-y-2">
+              {/* ── Quelle 3: Manuelle Eingabe ── */}
+              <div className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <Plus className="h-3.5 w-3.5 text-primary" />
                   Manuelle Eingabe
@@ -544,24 +549,65 @@ Mit freundlichen Grüßen`;
                   placeholder="Bankname"
                   value={manualBankName}
                   onChange={(e) => setManualBankName(e.target.value)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 />
                 <Input
                   placeholder="E-Mail-Adresse"
                   type="email"
                   value={manualBankEmail}
                   onChange={(e) => setManualBankEmail(e.target.value)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 />
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs w-full"
+                  className="h-8 text-xs w-full"
                   onClick={addManualBank}
                   disabled={selectedBanks.length >= MAX_BANKS}
                 >
                   <Plus className="h-3 w-3 mr-1" /> Hinzufügen
                 </Button>
+              </div>
+
+              {/* ── Ausgewählte Banken (Sammlung) ── */}
+              <div className="border rounded-md p-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <Building2 className="h-3.5 w-3.5 text-primary" />
+                  Ausgewählte Banken
+                  <Badge variant="outline" className="text-[9px] ml-auto">{selectedBanks.length}/{MAX_BANKS}</Badge>
+                </div>
+                {selectedBanks.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground text-center py-6">
+                    Noch keine Banken ausgewählt. Wählen Sie bis zu {MAX_BANKS} Banken aus den anderen Quellen.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedBanks.map((bank, idx) => (
+                      <div key={bank.id} className="flex items-center gap-2 border rounded px-3 py-2 bg-muted/20">
+                        <span className="text-xs font-bold text-muted-foreground w-5">{idx + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate">{bank.name}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            {bank.email || 'E-Mail wird im Entwurf ergänzt'}
+                            <Badge variant="outline" className="text-[9px] ml-2">
+                              {bank.source === 'kontaktbuch' ? 'Kontaktbuch' : bank.source === 'ki' ? 'KI' : 'Manuell'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <button onClick={() => removeBank(bank.id)} className="hover:bg-destructive/20 rounded-full p-1 shrink-0">
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Leere Slots anzeigen */}
+                    {Array.from({ length: MAX_BANKS - selectedBanks.length }).map((_, idx) => (
+                      <div key={`empty-${idx}`} className="flex items-center gap-2 border border-dashed rounded px-3 py-2">
+                        <span className="text-xs font-bold text-muted-foreground/40 w-5">{selectedBanks.length + idx + 1}.</span>
+                        <span className="text-[10px] text-muted-foreground/40 italic">Frei — Bank aus Suche oder KI wählen</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
