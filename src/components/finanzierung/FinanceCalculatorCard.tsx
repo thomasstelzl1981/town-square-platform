@@ -2,21 +2,28 @@
  * FinanceCalculatorCard — Annuity calculator with live interest rate lookup.
  * Sits beside FinanceRequestCard in MOD-11 (2-column layout).
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Calculator, ArrowDown } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+export interface CalcData {
+  interestRate: number;
+  repaymentRate: number;
+  termYears: number;
+  monthlyRate: number;
+  remainingDebt: number;
+  loanAmount: number;
+}
 
 interface Props {
   finanzierungsbedarf: number;
   purchasePrice: number;
-  /** Called when user clicks "Eckdaten in Antrag übernehmen" */
-  onTransferToApplication?: () => void;
+  onCalcUpdate?: (data: CalcData) => void;
 }
 
 function TR({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,10 +44,10 @@ function TRComputed({ label, value }: { label: string; value: string }) {
   );
 }
 
-const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
+const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]";
 const fmt = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePrice, onTransferToApplication }: Props) {
+export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePrice, onCalcUpdate }: Props) {
   const [termYears, setTermYears] = useState('10');
   const [repaymentRate, setRepaymentRate] = useState('1.5');
 
@@ -81,15 +88,12 @@ export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePri
     return (loan * (interestRate + repayment)) / 100 / 12;
   }, [loan, interestRate, repayment]);
 
-  const yearlyRate = monthlyRate * 12;
-
   // Remaining debt after fixed-rate period (annuity formula)
   const remainingDebt = useMemo(() => {
     if (!loan || !interestRate || !repayment) return 0;
     const monthlyInterest = interestRate / 100 / 12;
     const totalMonthlyRate = monthlyRate;
     const months = Number(termYears) * 12;
-    // Standard annuity remaining balance formula
     let balance = loan;
     for (let i = 0; i < months; i++) {
       const interest = balance * monthlyInterest;
@@ -99,6 +103,18 @@ export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePri
     }
     return Math.max(0, balance);
   }, [loan, interestRate, monthlyRate, termYears, repayment]);
+
+  // Notify parent of calc updates
+  useEffect(() => {
+    onCalcUpdate?.({
+      interestRate,
+      repaymentRate: repayment,
+      termYears: Number(termYears),
+      monthlyRate,
+      remainingDebt,
+      loanAmount: loan,
+    });
+  }, [interestRate, repayment, termYears, monthlyRate, remainingDebt, loan, onCalcUpdate]);
 
   return (
     <Card className="glass-card overflow-hidden">
@@ -156,26 +172,12 @@ export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePri
         <Table>
           <TableBody>
             <TRComputed label="Monatsrate" value={monthlyRate > 0 ? `${fmt(monthlyRate)} €` : '—'} />
-            <TRComputed label="Jahresrate" value={yearlyRate > 0 ? `${fmt(yearlyRate)} €` : '—'} />
             <TRComputed
               label={`Restschuld (${termYears} J.)`}
               value={remainingDebt > 0 ? `${fmt(remainingDebt)} €` : loan > 0 && interestRate > 0 ? '0,00 €' : '—'}
             />
           </TableBody>
         </Table>
-
-        {onTransferToApplication && (
-          <div className="px-4 py-3 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 text-xs"
-              onClick={onTransferToApplication}
-            >
-              <ArrowDown className="h-3.5 w-3.5" /> Eckdaten in Antrag übernehmen
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
