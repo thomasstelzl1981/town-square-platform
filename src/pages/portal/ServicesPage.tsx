@@ -4,6 +4,9 @@
 
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -120,11 +123,8 @@ function ShopTab({ shopKey }: { shopKey: string }) {
   if (!shop) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Shops</h1>
-        <p className="text-muted-foreground mt-1">Einkaufen und Bestellen für Ihr Unternehmen</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Shops" description="Einkaufen und Bestellen für Ihr Unternehmen" />
       {/* Hero with gradient */}
       <Card className="overflow-hidden border-0">
         <div className={`bg-gradient-to-br ${shop.accentClass} p-6 sm:p-8`}>
@@ -211,7 +211,7 @@ function ShopTab({ shopKey }: { shopKey: string }) {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </div>
+    </PageShell>
   );
 }
 
@@ -385,18 +385,17 @@ function BestellungenTab() {
   const [activeTab, setActiveTab] = useState('order-1');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Order list header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Bestellungen</h1>
-          <p className="text-muted-foreground mt-1">Verwalten Sie Ihre Bestellungen als Widgets</p>
-        </div>
-        <Button size="sm" className="gap-2" onClick={() => console.log('Neue Bestellung')}>
-          <Plus className="h-4 w-4" />
-          Neue Bestellung
-        </Button>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="Bestellungen"
+        description="Verwalten Sie Ihre Bestellungen als Widgets"
+        actions={
+          <Button size="sm" className="gap-2" onClick={() => toast.info('Bestellformular wird vorbereitet…')}>
+            <Plus className="h-4 w-4" />
+            Neue Bestellung
+          </Button>
+        }
+      />
 
       {/* Widget-pattern tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -411,7 +410,7 @@ function BestellungenTab() {
           <OrderDetail />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }
 

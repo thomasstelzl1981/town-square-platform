@@ -236,11 +236,24 @@ export default function Kaufy2026Expose() {
 
   if (!listing) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-[hsl(215,16%,47%)]">Objekt nicht gefunden</p>
-        <Link to="/website/kaufy">
-          <Button className="mt-4">Zurück zur Suche</Button>
-        </Link>
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="text-center max-w-md space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center">
+            <MapPin className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold">Objekt nicht verfügbar</h2>
+          <p className="text-muted-foreground text-sm">
+            Dieses Objekt ist nicht mehr verfügbar oder wurde deaktiviert.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Link to="/website/kaufy">
+              <Button>Weitere Objekte entdecken</Button>
+            </Link>
+            <Link to="/website/kaufy/verkaeufer">
+              <Button variant="outline">Sie sind Verkäufer? Projekt einstellen</Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

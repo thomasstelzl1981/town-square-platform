@@ -37,6 +37,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { format } from 'date-fns';
@@ -106,8 +107,8 @@ function TaskWidgetsContent() {
     return true;
   });
 
-  const handleRepeat = (widgetId: string) => {
-    console.log('Repeat widget:', widgetId);
+  const handleRepeat = (_widgetId: string) => {
+    toast.info('Widget wird wiederholt');
   };
 
   return (

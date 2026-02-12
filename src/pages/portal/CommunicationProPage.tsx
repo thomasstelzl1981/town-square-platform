@@ -5,6 +5,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { Bot } from 'lucide-react';
@@ -26,7 +27,7 @@ function AgentenTile() {
       primaryAction={{
         label: 'Agent aktivieren',
         icon: Bot,
-        onClick: () => console.log('Agent'),
+        onClick: () => toast.info('Agenten-Konfiguration wird vorbereitet…'),
       }}
     />
   );

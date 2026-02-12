@@ -1,9 +1,11 @@
 /**
+ * @deprecated This file is no longer referenced by the routesManifest.
+ * Its functionality (Kaufy-Toggle, Landingpage-Slug) has been absorbed into
+ * VertriebTab.tsx and LandingPageTab.tsx as part of the MOD-13 4-Tile refactor.
+ * Kept for potential future reuse — do NOT import in new code.
+ *
  * Marketing Tab - Kaufy Listings & Landingpages
  * MOD-13 PROJEKTE — P0 Redesign
- * 
- * NEVER shows EmptyState only — stats always visible.
- * Kaufy toggle shows info about Sales Desk requirement (GP-05).
  */
 
 import { useState } from 'react';

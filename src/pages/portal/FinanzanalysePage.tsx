@@ -3,6 +3,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
 import { LineChart, LayoutDashboard, FileBarChart, GitBranch, Settings, Plus } from 'lucide-react';
@@ -21,7 +22,7 @@ function DashboardTile() {
       primaryAction={{
         label: 'Analyse starten',
         icon: LineChart,
-        onClick: () => console.log('Analyse'),
+        onClick: () => toast.info('Finanzanalyse wird vorbereitet…'),
       }}
       secondaryAction={{
         label: "So funktioniert's",
@@ -45,7 +46,7 @@ function ReportsTile() {
       primaryAction={{
         label: 'Report erstellen',
         icon: Plus,
-        onClick: () => console.log('Report'),
+        onClick: () => toast.info('Report-Generator wird vorbereitet…'),
       }}
     />
   );
@@ -65,7 +66,7 @@ function SzenarienTile() {
       primaryAction={{
         label: 'Szenario erstellen',
         icon: Plus,
-        onClick: () => console.log('Szenario'),
+        onClick: () => toast.info('Szenario-Editor wird vorbereitet…'),
       }}
     />
   );
