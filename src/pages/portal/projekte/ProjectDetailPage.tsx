@@ -4,6 +4,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,7 +132,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Quick KPIs */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="pt-4">
             <div className="text-sm text-muted-foreground">Einheiten</div>

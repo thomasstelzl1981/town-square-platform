@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -104,7 +105,7 @@ export default function VertriebTab() {
       />
 
       {/* KPI Cards — ALWAYS visible */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Einheiten gesamt</CardTitle>

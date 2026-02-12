@@ -3,6 +3,7 @@
  * Datenquelle: armstrongManifest.ts (statisch) + armstrong_action_overrides (DB)
  */
 import { useState, useMemo } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -48,7 +49,7 @@ export function AktionsKatalog() {
   return (
     <div className="space-y-4">
       {/* KPI Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold text-foreground">{totalActions}</p>
@@ -103,7 +104,7 @@ export function AktionsKatalog() {
       </div>
 
       {/* Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         {filtered.map(action => {
           const mode = EXECUTION_MODE_LABELS[action.execution_mode] || EXECUTION_MODE_LABELS.readonly;
           const ModeIcon = mode.icon;

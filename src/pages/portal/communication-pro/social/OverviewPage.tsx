@@ -2,6 +2,7 @@
  * Social Overview — Dashboard with Platform Cards, Live Stats, Setup Progress
  */
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -258,7 +259,7 @@ export function OverviewPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Deine Profile
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {PLATFORMS.map((p) => {
             const connected = isConnected(p.key);
             const url = getProfileUrl(p.key);
@@ -316,7 +317,7 @@ export function OverviewPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Status
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={DESIGN.KPI_GRID.FULL}>
           {statCards.map((stat) => (
             <Card
               key={stat.label}
@@ -344,7 +345,7 @@ export function OverviewPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Schnellzugriff
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={DESIGN.FORM_GRID.FULL}>
           {[
             { label: 'Audit starten', desc: 'Armstrong erfasst deine Persönlichkeit', icon: Mic, path: 'audit', show: !auditDone },
             { label: 'Themen definieren', desc: 'Bis zu 10 Editorial-Focus-Themen', icon: BookOpen, path: 'knowledge', show: true },

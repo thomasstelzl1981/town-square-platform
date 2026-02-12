@@ -2,6 +2,7 @@
  * Analysis Tab — KI Research, GeoMap, Bestand/Aufteiler Kalkulatoren
  */
 import * as React from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,7 +115,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{offers.length}</div>
@@ -163,7 +164,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className={DESIGN.FORM_GRID.FULL}>
           {offers.map(offer => (
             <OfferCard 
               key={offer.id} 

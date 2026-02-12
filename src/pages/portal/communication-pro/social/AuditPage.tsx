@@ -3,6 +3,7 @@
  * Enhanced: Erklär-Cards, visuelle Ergebnis-Darstellung
  */
 import { useState, useEffect } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -125,7 +126,7 @@ export function AuditPage() {
         </div>
 
         {/* Dimension Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={DESIGN.FORM_GRID.FULL}>
           {dimensions.map((dim) => (
             <Card key={dim.key}>
               <CardContent className="pt-4 pb-3 px-4 space-y-2">
@@ -207,7 +208,7 @@ export function AuditPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Was wird gefragt?
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={DESIGN.FORM_GRID.FULL}>
           {AUDIT_BLOCKS.map((block) => (
             <Card key={block.title}>
               <CardContent className="pt-4 pb-3 px-4 space-y-2">

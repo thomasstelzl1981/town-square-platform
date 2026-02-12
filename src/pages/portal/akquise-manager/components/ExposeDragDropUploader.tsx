@@ -6,6 +6,7 @@
  */
 
 import * as React from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -302,7 +303,7 @@ export function ExposeDragDropUploader() {
             </div>
 
             {/* Extracted Data Summary */}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className={DESIGN.FORM_GRID.FULL}>
               {extractedData.title && (
                 <div className="flex items-start gap-2">
                   <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
