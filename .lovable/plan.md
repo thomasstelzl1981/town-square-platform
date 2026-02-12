@@ -1,139 +1,146 @@
 
-# Immobilienvermögen: Ja/Nein-Abfrage, Zusatzkachel und Datenbankstruktur
+# Neue Kachel: "Finanzierungsfall generieren" + PDF-Vorschau + Datenraum
 
 ## Uebersicht
 
-Der Kunde wird bei den monatlichen Einnahmen gefragt, ob Mieteinnahmen vorliegen (Ja/Nein). Bei "Ja" erscheint ein Hinweistext und weiter unten oeffnet sich eine neue Kachel "Immobilienvermoegen", in der er bis zu 3 Bestandsimmobilien mit Verbindlichkeiten erfassen kann -- analog zum Bank-PDF-Formular. Die Summe der Nettokaltmieten fliesst automatisch in die Kapitaldienstfaehigkeitsberechnung ein.
-
-Alle Aenderungen gelten fuer MOD-07 (Kundenformular) UND MOD-11 (Manager-Ansicht) gleichermassen.
+Am Ende der Finanzierungsakte (FMFinanzierungsakte.tsx) wird eine neue Kachel eingefuegt, die den Uebergang vom "Formularentwurf" zum "echten Fall" darstellt. Der Manager klickt einen Button, daraufhin wird ein `finance_request`-Datensatz in der Datenbank angelegt, eine Public-ID generiert und eine PDF-Vorschau des Finanzierungsantrags angezeigt. Ausserdem oeffnet sich der Dokumentenraum mit Ordnerstruktur und Drag-and-Drop Upload.
 
 ---
 
-## 1. Einnahmen-Section: Mieteinnahmen als Ja/Nein-Trigger
+## 1. Kachel "Finanzierungsfall generieren"
 
-**Datei:** `ApplicantPersonFields.tsx` (IncomeSection)
-
-Aktuell ist "Mieteinnahmen" ein freies Zahlenfeld. Neu:
-
+**Anfangszustand (kompakt):**
 ```text
-Mieteinnahmen (bestehend)  |  [Ja ▼] / [Nein ▼]  |  [Ja ▼] / [Nein ▼]
-```
-
-- Wenn "Ja": Feld wird read-only und zeigt die automatisch berechnete Summe aus der Immobilienaufstellung
-- Darunter erscheint ein Hinweistext: "Bitte befuellen Sie weiter unten die Zusatzangaben zu Ihrem Immobilienvermoegen."
-- Wenn "Nein": Wert wird auf 0 gesetzt, Immobilienkachel bleibt ausgeblendet
-
-**Neues Feld im FormData:** `has_rental_properties: boolean` (fuer AS1 und AS2)
-
----
-
-## 2. Neue Datenbanktabelle: `applicant_property_assets`
-
-Eine Kind-Tabelle zu `applicant_profiles`, die bis zu N Bestandsimmobilien speichert:
-
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| id | uuid (PK) | |
-| applicant_profile_id | uuid (FK) | Verknuepfung zum Antragsteller |
-| property_index | int | 1, 2, 3 (Reihenfolge) |
-| property_type | text | Objektart (ETW, EFH, MFH etc.) |
-| address | text | Adresse |
-| living_area_sqm | numeric | Gesamte Wohnflaeche |
-| rented_area_sqm | numeric | Davon vermietet |
-| commercial_area_sqm | numeric | Gewerbliche Nutzflaeche |
-| construction_year | int | Baujahr |
-| purchase_price | numeric | Kaufpreis |
-| estimated_value | numeric | Geschaetzter Wert heute |
-| net_rent_monthly | numeric | Nettokaltmiete pro Monat |
-| units_count | int | Anzahl Wohneinheiten |
-| loan1_lender | text | Darlehensgeber 1 |
-| loan1_balance | numeric | Darlehensstand aktuell |
-| loan1_rate_monthly | numeric | Darlehensrate mtl. |
-| loan1_interest_rate | numeric | Sollzinssatz |
-| loan2_lender | text | Darlehensgeber 2 |
-| loan2_balance | numeric | |
-| loan2_rate_monthly | numeric | |
-| loan2_interest_rate | numeric | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-
-RLS: Zugriff ueber `applicant_profiles.tenant_id` (gleiche Policy-Logik wie bestehende Tabellen).
-
----
-
-## 3. Neue Kachel: "Immobilienvermoegen"
-
-**Neue Datei:** `src/components/finanzierung/PropertyAssetsCard.tsx`
-
-Wird nur angezeigt, wenn `has_rental_properties = true` bei mindestens einem Antragsteller.
-
-Layout (analog zum PDF-Formular):
-
-```text
-+--- Kachel: Immobilienvermoegen ------------------------------------------+
-| [Building2] Aufstellung Ihres Immobilienvermoegens                       |
-| Ergaenzende Angaben zu bestehenden Immobilien und deren Verbindlichkeiten|
-+--------------------------------------------------------------------------+
-| Immobilie 1                                              [Entfernen]     |
-| Objektart:        [ETW ▼]                                                |
-| Adresse:          [____________]                                         |
-| Wohnflaeche:      [___] m²   Davon vermietet: [___] m²  Baujahr: [___]  |
-| Kaufpreis:        [___] EUR  Geschaetzter Wert: [___] EUR                |
-| Nettokaltmiete:   [___] EUR/Monat   Wohneinheiten: [___]                |
-| --- Verbindlichkeiten ---                                                |
-| Darlehen 1: Geber [____]  Stand [____] EUR  Rate [____] EUR  Zins [__]% |
-| Darlehen 2: Geber [____]  Stand [____] EUR  Rate [____] EUR  Zins [__]% |
-+--------------------------------------------------------------------------+
-| [+ Immobilie hinzufuegen]                                                |
-+--------------------------------------------------------------------------+
-| Summe Nettokaltmieten: 2.850,00 EUR                                     |
-| Summe Darlehensraten:  1.420,00 EUR                                     |
++--- Finanzierungsfall generieren -----------------------------------------+
+| [Sparkles] Finanzierungsakte fertigstellen                               |
+| Basierend auf der aktuellen Selbstauskunft und dem Darlehensantrag kann   |
+| die Finanzierung fuer [Max Mustermann] beantragt werden.                 |
+| Hier koennen Sie jetzt die Finanzierungsakte fertig erstellen.           |
+|                                                                          |
+|                    [Finanzierungsfall anlegen]                            |
 +--------------------------------------------------------------------------+
 ```
 
-- Max. 5 Immobilien (erweiterbar)
-- Summe Nettokaltmieten wird automatisch in `rental_income_monthly` zurueckgeschrieben
-- Summe Darlehensraten fliesst in die Kapitaldienstberechnung ein
+- Der Kundenname wird aus `formData.first_name` + `formData.last_name` dynamisch gelesen
+- Der Button ist nur aktiv, wenn Mindestfelder befuellt sind (Name, Darlehenssumme, Objekt)
+
+**Nach Klick (expandiert):**
+```text
++--- Finanzierungsakte SOT-FR-A8B3C2D1 -----------------------------------+
+| [CheckCircle] Fall erfolgreich angelegt                                  |
+|                                                                          |
+| +--- PDF-Vorschau (links 60%) ---+--- Datenraum (rechts 40%) ----------+ |
+| | [PDF Preview]                  | [Ordnerstruktur]                    | |
+| | Finanzierungsantrag            | 01_Identitaet          [0/2]       | |
+| | Max Mustermann                 | 02_Einkommen           [0/3]       | |
+| | SOT-FR-A8B3C2D1                | 03_Vermoegen           [0/1]       | |
+| |                                | 04_Verpflichtungen     [0/1]       | |
+| | [Antragsteller]                | 05_Objektunterlagen    [0/4]       | |
+| | Name: Max Mustermann           |                                     | |
+| | ...                            | [--- Drag & Drop Zone ---]          | |
+| |                                | Fortschritt: 0/11 (0%)             | |
+| | [Download PDF] [Per E-Mail]    | [==================] 0%            | |
+| +--------------------------------+-------------------------------------+ |
++--------------------------------------------------------------------------+
+```
 
 ---
 
-## 4. Integration in MOD-11 (FMFinanzierungsakte) und MOD-07 (SelbstauskunftFormV2)
+## 2. Ablauf beim Klick auf "Finanzierungsfall anlegen"
 
-**MOD-11** (`FMFinanzierungsakte.tsx`):
-- PropertyAssetsCard wird zwischen "Einnahmen/Ausgaben"-Kachel und "Finanzierungsobjekt" eingefuegt
-- Sichtbar nur wenn `has_rental_properties = true`
-- Daten werden im gleichen localStorage-Key gespeichert und beim Floating Save mit persistiert
-
-**MOD-07** (`SelbstauskunftFormV2.tsx`):
-- Gleiche PropertyAssetsCard, aber mit zusaetzlichem Button: "Aus Immobilienportfolio importieren" (laedt Daten aus MOD-04 Properties)
-- In MOD-11 gibt es diesen Import-Button NICHT (Manager hat kein Portfolio)
-
----
-
-## 5. Berechnung: Rueckwirkung auf Kapitaldienstfaehigkeit
-
-In `HouseholdCalculationCard.tsx` wird die CALC_MATRIX erweitert:
-
-| Feld | Quelle | Regel |
-|---|---|---|
-| existingRentalIncome | Summe net_rent_monthly aus PropertyAssets | Nur wenn has_rental_properties = true |
-| existingLoanPayments | Summe loan_rates aus PropertyAssets | Neue Ausgaben-Zeile in der Haushaltsrechnung |
+1. **Datensatz erstellen**: INSERT in `finance_requests` mit allen Eckdaten aus dem Formular (Kaufpreis, Darlehenssumme, Objektdaten, Verwendungszweck)
+2. **Applicant Profile erstellen**: INSERT in `applicant_profiles` mit den Selbstauskunft-Daten, verknuepft mit dem neuen `finance_request_id`
+3. **Property Assets speichern**: Falls Immobilienvermoegen vorhanden, INSERT in `applicant_property_assets`
+4. **Public-ID wird automatisch vom bestehenden Trigger generiert** (Prefix FR)
+5. **Storage-Folder erstellen**: Ein `storage_nodes`-Eintrag vom Typ `folder` mit `module_code = 'MOD_11'` wird angelegt und in `finance_requests.storage_folder_id` gespeichert
+6. **Status**: Der neue Fall wird mit Status `ready_for_submission` angelegt
+7. **Navigation**: Der Fall erscheint automatisch unter "Einreichung" im Menue
 
 ---
 
-## 6. Neues Feld in applicant_profiles
+## 3. PDF-Vorschau (Phase 1: HTML-basiert)
 
-`has_rental_properties` (boolean, default false) wird als Spalte zur bestehenden Tabelle hinzugefuegt, damit der Ja/Nein-Status persistent gespeichert wird.
+Statt sofort eine vollstaendige KI-generierte PDF zu bauen (das kommt in der Einreichung), wird hier eine strukturierte HTML-Vorschau gerendert, die alle erfassten Daten zusammenfasst:
+
+- **Antragsteller-Block**: Name, Adresse, Geburtsdatum, Beschaeftigung, Einkommen
+- **Mitantragsteller-Block** (falls vorhanden)
+- **Finanzierungsobjekt-Block**: Adresse, Typ, Flaeche, Baujahr, Kaufpreis
+- **Finanzierungs-Eckdaten**: Darlehenssumme, Eigenkapital, Nebenkosten, Verwendungszweck
+- **Kapitaldienstfaehigkeit**: Einnahmen/Ausgaben-Zusammenfassung, Ergebnis
+- **Immobilienvermoegen** (falls vorhanden)
+
+Diese Vorschau kann per Button als PDF heruntergeladen werden (jsPDF ist bereits als Dependency vorhanden).
 
 ---
 
-## Betroffene Dateien
+## 4. Datenraum (Dokumenten-Upload)
+
+Rechts neben der PDF-Vorschau wird eine kompakte Version der bestehenden `FinanceStorageTree` und `FinanceUploadZone` eingebettet:
+
+- Ordnerstruktur analog zur MOD-07 Checkliste (Bonitaets- + Objektunterlagen)
+- Drag-and-Drop Upload via bestehendem `FileDropZone`-Component
+- Fortschrittsanzeige (Progress-Bar) mit Zaehler "X von Y Pflichtdokumenten"
+- Dokumente werden ueber `document_links` mit dem neuen `finance_request` verknuepft
+
+---
+
+## 5. Technische Umsetzung
+
+### Neue Dateien
+
+| Datei | Inhalt |
+|---|---|
+| `src/components/finanzierung/GenerateCaseCard.tsx` | Hauptkachel mit Button, expandiertem Zustand, Split-Layout |
+| `src/components/finanzierung/FinanceApplicationPreview.tsx` | HTML-basierte PDF-Vorschau aller Antragsdaten |
+| `src/components/finanzierung/CaseDocumentRoom.tsx` | Kompakter Datenraum mit Ordnerstruktur + Upload + Fortschritt |
+
+### Geaenderte Dateien
 
 | Datei | Aenderung |
 |---|---|
-| **DB-Migration** | Neue Tabelle `applicant_property_assets` + Spalte `has_rental_properties` in `applicant_profiles` |
-| `ApplicantPersonFields.tsx` | Mieteinnahmen-Zeile: Ja/Nein-Select statt Zahlenfeld + Hinweistext |
-| `PropertyAssetsCard.tsx` (NEU) | Kachel fuer Immobilienaufstellung (bis zu 5 Immobilien + Verbindlichkeiten) |
-| `FMFinanzierungsakte.tsx` | PropertyAssetsCard einbinden (MOD-11) |
-| `SelbstauskunftFormV2.tsx` | PropertyAssetsCard einbinden (MOD-07) + Import-Button aus MOD-04 |
-| `HouseholdCalculationCard.tsx` | CALC_MATRIX um bestehende Darlehensraten erweitern |
+| `FMFinanzierungsakte.tsx` | GenerateCaseCard am Ende einfuegen (vor dem Spacer), alle Formulardaten als Props uebergeben |
+
+### Datenbank
+
+Keine neuen Tabellen noetig -- alle benoetigten Tabellen existieren bereits:
+- `finance_requests` (mit `public_id`, `storage_folder_id`, `status`)
+- `applicant_profiles` (mit `finance_request_id`)
+- `applicant_property_assets`
+- `storage_nodes` (fuer Ordnerstruktur)
+- `document_links` + `documents` (fuer Uploads)
+
+Es muss lediglich sichergestellt werden, dass der `generate_public_id`-Trigger fuer `finance_requests` existiert (Prefix `FR`). Falls nicht vorhanden, wird ein Migrations-Script erstellt.
+
+### Detaillierter Ablauf in GenerateCaseCard
+
+```text
+Zustand: idle -> generating -> created
+
+[idle]: Button "Finanzierungsfall anlegen" sichtbar
+[generating]: Spinner, Button deaktiviert
+[created]: Kachel expandiert, zeigt PDF-Vorschau + Datenraum
+           Public-ID in der Ueberschrift
+           "Einreichung oeffnen"-Link
+```
+
+**Insert-Logik (vereinfacht):**
+1. `supabase.from('finance_requests').insert({...}).select().single()` -- gibt ID + public_id zurueck
+2. `supabase.from('applicant_profiles').insert({...finance_request_id})` -- Hauptantragsteller
+3. Falls Co-Antragsteller: zweiter Insert mit `linked_primary_profile_id`
+4. Falls Property Assets: Batch-Insert in `applicant_property_assets`
+5. `supabase.from('storage_nodes').insert({name: public_id, node_type: 'folder', module_code: 'MOD_11'})` -- Wurzelordner
+6. Update `finance_requests.storage_folder_id` mit dem neuen Ordner
+
+### PDF-Vorschau (FinanceApplicationPreview)
+
+- Reines React-Component mit Print-optimiertem CSS
+- Strukturiert in Sektionen: Antragsteller, Objekt, Finanzierung, Kapitaldienstfaehigkeit
+- "Download PDF"-Button nutzt `jsPDF` (bereits installiert) oder `window.print()` als Fallback
+- Spaeter (Einreichung/MOD-11 Phase 2) wird hier die KI-generierte Beschreibung des Finanzierungsfalls eingebaut
+
+### CaseDocumentRoom
+
+- Wiederverwendet die bestehende Ordnerstruktur aus `FinanceStorageTree` (BONITAET_FOLDERS + REQUEST_FOLDERS)
+- Integriert `FileDropZone` fuer Drag-and-Drop
+- Zeigt Progress-Bar mit Pflichtdokumenten-Zaehler
+- Upload-Dateien werden im `tenant-documents` Bucket gespeichert und ueber `document_links` verknuepft
