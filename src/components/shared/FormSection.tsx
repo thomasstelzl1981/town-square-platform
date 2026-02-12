@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,14 +14,14 @@ interface FormSectionProps {
 
 export function FormSection({ title, description, children, className }: FormSectionProps) {
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn(DESIGN.SPACING.SECTION, className)}>
       {(title || description) && (
         <div className="space-y-1">
-          {title && <h3 className="text-sm font-semibold uppercase tracking-wide">{title}</h3>}
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {title && <h3 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>{title}</h3>}
+          {description && <p className={DESIGN.TYPOGRAPHY.MUTED}>{description}</p>}
         </div>
       )}
-      <div className="space-y-4">{children}</div>
+      <div className={DESIGN.SPACING.SECTION}>{children}</div>
     </div>
   );
 }
@@ -51,7 +52,7 @@ export function FormField({
         {required && <span className="text-destructive">*</span>}
       </Label>
       {children}
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && !error && <p className={DESIGN.TYPOGRAPHY.HINT}>{hint}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
@@ -104,7 +105,7 @@ interface FormRowProps {
 
 export function FormRow({ children, className }: FormRowProps) {
   return (
-    <div className={cn('grid gap-4 md:grid-cols-2', className)}>
+    <div className={cn(DESIGN.FORM_GRID.FULL, className)}>
       {children}
     </div>
   );
