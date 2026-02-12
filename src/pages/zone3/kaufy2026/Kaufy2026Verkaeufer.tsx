@@ -18,10 +18,13 @@ import { useDropzone } from 'react-dropzone';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
   Target, Shield, Zap, Users, CheckCircle2, ArrowRight, ArrowLeft,
   Upload, FileText, Table2, Sparkles, X, Loader2, Building2,
   Image as ImageIcon, Phone, Mail, Briefcase, ScrollText, Search,
+  Globe, Handshake,
 } from 'lucide-react';
 
 // ── Demo Project Data ───────────────────────────────────────────────────────
@@ -99,8 +102,16 @@ export default function Kaufy2026Verkaeufer() {
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [commissionRate, setCommissionRate] = useState(7);
+  const [consentData, setConsentData] = useState(false);
+  const [consentAgb, setConsentAgb] = useState(false);
+  const [consentFee, setConsentFee] = useState(false);
+  const [channelPartner, setChannelPartner] = useState(true);
+  const [channelKaufy, setChannelKaufy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const allConsentsAccepted = consentData && consentAgb && consentFee;
+  const atLeastOneChannel = channelPartner || channelKaufy;
 
   const scrollToIntake = () => {
     intakeRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -193,7 +204,8 @@ export default function Kaufy2026Verkaeufer() {
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!contactName || !contactEmail) { toast.error('Bitte füllen Sie Name und E-Mail aus.'); return; }
-    if (!agreementAccepted) { toast.error('Bitte akzeptieren Sie den Vertriebsvertrag.'); return; }
+    if (!allConsentsAccepted) { toast.error('Bitte akzeptieren Sie alle Vertragsbedingungen.'); return; }
+    if (!atLeastOneChannel) { toast.error('Bitte wählen Sie mindestens einen Vertriebskanal.'); return; }
 
     setIsSubmitting(true);
     try {
@@ -208,6 +220,14 @@ export default function Kaufy2026Verkaeufer() {
           storagePaths,
           imagePaths,
           agreementVersion: '1.0',
+          commissionAgreement: {
+            rate: commissionRate,
+            gross_rate: +(commissionRate * 1.19).toFixed(2),
+            channels: [
+              ...(channelPartner ? ['partner_network'] : []),
+              ...(channelKaufy ? ['kaufy'] : []),
+            ],
+          },
         },
       });
 
@@ -236,7 +256,12 @@ export default function Kaufy2026Verkaeufer() {
     setContactEmail('');
     setContactPhone('');
     setCompanyName('');
-    setAgreementAccepted(false);
+    setCommissionRate(7);
+    setConsentData(false);
+    setConsentAgb(false);
+    setConsentFee(false);
+    setChannelPartner(true);
+    setChannelKaufy(false);
   };
 
   return (
@@ -669,29 +694,104 @@ export default function Kaufy2026Verkaeufer() {
                     <p className="text-sm text-[hsl(215,16%,47%)]">Bitte lesen und akzeptieren Sie die Vertriebsvereinbarung.</p>
                   </div>
 
+                  {/* ── Provisions-Slider ── */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-[hsl(220,20%,10%)]">Vertriebsprovision</Label>
+                    <div className="bg-[hsl(210,30%,97%)] rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[hsl(215,16%,47%)]">Provisionssatz (netto)</span>
+                        <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">{commissionRate.toFixed(1)}%</span>
+                      </div>
+                      <Slider
+                        value={[commissionRate]}
+                        onValueChange={(v) => setCommissionRate(v[0])}
+                        min={5}
+                        max={15}
+                        step={0.5}
+                        className="w-full"
+                      />
+                      <div className="flex items-center justify-between text-xs text-[hsl(215,16%,47%)]">
+                        <span>5%</span>
+                        <span className="font-medium text-[hsl(220,20%,10%)]">
+                          {(commissionRate * 1.19).toFixed(2)}% inkl. MwSt
+                        </span>
+                        <span>15%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Vertragstext ── */}
                   <Card className="bg-[hsl(210,30%,97%)] border-[hsl(210,30%,88%)]">
                     <CardContent className="p-4 max-h-64 overflow-y-auto text-sm text-[hsl(215,16%,47%)] space-y-3">
                       <p className="font-semibold text-[hsl(220,20%,10%)]">Vertriebsvereinbarung (Version 1.0)</p>
                       <p>Zwischen dem Anbieter (nachfolgend „Auftraggeber") und der KAUFY GmbH (nachfolgend „KAUFY") wird folgende Vereinbarung geschlossen:</p>
                       <p><strong>§1 Gegenstand:</strong> KAUFY übernimmt die digitale Vermarktung des eingereichten Immobilienprojekts auf der Plattform kaufy.app sowie über das angeschlossene Partnernetzwerk.</p>
                       <p><strong>§2 Leistungen:</strong> Erstellung eines professionellen Inserats, Verbreitung an qualifizierte Investoren, Lead-Management und -Qualifizierung, Reporting über Vertriebsfortschritt.</p>
-                      <p><strong>§3 Vergütung:</strong> Bei erfolgreicher Vermittlung erhält KAUFY eine Vertriebsprovision in Höhe von 3% des Netto-Kaufpreises, zahlbar nach notarieller Beurkundung.</p>
-                      <p><strong>§4 Laufzeit:</strong> Der Vertrag gilt für die Dauer der Vermarktung, mindestens jedoch 6 Monate. Eine Kündigung ist mit einer Frist von 4 Wochen zum Monatsende möglich.</p>
-                      <p><strong>§5 Datenschutz:</strong> Die übermittelten Daten werden gemäß DSGVO verarbeitet und ausschließlich zum Zweck der Vermarktung verwendet.</p>
+                      <p><strong>§3 Vergütung:</strong> Bei erfolgreicher Vermittlung erhält KAUFY eine Vertriebsprovision in Höhe von <strong>{commissionRate.toFixed(1)}%</strong> ({(commissionRate * 1.19).toFixed(2)}% inkl. MwSt) des Netto-Kaufpreises, zahlbar nach notarieller Beurkundung.</p>
+                      <p><strong>§4 Systemgebühr:</strong> Zusätzlich fällt eine Systemgebühr von 2.000 EUR netto pro verkaufter Einheit an.</p>
+                      <p><strong>§5 Laufzeit:</strong> Der Vertrag gilt für die Dauer der Vermarktung, mindestens jedoch 6 Monate. Eine Kündigung ist mit einer Frist von 4 Wochen zum Monatsende möglich.</p>
+                      <p><strong>§6 Datenschutz:</strong> Die übermittelten Daten werden gemäß DSGVO verarbeitet und ausschließlich zum Zweck der Vermarktung verwendet.</p>
                     </CardContent>
                   </Card>
 
-                  <div className="flex items-start gap-3">
-                    <Checkbox 
-                      id="agreement" 
-                      checked={agreementAccepted} 
-                      onCheckedChange={(checked) => setAgreementAccepted(checked === true)} 
-                    />
-                    <label htmlFor="agreement" className="text-sm text-[hsl(220,20%,10%)] cursor-pointer leading-tight">
-                      Ich akzeptiere die Vertriebsvereinbarung (Version 1.0) und erkläre mich mit den 
-                      Bedingungen einverstanden. Mir ist bekannt, dass bei erfolgreicher Vermittlung eine 
-                      Provision von 3% anfällt.
-                    </label>
+                  {/* ── 3 Consent-Checkboxes ── */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-[hsl(220,20%,10%)]">Zustimmungen</Label>
+                    <div className="flex items-start gap-3">
+                      <Checkbox id="consent-data" checked={consentData} onCheckedChange={(c) => setConsentData(c === true)} />
+                      <label htmlFor="consent-data" className="text-sm text-[hsl(220,20%,10%)] cursor-pointer leading-tight">
+                        Ich bestätige die Richtigkeit aller Projektdaten und der hochgeladenen Unterlagen.
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Checkbox id="consent-agb" checked={consentAgb} onCheckedChange={(c) => setConsentAgb(c === true)} />
+                      <label htmlFor="consent-agb" className="text-sm text-[hsl(220,20%,10%)] cursor-pointer leading-tight">
+                        Ich erteile den Vertriebsauftrag gemäß den Allgemeinen Geschäftsbedingungen.
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Checkbox id="consent-fee" checked={consentFee} onCheckedChange={(c) => setConsentFee(c === true)} />
+                      <label htmlFor="consent-fee" className="text-sm text-[hsl(220,20%,10%)] cursor-pointer leading-tight">
+                        Ich akzeptiere die Systemgebühr von 2.000 EUR netto pro verkaufter Einheit.
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* ── Kanal-Auswahl ── */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-[hsl(220,20%,10%)]">Vertriebskanäle</Label>
+                    <p className="text-xs text-[hsl(215,16%,47%)]">Mindestens ein Kanal muss aktiv sein.</p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className={cn(
+                        "flex items-center justify-between gap-3 p-4 rounded-xl border-2 transition-colors",
+                        channelPartner ? "border-[hsl(210,80%,55%)] bg-[hsl(210,80%,55%,0.05)]" : "border-[hsl(210,30%,88%)]"
+                      )}>
+                        <div className="flex items-center gap-3">
+                          <Handshake className="h-5 w-5 text-[hsl(210,80%,55%)]" />
+                          <div>
+                            <p className="text-sm font-medium text-[hsl(220,20%,10%)]">Finanzvertrieb</p>
+                            <p className="text-xs text-[hsl(215,16%,47%)]">Partnernetzwerk</p>
+                          </div>
+                        </div>
+                        <Switch checked={channelPartner} onCheckedChange={setChannelPartner} />
+                      </div>
+                      <div className={cn(
+                        "flex items-center justify-between gap-3 p-4 rounded-xl border-2 transition-colors",
+                        channelKaufy ? "border-[hsl(210,80%,55%)] bg-[hsl(210,80%,55%,0.05)]" : "border-[hsl(210,30%,88%)]"
+                      )}>
+                        <div className="flex items-center gap-3">
+                          <Globe className="h-5 w-5 text-[hsl(210,80%,55%)]" />
+                          <div>
+                            <p className="text-sm font-medium text-[hsl(220,20%,10%)]">Kaufy-Website</p>
+                            <p className="text-xs text-[hsl(215,16%,47%)]">Öffentliches Listing</p>
+                          </div>
+                        </div>
+                        <Switch checked={channelKaufy} onCheckedChange={setChannelKaufy} />
+                      </div>
+                    </div>
+                    {!atLeastOneChannel && (
+                      <p className="text-xs text-red-500">Bitte wählen Sie mindestens einen Vertriebskanal.</p>
+                    )}
                   </div>
 
                   <div className="flex justify-between">
@@ -701,7 +801,7 @@ export default function Kaufy2026Verkaeufer() {
                     <Button 
                       size="lg" 
                       className="rounded-full gap-2"
-                      disabled={!agreementAccepted || isSubmitting}
+                      disabled={!allConsentsAccepted || !atLeastOneChannel || isSubmitting}
                       onClick={handleSubmit}
                     >
                       {isSubmitting ? (
