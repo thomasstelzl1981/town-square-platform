@@ -4,6 +4,8 @@ import { PageShell } from '@/components/shared/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Briefcase, Loader2, Clock, ArrowRight, Plus } from 'lucide-react';
+import { InfoBanner } from '@/components/shared/InfoBanner';
+import { DESIGN } from '@/config/designManifest';
 import { 
   useAcqMandatesPending, 
   useAcqMandatesActive, 
@@ -41,23 +43,22 @@ export default function AkquiseDashboard() {
       />
 
       {(pendingMandates?.length || 0) > 0 && (
-        <Card className="border-orange-500/30 bg-orange-50 dark:bg-orange-950/20">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <span className="font-medium">{pendingMandates?.length} Mandate warten auf Ihre Annahme</span>
-            </div>
+        <InfoBanner
+          variant="warning"
+          icon={Clock}
+          title={`${pendingMandates?.length} Mandate warten auf Ihre Annahme`}
+          action={
             <Button size="sm" variant="outline" onClick={() => {
               if (pendingMandates?.[0]) navigate(`/portal/akquise-manager/mandate/${pendingMandates[0].id}`);
             }}>
               Ansehen <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       )}
 
       {hasMandates ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className={DESIGN.KPI_GRID.FULL}>
           {activeMandates?.map(mandate => (
             <MandateCaseCard key={mandate.id} mandate={mandate} onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)} />
           ))}

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Sun, TrendingUp, WifiOff, Plus, Sparkles, Activity } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { KPICard } from '@/components/shared/KPICard';
 import { useMemo } from 'react';
 import { usePvDMS } from '@/hooks/usePvDMS';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,23 +18,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { toast } from 'sonner';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
-function KPICard({ icon: Icon, label, value, unit, muted = false }: {
-  icon: React.ElementType; label: string; value: string; unit: string; muted?: boolean;
-}) {
-  return (
-    <Card className={muted ? 'opacity-50' : ''}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="rounded-lg bg-primary/10 p-2">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-lg font-bold font-mono">{value} <span className="text-xs font-normal text-muted-foreground">{unit}</span></p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function MonitoringTab() {
   const navigate = useNavigate();
@@ -71,10 +55,10 @@ export default function MonitoringTab() {
 
       {/* KPI Cards */}
       <div className={DESIGN.KPI_GRID.FULL}>
-        <KPICard icon={Zap} label="Gesamtleistung" value={hasPlants ? totalPowerW.toLocaleString('de-DE') : '—'} unit="W" muted={!hasPlants} />
-        <KPICard icon={Sun} label="Ertrag heute" value={hasPlants ? totalEnergyTodayKwh.toLocaleString('de-DE') : '—'} unit="kWh" muted={!hasPlants} />
-        <KPICard icon={TrendingUp} label="Monatsertrag" value={hasPlants ? totalEnergyMonthKwh.toLocaleString('de-DE') : '—'} unit="kWh" muted={!hasPlants} />
-        <KPICard icon={WifiOff} label="Offline" value={hasPlants ? String(offlineCount) : '—'} unit="Anlagen" muted={!hasPlants} />
+        <KPICard icon={Zap} label="Gesamtleistung" value={hasPlants ? `${totalPowerW.toLocaleString('de-DE')} W` : '—'} className={!hasPlants ? 'opacity-50' : ''} />
+        <KPICard icon={Sun} label="Ertrag heute" value={hasPlants ? `${totalEnergyTodayKwh.toLocaleString('de-DE')} kWh` : '—'} className={!hasPlants ? 'opacity-50' : ''} />
+        <KPICard icon={TrendingUp} label="Monatsertrag" value={hasPlants ? `${totalEnergyMonthKwh.toLocaleString('de-DE')} kWh` : '—'} className={!hasPlants ? 'opacity-50' : ''} />
+        <KPICard icon={WifiOff} label="Offline" value={hasPlants ? `${offlineCount} Anlagen` : '—'} className={!hasPlants ? 'opacity-50' : ''} />
       </div>
 
       {hasPlants ? (
