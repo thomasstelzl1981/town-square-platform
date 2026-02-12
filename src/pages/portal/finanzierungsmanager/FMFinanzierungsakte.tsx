@@ -4,6 +4,7 @@
  */
 import * as React from 'react';
 import { useState, useMemo, useRef } from 'react';
+import type { CalcData } from '@/components/finanzierung/FinanceCalculatorCard';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ArrowLeft, FileText, User, Building2, Search, Save } from 'lucide-react';
+import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
+import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import FinanceCalculatorCard from '@/components/finanzierung/FinanceCalculatorCard';
@@ -82,6 +85,8 @@ export default function FMFinanzierungsakte() {
   const [externalPurchasePrice, setExternalPurchasePrice] = useState<string | undefined>();
   const [calculatorBedarf, setCalculatorBedarf] = useState(0);
   const [calculatorPurchasePrice, setCalculatorPurchasePrice] = useState(0);
+  const [calcData, setCalcData] = useState<CalcData | null>(null);
+  const [showAmortization, setShowAmortization] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const objectCardRef = useRef<FinanceObjectCardHandle>(null);
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
@@ -209,9 +214,22 @@ export default function FMFinanzierungsakte() {
         <FinanceCalculatorCard
           finanzierungsbedarf={calculatorBedarf}
           purchasePrice={calculatorPurchasePrice}
-          onTransferToApplication={handleTransferToApplication}
+          onCalcUpdate={setCalcData}
         />
       </div>
+
+      {/* Block 1b: Überschlägiges Finanzierungsangebot (full width) */}
+      <FinanceOfferCard
+        calcData={calcData}
+        onTransferToApplication={handleTransferToApplication}
+        onShowAmortization={() => setShowAmortization(prev => !prev)}
+        showAmortizationActive={showAmortization}
+      />
+
+      {/* Tilgungsplan (conditional) */}
+      {showAmortization && calcData && calcData.loanAmount > 0 && calcData.interestRate > 0 && (
+        <AmortizationScheduleCard calcData={calcData} />
+      )}
 
       {/* Section heading: Finanzierungsantrag */}
       <div>
