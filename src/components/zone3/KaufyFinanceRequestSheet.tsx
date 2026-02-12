@@ -144,6 +144,8 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
   const [submitted, setSubmitted] = useState(false);
   const [publicId, setPublicId] = useState<string | null>(null);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [bonitaetChecked, setBonitaetChecked] = useState(false);
+  const [bonitaetResult, setBonitaetResult] = useState<'positive' | 'negative' | null>(null);
 
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -506,9 +508,10 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
 
         </div>
 
-        {/* Sticky Submit Footer */}
-        <div className="border-t bg-background p-4 shrink-0">
-          <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3">
+        {/* Sticky Submit Footer — Two-Step */}
+        <div className="border-t bg-background p-4 shrink-0 space-y-3">
+          {/* Consent */}
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
             <Checkbox
               id="consent"
               checked={consentChecked}
@@ -519,24 +522,64 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
               Ich stimme der Verarbeitung meiner Daten zum Zweck der Finanzierungsanfrage zu und habe die Datenschutzerklärung gelesen.
             </label>
           </div>
-          <Button
-            onClick={handleSubmit}
-            disabled={!isValid || submitting}
-            className="w-full"
-            size="lg"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Wird eingereicht…
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                Finanzierung einreichen
-              </>
-            )}
-          </Button>
+
+          {/* Bonitäts-Result Banner */}
+          {bonitaetResult === 'positive' && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Ihr Bonitätscheck war positiv. Herzlichen Glückwunsch!</span>
+            </div>
+          )}
+          {bonitaetResult === 'negative' && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-medium">
+              <XCircle className="w-4 h-4 shrink-0" />
+              <span>Bitte prüfen Sie Ihre Angaben — die Belastungsquote ist zu hoch.</span>
+            </div>
+          )}
+
+          {/* Step 1: Bonitätsprüfung */}
+          {!bonitaetChecked && (
+            <Button
+              type="button"
+              onClick={() => {
+                if (kdf.status === 'green' || kdf.status === 'yellow') {
+                  setBonitaetChecked(true);
+                  setBonitaetResult('positive');
+                } else {
+                  setBonitaetResult('negative');
+                }
+              }}
+              disabled={kdf.status === 'none' || !consentChecked}
+              className="w-full"
+              size="lg"
+              variant={bonitaetResult === 'negative' ? 'destructive' : 'default'}
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Bonitätsprüfung starten
+            </Button>
+          )}
+
+          {/* Step 2: Finanzierung einreichen */}
+          {bonitaetChecked && (
+            <Button
+              onClick={handleSubmit}
+              disabled={!isValid || submitting}
+              className="w-full"
+              size="lg"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Wird eingereicht…
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Finanzierung einreichen
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

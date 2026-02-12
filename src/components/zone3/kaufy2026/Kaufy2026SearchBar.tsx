@@ -75,7 +75,35 @@ export function Kaufy2026SearchBar({
   return (
     <div className="kaufy2026-search-card">
       <Collapsible open={expanded} onOpenChange={setExpanded}>
-        <form onSubmit={handleSubmit}>
+         <form onSubmit={handleSubmit}>
+          {/* Mode Toggle Tabs */}
+          <div className="flex items-center gap-1 mb-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setMode('investment')}
+              className={cn(
+                "px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors",
+                mode === 'investment'
+                  ? "bg-[hsl(220,20%,10%)] text-white"
+                  : "text-[hsl(215,16%,55%)] hover:bg-white/60"
+              )}
+            >
+              <Calculator className="w-3.5 h-3.5" /> Investment-Suche
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('classic')}
+              className={cn(
+                "px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors",
+                mode === 'classic'
+                  ? "bg-[hsl(220,20%,10%)] text-white"
+                  : "text-[hsl(215,16%,55%)] hover:bg-white/60"
+              )}
+            >
+              <Search className="w-3.5 h-3.5" /> Klassische Suche
+            </button>
+          </div>
+
           {/* Main Search Row */}
           <div className="flex items-center gap-3 flex-wrap md:flex-nowrap">
             {mode === 'investment' ? (
@@ -162,33 +190,7 @@ export function Kaufy2026SearchBar({
                 </CollapsibleTrigger>
               )}
 
-              {/* Mode Toggle (dezent) */}
-              <div className="hidden md:flex items-center gap-1 ml-2 text-xs text-[hsl(215,16%,60%)]">
-                <button
-                  type="button"
-                  onClick={() => setMode('investment')}
-                  className={cn(
-                    "px-2 py-1 rounded transition-colors",
-                    mode === 'investment' 
-                      ? "text-[hsl(220,20%,10%)] font-medium bg-white shadow-sm" 
-                      : "hover:text-[hsl(220,20%,30%)]"
-                  )}
-                >
-                  <Calculator className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('classic')}
-                  className={cn(
-                    "px-2 py-1 rounded transition-colors",
-                    mode === 'classic' 
-                      ? "text-[hsl(220,20%,10%)] font-medium bg-white shadow-sm" 
-                      : "hover:text-[hsl(220,20%,30%)]"
-                  )}
-                >
-                  <Search className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {/* Mode toggle moved to top as pill tabs */}
             </div>
           </div>
 
