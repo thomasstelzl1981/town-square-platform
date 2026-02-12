@@ -1,55 +1,55 @@
 
-# Fix: "Objekte aus Kaufy" — 3-Zeilen Multi-Asset-Design
 
-## Ist-Zustand (Screenshot)
-Die Kaufy-Karte zeigt:
-- 1x Suchfeld ("Objekt suchen...")
-- 1x Button ("Objekt uebernehmen")
-- Dropdown-Ergebnisse: nur 2 Zeilen pro Treffer
+# Plan: FutureRoom Bonität-Wizard — Bonitäts-Vorcheck + Freies Durchklicken
 
-## Soll-Zustand (3-Zeilen-Design)
-Jeder Suchtreffer im Dropdown zeigt 3 klar getrennte Zeilen:
-- **Zeile 1**: Public-ID + Titel (fett)
-- **Zeile 2**: PLZ, Ort, Strasse
-- **Zeile 3**: Kaufpreis, Objekttyp, Wohnflaeche
+## Kernprinzip
 
-Die Multi-Select-Chips unterhalb der Suche zeigen ebenfalls mehr Kontext.
+Der gesamte Wizard ist **frei durchklickbar** ohne Pflichtfeld-Blockaden. Der Nutzer kann sich alle Schritte ansehen, um vorab zu verstehen, welche Daten und Unterlagen benoetigt werden. Erst beim finalen "Absenden" wird geprueft, ob die Mindestangaben vorhanden sind.
 
-## Aenderungen
+## Wizard-Schritte (7 statt 6)
 
-### Datei: `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
-
-**Dropdown-Ergebnisse (2x vorhanden: Standard + Split-View)**
-
-Aktuell (2 Zeilen):
-```
-Ohne Titel
-Berlin (10115) — 250.000 EUR
+```text
+Kontakt → Objekt → Eckdaten → Kalkulation → Haushalt → Bonitatspruefung → Abschluss
 ```
 
-Neu (3 Zeilen):
-```
-SOT-I-00042 — Eigentumswohnung
-10115 Berlin, Musterstr. 5
-250.000 EUR | ETW | 75 qm
-```
+### Navigationsregeln
 
-Konkret werden die `button`-Elemente in den Dropdown-Listen (Zeilen 279-284 und 422-425) um eine dritte Zeile erweitert:
-- Zeile 1: `public_id` + `title` (oder Objekttyp als Fallback)
-- Zeile 2: `postal_code` + `city` + Adresse (falls vorhanden)
-- Zeile 3: `asking_price` + `property_type` + `living_area`
+- **"Weiter"-Button**: Immer aktiv, in jedem Schritt, auch ohne Eingaben
+- **"Zurueck"-Button**: Immer aktiv
+- **Bonitatspruefung-Schritt**: Der Button "Bonitatspruefung starten" ist optional — man kann auch ohne Pruefung weiterklicken
+- **Einzige Blockade**: Der finale "Finanzierung einreichen"-Button im Abschluss-Schritt ist nur aktiv, wenn:
+  1. Mindestens Kontaktdaten (Name + E-Mail) vorhanden sind
+  2. Die Bonitatspruefung durchgefuehrt wurde
 
-**Multi-Select-Chips** (Zeilen 289-294 und 432-437):
-Erweitert um Objekttyp und Flaeche, z.B.:
-```
-SOT-I-00042 | 10115 Berlin | 250.000 EUR | ETW 75qm  [x]
-```
+Falls Daten fehlen, zeigt der Abschluss-Schritt einen freundlichen Hinweis: "Bitte fuellen Sie die markierten Schritte aus, bevor Sie einreichen." — aber keine Blockade beim Navigieren.
 
-### Umfang
-- Nur 1 Datei betroffen: `FMFinanzierungsakte.tsx`
-- Aenderungen an 4 Stellen (je 2x Standard-Layout, 2x Split-View-Layout, da der Code dupliziert ist)
-- Keine Datenbank-Aenderungen
-- Keine neuen Abhaengigkeiten
+## Technische Umsetzung
 
-### Hinweis zum Split-View
-Der Split-View-Toggle funktioniert korrekt im Code. Er ist im Screenshot sichtbar. Falls er nicht reagiert, pruefe ich nach der Implementierung nochmals die Klick-Logik.
+### Datei: `src/pages/zone3/futureroom/FutureRoomBonitat.tsx`
+
+**1. Step-Array erweitern** (ca. Zeile 69-76):
+- Neuer Step `'bonitat'` mit Label "Pruefung" und Shield-Icon zwischen `'household'` und `'decision'`
+
+**2. Neue States** (ca. Zeile 63-67):
+- `bonitaetChecked: boolean` (default: false)
+- `bonitaetResult: 'positive' | 'negative' | null` (default: null)
+
+**3. Navigation: Keine Validierung bei "Weiter"**:
+- `handleNext` klickt einfach zum naechsten Schritt weiter — ohne Pruefung ob Felder gefuellt sind
+- `handleBack` geht zurueck — ohne Warnung
+- Reset von `bonitaetChecked` wenn man zum Haushalt-Schritt zurueckgeht
+
+**4. Neuer Bonitat-Schritt**:
+- Zusammenfassung der eingegebenen Werte (Rate, Einkommen, KDF-Quote) — zeigt "—" wenn nichts eingegeben
+- Button "Bonitatspruefung starten" (optional, nicht blockierend)
+- Bei Klick: KDF-Auswertung (gruen/gelb/rot Banner)
+- "Weiter"-Button ist immer aktiv, unabhaengig ob Pruefung gemacht wurde
+
+**5. Abschluss-Schritt (letzter Schritt)**:
+- Zeigt Checkliste: welche Schritte ausgefuellt sind, welche noch offen
+- "Finanzierung einreichen"-Button: Nur aktiv wenn Pflichtdaten + Bonitatspruefung vorhanden
+- Klarer Hinweistext bei fehlenden Daten (kein Modal, kein Redirect — nur Info)
+
+### Keine weiteren Dateien betroffen
+### Keine Datenbank-Aenderungen
+
