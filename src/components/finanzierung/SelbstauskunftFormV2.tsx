@@ -38,6 +38,7 @@ import {
   ExpensesSection, AssetsSection, createEmptyApplicantFormData,
   type ApplicantFormData,
 } from './ApplicantPersonFields';
+import PropertyAssetsCard, { type PropertyAsset, createEmptyProperty } from './PropertyAssetsCard';
 
 // Types
 interface Liability {
@@ -113,6 +114,7 @@ export function profileToFormData(p: ApplicantProfile): ApplicantFormData {
     iban: p.iban || '', bic: p.bic || '',
     net_income_monthly: p.net_income_monthly || null, self_employed_income_monthly: p.self_employed_income_monthly || null,
     side_job_income_monthly: p.side_job_income_monthly || null, rental_income_monthly: p.rental_income_monthly || null,
+    has_rental_properties: (p as any).has_rental_properties || false,
     child_benefit_monthly: p.child_benefit_monthly || null, alimony_income_monthly: p.alimony_income_monthly || null,
     other_regular_income_monthly: p.other_regular_income_monthly || null,
     current_rent_monthly: p.current_rent_monthly || null, living_expenses_monthly: p.living_expenses_monthly || null,
@@ -163,6 +165,7 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
   // Liabilities
   const [liabilities, setLiabilities] = React.useState<Liability[]>([]);
   const [coLiabilities, setCoLiabilities] = React.useState<Liability[]>([]);
+  const [propertyAssets, setPropertyAssets] = React.useState<PropertyAsset[]>([]);
   const [showContextPicker, setShowContextPicker] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -471,6 +474,31 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
           <IncomeSection {...dualProps} />
         </CardContent>
       </Card>
+
+      {/* PropertyAssetsCard — visible when has_rental_properties */}
+      {(formData.has_rental_properties || coFormData.has_rental_properties) && (
+        <PropertyAssetsCard
+          properties={propertyAssets}
+          onChange={(updated) => {
+            setPropertyAssets(updated);
+            const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
+            if (formData.has_rental_properties) {
+              handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
+            }
+          }}
+          showImportButton={properties.length > 0}
+          onImportFromPortfolio={() => {
+            const imported: PropertyAsset[] = properties.map((p, i) => ({
+              ...createEmptyProperty(i + 1),
+              address: `${p.address || ''}, ${p.postal_code || ''} ${p.city || ''}`.trim(),
+              purchase_price: p.purchase_price || null,
+              estimated_value: p.market_value || null,
+            }));
+            setPropertyAssets(imported);
+            toast.success(`${imported.length} Immobilie(n) aus Portfolio importiert`);
+          }}
+        />
+      )}
 
       {/* ===== SECTION 6: Ausgaben (3-column) ===== */}
       <Card>

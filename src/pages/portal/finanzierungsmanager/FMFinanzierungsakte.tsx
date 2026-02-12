@@ -28,6 +28,7 @@ import {
 import { Table, TableBody } from '@/components/ui/table';
 import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } from '@/components/finanzierung/FinanceObjectCard';
 import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
+import PropertyAssetsCard, { type PropertyAsset, createEmptyProperty } from '@/components/finanzierung/PropertyAssetsCard';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Simple label-value row for the top summary */
@@ -92,6 +93,7 @@ export default function FMFinanzierungsakte() {
   const [showAmortization, setShowAmortization] = useState(false);
   const [eckdatenUsage, setEckdatenUsage] = useState('');
   const [eckdatenRentalIncome, setEckdatenRentalIncome] = useState(0);
+  const [propertyAssets, setPropertyAssets] = useState<PropertyAsset[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const objectCardRef = useRef<FinanceObjectCardHandle>(null);
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
@@ -294,6 +296,21 @@ export default function FMFinanzierungsakte() {
         </CardContent>
       </Card>
 
+      {/* PropertyAssetsCard — visible when has_rental_properties */}
+      {(formData.has_rental_properties || coFormData.has_rental_properties) && (
+        <PropertyAssetsCard
+          properties={propertyAssets}
+          onChange={(updated) => {
+            setPropertyAssets(updated);
+            // Write back sum of net rents to rental_income_monthly
+            const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
+            if (formData.has_rental_properties) {
+              handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
+            }
+          }}
+        />
+      )}
+
       {/* Section heading: Finanzierungsobjekt */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
@@ -321,6 +338,7 @@ export default function FMFinanzierungsakte() {
         usage={eckdatenUsage}
         rentalIncome={eckdatenRentalIncome}
         livingArea={Number(externalObjectData?.livingArea) || 0}
+        propertyAssets={propertyAssets}
       />
 
       {/* Spacer to prevent floating button overlap */}

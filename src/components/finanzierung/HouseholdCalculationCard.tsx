@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Calculator, CheckCircle2, XCircle, Info, AlertTriangle, Bot } from 'lucide-react';
 import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { CalcData } from './FinanceCalculatorCard';
+import type { PropertyAsset } from './PropertyAssetsCard';
 
 // ─── Berechnungsmatrix ───────────────────────────────────────────────
 // Jeder Eintrag beschreibt: UI-Feld → Datenquelle → Berechnungsregel
@@ -64,6 +65,7 @@ const CALC_MATRIX: CalcMatrixEntry[] = [
   { field: 'healthInsurance',      label: 'Priv. Krankenversicherung', side: 'expense', source: 'AS1.health_insurance_monthly + AS2.health_insurance_monthly',     rule: 'Summe beider Antragsteller' },
   { field: 'childSupport',         label: 'Unterhaltsverpflichtungen', side: 'expense', source: 'AS1.child_support_amount_monthly + AS2.child_support_amount_monthly', rule: 'Summe beider Antragsteller' },
   { field: 'carLeasing',           label: 'Leasing (Kfz)',             side: 'expense', source: 'AS1.car_leasing_monthly + AS2.car_leasing_monthly',               rule: 'Summe beider Antragsteller' },
+  { field: 'existingLoanPayments', label: 'Best. Darlehensraten',      side: 'expense', source: 'PropertyAssets.loan_rates',                                       rule: 'Summe aller Darlehensraten aus Immobilienvermögen', condition: 'Nur wenn has_rental_properties = true' },
   { field: 'otherFixedCosts',      label: 'Sonstige Fixkosten',        side: 'expense', source: 'AS1.other_fixed_costs_monthly + AS2.other_fixed_costs_monthly',   rule: 'Summe beider Antragsteller' },
   // ── Ausgaben (Neue Finanzierung) ──
   { field: 'newLoanRate',          label: 'Neue Darlehensrate',        side: 'expense', source: 'CALC.monthlyRate',                                                rule: 'Annuität aus Finanzierungsrechner' },
@@ -78,6 +80,7 @@ interface HouseholdCalculationCardProps {
   rentalIncome: number;
   livingArea: number;
   onOpenArmstrong?: () => void;
+  propertyAssets?: PropertyAsset[];
 }
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
@@ -137,6 +140,7 @@ interface HHState {
   healthInsurance: number;
   childSupport: number;
   carLeasing: number;
+  existingLoanPayments: number;
   otherFixedCosts: number;
   newLoanRate: number;
   utilityFiction: number;
@@ -147,12 +151,12 @@ const EMPTY_STATE: HHState = {
   existingRentalIncome: 0, childBenefit: 0, alimonyIncome: 0, otherIncome: 0,
   newRentalIncome: 0, taxBenefit: 0,
   livingExpenses: 0, currentRent: 0, healthInsurance: 0,
-  childSupport: 0, carLeasing: 0, otherFixedCosts: 0,
+  childSupport: 0, carLeasing: 0, existingLoanPayments: 0, otherFixedCosts: 0,
   newLoanRate: 0, utilityFiction: 0,
 };
 
 export default function HouseholdCalculationCard({
-  formData, coFormData, calcData, usage, rentalIncome, livingArea, onOpenArmstrong
+  formData, coFormData, calcData, usage, rentalIncome, livingArea, onOpenArmstrong, propertyAssets
 }: HouseholdCalculationCardProps) {
   const [state, setState] = useState<HHState>({ ...EMPTY_STATE });
 
@@ -171,6 +175,10 @@ export default function HouseholdCalculationCard({
     const estimatedTaxBenefit = isInvestment ? Math.round((annualInterest * 0.42) / 12) : 0;
     const utilityFictionValue = isOwnerOccupied ? Math.round(livingArea * 3) : 0;
 
+    // Existing loan payments from property assets
+    const existingLoanPaymentsTotal = (propertyAssets || []).reduce((s, p) =>
+      s + (p.loan1_rate_monthly || 0) + (p.loan2_rate_monthly || 0), 0);
+
     setState({
       netIncome: sum(formData.net_income_monthly, co?.net_income_monthly),
       selfEmployedIncome: sum(formData.self_employed_income_monthly, co?.self_employed_income_monthly),
@@ -186,11 +194,12 @@ export default function HouseholdCalculationCard({
       healthInsurance: sum(formData.health_insurance_monthly, co?.health_insurance_monthly),
       childSupport: sum(formData.child_support_amount_monthly, co?.child_support_amount_monthly),
       carLeasing: sum(formData.car_leasing_monthly, co?.car_leasing_monthly),
+      existingLoanPayments: existingLoanPaymentsTotal,
       otherFixedCosts: sum(formData.other_fixed_costs_monthly, co?.other_fixed_costs_monthly),
       newLoanRate: calcData?.monthlyRate || 0,
       utilityFiction: utilityFictionValue,
     });
-  }, [formData, coFormData, calcData, usage, rentalIncome, livingArea, isOwnerOccupied, isInvestment]);
+  }, [formData, coFormData, calcData, usage, rentalIncome, livingArea, isOwnerOccupied, isInvestment, propertyAssets]);
 
   // Computed totals
   const totalIncome =
@@ -200,7 +209,7 @@ export default function HouseholdCalculationCard({
 
   const totalExpenses =
     state.livingExpenses + state.currentRent + state.healthInsurance +
-    state.childSupport + state.carLeasing + state.otherFixedCosts +
+    state.childSupport + state.carLeasing + state.existingLoanPayments + state.otherFixedCosts +
     state.newLoanRate + state.utilityFiction;
 
   const disposable = totalIncome - totalExpenses;
@@ -274,12 +283,8 @@ export default function HouseholdCalculationCard({
             <Row label="Priv. Krankenversicherung">{numInput('healthInsurance')}</Row>
             <Row label="Unterhaltsverpflichtungen">{numInput('childSupport')}</Row>
             <Row label="Leasing (Kfz)">{numInput('carLeasing')}</Row>
+            <Row label="Best. Darlehensraten">{numInput('existingLoanPayments')}</Row>
             <Row label="Sonstige Fixkosten">{numInput('otherFixedCosts')}</Row>
-
-            {/* Empty row: expenses has 6 rows, income has 7 — pad 1 */}
-            <div className="border-b py-1 px-3 invisible">
-              <span className="text-xs">&nbsp;</span>
-            </div>
 
             <SectionHeader title="Neue Finanzierung" variant="financing" />
             <Row label="Neue Darlehensrate" highlight>{numInput('newLoanRate')}</Row>
