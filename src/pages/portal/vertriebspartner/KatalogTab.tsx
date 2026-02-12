@@ -22,6 +22,7 @@ import {
   type PropertyTableColumn 
 } from '@/components/shared';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   Select,
   SelectContent,
@@ -336,7 +337,7 @@ const KatalogTab = () => {
 
   return (
     <PageShell>
-      {/* Header with stats */}
+      <ModulePageHeader title="Objektkatalog" description="Freigegebene Objekte für Ihren Vertrieb" />
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">

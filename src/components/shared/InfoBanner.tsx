@@ -9,11 +9,11 @@ import type { ReactNode } from 'react';
 
 type BannerVariant = 'hint' | 'premium' | 'warning' | 'success';
 
-interface InfoBannerProps {
+export interface InfoBannerProps {
   variant?: BannerVariant;
   icon?: LucideIcon;
   title?: string;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
   action?: ReactNode;
 }

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -71,9 +73,9 @@ function EditRow({ label, value, onChange, placeholder }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr] md:items-center border-b py-1.5 px-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    <div className={cn('flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr] md:items-center', DESIGN.TABULAR_FORM.ROW_BORDER, 'py-1.5 px-1')}>
+      <Label className={DESIGN.TYPOGRAPHY.LABEL}>{label}</Label>
+      <Input className={DESIGN.TABULAR_FORM.INPUT} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
@@ -380,7 +382,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
 
           <div className="py-4 space-y-4">
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Kontaktdaten</h4>
+              <h4 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'text-muted-foreground mb-2')}>Kontaktdaten</h4>
               <div className="border rounded-lg">
                 <EditRow label="Vorname" value={editData.first_name} onChange={handleFieldChange('first_name')} />
                 <EditRow label="Nachname" value={editData.last_name} onChange={handleFieldChange('last_name')} />
@@ -397,7 +399,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
             </div>
 
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">§34i Gewerbeerlaubnis</h4>
+              <h4 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'text-muted-foreground mb-2')}>§34i Gewerbeerlaubnis</h4>
               <div className="border rounded-lg">
                 <EditRow label="Registrierungsnr." value={editData.reg_34i_number} onChange={handleFieldChange('reg_34i_number')} placeholder="D-F-XXX-XXXX-XX" />
                 <EditRow label="Zuständige IHK" value={editData.reg_34i_ihk} onChange={handleFieldChange('reg_34i_ihk')} placeholder="z.B. IHK München" />
