@@ -293,9 +293,9 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-sm text-left space-y-2 w-full">
               <p className="font-medium">Nächste Schritte:</p>
-              <p>📧 Sie erhalten in Kürze eine E-Mail mit einem Link zu Ihrem persönlichen Datenraum.</p>
-              <p>📎 Dort können Sie Ihre Unterlagen (Gehaltsabrechnungen, Selbstauskunft etc.) sicher hochladen.</p>
-              <p>📩 Alternativ können Sie uns die Unterlagen auch per E-Mail zusenden.</p>
+              <p>📧 Sie erhalten in Kürze eine E-Mail mit einer Dokumenten-Checkliste und Ihrer Vorgangsnummer.</p>
+              <p>📎 Senden Sie uns Ihre Unterlagen (Gehaltsabrechnungen, Selbstauskunft etc.) per E-Mail an <span className="font-medium">finanzierung@futureroom.com</span> unter Angabe Ihrer Vorgangsnummer.</p>
+              <p>📞 Ein Finanzierungsmanager wird sich innerhalb von 48 Stunden bei Ihnen melden.</p>
             </div>
             <Button onClick={() => { setSubmitted(false); setForm(initialFormData); onClose(); }} className="mt-4">
               Schließen
@@ -310,8 +310,8 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-0">
-        <div className="p-6 space-y-6">
+      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <SheetHeader>
             <SheetTitle className="text-lg">Finanzierung beantragen</SheetTitle>
             <SheetDescription>
@@ -504,8 +504,11 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
             </AccordionItem>
           </Accordion>
 
-          {/* Consent */}
-          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+        </div>
+
+        {/* Sticky Submit Footer */}
+        <div className="border-t bg-background p-4 shrink-0">
+          <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3">
             <Checkbox
               id="consent"
               checked={consentChecked}
@@ -516,8 +519,6 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
               Ich stimme der Verarbeitung meiner Daten zum Zweck der Finanzierungsanfrage zu und habe die Datenschutzerklärung gelesen.
             </label>
           </div>
-
-          {/* Submit */}
           <Button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
