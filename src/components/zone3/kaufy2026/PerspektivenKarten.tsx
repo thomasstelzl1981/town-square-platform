@@ -30,21 +30,21 @@ const perspektiven: PerspektiveCard[] = [
     category: 'VERMIETER',
     slogan: ['Vermieten.', 'Verstehen.', 'Optimieren.'],
     description: 'Alles, was zählt – auf einen Blick.',
-    link: '/kaufy2026/vermieter',
+    link: '/website/kaufy/vermieter',
   },
   {
     icon: Tag,
     category: 'VERKÄUFER',
     slogan: ['Inserieren.', 'Erreichen.', 'Verkaufen.'],
     description: 'Tausende vorab qualifizierte Investoren.',
-    link: '/kaufy2026/verkaeufer',
+    link: '/website/kaufy/verkaeufer',
   },
   {
     icon: Handshake,
     category: 'PARTNER',
     slogan: ['Beraten.', 'Vermitteln.', 'Verdienen.'],
     description: 'Zugang zum exklusiven Objektkatalog.',
-    link: '/kaufy2026/vertrieb',
+    link: '/website/kaufy/vertrieb',
   },
 ];
 
