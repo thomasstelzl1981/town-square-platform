@@ -1,17 +1,14 @@
 /**
- * HouseholdCalculationCard — Simulates monthly income/expenses after financing
+ * HouseholdCalculationCard — T-Konto Layout
  * 
- * Structure mirrors the Selbstauskunft grid-table layout (Label | Value).
- * All fields are always visible and editable. The "Berechnen" button populates from data.
- * Owner-occupied: rent disabled/0, utility fiction applied.
- * Investment: rental income + tax benefit added.
+ * Side-by-side: Income (left) | Expenses (right) like a bookkeeping T-account.
+ * All fields always visible and editable. "Berechnen" populates from data.
  */
 import * as React from 'react';
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Calculator, CheckCircle2, XCircle, Info } from 'lucide-react';
 import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { CalcData } from './FinanceCalculatorCard';
@@ -27,51 +24,43 @@ interface HouseholdCalculationCardProps {
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 
-const inputCls = "h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]";
+const inputCls = "h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 text-right [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]";
 
-/** Data row: Label | editable value */
-function TR({ label, children, highlight, disabled }: {
+/** Single row: label + input */
+function Row({ label, children, highlight, className }: {
   label: string;
   children: React.ReactNode;
   highlight?: boolean;
-  disabled?: boolean;
+  className?: string;
 }) {
   return (
-    <TableRow className={highlight ? 'bg-muted/15' : ''}>
-      <TableCell className="w-[180px] border-r py-1.5 px-3 text-xs text-muted-foreground font-medium whitespace-nowrap">
-        {label}
-      </TableCell>
-      <TableCell className="py-1.5 px-3">{children}</TableCell>
-    </TableRow>
+    <div className={`grid grid-cols-[1fr_100px] items-center border-b px-3 py-1 text-xs ${highlight ? 'bg-muted/15' : ''} ${className || ''}`}>
+      <span className="text-muted-foreground font-medium truncate">{label}</span>
+      <div>{children}</div>
+    </div>
   );
 }
 
-/** Section header spanning full width */
-function SectionHeaderRow({ title, variant }: { title: string; variant?: 'default' | 'financing' }) {
+/** Section header */
+function SectionHeader({ title, variant }: { title: string; variant?: 'default' | 'financing' }) {
   const bg = variant === 'financing'
     ? 'bg-blue-50/50 dark:bg-blue-950/20'
     : 'bg-muted/40';
   return (
-    <TableRow>
-      <TableCell colSpan={2} className={`${bg} text-xs font-semibold uppercase tracking-wide py-1.5 px-3`}>
-        {title}
-      </TableCell>
-    </TableRow>
+    <div className={`${bg} text-xs font-semibold uppercase tracking-wide py-1.5 px-3 border-b`}>
+      {title}
+    </div>
   );
 }
 
 /** Sum row */
-function SumRow({ label, value, variant }: { label: string; value: number; variant?: 'income' | 'expense' | 'result' }) {
-  const color = variant === 'expense'
-    ? 'text-destructive'
-    : variant === 'result'
-      ? (value >= 0 ? 'text-green-600' : 'text-destructive')
-      : 'text-foreground';
+function SumLine({ label, value, variant }: { label: string; value: number; variant?: 'income' | 'expense' }) {
+  const color = variant === 'expense' ? 'text-destructive' : 'text-foreground';
   return (
-    <TableRow className="bg-muted/30 font-medium">
-      <TableCell className="w-[180px] border-r py-1.5 px-3 text-xs font-semibold">{label}</TableCell>
-      <TableCell className={`py-1.5 px-3 text-sm font-bold ${color}`}>{eurFormat.format(value)}</TableCell>
-    </TableRow>
+    <div className="grid grid-cols-[1fr_auto] items-center bg-muted/30 px-3 py-1.5 border-b">
+      <span className="text-xs font-semibold">{label}</span>
+      <span className={`text-sm font-bold ${color}`}>{eurFormat.format(value)}</span>
+    </div>
   );
 }
 
@@ -184,63 +173,82 @@ export default function HouseholdCalculationCard({
           </p>
         </div>
 
-        {/* Single vertical table — Selbstauskunft style */}
-        <Table>
-          <TableBody>
-            {/* === INCOME === */}
-            <SectionHeaderRow title="Monatliche Einnahmen" />
-            <TR label="Nettoeinkommen">{numInput('netIncome')}</TR>
-            <TR label="Aus selbstst. Tätigkeit">{numInput('selfEmployedIncome')}</TR>
-            <TR label="Nebentätigkeit">{numInput('sideJobIncome')}</TR>
-            <TR label="Mieteinnahmen (bestehend)">{numInput('existingRentalIncome')}</TR>
-            <TR label="Kindergeld">{numInput('childBenefit')}</TR>
-            <TR label="Unterhaltseinnahmen">{numInput('alimonyIncome')}</TR>
-            <TR label="Sonstiges">{numInput('otherIncome')}</TR>
+        {/* T-Konto: two columns side by side */}
+        <div className="grid grid-cols-2">
+          {/* === LEFT: INCOME === */}
+          <div className="border-r">
+            <SectionHeader title="Monatliche Einnahmen" />
+            <Row label="Nettoeinkommen">{numInput('netIncome')}</Row>
+            <Row label="Aus selbstst. Tätigkeit">{numInput('selfEmployedIncome')}</Row>
+            <Row label="Nebentätigkeit">{numInput('sideJobIncome')}</Row>
+            <Row label="Mieteinnahmen (bestehend)">{numInput('existingRentalIncome')}</Row>
+            <Row label="Kindergeld">{numInput('childBenefit')}</Row>
+            <Row label="Unterhaltseinnahmen">{numInput('alimonyIncome')}</Row>
+            <Row label="Sonstiges">{numInput('otherIncome')}</Row>
 
-            {/* New financing income */}
-            <SectionHeaderRow title="Neue Finanzierung — Einnahmen" variant="financing" />
-            <TR label="Mieteinnahmen (neu)" highlight>{numInput('newRentalIncome')}</TR>
-            <TR label="Steuervorteil (Kapitalanlage)" highlight>{numInput('taxBenefit')}</TR>
+            {/* Spacer to align with expenses side */}
+            <div className="border-b py-1 px-3 invisible">
+              <span className="text-xs">&nbsp;</span>
+            </div>
 
-            <SumRow label="Summe Einnahmen" value={totalIncome} variant="income" />
+            <SectionHeader title="Neue Finanzierung" variant="financing" />
+            <Row label="Mieteinnahmen (neu)" highlight>{numInput('newRentalIncome')}</Row>
+            <Row label="Steuervorteil (KA)" highlight>{numInput('taxBenefit')}</Row>
 
-            {/* === EXPENSES === */}
-            <SectionHeaderRow title="Monatliche Ausgaben" />
-            <TR label="Lebenshaltungskosten">{numInput('livingExpenses')}</TR>
-            <TR label="Aktuelle Warmmiete">{numInput('currentRent', isOwnerOccupied)}</TR>
-            <TR label="Priv. Krankenversicherung">{numInput('healthInsurance')}</TR>
-            <TR label="Unterhaltsverpflichtungen">{numInput('childSupport')}</TR>
-            <TR label="Leasing (Kfz)">{numInput('carLeasing')}</TR>
-            <TR label="Sonstige Fixkosten">{numInput('otherFixedCosts')}</TR>
+            <SumLine label="Summe Einnahmen" value={totalIncome} variant="income" />
+          </div>
 
-            {/* New financing expenses */}
-            <SectionHeaderRow title="Neue Finanzierung — Ausgaben" variant="financing" />
-            <TR label="Neue Darlehensrate" highlight>{numInput('newLoanRate')}</TR>
-            <TR label="Nebenkosten (3 €/qm)" highlight>{numInput('utilityFiction')}</TR>
+          {/* === RIGHT: EXPENSES === */}
+          <div>
+            <SectionHeader title="Monatliche Ausgaben" />
+            <Row label="Lebenshaltungskosten">{numInput('livingExpenses')}</Row>
+            <Row label="Aktuelle Warmmiete">{numInput('currentRent', isOwnerOccupied)}</Row>
+            <Row label="Priv. Krankenversicherung">{numInput('healthInsurance')}</Row>
+            <Row label="Unterhaltsverpflichtungen">{numInput('childSupport')}</Row>
+            <Row label="Leasing (Kfz)">{numInput('carLeasing')}</Row>
+            <Row label="Sonstige Fixkosten">{numInput('otherFixedCosts')}</Row>
 
-            <SumRow label="Summe Ausgaben" value={totalExpenses} variant="expense" />
+            {/* Empty row: expenses has 6 rows, income has 7 — pad 1 */}
+            <div className="border-b py-1 px-3 invisible">
+              <span className="text-xs">&nbsp;</span>
+            </div>
 
-            {/* === RESULT === */}
-            <SectionHeaderRow title="Ergebnis" />
-            <SumRow label="Verfügbares Einkommen" value={disposable} variant="result" />
-            <TableRow className="bg-muted/30">
-              <TableCell className="w-[180px] border-r py-1.5 px-3 text-xs font-semibold">Kapitaldienstfähigkeit</TableCell>
-              <TableCell className="py-1.5 px-3 text-sm font-bold flex items-center gap-2">
+            <SectionHeader title="Neue Finanzierung" variant="financing" />
+            <Row label="Neue Darlehensrate" highlight>{numInput('newLoanRate')}</Row>
+            <Row label="Nebenkosten (3 €/qm)" highlight>{numInput('utilityFiction')}</Row>
+
+            <SumLine label="Summe Ausgaben" value={totalExpenses} variant="expense" />
+          </div>
+        </div>
+
+        {/* Result block — full width */}
+        <div className="border-t">
+          <SectionHeader title="Ergebnis" />
+          <div className="grid grid-cols-2 bg-muted/30 border-b">
+            <div className="grid grid-cols-[1fr_auto] items-center px-3 py-1.5 border-r">
+              <span className="text-xs font-semibold">Verfügbares Einkommen</span>
+              <span className={`text-sm font-bold ${disposable >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                {eurFormat.format(disposable)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <span className="text-xs font-semibold">Kapitaldienstfähigkeit</span>
+              <span className="ml-auto flex items-center gap-1.5">
                 {disposable >= 0 ? (
                   <>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Tragfähig</span>
+                    <span className="text-sm font-bold text-green-600">Tragfähig</span>
                   </>
                 ) : (
                   <>
                     <XCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-destructive">Nicht tragfähig</span>
+                    <span className="text-sm font-bold text-destructive">Nicht tragfähig</span>
                   </>
                 )}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Info + Button */}
         <div className="px-5 py-3 border-t flex items-center gap-3 flex-wrap">
