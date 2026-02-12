@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -159,16 +161,13 @@ export function KalenderTab() {
   const adjustedFirstDay = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
   const calendarHeader = (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight uppercase">Kalender</h1>
-      <p className="text-muted-foreground mt-1">Termine und Ereignisse verwalten</p>
-    </div>
+    <ModulePageHeader title="Kalender" description="Termine und Ereignisse verwalten" />
   );
 
   // === MOBILE: Vereinfachte Listenansicht ===
   if (isMobile) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
+      <PageShell>
         {calendarHeader}
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
@@ -309,13 +308,13 @@ export function KalenderTab() {
             </ScrollArea>
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   // === DESKTOP: Original 12-Column Grid ===
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
+    <PageShell>
       {calendarHeader}
       <div className="grid grid-cols-12 gap-6">
       {/* Calendar View */}
@@ -592,6 +591,6 @@ export function KalenderTab() {
         </Card>
       </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -13,6 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -254,11 +256,8 @@ export function VertraegeTab() {
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">VERTRÄGE</h1>
-        <p className="text-muted-foreground mt-1">Ihre rechtlichen Vereinbarungen im Überblick</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Verträge" description="Ihre rechtlichen Vereinbarungen im Überblick" />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -352,7 +351,7 @@ export function VertraegeTab() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 

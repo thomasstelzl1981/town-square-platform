@@ -5,6 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { PageShell } from '@/components/shared/PageShell';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -164,7 +165,7 @@ export default function SelbstauskunftTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {devMode && (
         <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <CardContent className="pt-4">
@@ -187,6 +188,6 @@ export default function SelbstauskunftTab() {
           readOnly={devMode}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

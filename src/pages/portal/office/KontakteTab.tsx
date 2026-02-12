@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/select';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { DetailDrawer } from '@/components/shared/DetailDrawer';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { EmptyContacts } from '@/components/shared/EmptyState';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -595,11 +597,8 @@ export function KontakteTab() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Kontakte</h1>
-        <p className="text-muted-foreground mt-1">Ihr zentrales Kontaktbuch verwalten</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Kontakte" description="Ihr zentrales Kontaktbuch verwalten" />
     <Card className="glass-card overflow-hidden">
       <CardContent className="p-5 pb-4 border-b">
         <div className="flex items-center gap-3 mb-4">
@@ -851,6 +850,6 @@ export function KontakteTab() {
         )}
       </DetailDrawer>
     </Card>
-    </div>
+    </PageShell>
   );
 }

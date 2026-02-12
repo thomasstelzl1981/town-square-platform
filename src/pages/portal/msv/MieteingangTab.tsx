@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -239,7 +240,7 @@ const MieteingangTab = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <ModulePageHeader
         title="Mieteingang"
         description="Zahlungseingänge und Sollmieten kontrollieren — automatische Mahnung bei Rückstand."
@@ -472,7 +473,7 @@ const MieteingangTab = () => {
           mieterName={selectedProperty.mieterName}
         />
       )}
-    </div>
+    </PageShell>
   );
 };
 

@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -290,11 +292,8 @@ const ObjekteTab = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">VERKAUF</h1>
-        <p className="text-muted-foreground mt-1">Ihre Verkaufsobjekte und Einheiten im Überblick</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Verkauf" description="Ihre Verkaufsobjekte und Einheiten im Überblick" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {contexts.length > 0 && (
@@ -362,7 +361,7 @@ const ObjekteTab = () => {
         onRowClick={(row) => navigate(`/portal/verkauf/expose/${row.id}`)}
         rowActions={renderRowActions}
       />
-    </div>
+    </PageShell>
   );
 };
 

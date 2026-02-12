@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormSection, DataTable, StatusBadge } from '@/components/shared';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Shield, Key, Monitor, LogOut, Loader2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,11 +78,8 @@ export function SicherheitTab() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">SICHERHEIT</h1>
-        <p className="text-muted-foreground mt-1">Passwort, Sitzungen und Sicherheits-Log</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Sicherheit" description="Passwort, Sitzungen und Sicherheits-Log" />
       {/* Password Change */}
       <Card>
         <CardHeader>
@@ -215,6 +214,6 @@ export function SicherheitTab() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

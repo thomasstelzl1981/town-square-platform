@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/shared';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -147,12 +149,8 @@ export function PosteingangTab() {
   const SKELETON_ROWS = 10;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Posteingang</h1>
-        <p className="text-sm text-muted-foreground mt-1">Hier gehen E-Mails und Dokumente aus Ihrem digitalen Postservice ein.</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Posteingang" description="Hier gehen E-Mails und Dokumente aus Ihrem digitalen Postservice ein." />
 
       {/* Table */}
       <Card className="glass-card overflow-hidden">
@@ -353,6 +351,6 @@ export function PosteingangTab() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

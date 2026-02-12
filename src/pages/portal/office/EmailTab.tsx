@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ComposeEmailDialog } from '@/components/portal/office/ComposeEmailDialog';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   Inbox, 
   Send, 
@@ -719,11 +721,8 @@ export function EmailTab() {
 
   // Email Client UI - ALWAYS visible, connection via button
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">E-Mail</h1>
-        <p className="text-muted-foreground mt-1">Ihr KI-gestützter E-Mail-Client</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="E-Mail" description="Ihr KI-gestützter E-Mail-Client" />
       {/* Connection Dialog */}
       <ConnectionDialog
         open={showConnectionDialog}
@@ -977,6 +976,6 @@ export function EmailTab() {
         </div>
       </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }

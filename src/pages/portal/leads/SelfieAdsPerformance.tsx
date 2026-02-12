@@ -7,16 +7,15 @@ import { Button } from '@/components/ui/button';
 import { BarChart3, Megaphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function SelfieAdsPerformance() {
   const navigate = useNavigate();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Performance</h1>
-        <p className="text-muted-foreground mt-1">Kampagnen-Performance & Lead-Auswertung</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Performance" description="Kampagnen-Performance & Lead-Auswertung" />
 
       <Card className="border-dashed">
         <CardContent className="pt-6">
@@ -31,6 +30,6 @@ export default function SelfieAdsPerformance() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

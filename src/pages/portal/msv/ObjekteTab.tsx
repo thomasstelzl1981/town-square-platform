@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -473,7 +474,7 @@ const ObjekteTab = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       <ModulePageHeader
         title="Mietverwaltung"
         description="Alle Objekte und Mietverträge aus Ihrem Portfolio — verwaltet, überwacht, automatisiert."
@@ -582,7 +583,7 @@ const ObjekteTab = () => {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 };
 

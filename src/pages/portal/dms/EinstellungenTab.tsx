@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch } from 'lucide-react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -212,12 +214,8 @@ export function EinstellungenTab() {
   const currentPlan = storagePlans.find(p => p.id === currentPlanId);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Einstellungen</h1>
-        <p className="text-sm text-muted-foreground mt-1">Speicher, Postservice und Dokumenten-Auslesung verwalten</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Einstellungen" description="Speicher, Postservice und Dokumenten-Auslesung verwalten" />
 
       {/* 3-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -491,6 +489,6 @@ export function EinstellungenTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

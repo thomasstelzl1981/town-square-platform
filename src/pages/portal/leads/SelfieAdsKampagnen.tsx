@@ -7,21 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Megaphone, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function SelfieAdsKampagnen() {
   const navigate = useNavigate();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Meine Kampagnen</h1>
-          <p className="text-muted-foreground mt-1">Beauftragte Kaufy Selfie Ads Mandate</p>
-        </div>
-        <Button onClick={() => navigate('/portal/leads/selfie-ads-planen')} className="gap-2">
-          <Plus className="h-4 w-4" /> Neue Kampagne
-        </Button>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="Meine Kampagnen"
+        description="Beauftragte Kaufy Selfie Ads Mandate"
+        actions={
+          <Button onClick={() => navigate('/portal/leads/selfie-ads-planen')} className="gap-2">
+            <Plus className="h-4 w-4" /> Neue Kampagne
+          </Button>
+        }
+      />
 
       <Card className="border-dashed">
         <CardContent className="pt-6">
@@ -36,6 +38,6 @@ export default function SelfieAdsKampagnen() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

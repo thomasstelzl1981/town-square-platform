@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DataTable, StatusBadge, EmptyState } from '@/components/shared';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Loader2, CreditCard, FileText, TrendingUp, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -76,11 +78,8 @@ export function AbrechnungTab() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">ABRECHNUNG</h1>
-        <p className="text-muted-foreground mt-1">Ihr Plan, Credits und Rechnungen</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Abrechnung" description="Ihr Plan, Credits und Rechnungen" />
       {/* Current Plan */}
       <Card>
         <CardHeader>
@@ -198,6 +197,6 @@ export function AbrechnungTab() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

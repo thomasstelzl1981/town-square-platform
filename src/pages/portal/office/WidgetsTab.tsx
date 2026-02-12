@@ -37,6 +37,8 @@ import {
   Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
@@ -256,11 +258,8 @@ export function WidgetsTab() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Widgets</h1>
-        <p className="text-muted-foreground mt-1">System- und Aufgabenwidgets verwalten</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Widgets" description="System- und Aufgabenwidgets verwalten" />
     <Card className="glass-card overflow-hidden">
     <Tabs defaultValue="system" className="w-full">
       <div className="border-b px-4 pt-4">
@@ -285,6 +284,6 @@ export function WidgetsTab() {
       </TabsContent>
     </Tabs>
     </Card>
-    </div>
+    </PageShell>
   );
 }
