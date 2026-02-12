@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search } from 'lucide-react';
+import { ArrowLeft, FileText, User, Building2, Search, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import FinanceCalculatorCard from '@/components/finanzierung/FinanceCalculatorCard';
 import {
@@ -19,8 +20,8 @@ import {
   ExpensesSection, AssetsSection, createEmptyApplicantFormData,
   type ApplicantFormData,
 } from '@/components/finanzierung/ApplicantPersonFields';
-import FinanceObjectCard, { type ObjectFormData } from '@/components/finanzierung/FinanceObjectCard';
-import FinanceRequestCard from '@/components/finanzierung/FinanceRequestCard';
+import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } from '@/components/finanzierung/FinanceObjectCard';
+import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Simple label-value row for the top summary */
@@ -82,6 +83,14 @@ export default function FMFinanzierungsakte() {
   const [calculatorBedarf, setCalculatorBedarf] = useState(0);
   const [calculatorPurchasePrice, setCalculatorPurchasePrice] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
+  const objectCardRef = useRef<FinanceObjectCardHandle>(null);
+  const requestCardRef = useRef<FinanceRequestCardHandle>(null);
+
+  const handleFloatingSave = () => {
+    objectCardRef.current?.save();
+    requestCardRef.current?.save();
+    toast.success('Daten zwischengespeichert');
+  };
 
   const { data: listings } = useQuery({
     queryKey: ['v_public_listings'],
@@ -274,21 +283,32 @@ export default function FMFinanzierungsakte() {
       </Card>
 
       {/* Block 3: Finanzierungsobjekt (shared card) */}
-      <FinanceObjectCard storageKey="mod11-akte" externalData={externalObjectData} />
+      <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
 
       {/* Block 4: Finanzierung + Kalkulator (2-spaltig) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FinanceRequestCard
+          ref={requestCardRef}
           storageKey="mod11-akte"
           externalPurchasePrice={externalPurchasePrice}
           showCalculator
           onCalculate={handleCalculate}
+          hideFooter
         />
         <FinanceCalculatorCard
           finanzierungsbedarf={calculatorBedarf}
           purchasePrice={calculatorPurchasePrice}
         />
       </div>
+
+      {/* Floating save button */}
+      <Button
+        onClick={handleFloatingSave}
+        variant="glass"
+        className="fixed bottom-6 right-6 z-50 shadow-lg gap-2"
+      >
+        <Save className="h-4 w-4" /> Zwischenspeichern
+      </Button>
     </PageShell>
   );
 }
