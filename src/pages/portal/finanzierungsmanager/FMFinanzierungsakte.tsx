@@ -279,7 +279,15 @@ export default function FMFinanzierungsakte() {
       {/* Block 3: Finanzierungsobjekt (shared card) */}
       <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
 
-      {/* Haushaltsrechnung — ganz unten */}
+      {/* Section heading: Kapitaldienstfähigkeit */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Kapitaldienstfähigkeit</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Simulation der monatlichen Einnahmen und Ausgaben nach Abschluss der neuen Finanzierung
+        </p>
+      </div>
+
+      {/* Haushaltsrechnung */}
       <HouseholdCalculationCard
         formData={formData}
         coFormData={coFormData}
