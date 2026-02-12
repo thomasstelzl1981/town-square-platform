@@ -51,12 +51,34 @@ export default function FinanceOfferCard({ calcData, onTransferToApplication, on
 
   if (!hasData) {
     return (
-      <Card className="glass-card">
-        <CardContent className="p-6 text-center">
-          <FileText className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Bitte füllen Sie die Eckdaten und den Kalkulator aus, um ein überschlägiges Finanzierungsangebot zu erhalten.
-          </p>
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-0">
+          <div className="px-5 py-3 border-b bg-muted/20">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-base font-semibold uppercase tracking-wide">
+                Überschlägiges Finanzierungsangebot
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Unverbindliche Indikation auf Basis der eingegebenen Eckdaten
+            </p>
+          </div>
+
+          <div className="p-5">
+            <p className="text-sm text-muted-foreground text-center">
+              Bitte füllen Sie die Eckdaten und den Kalkulator aus, um ein überschlägiges Finanzierungsangebot zu erhalten.
+            </p>
+          </div>
+
+          <div className="px-5 py-3 border-t flex flex-wrap gap-3">
+            <Button variant="outline" size="sm" className="gap-2 text-xs" disabled>
+              <ArrowDown className="h-3.5 w-3.5" /> Eckdaten in Antrag übernehmen
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2 text-xs" disabled>
+              <TableProperties className="h-3.5 w-3.5" /> Tilgungsplan anzeigen
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
