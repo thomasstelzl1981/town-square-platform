@@ -166,10 +166,6 @@ export default function FMFinanzierungsakte() {
       last_name: result.lastName,
       email: result.email,
     }));
-    // Scroll to document room
-    setTimeout(() => {
-      generateCaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 300);
   };
 
   return (
@@ -233,6 +229,33 @@ export default function FMFinanzierungsakte() {
           </CardContent>
         </Card>
       </div>
+
+      {/* GenerateCaseCard — oben wenn Magic Intake aktiviert */}
+      {magicIntakeResult && (
+        <div ref={generateCaseRef}>
+          <GenerateCaseCard
+            formData={formData}
+            coFormData={coFormData}
+            propertyAssets={propertyAssets}
+            objectData={{
+              address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
+              type: externalObjectData?.objectType,
+              livingArea: externalObjectData?.livingArea,
+              yearBuilt: externalObjectData?.yearBuilt,
+              purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
+            }}
+            financeData={{
+              loanAmount: calculatorBedarf || undefined,
+              equityAmount: undefined,
+              purpose: eckdatenUsage || 'kauf',
+            }}
+            initialCreatedState={{
+              requestId: magicIntakeResult.requestId,
+              publicId: magicIntakeResult.publicId,
+            }}
+          />
+        </div>
+      )}
 
       {/* Block 1: Eckdaten + Kalkulator (2-spaltig) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -365,30 +388,28 @@ export default function FMFinanzierungsakte() {
         propertyAssets={propertyAssets}
       />
 
-      {/* GenerateCaseCard — Finanzierungsfall anlegen */}
-      <div ref={generateCaseRef}>
-        <GenerateCaseCard
-          formData={formData}
-          coFormData={coFormData}
-          propertyAssets={propertyAssets}
-          objectData={{
-            address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
-            type: externalObjectData?.objectType,
-            livingArea: externalObjectData?.livingArea,
-            yearBuilt: externalObjectData?.yearBuilt,
-            purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
-          }}
-          financeData={{
-            loanAmount: calculatorBedarf || undefined,
-            equityAmount: undefined,
-            purpose: eckdatenUsage || 'kauf',
-          }}
-          initialCreatedState={magicIntakeResult ? {
-            requestId: magicIntakeResult.requestId,
-            publicId: magicIntakeResult.publicId,
-          } : undefined}
-        />
-      </div>
+      {/* GenerateCaseCard — unten nur wenn Magic Intake NICHT aktiviert */}
+      {!magicIntakeResult && (
+        <div ref={generateCaseRef}>
+          <GenerateCaseCard
+            formData={formData}
+            coFormData={coFormData}
+            propertyAssets={propertyAssets}
+            objectData={{
+              address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
+              type: externalObjectData?.objectType,
+              livingArea: externalObjectData?.livingArea,
+              yearBuilt: externalObjectData?.yearBuilt,
+              purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
+            }}
+            financeData={{
+              loanAmount: calculatorBedarf || undefined,
+              equityAmount: undefined,
+              purpose: eckdatenUsage || 'kauf',
+            }}
+          />
+        </div>
+      )}
 
       {/* Spacer to prevent floating button overlap */}
       <div className="h-20" />
