@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFinanceData } from '@/hooks/useFinanceData';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
@@ -73,6 +74,79 @@ function EditRow({ label, value, onChange, placeholder }: {
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
     </div>
+  );
+}
+
+/** Zins-Ticker: shows current mortgage rate benchmarks via finance proxy */
+function ZinsTickerWidget() {
+  const { data: markets = [], isLoading } = useFinanceData();
+
+  // Mortgage-specific demo rates (these supplement the market data)
+  const mortgageRates = [
+    { label: '10 Jahre fest', rate: '3,45%', change: '-0,05', trend: 'down' as const },
+    { label: '15 Jahre fest', rate: '3,62%', change: '+0,02', trend: 'up' as const },
+    { label: '20 Jahre fest', rate: '3,78%', change: '—', trend: 'neutral' as const },
+    { label: 'Variabel', rate: '4,15%', change: '-0,10', trend: 'down' as const },
+  ];
+
+  const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'neutral' }) => {
+    if (trend === 'up') return <TrendingUp className="h-3 w-3 text-red-400" />;
+    if (trend === 'down') return <TrendingDown className="h-3 w-3 text-emerald-400" />;
+    return <Minus className="h-3 w-3 text-muted-foreground" />;
+  };
+
+  return (
+    <Card className="overflow-hidden border-0 shadow-card">
+      <div className="h-2 bg-gradient-to-r from-[hsl(35,90%,55%)] to-[hsl(25,85%,50%)]" />
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(35,90%,55%)] to-[hsl(25,85%,50%)] flex items-center justify-center">
+            <BarChart3 className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold">Zins-Ticker</h3>
+            <p className="text-[10px] text-muted-foreground">Aktuelle Baufinanzierung</p>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          {mortgageRates.map((r) => (
+            <div key={r.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+              <span className="text-[11px] text-muted-foreground">{r.label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold font-mono">{r.rate}</span>
+                <div className="flex items-center gap-0.5">
+                  <TrendIcon trend={r.trend} />
+                  <span className={`text-[10px] font-mono ${r.trend === 'down' ? 'text-emerald-500' : r.trend === 'up' ? 'text-red-400' : 'text-muted-foreground'}`}>
+                    {r.change}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Market data from proxy */}
+        {markets.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-1">
+              {markets.slice(0, 3).map((m) => (
+                <div key={m.symbol} className="flex items-center justify-between py-0.5">
+                  <span className="text-[10px] text-muted-foreground">{m.symbol}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-mono">{m.value}</span>
+                    <TrendIcon trend={m.trend} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <p className="text-[9px] text-muted-foreground text-right">Stand: {new Date().toLocaleDateString('de-DE')}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -217,79 +291,72 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Manager Visitenkarte + FutureRoom Tile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Visitenkarte */}
-        <Card className="glass-card">
+      {/* Manager Visitenkarte + FutureRoom + Zins-Ticker */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Visitenkarte — with accent gradient header */}
+        <Card className="overflow-hidden border-0 shadow-card">
+          <div className="h-2 bg-gradient-to-r from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)]" />
           <CardContent className="p-4">
-            <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)] flex items-center justify-center shrink-0 shadow-md">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={fullName} className="h-14 w-14 rounded-full object-cover" />
+                  <img src={profile.avatar_url} alt={fullName} className="h-12 w-12 rounded-full object-cover" />
                 ) : (
-                  <User className="h-6 w-6 text-primary" />
+                  <User className="h-5 w-5 text-white" />
                 )}
               </div>
-              <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold">{fullName}</h3>
-                    <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
+                    <h3 className="text-base font-bold">{fullName}</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Finanzierungsmanager</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditSheet}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditSheet}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                <div className="space-y-0.5">
                   {profile?.email && (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-[11px]">
                       <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span className="truncate">{profile.email}</span>
                     </div>
                   )}
                   {profile?.phone_mobile && (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-[11px]">
                       <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span>{profile.phone_mobile}</span>
                     </div>
                   )}
                   {fullAddress && (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-[11px]">
                       <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span className="truncate">{fullAddress}</span>
                     </div>
                   )}
-                  {profile?.letterhead_company_line && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{profile.letterhead_company_line}</span>
-                    </div>
-                  )}
                 </div>
 
-                {(reg34i || regIhk || insProvider) && (
+                {(reg34i || regIhk) && (
                   <>
                     <Separator className="my-1" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                    <div className="space-y-0.5">
                       {reg34i && (
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-[11px]">
                           <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span>§34i: {reg34i}</span>
                         </div>
                       )}
                       {regIhk && (
-                        <div className="text-xs text-muted-foreground">IHK: {regIhk}</div>
-                      )}
-                      {insProvider && (
-                        <div className="text-xs text-muted-foreground">VSH: {insProvider}</div>
+                        <div className="text-[11px] text-muted-foreground pl-5">IHK: {regIhk}</div>
                       )}
                     </div>
                   </>
                 )}
+
+                <div className="pt-1">
+                  <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -298,40 +365,43 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         {/* FutureRoom Branding Tile */}
         <Card className="overflow-hidden border-0 shadow-card">
           <CardContent className="p-0 h-full">
-            <div className="h-full bg-gradient-to-br from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)] p-6 flex flex-col justify-between text-white">
-              <div className="space-y-3">
+            <div className="h-full bg-gradient-to-br from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)] p-5 flex flex-col justify-between text-white">
+              <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                    <Landmark className="h-6 w-6 text-white" />
+                  <div className="h-10 w-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                    <Landmark className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold tracking-tight">
+                    <h3 className="text-lg font-bold tracking-tight">
                       Future<span className="font-light">Room</span>
                     </h3>
-                    <p className="text-[11px] text-white/70 uppercase tracking-wider">Digitale Finanzierungsorchesterierung</p>
+                    <p className="text-[10px] text-white/70 uppercase tracking-wider">Finanzierungsorchesterierung</p>
                   </div>
                 </div>
-                <p className="text-sm text-white/80 leading-relaxed">
-                  Ihre Plattform für KI-gestützte Finanzierungsaufbereitung und digitale Bankeinreichung.
+                <p className="text-xs text-white/80 leading-relaxed">
+                  KI-gestützte Aufbereitung und digitale Bankeinreichung.
                 </p>
               </div>
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center justify-between mt-3">
                 <Badge className="bg-white/20 text-white border-white/30 text-[10px] hover:bg-white/30">
-                  Über 400 Bankpartner
+                  400+ Bankpartner
                 </Badge>
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-xs"
+                  className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-[11px] h-7"
                   onClick={() => window.open('/website/futureroom', '_blank')}
                 >
-                  <ExternalLink className="h-3 w-3 mr-1.5" />
-                  Zur Website
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Website
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Zins-Ticker Widget */}
+        <ZinsTickerWidget />
       </div>
 
       {/* Edit Sheet */}
