@@ -15,6 +15,7 @@ import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { PropertyAsset } from './PropertyAssetsCard';
 import FinanceApplicationPreview from './FinanceApplicationPreview';
 import CaseDocumentRoom from './CaseDocumentRoom';
+import DocumentReadinessIndicator from './DocumentReadinessIndicator';
 
 type CaseState = 'idle' | 'generating' | 'created';
 
@@ -204,43 +205,60 @@ export default function GenerateCaseCard({
     }
   };
 
+  const employmentType = formData.employment_type || undefined;
+
   // === IDLE STATE ===
   if (state === 'idle' || state === 'generating') {
     return (
       <Card className="glass-card overflow-hidden border-primary/20">
-        <CardContent className="p-6 text-center space-y-4">
-          <div className="flex items-center justify-center gap-2">
+        <CardContent className="p-0">
+          <div className="px-4 py-3 border-b bg-muted/20 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Finanzierungsakte fertigstellen</h3>
+            <h3 className="text-base font-semibold">Finanzierungsakte fertigstellen</h3>
           </div>
-          <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            Basierend auf der aktuellen Selbstauskunft und dem Darlehensantrag kann die Finanzierung
-            für <span className="font-semibold text-foreground">{customerName}</span> beantragt werden.
-            Hier können Sie jetzt die Finanzierungsakte fertig erstellen.
-          </p>
-          <Button
-            size="lg"
-            disabled={!canGenerate || state === 'generating'}
-            onClick={handleGenerate}
-            className="gap-2"
-          >
-            {state === 'generating' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Wird angelegt...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Finanzierungsfall anlegen
-              </>
-            )}
-          </Button>
-          {!canGenerate && (
-            <p className="text-xs text-destructive">
-              Bitte füllen Sie mindestens Name, Darlehenssumme und Objektadresse aus.
-            </p>
-          )}
+          <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x">
+            {/* Left: Description + Button */}
+            <div className="lg:col-span-3 p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Wenn Sie die Finanzierungsakte anlegen, entsteht der Datenraum für{' '}
+                <span className="font-semibold text-foreground">{customerName}</span>.
+                Dort können Sie dann die Objektunterlagen und Finanzierungsunterlagen
+                vervollständigen oder erfassen. Die Akte kann erst eingereicht werden,
+                wenn alle erforderlichen Unterlagen vorhanden sind.
+              </p>
+              <Button
+                size="lg"
+                disabled={!canGenerate || state === 'generating'}
+                onClick={handleGenerate}
+                className="gap-2"
+              >
+                {state === 'generating' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Wird angelegt...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Finanzierungsfall anlegen
+                  </>
+                )}
+              </Button>
+              {!canGenerate && (
+                <p className="text-xs text-destructive">
+                  Bitte füllen Sie mindestens Name, Darlehenssumme und Objektadresse aus.
+                </p>
+              )}
+            </div>
+            {/* Right: Document readiness preview (all red) */}
+            <div className="lg:col-span-2 p-4">
+              <h4 className="text-sm font-semibold mb-3">Datenraum (Vorschau)</h4>
+              <DocumentReadinessIndicator
+                employmentType={employmentType}
+                compact
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
