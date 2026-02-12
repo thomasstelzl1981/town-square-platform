@@ -52,44 +52,47 @@ import {
   type ModuleDefinition,
 } from '@/manifests/routesManifest';
 
-// Zone 1: Admin Portal Components
+// Zone 1: Admin Portal Components (all lazy-loaded — admin-only, behind auth gates)
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import Dashboard from '@/pages/admin/Dashboard';
-import Organizations from '@/pages/admin/Organizations';
-import OrganizationDetail from '@/pages/admin/OrganizationDetail';
-import Users from '@/pages/admin/Users';
-import Delegations from '@/pages/admin/Delegations';
-import Support from '@/pages/admin/Support';
-import MasterContacts from '@/pages/admin/MasterContacts';
-import RolesManagement from '@/pages/admin/RolesManagement';
-import TileCatalog from '@/pages/admin/TileCatalog';
-import Integrations from '@/pages/admin/Integrations';
-import CommunicationHub from '@/pages/admin/CommunicationHub';
-import Oversight from '@/pages/admin/Oversight';
-import AuditLog from '@/pages/admin/AuditLog';
+const Dashboard = React.lazy(() => import('@/pages/admin/Dashboard'));
+const Organizations = React.lazy(() => import('@/pages/admin/Organizations'));
+const OrganizationDetail = React.lazy(() => import('@/pages/admin/OrganizationDetail'));
+const Users = React.lazy(() => import('@/pages/admin/Users'));
+const Delegations = React.lazy(() => import('@/pages/admin/Delegations'));
+const Support = React.lazy(() => import('@/pages/admin/Support'));
+const MasterContacts = React.lazy(() => import('@/pages/admin/MasterContacts'));
+const RolesManagement = React.lazy(() => import('@/pages/admin/RolesManagement'));
+const TileCatalog = React.lazy(() => import('@/pages/admin/TileCatalog'));
+const Integrations = React.lazy(() => import('@/pages/admin/Integrations'));
+const CommunicationHub = React.lazy(() => import('@/pages/admin/CommunicationHub'));
+const Oversight = React.lazy(() => import('@/pages/admin/Oversight'));
+const AuditLog = React.lazy(() => import('@/pages/admin/AuditLog'));
 const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
-import AdminKiOfficeEmail from '@/pages/admin/ki-office/AdminKiOfficeEmail';
-import AdminKiOfficeKontakte from '@/pages/admin/ki-office/AdminKiOfficeKontakte';
-import AdminKiOfficeDashboard from '@/pages/admin/ki-office/AdminKiOfficeDashboard';
-import AdminKiOfficeSequenzen from '@/pages/admin/ki-office/AdminKiOfficeSequenzen';
-import AdminKiOfficeTemplates from '@/pages/admin/ki-office/AdminKiOfficeTemplates';
-import AdminKiOfficeRecherche from '@/pages/admin/ki-office/AdminKiOfficeRecherche';
+const AdminKiOfficeEmail = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeEmail'));
+const AdminKiOfficeKontakte = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeKontakte'));
+const AdminKiOfficeDashboard = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeDashboard'));
+const AdminKiOfficeSequenzen = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeSequenzen'));
+const AdminKiOfficeTemplates = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeTemplates'));
+const AdminKiOfficeRecherche = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeRecherche'));
 
-import Agreements from '@/pages/admin/Agreements';
-import Inbox from '@/pages/admin/Inbox';
-import LeadPool from '@/pages/admin/LeadPool';
-import PartnerVerification from '@/pages/admin/PartnerVerification';
-import CommissionApproval from '@/pages/admin/CommissionApproval';
-import MasterTemplates from '@/pages/admin/MasterTemplates';
-import MasterTemplatesImmobilienakte from '@/pages/admin/MasterTemplatesImmobilienakte';
-import MasterTemplatesSelbstauskunft from '@/pages/admin/MasterTemplatesSelbstauskunft';
-import MasterTemplatesProjektakte from '@/pages/admin/MasterTemplatesProjektakte';
-import MasterTemplatesFahrzeugakte from '@/pages/admin/MasterTemplatesFahrzeugakte';
-import MasterTemplatesPhotovoltaikakte from '@/pages/admin/MasterTemplatesPhotovoltaikakte';
-import MasterTemplatesFinanzierungsakte from '@/pages/admin/MasterTemplatesFinanzierungsakte';
-import AdminFutureRoomLayout from '@/pages/admin/futureroom/FutureRoomLayout';
-import { AdminStubPage } from '@/pages/admin/stub';
-import { SalesDesk, FinanceDesk, Acquiary, Agents } from '@/pages/admin/desks';
+const Agreements = React.lazy(() => import('@/pages/admin/Agreements'));
+const Inbox = React.lazy(() => import('@/pages/admin/Inbox'));
+const LeadPool = React.lazy(() => import('@/pages/admin/LeadPool'));
+const PartnerVerification = React.lazy(() => import('@/pages/admin/PartnerVerification'));
+const CommissionApproval = React.lazy(() => import('@/pages/admin/CommissionApproval'));
+const MasterTemplates = React.lazy(() => import('@/pages/admin/MasterTemplates'));
+const MasterTemplatesImmobilienakte = React.lazy(() => import('@/pages/admin/MasterTemplatesImmobilienakte'));
+const MasterTemplatesSelbstauskunft = React.lazy(() => import('@/pages/admin/MasterTemplatesSelbstauskunft'));
+const MasterTemplatesProjektakte = React.lazy(() => import('@/pages/admin/MasterTemplatesProjektakte'));
+const MasterTemplatesFahrzeugakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFahrzeugakte'));
+const MasterTemplatesPhotovoltaikakte = React.lazy(() => import('@/pages/admin/MasterTemplatesPhotovoltaikakte'));
+const MasterTemplatesFinanzierungsakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFinanzierungsakte'));
+const AdminFutureRoomLayout = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomLayout'));
+const AdminStubPage = React.lazy(() => import('@/pages/admin/stub').then(m => ({ default: m.AdminStubPage })));
+const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.SalesDesk })));
+const FinanceDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.FinanceDesk })));
+const Acquiary = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Acquiary })));
+const Agents = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Agents })));
 
 // Zone 2: User Portal Layout & Dashboard
 import { PortalLayout } from '@/components/portal/PortalLayout';
@@ -197,17 +200,15 @@ const LoadingFallback = () => (
 // Component Map for Zone 1
 // =============================================================================
 
-// Armstrong Console Components (Zone 1 Governance)
-import {
-  ArmstrongDashboard,
-  ArmstrongActions,
-  ArmstrongLogs,
-  ArmstrongKnowledge,
-  ArmstrongBilling,
-  ArmstrongPolicies,
-  ArmstrongTestHarness,
-} from '@/pages/admin/armstrong';
-import ArmstrongIntegrations from '@/pages/admin/armstrong/ArmstrongIntegrations';
+// Armstrong Console Components (Zone 1 Governance — lazy loaded)
+const ArmstrongDashboard = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongDashboard })));
+const ArmstrongActions = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongActions })));
+const ArmstrongLogs = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongLogs })));
+const ArmstrongKnowledge = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongKnowledge })));
+const ArmstrongBilling = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongBilling })));
+const ArmstrongPolicies = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongPolicies })));
+const ArmstrongTestHarness = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongTestHarness })));
+const ArmstrongIntegrations = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongIntegrations'));
 
 const adminComponentMap: Record<string, React.ComponentType> = {
   Dashboard,
