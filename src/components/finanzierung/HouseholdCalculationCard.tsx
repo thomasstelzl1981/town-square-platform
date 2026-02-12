@@ -3,7 +3,21 @@
  * 
  * Side-by-side: Income (left) | Expenses (right) like a bookkeeping T-account.
  * All fields always visible and editable. "Berechnen" populates from data.
+ *
+ * ──────────────────────────────────────────────────────────────────────
+ * BERECHNUNGSMATRIX (CALC_MATRIX)
+ * ──────────────────────────────────────────────────────────────────────
+ * Dokumentiert, welche Felder aus welcher Quelle befüllt werden und
+ * welche Sonderregeln gelten, wenn der "Berechnen"-Button gedrückt wird.
+ *
+ * Quellen:
+ *   AS1 = Selbstauskunft Antragsteller 1 (formData)
+ *   AS2 = Selbstauskunft Antragsteller 2 (coFormData)
+ *   CALC = Finanzierungsrechner (calcData)
+ *   OBJ  = Finanzierungsobjekt (rentalIncome, livingArea, usage)
+ * ──────────────────────────────────────────────────────────────────────
  */
+
 import * as React from 'react';
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +26,49 @@ import { Button } from '@/components/ui/button';
 import { Calculator, CheckCircle2, XCircle, Info } from 'lucide-react';
 import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { CalcData } from './FinanceCalculatorCard';
+
+// ─── Berechnungsmatrix ───────────────────────────────────────────────
+// Jeder Eintrag beschreibt: UI-Feld → Datenquelle → Berechnungsregel
+// Diese Matrix wird von handleCalculate() ausgewertet.
+// ─────────────────────────────────────────────────────────────────────
+interface CalcMatrixEntry {
+  /** Feld-Key in HHState */
+  field: keyof typeof EMPTY_STATE;
+  /** Menschenlesbares Label */
+  label: string;
+  /** Spalte: Einnahme oder Ausgabe */
+  side: 'income' | 'expense';
+  /** Datenquelle (AS1/AS2/CALC/OBJ) */
+  source: string;
+  /** Berechnungsregel / Formel */
+  rule: string;
+  /** Bedingung, wann das Feld befüllt wird */
+  condition?: string;
+}
+
+const CALC_MATRIX: CalcMatrixEntry[] = [
+  // ── Einnahmen (Bestand) ──
+  { field: 'netIncome',            label: 'Nettoeinkommen',            side: 'income', source: 'AS1.net_income_monthly + AS2.net_income_monthly',                rule: 'Summe beider Antragsteller' },
+  { field: 'selfEmployedIncome',   label: 'Selbstständige Tätigkeit',  side: 'income', source: 'AS1.self_employed_income_monthly + AS2.self_employed_income_monthly', rule: 'Summe beider Antragsteller' },
+  { field: 'sideJobIncome',        label: 'Nebentätigkeit',            side: 'income', source: 'AS1.side_job_income_monthly + AS2.side_job_income_monthly',      rule: 'Summe beider Antragsteller' },
+  { field: 'existingRentalIncome', label: 'Mieteinnahmen (bestehend)', side: 'income', source: 'AS1.rental_income_monthly + AS2.rental_income_monthly',          rule: 'Summe beider Antragsteller' },
+  { field: 'childBenefit',         label: 'Kindergeld',                side: 'income', source: 'AS1.child_benefit_monthly + AS2.child_benefit_monthly',           rule: 'Summe beider Antragsteller' },
+  { field: 'alimonyIncome',        label: 'Unterhaltseinnahmen',       side: 'income', source: 'AS1.alimony_income_monthly + AS2.alimony_income_monthly',         rule: 'Summe beider Antragsteller' },
+  { field: 'otherIncome',          label: 'Sonstiges',                 side: 'income', source: 'AS1.other_regular_income_monthly + AS2.other_regular_income_monthly', rule: 'Summe beider Antragsteller' },
+  // ── Einnahmen (Neue Finanzierung) ──
+  { field: 'newRentalIncome',      label: 'Mieteinnahmen (neu)',       side: 'income', source: 'OBJ.rentalIncome',                                               rule: 'Kaltmiete des neuen Objekts', condition: 'Nur bei Vermietung (usage=vermietung)' },
+  { field: 'taxBenefit',           label: 'Steuervorteil (KA)',        side: 'income', source: 'CALC.loanAmount × CALC.interestRate × 0.42 / 12',                rule: '42% Grenzsteuersatz auf Zinsen p.a. / 12 Monate', condition: 'Nur bei Vermietung' },
+  // ── Ausgaben (Bestand) ──
+  { field: 'livingExpenses',       label: 'Lebenshaltungskosten',      side: 'expense', source: 'AS1.living_expenses_monthly + AS2.living_expenses_monthly',       rule: 'Summe beider Antragsteller' },
+  { field: 'currentRent',          label: 'Aktuelle Warmmiete',        side: 'expense', source: 'AS1.current_rent_monthly + AS2.current_rent_monthly',             rule: 'Summe beider Antragsteller', condition: 'Bei Eigennutzung → 0 (Warmmiete entfällt)' },
+  { field: 'healthInsurance',      label: 'Priv. Krankenversicherung', side: 'expense', source: 'AS1.health_insurance_monthly + AS2.health_insurance_monthly',     rule: 'Summe beider Antragsteller' },
+  { field: 'childSupport',         label: 'Unterhaltsverpflichtungen', side: 'expense', source: 'AS1.child_support_amount_monthly + AS2.child_support_amount_monthly', rule: 'Summe beider Antragsteller' },
+  { field: 'carLeasing',           label: 'Leasing (Kfz)',             side: 'expense', source: 'AS1.car_leasing_monthly + AS2.car_leasing_monthly',               rule: 'Summe beider Antragsteller' },
+  { field: 'otherFixedCosts',      label: 'Sonstige Fixkosten',        side: 'expense', source: 'AS1.other_fixed_costs_monthly + AS2.other_fixed_costs_monthly',   rule: 'Summe beider Antragsteller' },
+  // ── Ausgaben (Neue Finanzierung) ──
+  { field: 'newLoanRate',          label: 'Neue Darlehensrate',        side: 'expense', source: 'CALC.monthlyRate',                                                rule: 'Annuität aus Finanzierungsrechner' },
+  { field: 'utilityFiction',       label: 'Nebenkosten (3 €/qm)',      side: 'expense', source: 'OBJ.livingArea × 3',                                             rule: 'Bewirtschaftungskosten-Pauschale', condition: 'Nur bei Eigennutzung' },
+];
 
 interface HouseholdCalculationCardProps {
   formData: ApplicantFormData;
@@ -200,11 +257,6 @@ export default function HouseholdCalculationCard({
             <Row label="Kindergeld">{numInput('childBenefit')}</Row>
             <Row label="Unterhaltseinnahmen">{numInput('alimonyIncome')}</Row>
             <Row label="Sonstiges">{numInput('otherIncome')}</Row>
-
-            {/* Spacer to align with expenses side */}
-            <div className="border-b py-1 px-3 invisible">
-              <span className="text-xs">&nbsp;</span>
-            </div>
 
             <SectionHeader title="Neue Finanzierung" variant="financing" />
             <Row label="Mieteinnahmen (neu)" highlight>{numInput('newRentalIncome')}</Row>
