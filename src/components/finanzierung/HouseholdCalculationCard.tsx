@@ -161,16 +161,31 @@ export default function HouseholdCalculationCard({
     <Card className="glass-card overflow-hidden">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="px-5 py-3 border-b bg-muted/20">
-          <div className="flex items-center gap-2">
-            <Calculator className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-base font-semibold uppercase tracking-wide">
-              Haushaltsrechnung inkl. Finanzierungsobjekt
-            </h3>
+        <div className="px-5 py-3 border-b bg-muted/20 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-base font-semibold uppercase tracking-wide">
+                Haushaltsrechnung inkl. Finanzierungsobjekt
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Simulation der monatlichen Einnahmen und Ausgaben nach Abschluss der neuen Finanzierung
+            </p>
+            {isOwnerOccupied && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Info className="h-3 w-3" /> Bei Eigennutzung entfällt die Warmmiete. Nebenkosten: 3 €/qm/Monat.
+              </p>
+            )}
+            {isInvestment && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Info className="h-3 w-3" /> Steuervorteil geschätzt mit 42% Grenzsteuersatz.
+              </p>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Simulation der monatlichen Einnahmen und Ausgaben nach Abschluss der neuen Finanzierung
-          </p>
+          <Button onClick={handleCalculate} variant="outline" size="sm" className="gap-2 text-xs shrink-0">
+            <Calculator className="h-3.5 w-3.5" /> Berechnen
+          </Button>
         </div>
 
         {/* T-Konto: two columns side by side */}
@@ -250,22 +265,6 @@ export default function HouseholdCalculationCard({
           </div>
         </div>
 
-        {/* Info + Button */}
-        <div className="px-5 py-3 border-t flex items-center gap-3 flex-wrap">
-          <Button onClick={handleCalculate} variant="outline" size="sm" className="gap-2 text-xs">
-            <Calculator className="h-3.5 w-3.5" /> Haushaltsrechnung berechnen
-          </Button>
-          {isOwnerOccupied && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Info className="h-3 w-3" /> Bei Eigennutzung entfällt die Warmmiete. Nebenkosten: 3 €/qm/Monat.
-            </p>
-          )}
-          {isInvestment && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Info className="h-3 w-3" /> Steuervorteil geschätzt mit 42% Grenzsteuersatz.
-            </p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );
