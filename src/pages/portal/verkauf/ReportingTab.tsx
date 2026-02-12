@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -162,11 +164,8 @@ const ReportingTab = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">REPORTING</h1>
-        <p className="text-muted-foreground mt-1">Inserate-Performance und Kennzahlen</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Reporting" description="Inserate-Performance und Kennzahlen" />
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -261,7 +260,7 @@ const ReportingTab = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 };
 

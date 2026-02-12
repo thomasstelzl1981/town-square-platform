@@ -7,6 +7,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import AnfrageFormV2 from '@/components/finanzierung/AnfrageFormV2';
+import { PageShell } from '@/components/shared/PageShell';
 
 export default function AnfrageDetailPage() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -23,7 +24,7 @@ export default function AnfrageDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {/* Back Navigation */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -38,6 +39,6 @@ export default function AnfrageDetailPage() {
 
       {/* The Form */}
       <AnfrageFormV2 requestId={requestId} />
-    </div>
+    </PageShell>
   );
 }

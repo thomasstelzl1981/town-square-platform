@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -217,11 +219,8 @@ const AnfragenTab = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">ANFRAGEN</h1>
-        <p className="text-muted-foreground mt-1">Kaufanfragen verwalten und qualifizieren</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Anfragen" description="Kaufanfragen verwalten und qualifizieren" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card 
           className={`cursor-pointer transition-colors ${statusFilter === 'new' ? 'border-primary' : 'hover:border-primary/50'}`} 
@@ -314,7 +313,7 @@ const AnfragenTab = () => {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 };
 

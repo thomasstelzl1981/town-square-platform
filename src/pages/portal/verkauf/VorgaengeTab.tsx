@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -289,11 +291,8 @@ const VorgaengeTab = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">VORGÄNGE</h1>
-        <p className="text-muted-foreground mt-1">Reservierungen und Transaktionen</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Vorgänge" description="Reservierungen und Transaktionen" />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="reservations">
@@ -350,7 +349,7 @@ const VorgaengeTab = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 };
 

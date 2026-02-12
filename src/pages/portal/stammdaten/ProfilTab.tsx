@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Mail, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -268,11 +270,9 @@ export function ProfilTab() {
     .toUpperCase() || 'U';
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-7xl mx-auto px-4 py-6 md:px-6 pb-20">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight uppercase">STAMMDATEN</h1>
-        <p className="text-muted-foreground mt-1">Ihr persönliches Profil und Kontaktdaten</p>
-      </div>
+    <PageShell>
+    <form onSubmit={handleSubmit} className="space-y-6 pb-20">
+      <ModulePageHeader title="Stammdaten" description="Ihr persönliches Profil und Kontaktdaten" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ── Persönliche Daten ── */}
         <ProfileWidget icon={User} title="Persönliche Daten" description="Profilbild, Name und E-Mail">
@@ -441,6 +441,7 @@ export function ProfilTab() {
         </div>
       </div>
     </form>
+    </PageShell>
   );
 }
 

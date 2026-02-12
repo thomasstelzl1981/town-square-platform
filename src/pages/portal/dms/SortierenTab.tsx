@@ -19,6 +19,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Cpu, Plus, Pencil, Copy, Trash2, X, AlertTriangle, Loader2, LayoutGrid } from 'lucide-react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { toast } from 'sonner';
 
 // ── Types ──
@@ -280,7 +282,7 @@ export function SortierenTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {/* Global Gate Banner */}
       {!aiEnabled && (
         <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
@@ -295,11 +297,7 @@ export function SortierenTab() {
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Sortieren</h1>
-        <p className="text-sm text-muted-foreground mt-1">Erstelle Sortierkacheln. Diese erzeugen Vorschläge im Posteingang.</p>
-      </div>
+      <ModulePageHeader title="Sortieren" description="Erstelle Sortierkacheln. Diese erzeugen Vorschläge im Posteingang." />
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -480,6 +478,6 @@ export function SortierenTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageShell>
   );
 }

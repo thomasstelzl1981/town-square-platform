@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,11 +126,8 @@ const EinstellungenTab = () => {
     setter(value);
     setHasChanges(true);
   };
-  return <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">EINSTELLUNGEN</h1>
-        <p className="text-muted-foreground mt-1">Premium, Automatisierung und Kontoanbindung</p>
-      </div>
+  return <PageShell>
+      <ModulePageHeader title="Einstellungen" description="Premium, Automatisierung und Kontoanbindung" />
       {/* Premium Status */}
       <Card className="glass-card">
         <CardHeader>
@@ -338,6 +337,6 @@ const EinstellungenTab = () => {
           </Button>
         </CardContent>
       </Card>
-    </div>;
+    </PageShell>;
 };
 export default EinstellungenTab;

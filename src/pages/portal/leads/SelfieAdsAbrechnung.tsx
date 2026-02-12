@@ -5,14 +5,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { CreditCard } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function SelfieAdsAbrechnung() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Abrechnung</h1>
-        <p className="text-muted-foreground mt-1">Zahlungen und Rechnungen für Selfie Ads Mandate</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Abrechnung" description="Zahlungen und Rechnungen für Selfie Ads Mandate" />
 
       <Card className="border-dashed">
         <CardContent className="pt-6">
@@ -23,6 +22,6 @@ export default function SelfieAdsAbrechnung() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

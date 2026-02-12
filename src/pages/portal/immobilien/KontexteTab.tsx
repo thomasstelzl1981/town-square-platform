@@ -16,6 +16,8 @@ import { CreateContextDialog } from '@/components/shared';
 import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
 import { calculateTax, TaxAssessmentType } from '@/lib/taxCalculator';
 import { toast } from 'sonner';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 interface LandlordContext {
   id: string;
@@ -845,14 +847,8 @@ export function KontexteTab() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">Vermietereinheiten</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Verwalten Sie Ihre steuerlichen Kontexte für die Immobilienbewertung
-        </p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Vermietereinheiten" description="Verwalten Sie Ihre steuerlichen Kontexte für die Immobilienbewertung" />
 
       {/* Context Cards Grid */}
       {isLoading ? (
@@ -922,6 +918,6 @@ export function KontexteTab() {
           contextName={assignerContext.name}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

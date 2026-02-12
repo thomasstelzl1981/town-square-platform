@@ -5,6 +5,8 @@
  * No bank submission — customer-side data capture only.
  */
 import * as React from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useRef, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -108,13 +110,8 @@ export default function AnfrageTab() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsanfrage</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch
-        </p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="Finanzierungsanfrage" description="Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch" />
 
       {/* Top row: Magic Intake + Kaufy Search */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -229,6 +226,6 @@ export default function AnfrageTab() {
       >
         <Save className="h-4 w-4" /> Zwischenspeichern
       </Button>
-    </div>
+    </PageShell>
   );
 }
