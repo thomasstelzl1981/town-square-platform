@@ -1,108 +1,116 @@
 
 
-# Implementierungsplan: Audit-Massnahmen (ohne MOD-18)
+# Audit-Abarbeitung: Phasenplan mit Tracking
 
-## Uebersicht
+## Status nach AP-1 bis AP-4 (erledigt)
+- Console.log-Bereinigung: erledigt
+- PageShell-Migration ShopTab/BestellungenTab: erledigt
+- MarketingTab.tsx deprecated: erledigt
+- Kaufy Expose-Fallback: erledigt
 
-Basierend auf dem Komplett-Audit werden alle identifizierten Probleme in 4 Arbeitspakete (AP) aufgeteilt, priorisiert nach Schwere.
-
----
-
-## AP-1: Code-Hygiene — Console.log-Reste entfernen (P1/P2)
-
-**6 Dateien, ~10 Minuten**
-
-| Datei | Stelle | Aktion |
-|-------|--------|--------|
-| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 24: `console.log('Analyse')` | Ersetzen durch `toast.info('Finanzanalyse wird vorbereitet...')` |
-| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 48: `console.log('Report')` | Ersetzen durch `toast.info('Report-Generator wird vorbereitet...')` |
-| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 68: `console.log('Szenario')` | Ersetzen durch `toast.info('Szenario-Editor wird vorbereitet...')` |
-| `src/pages/portal/CommunicationProPage.tsx` | Zeile 29: `console.log('Agent')` | Ersetzen durch `toast.info('Agenten-Konfiguration wird vorbereitet...')` |
-| `src/pages/portal/office/WidgetsTab.tsx` | Zeile 110: `console.log('Repeat widget:', widgetId)` | Ersetzen durch `toast.info('Widget wird wiederholt')` |
-| `src/pages/portal/ServicesPage.tsx` | Zeile 395: `console.log('Neue Bestellung')` | Ersetzen durch `toast.info('Bestellformular wird vorbereitet...')` |
-
-Alle 6 Dateien erhalten ggf. einen `import { toast } from 'sonner'` falls noch nicht vorhanden.
+## Verbleibende Arbeitspakete: 5 Phasen
 
 ---
 
-## AP-2: Layout-Konsistenz — PageShell-Migration (P1)
+### Phase 5: MOD-08 Dynamic Routes in portalDynamicComponentMap
 
-### 2a) ShopTab in ServicesPage.tsx
+**Problem:** Die Dynamic Routes (MandatCreateWizard, MandatDetail, InvestmentExposePage) sind im routesManifest definiert, fehlen aber in `portalDynamicComponentMap` (Zeile 323-331 in ManifestRouter.tsx).
 
-Die `ShopTab`-Komponente (Zeile 123) nutzt noch `<div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">` statt `<PageShell>`.
+**Befund nach Pruefung:** KEIN PROBLEM. MOD-08 handhabt seine Dynamic Routes intern in `InvestmentsPage.tsx` (Zeile 21-28) mit eigenen `<Route>`-Definitionen. Die `portalDynamicComponentMap` wird nur fuer Module genutzt, die das generische ModulePage-Pattern verwenden. MOD-08 hat einen eigenen Router.
 
-**Aenderung:**
-- Import `PageShell` und `ModulePageHeader` hinzufuegen
-- Container-div durch `<PageShell>` ersetzen
-- Statischen Header durch `<ModulePageHeader title="SHOPS" description="Einkaufen und Bestellen..." />` ersetzen
+**Aktion:** Keine Code-Aenderung noetig. Manifest-Kommentar ergaenzen, der klarstellt, dass MOD-08 Dynamic Routes intern handhabt (Dokumentations-Hygiene).
 
-### 2b) BestellungenTab in ServicesPage.tsx
-
-Die `BestellungenTab`-Komponente (Zeile 388) hat dasselbe Problem.
-
-**Aenderung:**
-- Container-div durch `<PageShell>` ersetzen
-- Header-div durch `<ModulePageHeader title="BESTELLUNGEN" description="..." actions={<Button>}` ersetzen
+**Dateien:** 1 (routesManifest.ts — nur Kommentar)
 
 ---
 
-## AP-3: Orphan-Datei klaeren — MarketingTab.tsx (P2)
+### Phase 6: Zone-1 Legacy-Bereinigung
 
-`src/pages/portal/projekte/MarketingTab.tsx` existiert als vollstaendig implementierte Komponente (244 Zeilen, Kaufy-Listings und Landingpage-Verwaltung), ist aber **nicht im routesManifest** und wird von keinem Router referenziert.
+**Problem 1:** FinanceDesk existiert als eigenstaendiger Desk (179 Zeilen), obwohl die Funktionalitaet vollstaendig im FutureRoom-Layout abgebildet ist. Die FinanceDesk-Unterseiten (Inbox, Berater, Zuweisung, Monitoring) zeigen nur EmptyStates und duplizieren die FutureRoom-Funktionalitaet.
 
-**Analyse:** Die Datei wurde wahrscheinlich durch die MOD-13 Umstrukturierung (4-Tile-Pattern: Dashboard, Projekte, Vertrieb, Landing Page) verwaist. Die Funktionalitaet (Kaufy-Toggle, Landingpage-Slug) ist teilweise in `VertriebTab` und `LandingPageTab` aufgegangen.
+**Aktion:** FinanceDesk-Dashboard so umbauen, dass es direkt auf FutureRoom verweist (Redirect oder Info-Banner "Finanzierungsmanagement wurde in FutureRoom konsolidiert"), statt hardcodierte KPI-Zahlen (5, 23, 8, 64%) anzuzeigen, die nicht aus der DB stammen.
 
-**Aktion:** MarketingTab.tsx als deprecated markieren mit einem Kommentar-Header. Keine Loeschung, da Funktionalitaet moeglicherweise spaeter in VertriebTab integriert wird.
+**Problem 2:** AdminStubPage wird korrekt als Fallback fuer nicht-implementierte Admin-Routen genutzt. Kein Handlungsbedarf — das Pattern ist korrekt.
 
----
-
-## AP-4: Kaufy Expose-Fallback (P2)
-
-`src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` zeigt bei nicht gefundenem Listing nur einen minimalen Text "Objekt nicht gefunden" mit einem "Zurueck zur Suche"-Button (Zeile 237-245).
-
-**Verbesserung:** Den Fallback-Zustand durch eine informativere Ansicht ersetzen:
-- Kaufy-Logo und Marken-Header beibehalten
-- Nachricht: "Dieses Objekt ist nicht mehr verfuegbar oder wurde deaktiviert."
-- CTA-Button: "Weitere Objekte entdecken" (Link zu /website/kaufy)
-- Sekundaerer Link: "Sie sind Verkaeufer? Projekt einstellen" (Link zu /website/kaufy/verkaeufer)
+**Dateien:** 1 (FinanceDesk.tsx)
 
 ---
 
-## Nicht im Scope (bewusst zurueckgestellt)
+### Phase 7: Zone-3 Verbesserungen
 
-| Thema | Begruendung |
-|-------|-------------|
-| MOD-18 Finanzanalyse | Per Anweisung zurueckgestellt |
-| MOD-14 Agenten echte Funktionalitaet | Erfordert Armstrong-Agent-Architektur-Entscheidung (eigener Sprint) |
-| MOD-14 Social-Tile Pruefung | Bereits implementiert (SocialPage mit internem Router) |
-| FutureRoom Karriere Bewerbungsformular | Zone-3-Feature, separater Sprint |
-| End-to-End Tests | Strategisch, eigener Sprint |
-| Performance-Audit Edge Functions | Strategisch, eigener Sprint |
-| Mobile Deep-Test | Strategisch, eigener Sprint |
+**7a) SoT Demo-Seite**
+Die Demo-Seite ist BEREITS implementiert (287 Zeilen) mit:
+- 6 Demo-Module mit Deep-Links ins Portal
+- Desktop/Mobile Vorschau-Switcher
+- "Demo ansehen" und "Account erstellen" CTAs
+- Benefits-Vergleich (Demo vs. Account)
+
+**Befund:** Die Seite ist inhaltlich vollstaendig. KEIN Handlungsbedarf.
+
+**7b) FutureRoom Karriere-Seite**
+Bereits implementiert (203 Zeilen) mit Benefits, Rollenbeschreibung und CTA. Was fehlt: ein konkretes **Bewerbungsformular** (Name, E-Mail, Telefon, §34i-Status, Erfahrung). Derzeit nur ein Link-Button ohne Formular.
+
+**Aktion:** Inline-Bewerbungsformular mit 5-6 Feldern und toast-Feedback ergaenzen.
+
+**Dateien:** 1 (FutureRoomKarriere.tsx)
 
 ---
 
-## Technische Details
+### Phase 8: FinanceDesk KPI-Datenreste entfernen
 
-### Betroffene Dateien (8 Stueck)
+**Problem:** FinanceDesk.tsx zeigt hardcodierte Zahlen (5 Anfragen, 23 Faelle, 8 Berater, 64% Abschlussrate) die nicht aus der Datenbank stammen. Das widerspricht dem Showcase-Readiness-Standard ("keine Datenreste").
 
-1. `src/pages/portal/FinanzanalysePage.tsx` — 3x console.log durch toast ersetzen
-2. `src/pages/portal/CommunicationProPage.tsx` — 1x console.log durch toast ersetzen
-3. `src/pages/portal/office/WidgetsTab.tsx` — 1x console.log durch toast ersetzen
-4. `src/pages/portal/ServicesPage.tsx` — 1x console.log durch toast ersetzen + PageShell-Migration (ShopTab + BestellungenTab)
-5. `src/pages/portal/projekte/MarketingTab.tsx` — Deprecated-Kommentar hinzufuegen
-6. `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` — Fallback-Ansicht verbessern
+**Aktion:** (wird zusammen mit Phase 6 umgesetzt) Die hardcodierten KPIs durch einen sauberen Redirect oder EmptyState ersetzen, der auf FutureRoom verweist.
 
-### Keine Datenbank-Aenderungen
+**Zusammenlegung:** Phase 8 wird in Phase 6 integriert.
 
-Alle Massnahmen sind rein Frontend-seitig. Keine Migrationen erforderlich.
+---
 
-### Erwartetes Ergebnis
+### Phase 9: FortbildungPage Header-Duplikation pruefen
 
-| Kategorie | Vorher | Nachher |
-|-----------|--------|---------|
-| Code-Hygiene | 7/10 | 9/10 |
-| UI-Konsistenz | 7/10 | 9/10 |
-| Zone 3 Websites | 8/10 | 8.5/10 |
-| Gesamt | 8.0/10 | 8.5/10 |
+**Problem (P3):** FortbildungPage umschliesst alle Tab-Routes in PageShell. Dadurch koennte der ModulePageHeader bei Tab-Wechsel redundant gerendert werden.
 
+**Aktion:** Pruefen, ob FortbildungPage den Header korrekt nur einmal rendert oder ob jeder Tab seinen eigenen Header hat. Falls Duplikation: Header in die aeussere Shell verschieben.
+
+**Dateien:** 1-2 (FortbildungPage.tsx, ggf. FortbildungTabContent.tsx)
+
+---
+
+## Zusammenfassung: 5 effektive Phasen
+
+| Phase | Thema | Aufwand | Dateien |
+|-------|-------|---------|---------|
+| 5 | MOD-08 Manifest-Kommentar | 2 Min | 1 |
+| 6 | FinanceDesk Konsolidierung + KPI-Bereinigung | 15 Min | 1 |
+| 7 | FutureRoom Karriere-Bewerbungsformular | 15 Min | 1 |
+| 8 | (in Phase 6 integriert) | — | — |
+| 9 | FortbildungPage Header-Pruefung | 10 Min | 1-2 |
+
+**Gesamt: 4 aktive Phasen, ~45 Minuten, 4-5 Dateien**
+
+Nach Abschluss sind alle identifizierten Audit-Punkte behoben (ausser MOD-18, bewusst zurueckgestellt) und der Showcase-Readiness-Standard ist durchgaengig erfuellt.
+
+## Mermaid-Tracking-Datei
+
+Es wird eine neue Datei `src/docs/audit-tracker.md` erstellt mit folgendem Mermaid-Diagramm:
+
+```text
+gantt
+    title Audit-Abarbeitung: System of a Town
+    dateFormat  YYYY-MM-DD
+    section Erledigt
+    AP-1 Console.log Bereinigung       :done, ap1, 2026-02-12, 1d
+    AP-2 PageShell Migration MOD-16    :done, ap2, 2026-02-12, 1d
+    AP-3 MarketingTab Deprecated       :done, ap3, 2026-02-12, 1d
+    AP-4 Kaufy Expose Fallback         :done, ap4, 2026-02-12, 1d
+    section Offen
+    Phase 5 MOD-08 Manifest-Kommentar  :active, p5, 2026-02-12, 1d
+    Phase 6 FinanceDesk Konsolidierung :p6, after p5, 1d
+    Phase 7 FutureRoom Bewerbungsformular :p7, after p5, 1d
+    Phase 9 FortbildungPage Header     :p9, after p6, 1d
+    section Zurueckgestellt
+    MOD-18 Finanzanalyse               :crit, m18, 2026-03-01, 14d
+    MOD-14 Agenten Armstrong           :crit, m14, 2026-03-01, 14d
+```
+
+Dies gibt uns ein visuelles Tracking-Board, das wir Phase fuer Phase abarbeiten.
