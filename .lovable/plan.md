@@ -1,48 +1,75 @@
 
 
-# Dokumentenerfassung nach Magic Intake nach oben verschieben
+# Einreichung: 4 eigenstaendige Kacheln
 
-## Idee
-
-Nach Aktivierung von Magic Intake wird die **GenerateCaseCard** (Dokumentenerfassung/Datenraum) nicht mehr unten angezeigt, sondern rueckt direkt unter die Magic Intake / Kaufy-Zeile — also UEBER Eckdaten und Finanzierungskalkulator. So hat der Nutzer sofort Zugriff auf den Datenraum, ohne scrollen zu muessen.
-
-## Umsetzung
-
-### Datei: `FMFinanzierungsakte.tsx`
-
-1. **Scroll-Logik entfernen**: Die `setTimeout`/`scrollIntoView`-Logik in `handleMagicIntakeCreated` (Zeilen 170-172) wird entfernt.
-
-2. **Bedingte Positionierung der GenerateCaseCard**: Die GenerateCaseCard wird an zwei moeglichen Stellen gerendert — gesteuert durch `magicIntakeResult`:
-
-   - **Wenn Magic Intake aktiviert**: GenerateCaseCard erscheint direkt nach der Magic Intake / Kaufy-Zeile (nach Zeile 235), also VOR den Eckdaten.
-   - **Wenn NICHT aktiviert**: GenerateCaseCard bleibt an ihrer bisherigen Position ganz unten (nach der Haushaltsrechnung).
-
-3. **Konkret**: Der bestehende `<div ref={generateCaseRef}>...</div>`-Block (Zeilen 369-391) wird in eine bedingte Logik verpackt:
+## Neue Struktur
 
 ```text
-Layout-Reihenfolge nach Magic Intake:
-
-+----------------------------------+
-| Magic Intake  |  Objekte Kaufy   |
-+----------------------------------+
-| GenerateCaseCard (Datenraum)     |  <-- NEU: hier wenn aktiviert
-+----------------------------------+
-| Eckdaten      |  Kalkulator      |
-+----------------------------------+
-| ... restliche Karten ...         |
-+----------------------------------+
++----------------------------------------------+
+| Fallauswahl (Case Widget Cards)              |
++----------------------------------------------+
+| Kachel 1: Finanzierungs-Expose               |
+|   (bleibt wie bisher)                         |
++----------------------------------------------+
+| Kachel 2: Bankauswahl & E-Mail-Einreichung   |
+|   - Oben: Bankauswahl (max. 4 Banken)        |
+|     - Zone-1-Kontaktbuch (Combobox)           |
+|     - KI-Vorschlaege (Platzhalter)            |
+|     - Manuelle Eingabe (Name + E-Mail)        |
+|   - Unten: E-Mail-Client (sofort sichtbar)    |
+|     - Pro ausgewaehlter Bank ein Entwurf      |
+|     - Vorausgefuellter Beispieltext           |
+|     - Anhaenge-Badges                         |
++----------------------------------------------+
+| Kachel 3: Status & Ergebnis                  |
+|   (eigene Kachel, bleibt funktional gleich)   |
++----------------------------------------------+
+| Kachel 4: API-Uebergabe (Europace)           |
+|   (eigene Kachel, herausgeloest aus Kachel 2) |
++----------------------------------------------+
 ```
 
-### Aenderungen im Detail
+## Aenderungen im Detail
 
-| Was | Wo | Aenderung |
-|---|---|---|
-| Scroll-Logik entfernen | `handleMagicIntakeCreated` | `setTimeout`-Block loeschen |
-| GenerateCaseCard oben rendern | Nach Zeile 235 | Bedingtes Rendering wenn `magicIntakeResult` vorhanden |
-| GenerateCaseCard unten ausblenden | Zeilen 369-391 | Nur rendern wenn `magicIntakeResult` NICHT vorhanden |
+### 1. Stepper entfernen
 
-### Keine weiteren Aenderungen
+Der bisherige 4-Step-Workflow-Stepper (`STEPS`-Array + `WorkflowStepper`-Komponente) wird entfernt, da die Kacheln jetzt eigenstaendig nebeneinander stehen und kein linearer Ablauf mehr suggeriert wird.
 
-- Keine Datenbank-Aenderungen
-- Keine neuen Dateien
-- Nur eine Datei betroffen: `FMFinanzierungsakte.tsx`
+### 2. Kachel 1: Expose (keine Aenderung)
+
+Bleibt exakt wie bisher.
+
+### 3. Kachel 2: Bankauswahl + E-Mail (zusammengefuehrt)
+
+Eine Kachel mit zwei Bereichen, getrennt durch einen Separator:
+
+**Oberer Bereich — Bankauswahl:**
+- Drei Quellen fuer Banken: Zone-1-Kontaktbuch (bestehender Hook `useFinanceBankContacts`), KI-Vorschlaege (Platzhalter-UI mit Badge "Coming soon"), manuelle Eingabe (Name + E-Mail + Button)
+- Limit auf maximal 4 Banken (statt bisher 3)
+- Ausgewaehlte Banken als Chips mit Entfernen-Button
+
+**Unterer Bereich — E-Mail-Client (immer sichtbar):**
+- Ohne Banken: Generischer Entwurf mit Platzhaltern als Vorschau
+- Mit Banken: Pro Bank ein editierbarer E-Mail-Entwurf (An, Betreff, Body)
+- Vorausgefuellter Beispieltext mit Eckdaten des Falls
+- Anhaenge-Badges (Finanzierungsakte.pdf, Datenraum-Link)
+- "Alle senden"-Button
+
+### 4. Kachel 3: Status & Ergebnis (eigene Kachel)
+
+Wird aus dem bisherigen Step 4 herausgeloest. Funktional identisch: Tabelle mit Einreichungs-Logs, Status-Dropdown, Bank-Auswahl und Archiv-Button. Steht jetzt als eigenstaendige Kachel.
+
+### 5. Kachel 4: Europace API-Uebergabe (eigene Kachel)
+
+Die bisherige "Externe Software"-Sektion wird aus Kachel 2 herausgeloest und als letzte eigenstaendige Kachel gerendert. Titel: "API-Uebergabe (Europace)". Inhalt: Software-Name-Feld + Uebergabe-Button.
+
+## Betroffene Datei
+
+| Datei | Aenderung |
+|---|---|
+| `FMEinreichung.tsx` | Stepper entfernen, Kachel 2 komplett neu (Bank + E-Mail kombiniert), Europace in eigene Kachel 4, Bank-Limit auf 4 erhoehen |
+
+## Keine Datenbank-Aenderungen
+
+Reine Frontend-Umstrukturierung. Alle Hooks und Tabellen existieren bereits.
+
