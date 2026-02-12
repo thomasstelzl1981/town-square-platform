@@ -71,7 +71,7 @@ function EditRow({ label, value, onChange, placeholder }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] items-center border-b py-1.5 px-1">
+    <div className="flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr] md:items-center border-b py-1.5 px-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
     </div>
@@ -430,7 +430,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Fälle in Bearbeitung
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-4">
           {activeCases.map(c => (
             <FinanceCaseCard
               key={c.id}

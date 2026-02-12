@@ -115,21 +115,21 @@ export default function FMFaelle({ cases, isLoading }: Props) {
       />
 
       {/* Filter Chips + Search */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex overflow-x-auto gap-1.5 pb-1 scrollbar-none md:flex-wrap md:pb-0">
           {FILTER_CHIPS.map(chip => (
             <Button
               key={chip.key}
               variant={activeFilter === chip.key ? 'default' : 'outline'}
               size="sm"
-              className="text-xs h-7 rounded-full"
+              className="text-xs h-7 rounded-full shrink-0"
               onClick={() => setActiveFilter(chip.key)}
             >
               {chip.label}
             </Button>
           ))}
         </div>
-        <div className="relative w-48 ml-auto">
+        <div className="relative w-full md:w-48 md:ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Suchen..."
@@ -149,58 +149,100 @@ export default function FMFaelle({ cases, isLoading }: Props) {
               <p className="text-sm font-medium">{search ? 'Keine Ergebnisse' : 'Keine Fälle vorhanden'}</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">ID</TableHead>
-                  <TableHead className="text-xs">Antragsteller</TableHead>
-                  <TableHead className="text-xs">Betrag</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs">Nächste Aktion</TableHead>
-                  <TableHead className="text-xs">Alter</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">ID</TableHead>
+                      <TableHead className="text-xs">Antragsteller</TableHead>
+                      <TableHead className="text-xs">Betrag</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Nächste Aktion</TableHead>
+                      <TableHead className="text-xs">Alter</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCases.map((c) => {
+                      const mandate = c.finance_mandates;
+                      const request = mandate?.finance_requests;
+                      const applicant = request?.applicant_profiles?.[0];
+                      const status = getRequestStatus(c);
+
+                      return (
+                        <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`${request?.id || c.id}`)}>
+                          <TableCell className="font-mono text-xs py-2">
+                            {mandate?.public_id || c.id.slice(0, 8)}
+                          </TableCell>
+                          <TableCell className="text-sm py-2">
+                            {applicant?.first_name && applicant?.last_name
+                              ? `${applicant.first_name} ${applicant.last_name}`
+                              : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm py-2">
+                            {applicant?.loan_amount_requested
+                              ? eurFormat.format(applicant.loan_amount_requested)
+                              : '—'}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <Badge variant={getStatusBadgeVariant(status)} className="text-[10px]">
+                              {getStatusLabel(status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <ArrowRight className="h-3 w-3" />
+                              {getNextAction(status)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-2">
+                            {formatDistanceToNow(new Date(c.created_at), { addSuffix: false, locale: de })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card Stack */}
+              <div className="flex flex-col gap-2 p-3 md:hidden">
                 {filteredCases.map((c) => {
                   const mandate = c.finance_mandates;
                   const request = mandate?.finance_requests;
                   const applicant = request?.applicant_profiles?.[0];
                   const status = getRequestStatus(c);
+                  const name = applicant?.first_name && applicant?.last_name
+                    ? `${applicant.first_name} ${applicant.last_name}` : '—';
 
                   return (
-                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`${request?.id || c.id}`)}>
-                      <TableCell className="font-mono text-xs py-2">
-                        {mandate?.public_id || c.id.slice(0, 8)}
-                      </TableCell>
-                      <TableCell className="text-sm py-2">
-                        {applicant?.first_name && applicant?.last_name
-                          ? `${applicant.first_name} ${applicant.last_name}`
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="text-sm py-2">
-                        {applicant?.loan_amount_requested
-                          ? eurFormat.format(applicant.loan_amount_requested)
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <Badge variant={getStatusBadgeVariant(status)} className="text-[10px]">
-                          {getStatusLabel(status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <ArrowRight className="h-3 w-3" />
-                          {getNextAction(status)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-2">
-                        {formatDistanceToNow(new Date(c.created_at), { addSuffix: false, locale: de })}
-                      </TableCell>
-                    </TableRow>
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate(`${request?.id || c.id}`)}
+                    >
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{name}</span>
+                          <Badge variant={getStatusBadgeVariant(status)} className="text-[10px] shrink-0">
+                            {getStatusLabel(status)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-mono">{mandate?.public_id || c.id.slice(0, 8)}</span>
+                          <span>·</span>
+                          <span>{applicant?.loan_amount_requested ? eurFormat.format(applicant.loan_amount_requested) : '—'}</span>
+                          <span>·</span>
+                          <span>{formatDistanceToNow(new Date(c.created_at), { addSuffix: false, locale: de })}</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

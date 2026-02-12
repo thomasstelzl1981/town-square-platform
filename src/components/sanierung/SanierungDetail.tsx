@@ -177,8 +177,8 @@ function SectionHeader({ number, title, description }: { number: number; title: 
 
 function TableRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] px-4 py-2 text-sm">
-      <span className="text-muted-foreground">{label}</span>
+    <div className="flex flex-col gap-0.5 px-4 py-2 text-sm md:grid md:grid-cols-[180px_1fr] md:gap-0">
+      <span className="text-muted-foreground text-xs md:text-sm">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
   );
