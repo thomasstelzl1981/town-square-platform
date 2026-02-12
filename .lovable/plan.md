@@ -1,55 +1,59 @@
 
 
-# Plan: FutureRoom Bonität-Wizard — Bonitäts-Vorcheck + Freies Durchklicken
+# Fix: Objekte aus Kaufy — 3-Zeilen-Design und Datenproblem
 
-## Kernprinzip
+## Fehleranalyse
 
-Der gesamte Wizard ist **frei durchklickbar** ohne Pflichtfeld-Blockaden. Der Nutzer kann sich alle Schritte ansehen, um vorab zu verstehen, welche Daten und Unterlagen benoetigt werden. Erst beim finalen "Absenden" wird geprueft, ob die Mindestangaben vorhanden sind.
+### Problem 1: Zu wenig Daten in der View
+Die View `v_public_listings` enthaelt aktuell nur **1 Listing** (Leipzig, Blochmannstrasse). Wenn man etwas anderes tippt, erscheint kein Dropdown und das 3-Zeilen-Design ist nicht sichtbar.
 
-## Wizard-Schritte (7 statt 6)
+### Problem 2: Karten-Design im Grundzustand
+Die Kaufy-Karte zeigt im Ausgangszustand nur:
+- 1 Suchfeld
+- 1 Button ("Objekt uebernehmen")
+
+Das ist zu spartanisch fuer eine professionelle Arbeitsumgebung. Es fehlt ein visueller Hinweis auf die Suchfunktion und das 3-Zeilen-Format.
+
+### Problem 3: Kein Zustand sichtbar ohne Eingabe
+Wenn die Datenbank-View nur wenige oder keine Listings enthaelt, bleibt die Karte komplett leer — der User sieht nie die 3-Zeilen-Struktur.
+
+## Reparaturvorschlag
+
+### Datei: `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
+
+**A) Sofort-Listing-Anzeige statt reiner Suche**
+
+Wenn der User das Suchfeld fokussiert (auch ohne Eingabe), werden die neuesten 5-8 Listings sofort angezeigt. Aktuell zeigt `filteredListings` nur Ergebnisse wenn `searchQuery.trim()` nicht leer ist (Zeile 132). Aenderung:
 
 ```text
-Kontakt → Objekt → Eckdaten → Kalkulation → Haushalt → Bonitatspruefung → Abschluss
+Vorher: if (!searchQuery.trim() || !listings) return [];
+Nachher: if (!listings) return [];
+         if (!searchQuery.trim()) return listings.slice(0, 8); // Zeige neueste
+         // ... dann Filter wie bisher
 ```
 
-### Navigationsregeln
+So sieht der User beim Klick in das Suchfeld sofort die verfuegbaren Objekte im 3-Zeilen-Format.
 
-- **"Weiter"-Button**: Immer aktiv, in jedem Schritt, auch ohne Eingaben
-- **"Zurueck"-Button**: Immer aktiv
-- **Bonitatspruefung-Schritt**: Der Button "Bonitatspruefung starten" ist optional — man kann auch ohne Pruefung weiterklicken
-- **Einzige Blockade**: Der finale "Finanzierung einreichen"-Button im Abschluss-Schritt ist nur aktiv, wenn:
-  1. Mindestens Kontaktdaten (Name + E-Mail) vorhanden sind
-  2. Die Bonitatspruefung durchgefuehrt wurde
+**B) Visuelles Upgrade der Karte**
 
-Falls Daten fehlen, zeigt der Abschluss-Schritt einen freundlichen Hinweis: "Bitte fuellen Sie die markierten Schritte aus, bevor Sie einreichen." — aber keine Blockade beim Navigieren.
+Die Karte bekommt einen dezenten Platzhalter-Bereich wenn keine Objekte ausgewaehlt sind:
+- Icon + Text: "Klicken Sie in das Suchfeld, um verfuegbare Objekte anzuzeigen"
+- Kleine Vorschau-Zeile mit Anzahl verfuegbarer Listings: "(X Objekte verfuegbar)"
 
-## Technische Umsetzung
+**C) Konsistenz: Beide Layouts (Standard + Split-View)**
 
-### Datei: `src/pages/zone3/futureroom/FutureRoomBonitat.tsx`
+Die Aenderungen werden an beiden Stellen identisch umgesetzt:
+- Standard-Layout: Zeilen 401-448
+- Split-View-Layout: Zeilen 257-304
 
-**1. Step-Array erweitern** (ca. Zeile 69-76):
-- Neuer Step `'bonitat'` mit Label "Pruefung" und Shield-Icon zwischen `'household'` und `'decision'`
+### Konkrete Code-Aenderungen
 
-**2. Neue States** (ca. Zeile 63-67):
-- `bonitaetChecked: boolean` (default: false)
-- `bonitaetResult: 'positive' | 'negative' | null` (default: null)
-
-**3. Navigation: Keine Validierung bei "Weiter"**:
-- `handleNext` klickt einfach zum naechsten Schritt weiter — ohne Pruefung ob Felder gefuellt sind
-- `handleBack` geht zurueck — ohne Warnung
-- Reset von `bonitaetChecked` wenn man zum Haushalt-Schritt zurueckgeht
-
-**4. Neuer Bonitat-Schritt**:
-- Zusammenfassung der eingegebenen Werte (Rate, Einkommen, KDF-Quote) — zeigt "—" wenn nichts eingegeben
-- Button "Bonitatspruefung starten" (optional, nicht blockierend)
-- Bei Klick: KDF-Auswertung (gruen/gelb/rot Banner)
-- "Weiter"-Button ist immer aktiv, unabhaengig ob Pruefung gemacht wurde
-
-**5. Abschluss-Schritt (letzter Schritt)**:
-- Zeigt Checkliste: welche Schritte ausgefuellt sind, welche noch offen
-- "Finanzierung einreichen"-Button: Nur aktiv wenn Pflichtdaten + Bonitatspruefung vorhanden
-- Klarer Hinweistext bei fehlenden Daten (kein Modal, kein Redirect — nur Info)
+1. **Zeile 131-140** (`filteredListings` Memo): Logik aendern — bei leerem Query die neuesten 8 Listings zurueckgeben statt leeres Array
+2. **Zeile 264-265 und 408-409** (Beschreibungstext): Ergaenzen um "(X Objekte verfuegbar)" Badge
+3. **Zeile 271 und 415** (`onFocus`-Handler): Dropdown immer oeffnen, auch ohne Query — `onFocus={() => setShowDropdown(true)}`
 
 ### Keine weiteren Dateien betroffen
-### Keine Datenbank-Aenderungen
+### Keine Datenbank-Aenderungen noetig
+
+Die Aenderung stellt sicher, dass das 3-Zeilen-Design sofort sichtbar wird, sobald der User ins Suchfeld klickt — auch ohne etwas einzutippen.
 
