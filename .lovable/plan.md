@@ -1,109 +1,128 @@
 
 
-# Performance-Optimierung: Bilder-Laden und Bundle-Größe
+# Performance-Analyse: Gesamtsystem
 
-## Problem-Zusammenfassung
+## Status nach letzter Optimierung
 
-Das Programm hat drei Haupt-Engpaesse:
+Die Massnahmen aus der vorherigen Runde sind umgesetzt:
+- Zentraler Image-Cache (`imageCache.ts`) mit TTL und Request-Deduplizierung: aktiv
+- Zone-3-Websites und Zone-2-Module: alle via `React.lazy()` geladen
+- `CachedImage`-Komponente mit Skeleton: vorhanden
+- `fetchPropertyImages` nutzt den Cache: ja
 
-1. **Bilder werden einzeln geladen** — jedes Bild erfordert einen eigenen HTTP-Request fuer eine Signed URL
-2. **Zone-3-Websites sind nicht lazy-loaded** — alle 5 Website-Bundles werden beim Start geladen
-3. **Kein Client-seitiger Bild-Cache** — beim Tab-Wechsel werden Bilder neu geladen
+Das bedeutet: Die groessten Engpaesse (fehlender Cache, fehlende Code-Splits) sind behoben.
 
-## Massnahme 1: Zentraler Image-Cache mit Signed-URL-Pooling
+---
 
-### Neue Datei: `src/lib/imageCache.ts`
+## Verbleibende Performance-Probleme
 
-Ein zentraler In-Memory-Cache fuer Signed URLs:
-- Speichert generierte URLs mit TTL (50 Minuten bei 60-Min-Signatur)
-- Verhindert doppelte Requests fuer dasselbe Bild
-- Dedupliziert parallele Anfragen (wenn 3 Komponenten gleichzeitig dasselbe Bild wollen, wird nur 1 Request gemacht)
-
-```text
-Cache-Logik:
-1. Anfrage fuer file_path kommt rein
-2. Ist URL im Cache und noch gueltig? → Sofort zurueckgeben
-3. Laeuft bereits ein Request fuer diesen Pfad? → Auf denselben Promise warten
-4. Sonst: Neuen Request starten, Ergebnis cachen
-```
-
-### Aenderung: `src/lib/fetchPropertyImages.ts`
-
-Statt direkte `createSignedUrl`-Aufrufe nutzt die Funktion den neuen Cache. Dadurch profitieren alle Stellen, die `fetchPropertyImages` verwenden, automatisch.
-
-### Aenderung: Alle 12 Stellen mit `createSignedUrl`
-
-Jede Stelle wird auf den zentralen Cache umgestellt:
-- `Kaufy2026Home.tsx`
-- `SucheTab.tsx`
-- `BeratungTab.tsx` (via fetchPropertyImages)
-- `ExposeImageGallery.tsx` (beide Versionen)
-- `PreviewView.tsx`
-- `KatalogDetailPage.tsx`
-- `ProfilTab.tsx`
-- `ExposeDocuments.tsx`
-
-## Massnahme 2: Zone-3-Websites lazy-loaden
-
-### Aenderung: `src/router/ManifestRouter.tsx`
-
-Alle Zone-3-Komponenten (ca. 25 Imports) von direktem `import` auf `React.lazy()` umstellen:
+### 1. QueryClient ohne globale Defaults (HOCH)
 
 ```text
-Vorher (direkt, laedt sofort):
-  import Kaufy2026Home from '@/pages/zone3/kaufy2026/Kaufy2026Home';
-  import MietyHome from '@/pages/zone3/miety/MietyHome';
-  import SotHome from '@/pages/zone3/sot/SotHome';
-  ... (25 weitere)
-
-Nachher (lazy, laedt bei Bedarf):
-  const Kaufy2026Home = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Home'));
-  const MietyHome = React.lazy(() => import('@/pages/zone3/miety/MietyHome'));
-  ... etc.
+Datei: src/App.tsx, Zeile 32
+const queryClient = new QueryClient();
 ```
 
-**Erwartete Ersparnis:** Mehrere hundert KB aus dem initialen Bundle entfernt. Zone-3-Seiten laden erst, wenn der User sie tatsaechlich besucht.
+Ohne globale `staleTime` und `gcTime` refetcht TanStack Query bei **jedem Tab-Wechsel und jedem Remount** alle Daten neu. Von 66+ Dateien mit `useQuery` haben nur 17 eine eigene `staleTime`. Die restlichen ~49 Queries refetchen bei jeder Navigation — das erzeugt hunderte unnoetige DB-Requests.
 
-## Massnahme 3: Bild-Komponente mit Skeleton-Loading
+**Loesung:** Globale Defaults setzen:
+```text
+new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,   // 5 Minuten
+      gcTime: 10 * 60 * 1000,     // 10 Minuten
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+})
+```
 
-### Neue Datei: `src/components/ui/cached-image.tsx`
+**Erwartete Wirkung:** 50-70% weniger DB-Requests bei Navigation zwischen Tabs/Modulen.
 
-Eine wiederverwendbare Bild-Komponente, die:
-- Den Image-Cache nutzt
-- Waehrend des Ladens ein Skeleton anzeigt (statt leerer Flaeche)
-- Bei Fehler ein Fallback-Icon zeigt
-- `loading="lazy"` fuer natives Browser-Lazy-Loading nutzt
+---
 
-## Auswirkungen
+### 2. ProfilTab: createSignedUrl ausserhalb des Caches (MITTEL)
 
 ```text
-Vorher:
-  10 Immobilien auf einer Seite = 10 Signed-URL-Requests + 10 Bild-Downloads
-  Seitenwechsel und zurueck = nochmal 10 + 10
-  Gesamt: 40 HTTP-Requests
-
-Nachher:
-  10 Immobilien = 10 Signed-URL-Requests (gecacht) + 10 Bild-Downloads
-  Seitenwechsel und zurueck = 0 neue Requests (aus Cache)
-  Gesamt: 20 HTTP-Requests (50% Reduktion)
+Datei: src/pages/portal/stammdaten/ProfilTab.tsx, Zeilen 216 + 233
 ```
 
-## Keine Datenbank-Aenderungen noetig
+Zwei Stellen nutzen noch direkt `createSignedUrl` mit 1-Jahres-TTL (31536000s) statt des zentralen Caches. Dies ist kein grosser Performance-Impact (nur beim Upload), aber bricht das Muster.
 
-## Betroffene Dateien
+**Loesung:** Nach dem Upload `getCachedSignedUrl` verwenden.
+
+---
+
+### 3. useUniversalUpload: createSignedUrl ausserhalb des Caches (NIEDRIG)
+
+```text
+Datei: src/hooks/useUniversalUpload.ts, Zeile 124
+```
+
+Gleiche Situation — direkter `createSignedUrl`-Aufruf, der den Cache umgeht.
+
+---
+
+### 4. Zone-1 Admin: ~20 direkte Imports (MITTEL)
+
+```text
+Datei: src/router/ManifestRouter.tsx, Zeilen 57-93
+```
+
+Waehrend Zone 2 und Zone 3 vollstaendig lazy-loaded sind, werden ~20 Zone-1-Admin-Komponenten (Dashboard, Organizations, Users, MasterTemplates, Armstrong-Suite etc.) noch direkt importiert. Da Zone 1 nur fuer Admins relevant ist, vergroessert dies das initiale Bundle fuer alle User.
+
+**Loesung:** Alle Zone-1-Imports auf `React.lazy()` umstellen, da sie hinter Auth-Gates liegen und nie beim ersten Laden gebraucht werden.
+
+---
+
+### 5. Schwere Bibliotheken ohne Lazy-Import (MITTEL)
+
+- **recharts**: In 18 Dateien direkt importiert. Die Bibliothek ist ~200KB gzipped. Da die meisten Charts in Tabs liegen, die nicht sofort sichtbar sind, koennten sie lazy-loaded werden.
+- **mermaid**: Installiert aber nur in wenigen Stellen genutzt — sollte nur bei Bedarf geladen werden.
+- **react-globe.gl**: Bereits lazy-loaded via dynamischem `import()` in `EarthGlobeCard.tsx` — gut.
+
+---
+
+### 6. Bilder: Kein Prefetching (NIEDRIG)
+
+Der aktuelle Cache ist reaktiv — er laedt URLs erst, wenn eine Komponente sie anfordert. Fuer Listen-Seiten (Kaufy Home, SucheTab) koennten Bild-URLs im Query zusammen mit den Listings vorgeladen werden, statt in einem zweiten Durchlauf.
+
+---
+
+## Zusammenfassung nach Prioritaet
+
+| Prio | Problem | Erwarteter Impact |
+|------|---------|-------------------|
+| HOCH | QueryClient ohne globale staleTime | 50-70% weniger DB-Requests |
+| MITTEL | Zone-1 Imports nicht lazy | ~100-200KB weniger im initialen Bundle |
+| MITTEL | recharts nicht lazy-loaded | ~200KB weniger fuer Nicht-Chart-Seiten |
+| NIEDRIG | ProfilTab/useUniversalUpload umgehen Cache | Konsistenz, minimaler Performance-Impact |
+| NIEDRIG | Kein Image-Prefetching | Geringfuegig schnellere Bildanzeige |
+
+## Empfohlene naechste Schritte
+
+### Schritt 1: QueryClient globale Defaults (groesster Hebel)
+
+Aenderung in `src/App.tsx`: `new QueryClient()` erhaelt `defaultOptions` mit `staleTime: 5 * 60 * 1000` und `refetchOnWindowFocus: false`.
+
+### Schritt 2: Zone-1-Imports lazy-loaden
+
+Alle ~20 direkten Imports in `ManifestRouter.tsx` Zeilen 57-93 auf `React.lazy()` umstellen.
+
+### Schritt 3: Verbleibende createSignedUrl-Stellen migrieren
+
+`ProfilTab.tsx` und `useUniversalUpload.ts` auf den zentralen Cache umstellen.
+
+### Keine Datenbank-Aenderungen noetig
+
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/imageCache.ts` | **NEU** — Zentraler Signed-URL-Cache |
-| `src/components/ui/cached-image.tsx` | **NEU** — Bild-Komponente mit Cache + Skeleton |
-| `src/lib/fetchPropertyImages.ts` | Cache-Integration |
-| `src/router/ManifestRouter.tsx` | Zone-3-Imports auf lazy umstellen |
-| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Cache nutzen |
-| `src/pages/portal/investments/SucheTab.tsx` | Cache nutzen |
-| `src/components/investment/ExposeImageGallery.tsx` | Cache nutzen |
-| `src/components/verkauf/ExposeImageGallery.tsx` | Cache nutzen |
-| `src/components/dms/views/PreviewView.tsx` | Cache nutzen |
-| `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx` | Cache nutzen |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Cache nutzen |
-| `src/components/investment/ExposeDocuments.tsx` | Cache nutzen |
+| `src/App.tsx` | QueryClient globale Defaults |
+| `src/router/ManifestRouter.tsx` | Zone-1 Lazy-Loading |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | Cache-Migration |
+| `src/hooks/useUniversalUpload.ts` | Cache-Migration |
 
