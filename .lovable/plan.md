@@ -1,75 +1,64 @@
 
 
-# Einreichung: 4 eigenstaendige Kacheln
+# KI-Bankensuche: Google Places Integration in Kachel 2
 
-## Neue Struktur
+## Ausgangslage
+
+Die Edge Function `sot-places-search` existiert bereits und nutzt die **Google Places API (New)** mit Header-basierter Authentifizierung. Sie wird aktuell im Sanierungsmodul (Handwerkersuche) erfolgreich eingesetzt. Die "Coming soon"-Platzhalter in der KI-Vorschlaege-Spalte koennen durch eine echte Suche ersetzt werden.
+
+## Aenderungen
+
+### Datei: `FMEinreichung.tsx`
+
+**1. Statische Platzhalter entfernen**
+
+Das hartcodierte `AI_SUGGESTIONS`-Array und das "Coming soon"-Badge werden entfernt.
+
+**2. Google Places Suche einbauen**
+
+- Beim Laden eines Falls wird automatisch eine Suche nach "Bank" + PLZ/Ort des Objekts ausgeloest (Radius: 50 km / 50000 m)
+- Die Suche ruft `supabase.functions.invoke('sot-places-search', { body: { query: 'Bank [PLZ Ort]', radius: 50000 } })` auf
+- Ergebnisse werden als klickbare Liste in der mittleren Spalte "KI-Vorschlaege" angezeigt
+- Jeder Eintrag zeigt: Name, Adresse, Telefon (falls vorhanden)
+- Beim Klick wird die Bank in die Auswahl uebernommen (Name + ggf. E-Mail manuell nachtragen)
+
+**3. UI der mittleren Spalte**
 
 ```text
-+----------------------------------------------+
-| Fallauswahl (Case Widget Cards)              |
-+----------------------------------------------+
-| Kachel 1: Finanzierungs-Expose               |
-|   (bleibt wie bisher)                         |
-+----------------------------------------------+
-| Kachel 2: Bankauswahl & E-Mail-Einreichung   |
-|   - Oben: Bankauswahl (max. 4 Banken)        |
-|     - Zone-1-Kontaktbuch (Combobox)           |
-|     - KI-Vorschlaege (Platzhalter)            |
-|     - Manuelle Eingabe (Name + E-Mail)        |
-|   - Unten: E-Mail-Client (sofort sichtbar)    |
-|     - Pro ausgewaehlter Bank ein Entwurf      |
-|     - Vorausgefuellter Beispieltext           |
-|     - Anhaenge-Badges                         |
-+----------------------------------------------+
-| Kachel 3: Status & Ergebnis                  |
-|   (eigene Kachel, bleibt funktional gleich)   |
-+----------------------------------------------+
-| Kachel 4: API-Uebergabe (Europace)           |
-|   (eigene Kachel, herausgeloest aus Kachel 2) |
-+----------------------------------------------+
++----------------------------------+
+| KI-Vorschlaege (50 km Umkreis)  |
+| [Lade Banken im Umkreis...]     |
+|                                  |
+| Sparkasse Musterstadt    [+]    |
+|   Hauptstr. 1, 12345 Musterst. |
+|                                  |
+| Volksbank Region XY      [+]    |
+|   Bahnhofstr. 5, 12346 Ort     |
+|                                  |
+| Deutsche Bank Filiale    [+]    |
+|   Marktplatz 2, 12345 Musterst.|
+|                                  |
+| [Erneut suchen]                  |
++----------------------------------+
 ```
 
-## Aenderungen im Detail
+- Loading-State mit Spinner waehrend der Suche
+- Fehler-Handling mit Toast-Nachricht
+- "Erneut suchen"-Button fuer manuelle Aktualisierung
+- Da Google Places keine E-Mail liefert: Bei Uebernahme wird die Bank ohne E-Mail hinzugefuegt, der Nutzer kann die E-Mail dann manuell im Chip oder im E-Mail-Entwurf ergaenzen
 
-### 1. Stepper entfernen
+**4. Technische Details**
 
-Der bisherige 4-Step-Workflow-Stepper (`STEPS`-Array + `WorkflowStepper`-Komponente) wird entfernt, da die Kacheln jetzt eigenstaendig nebeneinander stehen und kein linearer Ablauf mehr suggeriert wird.
+- Neuer State: `aiResults` (Array), `aiLoading` (boolean)
+- Suchparameter werden aus dem aktiven Fall extrahiert: `property?.postal_code`, `property?.city` oder Fallback auf `applicant?.object_address`
+- Die Suche wird via `useEffect` ausgeloest, wenn sich der aktive Fall aendert
+- Bank-Objekt aus Places-Ergebnis: `{ id: place_id, name, email: '', source: 'ki' }`
 
-### 2. Kachel 1: Expose (keine Aenderung)
+### Keine weiteren Dateien betroffen
 
-Bleibt exakt wie bisher.
+Die Edge Function `sot-places-search` bleibt unveraendert — sie unterstuetzt bereits Freitext-Suche mit optionalem Radius.
 
-### 3. Kachel 2: Bankauswahl + E-Mail (zusammengefuehrt)
+### Keine Datenbank-Aenderungen
 
-Eine Kachel mit zwei Bereichen, getrennt durch einen Separator:
-
-**Oberer Bereich — Bankauswahl:**
-- Drei Quellen fuer Banken: Zone-1-Kontaktbuch (bestehender Hook `useFinanceBankContacts`), KI-Vorschlaege (Platzhalter-UI mit Badge "Coming soon"), manuelle Eingabe (Name + E-Mail + Button)
-- Limit auf maximal 4 Banken (statt bisher 3)
-- Ausgewaehlte Banken als Chips mit Entfernen-Button
-
-**Unterer Bereich — E-Mail-Client (immer sichtbar):**
-- Ohne Banken: Generischer Entwurf mit Platzhaltern als Vorschau
-- Mit Banken: Pro Bank ein editierbarer E-Mail-Entwurf (An, Betreff, Body)
-- Vorausgefuellter Beispieltext mit Eckdaten des Falls
-- Anhaenge-Badges (Finanzierungsakte.pdf, Datenraum-Link)
-- "Alle senden"-Button
-
-### 4. Kachel 3: Status & Ergebnis (eigene Kachel)
-
-Wird aus dem bisherigen Step 4 herausgeloest. Funktional identisch: Tabelle mit Einreichungs-Logs, Status-Dropdown, Bank-Auswahl und Archiv-Button. Steht jetzt als eigenstaendige Kachel.
-
-### 5. Kachel 4: Europace API-Uebergabe (eigene Kachel)
-
-Die bisherige "Externe Software"-Sektion wird aus Kachel 2 herausgeloest und als letzte eigenstaendige Kachel gerendert. Titel: "API-Uebergabe (Europace)". Inhalt: Software-Name-Feld + Uebergabe-Button.
-
-## Betroffene Datei
-
-| Datei | Aenderung |
-|---|---|
-| `FMEinreichung.tsx` | Stepper entfernen, Kachel 2 komplett neu (Bank + E-Mail kombiniert), Europace in eigene Kachel 4, Bank-Limit auf 4 erhoehen |
-
-## Keine Datenbank-Aenderungen
-
-Reine Frontend-Umstrukturierung. Alle Hooks und Tabellen existieren bereits.
+Reine Frontend-Aenderung in einer Datei.
 
