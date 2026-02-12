@@ -4,3 +4,6 @@ export { default as FutureRoomHome } from './FutureRoomHome';
 export { default as FutureRoomBonitat } from './FutureRoomBonitat';
 export { default as FutureRoomKarriere } from './FutureRoomKarriere';
 export { default as FutureRoomFAQ } from './FutureRoomFAQ';
+export { default as FutureRoomLogin } from './FutureRoomLogin';
+export { default as FutureRoomAkte } from './FutureRoomAkte';
+export { default as FutureRoomAuthGuard } from './FutureRoomAuthGuard';

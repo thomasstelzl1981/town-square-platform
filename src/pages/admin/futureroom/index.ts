@@ -6,3 +6,5 @@ export { default as FutureRoomManagers } from './FutureRoomManagers';
 export { default as FutureRoomBanks } from './FutureRoomBanks';
 export { default as FutureRoomMonitoring } from './FutureRoomMonitoring';
 export { default as FutureRoomTemplates } from './FutureRoomTemplates';
+export { default as FutureRoomWebLeads } from './FutureRoomWebLeads';
+export { default as FutureRoomContracts } from './FutureRoomContracts';

@@ -5557,6 +5557,7 @@ export type Database = {
           notes: string | null
           priority: number | null
           public_id: string | null
+          source: string
           status: string
           tenant_id: string
           updated_at: string
@@ -5572,6 +5573,7 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           public_id?: string | null
+          source?: string
           status?: string
           tenant_id: string
           updated_at?: string
@@ -5587,6 +5589,7 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           public_id?: string | null
+          source?: string
           status?: string
           tenant_id?: string
           updated_at?: string
@@ -5698,6 +5701,10 @@ export type Database = {
         Row: {
           applicant_snapshot: Json | null
           broker_fee: number | null
+          contact_email: string | null
+          contact_first_name: string | null
+          contact_last_name: string | null
+          contact_phone: string | null
           created_at: string
           created_by: string | null
           custom_object_data: Json | null
@@ -5722,6 +5729,7 @@ export type Database = {
           purchase_price: number | null
           purpose: string | null
           repayment_rate_percent: number | null
+          source: string
           status: string
           storage_folder_id: string | null
           submitted_at: string | null
@@ -5732,6 +5740,10 @@ export type Database = {
         Insert: {
           applicant_snapshot?: Json | null
           broker_fee?: number | null
+          contact_email?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           custom_object_data?: Json | null
@@ -5756,6 +5768,7 @@ export type Database = {
           purchase_price?: number | null
           purpose?: string | null
           repayment_rate_percent?: number | null
+          source?: string
           status?: string
           storage_folder_id?: string | null
           submitted_at?: string | null
@@ -5766,6 +5779,10 @@ export type Database = {
         Update: {
           applicant_snapshot?: Json | null
           broker_fee?: number | null
+          contact_email?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           custom_object_data?: Json | null
@@ -5790,6 +5807,7 @@ export type Database = {
           purchase_price?: number | null
           purpose?: string | null
           repayment_rate_percent?: number | null
+          source?: string
           status?: string
           storage_folder_id?: string | null
           submitted_at?: string | null

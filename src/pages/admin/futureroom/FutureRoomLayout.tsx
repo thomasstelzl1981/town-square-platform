@@ -19,8 +19,10 @@ import * as React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Inbox, Link2, Users, Building2, BarChart3 } from 'lucide-react';
+import { Inbox, Link2, Users, Building2, BarChart3, Globe, FileText, Layout } from 'lucide-react';
 import { useFinanceMandates, useFinanceBankContacts } from '@/hooks/useFinanceMandate';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function FutureRoomLayout() {
   const location = useLocation();
@@ -31,13 +33,29 @@ export default function FutureRoomLayout() {
   const newMandates = mandates?.filter(m => m.status === 'submitted_to_zone1' || m.status === 'new').length || 0;
   const assignedNotAccepted = mandates?.filter(m => m.status === 'assigned').length || 0;
 
+  // Count website leads
+  const { data: webLeads } = useQuery({
+    queryKey: ['futureroom-web-leads-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('finance_requests')
+        .select('*', { count: 'exact', head: true })
+        .in('source', ['zone3_quick', 'zone3_website']);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   // Determine active tab from route (case-insensitive)
   const getActiveTab = () => {
     const path = location.pathname.toLowerCase();
+    if (path.includes('/website-leads')) return 'website-leads';
     if (path.includes('/zuweisung')) return 'zuweisung';
     if (path.includes('/finanzierungsmanager')) return 'finanzierungsmanager';
     if (path.includes('/bankkontakte')) return 'bankkontakte';
+    if (path.includes('/contracts')) return 'contracts';
     if (path.includes('/monitoring')) return 'monitoring';
+    if (path.includes('/vorlagen')) return 'vorlagen';
     return 'inbox';
   };
 
@@ -70,35 +88,47 @@ export default function FutureRoomLayout() {
         </div>
       </div>
 
-      {/* Navigation Tabs — 5 Items per Spec */}
+      {/* Navigation Tabs — 8 Items */}
       <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="inbox" className="gap-2">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+          <TabsTrigger value="inbox" className="gap-1.5 text-xs">
             <Inbox className="h-4 w-4" />
             Inbox
             {newMandates > 0 && (
-              <Badge variant="secondary" className="ml-1">{newMandates}</Badge>
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1">{newMandates}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="zuweisung" className="gap-2">
+          <TabsTrigger value="website-leads" className="gap-1.5 text-xs">
+            <Globe className="h-4 w-4" />
+            Web-Leads
+            {(webLeads ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-1 text-[10px] px-1">{webLeads}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="zuweisung" className="gap-1.5 text-xs">
             <Link2 className="h-4 w-4" />
             Zuweisung
-            {assignedNotAccepted > 0 && (
-              <Badge variant="outline" className="ml-1">{assignedNotAccepted}</Badge>
-            )}
           </TabsTrigger>
-          <TabsTrigger value="finanzierungsmanager" className="gap-2">
+          <TabsTrigger value="finanzierungsmanager" className="gap-1.5 text-xs">
             <Users className="h-4 w-4" />
             Manager
           </TabsTrigger>
-          <TabsTrigger value="bankkontakte" className="gap-2">
+          <TabsTrigger value="bankkontakte" className="gap-1.5 text-xs">
             <Building2 className="h-4 w-4" />
-            Bankkontakte
-            <Badge variant="outline" className="ml-1">{banks?.length || 0}</Badge>
+            Banken
+            <Badge variant="outline" className="ml-1 text-[10px] px-1">{banks?.length || 0}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="monitoring" className="gap-2">
+          <TabsTrigger value="contracts" className="gap-1.5 text-xs">
+            <FileText className="h-4 w-4" />
+            Contracts
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="gap-1.5 text-xs">
             <BarChart3 className="h-4 w-4" />
             Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="vorlagen" className="gap-1.5 text-xs">
+            <Layout className="h-4 w-4" />
+            Vorlagen
           </TabsTrigger>
         </TabsList>
       </Tabs>
