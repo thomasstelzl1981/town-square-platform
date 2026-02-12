@@ -322,6 +322,8 @@ export const zone2Portal: ZoneDefinition = {
         { path: "mandat", component: "MandatTab", title: "Mandat" },
         { path: "simulation", component: "SimulationTab", title: "Simulation" },
       ],
+      // NOTE: MOD-08 dynamic routes are handled internally by InvestmentsPage.tsx
+      // (own <Routes> block), NOT via portalDynamicComponentMap. Listed here for manifest completeness.
       dynamic_routes: [
         { path: "mandat/neu", component: "MandatCreateWizard", title: "Neues Mandat" },
         { path: "mandat/:mandateId", component: "MandatDetail", title: "Mandat-Details", dynamic: true },
