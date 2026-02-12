@@ -103,7 +103,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
   };
 
   return (
-    <Card className="relative h-[300px] md:aspect-square md:h-auto overflow-hidden border-primary/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <Card className="relative h-[260px] md:h-auto md:aspect-square overflow-hidden border-primary/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Globe Container */}
       <div ref={containerRef} className="absolute inset-0 z-0">
         {GlobeComponent && dimensions.width > 0 && !hasError && (

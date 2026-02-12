@@ -12,7 +12,7 @@ export function FinanceWidget() {
   const { data: markets = [], isLoading } = useFinanceData();
 
   return (
-    <Card className="h-[280px] md:aspect-square md:h-auto bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20 overflow-hidden">
+    <Card className="h-[260px] md:h-auto md:aspect-square bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20 overflow-hidden">
       <CardContent className="h-full flex flex-col p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">

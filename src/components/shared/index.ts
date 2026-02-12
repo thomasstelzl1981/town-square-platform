@@ -36,4 +36,6 @@ export { PageShell } from './PageShell';
 export { ModulePageHeader } from './ModulePageHeader';
 export { KPICard } from './KPICard';
 export { WidgetHeader } from './WidgetHeader';
+export { WidgetGrid } from './WidgetGrid';
+export { WidgetCell } from './WidgetCell';
 export { ListRow } from './ListRow';

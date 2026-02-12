@@ -1,6 +1,7 @@
 /**
  * DashboardGrid — Drag & Drop Context for Widget Grid
  * 
+ * DESIGN MANIFEST V3.0: Fixed 4-column grid (lg:grid-cols-4)
  * Uses @dnd-kit for sortable grid with touch support.
  * Drag & Drop is DISABLED on mobile for better UX.
  */
@@ -20,6 +21,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { WIDGET_GRID } from '@/config/designManifest';
 
 interface DashboardGridProps {
   widgetIds: string[];
@@ -30,11 +32,10 @@ interface DashboardGridProps {
 export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridProps) {
   const isMobile = useIsMobile();
   
-  // Desktop only: Configure sensors for pointer (no TouchSensor for mobile)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px movement before drag starts
+        distance: 8,
       },
     })
   );
@@ -53,19 +54,16 @@ export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridP
     }
   };
 
-  // On mobile: Render simple grid without DnD
+  // On mobile: simple vertical stack
   if (isMobile) {
     return (
-      <div 
-        className="flex flex-col gap-3"
-        style={{ scrollSnapType: 'y proximity' }}
-      >
+      <div className="grid grid-cols-1 gap-3">
         {children}
       </div>
     );
   }
 
-  // Desktop: Full DnD functionality
+  // Desktop: Full DnD with manifest grid
   return (
     <DndContext
       sensors={sensors}
@@ -73,13 +71,7 @@ export function DashboardGrid({ widgetIds, onReorder, children }: DashboardGridP
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
-        <div 
-          className="grid gap-4 md:gap-6"
-          style={{
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-            justifyContent: 'center',
-          }}
-        >
+        <div className={WIDGET_GRID.FULL}>
           {children}
         </div>
       </SortableContext>
