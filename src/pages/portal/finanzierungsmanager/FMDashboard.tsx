@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2 } from 'lucide-react';
+import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
@@ -217,95 +217,122 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Manager Visitenkarte — Professionell */}
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
-            <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt={fullName} className="h-14 w-14 rounded-full object-cover" />
-              ) : (
-                <User className="h-6 w-6 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">{fullName}</h3>
-                  <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditSheet}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Contact details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
-                {profile?.email && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="truncate">{profile.email}</span>
-                  </div>
-                )}
-                {profile?.phone_mobile && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span>{profile.phone_mobile}</span>
-                  </div>
-                )}
-                {profile?.phone_landline && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span>{profile.phone_landline}</span>
-                  </div>
-                )}
-                {fullAddress && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="truncate">{fullAddress}</span>
-                  </div>
-                )}
-                {profile?.letterhead_website && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="truncate">{profile.letterhead_website}</span>
-                  </div>
-                )}
-                {profile?.letterhead_company_line && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="truncate">{profile.letterhead_company_line}</span>
-                  </div>
+      {/* Manager Visitenkarte + FutureRoom Tile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Visitenkarte */}
+        <Card className="glass-card">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={fullName} className="h-14 w-14 rounded-full object-cover" />
+                ) : (
+                  <User className="h-6 w-6 text-primary" />
                 )}
               </div>
-
-              {/* Regulatory info */}
-              {(reg34i || regIhk || insProvider) && (
-                <>
-                  <Separator className="my-1" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
-                    {reg34i && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span>§34i: {reg34i}</span>
-                      </div>
-                    )}
-                    {regIhk && (
-                      <div className="text-xs text-muted-foreground">IHK: {regIhk}</div>
-                    )}
-                    {insProvider && (
-                      <div className="text-xs text-muted-foreground">VSH: {insProvider}</div>
-                    )}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">{fullName}</h3>
+                    <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
                   </div>
-                </>
-              )}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditSheet}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                  {profile?.email && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{profile.email}</span>
+                    </div>
+                  )}
+                  {profile?.phone_mobile && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span>{profile.phone_mobile}</span>
+                    </div>
+                  )}
+                  {fullAddress && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{fullAddress}</span>
+                    </div>
+                  )}
+                  {profile?.letterhead_company_line && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{profile.letterhead_company_line}</span>
+                    </div>
+                  )}
+                </div>
+
+                {(reg34i || regIhk || insProvider) && (
+                  <>
+                    <Separator className="my-1" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                      {reg34i && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span>§34i: {reg34i}</span>
+                        </div>
+                      )}
+                      {regIhk && (
+                        <div className="text-xs text-muted-foreground">IHK: {regIhk}</div>
+                      )}
+                      {insProvider && (
+                        <div className="text-xs text-muted-foreground">VSH: {insProvider}</div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* FutureRoom Branding Tile */}
+        <Card className="overflow-hidden border-0 shadow-card">
+          <CardContent className="p-0 h-full">
+            <div className="h-full bg-gradient-to-br from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)] p-6 flex flex-col justify-between text-white">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                    <Landmark className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight">
+                      Future<span className="font-light">Room</span>
+                    </h3>
+                    <p className="text-[11px] text-white/70 uppercase tracking-wider">Digitale Finanzierungsorchesterierung</p>
+                  </div>
+                </div>
+                <p className="text-sm text-white/80 leading-relaxed">
+                  Ihre Plattform für KI-gestützte Finanzierungsaufbereitung und digitale Bankeinreichung.
+                </p>
+              </div>
+              <div className="flex items-center justify-between mt-4">
+                <Badge className="bg-white/20 text-white border-white/30 text-[10px] hover:bg-white/30">
+                  Über 400 Bankpartner
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-xs"
+                  onClick={() => window.open('/website/futureroom', '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1.5" />
+                  Zur Website
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Edit Sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
