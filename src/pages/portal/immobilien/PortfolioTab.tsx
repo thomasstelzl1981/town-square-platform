@@ -983,8 +983,8 @@ export function PortfolioTab() {
           
           {/* 10-Jahres-Investmentkalkulation Tabelle */}
           {hasData && projectionData.length > 0 && (
-            <div className="mt-6 border rounded-lg">
-              <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+            <div className={cn('mt-6', DESIGN.TABLE.WRAPPER)}>
+              <div className={cn(DESIGN.CARD.SECTION_HEADER, 'flex items-center justify-between')}>
                 <div className="flex items-center gap-2">
                   <Table2 className="h-4 w-4" />
                   <h3 className="font-semibold">Investmentkalkulation ({showAllYears ? '30' : '10'} Jahre)</h3>

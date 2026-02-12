@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -247,7 +248,7 @@ const MieteingangTab = () => {
       />
 
       {/* Stats — glass-card KPIs */}
-      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <KPICard
           label="Eingegangen"
           value={`${(stats?.paidAmount ?? 0).toLocaleString('de-DE')} €`}
@@ -281,7 +282,7 @@ const MieteingangTab = () => {
       )}
 
       {/* Object-centric Table with Accordion */}
-      <div className="rounded-md border">
+      <div className={DESIGN.TABLE.WRAPPER}>
         <Table>
           <TableHeader>
             <TableRow>

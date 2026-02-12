@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
+import { DESIGN } from '@/config/designManifest';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -481,7 +482,7 @@ const ObjekteTab = () => {
       />
 
       {/* KPI Cards */}
-      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <KPICard
           label="Einheiten gesamt"
           value={units?.length ?? 0}
