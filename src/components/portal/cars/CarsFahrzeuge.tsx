@@ -20,6 +20,8 @@ import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { VehicleCreateDialog } from './VehicleCreateDialog';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
 
@@ -71,7 +73,7 @@ function getVehicleImage(make: string | null): string {
   return VEHICLE_IMAGES[make] || DEFAULT_IMAGE;
 }
 
-export function CarsFahrzeuge() {
+export default function CarsFahrzeuge() {
   const navigate = useNavigate();
   const { activeTenantId } = useAuth();
   const [search, setSearch] = useState('');
@@ -155,26 +157,26 @@ export function CarsFahrzeuge() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">FAHRZEUGE</h1>
-        <p className="text-muted-foreground mt-1">Ihre Fahrzeuge und Flotte verwalten</p>
-      </div>
-      {/* Search & Add */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Suchen nach Kennzeichen, Hersteller..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Fahrzeug hinzufügen
-        </Button>
+    <PageShell>
+      <ModulePageHeader
+        title="Fahrzeuge"
+        description="Ihre Fahrzeuge und Flotte verwalten"
+        actions={
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Fahrzeug hinzufügen
+          </Button>
+        }
+      />
+      {/* Search */}
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Suchen nach Kennzeichen, Hersteller..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       {/* Vehicle Widget Cards */}
@@ -275,7 +277,7 @@ export function CarsFahrzeuge() {
         onOpenChange={setCreateDialogOpen}
         onSuccess={() => { refetch(); setCreateDialogOpen(false); }}
       />
-    </div>
+    </PageShell>
   );
 }
 
