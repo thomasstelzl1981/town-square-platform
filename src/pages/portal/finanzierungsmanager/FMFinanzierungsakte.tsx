@@ -129,7 +129,8 @@ export default function FMFinanzierungsakte() {
   });
 
   const filteredListings = useMemo(() => {
-    if (!searchQuery.trim() || !listings) return [];
+    if (!listings) return [];
+    if (!searchQuery.trim()) return listings.slice(0, 8);
     const q = searchQuery.toLowerCase();
     return listings.filter(l =>
       (l.public_id?.toLowerCase().includes(q)) ||
@@ -263,12 +264,15 @@ export default function FMFinanzierungsakte() {
                     </div>
                     <p className="text-[11px] text-muted-foreground mb-2">
                       Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
+                      {listings && listings.length > 0 && (
+                        <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 font-medium">{listings.length} Objekte verfügbar</span>
+                      )}
                     </p>
                     <div className="relative" ref={searchRef}>
                       <Input
                         value={searchQuery}
                         onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true); }}
-                        onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                        onFocus={() => setShowDropdown(true)}
                         onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                         placeholder="Objekt suchen (ID, Ort, Straße...)"
                         className="h-7 text-xs"
@@ -407,12 +411,15 @@ export default function FMFinanzierungsakte() {
                   </div>
                   <p className="text-[11px] text-muted-foreground mb-2">
                     Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
+                    {listings && listings.length > 0 && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 font-medium">{listings.length} Objekte verfügbar</span>
+                    )}
                   </p>
                   <div className="relative" ref={searchRef}>
                     <Input
                       value={searchQuery}
                       onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true); }}
-                      onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                      onFocus={() => setShowDropdown(true)}
                       onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                       placeholder="Objekt suchen (ID, Ort, Straße...)"
                       className="h-7 text-xs"
