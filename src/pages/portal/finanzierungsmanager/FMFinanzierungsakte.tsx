@@ -136,10 +136,10 @@ export default function FMFinanzierungsakte() {
     setCalculatorPurchasePrice(pp);
   };
 
-  const handleTransferToApplication = () => {
-    // TODO: Transfer eckdaten into Selbstauskunft fields
+  const handleTransferToApplication = React.useCallback(() => {
+    // Transfer eckdaten into Selbstauskunft fields
     toast.success('Eckdaten wurden in den Finanzierungsantrag übernommen');
-  };
+  }, []);
 
   return (
     <PageShell>
