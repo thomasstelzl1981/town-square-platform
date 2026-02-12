@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Building2 } from 'lucide-react';
 
 /** 3-column table row: Label | AS1 value | AS2 value */
 export function TR({ label, required, children, children2 }: {
@@ -129,6 +130,7 @@ export interface ApplicantFormData {
   self_employed_income_monthly: number | null;
   side_job_income_monthly: number | null;
   rental_income_monthly: number | null;
+  has_rental_properties: boolean;
   child_benefit_monthly: number | null;
   alimony_income_monthly: number | null;
   other_regular_income_monthly: number | null;
@@ -163,6 +165,7 @@ export function createEmptyApplicantFormData(): ApplicantFormData {
     iban: '', bic: '',
     net_income_monthly: null, self_employed_income_monthly: null,
     side_job_income_monthly: null, rental_income_monthly: null,
+    has_rental_properties: false,
     child_benefit_monthly: null, alimony_income_monthly: null,
     other_regular_income_monthly: null,
     current_rent_monthly: null, living_expenses_monthly: null, health_insurance_monthly: null,
@@ -578,9 +581,35 @@ export function IncomeSection(props: ApplicantSectionProps | DualApplicantSectio
           <TR label="Nebentätigkeit" children2={cf('side_job_income_monthly')}>
             <TInput type="number" step="0.01" placeholder="€" value={formData.side_job_income_monthly || ''} onChange={e => onChange('side_job_income_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />
           </TR>
-          <TR label="Mieteinnahmen" children2={cf('rental_income_monthly')}>
-            <TInput type="number" step="0.01" placeholder="€" value={formData.rental_income_monthly || ''} onChange={e => onChange('rental_income_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />
+          {/* Mieteinnahmen: Ja/Nein Toggle */}
+          <TR label="Mieteinnahmen (bestehend)"
+            children2={isDual && coFormData ? (
+              <div className="flex items-center gap-2">
+                <Button variant={coFormData.has_rental_properties ? 'default' : 'outline'} size="sm" className="h-6 text-xs" onClick={() => coChange('has_rental_properties', true)} disabled={coReadOnly}>Ja</Button>
+                <Button variant={!coFormData.has_rental_properties ? 'default' : 'outline'} size="sm" className="h-6 text-xs" onClick={() => { coChange('has_rental_properties', false); coChange('rental_income_monthly', null); }} disabled={coReadOnly}>Nein</Button>
+                {coFormData.has_rental_properties && (
+                  <span className="text-xs text-muted-foreground ml-1">{eurFormat.format(coFormData.rental_income_monthly || 0)}</span>
+                )}
+              </div>
+            ) : undefined}>
+            <div className="flex items-center gap-2">
+              <Button variant={formData.has_rental_properties ? 'default' : 'outline'} size="sm" className="h-6 text-xs" onClick={() => onChange('has_rental_properties', true)} disabled={readOnly}>Ja</Button>
+              <Button variant={!formData.has_rental_properties ? 'default' : 'outline'} size="sm" className="h-6 text-xs" onClick={() => { onChange('has_rental_properties', false); onChange('rental_income_monthly', null); }} disabled={readOnly}>Nein</Button>
+              {formData.has_rental_properties && (
+                <span className="text-xs text-muted-foreground ml-1">{eurFormat.format(formData.rental_income_monthly || 0)}</span>
+              )}
+            </div>
           </TR>
+          {(formData.has_rental_properties || (isDual && coFormData?.has_rental_properties)) && (
+            <TableRow>
+              <TableCell colSpan={3} className="py-1.5 px-3">
+                <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  Bitte befüllen Sie weiter unten die Zusatzangaben zu Ihrem Immobilienvermögen.
+                </p>
+              </TableCell>
+            </TableRow>
+          )}
           <TR label="Kindergeld" children2={cf('child_benefit_monthly')}>
             <TInput type="number" step="0.01" placeholder="€" value={formData.child_benefit_monthly || ''} onChange={e => onChange('child_benefit_monthly', parseFloat(e.target.value) || null)} disabled={readOnly} />
           </TR>

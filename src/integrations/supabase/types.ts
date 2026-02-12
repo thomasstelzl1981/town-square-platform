@@ -1503,6 +1503,7 @@ export type Database = {
           finance_request_id: string | null
           first_name: string | null
           fixed_rate_period_years: number | null
+          has_rental_properties: boolean
           has_side_job: boolean | null
           health_insurance_monthly: number | null
           iban: string | null
@@ -1619,6 +1620,7 @@ export type Database = {
           finance_request_id?: string | null
           first_name?: string | null
           fixed_rate_period_years?: number | null
+          has_rental_properties?: boolean
           has_side_job?: boolean | null
           health_insurance_monthly?: number | null
           iban?: string | null
@@ -1735,6 +1737,7 @@ export type Database = {
           finance_request_id?: string | null
           first_name?: string | null
           fixed_rate_period_years?: number | null
+          has_rental_properties?: boolean
           has_side_job?: boolean | null
           health_insurance_monthly?: number | null
           iban?: string | null
@@ -1816,6 +1819,102 @@ export type Database = {
           },
           {
             foreignKeyName: "applicant_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applicant_property_assets: {
+        Row: {
+          address: string | null
+          applicant_profile_id: string
+          commercial_area_sqm: number | null
+          construction_year: number | null
+          created_at: string
+          estimated_value: number | null
+          id: string
+          living_area_sqm: number | null
+          loan1_balance: number | null
+          loan1_interest_rate: number | null
+          loan1_lender: string | null
+          loan1_rate_monthly: number | null
+          loan2_balance: number | null
+          loan2_interest_rate: number | null
+          loan2_lender: string | null
+          loan2_rate_monthly: number | null
+          net_rent_monthly: number | null
+          property_index: number
+          property_type: string | null
+          purchase_price: number | null
+          rented_area_sqm: number | null
+          tenant_id: string
+          units_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          applicant_profile_id: string
+          commercial_area_sqm?: number | null
+          construction_year?: number | null
+          created_at?: string
+          estimated_value?: number | null
+          id?: string
+          living_area_sqm?: number | null
+          loan1_balance?: number | null
+          loan1_interest_rate?: number | null
+          loan1_lender?: string | null
+          loan1_rate_monthly?: number | null
+          loan2_balance?: number | null
+          loan2_interest_rate?: number | null
+          loan2_lender?: string | null
+          loan2_rate_monthly?: number | null
+          net_rent_monthly?: number | null
+          property_index?: number
+          property_type?: string | null
+          purchase_price?: number | null
+          rented_area_sqm?: number | null
+          tenant_id: string
+          units_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          applicant_profile_id?: string
+          commercial_area_sqm?: number | null
+          construction_year?: number | null
+          created_at?: string
+          estimated_value?: number | null
+          id?: string
+          living_area_sqm?: number | null
+          loan1_balance?: number | null
+          loan1_interest_rate?: number | null
+          loan1_lender?: string | null
+          loan1_rate_monthly?: number | null
+          loan2_balance?: number | null
+          loan2_interest_rate?: number | null
+          loan2_lender?: string | null
+          loan2_rate_monthly?: number | null
+          net_rent_monthly?: number | null
+          property_index?: number
+          property_type?: string | null
+          purchase_price?: number | null
+          rented_area_sqm?: number | null
+          tenant_id?: string
+          units_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_property_assets_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_property_assets_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
