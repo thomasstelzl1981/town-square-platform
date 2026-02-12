@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { HowItWorks } from '@/components/vertriebspartner';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -95,6 +96,10 @@ const NetworkTab = () => {
 
   return (
     <PageShell>
+      <ModulePageHeader
+        title="Netzwerk & Provisionen"
+        description="Abgeschlossene Deals und Provisionsansprüche"
+      />
       <HowItWorks variant="network" />
 
       {/* Stats */}

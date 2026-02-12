@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/sheet';
 import { HowItWorks } from '@/components/vertriebspartner';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -128,6 +129,10 @@ const KundenTab = () => {
 
   return (
     <PageShell>
+      <ModulePageHeader
+        title="Kunden"
+        description="Ihre Kundenbeziehungen verwalten"
+      />
       <HowItWorks variant="kunden" />
 
       {/* Filter Bar */}

@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,18 +52,16 @@ export default function KontexteTab() {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Verkäufer-Gesellschaften</h1>
-          <p className="text-muted-foreground">
-            Verwalten Sie Ihre Bauträger- und Aufteiler-Gesellschaften
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Neue Gesellschaft
-        </Button>
-      </div>
+      <ModulePageHeader
+        title="Verkäufer-Gesellschaften"
+        description="Verwalten Sie Ihre Bauträger- und Aufteiler-Gesellschaften"
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Neue Gesellschaft
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {contexts.map((ctx) => (
