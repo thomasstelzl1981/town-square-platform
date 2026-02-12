@@ -5,6 +5,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Newspaper, ExternalLink } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useNewsData } from '@/hooks/useNewsData';
 
 export function NewsWidget() {
@@ -17,34 +18,41 @@ export function NewsWidget() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Newspaper className="h-4 w-4 text-purple-500" />
-            <span className="text-xs font-medium">News</span>
+            <span className="text-xs font-medium">Nachrichten</span>
           </div>
         </div>
 
         {/* Headlines */}
-        <div className="flex-1 space-y-2 overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-y-auto">
           {isLoading
-            ? Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="rounded-lg bg-background/30 p-3 animate-pulse">
-                  <div className="h-3 w-full bg-muted rounded mb-2" />
-                  <div className="h-2 w-20 bg-muted rounded" />
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="py-2.5 border-b border-border/10 last:border-0">
+                  <div className="h-3 w-full bg-muted rounded mb-1.5 animate-pulse" />
+                  <div className="h-3 w-3/4 bg-muted rounded mb-1.5 animate-pulse" />
+                  <div className="h-2 w-24 bg-muted rounded animate-pulse" />
                 </div>
               ))
-            : headlines.slice(0, 4).map((headline, index) => (
+            : headlines.slice(0, 5).map((headline, index) => (
                 <a
                   key={index}
                   href={headline.link || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block rounded-lg bg-background/30 p-3 hover:bg-background/50 transition-colors group"
+                  className={cn(
+                    'py-2.5 group hover:bg-background/30 transition-colors -mx-1 px-1 rounded-sm',
+                    index < Math.min(headlines.length, 5) - 1 && 'border-b border-border/10'
+                  )}
                 >
-                  <p className="text-xs font-medium line-clamp-2 mb-1">{headline.title}</p>
-                  <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-medium line-clamp-2 leading-snug mb-1 group-hover:text-primary transition-colors">
+                    {headline.title}
+                  </p>
+                  <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">{headline.source}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground">{headline.time}</span>
-                      {headline.link && <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
-                    </div>
+                    <span className="text-[10px] text-muted-foreground">·</span>
+                    <span className="text-[10px] text-muted-foreground">{headline.time}</span>
+                    {headline.link && (
+                      <ExternalLink className="h-2.5 w-2.5 text-muted-foreground/50 ml-auto" />
+                    )}
                   </div>
                 </a>
               ))}

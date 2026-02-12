@@ -1,6 +1,6 @@
 /**
- * FinanceWidget — Live financial markets overview
- * Data source: CoinGecko + ECB (via Edge Function)
+ * FinanceWidget — Professional ticker-list with 6 market assets
+ * Data source: CoinGecko + ECB + Yahoo Finance (via Edge Function)
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,31 +20,45 @@ export function FinanceWidget() {
             <TrendingUp className="h-4 w-4 text-amber-500" />
             <span className="text-xs font-medium">Märkte</span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] text-muted-foreground">Live</span>
+          </div>
         </div>
 
-        {/* Market Grid */}
-        <div className="flex-1 grid grid-cols-2 gap-2">
+        {/* Ticker List */}
+        <div className="flex-1 flex flex-col justify-between overflow-y-auto">
           {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-lg bg-background/30 p-2 animate-pulse">
-                  <div className="h-3 w-12 bg-muted rounded mb-1" />
-                  <div className="h-4 w-16 bg-muted rounded" />
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/10 last:border-0">
+                  <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                  <div className="h-3 w-12 bg-muted rounded animate-pulse" />
                 </div>
               ))
-            : markets.map((market) => {
+            : markets.map((market, index) => {
                 const TrendIcon = market.trend === 'up' ? TrendingUp : market.trend === 'down' ? TrendingDown : Minus;
                 return (
-                  <div key={market.symbol} className="rounded-lg bg-background/30 p-2 flex flex-col justify-center">
-                    <span className="text-[10px] text-muted-foreground">{market.symbol}</span>
-                    <span className="text-sm font-medium">{market.value}</span>
+                  <div
+                    key={market.symbol}
+                    className={cn(
+                      'flex items-center justify-between py-1.5',
+                      index < markets.length - 1 && 'border-b border-border/10'
+                    )}
+                  >
+                    <span className="text-[11px] font-medium text-foreground/80 min-w-[72px]">
+                      {market.symbol}
+                    </span>
+                    <span className="text-[11px] font-mono text-foreground flex-1 text-right mr-3">
+                      {market.value}
+                    </span>
                     <div className={cn(
-                      'flex items-center gap-1 text-[10px]',
+                      'flex items-center gap-0.5 text-[10px] font-medium min-w-[52px] justify-end',
                       market.trend === 'up' && 'text-green-500',
                       market.trend === 'down' && 'text-red-500',
                       market.trend === 'neutral' && 'text-muted-foreground'
                     )}>
                       <TrendIcon className="h-3 w-3" />
-                      {market.change}
+                      <span>{market.change}</span>
                     </div>
                   </div>
                 );
