@@ -3,10 +3,23 @@
  * Two-card layout: FinanceObjectCard + FinanceRequestCard
  * No draft creation, no DB writes — localStorage only.
  */
-import FinanceObjectCard from '@/components/finanzierung/FinanceObjectCard';
-import FinanceRequestCard from '@/components/finanzierung/FinanceRequestCard';
+import { useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
+import { toast } from 'sonner';
+import FinanceObjectCard, { type FinanceObjectCardHandle } from '@/components/finanzierung/FinanceObjectCard';
+import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 
 export default function AnfrageTab() {
+  const objectCardRef = useRef<FinanceObjectCardHandle>(null);
+  const requestCardRef = useRef<FinanceRequestCardHandle>(null);
+
+  const handleFloatingSave = () => {
+    objectCardRef.current?.save();
+    requestCardRef.current?.save();
+    toast.success('Daten zwischengespeichert');
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div>
@@ -24,8 +37,17 @@ export default function AnfrageTab() {
         </p>
       </div>
 
-      <FinanceObjectCard storageKey="mod07-anfrage" />
-      <FinanceRequestCard storageKey="mod07-anfrage" />
+      <FinanceObjectCard ref={objectCardRef} storageKey="mod07-anfrage" hideFooter />
+      <FinanceRequestCard ref={requestCardRef} storageKey="mod07-anfrage" hideFooter />
+
+      {/* Floating save button */}
+      <Button
+        onClick={handleFloatingSave}
+        variant="glass"
+        className="fixed bottom-6 right-6 z-50 shadow-lg gap-2"
+      >
+        <Save className="h-4 w-4" /> Zwischenspeichern
+      </Button>
     </div>
   );
 }
