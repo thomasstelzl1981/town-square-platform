@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag, X, CheckCircle2, Loader2, LayoutList, LayoutPanelLeft } from 'lucide-react';
 import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
@@ -108,6 +108,7 @@ export default function FMFinanzierungsakte() {
 
   // Magic Intake state
   const [magicIntakeResult, setMagicIntakeResult] = useState<MagicIntakeResult | null>(null);
+  const [splitView, setSplitView] = useState(false);
 
   const handleFloatingSave = () => {
     objectCardRef.current?.save();
@@ -203,288 +204,334 @@ export default function FMFinanzierungsakte() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-2xl font-bold tracking-tight uppercase">Neue Finanzierungsakte</h2>
           <p className="text-sm text-muted-foreground">Leere Akte manuell befüllen und erstellen</p>
         </div>
+        {/* Split-View Toggle — only on lg+ */}
+        <div className="hidden lg:flex items-center gap-1 border rounded-lg p-0.5">
+          <Button
+            variant={!splitView ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 gap-1.5 text-xs rounded-md"
+            onClick={() => setSplitView(false)}
+          >
+            <LayoutList className="h-3.5 w-3.5" /> Standard
+          </Button>
+          <Button
+            variant={splitView ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 gap-1.5 text-xs rounded-md"
+            onClick={() => setSplitView(true)}
+          >
+            <LayoutPanelLeft className="h-3.5 w-3.5" /> Split-View
+          </Button>
+        </div>
       </div>
 
-      {/* Top row: Magic Intake (left) + Marktplatz (right) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Magic Intake */}
-        <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
-
-        {/* Kaufy Objekte — 3-line design matching MagicIntakeCard */}
-        {kaufyAdopted ? (
-          <Card className="glass-card overflow-hidden border-green-500/30">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
-                <span className="text-xs text-muted-foreground">({selectedListings.length})</span>
-              </div>
-              <div className="mt-1.5 space-y-1">
-                {selectedListings.map(l => (
-                  <p key={l.public_id} className="text-[11px] text-muted-foreground">
-                    {l.postal_code} {l.city} — {l.property_type ?? 'Objekt'} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
-                  </p>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="glass-card overflow-hidden">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <ShoppingBag className="h-4 w-4 text-primary" />
-                <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-2">
-                Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
-              </p>
-              <div className="relative" ref={searchRef}>
-                <Input
-                  value={searchQuery}
-                  onChange={e => {
-                    setSearchQuery(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => searchQuery.trim() && setShowDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  placeholder="Objekt suchen (ID, Ort, Straße...)"
-                  className="h-7 text-xs"
-                />
-                {showDropdown && filteredListings.length > 0 && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
-                    {filteredListings.map(l => (
-                      <button
-                        key={l.public_id}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0"
-                        onMouseDown={() => handleListingSelect(l)}
-                      >
-                        <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
-                        <div className="text-muted-foreground">
-                          {l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}
-                          {l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
+      {splitView ? (
+        /* ===== SPLIT-VIEW LAYOUT ===== */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 220px)' }}>
+          {/* Left column: Intake, Kaufy, Eckdaten, Kalkulator, Objekt, KDF */}
+          <div className="overflow-y-auto pr-2 space-y-4">
+            {/* Magic Intake + Kaufy */}
+            <div className="grid grid-cols-1 gap-4">
+              <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
+              {kaufyAdopted ? (
+                <Card className="glass-card overflow-hidden border-green-500/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+                      <span className="text-xs text-muted-foreground">({selectedListings.length})</span>
+                    </div>
+                    <div className="mt-1.5 space-y-1">
+                      {selectedListings.map(l => (
+                        <p key={l.public_id} className="text-[11px] text-muted-foreground">
+                          {l.postal_code} {l.city} — {l.property_type ?? 'Objekt'} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                        </p>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="glass-card overflow-hidden">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingBag className="h-4 w-4 text-primary" />
+                      <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
+                    </p>
+                    <div className="relative" ref={searchRef}>
+                      <Input
+                        value={searchQuery}
+                        onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true); }}
+                        onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                        placeholder="Objekt suchen (ID, Ort, Straße...)"
+                        className="h-7 text-xs"
+                      />
+                      {showDropdown && filteredListings.length > 0 && (
+                        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
+                          {filteredListings.map(l => (
+                            <button key={l.public_id} className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0" onMouseDown={() => handleListingSelect(l)}>
+                              <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
+                              <div className="text-muted-foreground">{l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}{l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}</div>
+                            </button>
+                          ))}
                         </div>
-                      </button>
+                      )}
+                    </div>
+                    {selectedListings.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {selectedListings.map(l => (
+                          <span key={l.public_id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1">
+                            {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                            <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <Button size="sm" disabled={selectedListings.length === 0} onClick={handleAdoptObjects} className="w-full gap-1.5 h-7 text-xs mt-2">
+                      <ShoppingBag className="h-3 w-3" />
+                      {selectedListings.length <= 1 ? 'Objekt übernehmen' : `${selectedListings.length} Objekte übernehmen`}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {magicIntakeResult && (
+              <div ref={generateCaseRef}>
+                <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                  objectData={{ address: externalObjectData?.city ?? undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                  financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+                  initialCreatedState={{ requestId: magicIntakeResult.requestId, publicId: magicIntakeResult.publicId }}
+                />
+              </div>
+            )}
+
+            <FinanceRequestCard ref={requestCardRef} storageKey="mod11-akte" externalPurchasePrice={externalPurchasePrice} showCalculator onCalculate={handleCalculate} hideFooter showObjectFields title="Eckdaten"
+              onDataChange={({ usage, rentalIncome }) => { setEckdatenUsage(usage); setEckdatenRentalIncome(rentalIncome); }}
+            />
+            <FinanceCalculatorCard finanzierungsbedarf={calculatorBedarf} purchasePrice={calculatorPurchasePrice} onCalcUpdate={setCalcData} />
+            <FinanceOfferCard calcData={calcData} onTransferToApplication={handleTransferToApplication} onShowAmortization={() => setShowAmortization(prev => !prev)} showAmortizationActive={showAmortization} />
+            {showAmortization && calcData && calcData.loanAmount > 0 && calcData.interestRate > 0 && <AmortizationScheduleCard calcData={calcData} />}
+
+            <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
+
+            <HouseholdCalculationCard formData={formData} coFormData={coFormData} calcData={calcData} usage={eckdatenUsage} rentalIncome={eckdatenRentalIncome} livingArea={Number(externalObjectData?.livingArea) || 0} propertyAssets={propertyAssets} />
+
+            {!magicIntakeResult && (
+              <div ref={generateCaseRef}>
+                <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                  objectData={{ address: externalObjectData?.city ?? undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                  financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Right column: Selbstauskunft */}
+          <div className="overflow-y-auto pr-2 space-y-4">
+            <Card className="glass-card overflow-hidden">
+              <CardContent className="p-0">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <h3 className="text-base font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Selbstauskunft</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller</p>
+                </div>
+                <div className="p-4 space-y-0">
+                  <Table><DualHeader /><TableBody /></Table>
+                  <PersonSection {...dualProps} hideHeader />
+                  <EmploymentSection {...dualProps} hideHeader />
+                  <BankSection {...dualProps} hideHeader />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="glass-card overflow-hidden">
+              <CardContent className="p-0">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <h3 className="text-base font-semibold flex items-center gap-2"><Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller</p>
+                </div>
+                <div className="p-4 space-y-0">
+                  <Table><DualHeader /><TableBody /></Table>
+                  <IncomeSection {...dualProps} hideHeader />
+                  <ExpensesSection {...dualProps} hideHeader />
+                  <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
+                  <AssetsSection {...dualProps} hideHeader />
+                </div>
+              </CardContent>
+            </Card>
+            {(formData.has_rental_properties || coFormData.has_rental_properties) && (
+              <PropertyAssetsCard properties={propertyAssets} onChange={(updated) => {
+                setPropertyAssets(updated);
+                const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
+                if (formData.has_rental_properties) handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
+              }} />
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ===== STANDARD LAYOUT ===== */
+        <>
+          {/* Top row: Magic Intake (left) + Marktplatz (right) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
+            {kaufyAdopted ? (
+              <Card className="glass-card overflow-hidden border-green-500/30">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+                    <span className="text-xs text-muted-foreground">({selectedListings.length})</span>
+                  </div>
+                  <div className="mt-1.5 space-y-1">
+                    {selectedListings.map(l => (
+                      <p key={l.public_id} className="text-[11px] text-muted-foreground">
+                        {l.postal_code} {l.city} — {l.property_type ?? 'Objekt'} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                      </p>
                     ))}
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="glass-card overflow-hidden">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShoppingBag className="h-4 w-4 text-primary" />
+                    <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Marktplatz durchsuchen — Stammdaten werden automatisch übernommen.
+                  </p>
+                  <div className="relative" ref={searchRef}>
+                    <Input
+                      value={searchQuery}
+                      onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true); }}
+                      onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                      placeholder="Objekt suchen (ID, Ort, Straße...)"
+                      className="h-7 text-xs"
+                    />
+                    {showDropdown && filteredListings.length > 0 && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
+                        {filteredListings.map(l => (
+                          <button key={l.public_id} className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0" onMouseDown={() => handleListingSelect(l)}>
+                            <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
+                            <div className="text-muted-foreground">{l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}{l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedListings.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {selectedListings.map(l => (
+                        <span key={l.public_id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1">
+                          {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                          <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Button size="sm" disabled={selectedListings.length === 0} onClick={handleAdoptObjects} className="w-full gap-1.5 h-7 text-xs mt-2">
+                    <ShoppingBag className="h-3 w-3" />
+                    {selectedListings.length <= 1 ? 'Objekt übernehmen' : `${selectedListings.length} Objekte übernehmen`}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {magicIntakeResult && (
+            <div ref={generateCaseRef}>
+              <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                objectData={{ address: externalObjectData?.city ? `${externalObjectData.city}` : undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+                initialCreatedState={{ requestId: magicIntakeResult.requestId, publicId: magicIntakeResult.publicId }}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FinanceRequestCard ref={requestCardRef} storageKey="mod11-akte" externalPurchasePrice={externalPurchasePrice} showCalculator onCalculate={handleCalculate} hideFooter showObjectFields title="Eckdaten"
+              onDataChange={({ usage, rentalIncome }) => { setEckdatenUsage(usage); setEckdatenRentalIncome(rentalIncome); }}
+            />
+            <FinanceCalculatorCard finanzierungsbedarf={calculatorBedarf} purchasePrice={calculatorPurchasePrice} onCalcUpdate={setCalcData} />
+          </div>
+
+          <FinanceOfferCard calcData={calcData} onTransferToApplication={handleTransferToApplication} onShowAmortization={() => setShowAmortization(prev => !prev)} showAmortizationActive={showAmortization} />
+          {showAmortization && calcData && calcData.loanAmount > 0 && calcData.interestRate > 0 && <AmortizationScheduleCard calcData={calcData} />}
+
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsantrag</h2>
+            <p className="text-sm text-muted-foreground mt-1">Detaillierte Angaben für die Bankeinreichung</p>
+          </div>
+
+          <Card className="glass-card overflow-hidden">
+            <CardContent className="p-0">
+              <div className="px-4 py-2.5 border-b bg-muted/20">
+                <h3 className="text-base font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Selbstauskunft</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller</p>
               </div>
-              {/* Selected listings as chips */}
-              {selectedListings.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {selectedListings.map(l => (
-                    <span
-                      key={l.public_id}
-                      className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1"
-                    >
-                      {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
-                      <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <Button
-                size="sm"
-                disabled={selectedListings.length === 0}
-                onClick={handleAdoptObjects}
-                className="w-full gap-1.5 h-7 text-xs mt-2"
-              >
-                <ShoppingBag className="h-3 w-3" />
-                {selectedListings.length <= 1
-                  ? 'Objekt übernehmen'
-                  : `${selectedListings.length} Objekte übernehmen`}
-              </Button>
+              <div className="p-4 space-y-0">
+                <Table><DualHeader /><TableBody /></Table>
+                <PersonSection {...dualProps} hideHeader />
+                <EmploymentSection {...dualProps} hideHeader />
+                <BankSection {...dualProps} hideHeader />
+              </div>
             </CardContent>
           </Card>
-        )}
-      </div>
 
-      {/* GenerateCaseCard — oben wenn Magic Intake aktiviert */}
-      {magicIntakeResult && (
-        <div ref={generateCaseRef}>
-          <GenerateCaseCard
-            formData={formData}
-            coFormData={coFormData}
-            propertyAssets={propertyAssets}
-            objectData={{
-              address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
-              type: externalObjectData?.objectType,
-              livingArea: externalObjectData?.livingArea,
-              yearBuilt: externalObjectData?.yearBuilt,
-              purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
-            }}
-            financeData={{
-              loanAmount: calculatorBedarf || undefined,
-              equityAmount: undefined,
-              purpose: eckdatenUsage || 'kauf',
-            }}
-            initialCreatedState={{
-              requestId: magicIntakeResult.requestId,
-              publicId: magicIntakeResult.publicId,
-            }}
-          />
-        </div>
-      )}
+          <Card className="glass-card overflow-hidden">
+            <CardContent className="p-0">
+              <div className="px-4 py-2.5 border-b bg-muted/20">
+                <h3 className="text-base font-semibold flex items-center gap-2"><Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller</p>
+              </div>
+              <div className="p-4 space-y-0">
+                <Table><DualHeader /><TableBody /></Table>
+                <IncomeSection {...dualProps} hideHeader />
+                <ExpensesSection {...dualProps} hideHeader />
+                <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
+                <AssetsSection {...dualProps} hideHeader />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Block 1: Eckdaten + Kalkulator (2-spaltig) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FinanceRequestCard
-          ref={requestCardRef}
-          storageKey="mod11-akte"
-          externalPurchasePrice={externalPurchasePrice}
-          showCalculator
-          onCalculate={handleCalculate}
-          hideFooter
-          showObjectFields
-          title="Eckdaten"
-          onDataChange={({ usage, rentalIncome }) => {
-            setEckdatenUsage(usage);
-            setEckdatenRentalIncome(rentalIncome);
-          }}
-        />
-        <FinanceCalculatorCard
-          finanzierungsbedarf={calculatorBedarf}
-          purchasePrice={calculatorPurchasePrice}
-          onCalcUpdate={setCalcData}
-        />
-      </div>
+          {(formData.has_rental_properties || coFormData.has_rental_properties) && (
+            <PropertyAssetsCard properties={propertyAssets} onChange={(updated) => {
+              setPropertyAssets(updated);
+              const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
+              if (formData.has_rental_properties) handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
+            }} />
+          )}
 
-      {/* Block 1b: Überschlägiges Finanzierungsangebot (full width) */}
-      <FinanceOfferCard
-        calcData={calcData}
-        onTransferToApplication={handleTransferToApplication}
-        onShowAmortization={() => setShowAmortization(prev => !prev)}
-        showAmortizationActive={showAmortization}
-      />
-
-      {/* Tilgungsplan (conditional) */}
-      {showAmortization && calcData && calcData.loanAmount > 0 && calcData.interestRate > 0 && (
-        <AmortizationScheduleCard calcData={calcData} />
-      )}
-
-      {/* Section heading: Finanzierungsantrag */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsantrag</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Detaillierte Angaben für die Bankeinreichung
-        </p>
-      </div>
-
-      {/* Block 2a: Selbstauskunft — Person, Beschäftigung, Bankverbindung */}
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-0">
-          <div className="px-4 py-2.5 border-b bg-muted/20">
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <User className="h-4 w-4" /> Selbstauskunft
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller
-            </p>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
+            <p className="text-sm text-muted-foreground mt-1">Hier erfassen Sie Ihr Finanzierungsobjekt.</p>
           </div>
-          <div className="p-4 space-y-0">
-            <Table><DualHeader /><TableBody /></Table>
-            <PersonSection {...dualProps} hideHeader />
-            <EmploymentSection {...dualProps} hideHeader />
-            <BankSection {...dualProps} hideHeader />
-          </div>
-        </CardContent>
-      </Card>
+          <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
 
-      {/* Block 2b: Einnahmen, Ausgaben & Vermögen */}
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-0">
-          <div className="px-4 py-2.5 border-b bg-muted/20">
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller
-            </p>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight uppercase">Kapitaldienstfähigkeit</h2>
+            <p className="text-sm text-muted-foreground mt-1">Simulation der monatlichen Einnahmen und Ausgaben nach Abschluss der neuen Finanzierung</p>
           </div>
-          <div className="p-4 space-y-0">
-            <Table><DualHeader /><TableBody /></Table>
-            <IncomeSection {...dualProps} hideHeader />
-            <ExpensesSection {...dualProps} hideHeader />
-            <div className="pt-4">
-              <Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table>
+          <HouseholdCalculationCard formData={formData} coFormData={coFormData} calcData={calcData} usage={eckdatenUsage} rentalIncome={eckdatenRentalIncome} livingArea={Number(externalObjectData?.livingArea) || 0} propertyAssets={propertyAssets} />
+
+          {!magicIntakeResult && (
+            <div ref={generateCaseRef}>
+              <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                objectData={{ address: externalObjectData?.city ? `${externalObjectData.city}` : undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+              />
             </div>
-            <AssetsSection {...dualProps} hideHeader />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* PropertyAssetsCard — visible when has_rental_properties */}
-      {(formData.has_rental_properties || coFormData.has_rental_properties) && (
-        <PropertyAssetsCard
-          properties={propertyAssets}
-          onChange={(updated) => {
-            setPropertyAssets(updated);
-            const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
-            if (formData.has_rental_properties) {
-              handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
-            }
-          }}
-        />
+          )}
+        </>
       )}
-
-      {/* Section heading: Finanzierungsobjekt */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Hier erfassen Sie Ihr Finanzierungsobjekt.
-        </p>
-      </div>
-
-      {/* Block 3: Finanzierungsobjekt (shared card) */}
-      <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
-
-      {/* Section heading: Kapitaldienstfähigkeit */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Kapitaldienstfähigkeit</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Simulation der monatlichen Einnahmen und Ausgaben nach Abschluss der neuen Finanzierung
-        </p>
-      </div>
-
-      {/* Haushaltsrechnung */}
-      <HouseholdCalculationCard
-        formData={formData}
-        coFormData={coFormData}
-        calcData={calcData}
-        usage={eckdatenUsage}
-        rentalIncome={eckdatenRentalIncome}
-        livingArea={Number(externalObjectData?.livingArea) || 0}
-        propertyAssets={propertyAssets}
-      />
-
-      {/* GenerateCaseCard — unten nur wenn Magic Intake NICHT aktiviert */}
-      {!magicIntakeResult && (
-        <div ref={generateCaseRef}>
-          <GenerateCaseCard
-            formData={formData}
-            coFormData={coFormData}
-            propertyAssets={propertyAssets}
-            objectData={{
-              address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
-              type: externalObjectData?.objectType,
-              livingArea: externalObjectData?.livingArea,
-              yearBuilt: externalObjectData?.yearBuilt,
-              purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
-            }}
-            financeData={{
-              loanAmount: calculatorBedarf || undefined,
-              equityAmount: undefined,
-              purpose: eckdatenUsage || 'kauf',
-            }}
-          />
-        </div>
-      )}
-
       {/* Spacer to prevent floating button overlap */}
       <div className="h-20" />
 
