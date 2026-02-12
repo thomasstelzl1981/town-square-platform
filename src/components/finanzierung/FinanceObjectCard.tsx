@@ -24,12 +24,15 @@ export interface ObjectFormData {
   location: string;
   rooms: string;
   parking: string;
+  usage: string;
+  rentalIncome: string;
 }
 
 export const emptyObjectData: ObjectFormData = {
   street: '', houseNo: '', postalCode: '', city: '',
   objectType: '', yearBuilt: '', livingArea: '', plotArea: '',
   equipment: '', location: '', rooms: '', parking: '',
+  usage: '', rentalIncome: '',
 };
 
 interface Props {
@@ -171,6 +174,21 @@ export default function FinanceObjectCard({ storageKey, initialData, externalDat
             </TR>
             <TR label="Stellplätze / Garagen">
               <Input value={data.parking} onChange={e => set('parking', e.target.value)}
+                type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
+            </TR>
+            <TR label="Nutzungsart">
+              <Select value={data.usage} onValueChange={v => set('usage', v)} disabled={readOnly}>
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Auswählen..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eigengenutzt">Eigengenutzt</SelectItem>
+                  <SelectItem value="vermietet">Vermietet</SelectItem>
+                </SelectContent>
+              </Select>
+            </TR>
+            <TR label="Mieteinnahmen mtl. (EUR)">
+              <Input value={data.rentalIncome} onChange={e => set('rentalIncome', e.target.value)}
                 type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
             </TR>
           </TableBody>
