@@ -1,109 +1,139 @@
 
+# Immobilienvermögen: Ja/Nein-Abfrage, Zusatzkachel und Datenbankstruktur
 
-# Strukturelle Anpassungen: Selbstauskunft, Kapitaldienstfaehigkeit und Rente
+## Uebersicht
 
-## 1. Selbstauskunft-Kachel aufteilen
+Der Kunde wird bei den monatlichen Einnahmen gefragt, ob Mieteinnahmen vorliegen (Ja/Nein). Bei "Ja" erscheint ein Hinweistext und weiter unten oeffnet sich eine neue Kachel "Immobilienvermoegen", in der er bis zu 3 Bestandsimmobilien mit Verbindlichkeiten erfassen kann -- analog zum Bank-PDF-Formular. Die Summe der Nettokaltmieten fliesst automatisch in die Kapitaldienstfaehigkeitsberechnung ein.
 
-**Aktuell**: Eine grosse Kachel mit allen Sections (Person, Beschaeftigung, Bankverbindung, Einnahmen, Ausgaben, Vermoegen).
-
-**Neu**: Zwei separate Kacheln:
-
-```text
-+--- Kachel 1: Selbstauskunft ------------------------------------------------+
-| [User] Selbstauskunft                                                        |
-| Persoenliche Daten, Beschaeftigung und Bankverbindung der Antragsteller      |
-+--- DualHeader: Feld | 1. Antragsteller | 2. Antragsteller ------------------+
-| PersonSection                                                                |
-| EmploymentSection (ohne eigenen DualHeader)                                  |
-| BankSection (ohne eigenen DualHeader)                                        |
-+------------------------------------------------------------------------------+
-
-+--- Kachel 2: Einnahmen, Ausgaben & Vermoegen --------------------------------+
-| [Banknote] Einnahmen, Ausgaben & Vermoegen                                    |
-| Monatliche Einnahmen/Ausgaben und Vermoegenswerte der Antragsteller           |
-+--- DualHeader: Feld | 1. Antragsteller | 2. Antragsteller -------------------+
-| IncomeSection (ohne eigenen DualHeader)                                       |
-| ExpensesSection (ohne eigenen DualHeader)                                     |
-|  --- Unterueberschrift: "Vermoegen und Verbindlichkeiten" ---                 |
-| AssetsSection (ohne eigenen DualHeader)                                       |
-+-------------------------------------------------------------------------------+
-```
-
-## 2. Doppelte "1. Antragsteller / 2. Antragsteller"-Header entfernen
-
-Jede Section (IncomeSection, ExpensesSection, AssetsSection, EmploymentSection, BankSection) rendert aktuell ihren eigenen `DualHeader`. Dieser wird nur einmal ganz oben pro Kachel gebraucht.
-
-**Loesung**: Allen Sections eine neue optionale Prop `hideHeader?: boolean` geben. In `FMFinanzierungsakte.tsx` wird `hideHeader={true}` an alle Sections uebergeben ausser der jeweils ersten pro Kachel. Alternativ (einfacher): Den DualHeader direkt in der Kachel rendern und allen Sections `hideHeader` uebergeben.
-
-## 3. "Rente" umbenennen in "Altersrente"
-
-In `EmploymentSection` (Zeile 486): `SectionHeaderRow title="Rente"` aendern zu `title="Altersrente"`.
-
-## 4. Kapitaldienstfaehigkeit: Bessere Ergebnisdarstellung + Armstrong-Integration
-
-Der Ergebnisblock wird erweitert:
-
-```text
-+--- Ergebnis (nach Berechnung) -----------------------------------------------+
-| Verfuegbares Einkommen:  +2.450,00 EUR (gruen/rot)                           |
-| Kapitaldienstfaehigkeit: [CheckCircle] Tragfaehig                            |
-+--- KI-Bewertung (blau, nach Berechnung sichtbar) ----------------------------+
-| "Nach aktuellem Stand erscheint die Finanzierung vorstellbar. Die            |
-|  Kapitaldienstfaehigkeit ist mit einem Ueberschuss von 2.450 EUR             |
-|  gegeben. Empfehlung: Unterlagen vollstaendig einreichen."                   |
-|                                                [Armstrong oeffnen]           |
-+------------------------------------------------------------------------------+
-```
-
-**Ablauf**: Beim Klick auf "Berechnen" wird:
-1. Die Berechnung ausgefuehrt (wie bisher)
-2. Ein kurzer KI-Bewertungstext generiert (ueber Armstrong/Lovable AI)
-3. Ein "Armstrong oeffnen"-Button angezeigt, der das Armstrong-Sheet oeffnet mit dem Kontext der Finanzierungsakte
-
-Die KI-Bewertung wird als statischer Textblock dargestellt (kein Chat), mit einer Ampel-Logik:
-- Gruen: "Nach jetzigem Stand erscheint die Finanzierung vorstellbar."
-- Gelb: "Die Finanzierung ist grenzwertig. Bitte pruefen Sie..."
-- Rot: "Die Kapitaldienstfaehigkeit ist nicht gegeben."
-
-**Einfachere Alternative (empfohlen fuer Phase 1)**: Statt KI-Aufruf zunachst eine regelbasierte Textgenerierung basierend auf den berechneten Werten (Ueberschuss-Quote, fehlende Felder). Der "Armstrong oeffnen"-Button kann trotzdem integriert werden, damit der Manager bei Rueckfragen direkt Armstrong konsultieren kann.
-
-## 5. Floating Save Button: Abstand zum Ergebnis
-
-Der Button `fixed bottom-6 right-6` ueberlappt die Kapitaldienstfaehigkeit. Loesung: Am Ende der Seite einen unsichtbaren Spacer (`h-20`) einfuegen, damit der Content nicht verdeckt wird.
-
-## 6. Hochgeladene PDF: Immobilienaufstellung
-
-Das Dokument zeigt ein Standard-Bankformular fuer die Immobilienaufstellung (Bestandsimmobilien mit Verbindlichkeiten). Dies koennte spaeter als eigene Section in der Selbstauskunft oder als separater Tab integriert werden. Fuer diese Iteration wird es notiert aber nicht implementiert.
+Alle Aenderungen gelten fuer MOD-07 (Kundenformular) UND MOD-11 (Manager-Ansicht) gleichermassen.
 
 ---
 
-## Technische Umsetzung
+## 1. Einnahmen-Section: Mieteinnahmen als Ja/Nein-Trigger
 
-### Betroffene Dateien
+**Datei:** `ApplicantPersonFields.tsx` (IncomeSection)
+
+Aktuell ist "Mieteinnahmen" ein freies Zahlenfeld. Neu:
+
+```text
+Mieteinnahmen (bestehend)  |  [Ja ▼] / [Nein ▼]  |  [Ja ▼] / [Nein ▼]
+```
+
+- Wenn "Ja": Feld wird read-only und zeigt die automatisch berechnete Summe aus der Immobilienaufstellung
+- Darunter erscheint ein Hinweistext: "Bitte befuellen Sie weiter unten die Zusatzangaben zu Ihrem Immobilienvermoegen."
+- Wenn "Nein": Wert wird auf 0 gesetzt, Immobilienkachel bleibt ausgeblendet
+
+**Neues Feld im FormData:** `has_rental_properties: boolean` (fuer AS1 und AS2)
+
+---
+
+## 2. Neue Datenbanktabelle: `applicant_property_assets`
+
+Eine Kind-Tabelle zu `applicant_profiles`, die bis zu N Bestandsimmobilien speichert:
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| id | uuid (PK) | |
+| applicant_profile_id | uuid (FK) | Verknuepfung zum Antragsteller |
+| property_index | int | 1, 2, 3 (Reihenfolge) |
+| property_type | text | Objektart (ETW, EFH, MFH etc.) |
+| address | text | Adresse |
+| living_area_sqm | numeric | Gesamte Wohnflaeche |
+| rented_area_sqm | numeric | Davon vermietet |
+| commercial_area_sqm | numeric | Gewerbliche Nutzflaeche |
+| construction_year | int | Baujahr |
+| purchase_price | numeric | Kaufpreis |
+| estimated_value | numeric | Geschaetzter Wert heute |
+| net_rent_monthly | numeric | Nettokaltmiete pro Monat |
+| units_count | int | Anzahl Wohneinheiten |
+| loan1_lender | text | Darlehensgeber 1 |
+| loan1_balance | numeric | Darlehensstand aktuell |
+| loan1_rate_monthly | numeric | Darlehensrate mtl. |
+| loan1_interest_rate | numeric | Sollzinssatz |
+| loan2_lender | text | Darlehensgeber 2 |
+| loan2_balance | numeric | |
+| loan2_rate_monthly | numeric | |
+| loan2_interest_rate | numeric | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+RLS: Zugriff ueber `applicant_profiles.tenant_id` (gleiche Policy-Logik wie bestehende Tabellen).
+
+---
+
+## 3. Neue Kachel: "Immobilienvermoegen"
+
+**Neue Datei:** `src/components/finanzierung/PropertyAssetsCard.tsx`
+
+Wird nur angezeigt, wenn `has_rental_properties = true` bei mindestens einem Antragsteller.
+
+Layout (analog zum PDF-Formular):
+
+```text
++--- Kachel: Immobilienvermoegen ------------------------------------------+
+| [Building2] Aufstellung Ihres Immobilienvermoegens                       |
+| Ergaenzende Angaben zu bestehenden Immobilien und deren Verbindlichkeiten|
++--------------------------------------------------------------------------+
+| Immobilie 1                                              [Entfernen]     |
+| Objektart:        [ETW ▼]                                                |
+| Adresse:          [____________]                                         |
+| Wohnflaeche:      [___] m²   Davon vermietet: [___] m²  Baujahr: [___]  |
+| Kaufpreis:        [___] EUR  Geschaetzter Wert: [___] EUR                |
+| Nettokaltmiete:   [___] EUR/Monat   Wohneinheiten: [___]                |
+| --- Verbindlichkeiten ---                                                |
+| Darlehen 1: Geber [____]  Stand [____] EUR  Rate [____] EUR  Zins [__]% |
+| Darlehen 2: Geber [____]  Stand [____] EUR  Rate [____] EUR  Zins [__]% |
++--------------------------------------------------------------------------+
+| [+ Immobilie hinzufuegen]                                                |
++--------------------------------------------------------------------------+
+| Summe Nettokaltmieten: 2.850,00 EUR                                     |
+| Summe Darlehensraten:  1.420,00 EUR                                     |
++--------------------------------------------------------------------------+
+```
+
+- Max. 5 Immobilien (erweiterbar)
+- Summe Nettokaltmieten wird automatisch in `rental_income_monthly` zurueckgeschrieben
+- Summe Darlehensraten fliesst in die Kapitaldienstberechnung ein
+
+---
+
+## 4. Integration in MOD-11 (FMFinanzierungsakte) und MOD-07 (SelbstauskunftFormV2)
+
+**MOD-11** (`FMFinanzierungsakte.tsx`):
+- PropertyAssetsCard wird zwischen "Einnahmen/Ausgaben"-Kachel und "Finanzierungsobjekt" eingefuegt
+- Sichtbar nur wenn `has_rental_properties = true`
+- Daten werden im gleichen localStorage-Key gespeichert und beim Floating Save mit persistiert
+
+**MOD-07** (`SelbstauskunftFormV2.tsx`):
+- Gleiche PropertyAssetsCard, aber mit zusaetzlichem Button: "Aus Immobilienportfolio importieren" (laedt Daten aus MOD-04 Properties)
+- In MOD-11 gibt es diesen Import-Button NICHT (Manager hat kein Portfolio)
+
+---
+
+## 5. Berechnung: Rueckwirkung auf Kapitaldienstfaehigkeit
+
+In `HouseholdCalculationCard.tsx` wird die CALC_MATRIX erweitert:
+
+| Feld | Quelle | Regel |
+|---|---|---|
+| existingRentalIncome | Summe net_rent_monthly aus PropertyAssets | Nur wenn has_rental_properties = true |
+| existingLoanPayments | Summe loan_rates aus PropertyAssets | Neue Ausgaben-Zeile in der Haushaltsrechnung |
+
+---
+
+## 6. Neues Feld in applicant_profiles
+
+`has_rental_properties` (boolean, default false) wird als Spalte zur bestehenden Tabelle hinzugefuegt, damit der Ja/Nein-Status persistent gespeichert wird.
+
+---
+
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `ApplicantPersonFields.tsx` | `hideHeader`-Prop an alle Sections; "Rente" zu "Altersrente" umbenennen |
-| `FMFinanzierungsakte.tsx` | Selbstauskunft in 2 Kacheln aufteilen; DualHeader nur 1x pro Kachel; Spacer unten einfuegen |
-| `HouseholdCalculationCard.tsx` | Ergebnis-Block erweitern mit regelbasierter Bewertung und Armstrong-Button |
-
-### Aenderungen im Detail
-
-**`ApplicantPersonFields.tsx`**:
-- Alle exportierten Sections (`PersonSection`, `EmploymentSection`, `BankSection`, `IncomeSection`, `ExpensesSection`, `AssetsSection`) erhalten `hideHeader?: boolean` in ihren Props
-- Wenn `hideHeader={true}`, wird der interne `{isDual && <DualHeader />}` uebersprungen
-- Zeile 486: `"Rente"` wird zu `"Altersrente"`
-
-**`FMFinanzierungsakte.tsx`**:
-- Block 2 (Zeilen 250-268) wird in zwei Cards aufgeteilt:
-  - Kachel 1: Gemeinsamer DualHeader + PersonSection + EmploymentSection + BankSection (alle mit `hideHeader`)
-  - Kachel 2: Eigener Titel "Einnahmen, Ausgaben & Vermoegen" + DualHeader + IncomeSection + ExpensesSection + SectionHeaderRow "Vermoegen und Verbindlichkeiten" + AssetsSection (alle mit `hideHeader`)
-- Am Seitenende: `<div className="h-20" />` als Spacer vor dem Floating Button
-
-**`HouseholdCalculationCard.tsx`**:
-- Ergebnis-Block (Zeilen 291-318) wird erweitert um eine regelbasierte Bewertungsbox:
-  - Gruener/gelber/roter Hinweistext basierend auf `disposable` und Ueberschuss-Quote
-  - Pruefung auf fehlende Felder (alle Nullen = "Bitte zuerst Daten erfassen")
-  - "Armstrong oeffnen"-Button (ruft `onOpenArmstrong` Callback auf)
-- Neue Prop: `onOpenArmstrong?: () => void`
-
+| **DB-Migration** | Neue Tabelle `applicant_property_assets` + Spalte `has_rental_properties` in `applicant_profiles` |
+| `ApplicantPersonFields.tsx` | Mieteinnahmen-Zeile: Ja/Nein-Select statt Zahlenfeld + Hinweistext |
+| `PropertyAssetsCard.tsx` (NEU) | Kachel fuer Immobilienaufstellung (bis zu 5 Immobilien + Verbindlichkeiten) |
+| `FMFinanzierungsakte.tsx` | PropertyAssetsCard einbinden (MOD-11) |
+| `SelbstauskunftFormV2.tsx` | PropertyAssetsCard einbinden (MOD-07) + Import-Button aus MOD-04 |
+| `HouseholdCalculationCard.tsx` | CALC_MATRIX um bestehende Darlehensraten erweitern |
