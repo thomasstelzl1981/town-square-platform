@@ -1,82 +1,57 @@
 
 
-# Plan: Kaufy-Website — Klassische Suche & Bonitats-Vorcheck
+# Plan: Split-View Toggle in FMFinanzierungsakte einbauen
 
-## 1. Klassische Suche im Header sichtbar machen
+## Problem
 
-**Problem:** Der Mode-Toggle (Investment/Klassisch) in der SearchBar existiert bereits, ist aber nur als kleine Icons (`Calculator`/`Search`) rechts in der Cue-Bar versteckt und auf Mobile gar nicht sichtbar (`hidden md:flex`).
+Der Split-View-Toggle (Standard / Split-View) wurde nur in `FMFallDetail.tsx` implementiert (fuer bestehende Faelle). Die `FMFinanzierungsakte.tsx` (Neuanlage) hat diesen Toggle nicht, weshalb die Ansichtsumschaltung dort fehlt.
 
-**Loesung:** Den Toggle als beschriftete Tabs oberhalb der Eingabefelder positionieren, sichtbar auf allen Bildschirmgroessen.
+Die Multi-Asset Kaufy-Suche mit 3-Zeilen-Design ist bereits korrekt implementiert (Zeilen 236-304), aber wegen der Zugriffsblockade ("Kein Zugriff") nicht sichtbar fuer den Test-User.
 
-**Datei:** `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx`
+## Loesung
 
-- Den bestehenden Icon-Toggle (Zeilen 166-191) entfernen
-- Stattdessen oberhalb der Eingabezeile (Zeile 80) zwei beschriftete Tab-Buttons einfuegen:
-  - "Investment-Suche" (Calculator-Icon + Text)
-  - "Klassische Suche" (Search-Icon + Text)
-- Design: Pill-Tabs mit aktivem Zustand (analog zum bestehenden Text-Toggle-Stil)
-- Sichtbar auf allen Viewports (kein `hidden md:flex`)
+Den Split-View-Toggle aus `FMFallDetail.tsx` analog in `FMFinanzierungsakte.tsx` einbauen:
 
----
+### Aenderungen in `FMFinanzierungsakte.tsx`
 
-## 2. Bonitats-Vorcheck als Zwischenschritt
+1. **Neuer State**: `splitView` (boolean, default: false)
+2. **Toggle-Buttons** im Header-Bereich (Zeile 202-210), rechts neben dem Titel:
+   - "Standard" (LayoutList-Icon)
+   - "Split-View" (LayoutPanelLeft-Icon)
+   - Nur sichtbar ab `lg`-Breakpoint (analog FMFallDetail)
+3. **Layout-Umschaltung**:
+   - **Standard** (aktuell): Alle Bloecke vertikal gestapelt
+   - **Split-View**: Zwei separat scrollbare Spalten:
+     - **Links**: Magic Intake, Kaufy-Suche, Eckdaten, Kalkulator, Objekt, Kapitaldienstfaehigkeit
+     - **Rechts**: Selbstauskunft (Person, Einkommen, Ausgaben, Vermoegen)
 
-**Problem:** Der Submit-Button "Finanzierung einreichen" erscheint direkt. Der User wuenscht einen sichtbaren Zwischenschritt mit Bonitatspruefung.
+### Technische Umsetzung
 
-**Loesung:** Zweistufiger Footer im KaufyFinanceRequestSheet:
-
-**Datei:** `src/components/zone3/KaufyFinanceRequestSheet.tsx`
-
-- Neuer State: `bonitaetChecked: boolean` (default: false)
-- **Stufe 1** (bonitaetChecked = false):
-  - Button "Bonitatsprufung starten" (aktiviert wenn KDF-Daten vorhanden)
-  - Klick: Prueft die KDF-Ampel (bereits berechnet im `kdf`-Objekt)
-  - Bei gruen/gelb: `bonitaetChecked = true`, Erfolgsmeldung anzeigen
-  - Bei rot: Warnmeldung anzeigen ("Bitte pruefen Sie Ihre Angaben")
-- **Stufe 2** (bonitaetChecked = true):
-  - Sichtbare Erfolgsmeldung: "Ihr Bonitattscheck war positiv. Herzlichen Gluckwunsch!" (gruener Banner)
-  - Darunter: Button "Finanzierung einreichen" (bestehende Submit-Logik)
-
-**Ablauf:**
 ```text
-Formular ausfuellen
-       |
-[Bonitatsprufung starten]
-       |
-  KDF pruefen (lokal)
-       |
-  gruen/gelb --> Erfolgsbanner + [Finanzierung einreichen]
-  rot ---------> Warnbanner ("Angaben pruefen")
+Header-Zeile: [<- Zurueck]  NEUE FINANZIERUNGSAKTE  [Standard | Split-View]
+                                                      ^--- Neuer Toggle
+
+Standard-Ansicht:     Split-View-Ansicht:
++------------------+  +--------+  +--------+
+| Magic + Kaufy    |  | Magic  |  | Selbst |
++------------------+  | Kaufy  |  | aus-   |
+| Eckdaten + Kalk  |  | Eckdat |  | kunft  |
++------------------+  | Kalk   |  | (scroll|
+| Selbstauskunft   |  | Objekt |  |  bar)  |
++------------------+  | KDF    |  |        |
+| Objekt           |  |        |  |        |
++------------------+  +--------+  +--------+
+| KDF              |   (scrollbar)
++------------------+
 ```
 
----
+### Dateien
 
-## Technische Details
+- **`src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`**:
+  - Import `LayoutList`, `LayoutPanelLeft` von lucide-react
+  - State `splitView` hinzufuegen
+  - Toggle-Buttons in Header einfuegen
+  - Bedingtes Layout: `splitView ? <SplitLayout /> : <StandardLayout />`
+  - Split-Layout mit `overflow-y-auto` fuer beide Spalten und `height: calc(100vh - 220px)`
 
-### SearchBar-Aenderungen (Kaufy2026SearchBar.tsx)
-- Zeilen 166-191 (Icon-Toggle): Entfernen
-- Neue Tab-Leiste vor Zeile 80 einfuegen:
-```tsx
-<div className="flex items-center gap-1 mb-3 text-sm">
-  <button onClick={() => setMode('investment')}
-    className={cn("px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors",
-      mode === 'investment' ? "bg-[hsl(220,20%,10%)] text-white" : "text-[hsl(215,16%,55%)] hover:bg-white/60"
-    )}>
-    <Calculator className="w-3.5 h-3.5" /> Investment-Suche
-  </button>
-  <button onClick={() => setMode('classic')}
-    className={cn("px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors",
-      mode === 'classic' ? "bg-[hsl(220,20%,10%)] text-white" : "text-[hsl(215,16%,55%)] hover:bg-white/60"
-    )}>
-    <Search className="w-3.5 h-3.5" /> Klassische Suche
-  </button>
-</div>
-```
-
-### Finance Sheet Aenderungen (KaufyFinanceRequestSheet.tsx)
-- Neuer State `bonitaetChecked` (Zeile 143)
-- Sticky Footer (Zeilen 509-540) ersetzen durch zweistufige Logik:
-  - Stufe 1: "Bonitatsprufung starten"-Button
-  - Stufe 2: Erfolgsbanner + "Finanzierung einreichen"-Button
-- Reset von `bonitaetChecked` bei Formular-Aenderungen (optional) oder beim erneuten Oeffnen
-
+Keine weiteren Dateien betroffen. Keine Datenbank-Aenderungen.
