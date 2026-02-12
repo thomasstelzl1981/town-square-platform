@@ -1,114 +1,156 @@
 
-# Kaufy: Finanzierung direkt aus dem Expose beantragen
+# Ergebnisbericht: Multi-Perspektiven-Test der Finanzierungsmodule
 
-## Konzept
+## A. Getestete User-Perspektiven und Ergebnisse
 
-Der Kunde befindet sich bereits im Kaufy-Immobilienexpose und hat ueber die Investment Engine sein Finanzierungskonzept entwickelt (Eigenkapital, Tilgung, Zinsbindung, monatliche Rate). Wenn er "Finanzierung beantragen" klickt, ist das Objekt bereits vollstaendig definiert — er muss nur noch seine Selbstauskunft ausfuellen.
+### Perspektive 1: Kapitalanleger auf Kaufy (Zone 3 -> Expose -> Finanzierung)
 
-```text
-FLOW:
-Kaufy Suche → Expose oeffnen → Investment Engine konfigurieren
-  → "Finanzierung beantragen" klicken
-  → Selbstauskunft ausfuellen (Objekt ist bereits gesetzt)
-  → Live-Kapitaldienstfaehigkeits-Vorcheck sehen
-  → "Finanzierung einreichen"
-  → Bestaetigung + E-Mail mit Datenraum-Link kommt automatisch
-```
+**Flow:** Kaufy Suche -> Expose oeffnen -> Investment Engine konfigurieren -> "Finanzierung beantragen" -> Selbstauskunft -> KDF-Vorcheck -> Einreichen
 
-## Was der Kunde NICHT eingeben muss
+**Status: FUNKTIONAL mit Verbesserungspotenzial**
 
-- Objekt-Typ, Adresse, Flaeche, Baujahr (kommt aus dem Listing)
-- Kaufpreis, Eigenkapital, Darlehen, Zinssatz, Tilgung, Rate (kommt aus der Engine)
-- Nebenkosten (berechnet die Engine)
+| Pruefpunkt | Status | Detail |
+|---|---|---|
+| CTA-Button "Finanzierung beantragen" | OK | Desktop in Sidebar, Mobile als Sticky-Footer |
+| Sheet mit Objekt-Zusammenfassung | OK | Titel, PLZ, Preis, EK, Rate korrekt angezeigt |
+| Engine-Params uebergeben | OK | equity, interestRate, monthlyRate, loanAmount korrekt gemappt |
+| 3 Accordion-Sektionen | OK | Personal, Einkommen, Ausgaben/Vermoegen |
+| Live-KDF-Ampel | OK | Berechnet Einnahmen vs. Ausgaben + Rate, Ampelsystem gruen/gelb/rot |
+| DSGVO-Consent | OK | Checkbox vorhanden, Pflichtfeld |
+| Submit -> Edge Function | OK | source: 'zone3_kaufy_expose' |
+| Lead-Generierung Z1 | OK | leads-Tabelle mit zone1_pool=true |
+| Datenraum-Erstellung | OK | tenant-documents/{tenantId}/MOD_11/{requestId}/ |
+| Bestaetigungs-E-Mail | WARNUNG | Wird ausgeloest, aber futureroom.com Domain-Verifizierung in Resend noetig |
+| Bestaetigungsansicht | OK | Public-ID, Naechste Schritte, Datenraum-Hinweis |
 
-## Was der Kunde eingeben muss (Selbstauskunft)
+**Verbesserungsvorschlaege:**
+1. KaufyFinanceRequestSheet: Die "Naechste Schritte" nach Einreichung erwaehnen noch einen "Link zu Ihrem persoenlichen Datenraum" — wir haben aber beschlossen, dass kein direkter Datenraum-Link kommt, nur E-Mail-Hinweis. Text anpassen auf: "Sie erhalten in Kuerze eine E-Mail mit einer Dokumenten-Checkliste. Senden Sie uns Ihre Unterlagen per E-Mail an finanzierung@futureroom.com unter Angabe Ihrer Vorgangsnummer."
+2. Das Sheet hat kein Scroll-Verhalten fuer kleine Bildschirme — bei langen Formularen kann der Submit-Button auf kleinen Laptops nicht sichtbar sein. Der Submit-Button sollte sticky am unteren Rand sein.
 
-Drei kompakte Abschnitte, KEIN Zwischenschritt fuer Kontaktdaten — die Kontaktdaten sind Teil der Selbstauskunft:
+---
 
-**Abschnitt 1 — Persoenliche Daten:**
-- Anrede, Vorname, Nachname
-- Geburtsdatum, Geburtsort
-- Adresse (Strasse, PLZ, Ort)
-- Telefon, E-Mail
-- Familienstand
+### Perspektive 2: Normaler Finanzierungskunde auf FutureRoom (Zone 3)
 
-**Abschnitt 2 — Beschaeftigung und Einkommen:**
-- Beschaeftigungsart (Angestellt/Selbstaendig/Beamter)
-- Arbeitgeber, beschaeftigt seit
-- Nettoeinkommen monatlich
-- Sonstige Einnahmen (Mieteinnahmen, Kindergeld etc.)
+**Flow:** FutureRoom.com -> "Finanzierung starten" -> 6-Step-Wizard -> Quick Submit oder Account erstellen
 
-**Abschnitt 3 — Ausgaben und Vermoegen:**
-- Aktuelle Kaltmiete (faellt bei Eigennutzung weg)
-- Lebenshaltungskosten
-- Sonstige Fixkosten (Leasing, Unterhalt)
-- Vermoegen (Ersparnisse, Wertpapiere, LV)
+**Status: FUNKTIONAL**
 
-## Live-Kapitaldienstfaehigkeits-Vorcheck
+| Pruefpunkt | Status | Detail |
+|---|---|---|
+| Homepage | OK | Sauber, 4-Step-Prozess, CTA klar |
+| 4-Prozessschritte Darstellung | OK | Anfrage -> Vorpruefung -> Unterlagen -> Finanzierung (korrekt auf 4 erweitert) |
+| Wizard (FutureRoomBonitat) | OK | 6 Steps: Kontakt, Objekt, Eckdaten, Kalkulation, Haushalt, Abschluss |
+| Live-KDF im Wizard | OK | Wird in Step "Haushalt" berechnet |
+| Quick Submit | OK | Ruft sot-futureroom-public-submit auf (source: zone3_quick) |
+| Account-Path | OK | Speichert localStorage und leitet zu Login weiter |
+| Lead-Generierung | OK | Gleiche Edge Function, Lead in Z1 |
+| Bestaetigungsseite | OK | Public-ID, Konto-Erstellen-Option |
 
-Waehrend der Kunde die Selbstauskunft ausfuellt, wird live die Kapitaldienstfaehigkeit berechnet — identische Logik wie in der bestehenden HouseholdCalculationCard:
+**Verbesserungsvorschlaege:**
+3. Die FutureRoom Bestaetigungsseite (nach Quick-Submit) erwaehnt "Ein Finanzierungsmanager wird sich innerhalb von 48 Stunden bei Ihnen melden" — sollte ergaenzt werden um den Hinweis zur Unterlagen-E-Mail (analog zur Kaufy-Bestaetigung), da die E-Mail automatisch rausgeht.
+4. Im FutureRoom-Wizard fehlt die `source`-Angabe — der Wizard sendet kein `source`-Feld im Payload, die Edge Function faellt auf 'zone3_quick' zurueck. Das ist korrekt, aber fuer Tracing sollte explizit `source: 'zone3_futureroom_wizard'` mitgegeben werden.
 
-- Einnahmen vs. Ausgaben + neue Darlehensrate
-- Ampel-System: Gruen (tragfaehig), Gelb (knapp), Rot (nicht tragfaehig)
-- Der Kunde sieht sofort, ob die Finanzierung realistisch ist
+---
 
-## Einreichung
+### Perspektive 3: Bestandskunde in MOD-07 (Zone 2 Portal)
 
-- Nutzt die bestehende Edge Function `sot-futureroom-public-submit` mit `source: 'zone3_kaufy_expose'`
-- Objektdaten und Engine-Ergebnisse werden automatisch aus dem Expose mitgegeben
-- Selbstauskunft-Daten werden als `applicant_snapshot` gespeichert
-- Anfrage landet in Zone 1 zur Triage
+**Flow:** Portal -> Finanzierung -> Selbstauskunft ausfuellen -> Anfrage erstellen -> Einreichen
 
-## Nach Einreichung
+**Status: FUNKTIONAL**
 
-- Bestaetigung mit Public-ID (SOT-F-...)
-- Hinweis: "Sie erhalten in Kuerze eine E-Mail mit einem Link zu Ihrem persoenlichen Datenraum, wo Sie Ihre Unterlagen hochladen koennen. Alternativ koennen Sie uns die Unterlagen auch per E-Mail zusenden."
-- Kein Datenraum-Upload direkt auf der Website (fluechtig)
+| Pruefpunkt | Status | Detail |
+|---|---|---|
+| SelbstauskunftTab | OK | V2-Formular mit persistent Profile |
+| AnfrageTab | OK | MagicIntake + Kaufy-Suche + Eckdaten + Kalkulator + Haushaltsrechnung |
+| Kaufy-Objektsuche | OK | Durchsucht v_public_listings, Auto-Fill |
+| MagicIntake | OK | Sofortige Akten-Initialisierung |
+| HouseholdCalculationCard | OK | T-Konto-Layout, CALC_MATRIX-Logik |
 
-## Technische Umsetzung
+**Kein Aenderungsbedarf** — MOD-07 funktioniert eigenstaendig und korrekt.
 
-### Datei 1 (NEU): `src/components/zone3/KaufyFinanceRequestSheet.tsx`
+---
 
-Ein Sheet (von rechts einfahrend, volle Hoehe), das die reduzierte Selbstauskunft enthaelt:
+### Perspektive 4: Projektant in MOD-13 (Zone 2)
 
-- **Props:**
-  - `open: boolean`
-  - `onClose: () => void`
-  - `listing: ListingData` (Objekt-Stammdaten aus Expose)
-  - `engineParams: { equity, interestRate, repaymentRate, monthlyRate, loanAmount, purchasePrice, transferTax, notaryCosts, totalCosts }`
+**Flow:** Projekt anlegen -> Landing Page erstellen -> Expose mit Finanzierungs-CTA
 
-- **Interner State:**
-  - `formData` — reduzierte Version von `ApplicantFormData` (nur die relevanten Felder)
-  - `currentSection` — 'personal' | 'income' | 'expenses'
-  - `submitting`, `submitted`, `publicId`
+**Status: GEPLANT, NOCH NICHT IMPLEMENTIERT**
 
-- **Layout:**
-  - Header: Kompakte Objekt-Zusammenfassung (1 Zeile: Typ, Adresse, Preis — read-only)
-  - 3 Accordion-Sektionen fuer die Selbstauskunft
-  - Rechts/unten: Live-KDF-Ampel (Kapitaldienstfaehigkeits-Vorcheck)
-  - Footer: "Finanzierung einreichen" Button
+Der Golden Path GP-FINANCE-Z3 erwaehnt MOD-13 Landing Pages als Quelle (`module: 'ZONE-3/MOD-07/MOD-11'`), aber die Integration des `KaufyFinanceRequestSheet` in die Landing Pages ist noch nicht umgesetzt. Das ist konsistent mit der Aussage im Plan: "Die Variante Kaufy werden wir zukuenftig in unserer Landingpage-Konzept mit einbetten aus Modul 13." — Also kein Fehler, aber als offener Punkt dokumentiert.
 
-- **Submit:** Ruft `sot-futureroom-public-submit` auf mit `source: 'zone3_kaufy_expose'` und mappt die Daten in das bestehende Schema (contact, object, request, calculation, household)
+---
 
-- **Nach Submit:** Bestaetigung mit Public-ID und Datenraum-Hinweis
+### Perspektive 5: Finanzierungsmanager in MOD-11 (Zone 2)
 
-### Datei 2 (EDIT): `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx`
+**Flow:** Dashboard -> Mandate sehen -> Fall oeffnen -> Selbstauskunft bearbeiten -> Split-View -> Bankeinreichung
 
-- Import von `KaufyFinanceRequestSheet`
-- Neuer State: `showFinanceRequest: boolean`
-- CTA-Button im Sticky-Sidebar-Panel (unter InvestmentSliderPanel): "Finanzierung beantragen" in Teal/Primary
-- Zweiter CTA-Button in der mobilen Ansicht (unter dem Content)
-- Uebergibt `listing` und berechnete Engine-Parameter an das Sheet
-- Engine-Parameter werden aus `params` und `calcResult` extrahiert
+**Status: FUNKTIONAL**
 
-### Datei 3 (EDIT): `src/pages/zone3/futureroom/FutureRoomHome.tsx`
+| Pruefpunkt | Status | Detail |
+|---|---|---|
+| FMDashboard | OK | Faelle, Mandate, Visitenkarte |
+| FMFinanzierungsakte (Neuanlage) | OK | MagicIntake + Kaufy-Suche + Selbstauskunft |
+| FMFallDetail (bestehender Fall) | OK | Split-View Toggle funktioniert |
+| Split-View Layout | OK | Links: Kurzbeschreibung/Objekt/Kalkulator/Datenraum, Rechts: Selbstauskunft |
+| Datenraum-Tile | OK | Zeigt MOD_11/{requestId} Pfad |
+| Speichern Selbstauskunft | OK | Ueber "Speichern"-Button in Selbstauskunft-Header |
+| Status-Workflow | OK | Annehmen -> Bearbeitung -> Ready -> Abschliessen |
 
-- Prozess-Schritte von 3 auf 4 erweitern:
-  1. "Anfrage stellen" — Online-Formular ausfuellen (bestehend)
-  2. "Vorpruefung erhalten" — Sofortige Kapitaldienstfaehigkeits-Einschaetzung
-  3. "Unterlagen einreichen" — NEU: "Nach Ihrer Anfrage erhalten Sie per E-Mail einen Link zu Ihrem persoenlichen Datenraum. Dort laden Sie Ihre Unterlagen sicher und dauerhaft hoch — nicht fluechtig im Browser, sondern in Ihrem persoenlichen Finanzierungsordner. Alternativ koennen Sie uns die Unterlagen auch per E-Mail zusenden."
-  4. "Finanzierung erhalten" — Bankfertige Aufbereitung und Einreichung (bestehend)
+**Verbesserungsvorschlaege:**
+5. FMFallDetail: Das Datenraum-Tile ist nur ein Platzhalter ("Unterlagen per E-Mail oder DMS-Upload bereitstellen"). Es fehlt ein Button "Datenraum oeffnen", der zum Storage-Browser navigiert. Das ist ein Feature-Wunsch, kein Bug.
+6. FMFallDetail: Bei Zone-3-Anfragen (source: zone3_kaufy_expose / zone3_quick) sind die Antragsteller-Daten im `applicant_snapshot` JSON gespeichert, aber die Selbstauskunft im FallDetail laedt aus `applicant_profiles`. Wenn kein `applicant_profiles`-Eintrag existiert (nur Snapshot), sind die Felder leer. Die Edge Function muesste optional einen `applicant_profiles`-Eintrag aus dem Snapshot erstellen.
 
-### Keine DB-Aenderungen
+---
 
-Die bestehende Edge Function `sot-futureroom-public-submit` und die Tabellen `finance_requests` / `finance_mandates` werden wiederverwendet. Das `source`-Feld unterscheidet die Herkunft (`zone3_kaufy_expose`). Die Selbstauskunft-Daten werden im bestehenden `applicant_snapshot` JSON-Feld gespeichert.
+## B. Spec- und Manifest-Abgleich
+
+| Manifest/Spec | Status | Detail |
+|---|---|---|
+| GP_FINANCE_Z3.ts | OK | 6 Phasen, 8 Steps, 9 Fail-States, korrekte Ledger-Events |
+| goldenPaths/index.ts | OK | GP-FINANCE-Z3 registriert, alle Ledger-Events in Whitelist |
+| LEDGER_EVENT_WHITELIST | OK | Alle finance.z3.* Events vorhanden (13 Events) |
+| Edge Function | OK | sot-futureroom-public-submit mit Lead + Datenraum + Email |
+| routesManifest.ts | NICHT GEPRUEFT | Sollte Kaufy/FutureRoom-Routen enthalten (besteht bereits) |
+
+---
+
+## C. Empfohlene Reparaturen (geringes Risiko)
+
+Diese Aenderungen sind kleine Textkorrekturen und Ergaenzungen, die keine Architektur-Auswirkungen haben:
+
+### 1. KaufyFinanceRequestSheet — Bestaetigungstext anpassen (Zeilen 294-298)
+Aktueller Text erwaehnt faelschlicherweise einen "Link zu Ihrem persoenlichen Datenraum". Korrekt: Nur E-Mail-Hinweis.
+
+### 2. FutureRoomBonitat — Source-Feld explizit setzen
+Im `handleQuickSubmit` das Feld `source: 'zone3_futureroom_wizard'` im Payload ergaenzen, damit die Herkunft in der Edge Function korrekt getrackt wird.
+
+### 3. FutureRoomBonitat — Bestaetigungsseite ergaenzen
+Nach Quick-Submit den Hinweis ergaenzen: "Sie erhalten in Kuerze eine E-Mail mit einer Dokumenten-Checkliste und Ihrer Vorgangsnummer."
+
+### 4. KaufyFinanceRequestSheet — Submit-Button sticky machen
+Den "Finanzierung einreichen"-Button als sticky Footer im Sheet positionieren, damit er auf kleinen Bildschirmen sichtbar bleibt.
+
+---
+
+## D. Groessere Verbesserungsvorschlaege (spaeter)
+
+1. **Datenraum-Browser im FMFallDetail**: Button "Datenraum oeffnen" der die Dateien aus `tenant-documents/{tenantId}/MOD_11/{requestId}/` auflistet und Uploads erlaubt.
+2. **Snapshot-zu-Profil-Migration**: Bei Zone-3-Anfragen automatisch einen `applicant_profiles`-Eintrag aus dem `applicant_snapshot` erstellen, damit der Finanzierungsmanager die Selbstauskunft direkt bearbeiten kann.
+3. **MOD-13 Landing Page Integration**: `KaufyFinanceRequestSheet` auch in die Landing Pages einbetten (source: `zone3_landing_page`).
+4. **E-Mail-Domain-Verifizierung**: `futureroom.com` in Resend verifizieren, damit die Bestaetigungs-E-Mails tatsaechlich zugestellt werden.
+
+---
+
+## E. Technische Details der Reparaturen
+
+### Datei 1: `src/components/zone3/KaufyFinanceRequestSheet.tsx`
+- **Zeilen 296-298**: Bestaetigungstext aendern — "Link zu Ihrem persoenlichen Datenraum" entfernen, ersetzen durch E-Mail-Hinweis mit `finanzierung@futureroom.com`
+- **Zeile 313**: SheetContent: Submit-Button aus dem scrollbaren Bereich heraus in einen sticky Footer verschieben
+
+### Datei 2: `src/pages/zone3/futureroom/FutureRoomBonitat.tsx`
+- **Zeile 127 (handleQuickSubmit body)**: `source: 'zone3_futureroom_wizard'` zum Payload hinzufuegen
+- **Zeile 203**: Bestaetigungstext ergaenzen um E-Mail-Hinweis
+
+### Datei 3: Keine weiteren Dateien betroffen
+
+Alle Aenderungen sind reine UI/Text-Korrekturen und betreffen keine Zone-2-Architektur oder Datenbankstruktur.
