@@ -37,6 +37,7 @@ Jeder Cross-Zone-Übergang im System MUSS einen formalen Contract haben (ZBC-R10
 | [Acq Outbound Email](CONTRACT_ACQ_OUTBOUND_EMAIL.md) | Z2 → Extern | Akquise-Anschreiben MOD-12 | `supabase/functions/sot-acq-outbound/` | Dokumentiert |
 | [Finance Doc Reminder](CONTRACT_FINANCE_DOC_REMINDER.md) | System → Z2 | Cron (woechentlich) | `supabase/functions/finance-document-reminder/` | Dokumentiert |
 | [Landing Page Generate](CONTRACT_LANDING_PAGE_GENERATE.md) | Z2 → Z3 | Landing Page erstellen MOD-13 | `supabase/functions/sot-generate-landing-page/` | Dokumentiert |
+| [Renter Invite](CONTRACT_RENTER_INVITE.md) | Z2 → Z1 → Z3 | Mietereinladung MOD-05 | `supabase/functions/sot-renter-invite/` | Implementiert |
 
 ---
 

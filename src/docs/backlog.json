@@ -4,7 +4,7 @@
     "last_scan": "2026-02-12",
     "last_sprint": "2026-02-12",
     "total": 47,
-    "done": 12,
+    "done": 22,
     "scan_coverage": "all 21 modules, 3 zones, manifests, specs, contracts"
   },
   "issues": [
@@ -41,7 +41,8 @@
       "title": "OfficePage: Direct imports statt lazy loading fuer alle 6 Tabs",
       "fix": "Tabs lazy-loaden wie in MOD-09, MOD-05 Pattern",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-004",
@@ -52,7 +53,8 @@
       "title": "DMSPage: Direct imports statt lazy loading fuer alle 4 Tabs",
       "fix": "Tabs lazy-loaden",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-005",
@@ -63,7 +65,8 @@
       "title": "StammdatenPage: Direct imports statt lazy loading fuer alle 4 Tabs",
       "fix": "Tabs lazy-loaden",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-006",
@@ -74,7 +77,8 @@
       "title": "ImmobilienPage: Direct imports fuer 4 Tabs (nur PropertyDetail ist lazy)",
       "fix": "Tabs lazy-loaden",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-007",
@@ -85,7 +89,8 @@
       "title": "FinanzierungPage: Direct imports fuer 4 Tabs",
       "fix": "Tabs lazy-loaden",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-008",
@@ -96,7 +101,8 @@
       "title": "InvestmentsPage: Direct imports fuer alle Tabs und Detail-Seiten",
       "fix": "Tabs lazy-loaden, nur Router-Shell behalten",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "ARCH-009",
@@ -107,7 +113,8 @@
       "title": "CommunicationProPage: Direct imports fuer alle 4 Sub-Seiten",
       "fix": "Tabs lazy-loaden",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "HYGIENE-001",
@@ -218,7 +225,8 @@
       "title": "CONTRACT_RENTER_INVITE fehlt im INDEX.md",
       "fix": "Contract-Zeile in INDEX.md ergaenzen",
       "effort": "XS",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "SPEC-002",
@@ -448,7 +456,8 @@
       "title": "finance-desk Route im Manifest (L162) aber FinanceDeskDashboard ist Legacy",
       "fix": "Route aus Manifest entfernen, nur Legacy-Redirect behalten",
       "effort": "XS",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12"
     },
     {
       "id": "CI-006",
@@ -470,7 +479,9 @@
       "title": "ImmobilienPage: ErrorBoundary-Klasse als inline Class-Component statt shared utility",
       "fix": "Shared ErrorBoundary aus components/shared nutzen",
       "effort": "S",
-      "status": "open"
+      "status": "done",
+      "resolved": "2026-02-12",
+      "note": "ErrorBoundary entfernt — Suspense reicht als Fallback, Parent-Layout hat eigenen Error-Handler"
     },
     {
       "id": "CI-007",
