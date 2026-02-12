@@ -1,57 +1,114 @@
 
+# Kaufy: Finanzierung direkt aus dem Expose beantragen
 
-# Kaufy-Objekte Kachel: 3-Zeilen-Design + Multi-Select + "Objekt uebernehmen"
+## Konzept
 
-## Ziel
-
-Die "Objekte aus Kaufy" Kachel (rechts neben Magic Intake) wird auf das identische 3-Zeilen-Design der MagicIntakeCard gebracht. Multi-Select wird ermoeglicht und ein blauer "Objekt uebernehmen" Button schliesst die Kachel ab.
-
-## Design (3 Zeilen)
+Der Kunde befindet sich bereits im Kaufy-Immobilienexpose und hat ueber die Investment Engine sein Finanzierungskonzept entwickelt (Eigenkapital, Tilgung, Zinsbindung, monatliche Rate). Wenn er "Finanzierung beantragen" klickt, ist das Objekt bereits vollstaendig definiert — er muss nur noch seine Selbstauskunft ausfuellen.
 
 ```text
-+------------------------------------------+
-| [ShoppingBag] Objekte aus Kaufy          |  ← Zeile 1: Icon + Titel
-| Marktplatz durchsuchen — Stammdaten...   |  ← Zeile 2: Beschreibung (11px)
-| [Suchfeld: Objekt suchen...        ]    |  ← Zeile 3a: Input + Dropdown
-| [x] 80999 Muenchen — ETW — 320.000 €    |  ← Zeile 3b: Ausgewaehlte Objekte (Chips)
-| [Objekt uebernehmen]  (blau, volle Br.) |  ← Button
-+------------------------------------------+
+FLOW:
+Kaufy Suche → Expose oeffnen → Investment Engine konfigurieren
+  → "Finanzierung beantragen" klicken
+  → Selbstauskunft ausfuellen (Objekt ist bereits gesetzt)
+  → Live-Kapitaldienstfaehigkeits-Vorcheck sehen
+  → "Finanzierung einreichen"
+  → Bestaetigung + E-Mail mit Datenraum-Link kommt automatisch
 ```
 
-## Aenderungen
+## Was der Kunde NICHT eingeben muss
 
-### Datei: `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
+- Objekt-Typ, Adresse, Flaeche, Baujahr (kommt aus dem Listing)
+- Kaufpreis, Eigenkapital, Darlehen, Zinssatz, Tilgung, Rate (kommt aus der Engine)
+- Nebenkosten (berechnet die Engine)
 
-**1. State erweitern (ca. Zeile 88-101):**
-- `searchQuery` bleibt
-- NEU: `selectedListings` — Array von ausgewaehlten Listings (Multi-Select)
-- Typ: `Array<{ public_id, title, city, postal_code, property_type, asking_price, total_area_sqm, year_built }>`
+## Was der Kunde eingeben muss (Selbstauskunft)
 
-**2. Kaufy-Kachel (Zeilen 190-230) komplett umbauen:**
-- Gleiche Struktur wie MagicIntakeCard: `glass-card`, `p-3`, Icon+Titel, Description `text-[11px]`, dann Input `h-7 text-xs`
-- Suchfeld bleibt identisch (mit Dropdown)
-- Bei Klick auf ein Listing: wird zu `selectedListings` hinzugefuegt (nicht ersetzt)
-- Ausgewaehlte Objekte als kompakte Chips unterhalb des Suchfelds (mit X zum Entfernen)
-- Jeder Chip: `rounded-md bg-muted/50 border text-[11px] px-2 py-1` mit Stadt, Typ, Preis
-- Button: `w-full h-7 text-xs` in Primaer-Blau "Objekt uebernehmen" (bzw. "X Objekte uebernehmen" bei Mehrfachauswahl)
-- Button disabled wenn keine Auswahl
+Drei kompakte Abschnitte, KEIN Zwischenschritt fuer Kontaktdaten — die Kontaktdaten sind Teil der Selbstauskunft:
 
-**3. handleListingSelect anpassen (Zeile 136-148):**
-- Statt Suchfeld zu ueberschreiben: Listing zum `selectedListings` Array hinzufuegen
-- Suchfeld leeren nach Auswahl
-- Duplikate verhindern (pruefen ob public_id schon in selectedListings)
+**Abschnitt 1 — Persoenliche Daten:**
+- Anrede, Vorname, Nachname
+- Geburtsdatum, Geburtsort
+- Adresse (Strasse, PLZ, Ort)
+- Telefon, E-Mail
+- Familienstand
 
-**4. Neuer Handler `handleAdoptObjects`:**
-- Nimmt das erste (oder primaere) Objekt und setzt `externalObjectData` + `externalPurchasePrice` wie bisher
-- Bei mehreren Objekten: erstes Objekt wird primaer gesetzt, weitere koennen spaeter erweitert werden
-- Toast: "X Objekt(e) uebernommen"
+**Abschnitt 2 — Beschaeftigung und Einkommen:**
+- Beschaeftigungsart (Angestellt/Selbstaendig/Beamter)
+- Arbeitgeber, beschaeftigt seit
+- Nettoeinkommen monatlich
+- Sonstige Einnahmen (Mieteinnahmen, Kindergeld etc.)
 
-**5. "Created" State analog MagicIntake:**
-- Nach "Objekt uebernehmen": Kachel wechselt in einen kompakten Bestaetigungs-Modus
-- Gruener Rand (`border-green-500/30`), CheckCircle2 Icon
-- Zeigt uebernommene Objekte als Liste
+**Abschnitt 3 — Ausgaben und Vermoegen:**
+- Aktuelle Kaltmiete (faellt bei Eigennutzung weg)
+- Lebenshaltungskosten
+- Sonstige Fixkosten (Leasing, Unterhalt)
+- Vermoegen (Ersparnisse, Wertpapiere, LV)
 
-## Keine weiteren Dateien betroffen
+## Live-Kapitaldienstfaehigkeits-Vorcheck
 
-Nur `FMFinanzierungsakte.tsx` wird geaendert — die Kaufy-Kachel ist inline definiert (kein separates Component).
+Waehrend der Kunde die Selbstauskunft ausfuellt, wird live die Kapitaldienstfaehigkeit berechnet — identische Logik wie in der bestehenden HouseholdCalculationCard:
 
+- Einnahmen vs. Ausgaben + neue Darlehensrate
+- Ampel-System: Gruen (tragfaehig), Gelb (knapp), Rot (nicht tragfaehig)
+- Der Kunde sieht sofort, ob die Finanzierung realistisch ist
+
+## Einreichung
+
+- Nutzt die bestehende Edge Function `sot-futureroom-public-submit` mit `source: 'zone3_kaufy_expose'`
+- Objektdaten und Engine-Ergebnisse werden automatisch aus dem Expose mitgegeben
+- Selbstauskunft-Daten werden als `applicant_snapshot` gespeichert
+- Anfrage landet in Zone 1 zur Triage
+
+## Nach Einreichung
+
+- Bestaetigung mit Public-ID (SOT-F-...)
+- Hinweis: "Sie erhalten in Kuerze eine E-Mail mit einem Link zu Ihrem persoenlichen Datenraum, wo Sie Ihre Unterlagen hochladen koennen. Alternativ koennen Sie uns die Unterlagen auch per E-Mail zusenden."
+- Kein Datenraum-Upload direkt auf der Website (fluechtig)
+
+## Technische Umsetzung
+
+### Datei 1 (NEU): `src/components/zone3/KaufyFinanceRequestSheet.tsx`
+
+Ein Sheet (von rechts einfahrend, volle Hoehe), das die reduzierte Selbstauskunft enthaelt:
+
+- **Props:**
+  - `open: boolean`
+  - `onClose: () => void`
+  - `listing: ListingData` (Objekt-Stammdaten aus Expose)
+  - `engineParams: { equity, interestRate, repaymentRate, monthlyRate, loanAmount, purchasePrice, transferTax, notaryCosts, totalCosts }`
+
+- **Interner State:**
+  - `formData` — reduzierte Version von `ApplicantFormData` (nur die relevanten Felder)
+  - `currentSection` — 'personal' | 'income' | 'expenses'
+  - `submitting`, `submitted`, `publicId`
+
+- **Layout:**
+  - Header: Kompakte Objekt-Zusammenfassung (1 Zeile: Typ, Adresse, Preis — read-only)
+  - 3 Accordion-Sektionen fuer die Selbstauskunft
+  - Rechts/unten: Live-KDF-Ampel (Kapitaldienstfaehigkeits-Vorcheck)
+  - Footer: "Finanzierung einreichen" Button
+
+- **Submit:** Ruft `sot-futureroom-public-submit` auf mit `source: 'zone3_kaufy_expose'` und mappt die Daten in das bestehende Schema (contact, object, request, calculation, household)
+
+- **Nach Submit:** Bestaetigung mit Public-ID und Datenraum-Hinweis
+
+### Datei 2 (EDIT): `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx`
+
+- Import von `KaufyFinanceRequestSheet`
+- Neuer State: `showFinanceRequest: boolean`
+- CTA-Button im Sticky-Sidebar-Panel (unter InvestmentSliderPanel): "Finanzierung beantragen" in Teal/Primary
+- Zweiter CTA-Button in der mobilen Ansicht (unter dem Content)
+- Uebergibt `listing` und berechnete Engine-Parameter an das Sheet
+- Engine-Parameter werden aus `params` und `calcResult` extrahiert
+
+### Datei 3 (EDIT): `src/pages/zone3/futureroom/FutureRoomHome.tsx`
+
+- Prozess-Schritte von 3 auf 4 erweitern:
+  1. "Anfrage stellen" — Online-Formular ausfuellen (bestehend)
+  2. "Vorpruefung erhalten" — Sofortige Kapitaldienstfaehigkeits-Einschaetzung
+  3. "Unterlagen einreichen" — NEU: "Nach Ihrer Anfrage erhalten Sie per E-Mail einen Link zu Ihrem persoenlichen Datenraum. Dort laden Sie Ihre Unterlagen sicher und dauerhaft hoch — nicht fluechtig im Browser, sondern in Ihrem persoenlichen Finanzierungsordner. Alternativ koennen Sie uns die Unterlagen auch per E-Mail zusenden."
+  4. "Finanzierung erhalten" — Bankfertige Aufbereitung und Einreichung (bestehend)
+
+### Keine DB-Aenderungen
+
+Die bestehende Edge Function `sot-futureroom-public-submit` und die Tabellen `finance_requests` / `finance_mandates` werden wiederverwendet. Das `source`-Feld unterscheidet die Herkunft (`zone3_kaufy_expose`). Die Selbstauskunft-Daten werden im bestehenden `applicant_snapshot` JSON-Feld gespeichert.
