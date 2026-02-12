@@ -45,6 +45,10 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   const acceptMandate = useAcceptMandate();
   const updateStatus = useUpdateMandateStatus();
 
+  // Filter: only cases NOT yet submitted
+  const SUBMITTED_STATUSES = ['submitted_to_bank', 'completed', 'rejected', 'archived'];
+  const activeCases = cases.filter(c => !SUBMITTED_STATUSES.includes(getRequestStatus(c)));
+
   // Fetch pending mandates assigned to this manager
   const { data: allMandates = [], isLoading: loadingMandates } = useFinanceMandates();
   const pendingMandates = (allMandates as any[]).filter(
@@ -62,14 +66,14 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   }
 
   // Overdue: active cases older than 3 days without first_action
-  const overdueCases = cases.filter(c => {
+  const overdueCases = activeCases.filter(c => {
     if (c.status !== 'active') return false;
     const age = Date.now() - new Date(c.created_at).getTime();
     return age > 3 * 24 * 60 * 60 * 1000 && !c.first_action_at;
   });
 
-  // Recent activity
-  const recentCases = [...cases].sort((a, b) => 
+  // Recent activity (only from active cases)
+  const recentCases = [...activeCases].sort((a, b) => 
     new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
   ).slice(0, 6);
 
@@ -98,7 +102,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     <PageShell>
       <ModulePageHeader
         title="FINANZIERUNGSMANAGER"
-        description={`${cases.length} Fälle in Bearbeitung — Ihr zentrales Management-Cockpit.`}
+        description={`${activeCases.length} Fälle in Bearbeitung — noch nicht eingereicht.`}
         actions={
           <Button onClick={() => navigate('/portal/finanzierungsmanager/finanzierungsakte')} size="sm">
             <Plus className="h-4 w-4 mr-1" />
@@ -113,14 +117,14 @@ export default function FMDashboard({ cases, isLoading }: Props) {
           Fälle in Bearbeitung
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {cases.map(c => (
+          {activeCases.map(c => (
             <FinanceCaseCard
               key={c.id}
               caseData={c}
               onClick={handleCaseClick}
             />
           ))}
-          {cases.length === 0 && (
+          {activeCases.length === 0 && (
             <FinanceCaseCardPlaceholder />
           )}
         </div>

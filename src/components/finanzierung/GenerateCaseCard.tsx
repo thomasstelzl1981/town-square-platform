@@ -39,16 +39,19 @@ interface Props {
     transferTax?: number;
     modernizationCosts?: number;
   };
+  initialCreatedState?: {
+    requestId: string;
+    publicId: string;
+  };
 }
 
 export default function GenerateCaseCard({
-  formData, coFormData, propertyAssets, objectData, financeData,
+  formData, coFormData, propertyAssets, objectData, financeData, initialCreatedState,
 }: Props) {
   const { activeTenantId, user } = useAuth();
-  const [state, setState] = useState<CaseState>('idle');
-  const [publicId, setPublicId] = useState('');
-  const [requestId, setRequestId] = useState('');
-
+  const [state, setState] = useState<CaseState>(initialCreatedState ? 'created' : 'idle');
+  const [publicId, setPublicId] = useState(initialCreatedState?.publicId || '');
+  const [requestId, setRequestId] = useState(initialCreatedState?.requestId || '');
   const customerName = [formData.first_name, formData.last_name].filter(Boolean).join(' ') || 'Kunde';
 
   // Validation: minimum fields

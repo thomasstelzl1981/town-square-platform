@@ -234,7 +234,7 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
     <PageShell>
       <ModulePageHeader
         title="EINREICHUNG"
-        description={`${readyCases.length} Finanzierungsakten bereit zur Einreichung bei Banken.`}
+        description={`${readyCases.length} Einreichungen — Dokumentation aller Bank-Einreichungen.`}
       />
 
       {/* ── Case Widget Cards ── */}

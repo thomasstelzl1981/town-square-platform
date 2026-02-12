@@ -30,6 +30,7 @@ import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } 
 import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 import PropertyAssetsCard, { type PropertyAsset, createEmptyProperty } from '@/components/finanzierung/PropertyAssetsCard';
 import GenerateCaseCard from '@/components/finanzierung/GenerateCaseCard';
+import MagicIntakeCard, { type MagicIntakeResult } from '@/components/finanzierung/MagicIntakeCard';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Simple label-value row for the top summary */
@@ -98,6 +99,10 @@ export default function FMFinanzierungsakte() {
   const searchRef = useRef<HTMLDivElement>(null);
   const objectCardRef = useRef<FinanceObjectCardHandle>(null);
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
+  const generateCaseRef = useRef<HTMLDivElement>(null);
+
+  // Magic Intake state
+  const [magicIntakeResult, setMagicIntakeResult] = useState<MagicIntakeResult | null>(null);
 
   const handleFloatingSave = () => {
     objectCardRef.current?.save();
@@ -144,15 +149,28 @@ export default function FMFinanzierungsakte() {
 
   const handleCalculate = (bedarf: number) => {
     setCalculatorBedarf(bedarf);
-    // purchasePrice from external or from FinanceRequestCard data
     const pp = Number(externalPurchasePrice) || 0;
     setCalculatorPurchasePrice(pp);
   };
 
   const handleTransferToApplication = React.useCallback(() => {
-    // Transfer eckdaten into Selbstauskunft fields
     toast.success('Eckdaten wurden in den Finanzierungsantrag übernommen');
   }, []);
+
+  const handleMagicIntakeCreated = (result: MagicIntakeResult) => {
+    setMagicIntakeResult(result);
+    // Pre-fill form data with name + email
+    setFormData(prev => ({
+      ...prev,
+      first_name: result.firstName,
+      last_name: result.lastName,
+      email: result.email,
+    }));
+    // Scroll to document room
+    setTimeout(() => {
+      generateCaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  };
 
   return (
     <PageShell>
@@ -167,13 +185,19 @@ export default function FMFinanzierungsakte() {
         </div>
       </div>
 
-      {/* Listing search (full width, top) */}
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-3">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Objekt aus Marktplatz übernehmen</span>
-            <div className="relative flex-1" ref={searchRef}>
+      {/* Top row: Magic Intake (left) + Marktplatz (right) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Magic Intake */}
+        <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
+
+        {/* Listing search */}
+        <Card className="glass-card overflow-hidden">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-semibold">Objekt aus Marktplatz übernehmen</span>
+            </div>
+            <div className="relative" ref={searchRef}>
               <Input
                 value={searchQuery}
                 onChange={e => {
@@ -183,7 +207,7 @@ export default function FMFinanzierungsakte() {
                 onFocus={() => searchQuery.trim() && setShowDropdown(true)}
                 onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                 placeholder="Objekt suchen (ID, Ort, Straße...)"
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
               {showDropdown && filteredListings.length > 0 && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
@@ -203,9 +227,9 @@ export default function FMFinanzierungsakte() {
                 </div>
               )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Block 1: Eckdaten + Kalkulator (2-spaltig) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -263,7 +287,6 @@ export default function FMFinanzierungsakte() {
             </p>
           </div>
           <div className="p-4 space-y-0">
-            {/* Shared DualHeader for Card 1 */}
             <Table><DualHeader /><TableBody /></Table>
             <PersonSection {...dualProps} hideHeader />
             <EmploymentSection {...dualProps} hideHeader />
@@ -284,11 +307,9 @@ export default function FMFinanzierungsakte() {
             </p>
           </div>
           <div className="p-4 space-y-0">
-            {/* Shared DualHeader for Card 2 */}
             <Table><DualHeader /><TableBody /></Table>
             <IncomeSection {...dualProps} hideHeader />
             <ExpensesSection {...dualProps} hideHeader />
-            {/* Sub-heading for Assets */}
             <div className="pt-4">
               <Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table>
             </div>
@@ -303,7 +324,6 @@ export default function FMFinanzierungsakte() {
           properties={propertyAssets}
           onChange={(updated) => {
             setPropertyAssets(updated);
-            // Write back sum of net rents to rental_income_monthly
             const totalRent = updated.reduce((s, p) => s + (p.net_rent_monthly || 0), 0);
             if (formData.has_rental_properties) {
               handleChange('rental_income_monthly', totalRent > 0 ? totalRent : null);
@@ -343,23 +363,29 @@ export default function FMFinanzierungsakte() {
       />
 
       {/* GenerateCaseCard — Finanzierungsfall anlegen */}
-      <GenerateCaseCard
-        formData={formData}
-        coFormData={coFormData}
-        propertyAssets={propertyAssets}
-        objectData={{
-          address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
-          type: externalObjectData?.objectType,
-          livingArea: externalObjectData?.livingArea,
-          yearBuilt: externalObjectData?.yearBuilt,
-          purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
-        }}
-        financeData={{
-          loanAmount: calculatorBedarf || undefined,
-          equityAmount: undefined,
-          purpose: eckdatenUsage || 'kauf',
-        }}
-      />
+      <div ref={generateCaseRef}>
+        <GenerateCaseCard
+          formData={formData}
+          coFormData={coFormData}
+          propertyAssets={propertyAssets}
+          objectData={{
+            address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
+            type: externalObjectData?.objectType,
+            livingArea: externalObjectData?.livingArea,
+            yearBuilt: externalObjectData?.yearBuilt,
+            purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
+          }}
+          financeData={{
+            loanAmount: calculatorBedarf || undefined,
+            equityAmount: undefined,
+            purpose: eckdatenUsage || 'kauf',
+          }}
+          initialCreatedState={magicIntakeResult ? {
+            requestId: magicIntakeResult.requestId,
+            publicId: magicIntakeResult.publicId,
+          } : undefined}
+        />
+      </div>
 
       {/* Spacer to prevent floating button overlap */}
       <div className="h-20" />
