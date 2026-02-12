@@ -99,7 +99,7 @@ export function StorageFileManager({
   onSelectNode,
 }: StorageFileManagerProps) {
   const isMobile = useIsMobile();
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('columns');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -270,7 +270,7 @@ export function StorageFileManager({
 
   return (
     <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full">
-      <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
+      <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
