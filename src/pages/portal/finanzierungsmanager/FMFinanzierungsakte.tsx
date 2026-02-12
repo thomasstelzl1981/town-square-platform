@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote } from 'lucide-react';
+import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag } from 'lucide-react';
 import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
@@ -194,8 +194,8 @@ export default function FMFinanzierungsakte() {
         <Card className="glass-card overflow-hidden">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-semibold">Objekt aus Marktplatz übernehmen</span>
+              <ShoppingBag className="h-4 w-4 text-primary" />
+              <h3 className="text-base font-semibold">Objekte aus Kaufy</h3>
             </div>
             <p className="text-[11px] text-muted-foreground mb-2">
               Durchsuchen Sie den Marktplatz nach Objekt-ID, Ort oder Straße — alle Stammdaten wie Adresse, Fläche und Kaufpreis werden automatisch in die Finanzierungsakte übernommen.

@@ -113,7 +113,7 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
         <CardContent className="p-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span className="text-xs font-semibold">Magic Intake</span>
+            <h3 className="text-base font-semibold">Magic Intake</h3>
             <span className="font-mono text-xs text-primary">{createdPublicId}</span>
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
@@ -129,7 +129,7 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
       <CardContent className="p-3">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-xs font-semibold">Magic Intake</span>
+          <h3 className="text-base font-semibold">Magic Intake</h3>
         </div>
         <p className="text-[11px] text-muted-foreground mb-2">
           Name und E-Mail genügen — Magic Intake erstellt sofort eine vollständige Finanzierungsakte mit Public-ID, strukturiertem Datenraum und Dokumenten-Checkliste. Ihr Kunde kann direkt loslegen.
