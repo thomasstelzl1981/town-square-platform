@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Save, RefreshCw, Percent, Calculator, Building2, FileText, ChevronRight, FolderKanban } from 'lucide-react';
 import { toast } from 'sonner';
 import { PdfExportFooter } from '@/components/pdf';
+import { DESIGN } from '@/config/designManifest';
 
 // Interest rate table structure
 interface InterestRateTable {
@@ -80,7 +81,7 @@ export default function MasterTemplates() {
       {/* Master Data — Erfassungsakten */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">Master Data — Erfassungsakten</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           <Link to="/admin/masterdata/immobilienakte">
             <Card className="hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer group">
               <CardHeader>
@@ -477,7 +478,7 @@ export default function MasterTemplates() {
           <CardTitle>Verwendung</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className={DESIGN.WIDGET_GRID.FULL}>
             <div className="p-4 border rounded-lg">
               <h4 className="font-medium mb-2">Zone 3 – Kaufy</h4>
               <p className="text-sm text-muted-foreground">

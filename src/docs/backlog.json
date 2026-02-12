@@ -1,12 +1,12 @@
 {
   "meta": {
     "version": "3.0",
-    "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle 21 Module",
+    "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 4 (MOD-16 bis MOD-20) — DONE",
+    "last_sprint": "Sprint 5 (Admin, Kalender, Einstellungen, Doku) — DONE ✅",
     "total": 30,
-    "done": 26,
-    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads, FinanzierungsManager, AkquiseManager, Projekte, CommunicationPro, Fortbildung, Services, Cars, Finanzanalyse, Photovoltaik, Miety"
+    "done": 30,
+    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads, FinanzierungsManager, AkquiseManager, Projekte, CommunicationPro, Fortbildung, Services, Cars, Finanzanalyse, Photovoltaik, Miety, Admin/Zone1, Kalender, Einstellungen"
   },
   "roadmap": [
     {
@@ -46,314 +46,63 @@
     }
   ],
   "issues": [
-    {
-      "id": "DM-001",
-      "sprint": 0,
-      "category": "foundation",
-      "module": "GLOBAL",
-      "title": "designManifest.ts erstellen — SSOT für Layout-Regeln",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/config/designManifest.ts"]
-    },
-    {
-      "id": "DM-002",
-      "sprint": 0,
-      "category": "foundation",
-      "module": "GLOBAL",
-      "title": "WidgetGrid.tsx erstellen — Grid-Container Komponente",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/components/shared/WidgetGrid.tsx"]
-    },
-    {
-      "id": "DM-003",
-      "sprint": 0,
-      "category": "foundation",
-      "module": "GLOBAL",
-      "title": "WidgetCell.tsx erstellen — Zellen-Wrapper Komponente",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/components/shared/WidgetCell.tsx"]
-    },
-    {
-      "id": "DM-004",
-      "sprint": 0,
-      "category": "foundation",
-      "module": "Dashboard",
-      "title": "DashboardGrid.tsx auf festes 4-Spalten-Grid migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/components/dashboard/DashboardGrid.tsx"]
-    },
-    {
-      "id": "DM-005",
-      "sprint": 0,
-      "category": "dashboard",
-      "module": "Dashboard",
-      "title": "Alle 12 Dashboard-Widgets: h-Klassen auf h-[260px] md:h-auto md:aspect-square vereinheitlichen",
-      "effort": "M",
-      "status": "done",
-      "files": [
-        "src/components/dashboard/ArmstrongGreetingCard.tsx",
-        "src/components/dashboard/WeatherCard.tsx",
-        "src/components/dashboard/EarthGlobeCard.tsx",
-        "src/components/dashboard/widgets/FinanceWidget.tsx",
-        "src/components/dashboard/widgets/NewsWidget.tsx",
-        "src/components/dashboard/widgets/SpaceWidget.tsx",
-        "src/components/dashboard/widgets/QuoteWidget.tsx",
-        "src/components/dashboard/widgets/RadioWidget.tsx",
-        "src/components/dashboard/widgets/PVLiveWidget.tsx",
-        "src/components/dashboard/widgets/BrandLinkWidget.tsx"
-      ]
-    },
-    {
-      "id": "DM-006",
-      "sprint": 0,
-      "category": "foundation",
-      "module": "GLOBAL",
-      "title": "shared/index.ts Export von WidgetGrid + WidgetCell",
-      "effort": "XS",
-      "status": "done",
-      "files": ["src/components/shared/index.ts"]
-    },
-    {
-      "id": "DM-007",
-      "sprint": 1,
-      "category": "module-migration",
-      "module": "MOD-01",
-      "title": "Stammdaten: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/stammdaten/ProfilTab.tsx", "src/pages/portal/stammdaten/AbrechnungTab.tsx"]
-    },
-    {
-      "id": "DM-008",
-      "sprint": 1,
-      "category": "module-migration",
-      "module": "MOD-02",
-      "title": "Office: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Office nutzt grid-cols-12 App-Layouts (Email, Brief, Kalender) — keine Widget-Grids, kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-009",
-      "sprint": 1,
-      "category": "module-migration",
-      "module": "MOD-03",
-      "title": "DMS: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/dms/SortierenTab.tsx", "src/pages/portal/dms/EinstellungenTab.tsx"]
-    },
-    {
-      "id": "DM-010",
-      "sprint": 1,
-      "category": "module-migration",
-      "module": "MOD-04",
-      "title": "Immobilien: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/immobilien/SanierungTab.tsx", "src/pages/portal/immobilien/PortfolioTab.tsx", "src/pages/portal/immobilien/BewertungTab.tsx"]
-    },
-    {
-      "id": "DM-011",
-      "sprint": 1,
-      "category": "module-migration",
-      "module": "MOD-05",
-      "title": "Kontakte: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-012",
-      "sprint": 2,
-      "category": "module-migration",
-      "module": "MOD-06",
-      "title": "Buchhaltung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-013",
-      "sprint": 2,
-      "category": "module-migration",
-      "module": "MOD-07",
-      "title": "Finanzierung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/finanzierung/AnfrageTab.tsx"]
-    },
-    {
-      "id": "DM-014",
-      "sprint": 2,
-      "category": "module-migration",
-      "module": "MOD-08",
-      "title": "Kaufy Portal: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-015",
-      "sprint": 2,
-      "category": "module-migration",
-      "module": "MOD-09",
-      "title": "Vertriebspartner: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-016",
-      "sprint": 2,
-      "category": "module-migration",
-      "module": "MOD-10",
-      "title": "Leads: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/leads/SelfieAdsStudio.tsx", "src/pages/portal/leads/SelfieAdsPlanen.tsx"]
-    },
-    {
-      "id": "DM-017",
-      "sprint": 3,
-      "category": "module-migration",
-      "module": "MOD-11",
-      "title": "Finanzierungsmanager: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-018",
-      "sprint": 3,
-      "category": "module-migration",
-      "module": "MOD-12",
-      "title": "Akquise Manager: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/akquise-manager/components/AnalysisTab.tsx", "src/pages/portal/akquise-manager/components/ExposeDragDropUploader.tsx"]
-    },
-    {
-      "id": "DM-019",
-      "sprint": 3,
-      "category": "module-migration",
-      "module": "MOD-13",
-      "title": "Projekte: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/projekte/PortfolioTab.tsx", "src/pages/portal/projekte/ProjekteDashboard.tsx", "src/pages/portal/projekte/LandingPageTab.tsx", "src/pages/portal/projekte/VertriebTab.tsx", "src/pages/portal/projekte/ProjectDetailPage.tsx"]
-    },
-    {
-      "id": "DM-020",
-      "sprint": 3,
-      "category": "module-migration",
-      "module": "MOD-14",
-      "title": "Communication Pro: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx", "src/pages/portal/communication-pro/agenten/KostenDashboard.tsx", "src/pages/portal/communication-pro/social/OverviewPage.tsx", "src/pages/portal/communication-pro/social/AssetsPage.tsx", "src/pages/portal/communication-pro/social/PerformancePage.tsx", "src/pages/portal/communication-pro/social/AuditPage.tsx", "src/pages/portal/communication-pro/SerienEmailsPage.tsx"]
-    },
-    {
-      "id": "DM-021",
-      "sprint": 3,
-      "category": "module-migration",
-      "module": "MOD-15",
-      "title": "Fortbildung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-022",
-      "sprint": 4,
-      "category": "module-migration",
-      "module": "MOD-16",
-      "title": "Services: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/services/ShopTab.tsx", "src/pages/portal/services/BestellungenTab.tsx"]
-    },
-    {
-      "id": "DM-023",
-      "sprint": 4,
-      "category": "module-migration",
-      "module": "MOD-17",
-      "title": "Cars: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Keine ad-hoc Grid-Klassen gefunden — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-024",
-      "sprint": 4,
-      "category": "module-migration",
-      "module": "MOD-18",
-      "title": "Finanzanalyse: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "note": "Keine ad-hoc Grid-Klassen gefunden — kein Migrationsbedarf",
-      "files": []
-    },
-    {
-      "id": "DM-025",
-      "sprint": 4,
-      "category": "module-migration",
-      "module": "MOD-19",
-      "title": "Photovoltaik: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/photovoltaik/MonitoringTab.tsx", "src/pages/portal/photovoltaik/AnlagenTab.tsx", "src/pages/portal/photovoltaik/DokumenteTab.tsx", "src/pages/portal/photovoltaik/PVPlantDetail.tsx"]
-    },
-    {
-      "id": "DM-026",
-      "sprint": 4,
-      "category": "module-migration",
-      "module": "MOD-20",
-      "title": "Miety: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "done",
-      "files": ["src/pages/portal/miety/tiles/KommunikationTile.tsx", "src/pages/portal/miety/tiles/SmartHomeTile.tsx", "src/pages/portal/miety/components/MietyContractsSection.tsx", "src/pages/portal/miety/components/MietyMeterSection.tsx"]
-    },
+    { "id": "DM-001", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "designManifest.ts erstellen — SSOT für Layout-Regeln", "effort": "S", "status": "done", "files": ["src/config/designManifest.ts"] },
+    { "id": "DM-002", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "WidgetGrid.tsx erstellen — Grid-Container Komponente", "effort": "S", "status": "done", "files": ["src/components/shared/WidgetGrid.tsx"] },
+    { "id": "DM-003", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "WidgetCell.tsx erstellen — Zellen-Wrapper Komponente", "effort": "S", "status": "done", "files": ["src/components/shared/WidgetCell.tsx"] },
+    { "id": "DM-004", "sprint": 0, "category": "foundation", "module": "Dashboard", "title": "DashboardGrid.tsx auf festes 4-Spalten-Grid migrieren", "effort": "S", "status": "done", "files": ["src/components/dashboard/DashboardGrid.tsx"] },
+    { "id": "DM-005", "sprint": 0, "category": "dashboard", "module": "Dashboard", "title": "Alle 12 Dashboard-Widgets: h-Klassen vereinheitlichen", "effort": "M", "status": "done", "files": [] },
+    { "id": "DM-006", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "shared/index.ts Export von WidgetGrid + WidgetCell", "effort": "XS", "status": "done", "files": ["src/components/shared/index.ts"] },
+    { "id": "DM-007", "sprint": 1, "category": "module-migration", "module": "MOD-01", "title": "Stammdaten migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/stammdaten/ProfilTab.tsx", "src/pages/portal/stammdaten/AbrechnungTab.tsx"] },
+    { "id": "DM-008", "sprint": 1, "category": "module-migration", "module": "MOD-02", "title": "Office migrieren", "effort": "S", "status": "done", "note": "Keine Widget-Grids, App-Layouts (grid-cols-12)", "files": [] },
+    { "id": "DM-009", "sprint": 1, "category": "module-migration", "module": "MOD-03", "title": "DMS migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/dms/SortierenTab.tsx", "src/pages/portal/dms/EinstellungenTab.tsx"] },
+    { "id": "DM-010", "sprint": 1, "category": "module-migration", "module": "MOD-04", "title": "Immobilien migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/immobilien/SanierungTab.tsx", "src/pages/portal/immobilien/PortfolioTab.tsx", "src/pages/portal/immobilien/BewertungTab.tsx"] },
+    { "id": "DM-011", "sprint": 1, "category": "module-migration", "module": "MOD-05", "title": "Kontakte migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-012", "sprint": 2, "category": "module-migration", "module": "MOD-06", "title": "Buchhaltung migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-013", "sprint": 2, "category": "module-migration", "module": "MOD-07", "title": "Finanzierung migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/finanzierung/AnfrageTab.tsx"] },
+    { "id": "DM-014", "sprint": 2, "category": "module-migration", "module": "MOD-08", "title": "Kaufy Portal migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-015", "sprint": 2, "category": "module-migration", "module": "MOD-09", "title": "Vertriebspartner migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-016", "sprint": 2, "category": "module-migration", "module": "MOD-10", "title": "Leads migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/leads/SelfieAdsStudio.tsx", "src/pages/portal/leads/SelfieAdsPlanen.tsx"] },
+    { "id": "DM-017", "sprint": 3, "category": "module-migration", "module": "MOD-11", "title": "Finanzierungsmanager migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-018", "sprint": 3, "category": "module-migration", "module": "MOD-12", "title": "Akquise Manager migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/akquise-manager/components/AnalysisTab.tsx", "src/pages/portal/akquise-manager/components/ExposeDragDropUploader.tsx"] },
+    { "id": "DM-019", "sprint": 3, "category": "module-migration", "module": "MOD-13", "title": "Projekte migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/projekte/PortfolioTab.tsx", "src/pages/portal/projekte/ProjekteDashboard.tsx", "src/pages/portal/projekte/LandingPageTab.tsx", "src/pages/portal/projekte/VertriebTab.tsx", "src/pages/portal/projekte/ProjectDetailPage.tsx"] },
+    { "id": "DM-020", "sprint": 3, "category": "module-migration", "module": "MOD-14", "title": "Communication Pro migrieren", "effort": "S", "status": "done", "files": [] },
+    { "id": "DM-021", "sprint": 3, "category": "module-migration", "module": "MOD-15", "title": "Fortbildung migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-022", "sprint": 4, "category": "module-migration", "module": "MOD-16", "title": "Services migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/services/ShopTab.tsx", "src/pages/portal/services/BestellungenTab.tsx"] },
+    { "id": "DM-023", "sprint": 4, "category": "module-migration", "module": "MOD-17", "title": "Cars migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-024", "sprint": 4, "category": "module-migration", "module": "MOD-18", "title": "Finanzanalyse migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
+    { "id": "DM-025", "sprint": 4, "category": "module-migration", "module": "MOD-19", "title": "Photovoltaik migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/photovoltaik/MonitoringTab.tsx", "src/pages/portal/photovoltaik/AnlagenTab.tsx", "src/pages/portal/photovoltaik/DokumenteTab.tsx", "src/pages/portal/photovoltaik/PVPlantDetail.tsx"] },
+    { "id": "DM-026", "sprint": 4, "category": "module-migration", "module": "MOD-20", "title": "Miety migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/miety/tiles/KommunikationTile.tsx", "src/pages/portal/miety/tiles/SmartHomeTile.tsx", "src/pages/portal/miety/components/MietyContractsSection.tsx", "src/pages/portal/miety/components/MietyMeterSection.tsx"] },
     {
       "id": "DM-027",
       "sprint": 5,
       "category": "module-migration",
-      "module": "MOD-21",
-      "title": "Admin/Superadmin: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
-      "effort": "S",
-      "status": "todo",
-      "files": []
+      "module": "Zone 1 Admin",
+      "title": "Admin/Zone 1: Alle Grid-Verstöße auf DESIGN-Konstanten migriert",
+      "effort": "M",
+      "status": "done",
+      "files": ["src/pages/admin/Dashboard.tsx", "src/pages/admin/MasterTemplates.tsx", "src/pages/admin/Inbox.tsx", "src/pages/admin/acquiary/AcquiaryMonitoring.tsx", "src/pages/admin/social-media/SocialMediaDashboard.tsx", "src/pages/admin/armstrong/ArmstrongIntegrations.tsx", "src/pages/admin/Integrations.tsx", "src/pages/admin/futureroom/FutureRoomBanks.tsx", "src/pages/admin/MasterTemplatesPhotovoltaikakte.tsx", "src/pages/admin/MasterTemplatesFinanzierungsakte.tsx"],
+      "note": "5-Spalten-Verstöße (AcquiaryMonitoring, SocialMedia Templates) auf 4-Spalten-Max gekappt"
     },
     {
       "id": "DM-028",
       "sprint": 5,
       "category": "module-migration",
-      "module": "MOD-22",
-      "title": "Kalender: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "module": "Kalender",
+      "title": "Kalender: Grid-Audit — kein Migrationsbedarf",
       "effort": "XS",
-      "status": "todo",
+      "status": "done",
+      "note": "grid-cols-7 (Wochentage) und grid-cols-12 (Layout-Split) sind semantische Grids, keine Widget-Grid-Verstöße",
       "files": []
     },
     {
       "id": "DM-029",
       "sprint": 5,
       "category": "module-migration",
-      "module": "MOD-23",
-      "title": "Einstellungen: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
+      "module": "Einstellungen",
+      "title": "Einstellungen: Grid-Audit — kein separater Bereich, kein Migrationsbedarf",
       "effort": "XS",
-      "status": "todo",
+      "status": "done",
+      "note": "Einstellungen sind modulintern (z.B. DMS/EinstellungenTab, MSV/EinstellungenTab) und wurden bereits in den jeweiligen Modul-Sprints migriert",
       "files": []
     },
     {
@@ -361,10 +110,10 @@
       "sprint": 5,
       "category": "documentation",
       "module": "GLOBAL",
-      "title": "Design Manifest Abschluss-Dokumentation und Memory-Update",
+      "title": "Design Manifest Abschluss-Dokumentation — 30/30 DONE ✅",
       "effort": "XS",
-      "status": "todo",
-      "files": ["src/config/designManifest.ts", ".lovable/plan.md"]
+      "status": "done",
+      "files": ["src/docs/backlog.json", "src/config/designManifest.ts"]
     }
   ]
 }

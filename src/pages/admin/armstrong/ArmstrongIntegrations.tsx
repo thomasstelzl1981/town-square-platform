@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,7 +71,7 @@ const ArmstrongIntegrations: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gesamt</CardTitle>

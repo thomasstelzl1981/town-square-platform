@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import {
   Table,
   TableBody,
@@ -421,7 +422,7 @@ export default function InboxPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Offen</CardTitle>

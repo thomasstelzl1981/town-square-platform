@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DESIGN } from '@/config/designManifest';
 import { 
   Building2, Plus, Phone, Mail, Globe, 
   Search, Edit, Trash2, CheckCircle, XCircle 
@@ -74,7 +75,7 @@ export default function FutureRoomBanks() {
           )}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {filteredBanks.map(bank => (
             <Card key={bank.id} className="relative">
               <CardHeader className="pb-2">

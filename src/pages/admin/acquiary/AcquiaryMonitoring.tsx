@@ -5,6 +5,7 @@
  */
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -95,7 +96,7 @@ export function AcquiaryMonitoring() {
       </div>
 
       {/* Main KPIs */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">

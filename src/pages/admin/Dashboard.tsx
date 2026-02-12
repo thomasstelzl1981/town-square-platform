@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive, Rocket } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
 import { PdfExportFooter } from '@/components/pdf';
 import { toast } from 'sonner';
 interface Stats {
@@ -312,7 +313,7 @@ export default function Dashboard() {
           <CardDescription>Your authentication and authorization context</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className={DESIGN.FORM_GRID.FULL}>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Email</p>
               <p className="text-sm">{profile?.email}</p>
@@ -352,7 +353,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Organizations</CardTitle>
