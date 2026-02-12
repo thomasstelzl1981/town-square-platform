@@ -91,7 +91,7 @@ const ImmobilienPage = () => {
         
         {/* SECONDARY: Context management */}
         <Route path="kontexte" element={<KontexteTab />} />
-        <Route path="sanierung" element={<SanierungTab />} />
+        <Route path="sanierung/*" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
         
         {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST, guarded by GoldenPathGuard */}
