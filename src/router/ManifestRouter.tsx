@@ -280,6 +280,7 @@ const FutureRoomZuweisung = React.lazy(() => import('@/pages/admin/futureroom/Fu
 const FutureRoomManagers = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers'));
 const FutureRoomBanks = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks'));
 const FutureRoomMonitoring = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomMonitoring'));
+const FutureRoomTemplates = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomTemplates'));
 
 // =============================================================================
 // Component Map for Zone 2 Module Pages (with internal routing)
@@ -464,6 +465,11 @@ export function ManifestRouter() {
           <Route path="monitoring" element={
             <React.Suspense fallback={<LoadingFallback />}>
               <FutureRoomMonitoring />
+            </React.Suspense>
+          } />
+          <Route path="vorlagen" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <FutureRoomTemplates />
             </React.Suspense>
           } />
           {/* Catch-all for FutureRoom — redirect to inbox */}
