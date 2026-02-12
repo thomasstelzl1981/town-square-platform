@@ -202,11 +202,17 @@ Mit freundlichen Grüßen`;
 
   const emailSubject = `Finanzierungsanfrage ${request?.public_id || selectedId?.slice(0, 8) || '...'} — ${applicant?.first_name || '[Vorname]'} ${applicant?.last_name || '[Nachname]'}`;
 
+  const updateBankEmail = (bankId: string, email: string) => {
+    setSelectedBanks(prev => prev.map(b => b.id === bankId ? { ...b, email } : b));
+  };
+
   const handleSendEmail = async (bank: SelectedBank) => {
-    if (!selectedId) return;
+    if (!selectedId || !bank.email) {
+      toast.error(`${bank.name}: Keine E-Mail-Adresse`);
+      return;
+    }
     const body = getEmailDraft(bank.id);
 
-    // If from kontaktbuch, use proper bank_contact_id
     if (bank.source === 'kontaktbuch') {
       await sendEmail.mutateAsync({
         finance_request_id: selectedId,
@@ -216,12 +222,26 @@ Mit freundlichen Grüßen`;
         html_content: body.replace(/\n/g, '<br/>'),
       });
     } else {
+      // KI- und manuelle Banken: auch via Resend senden
+      const { error: mailError } = await supabase.functions.invoke('sot-system-mail-send', {
+        body: {
+          to: bank.email,
+          subject: emailSubject,
+          html_content: body.replace(/\n/g, '<br/>'),
+          context: 'finance_submission',
+        },
+      });
+      if (mailError) { toast.error(`Versand an ${bank.name} fehlgeschlagen`); return; }
+
       await createLog.mutateAsync({
         finance_request_id: selectedId,
         channel: 'email',
         status: 'sent',
+        email_subject: emailSubject,
+        email_body: body,
         external_software_name: bank.name,
       });
+      toast.success(`E-Mail an ${bank.name} versendet`);
     }
   };
 
@@ -594,7 +614,16 @@ Mit freundlichen Grüßen`;
                       <Badge variant="outline" className="text-[10px]">Entwurf</Badge>
                     </div>
                     <div className="p-3 space-y-2 text-xs">
-                      <div><span className="text-muted-foreground">An:</span> {bank.email || 'Keine E-Mail'}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground shrink-0">An:</span>
+                        <Input
+                          value={bank.email}
+                          onChange={(e) => updateBankEmail(bank.id, e.target.value)}
+                          placeholder="E-Mail-Adresse eingeben…"
+                          type="email"
+                          className="h-7 text-xs flex-1"
+                        />
+                      </div>
                       <div><span className="text-muted-foreground">Betreff:</span> {emailSubject}</div>
                       <Textarea
                         value={getEmailDraft(bank.id)}
