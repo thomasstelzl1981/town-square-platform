@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: newOrg, error: orgError } = await supabase
         .from('organizations')
-        .insert({ name: 'FutureRoom Website', type: 'platform' })
+        .insert({ name: 'FutureRoom Website', org_type: 'internal', slug: 'futureroom-website' })
         .select('id')
         .single();
       if (orgError) throw orgError;
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       .from('finance_requests')
       .insert({
         tenant_id: tenantId,
-        status: 'submitted_to_zone1',
+        status: 'submitted',
         source: requestSource,
         public_id: publicId,
         created_by: userId || null,
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Step 3: Create Storage Data Room ─────────────────────────────────
-    const dataRoomPath = `${tenantId}/MOD_11/${fr.id}/.keep`;
+    const dataRoomPath = `${tenantId}/MOD_11/${fr.id}/.keep.pdf`;
     try {
       const keepContent = new TextEncoder().encode(
         `Datenraum für Finanzierungsanfrage ${publicId}\nErstellt: ${new Date().toISOString()}`
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       const { error: uploadError } = await supabase.storage
         .from('tenant-documents')
         .upload(dataRoomPath, keepContent, {
-          contentType: 'text/plain',
+          contentType: 'application/pdf',
           upsert: false,
         });
       if (uploadError) {
