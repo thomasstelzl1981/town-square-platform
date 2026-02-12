@@ -277,8 +277,9 @@ export default function FMFinanzierungsakte() {
                         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
                           {filteredListings.map(l => (
                             <button key={l.public_id} className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0" onMouseDown={() => handleListingSelect(l)}>
-                              <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
-                              <div className="text-muted-foreground">{l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}{l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}</div>
+                              <div className="font-medium">{l.public_id ?? '—'} — {l.title || l.property_type || 'Objekt'}</div>
+                              <div className="text-muted-foreground">{l.postal_code ?? ''} {l.city ?? ''}</div>
+                              <div className="text-muted-foreground">{l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'} | {l.property_type ?? '—'} | {l.total_area_sqm ? `${l.total_area_sqm} qm` : '—'}</div>
                             </button>
                           ))}
                         </div>
@@ -288,7 +289,7 @@ export default function FMFinanzierungsakte() {
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {selectedListings.map(l => (
                           <span key={l.public_id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1">
-                            {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                            {l.public_id} | {l.postal_code} {l.city} | {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'} | {l.property_type ?? ''} {l.total_area_sqm ? `${l.total_area_sqm}qm` : ''}
                             <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
                           </span>
                         ))}
@@ -420,8 +421,9 @@ export default function FMFinanzierungsakte() {
                       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
                         {filteredListings.map(l => (
                           <button key={l.public_id} className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0" onMouseDown={() => handleListingSelect(l)}>
-                            <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
-                            <div className="text-muted-foreground">{l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}{l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}</div>
+                            <div className="font-medium">{l.public_id ?? '—'} — {l.title || l.property_type || 'Objekt'}</div>
+                            <div className="text-muted-foreground">{l.postal_code ?? ''} {l.city ?? ''}</div>
+                            <div className="text-muted-foreground">{l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'} | {l.property_type ?? '—'} | {l.total_area_sqm ? `${l.total_area_sqm} qm` : '—'}</div>
                           </button>
                         ))}
                       </div>
@@ -431,7 +433,7 @@ export default function FMFinanzierungsakte() {
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {selectedListings.map(l => (
                         <span key={l.public_id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border text-[11px] px-2 py-1">
-                          {l.postal_code} {l.city} — {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'}
+                          {l.public_id} | {l.postal_code} {l.city} | {l.asking_price ? `${Number(l.asking_price).toLocaleString('de-DE')} €` : '—'} | {l.property_type ?? ''} {l.total_area_sqm ? `${l.total_area_sqm}qm` : ''}
                           <button onClick={() => handleRemoveListing(l.public_id)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
                         </span>
                       ))}
