@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function VertriebTab() {
   const navigate = useNavigate();
@@ -75,33 +76,32 @@ export default function VertriebTab() {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight uppercase">Vertrieb & Reservierungen</h2>
-          <p className="text-muted-foreground">Übersicht über Reservierungen und Partner-Performance</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Project selector — show all projects + demo */}
-          <Select value={selectedProject} onValueChange={(val) => setSelectedProject(val)}>
-            <SelectTrigger className="w-[260px]">
-              <SelectValue placeholder="Projekt wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={DEMO_PROJECT_ID}>
-                {DEMO_PROJECT.name} (Demo)
-              </SelectItem>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}{p.address ? ` — ${p.address}` : ''}
+      <ModulePageHeader
+        title="Vertrieb & Reservierungen"
+        description="Übersicht über Reservierungen und Partner-Performance"
+        actions={
+          <div className="flex items-center gap-3">
+            <Select value={selectedProject} onValueChange={(val) => setSelectedProject(val)}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Projekt wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEMO_PROJECT_ID}>
+                  {DEMO_PROJECT.name} (Demo)
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {projects.length > 0 && (
-            <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
-          )}
-        </div>
-      </div>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.address ? ` — ${p.address}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {projects.length > 0 && (
+              <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
+            )}
+          </div>
+        }
+      />
 
       {/* KPI Cards — ALWAYS visible */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

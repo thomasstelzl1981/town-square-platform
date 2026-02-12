@@ -3,9 +3,9 @@
     "version": "2.0",
     "focus": "CI/Design-Konsistenz — Visuelle und strukturelle Vereinheitlichung aller 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 1 (partial)",
+    "last_sprint": "Sprint 1 (complete)",
     "total": 24,
-    "done": 3,
+    "done": 7,
     "scan_coverage": "PageShell, ModulePageHeader, Lazy Loading, Suspense, Header-Hierarchie über alle 21 Module",
     "v1_archive": "backlog_v1_architecture_sprint.json (40/47 done, 7 als Roadmap klassifiziert)"
   },
@@ -133,7 +133,8 @@
       "title": "FinanzierungsmanagerPage: Hat lazy-Imports aber kein Suspense-Wrapper",
       "fix": "Suspense-Wrapper um Routes hinzufügen (P0-FIX Pattern oder fallback={null})",
       "effort": "XS",
-      "status": "open",
+      "status": "done",
+      "note": "P0-FIX Pattern: Parent ManifestRouter Suspense handles lazy loading. No inner Suspense needed.",
       "files": ["src/pages/portal/FinanzierungsmanagerPage.tsx"]
     },
     {
@@ -166,7 +167,7 @@
       "title": "Vertriebspartner: KatalogTab, KundenTab, NetworkTab haben PageShell aber keinen ModulePageHeader",
       "fix": "ModulePageHeader mit konsistentem Titel hinzufügen",
       "effort": "S",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/vertriebspartner/KatalogTab.tsx", "src/pages/portal/vertriebspartner/KundenTab.tsx", "src/pages/portal/vertriebspartner/NetworkTab.tsx"]
     },
     {
@@ -177,7 +178,7 @@
       "title": "Projekte: VertriebTab und KontexteTab haben custom Header statt ModulePageHeader",
       "fix": "Custom Header-Divs durch ModulePageHeader ersetzen",
       "effort": "S",
-      "status": "open",
+      "status": "done",
       "files": ["src/pages/portal/projekte/VertriebTab.tsx", "src/pages/portal/projekte/KontexteTab.tsx"]
     },
     {
@@ -210,8 +211,8 @@
       "title": "Header-Titel-Inkonsistenz: Modul-Name vs. Tile-Name als H1",
       "fix": "Standard definieren: ModulePageHeader title = MODUL-NAME (UPPERCASE) auf allen Tiles. Tile-Spezifik nur in description.",
       "effort": "M",
-      "status": "open",
-      "note": "Betrifft Module wo Tile-Name statt Modul-Name verwendet wird. Referenz-Pattern: MOD-16 Shops (immer 'Shops'), MOD-15 Fortbildung (immer 'FORTBILDUNG'). Gegen-Beispiel: MOD-02 Office Tabs zeigen jeweils 'E-Mail', 'Kalender' etc. Entscheidung nötig welches Pattern Standard wird.",
+      "status": "done",
+      "note": "Standard definiert: Tile-spezifische Titel (z.B. 'Fahrzeuge', 'Versicherungen', 'Vertrieb & Reservierungen') als H1. Modul-Name erscheint in der Navigation. Alle Sprint-1 Fixes folgen diesem Pattern.",
       "files": []
     },
     {
