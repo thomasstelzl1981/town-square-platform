@@ -16,6 +16,7 @@ const FMFinanzierungsakte = React.lazy(() => import('./finanzierungsmanager/FMFi
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
 const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
 const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
+const FMProvisionen = React.lazy(() => import('./finanzierungsmanager/FMProvisionen'));
 const FMArchiv = React.lazy(() => import('./finanzierungsmanager/FMArchiv'));
 
 export default function FinanzierungsmanagerPage() {
@@ -46,8 +47,8 @@ export default function FinanzierungsmanagerPage() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
         <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
-        <Route path="faelle" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
         <Route path="faelle/:requestId" element={<FMFallDetail />} />
+        <Route path="provisionen" element={<FMProvisionen />} />
         <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
         <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
         <Route path="archiv" element={<FMArchiv cases={cases || []} isLoading={isLoading} />} />

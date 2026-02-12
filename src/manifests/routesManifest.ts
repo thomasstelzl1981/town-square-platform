@@ -367,7 +367,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "dashboard", component: "FMDashboard", title: "Dashboard", default: true },
         { path: "finanzierungsakte", component: "FMFinanzierungsakte", title: "Finanzierungsakte" },
         { path: "einreichung", component: "FMEinreichung", title: "Einreichung" },
-        { path: "faelle", component: "FMFaelle", title: "Fälle" },
+        { path: "provisionen", component: "FMProvisionen", title: "Provisionen" },
         { path: "archiv", component: "FMArchiv", title: "Archiv" },
       ],
       dynamic_routes: [

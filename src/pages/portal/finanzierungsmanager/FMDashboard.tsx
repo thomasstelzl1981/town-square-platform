@@ -1,10 +1,10 @@
 /**
- * FM Dashboard — Widget Cards (analog ProjectCard) + integrated widgets
+ * FM Dashboard — Two sections: (A) Fälle in Bearbeitung, (B) Finanzierungsmandate
  */
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, CalendarClock, Activity, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, CalendarClock, Activity, Check, X, Inbox } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageShell } from '@/components/shared/PageShell';
@@ -13,6 +13,9 @@ import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import { Badge } from '@/components/ui/badge';
+import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import type { FutureRoomCase } from '@/types/finance';
 
 interface Props {
@@ -38,6 +41,15 @@ function getLoanAmount(c: FutureRoomCase): number | null {
 
 export default function FMDashboard({ cases, isLoading }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const acceptMandate = useAcceptMandate();
+  const updateStatus = useUpdateMandateStatus();
+
+  // Fetch pending mandates assigned to this manager
+  const { data: allMandates = [], isLoading: loadingMandates } = useFinanceMandates();
+  const pendingMandates = (allMandates as any[]).filter(
+    (m) => (m.status === 'delegated' || m.status === 'assigned') && m.assigned_manager_id === user?.id
+  );
 
   if (isLoading) {
     return (
@@ -65,6 +77,23 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     navigate(`faelle/${requestId}`);
   };
 
+  const handleAcceptMandate = async (mandateId: string) => {
+    try {
+      await acceptMandate.mutateAsync(mandateId);
+    } catch {
+      // Error handled in hook
+    }
+  };
+
+  const handleDeclineMandate = async (mandateId: string) => {
+    try {
+      await updateStatus.mutateAsync({ mandateId, status: 'rejected' as any });
+      toast.success('Mandat abgelehnt');
+    } catch {
+      // Error handled in hook
+    }
+  };
+
   return (
     <PageShell>
       <ModulePageHeader
@@ -78,17 +107,87 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Case Widget Cards — like ProjectCards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {cases.map(c => (
-          <FinanceCaseCard
-            key={c.id}
-            caseData={c}
-            onClick={handleCaseClick}
-          />
-        ))}
-        {cases.length === 0 && (
-          <FinanceCaseCardPlaceholder />
+      {/* Section A: Fälle in Bearbeitung */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Fälle in Bearbeitung
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {cases.map(c => (
+            <FinanceCaseCard
+              key={c.id}
+              caseData={c}
+              onClick={handleCaseClick}
+            />
+          ))}
+          {cases.length === 0 && (
+            <FinanceCaseCardPlaceholder />
+          )}
+        </div>
+      </div>
+
+      {/* Section B: Finanzierungsmandate */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Finanzierungsmandate
+        </h3>
+        {loadingMandates ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : pendingMandates.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Inbox className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Keine neuen Mandate vorhanden.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingMandates.map((m: any) => {
+              const req = m.finance_requests;
+              const ap = req?.applicant_profiles?.[0];
+              const name = ap?.first_name && ap?.last_name
+                ? `${ap.first_name} ${ap.last_name}`
+                : 'Unbekannt';
+              const loan = ap?.loan_amount_requested;
+              return (
+                <Card key={m.id} className="border-primary/20">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs text-muted-foreground">{m.public_id || m.id.slice(0, 8)}</span>
+                      <Badge variant="outline">{m.status === 'delegated' ? 'Zugewiesen' : 'Angefragt'}</Badge>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{name}</p>
+                      {loan && <p className="text-xs text-muted-foreground">{eurFormat.format(loan)}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleAcceptMandate(m.id)}
+                        disabled={acceptMandate.isPending}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Annehmen
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleDeclineMandate(m.id)}
+                        disabled={updateStatus.isPending}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Ablehnen
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
 
