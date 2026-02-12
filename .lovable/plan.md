@@ -1,298 +1,244 @@
 
-# Gesamtplan: Mobile Fullscreen-Feed fuer die komplette Zone 2
+# Phase A-E: Vollstaendige Zone 2 Design-Standardisierung
 
-## Analyse: Aktuelle Mobile-Probleme in Zone 2
+## Umfang
 
-Alle 21 Module (Dashboard + 20 MODs) nutzen dieselben Basis-Bausteine, die auf Mobile suboptimal sind:
-- **PageShell**: `p-4 md:p-6` — funktioniert, aber zu viel seitliches Padding auf kleinen Screens
-- **ModulePageHeader**: Flex-Layout mit Titel + Actions nebeneinander — bricht auf Mobile teilweise
-- **Widget-Grids**: `grid-cols-2` bis `grid-cols-5` — erzeugt kleine, unleserliche Kacheln
-- **aspect-square**: Erzwingt quadratische Form auch auf Mobile — verschwendet Platz
-- **Bank-Tabellen** (`grid-cols-[180px_1fr]`): Label-Spalte zu breit auf Mobile
-- **Split-View**: Zwei Spalten nebeneinander — auf Mobile nicht nutzbar
-- **Formular-Grids**: `grid-cols-2/3/4` fuer Eingabefelder — zu eng auf Mobile
-
-## Strategie: 3 Shared Components aendern, alle Module profitieren
-
-Statt alle 86+ Dateien einzeln anzufassen, werden die **zentralen Bausteine** mobile-optimiert. Dadurch erbt jedes Modul automatisch das neue Verhalten.
+67 Dateien nutzen noch `max-w-7xl mx-auto px-4 py-6 md:px-6` direkt statt `<PageShell>`. Davon haben ca. 40 rohe HTML-Header statt `<ModulePageHeader>`. Zusaetzlich gibt es 3 Stellen mit fehlenden Mobile-Feed-Grids und 1 Stelle mit nicht-responsivem `TableRow`.
 
 ---
 
-## Ebene 1: Globale Bausteine (wirken auf ALLE Module)
+## Phase A: PageShell-Migration (ca. 55 Dateien)
 
-### 1.1 PageShell — Reduziertes Mobile-Padding
+Ersetze alle `<div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">` durch `<PageShell>` (Import + JSX-Aenderung). Dadurch erben alle Seiten automatisch das mobile Fullscreen-Padding (`px-2 py-3 md:p-6`).
 
-```
-Vorher: p-4 md:p-6
-Nachher: px-2 py-3 md:p-6
-```
+Betroffene Dateien:
 
-Minimales seitliches Padding auf Mobile fuer maximale Inhaltsbreite.
+**MOD-01 Stammdaten:**
+- `src/pages/portal/stammdaten/ProfilTab.tsx` (Zeile 271, form-Wrapper)
+- `src/pages/portal/stammdaten/AbrechnungTab.tsx` (Zeile 79)
+- `src/pages/portal/stammdaten/SicherheitTab.tsx` (Zeile 79)
+- `src/pages/portal/stammdaten/VertraegeTab.tsx` (Zeile 257)
 
-### 1.2 ModulePageHeader — Vertikales Stacking auf Mobile
+**MOD-02 KI Office:**
+- `src/pages/portal/office/EmailTab.tsx` (Zeile 722)
+- `src/pages/portal/office/KontakteTab.tsx` (Zeile 598)
+- `src/pages/portal/office/WidgetsTab.tsx` (Zeile 259)
+- `src/pages/portal/office/KalenderTab.tsx` (Zeilen 171 + 318)
 
-```
-Vorher: flex items-start justify-between gap-4 (immer horizontal)
-Nachher: flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4
-```
+**MOD-03 DMS:**
+- `src/pages/portal/dms/PosteingangTab.tsx` (Zeile 150)
+- `src/pages/portal/dms/SortierenTab.tsx` (Zeile 283)
+- `src/pages/portal/dms/EinstellungenTab.tsx` (Zeile 215)
 
-Titel und Beschreibung oben, Actions darunter als volle Breite.
+**MOD-04 Immobilien:**
+- `src/pages/portal/immobilien/PortfolioTab.tsx` (Zeile 623)
+- `src/pages/portal/immobilien/KontexteTab.tsx` (Render-Section)
 
-### 1.3 ModuleTilePage — Fullscreen Empty States
+**MOD-05 MSV:**
+- `src/pages/portal/msv/ObjekteTab.tsx` (Zeile 476)
+- `src/pages/portal/msv/MieteingangTab.tsx` (Zeile 242)
+- `src/pages/portal/msv/VermietungTab.tsx` (Zeile 275)
+- `src/pages/portal/msv/EinstellungenTab.tsx` (Zeile 127)
 
-Die Template-Komponente fuer leere Tiles bekommt Mobile-optimierte Abstände und volle Breite.
+**MOD-06 Verkauf:**
+- `src/pages/portal/verkauf/ObjekteTab.tsx` (Render-Section)
+- `src/pages/portal/verkauf/VorgaengeTab.tsx` (Zeile 292)
+- `src/pages/portal/verkauf/ReportingTab.tsx` (Render-Section)
+- `src/pages/portal/verkauf/AnfragenTab.tsx` (Render-Section)
 
-### 1.4 FormSection / FormRow — Mobile-First Stacking
+**MOD-07 Finanzierung:**
+- `src/pages/portal/finanzierung/AnfrageDetailPage.tsx` (Zeile 26)
+- `src/pages/portal/finanzierung/SelbstauskunftTab.tsx` (Zeile 167)
+- `src/pages/portal/finanzierung/AnfrageTab.tsx` (Zeile 111)
 
-Bank-Tabellen-Zeilen (`grid-cols-[180px_1fr]`) werden auf Mobile zu vertikalem Stack:
+**MOD-08 Investments:**
+- `src/pages/portal/investments/SucheTab.tsx` (Zeile 326)
+- `src/pages/portal/investments/MandatTab.tsx` (Zeile 66)
+- `src/pages/portal/investments/SimulationTab.tsx` (Zeile 150)
 
-```
-Vorher: grid grid-cols-[180px_1fr] (immer)
-Nachher: grid grid-cols-1 md:grid-cols-[180px_1fr]
-```
+**MOD-09 Vertriebspartner:**
+- `src/pages/portal/vertriebspartner/KatalogTab.tsx` (Zeile 337)
+- `src/pages/portal/vertriebspartner/BeratungTab.tsx` (Zeile 232)
+- `src/pages/portal/vertriebspartner/KundenTab.tsx` (Zeile 129)
+- `src/pages/portal/vertriebspartner/NetworkTab.tsx` (Render-Section)
 
-Label oben, Wert darunter — auf Mobile besser lesbar.
+**MOD-10 Leads:**
+- `src/pages/portal/leads/SelfieAdsPlanen.tsx` (Zeile 160)
+- `src/pages/portal/leads/SelfieAdsSummary.tsx` (Zeile 68)
+- `src/pages/portal/leads/SelfieAdsKampagnen.tsx` (Zeile 15)
+- `src/pages/portal/leads/SelfieAdsPerformance.tsx` (Zeile 15)
+- `src/pages/portal/leads/SelfieAdsAbrechnung.tsx` (Zeile 11)
 
----
+**MOD-12 Akquise:**
+- `src/pages/portal/akquise-manager/ObjekteingangDetail.tsx` (Zeilen 70 + 88)
 
-## Ebene 2: Dashboard (MOD-00)
+**MOD-13 Projekte:**
+- `src/pages/portal/projekte/ProjekteDashboard.tsx` (Zeile 158)
+- `src/pages/portal/projekte/PortfolioTab.tsx` (Zeile 194)
+- `src/pages/portal/projekte/MarketingTab.tsx` (Zeile 59)
+- `src/pages/portal/projekte/LandingPageTab.tsx` (Zeile 88)
+- `src/pages/portal/projekte/KontexteTab.tsx` (Render-Section)
 
-### 2.1 DashboardGrid — Flex-Column statt Grid
+**MOD-14 Communication Pro:**
+- `src/pages/portal/communication-pro/SerienEmailsPage.tsx` (Zeile 93)
+- `src/pages/portal/communication-pro/social/AuditPage.tsx` (Zeilen 115 + 197)
+- `src/pages/portal/communication-pro/social/CalendarPage.tsx` (Zeile 107)
+- `src/pages/portal/communication-pro/social/CreatePage.tsx` (Zeilen 207 + 283)
+- `src/pages/portal/communication-pro/social/InspirationPage.tsx` (Zeile 161)
 
-Mobile: `flex flex-col gap-3` mit optionalem `scroll-snap-type: y proximity`.
-Desktop: Grid wie bisher (unveraendert).
+**MOD-16 Shops:**
+- `src/pages/portal/ServicesPage.tsx` (Zeilen 123 + 388 — ShopTab und BestellungenTab)
 
-### 2.2 SortableWidget — Snap-Start Container
+**MOD-17 Cars:**
+- `src/components/portal/cars/CarsFahrzeuge.tsx` (Zeile 158)
+- `src/components/portal/cars/CarsVersicherungen.tsx` (Zeile 157)
+- `src/components/portal/cars/CarsFahrtenbuch.tsx` (Zeile 173)
+- `src/components/portal/cars/CarsAngebote.tsx` (Zeile 267)
 
-Mobile: `snap-start w-full` Wrapper ohne DnD-Attribute.
+**MOD-19 PV:**
+- `src/pages/portal/photovoltaik/AnlagenTab.tsx` (Zeile 64)
+- `src/pages/portal/photovoltaik/MonitoringTab.tsx` (Zeile 64)
+- `src/pages/portal/photovoltaik/DokumenteTab.tsx` (Zeile 32)
+- `src/pages/portal/photovoltaik/EinstellungenTab.tsx` (Zeile 13)
 
-### 2.3 Alle Widget-Komponenten — Feste Mobile-Hoehen
+**MOD-20 Miety:**
+- `src/pages/portal/miety/MietyHomeDossier.tsx` (Zeile 68)
 
-| Widget | Mobile | Desktop |
-|--------|--------|---------|
-| ArmstrongGreetingCard | `h-[220px]` | `aspect-square` |
-| WeatherCard | `h-[280px]` | `aspect-square` |
-| EarthGlobeCard | `h-[300px]` | `aspect-square` |
-| FinanceWidget | `h-[280px]` | `aspect-square` |
-| NewsWidget | `h-[320px]` | `aspect-square` |
-| SpaceWidget | `h-[300px]` | `aspect-square` |
-| QuoteWidget | `h-[200px]` | `aspect-square` |
-| RadioWidget | `h-[260px]` | `aspect-square` |
-| BrandLinkWidget | `h-[180px]` | `aspect-square` |
-| PVLiveWidget | `h-[240px]` | `aspect-square` |
-
-Alle: `h-[Xpx] md:aspect-square md:h-auto`
-
-### 2.4 PortalDashboard — Mobile Titel
-
-```
-Vorher: text-h1 text-center tracking-widest (gleich auf allen Screens)
-Nachher: text-lg md:text-h1 text-center tracking-widest
-```
-
----
-
-## Ebene 3: Workflow-Module mit Case-Cards (MOD-11, MOD-04, MOD-12)
-
-### 3.1 Case-Card-Grids — Vertikaler Feed auf Mobile
-
-Alle Module, die Widget-Kacheln (FinanceCaseCard, ServiceCaseCard, MandateCaseCard) in einem Grid darstellen, werden auf Mobile zu einem vertikalen Feed:
-
-```
-Vorher: grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4
-Nachher: flex flex-col gap-3 md:grid md:grid-cols-4 lg:grid-cols-5 md:gap-4
-```
-
-### 3.2 Case-Cards — Horizontales Layout auf Mobile
-
-Statt quadratisch (aspect-square) werden die Cards auf Mobile zu breiten, flachen Karten:
-
-```
-Mobile: flex-row Layout (Icon links, Infos rechts, volle Breite, h-auto)
-Desktop: aspect-square (wie bisher)
-```
-
-Betrifft:
-- `FinanceCaseCard` (MOD-11)
-- `ServiceCaseCard` (MOD-04 Sanierung)
-- `MandateCaseCard` (MOD-12)
-
-### 3.3 Stepper — Kompakt auf Mobile
-
-CaseStepper, SanierungStepper, AkquiseStepper:
-
-```
-Vorher: Horizontale Schritte mit Text (immer)
-Nachher Mobile: Nur Icons/Nummern + aktueller Schritt-Name, kompakter Abstand
-Desktop: Wie bisher
-```
-
-### 3.4 Split-View — Automatisch deaktiviert auf Mobile
-
-Split-View-Toggles werden auf Mobile ausgeblendet. Inhalte werden vertikal gestapelt statt nebeneinander.
-
-```
-Vorher: grid grid-cols-2 (wenn splitView aktiv, auch auf Mobile)
-Nachher: grid grid-cols-1 lg:grid-cols-2 (Split nur auf lg+)
-```
-
-Betrifft: FMFallDetail, SanierungDetail, Akquise MandateDetail, PropertyDetailPage
+**Sonstige:**
+- `src/pages/portal/stub/ModuleStubPage.tsx` (Zeile 20)
+- `src/pages/portal/AreaOverviewPage.tsx` (Zeile 65)
 
 ---
 
-## Ebene 4: Formular-Module (MOD-01, MOD-07, MOD-11 Selbstauskunft)
+## Phase B: ModulePageHeader-Migration (ca. 35 Dateien)
 
-### 4.1 Bank-Tabellen-Rows — Vertikales Stacking
-
+Ersetze alle rohen Header-Bloecke wie:
 ```
-Vorher: grid grid-cols-[180px_1fr] (immer)
-Nachher: flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr]
+<div>
+  <h1 className="text-2xl font-bold tracking-tight uppercase">TITEL</h1>
+  <p className="text-muted-foreground mt-1">Beschreibung</p>
+</div>
+```
+durch:
+```
+<ModulePageHeader title="Titel" description="Beschreibung" />
 ```
 
-Auf Mobile: Label als kleine Ueberschrift, Wert darunter in voller Breite.
+Betroffene Dateien (nur die ohne ModulePageHeader):
 
-### 4.2 Formular-Grids — Einspaltig auf Mobile
+- `ProfilTab.tsx` — "STAMMDATEN"
+- `AbrechnungTab.tsx` — "ABRECHNUNG"
+- `SicherheitTab.tsx` — "SICHERHEIT"
+- `VertraegeTab.tsx` — "VERTRAEGE"
+- `EmailTab.tsx` — "E-MAIL"
+- `KontakteTab.tsx` — "KONTAKTE"
+- `WidgetsTab.tsx` — "WIDGETS"
+- `PosteingangTab.tsx` — "POSTEINGANG"
+- `SortierenTab.tsx` — "SORTIEREN"
+- `EinstellungenTab.tsx` (DMS) — Header-Bereich
+- `EinstellungenTab.tsx` (MSV) — "EINSTELLUNGEN"
+- `VorgaengeTab.tsx` — "VORGAENGE"
+- `ReportingTab.tsx` — Header-Bereich
+- `AnfragenTab.tsx` — Header-Bereich
+- `SucheTab.tsx` — "INVESTMENT-SUCHE"
+- `MandatTab.tsx` — Header-Bereich
+- `SimulationTab.tsx` — "SIMULATION"
+- `KatalogTab.tsx` — Header-Bereich
+- `BeratungTab.tsx` — Header-Bereich
+- `KundenTab.tsx` — wird geprueft
+- `SelfieAdsPlanen.tsx` — "KAMPAGNE PLANEN"
+- `SelfieAdsKampagnen.tsx` — Header-Bereich
+- `SelfieAdsPerformance.tsx` — "PERFORMANCE"
+- `SelfieAdsAbrechnung.tsx` — "ABRECHNUNG"
+- `ProjekteDashboard.tsx` — "PROJEKTE"
+- `PortfolioTab.tsx` (Projekte) — Header-Bereich
+- `MarketingTab.tsx` — Header-Bereich
+- `LandingPageTab.tsx` — "LANDING PAGE"
+- `SerienEmailsPage.tsx` — Header-Bereich
+- `AuditPage.tsx` — "PERSOENLICHKEITS-AUDIT"
+- `CalendarPage.tsx` — "KALENDER & PLANUNG"
+- `CreatePage.tsx` — Header-Bereich
+- `InspirationPage.tsx` — Header-Bereich
+- `ServicesPage.tsx` — "SHOPS" + Bestellungen-Header
+- `CarsFahrzeuge.tsx` — "FAHRZEUGE"
+- `AnlagenTab.tsx` — "ANLAGEN"
 
-Ueberall wo `grid-cols-2`, `grid-cols-3`, `grid-cols-4` fuer Eingabefelder verwendet wird:
-
-```
-Vorher: grid grid-cols-2 gap-2 (oder 3/4)
-Nachher: grid grid-cols-1 md:grid-cols-2 gap-2 (bzw. md:grid-cols-3/4)
-```
+Aenderung pro Datei:
+1. `import { PageShell, ModulePageHeader } from '@/components/shared'`
+2. Header-Block durch `<ModulePageHeader title="..." description="..." actions={...} />` ersetzen
 
 ---
 
-## Ebene 5: Tabellen-Module (MOD-11 Faelle, MOD-12 Objekteingang, MOD-06 Vorgaenge)
+## Phase C: Mobile Feed-Grids (5 Dateien)
 
-### 5.1 Daten-Tabellen — Card-Stack auf Mobile
+Restliche Grids ohne Mobile-Feed-Pattern (`flex flex-col gap-3 sm:grid`) umstellen:
 
-Desktop-Tabellen mit vielen Spalten sind auf Mobile unlesbar. Loesung: Auf Mobile werden Tabellenzeilen zu gestapelten Cards:
+1. **`AkquiseManagerPage.tsx`** (Dashboard Case-Grid, ca. Zeile 100)
+   - Von: `grid grid-cols-2 md:grid-cols-4 gap-4`
+   - Zu: `flex flex-col gap-3 sm:grid sm:grid-cols-2 md:grid-cols-4 sm:gap-4`
 
-```
-Mobile: Jede Zeile wird zu einer Card (Titel gross, Metadata klein, Status-Badge, Action-Button)
-Desktop: Table wie bisher
-```
+2. **`ServicesPage.tsx`** (Produkt-Grid)
+   - Von: `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4`
+   - Zu: `flex flex-col gap-3 sm:grid sm:grid-cols-3 lg:grid-cols-6 sm:gap-4`
 
-Dies betrifft:
-- FMFaelle (Finanzierungsfaelle-Tabelle)
-- ObjekteingangList (Akquise-Pipeline)
-- VorgaengeTab (Verkauf)
-- MieteingangTab (MSV)
+3. **`KatalogTab.tsx`** (Vertriebspartner Katalog-Cards)
+   - Grid auf Mobile-Feed-Pattern umstellen
 
-### 5.2 Filter-Chips — Horizontal Scrollbar auf Mobile
+4. **`AnlagenTab.tsx`** (PV-Anlagen Tabelle/Cards)
+   - Tabelle wird auf Mobile zu Card-Stack
 
-```
-Vorher: flex flex-wrap gap-2 (bricht in mehrere Zeilen)
-Nachher: flex overflow-x-auto gap-2 pb-2 scrollbar-none md:flex-wrap
-```
-
-Horizontales Wischen fuer Filter ist akzeptabel (kleine, gezielte Geste), das Haupt-Scrolling bleibt vertikal.
+5. **`CarsFahrzeuge.tsx`** (Fahrzeug-Cards)
+   - Grid auf Mobile-Feed-Pattern umstellen
 
 ---
 
-## Ebene 6: Spezialmodule
+## Phase D: TableRow-Responsiveness (3 Dateien)
 
-### 6.1 MOD-20 Miety — Zuhause-Kacheln als Feed
+Stellen mit `grid-cols-[180px_1fr]` ohne mobile Responsiveness:
 
-Die 3 Kacheln (Adresse, Street View, Satellite) im `grid-cols-3`:
+1. **`AkquiseManagerPage.tsx`** Zeile 338-344 — `TableRow` Komponente
+   - Von: `grid grid-cols-[180px_1fr] px-4 py-2 text-sm`
+   - Zu: `flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr] px-4 py-2 text-sm`
 
-```
-Vorher: grid grid-cols-1 sm:grid-cols-3 gap-4 (mit aspect-square)
-Nachher: flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4
-         Mobile: h-[200px] statt aspect-square
-```
+2. **`ObjekteingangDetail.tsx`** — aehnliche Stellen pruefen und anpassen
 
-### 6.2 MOD-13 Projekte — Preis-/Einheitenliste
-
-Preislisten-Tabellen bekommen dasselbe Card-Stack-Pattern auf Mobile.
-
-### 6.3 MOD-03 DMS — Storage-Spaltenansicht
-
-Die Spaltenansicht (260px Spalten) wird auf Mobile zu einer einspaltigen Liste mit Breadcrumb-Navigation statt Nebeneinander-Spalten.
-
-### 6.4 MOD-02 KI-Office — Tabs bleiben
-
-Die Tab-Navigation (E-Mail, Brief, Kontakte, Kalender, Widgets) funktioniert auf Mobile als horizontaler Scroll-Tab-Bar — hier kein Aenderungsbedarf.
-
-### 6.5 MOD-09/10/14 — ModuleTilePage erbt automatisch
-
-Module die ausschliesslich ModuleTilePage nutzen (Leads, Vertriebspartner, Communication Pro Sub-Tiles) erben die Verbesserungen automatisch ueber die Komponente.
+3. **`SanierungDetail.tsx`** — bereits umgesetzt (Verifizierung)
 
 ---
 
-## Zusammenfassung: Geaenderte Dateien
+## Phase E: Workflow-Stepper (optional, 3-4 Module)
 
-### Globale Bausteine (wirken auf alle Module)
+Fuer Module mit erkennbaren Workflow-Pfaden, die noch keine Stepper oder Widget-Kacheln haben:
 
-| Datei | Aenderung |
-|---|---|
-| `src/components/shared/PageShell.tsx` | Mobile Padding: `px-2 py-3 md:p-6` |
-| `src/components/shared/ModulePageHeader.tsx` | Mobile: `flex-col`, Actions volle Breite |
-| `src/components/shared/ModuleTilePage.tsx` | Mobile: Vollbreite, weniger Padding |
+### MOD-13 Projekte
+- Projektkarten im Dashboard koennten als Widget-Kacheln (analog `ServiceCaseCard`) dargestellt werden
+- Projektphasen (Planung, Vertrieb, Vermarktung, Abschluss) als horizontaler Stepper im Projekt-Detail
 
-### Dashboard (MOD-00)
+### MOD-17 Cars
+- Fahrzeug-Cards als Widget-Kacheln (Kennzeichen, Marke, Status-Badge)
+- Versicherungs-Workflow: Stepper fuer Angebot > Vergleich > Abschluss
 
-| Datei | Aenderung |
-|---|---|
-| `src/components/dashboard/DashboardGrid.tsx` | Mobile: `flex flex-col gap-3` + Snap |
-| `src/components/dashboard/SortableWidget.tsx` | Mobile: `snap-start w-full` |
-| `src/pages/portal/PortalDashboard.tsx` | Mobile: `px-2 py-3`, Titel kleiner |
-| `src/components/dashboard/ArmstrongGreetingCard.tsx` | `h-[220px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/WeatherCard.tsx` | `h-[280px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/EarthGlobeCard.tsx` | `h-[300px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/FinanceWidget.tsx` | `h-[280px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/NewsWidget.tsx` | `h-[320px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/SpaceWidget.tsx` | `h-[300px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/QuoteWidget.tsx` | `h-[200px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/RadioWidget.tsx` | `h-[260px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/BrandLinkWidget.tsx` | `h-[180px] md:aspect-square md:h-auto` |
-| `src/components/dashboard/widgets/PVLiveWidget.tsx` | `h-[240px] md:aspect-square md:h-auto` |
+### MOD-19 PV
+- Anlagen-Dashboard: Widget-Kacheln pro Anlage (kW, Status, Live-Ertrag)
+- Installations-Workflow: Stepper fuer Planung > Genehmigung > Installation > Inbetriebnahme
 
-### Workflow-Module (MOD-04, MOD-11, MOD-12)
-
-| Datei | Aenderung |
-|---|---|
-| `src/components/finanzierungsmanager/FinanceCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
-| `src/components/sanierung/ServiceCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
-| `src/components/akquise/MandateCaseCard.tsx` | Mobile: horizontale Card statt quadratisch |
-| `src/components/finanzierungsmanager/CaseStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
-| `src/components/sanierung/SanierungStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
-| `src/components/akquise/AkquiseStepper.tsx` | Mobile: kompakte Icon-only Darstellung |
-| `src/pages/portal/finanzierungsmanager/FMFallDetail.tsx` | Split-View nur auf lg+, TR-Rows responsive |
-| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Case-Grid als Feed auf Mobile |
-| `src/components/sanierung/SanierungDetail.tsx` | Split-View nur auf lg+ |
-| `src/pages/portal/immobilien/SanierungTab.tsx` | Case-Grid als Feed auf Mobile |
-| `src/pages/portal/AkquiseManagerPage.tsx` | Case-Grid als Feed, Split deaktiviert |
-
-### Tabellen-Module
-
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/finanzierungsmanager/FMFaelle.tsx` | Mobile: Card-Stack statt Tabelle |
-| `src/pages/portal/akquise-manager/ObjekteingangList.tsx` | Mobile: Card-Stack statt Tabelle |
-
-### Spezialmodule
-
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/MietyPortalPage.tsx` | Kacheln als Feed, aspect-square nur auf sm+ |
-| `src/pages/portal/msv/ObjekteTab.tsx` | KPI-Cards: `grid-cols-1 sm:grid-cols-3` |
-| `src/pages/portal/msv/MieteingangTab.tsx` | Tabelle als Card-Stack auf Mobile |
-
-### Keine Datenbank-Aenderungen noetig
-
-Reines Frontend/CSS-Redesign. Desktop bleibt vollstaendig unveraendert.
+### MOD-08 Investments
+- Mandat-Flow: Stepper fuer Suchprofil > Matching > Besichtigung > Kaufangebot
 
 ---
 
 ## Implementierungsreihenfolge
 
-Da die globalen Bausteine (PageShell, ModulePageHeader, ModuleTilePage) auf alle Module wirken, ist die Reihenfolge:
+Da Phase A und B rein mechanisch sind (Suchen-und-Ersetzen), werden sie zuerst umgesetzt. Phase C und D sind gezielte CSS-Aenderungen. Phase E wird inline mit den anderen Phasen umgesetzt wo es sich anbietet.
 
-1. **Phase 1** — Globale Bausteine (3 Dateien) — sofortige Wirkung auf alle 20+ Module
-2. **Phase 2** — Dashboard Widgets (13 Dateien) — Fullscreen-Feed
-3. **Phase 3** — Case-Cards + Stepper (6 Dateien) — Workflow-Module
-4. **Phase 4** — Tabellen + Detail-Views (5 Dateien) — Datenintensive Module
-5. **Phase 5** — Spezialmodule (3 Dateien) — Miety, MSV
+Die Umsetzung erfolgt in Chargen von ~15 Dateien pro Nachricht, um Build-Stabilitaet zu gewaehrleisten:
 
-Gesamtumfang: ca. 30 Dateien, davon nur CSS/Klassen-Aenderungen. Keine Logik-Aenderungen, keine neuen Abhaengigkeiten.
+1. **Charge 1**: MOD-01, MOD-02, MOD-03 (ca. 11 Dateien)
+2. **Charge 2**: MOD-04, MOD-05, MOD-06, MOD-07 (ca. 12 Dateien)
+3. **Charge 3**: MOD-08, MOD-09, MOD-10, MOD-12 (ca. 10 Dateien)
+4. **Charge 4**: MOD-13, MOD-14, MOD-16 (ca. 10 Dateien)
+5. **Charge 5**: MOD-17, MOD-19, MOD-20, Sonstige + Phase C/D/E (ca. 12 Dateien)
+
+### Keine Datenbank-Aenderungen noetig
+
+Reines Frontend-Refactoring. Desktop-Verhalten bleibt vollstaendig unveraendert. Alle Aenderungen sind CSS-Klassen und Import-Ersetzungen.
