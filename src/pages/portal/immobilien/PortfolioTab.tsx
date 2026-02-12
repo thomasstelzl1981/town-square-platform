@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -688,7 +689,7 @@ export function PortfolioTab() {
       </div>
 
       {/* KPI Cards - IMMER sichtbar, ANNUAL values */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <StatCard
           title="Einheiten"
           value={hasData ? (totals?.unitCount.toString() || '0') : '0'}
@@ -717,7 +718,7 @@ export function PortfolioTab() {
       </div>
 
       {/* Charts: Tilgungsverlauf & Monatliche EÜR */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className={DESIGN.FORM_GRID.FULL}>
         {/* Tilgungsverlauf über 30 Jahre — korrigiert mit objektwert/vermoegen */}
         <ChartCard title="Vermögensentwicklung (30 Jahre)" aspectRatio="none">
           {hasData && amortizationData.length > 0 ? (

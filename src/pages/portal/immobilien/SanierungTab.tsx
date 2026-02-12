@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, HardHat } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
+import { DESIGN } from '@/config/designManifest';
 import { ServiceCaseCard, ServiceCaseCardPlaceholder } from '@/components/sanierung/ServiceCaseCard';
 import { ServiceCaseCreateDialog } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateDialog';
 import { SanierungDetail } from '@/components/sanierung/SanierungDetail';
@@ -38,7 +39,7 @@ function SanierungDashboard() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {[1, 2, 3].map(i => <Skeleton key={i} className="aspect-square rounded-lg" />)}
         </div>
       ) : activeCases.length === 0 ? (
@@ -59,7 +60,7 @@ function SanierungDashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 sm:gap-4">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {activeCases.map(sc => (
             <ServiceCaseCard
               key={sc.id}

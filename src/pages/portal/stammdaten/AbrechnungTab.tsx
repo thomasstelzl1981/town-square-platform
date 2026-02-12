@@ -8,6 +8,7 @@ import { DataTable, StatusBadge, EmptyState } from '@/components/shared';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Loader2, CreditCard, FileText, TrendingUp, Download } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -93,7 +94,7 @@ export function AbrechnungTab() {
         </CardHeader>
         <CardContent>
           {plan ? (
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className={DESIGN.KPI_GRID.FULL}>
               <div className="rounded-lg border bg-card p-4">
                 <p className="text-sm text-muted-foreground">Plan</p>
                 <p className="text-2xl font-bold">{plan.name}</p>

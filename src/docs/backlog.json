@@ -3,10 +3,10 @@
     "version": "3.0",
     "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 0 (Foundation + Dashboard) — DONE",
+    "last_sprint": "Sprint 1 (MOD-01 bis MOD-05) — DONE",
     "total": 30,
-    "done": 6,
-    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid"
+    "done": 11,
+    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte"
   },
   "roadmap": [
     {
@@ -124,8 +124,8 @@
       "module": "MOD-01",
       "title": "Stammdaten: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/stammdaten/ProfilTab.tsx", "src/pages/portal/stammdaten/AbrechnungTab.tsx"]
     },
     {
       "id": "DM-008",
@@ -134,7 +134,8 @@
       "module": "MOD-02",
       "title": "Office: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Office nutzt grid-cols-12 App-Layouts (Email, Brief, Kalender) — keine Widget-Grids, kein Migrationsbedarf",
       "files": []
     },
     {
@@ -144,8 +145,8 @@
       "module": "MOD-03",
       "title": "DMS: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/dms/SortierenTab.tsx", "src/pages/portal/dms/EinstellungenTab.tsx"]
     },
     {
       "id": "DM-010",
@@ -154,8 +155,8 @@
       "module": "MOD-04",
       "title": "Immobilien: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/immobilien/SanierungTab.tsx", "src/pages/portal/immobilien/PortfolioTab.tsx", "src/pages/portal/immobilien/BewertungTab.tsx"]
     },
     {
       "id": "DM-011",
@@ -164,7 +165,8 @@
       "module": "MOD-05",
       "title": "Kontakte: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
       "files": []
     },
     {
