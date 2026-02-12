@@ -7,6 +7,7 @@
 import * as React from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DESIGN } from '@/config/designManifest';
 import { useRef, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -114,7 +115,7 @@ export default function AnfrageTab() {
       <ModulePageHeader title="Finanzierungsanfrage" description="Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch" />
 
       {/* Top row: Magic Intake + Kaufy Search */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={DESIGN.FORM_GRID.FULL}>
         <MagicIntakeCard onCaseCreated={handleMagicIntakeCreated} />
 
         {/* Kaufy listing search */}
@@ -159,7 +160,7 @@ export default function AnfrageTab() {
       </div>
 
       {/* Eckdaten + Kalkulator */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={DESIGN.FORM_GRID.FULL}>
         <FinanceRequestCard
           ref={requestCardRef}
           storageKey="mod07-anfrage"

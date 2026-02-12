@@ -3,6 +3,7 @@
  * Seitenbasiert mit 5 Abschnitten: Parameter, Templates (5 Slots), Personalisierung, Generieren, Zusammenfassung
  */
 import { useState, useCallback } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -244,7 +245,7 @@ export default function SelfieAdsPlanen() {
             <h2 className="font-medium">B) Template-Slots (5 Kaufy CI Templates)</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Wählen Sie die Templates aus, die für Ihre Kampagne generiert werden sollen</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className={DESIGN.WIDGET_GRID.FULL}>
             {TEMPLATE_DEFS.map((t) => {
               const isSelected = form.selectedSlots.includes(t.key);
               const isGenerated = !!form.creatives[t.key];

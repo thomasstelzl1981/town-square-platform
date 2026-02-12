@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Megaphone, Plus, ArrowRight, BarChart3, FileText, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageShell, WidgetHeader } from '@/components/shared';
+import { DESIGN } from '@/config/designManifest';
 import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function SelfieAdsStudio() {
@@ -43,7 +44,7 @@ export default function SelfieAdsStudio() {
       </Card>
 
       {/* Quick Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-kampagnen')}>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
