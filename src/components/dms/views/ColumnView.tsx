@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Folder, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { getModuleDisplayName } from '@/config/storageManifest';
 import { getFileIcon } from '@/components/dms/storageHelpers';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
@@ -44,7 +45,7 @@ interface ColumnProps {
 
 function Column({ items, selectedId, onSelect, onDownload, onDelete, onNewSubfolder, onNavigateFolder, onPreview, isDownloading, isDeleting }: ColumnProps) {
   return (
-    <div className="w-[260px] min-w-[260px] border-r border-border/60 dark:border-border/50 h-full flex flex-col">
+    <div className={cn(DESIGN.STORAGE.COLUMN_WIDTH, DESIGN.STORAGE.COLUMN_BORDER, 'h-full flex flex-col')}>
       <ScrollArea className="flex-1">
         <div className="py-1">
           {items.map(item => {
@@ -54,7 +55,9 @@ function Column({ items, selectedId, onSelect, onDownload, onDelete, onNewSubfol
               <div
                 key={item.id}
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted/30 transition-colors text-left group/row cursor-pointer border-b border-border/20 dark:border-border/30',
+                  'w-full flex items-center gap-2 text-sm hover:bg-muted/30 transition-colors text-left group/row cursor-pointer',
+                  DESIGN.STORAGE.ROW_PADDING,
+                  DESIGN.STORAGE.ROW_BORDER,
                   isSelected && 'bg-muted text-foreground',
                 )}
                 onClick={() => onSelect(item)}
