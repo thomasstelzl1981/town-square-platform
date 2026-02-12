@@ -1,130 +1,97 @@
 
-# Aufspaltung Finanzierungskalkulator + neues "Ueberschlaegiges Finanzierungsangebot"
 
-## Neuer Aufbau (Block 1, oberhalb Finanzierungsantrag)
+# Haushaltsrechnung: Korrektur Platzierung, Struktur und Verhalten
+
+## 1. Platzierung: Ganz nach unten
+
+Die `HouseholdCalculationCard` wird in `FMFinanzierungsakte.tsx` von ihrer aktuellen Position (Zeile 242, oberhalb "Finanzierungsantrag") ans Ende der Seite verschoben -- nach dem `FinanceObjectCard`-Block, also als letztes Element vor dem Floating-Save-Button.
+
+## 2. Struktur: Exakt wie Selbstauskunft
+
+Die aktuelle 2-spaltige Tabellen-Struktur (Einnahmen links | Ausgaben rechts) wird komplett ersetzt durch die identische Gitter-Tabellenstruktur der Selbstauskunft:
+
+- **3-Spalten-Layout**: `Label | Wert | (leer oder Summe)` -- analog zu `TR`, `DualHeader`, `SectionHeaderRow` aus `ApplicantPersonFields.tsx`
+- **Einnahmen-Block oben**, dann **Ausgaben-Block darunter** (vertikal, nicht nebeneinander)
+- Summenzeilen wie in der Selbstauskunft (`bg-muted/30`, fett)
+
+### Aufbau der Kachel
 
 ```text
-+--- Listing-Suche (volle Breite) --------------------------------+
-
-+--- 2-spaltiges Grid (gleiche Hoehe) ----------------------------+
-|                                |                                  |
-|  ECKDATEN                      |  FINANZIERUNGSKALKULATOR         |
-|  (FinanceRequestCard)          |  (verschlankt)                   |
-|                                |                                  |
-|  - Finanzierungszweck          |  - Darlehensbetrag               |
-|  - Objektart                   |  - Beleihungsauslauf             |
-|  - Nutzungsart                 |  - Zinsbindung (Select)          |
-|  - Mieteinnahmen               |  - Zinssatz p.a.                 |
-|  ----                          |  - Tilgung p.a. (Input)          |
-|  Kostenzusammenstellung        |  ----                            |
-|  - Kaufpreis                   |  - Monatsrate                    |
-|  - Modernisierung              |  - Restschuld (X J.)             |
-|  - Notar                       |                                  |
-|  - Grunderwerbsteuer           |  (KEINE Jahresrate mehr)         |
-|  - Makler                      |  (KEIN Transfer-Button mehr)     |
-|  = Gesamtkosten                |                                  |
-|  ----                          |                                  |
-|  Finanzierungsplan             |                                  |
-|  - Eigenkapital                |                                  |
-|  - Darlehenswunsch             |                                  |
-|  - Max. Monatsrate             |                                  |
-|  = Finanzierungsbedarf         |                                  |
-+--------------------------------+----------------------------------+
-
-+--- Neue Karte (volle Breite) -----------------------------------+
-|                                                                   |
-|  UEBERSCHLAEGIGES FINANZIERUNGSANGEBOT                           |
-|                                                                   |
-|  Darlehensbetrag     250.000,00 EUR                              |
-|  Zinssatz nominal    3,50 %                                      |
-|  Zinssatz effektiv   3,57 %    (berechnet)                       |
-|  Tilgung             1,50 %                                      |
-|  Darlehensrate       1.041,67 EUR / Monat                        |
-|  Laufzeit            ca. 28 Jahre                                |
-|                                                                   |
-|  [ Eckdaten in Antrag uebernehmen ]  [ Tilgungsplan anzeigen ]   |
-+-------------------------------------------------------------------+
-
-+--- Tilgungsplan (nur sichtbar nach Klick) -----------------------+
-|                                                                   |
-|  Zins- und Tilgungsplan                                          |
-|                                                                   |
-|  Jahr | Restschuld   | Zinsen    | Tilgung   | Annuitaet         |
-|  1    | 246.250,00   | 8.750,00  | 3.750,00  | 12.500,00         |
-|  2    | 242.368,75   | 8.618,75  | 3.881,25  | 12.500,00         |
-|  ...  | ...          | ...       | ...       | ...               |
-|                                                                   |
-|  [ Als PDF exportieren ]                                         |
-+-------------------------------------------------------------------+
++--- glass-card ------------------------------------------------+
+| [Calculator] HAUSHALTSRECHNUNG INKL. FINANZIERUNGSOBJEKT       |
+| Simulation der monatl. Einnahmen/Ausgaben nach Finanzierung    |
++----------------------------------------------------------------+
+|                                                                |
+| Feld                       | Wert                              |
+|----------------------------+-----------------------------------|
+| MONATLICHE EINNAHMEN       | (SectionHeaderRow)                |
+| Nettoeinkommen             | [editierbar]                      |
+| Aus selbstst. Taetigkeit   | [editierbar]                      |
+| Nebentaetigkeit            | [editierbar]                      |
+| Mieteinnahmen (bestehend)  | [editierbar]                      |
+| Kindergeld                 | [editierbar]                      |
+| Unterhaltseinnahmen        | [editierbar]                      |
+| Sonstiges                  | [editierbar]                      |
+|                            |                                   |
+| NEUE FINANZIERUNG (grau)   | (SectionHeaderRow, hellgrau)      |
+| Mieteinnahmen (neu)        | [editierbar, hellgrau Hintergrund]|
+| Steuervorteil (KA)         | [editierbar, hellgrau Hintergrund]|
+|                            |                                   |
+| Summe Einnahmen            | X.XXX,XX EUR  (fett)             |
+|----------------------------+-----------------------------------|
+| MONATLICHE AUSGABEN        | (SectionHeaderRow)                |
+| Lebenshaltungskosten       | [editierbar]                      |
+| Aktuelle Warmmiete         | [0 bei Eigennutzung, disabled]    |
+| Priv. Krankenversicherung  | [editierbar]                      |
+| Unterhaltsverpflichtungen  | [editierbar]                      |
+| Leasing (Kfz)              | [editierbar]                      |
+| Sonstige Fixkosten         | [editierbar]                      |
+|                            |                                   |
+| NEUE FINANZIERUNG (grau)   | (SectionHeaderRow, hellgrau)      |
+| Neue Darlehensrate         | [editierbar, hellgrau Hintergrund]|
+| Nebenkosten (3 EUR/qm)     | [editierbar, hellgrau Hintergrund]|
+|                            |                                   |
+| Summe Ausgaben             | X.XXX,XX EUR  (fett, rot)        |
+|----------------------------+-----------------------------------|
+| ERGEBNIS                   |                                   |
+| Verfuegbares Einkommen     | +/- X.XXX EUR (gruen/rot, fett)  |
+| Kapitaldienstfaehigkeit    | Tragfaehig / Nicht tragfaehig    |
++----------------------------------------------------------------+
+| [ Haushaltsrechnung berechnen ]                                |
++----------------------------------------------------------------+
 ```
+
+## 3. Verhalten: Struktur immer sichtbar
+
+- Die gesamte Tabelle mit allen Zeilen wird **immer angezeigt** (kein leerer Zustand mehr)
+- Alle Felder sind initial leer (Wert 0 oder leer)
+- Der Button "Haushaltsrechnung berechnen" **befuellt** die Felder mit den Daten aus Selbstauskunft und Kalkulator
+- Alle Felder bleiben jederzeit editierbar (ausser Summenzeilen und bei Eigennutzung: Warmmiete = 0, disabled)
+
+## 4. Farbliche Differenzierung "Neue Finanzierung"
+
+- Die Section-Header-Zeilen "Neue Finanzierung" erhalten `bg-blue-50/50 dark:bg-blue-950/20` statt `bg-muted/40`
+- Die Datenzeilen der neuen Finanzierung erhalten `bg-muted/15` als Hintergrund, um sie dezent vom Rest abzuheben
 
 ## Technische Umsetzung
 
-### 1. FinanceCalculatorCard.tsx — verschlanken
+### Datei: `HouseholdCalculationCard.tsx` -- Komplett-Rewrite
 
-- Zeile "Jahresrate" entfernen
-- Prop `onTransferToApplication` und den zugehoerigen Button entfernen
-- Neue Props exportieren: Die berechneten Werte (interestRate, monthlyRate, remainingDebt, termYears, repaymentRate) muessen dem Parent zugaenglich gemacht werden, damit die neue Angebots-Karte sie nutzen kann
-- Loesung: Neuer Callback-Prop `onCalcUpdate?: (data: CalcData) => void`, der bei jeder Neuberechnung die aktuellen Werte nach oben meldet
+- Verwendet dieselben Table-Komponenten aus `@/components/ui/table`
+- Einspaltige Tabelle (Label | Wert), NICHT die 3-Spalten AS1/AS2 Form (da hier keine zwei Antragsteller, sondern konsolidierte Haushaltswerte)
+- `SectionHeaderRow`-artige Zeilen fuer Abschnitte
+- Summenzeilen analog zur Selbstauskunft
+- State wird initial mit Nullwerten befuellt, "Berechnen"-Button ueberschreibt mit echten Daten
+- Ergebnisblock (Verfuegbares Einkommen + Kapitaldienstfaehigkeit) am Ende der Tabelle integriert
 
-```typescript
-export interface CalcData {
-  interestRate: number;
-  repaymentRate: number;
-  termYears: number;
-  monthlyRate: number;
-  remainingDebt: number;
-  loanAmount: number;
-}
-```
+### Datei: `FMFinanzierungsakte.tsx` -- Verschiebung
 
-### 2. Neue Komponente: FinanceOfferCard.tsx
-
-Pfad: `src/components/finanzierung/FinanceOfferCard.tsx`
-
-Visuelle Darstellung NICHT im Excel-Tabellenstil, sondern als professionelle Angebots-Karte:
-- Groessere Zahlen, klare Abschnitte, etwas grosszuegigerer Abstand
-- Effektivzins wird berechnet (Naeherungsformel: `nominal * (1 + nominal / (4 * 100))` oder exakte Berechnung mit Gebuehren)
-- Geschaetzte Gesamtlaufzeit bis Volltilgung (iterativ berechnet)
-- Zwei Buttons nebeneinander am unteren Rand:
-  - "Eckdaten in Antrag uebernehmen" (uebernimmt den bisherigen Callback)
-  - "Tilgungsplan anzeigen" (toggelt die Sichtbarkeit der Tilgungsplan-Karte)
-
-Props:
-```typescript
-interface FinanceOfferCardProps {
-  calcData: CalcData | null;
-  onTransferToApplication?: () => void;
-  onShowAmortization?: () => void;
-  showAmortizationActive?: boolean;
-}
-```
-
-### 3. Neue Komponente: AmortizationScheduleCard.tsx
-
-Pfad: `src/components/finanzierung/AmortizationScheduleCard.tsx`
-
-- Wird nur gerendert wenn der Nutzer "Tilgungsplan anzeigen" klickt
-- Tabellarische Darstellung: Jahr | Restschuld Anfang | Zinsen | Tilgung | Annuitaet | Restschuld Ende
-- Berechnung bis Volltilgung (oder max. 40 Jahre)
-- Button "Als PDF exportieren" nutzt das bestehende PDF-Export-System (`usePdfExport` Hook)
-- Da noch keine Kundendaten vorliegen, wird das PDF als "Ueberschlaegiges Finanzierungsangebot" ohne Personendaten erstellt — nur Darlehensdaten und Tilgungstabelle
-- PDF enthaelt: Header mit "System of a Town", Angebotszusammenfassung und die vollstaendige Tilgungstabelle
-
-### 4. FMFinanzierungsakte.tsx — Layout anpassen
-
-- State fuer CalcData: `const [calcData, setCalcData] = useState<CalcData | null>(null)`
-- State fuer Tilgungsplan-Sichtbarkeit: `const [showAmortization, setShowAmortization] = useState(false)`
-- FinanceCalculatorCard erhaelt neuen `onCalcUpdate`-Prop, verliert `onTransferToApplication`
-- Neue FinanceOfferCard unterhalb des 2-spaltigen Grids (volle Breite)
-- AmortizationScheduleCard darunter, conditional gerendert
-- `handleTransferToApplication` Callback bleibt, wird aber an FinanceOfferCard statt FinanceCalculatorCard uebergeben
+- `HouseholdCalculationCard` wird von Zeile 242 nach unten verschoben: nach dem FinanceObjectCard-Block (nach Zeile 290), als letztes inhaltliches Element
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `FinanceCalculatorCard.tsx` | Jahresrate entfernen, Transfer-Button entfernen, neuer `onCalcUpdate` Callback |
-| `FinanceOfferCard.tsx` | **Neue Datei** — Angebots-Karte mit Effektivzins, Laufzeit, 2 Buttons |
-| `AmortizationScheduleCard.tsx` | **Neue Datei** — Tilgungstabelle mit PDF-Export |
-| `FMFinanzierungsakte.tsx` | Layout anpassen, neue Komponenten einbinden, State-Management |
+| `HouseholdCalculationCard.tsx` | Komplett-Rewrite: Selbstauskunft-Tabellenstruktur, immer sichtbar, Button befuellt nur |
+| `FMFinanzierungsakte.tsx` | Verschiebung der Kachel ans Seitenende |
+
