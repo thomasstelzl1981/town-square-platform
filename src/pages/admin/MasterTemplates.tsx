@@ -43,7 +43,7 @@ export default function MasterTemplates() {
   };
 
   const handleSave = () => {
-    // TODO: Save to database when implemented
+    // STUB: Speicherung in DB-Tabelle master_templates steht aus (HYGIENE-004)
     toast.success('Master-Vorlagen gespeichert', {
       description: 'Die Änderungen wurden erfolgreich übernommen.'
     });

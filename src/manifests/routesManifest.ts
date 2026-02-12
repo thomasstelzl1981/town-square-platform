@@ -146,12 +146,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
     { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
     // Acquiary (Akquise Governance)
-    { path: "acquiary", component: "Acquiary", title: "Acquiary" },
-    { path: "acquiary/inbox", component: "Acquiary", title: "Inbox" },
-    { path: "acquiary/assignments", component: "Acquiary", title: "Zuweisungen" },
-    { path: "acquiary/mandates", component: "Acquiary", title: "Mandate" },
-    { path: "acquiary/audit", component: "Acquiary", title: "Audit" },
-    { path: "acquiary/needs-routing", component: "Acquiary", title: "Needs Routing" },
+    { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
+    { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
+    { path: "acquiary/assignments", component: "AcquiaryAssignments", title: "Zuweisungen" },
+    { path: "acquiary/mandates", component: "AcquiaryMandates", title: "Mandate" },
+    { path: "acquiary/audit", component: "AcquiaryAudit", title: "Audit" },
+    { path: "acquiary/needs-routing", component: "AcquiaryNeedsRouting", title: "Needs Routing" },
     // Sales Desk
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },

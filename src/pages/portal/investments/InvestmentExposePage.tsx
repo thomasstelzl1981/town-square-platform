@@ -193,7 +193,7 @@ export default function InvestmentExposePage() {
 
   const toggleFavorite = useCallback(() => {
     setIsFavorite(prev => !prev);
-    // TODO: Persist to investment_favorites table
+    // STUB: Favoriten-Persistenz erfordert DB-Tabelle investment_favorites (DATA-001)
   }, []);
 
   const formatCurrency = (value: number) => {
