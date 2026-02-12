@@ -1,20 +1,18 @@
 /**
- * FM Dashboard — Two sections: (A) Fälle in Bearbeitung, (B) Finanzierungsmandate
+ * FM Dashboard — (A) Fälle in Bearbeitung, (B) Finanzierungsmandate, (C) Manager-Visitenkarte
  */
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, CalendarClock, Activity, Check, X, Inbox } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import { Badge } from '@/components/ui/badge';
 import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
+
 import { toast } from 'sonner';
 import type { FutureRoomCase } from '@/types/finance';
 
@@ -41,7 +39,7 @@ function getLoanAmount(c: FutureRoomCase): number | null {
 
 export default function FMDashboard({ cases, isLoading }: Props) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const acceptMandate = useAcceptMandate();
   const updateStatus = useUpdateMandateStatus();
 
@@ -65,18 +63,6 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     );
   }
 
-  // Overdue: active cases older than 3 days without first_action
-  const overdueCases = activeCases.filter(c => {
-    if (c.status !== 'active') return false;
-    const age = Date.now() - new Date(c.created_at).getTime();
-    return age > 3 * 24 * 60 * 60 * 1000 && !c.first_action_at;
-  });
-
-  // Recent activity (only from active cases)
-  const recentCases = [...activeCases].sort((a, b) => 
-    new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
-  ).slice(0, 6);
-
   const handleCaseClick = (requestId: string) => {
     navigate(`faelle/${requestId}`);
   };
@@ -98,6 +84,11 @@ export default function FMDashboard({ cases, isLoading }: Props) {
     }
   };
 
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.display_name || '—';
+  const address = [profile?.street, profile?.house_number].filter(Boolean).join(' ');
+  const cityLine = [profile?.postal_code, profile?.city].filter(Boolean).join(' ');
+  const fullAddress = [address, cityLine].filter(Boolean).join(', ');
+
   return (
     <PageShell>
       <ModulePageHeader
@@ -110,6 +101,59 @@ export default function FMDashboard({ cases, isLoading }: Props) {
           </Button>
         }
       />
+
+      {/* Manager Visitenkarte */}
+      <Card className="glass-card">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-4">
+            <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={fullName} className="h-14 w-14 rounded-full object-cover" />
+              ) : (
+                <User className="h-6 w-6 text-primary" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 space-y-1">
+              <h3 className="text-lg font-semibold">{fullName}</h3>
+              <p className="text-xs text-muted-foreground">Finanzierungsmanager</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 pt-2">
+                {profile?.email && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{profile.email}</span>
+                  </div>
+                )}
+                {profile?.phone_mobile && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span>{profile.phone_mobile}</span>
+                  </div>
+                )}
+                {profile?.phone_landline && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span>{profile.phone_landline}</span>
+                  </div>
+                )}
+                {fullAddress && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{fullAddress}</span>
+                  </div>
+                )}
+                {profile?.letterhead_company_line && (
+                  <div className="flex items-center gap-2 text-xs col-span-full">
+                    <span className="text-muted-foreground">{profile.letterhead_company_line}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Section A: Fälle in Bearbeitung */}
       <div className="space-y-3">
@@ -193,74 +237,6 @@ export default function FMDashboard({ cases, isLoading }: Props) {
             })}
           </div>
         )}
-      </div>
-
-      {/* Widgets below */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Overdue */}
-        <Card className="glass-card">
-          <CardContent className="p-4 space-y-3">
-            <WidgetHeader
-              icon={CalendarClock}
-              title="Fällig / Überfällig"
-              description={overdueCases.length > 0 ? `${overdueCases.length} Fälle` : 'Keine überfälligen Fälle'}
-            />
-            {overdueCases.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Alles im Zeitplan ✓</p>
-            ) : (
-              <div className="space-y-1">
-                {overdueCases.slice(0, 5).map(c => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between py-2 px-3 rounded-md bg-destructive/5 border border-destructive/20 cursor-pointer hover:border-destructive/40 transition-colors text-sm"
-                    onClick={() => handleCaseClick(c.finance_mandates?.finance_request_id || c.id)}
-                  >
-                    <span className="font-medium text-sm">{getApplicantName(c)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(c.created_at), { locale: de })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="glass-card">
-          <CardContent className="p-4 space-y-3">
-            <WidgetHeader
-              icon={Activity}
-              title="Letzte Aktivitäten"
-            />
-            {recentCases.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Noch keine Fälle</p>
-            ) : (
-              <div className="space-y-1">
-                {recentCases.map(c => {
-                  const status = getRequestStatus(c);
-                  return (
-                    <div
-                      key={c.id}
-                      className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/40 transition-colors cursor-pointer text-sm"
-                      onClick={() => handleCaseClick(c.finance_mandates?.finance_request_id || c.id)}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="font-medium text-sm">{getApplicantName(c)}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {getLoanAmount(c) ? eurFormat.format(getLoanAmount(c)!) : ''}
-                        </span>
-                      </div>
-                      <Badge variant={getStatusBadgeVariant(status)} className="text-[10px] shrink-0 ml-2">
-                        {getStatusLabel(status)}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </PageShell>
   );
