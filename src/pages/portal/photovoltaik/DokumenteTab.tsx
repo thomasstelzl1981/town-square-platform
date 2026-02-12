@@ -2,6 +2,7 @@
  * PV Dokumente Tab — DMS overview with showcase empty state
  */
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
 import { usePvPlants } from '@/hooks/usePvPlants';
 import { PV_REQUIRED_DOCS } from '@/hooks/usePvDMS';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +55,7 @@ export default function DokumenteTab() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Folder tree */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className={DESIGN.KPI_GRID.FULL}>
                   {PV_DMS_FOLDERS.map((f) => (
                     <div key={f} className="flex items-center gap-2 rounded-lg border p-2.5 text-sm hover:bg-muted/50 cursor-pointer">
                       <Folder className="h-4 w-4 text-primary/70 shrink-0" />
@@ -90,7 +91,7 @@ export default function DokumenteTab() {
               </CardTitle>
             </CardHeader>
             <CardContent className="opacity-50 pointer-events-none">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className={DESIGN.KPI_GRID.FULL}>
                 {PV_DMS_FOLDERS.map((f) => (
                   <div key={f} className="flex items-center gap-2 rounded-lg border p-2.5 text-sm">
                     <Folder className="h-4 w-4 text-primary/70 shrink-0" />

@@ -2,6 +2,7 @@
  * MietyContractsSection — Contract cards grid with placeholder empty state
  */
 import { useQuery } from '@tanstack/react-query';
+import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +56,7 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
     return (
       <div className="space-y-3">
         {title && <p className="text-sm text-muted-foreground">{title}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={DESIGN.WIDGET_GRID.FULL}>
           {(filterCategories ? PLACEHOLDER_CARDS.filter(p => filterCategories.includes(p.category)) : PLACEHOLDER_CARDS).map(p => {
             const cfg = CATEGORY_CONFIG[p.category];
             const Icon = cfg?.icon || FileText;
@@ -84,7 +85,7 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
           <Plus className="h-3.5 w-3.5 mr-1" />Neuer Vertrag
         </Button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={DESIGN.FORM_GRID.FULL}>
         {contracts.map(c => {
           const cfg = CATEGORY_CONFIG[c.category] || CATEGORY_CONFIG.sonstige;
           const Icon = cfg.icon;

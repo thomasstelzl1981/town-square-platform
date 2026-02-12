@@ -1,3 +1,4 @@
+import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -140,7 +141,7 @@ export default function ShopTab({ shopKey }: { shopKey: string }) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className={DESIGN.WIDGET_GRID.FULL}>
         {shop.productLabels.map((label, i) => {
           const imgSrc = shop.productImages[i];
           return (

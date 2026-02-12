@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -224,7 +225,7 @@ export default function SmartHomeTile() {
       </Card>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={DESIGN.FORM_GRID.FULL}>
         {eufyProducts.map((product) => (
           <Card key={product.id} className="glass-card overflow-hidden">
             <CardContent className="p-0">
