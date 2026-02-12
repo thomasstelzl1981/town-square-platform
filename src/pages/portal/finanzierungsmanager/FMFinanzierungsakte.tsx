@@ -198,7 +198,7 @@ export default function FMFinanzierungsakte() {
               <span className="text-xs font-semibold">Objekt aus Marktplatz übernehmen</span>
             </div>
             <p className="text-[11px] text-muted-foreground mb-2">
-              Bestehendes Objekt aus dem Marktplatz suchen und Stammdaten automatisch in die Akte übernehmen.
+              Durchsuchen Sie den Marktplatz nach Objekt-ID, Ort oder Straße — alle Stammdaten wie Adresse, Fläche und Kaufpreis werden automatisch in die Finanzierungsakte übernommen.
             </p>
             <div className="relative" ref={searchRef}>
               <Input
