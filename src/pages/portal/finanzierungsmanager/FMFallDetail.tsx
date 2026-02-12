@@ -464,7 +464,7 @@ export default function FMFallDetail() {
         <CardContent className="p-6 text-center space-y-3">
           <h3 className="text-base font-semibold">Finanzierungsakte fertigstellen</h3>
           <p className="text-xs text-muted-foreground">
-            Wenn alle Daten vollständig sind, markieren Sie die Akte als bereit zur Einreichung.
+            Markieren Sie die Akte als bereit zur Einreichung. Fehlende Unterlagen können jederzeit nachgereicht werden — das Ampelsystem zeigt den aktuellen Dokumentenstatus.
           </p>
           <Button
             size="lg"
