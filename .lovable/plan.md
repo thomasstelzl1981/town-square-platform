@@ -1,57 +1,55 @@
 
+# Fix: "Objekte aus Kaufy" — 3-Zeilen Multi-Asset-Design
 
-# Plan: Split-View Toggle in FMFinanzierungsakte einbauen
+## Ist-Zustand (Screenshot)
+Die Kaufy-Karte zeigt:
+- 1x Suchfeld ("Objekt suchen...")
+- 1x Button ("Objekt uebernehmen")
+- Dropdown-Ergebnisse: nur 2 Zeilen pro Treffer
 
-## Problem
+## Soll-Zustand (3-Zeilen-Design)
+Jeder Suchtreffer im Dropdown zeigt 3 klar getrennte Zeilen:
+- **Zeile 1**: Public-ID + Titel (fett)
+- **Zeile 2**: PLZ, Ort, Strasse
+- **Zeile 3**: Kaufpreis, Objekttyp, Wohnflaeche
 
-Der Split-View-Toggle (Standard / Split-View) wurde nur in `FMFallDetail.tsx` implementiert (fuer bestehende Faelle). Die `FMFinanzierungsakte.tsx` (Neuanlage) hat diesen Toggle nicht, weshalb die Ansichtsumschaltung dort fehlt.
+Die Multi-Select-Chips unterhalb der Suche zeigen ebenfalls mehr Kontext.
 
-Die Multi-Asset Kaufy-Suche mit 3-Zeilen-Design ist bereits korrekt implementiert (Zeilen 236-304), aber wegen der Zugriffsblockade ("Kein Zugriff") nicht sichtbar fuer den Test-User.
+## Aenderungen
 
-## Loesung
+### Datei: `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
 
-Den Split-View-Toggle aus `FMFallDetail.tsx` analog in `FMFinanzierungsakte.tsx` einbauen:
+**Dropdown-Ergebnisse (2x vorhanden: Standard + Split-View)**
 
-### Aenderungen in `FMFinanzierungsakte.tsx`
-
-1. **Neuer State**: `splitView` (boolean, default: false)
-2. **Toggle-Buttons** im Header-Bereich (Zeile 202-210), rechts neben dem Titel:
-   - "Standard" (LayoutList-Icon)
-   - "Split-View" (LayoutPanelLeft-Icon)
-   - Nur sichtbar ab `lg`-Breakpoint (analog FMFallDetail)
-3. **Layout-Umschaltung**:
-   - **Standard** (aktuell): Alle Bloecke vertikal gestapelt
-   - **Split-View**: Zwei separat scrollbare Spalten:
-     - **Links**: Magic Intake, Kaufy-Suche, Eckdaten, Kalkulator, Objekt, Kapitaldienstfaehigkeit
-     - **Rechts**: Selbstauskunft (Person, Einkommen, Ausgaben, Vermoegen)
-
-### Technische Umsetzung
-
-```text
-Header-Zeile: [<- Zurueck]  NEUE FINANZIERUNGSAKTE  [Standard | Split-View]
-                                                      ^--- Neuer Toggle
-
-Standard-Ansicht:     Split-View-Ansicht:
-+------------------+  +--------+  +--------+
-| Magic + Kaufy    |  | Magic  |  | Selbst |
-+------------------+  | Kaufy  |  | aus-   |
-| Eckdaten + Kalk  |  | Eckdat |  | kunft  |
-+------------------+  | Kalk   |  | (scroll|
-| Selbstauskunft   |  | Objekt |  |  bar)  |
-+------------------+  | KDF    |  |        |
-| Objekt           |  |        |  |        |
-+------------------+  +--------+  +--------+
-| KDF              |   (scrollbar)
-+------------------+
+Aktuell (2 Zeilen):
+```
+Ohne Titel
+Berlin (10115) — 250.000 EUR
 ```
 
-### Dateien
+Neu (3 Zeilen):
+```
+SOT-I-00042 — Eigentumswohnung
+10115 Berlin, Musterstr. 5
+250.000 EUR | ETW | 75 qm
+```
 
-- **`src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`**:
-  - Import `LayoutList`, `LayoutPanelLeft` von lucide-react
-  - State `splitView` hinzufuegen
-  - Toggle-Buttons in Header einfuegen
-  - Bedingtes Layout: `splitView ? <SplitLayout /> : <StandardLayout />`
-  - Split-Layout mit `overflow-y-auto` fuer beide Spalten und `height: calc(100vh - 220px)`
+Konkret werden die `button`-Elemente in den Dropdown-Listen (Zeilen 279-284 und 422-425) um eine dritte Zeile erweitert:
+- Zeile 1: `public_id` + `title` (oder Objekttyp als Fallback)
+- Zeile 2: `postal_code` + `city` + Adresse (falls vorhanden)
+- Zeile 3: `asking_price` + `property_type` + `living_area`
 
-Keine weiteren Dateien betroffen. Keine Datenbank-Aenderungen.
+**Multi-Select-Chips** (Zeilen 289-294 und 432-437):
+Erweitert um Objekttyp und Flaeche, z.B.:
+```
+SOT-I-00042 | 10115 Berlin | 250.000 EUR | ETW 75qm  [x]
+```
+
+### Umfang
+- Nur 1 Datei betroffen: `FMFinanzierungsakte.tsx`
+- Aenderungen an 4 Stellen (je 2x Standard-Layout, 2x Split-View-Layout, da der Code dupliziert ist)
+- Keine Datenbank-Aenderungen
+- Keine neuen Abhaengigkeiten
+
+### Hinweis zum Split-View
+Der Split-View-Toggle funktioniert korrekt im Code. Er ist im Screenshot sichtbar. Falls er nicht reagiert, pruefe ich nach der Implementierung nochmals die Klick-Logik.
