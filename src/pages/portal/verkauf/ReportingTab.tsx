@@ -16,8 +16,11 @@ import {
   PropertyTable, 
   PropertyAddressCell, 
   PropertyCurrencyCell,
+  KPICard,
   type PropertyTableColumn 
 } from '@/components/shared';
+import { InfoBanner } from '@/components/shared/InfoBanner';
+import { DESIGN } from '@/config/designManifest';
 
 interface ListingStats {
   id: string;
@@ -167,62 +170,11 @@ const ReportingTab = () => {
     <PageShell>
       <ModulePageHeader title="Reporting" description="Inserate-Performance und Kennzahlen" />
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalListings}</p>
-                <p className="text-xs text-muted-foreground">Aktive Inserate</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Globe className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{activeKaufy}</p>
-                <p className="text-xs text-muted-foreground">Auf Kaufy</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <Users className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{activePartner}</p>
-                <p className="text-xs text-muted-foreground">Im Partner-Netzwerk</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <MessageSquare className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalInquiries}</p>
-                <p className="text-xs text-muted-foreground">Anfragen gesamt</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className={DESIGN.KPI_GRID.FULL}>
+        <KPICard label="Aktive Inserate" value={totalListings} icon={TrendingUp} />
+        <KPICard label="Auf Kaufy" value={activeKaufy} icon={Globe} />
+        <KPICard label="Im Partner-Netzwerk" value={activePartner} icon={Users} />
+        <KPICard label="Anfragen gesamt" value={totalInquiries} icon={MessageSquare} />
       </div>
 
       {/* Performance Table */}
@@ -248,18 +200,10 @@ const ReportingTab = () => {
       </Card>
 
       {/* Views Info */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="p-4 flex items-start gap-3">
-          <Eye className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium text-foreground">View-Tracking aktiv</p>
-            <p className="mt-1 text-muted-foreground">
-              Views werden bei jedem Exposé-Aufruf gezählt (Portal, Kaufy-Marktplatz, Partner-Netzwerk).
-              Pro Session wird nur ein View gezählt.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <InfoBanner variant="premium" icon={Eye} title="View-Tracking aktiv">
+        Views werden bei jedem Exposé-Aufruf gezählt (Portal, Kaufy-Marktplatz, Partner-Netzwerk).
+        Pro Session wird nur ein View gezählt.
+      </InfoBanner>
     </PageShell>
   );
 };

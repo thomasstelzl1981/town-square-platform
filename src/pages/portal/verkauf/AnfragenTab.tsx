@@ -4,7 +4,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -22,8 +22,10 @@ import {
 import { 
   PropertyTable, 
   PropertyAddressCell,
+  KPICard,
   type PropertyTableColumn 
 } from '@/components/shared';
+import { DESIGN } from '@/config/designManifest';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -221,57 +223,28 @@ const AnfragenTab = () => {
   return (
     <PageShell>
       <ModulePageHeader title="Anfragen" description="Kaufanfragen verwalten und qualifizieren" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card 
-          className={`cursor-pointer transition-colors ${statusFilter === 'new' ? 'border-primary' : 'hover:border-primary/50'}`} 
+      <div className={DESIGN.KPI_GRID.FULL}>
+        <KPICard
+          label="Neue Anfragen"
+          value={newCount}
+          icon={MessageSquare}
           onClick={() => setStatusFilter(statusFilter === 'new' ? null : 'new')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{newCount}</p>
-                <p className="text-xs text-muted-foreground">Neue Anfragen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className={`cursor-pointer transition-colors ${statusFilter === 'qualified' ? 'border-primary' : 'hover:border-primary/50'}`} 
+          className={statusFilter === 'new' ? 'border-primary' : ''}
+        />
+        <KPICard
+          label="Qualifiziert"
+          value={qualifiedCount}
+          icon={CheckCircle2}
           onClick={() => setStatusFilter(statusFilter === 'qualified' ? null : 'qualified')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{qualifiedCount}</p>
-                <p className="text-xs text-muted-foreground">Qualifiziert</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className={`cursor-pointer transition-colors ${statusFilter === 'won' ? 'border-primary' : 'hover:border-primary/50'}`} 
+          className={statusFilter === 'qualified' ? 'border-primary' : ''}
+        />
+        <KPICard
+          label="Gewonnen"
+          value={wonCount}
+          icon={CheckCircle2}
           onClick={() => setStatusFilter(statusFilter === 'won' ? null : 'won')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{wonCount}</p>
-                <p className="text-xs text-muted-foreground">Gewonnen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          className={statusFilter === 'won' ? 'border-primary' : ''}
+        />
       </div>
 
       {statusFilter && (

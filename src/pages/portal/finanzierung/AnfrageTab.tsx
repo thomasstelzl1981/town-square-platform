@@ -190,8 +190,8 @@ export default function AnfrageTab() {
 
       {/* Finanzierungsobjekt */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Finanzierungsobjekt</h2>
+        <p className={DESIGN.TYPOGRAPHY.HINT + ' mt-1'}>
           Hier erfassen Sie Ihr Finanzierungsobjekt.
         </p>
       </div>
@@ -200,8 +200,8 @@ export default function AnfrageTab() {
 
       {/* Kapitaldienstfähigkeit */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Kapitaldienstfähigkeit</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Kapitaldienstfähigkeit</h2>
+        <p className={DESIGN.TYPOGRAPHY.HINT + ' mt-1'}>
           Simulation der monatlichen Belastung nach Finanzierungsabschluss
         </p>
       </div>
