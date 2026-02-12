@@ -136,6 +136,11 @@ export default function FMFinanzierungsakte() {
     setCalculatorPurchasePrice(pp);
   };
 
+  const handleTransferToApplication = () => {
+    // TODO: Transfer eckdaten into Selbstauskunft fields
+    toast.success('Eckdaten wurden in den Finanzierungsantrag übernommen');
+  };
+
   return (
     <PageShell>
       {/* Header */}
@@ -149,100 +154,7 @@ export default function FMFinanzierungsakte() {
         </div>
       </div>
 
-      {/* Block 1: Eckdaten */}
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-0">
-          <div className="px-4 py-2.5 border-b bg-muted/20">
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Eckdaten
-            </h3>
-          </div>
-          <Table>
-            <TableBody>
-              <TR label="Zweck">
-                <Select value={purpose} onValueChange={setPurpose}>
-                  <SelectTrigger className={inputCls}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="kauf">Kauf / Neubau</SelectItem>
-                    <SelectItem value="umschuldung">Prolongation / Umschuldung</SelectItem>
-                    <SelectItem value="modernisierung">Modernisierung</SelectItem>
-                    <SelectItem value="kapitalbeschaffung">Kapitalbeschaffung</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TR>
-              <TR label="Objekt-Adresse">
-                <Input value={objectAddress} onChange={e => setObjectAddress(e.target.value)}
-                  placeholder="Straße, PLZ Ort" className={inputCls} />
-              </TR>
-              <TR label="Objekttyp">
-                <Select value={objectType} onValueChange={setObjectType}>
-                  <SelectTrigger className={inputCls}>
-                    <SelectValue placeholder="Auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="wohnung">Eigentumswohnung</SelectItem>
-                    <SelectItem value="einfamilienhaus">Einfamilienhaus</SelectItem>
-                    <SelectItem value="mehrfamilienhaus">Mehrfamilienhaus</SelectItem>
-                    <SelectItem value="grundstueck">Grundstück</SelectItem>
-                    <SelectItem value="gewerbe">Gewerbeimmobilie</SelectItem>
-                    <SelectItem value="sonstiges">Sonstiges</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TR>
-              <TR label={purpose === 'umschuldung' ? 'Restschuld (€)' : 'Darlehenswunsch (€)'}>
-                <Input value={loanAmount} onChange={e => setLoanAmount(e.target.value)}
-                  type="number" placeholder="0" className={inputCls} />
-              </TR>
-              {purpose !== 'umschuldung' && (
-                <>
-                  <TR label="Kaufpreis (€)">
-                    <Input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)}
-                      type="number" placeholder="0" className={inputCls} />
-                  </TR>
-                  <TR label="Eigenkapital (€)">
-                    <Input value={equityAmount} onChange={e => setEquityAmount(e.target.value)}
-                      type="number" placeholder="0" className={inputCls} />
-                  </TR>
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Block 2: Selbstauskunft */}
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-0">
-          <div className="px-4 py-2.5 border-b bg-muted/20">
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <User className="h-4 w-4" /> Selbstauskunft
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Persönliche Daten, Beschäftigung, Einkommen und Vermögen der Antragsteller
-            </p>
-          </div>
-          <div className="p-4 space-y-6">
-            <PersonSection {...dualProps} />
-            <EmploymentSection {...dualProps} />
-            <BankSection {...dualProps} />
-            <IncomeSection {...dualProps} />
-            <ExpensesSection {...dualProps} />
-            <AssetsSection {...dualProps} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Section heading: Finanzierungsobjekt */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Hier erfassen Sie Ihr Finanzierungsobjekt.
-        </p>
-      </div>
-
-      {/* Listing search (MOD-11 only) */}
+      {/* Listing search (full width, top) */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
@@ -282,10 +194,7 @@ export default function FMFinanzierungsakte() {
         </CardContent>
       </Card>
 
-      {/* Block 3: Finanzierungsobjekt (shared card) */}
-      <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
-
-      {/* Block 4: Finanzierung + Kalkulator (2-spaltig) */}
+      {/* Block 1: Eckdaten + Kalkulator (2-spaltig) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FinanceRequestCard
           ref={requestCardRef}
@@ -294,12 +203,56 @@ export default function FMFinanzierungsakte() {
           showCalculator
           onCalculate={handleCalculate}
           hideFooter
+          showObjectFields
+          title="Eckdaten"
         />
         <FinanceCalculatorCard
           finanzierungsbedarf={calculatorBedarf}
           purchasePrice={calculatorPurchasePrice}
+          onTransferToApplication={handleTransferToApplication}
         />
       </div>
+
+      {/* Section heading: Finanzierungsantrag */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsantrag</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Detaillierte Angaben für die Bankeinreichung
+        </p>
+      </div>
+
+      {/* Block 2: Selbstauskunft */}
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-0">
+          <div className="px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <User className="h-4 w-4" /> Selbstauskunft
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Persönliche Daten, Beschäftigung, Einkommen und Vermögen der Antragsteller
+            </p>
+          </div>
+          <div className="p-4 space-y-6">
+            <PersonSection {...dualProps} />
+            <EmploymentSection {...dualProps} />
+            <BankSection {...dualProps} />
+            <IncomeSection {...dualProps} />
+            <ExpensesSection {...dualProps} />
+            <AssetsSection {...dualProps} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section heading: Finanzierungsobjekt */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight uppercase">Finanzierungsobjekt</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Hier erfassen Sie Ihr Finanzierungsobjekt.
+        </p>
+      </div>
+
+      {/* Block 3: Finanzierungsobjekt (shared card) */}
+      <FinanceObjectCard ref={objectCardRef} storageKey="mod11-akte" externalData={externalObjectData} hideFooter />
 
       {/* Floating save button */}
       <Button

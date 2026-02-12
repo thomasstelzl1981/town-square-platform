@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 
 export interface FinanceFormData {
   purpose: string;
+  objectType: string;
+  usage: string;
+  rentalIncome: string;
   purchasePrice: string;
   modernization: string;
   notary: string;
@@ -29,7 +32,7 @@ export interface FinanceFormData {
 export { type FinanceFormData as FinanceFormDataType };
 
 export const emptyFinanceData: FinanceFormData = {
-  purpose: 'kauf',
+  purpose: 'kauf', objectType: '', usage: '', rentalIncome: '',
   purchasePrice: '', modernization: '', notary: '', transferTax: '', broker: '',
   equity: '', loanRequest: '', fixedRateYears: '', repayment: '', maxMonthlyRate: '',
 };
@@ -48,6 +51,10 @@ interface Props {
   showCalculator?: boolean;
   /** Called when user clicks "Berechnen" next to Eigenkapital */
   onCalculate?: (finanzierungsbedarf: number) => void;
+  /** Show Objektart, Nutzungsart, Mieteinnahmen fields above Kostenzusammenstellung */
+  showObjectFields?: boolean;
+  /** Override card title (default: "Beantragte Finanzierung") */
+  title?: string;
 }
 
 function TR({ label, children }: { label: string; children: React.ReactNode }) {
@@ -71,7 +78,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
 
 const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
-  function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, hideFooter = false, showCalculator = false, onCalculate }, ref) {
+  function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, hideFooter = false, showCalculator = false, onCalculate, showObjectFields = false, title }, ref) {
     const key = `${storageKey}-finance`;
 
     const [data, setData] = useState<FinanceFormData>(() => {
@@ -116,14 +123,14 @@ const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
         <CardContent className="p-0">
           <div className="px-4 py-2.5 border-b bg-muted/20">
             <h3 className="text-base font-semibold flex items-center gap-2">
-              <Euro className="h-4 w-4" /> Beantragte Finanzierung
+              <Euro className="h-4 w-4" /> {title || 'Beantragte Finanzierung'}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Kostenzusammenstellung und Finanzierungsplan
             </p>
           </div>
 
-          {/* Finanzierungszweck */}
+          {/* Finanzierungszweck + optional object fields */}
           <Table>
             <TableBody>
               <TR label="Finanzierungszweck">
@@ -139,6 +146,42 @@ const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
                   </SelectContent>
                 </Select>
               </TR>
+              {showObjectFields && (
+                <>
+                  <TR label="Objektart">
+                    <Select value={data.objectType} onValueChange={v => set('objectType', v)} disabled={readOnly}>
+                      <SelectTrigger className={inputCls}>
+                        <SelectValue placeholder="Auswählen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="eigentumswohnung">Eigentumswohnung</SelectItem>
+                        <SelectItem value="einfamilienhaus">Einfamilienhaus</SelectItem>
+                        <SelectItem value="zweifamilienhaus">Zweifamilienhaus</SelectItem>
+                        <SelectItem value="mehrfamilienhaus">Mehrfamilienhaus</SelectItem>
+                        <SelectItem value="grundstueck">Grundstück</SelectItem>
+                        <SelectItem value="gewerbe">Gewerbe</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TR>
+                  <TR label="Nutzungsart">
+                    <Select value={data.usage} onValueChange={v => set('usage', v)} disabled={readOnly}>
+                      <SelectTrigger className={inputCls}>
+                        <SelectValue placeholder="Auswählen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="eigennutzung">Eigennutzung</SelectItem>
+                        <SelectItem value="vermietung">Vermietung</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TR>
+                  {data.usage === 'vermietung' && (
+                    <TR label="Mieteinnahmen mtl. (€)">
+                      <Input value={data.rentalIncome} onChange={e => set('rentalIncome', e.target.value)}
+                        type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
+                    </TR>
+                  )}
+                </>
+              )}
             </TableBody>
           </Table>
 
