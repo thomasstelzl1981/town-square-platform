@@ -1,41 +1,84 @@
 
-# FinanceObjectCard: Zwei neue Zeilen (Nutzungsart + Mieteinnahmen)
+# Floating "Zwischenspeichern"-Button
 
 ## Was wird geaendert
 
-In der gemeinsamen Komponente `FinanceObjectCard.tsx` werden zwei neue Felder am Ende der Tabelle (vor dem Speichern-Button) ergaenzt:
+Die einzelnen "Zwischenspeichern"-Buttons in den Kacheln `FinanceObjectCard` und `FinanceRequestCard` werden entfernt. Stattdessen gibt es einen einzigen Floating-Button, der beim Scrollen immer rechts unten sichtbar bleibt und alle Formulardaten auf einmal zwischenspeichert.
 
-1. **Nutzungsart** (Dropdown): "Eigengenutzt" oder "Vermietet"
-2. **Mieteinnahmen monatlich** (Zahleneingabe in EUR): Nur sichtbar/relevant wenn "Vermietet" gewaehlt ist, aber immer angezeigt
+## Umsetzung
 
-Da die Komponente in MOD-07 und MOD-11 identisch genutzt wird, wirkt die Aenderung automatisch in beiden Modulen.
+### 1. Buttons aus den Kacheln entfernen
+
+In `FinanceObjectCard.tsx` und `FinanceRequestCard.tsx` wird der jeweilige Footer-Bereich mit dem "Zwischenspeichern"-Button entfernt. Die Save-Logik (localStorage-Schreiben) bleibt intern erhalten, wird aber ueber eine neue Prop `onSave` nach aussen exponiert, damit der uebergeordnete Container den Speichern-Vorgang ausloesen kann.
+
+**Neue Prop in beiden Komponenten:**
+- `onSaveRef?: React.MutableRefObject<(() => void) | null>` — ein Ref, ueber das die Parent-Komponente die interne Save-Funktion aufrufen kann
+
+Alternativ einfacher: Die Karten behalten ihre `handleSave`-Funktion, aber der Button wird ueber eine neue Prop `hideFooter?: boolean` ausgeblendet. Der Floating-Button in der Akte ruft dann direkt `localStorage.setItem` auf (die Keys sind bekannt).
+
+**Gewaehlt wird der einfachste Ansatz:** Neue Prop `hideFooter?: boolean` in beiden Karten. Wenn `true`, wird der Button-Footer nicht gerendert. Die `handleSave`-Funktion wird ueber ein `ref` (useImperativeHandle) exponiert.
+
+### 2. Floating-Button in FMFinanzierungsakte.tsx
+
+Ein `fixed`-positionierter Button (`fixed bottom-6 right-6 z-50`) mit:
+- Save-Icon + Text "Zwischenspeichern"
+- Glassmorphism-Stil passend zum Design (shadow-lg, backdrop-blur)
+- Klick loest die Save-Funktionen beider Karten aus (ueber Refs)
+- Toast-Bestaetigungsmeldung wie bisher
+
+### 3. MOD-07 AnfrageTab — gleiche Behandlung
+
+Auch in `AnfrageTab.tsx` den gleichen Floating-Button einfuegen, damit das Verhalten konsistent ist.
 
 ## Technische Details
 
-**Datei:** `src/components/finanzierung/FinanceObjectCard.tsx`
+### FinanceObjectCard.tsx + FinanceRequestCard.tsx
 
-### Interface erweitern
+```typescript
+// Neues Interface
+interface Props {
+  // ... bestehende Props
+  hideFooter?: boolean;
+  saveRef?: React.RefObject<{ save: () => void } | null>;
+}
 
-Zwei neue Felder im `ObjectFormData` Interface:
-- `usage: string` (Werte: `"eigengenutzt"` oder `"vermietet"`)
-- `rentalIncome: string` (monatliche Mieteinnahmen)
+// useImperativeHandle exponiert save()
+React.useImperativeHandle(saveRef, () => ({
+  save: handleSave,
+}));
 
-### emptyObjectData erweitern
+// Footer nur rendern wenn !hideFooter
+{!readOnly && !hideFooter && (
+  <div className="px-4 py-3 border-t ...">...</div>
+)}
+```
 
-Defaults: `usage: ''`, `rentalIncome: ''`
+### FMFinanzierungsakte.tsx
 
-### Zwei neue Tabellenzeilen
+```typescript
+const objectCardRef = useRef<{ save: () => void }>(null);
+const requestCardRef = useRef<{ save: () => void }>(null);
 
-Nach "Stellplaetze / Garagen" (Zeile 175):
+const handleFloatingSave = () => {
+  objectCardRef.current?.save();
+  requestCardRef.current?.save();
+  toast.success('Daten zwischengespeichert');
+};
 
-1. **Nutzungsart** — Select-Dropdown mit zwei Optionen:
-   - "Eigengenutzt"
-   - "Vermietet"
+// Am Ende der Komponente:
+<Button
+  onClick={handleFloatingSave}
+  className="fixed bottom-6 right-6 z-50 shadow-lg gap-2"
+>
+  <Save className="h-4 w-4" /> Zwischenspeichern
+</Button>
+```
 
-2. **Mieteinnahmen mtl. (EUR)** — Number-Input mit Placeholder "0"
+## Betroffene Dateien
 
-Beide Felder nutzen den bestehenden tabellarischen Stil (TR-Komponente, gleiche Input-Klassen).
-
-### Keine weiteren Dateien betroffen
-
-Da `externalData` bereits als `Partial<ObjectFormData>` typisiert ist, koennen Listings kuenftig auch `usage` und `rentalIncome` liefern, ohne dass die Props geaendert werden muessen.
+| Datei | Aenderung |
+|---|---|
+| `FinanceObjectCard.tsx` | `hideFooter` + `saveRef` Props, useImperativeHandle, forwardRef |
+| `FinanceRequestCard.tsx` | `hideFooter` + `saveRef` Props, useImperativeHandle, forwardRef |
+| `FMFinanzierungsakte.tsx` | Floating-Button, Refs fuer beide Karten, `hideFooter={true}` |
+| `AnfrageTab.tsx` | Gleicher Floating-Button + Refs |
