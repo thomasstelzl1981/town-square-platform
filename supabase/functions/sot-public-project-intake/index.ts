@@ -239,10 +239,11 @@ async function handleSubmit(
     storagePaths?: { expose?: string; pricelist?: string };
     imagePaths?: string[];
     agreementVersion?: string;
+    commissionAgreement?: { rate: number; gross_rate: number; channels: string[] };
   },
   req: Request,
 ): Promise<Response> {
-  const { contactName, contactEmail, contactPhone, companyName, extractedData, storagePaths, imagePaths, agreementVersion } = body;
+  const { contactName, contactEmail, contactPhone, companyName, extractedData, storagePaths, imagePaths, agreementVersion, commissionAgreement } = body;
 
   if (!contactName || !contactEmail) {
     return new Response(JSON.stringify({ error: 'Name und E-Mail sind Pflichtfelder.' }), {
@@ -269,7 +270,7 @@ async function handleSubmit(
     .insert({
       source: 'kaufy_website',
       interest_type: 'project_submission',
-      notes: `Projekt-Einreichung: ${(extractedData as any)?.projectName || 'Unbekannt'}\nKontakt: ${contactName} (${contactEmail})\nFirma: ${companyName || '-'}`,
+      notes: `Projekt-Einreichung: ${(extractedData as any)?.projectName || 'Unbekannt'}\nKontakt: ${contactName} (${contactEmail})\nFirma: ${companyName || '-'}\nProvision: ${commissionAgreement?.rate || 7}% netto (${commissionAgreement?.gross_rate || 8.33}% brutto)\nKanäle: ${commissionAgreement?.channels?.join(', ') || 'partner_network'}`,
       zone1_pool: true,
     })
     .select('id')
@@ -299,6 +300,9 @@ async function handleSubmit(
       image_paths: imagePaths || [],
       agreement_accepted_at: agreementVersion ? new Date().toISOString() : null,
       agreement_version: agreementVersion || null,
+      submission_data: {
+        commission_agreement: commissionAgreement || { rate: 7, gross_rate: 8.33, channels: ['partner_network'] },
+      },
       lead_id: lead?.id || null,
       source_ip: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || null,
       user_agent: req.headers.get('user-agent') || null,
