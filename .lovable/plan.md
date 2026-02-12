@@ -1,92 +1,108 @@
 
 
-# Vertriebsbeauftragung angleichen: Public Intake an MOD-13 Standard
+# Implementierungsplan: Audit-Massnahmen (ohne MOD-18)
 
-## Analyse-Ergebnis
+## Uebersicht
 
-### MOD-13 SalesApprovalSection (Referenz/SOLL)
-- **Provisions-Slider**: 3-15%, Schrittweite 0.5%, Standard 7%
-- **Brutto-Anzeige**: Automatische Berechnung x1.19 MwSt
-- **3 Consent-Checkboxes**: Datenrichtigkeit, Vertriebsauftrag-AGB, Systemgebuehr (2.000 EUR netto/Einheit)
-- **Kanal-Steuerung**: Vertriebsfreigabe (Pflicht) dann optional Kaufy-Marktplatz und Landingpage
-- **Persistenz**: `sales_desk_requests` mit `commission_agreement { rate, gross_rate }`
-- **Listing-Erstellung**: Automatische Erstellung von `listings` + `listing_publications` pro Einheit
-
-### Public Intake Kaufy2026Verkaeufer.tsx (IST - ABWEICHUNGEN)
-- **Provision fest auf 3%** -- kein Slider, nicht einstellbar
-- **Nur 1 Checkbox** statt 3 separater Consents
-- **Keine Brutto-Anzeige**
-- **Keine Kanal-Auswahl** (Partnernetzwerk vs. Kaufy-Website)
-- **Anforderung 5-15% wird NICHT erfuellt**
+Basierend auf dem Komplett-Audit werden alle identifizierten Probleme in 4 Arbeitspakete (AP) aufgeteilt, priorisiert nach Schwere.
 
 ---
 
-## Aenderungsplan
+## AP-1: Code-Hygiene — Console.log-Reste entfernen (P1/P2)
 
-### 1. Provisions-Slider einbauen (Step 5: Agreement)
+**6 Dateien, ~10 Minuten**
 
-Ersetze den festen "3% Provision"-Text durch einen interaktiven Slider:
+| Datei | Stelle | Aktion |
+|-------|--------|--------|
+| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 24: `console.log('Analyse')` | Ersetzen durch `toast.info('Finanzanalyse wird vorbereitet...')` |
+| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 48: `console.log('Report')` | Ersetzen durch `toast.info('Report-Generator wird vorbereitet...')` |
+| `src/pages/portal/FinanzanalysePage.tsx` | Zeile 68: `console.log('Szenario')` | Ersetzen durch `toast.info('Szenario-Editor wird vorbereitet...')` |
+| `src/pages/portal/CommunicationProPage.tsx` | Zeile 29: `console.log('Agent')` | Ersetzen durch `toast.info('Agenten-Konfiguration wird vorbereitet...')` |
+| `src/pages/portal/office/WidgetsTab.tsx` | Zeile 110: `console.log('Repeat widget:', widgetId)` | Ersetzen durch `toast.info('Widget wird wiederholt')` |
+| `src/pages/portal/ServicesPage.tsx` | Zeile 395: `console.log('Neue Bestellung')` | Ersetzen durch `toast.info('Bestellformular wird vorbereitet...')` |
 
-- **Min**: 5% (statt 3% im MOD-13, da oeffentlicher Kanal hoehere Mindestprovision)
-- **Max**: 15%
-- **Step**: 0.5%
-- **Default**: 7% (wie MOD-13)
-- **Brutto-Anzeige**: `{rate * 1.19}% inkl. MwSt` darunter
-- Paragraph 3 im Vertragstext wird dynamisch: "...in Hoehe von {commissionRate}% des Netto-Kaufpreises..."
-
-### 2. Drei separate Consent-Checkboxes (wie MOD-13)
-
-Ersetze die einzelne Checkbox durch 3 Checkboxen analog zur SalesApprovalSection:
-
-1. "Ich bestaetige die Richtigkeit aller Projektdaten und der hochgeladenen Unterlagen."
-2. "Ich erteile den Vertriebsauftrag gemaess den Allgemeinen Geschaeftsbedingungen."
-3. "Ich akzeptiere die Systemgebuehr von 2.000 EUR netto pro verkaufter Einheit."
-
-Submit-Button wird erst aktiv, wenn alle 3 akzeptiert sind.
-
-### 3. Kanal-Auswahl hinzufuegen
-
-Nach den Consents eine Kanal-Auswahl (zwei Toggles, analog MOD-13 Feature-Toggles):
-
-- **Finanzvertrieb / Partnernetzwerk** (Standard: aktiv) -- Leads gehen an Zone 1 Partnernetzwerk
-- **Kaufy-Website** (optional) -- Projekt wird zusaetzlich auf kaufy.app gelistet
-
-Beide koennen gleichzeitig aktiv sein. Mindestens einer muss gewaehlt werden.
-
-### 4. Dynamischen Vertragstext anpassen
-
-Paragraph 3 im Agreement-Card wird dynamisch:
-- Von: "...eine Vertriebsprovision in Hoehe von 3%..."
-- Zu: "...eine Vertriebsprovision in Hoehe von {commissionRate}%..."
-
-### 5. Submission-Payload erweitern
-
-Das `commission_agreement`-Objekt im Submit an die Edge Function wird analog zum MOD-13 Format:
-
-```text
-commission_agreement: {
-  rate: commissionRate,
-  gross_rate: commissionRate * 1.19,
-  channels: ['partner_network', 'kaufy'] // je nach Auswahl
-}
-```
-
-Die bestehende `public_project_submissions`-Tabelle hat bereits ein JSONB-Feld `submission_data`, in dem dies gespeichert werden kann.
-
-### 6. Edge Function anpassen
-
-Die Edge Function `sot-public-project-intake` (Mode `submit`) erhaelt die erweiterten Felder und speichert sie korrekt in `submission_data`.
+Alle 6 Dateien erhalten ggf. einen `import { toast } from 'sonner'` falls noch nicht vorhanden.
 
 ---
 
-## Betroffene Dateien
+## AP-2: Layout-Konsistenz — PageShell-Migration (P1)
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | Slider + 3 Checkboxes + Kanal-Toggles + dynamischer Vertragstext |
-| `supabase/functions/sot-public-project-intake/index.ts` | Erweiterte `commission_agreement` im Submit-Payload verarbeiten |
+### 2a) ShopTab in ServicesPage.tsx
 
-### Keine Datenbank-Aenderungen noetig
+Die `ShopTab`-Komponente (Zeile 123) nutzt noch `<div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">` statt `<PageShell>`.
 
-Die bestehende `public_project_submissions`-Tabelle speichert alles in `submission_data` (JSONB). Keine Migration erforderlich.
+**Aenderung:**
+- Import `PageShell` und `ModulePageHeader` hinzufuegen
+- Container-div durch `<PageShell>` ersetzen
+- Statischen Header durch `<ModulePageHeader title="SHOPS" description="Einkaufen und Bestellen..." />` ersetzen
+
+### 2b) BestellungenTab in ServicesPage.tsx
+
+Die `BestellungenTab`-Komponente (Zeile 388) hat dasselbe Problem.
+
+**Aenderung:**
+- Container-div durch `<PageShell>` ersetzen
+- Header-div durch `<ModulePageHeader title="BESTELLUNGEN" description="..." actions={<Button>}` ersetzen
+
+---
+
+## AP-3: Orphan-Datei klaeren — MarketingTab.tsx (P2)
+
+`src/pages/portal/projekte/MarketingTab.tsx` existiert als vollstaendig implementierte Komponente (244 Zeilen, Kaufy-Listings und Landingpage-Verwaltung), ist aber **nicht im routesManifest** und wird von keinem Router referenziert.
+
+**Analyse:** Die Datei wurde wahrscheinlich durch die MOD-13 Umstrukturierung (4-Tile-Pattern: Dashboard, Projekte, Vertrieb, Landing Page) verwaist. Die Funktionalitaet (Kaufy-Toggle, Landingpage-Slug) ist teilweise in `VertriebTab` und `LandingPageTab` aufgegangen.
+
+**Aktion:** MarketingTab.tsx als deprecated markieren mit einem Kommentar-Header. Keine Loeschung, da Funktionalitaet moeglicherweise spaeter in VertriebTab integriert wird.
+
+---
+
+## AP-4: Kaufy Expose-Fallback (P2)
+
+`src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` zeigt bei nicht gefundenem Listing nur einen minimalen Text "Objekt nicht gefunden" mit einem "Zurueck zur Suche"-Button (Zeile 237-245).
+
+**Verbesserung:** Den Fallback-Zustand durch eine informativere Ansicht ersetzen:
+- Kaufy-Logo und Marken-Header beibehalten
+- Nachricht: "Dieses Objekt ist nicht mehr verfuegbar oder wurde deaktiviert."
+- CTA-Button: "Weitere Objekte entdecken" (Link zu /website/kaufy)
+- Sekundaerer Link: "Sie sind Verkaeufer? Projekt einstellen" (Link zu /website/kaufy/verkaeufer)
+
+---
+
+## Nicht im Scope (bewusst zurueckgestellt)
+
+| Thema | Begruendung |
+|-------|-------------|
+| MOD-18 Finanzanalyse | Per Anweisung zurueckgestellt |
+| MOD-14 Agenten echte Funktionalitaet | Erfordert Armstrong-Agent-Architektur-Entscheidung (eigener Sprint) |
+| MOD-14 Social-Tile Pruefung | Bereits implementiert (SocialPage mit internem Router) |
+| FutureRoom Karriere Bewerbungsformular | Zone-3-Feature, separater Sprint |
+| End-to-End Tests | Strategisch, eigener Sprint |
+| Performance-Audit Edge Functions | Strategisch, eigener Sprint |
+| Mobile Deep-Test | Strategisch, eigener Sprint |
+
+---
+
+## Technische Details
+
+### Betroffene Dateien (8 Stueck)
+
+1. `src/pages/portal/FinanzanalysePage.tsx` — 3x console.log durch toast ersetzen
+2. `src/pages/portal/CommunicationProPage.tsx` — 1x console.log durch toast ersetzen
+3. `src/pages/portal/office/WidgetsTab.tsx` — 1x console.log durch toast ersetzen
+4. `src/pages/portal/ServicesPage.tsx` — 1x console.log durch toast ersetzen + PageShell-Migration (ShopTab + BestellungenTab)
+5. `src/pages/portal/projekte/MarketingTab.tsx` — Deprecated-Kommentar hinzufuegen
+6. `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` — Fallback-Ansicht verbessern
+
+### Keine Datenbank-Aenderungen
+
+Alle Massnahmen sind rein Frontend-seitig. Keine Migrationen erforderlich.
+
+### Erwartetes Ergebnis
+
+| Kategorie | Vorher | Nachher |
+|-----------|--------|---------|
+| Code-Hygiene | 7/10 | 9/10 |
+| UI-Konsistenz | 7/10 | 9/10 |
+| Zone 3 Websites | 8/10 | 8.5/10 |
+| Gesamt | 8.0/10 | 8.5/10 |
 
