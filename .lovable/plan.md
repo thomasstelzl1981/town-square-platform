@@ -1,64 +1,109 @@
 
+# Storage-Design-Standard: Spaltenansicht als Default, bessere Gitterstruktur und MOD-07 Angleichung
 
-# KI-Bankensuche: Google Places Integration in Kachel 2
+## Zusammenfassung
 
-## Ausgangslage
+Drei zusammenhaengende Massnahmen fuer ein konsistentes Storage-Erlebnis im gesamten System:
 
-Die Edge Function `sot-places-search` existiert bereits und nutzt die **Google Places API (New)** mit Header-basierter Authentifizierung. Sie wird aktuell im Sanierungsmodul (Handwerkersuche) erfolgreich eingesetzt. Die "Coming soon"-Platzhalter in der KI-Vorschlaege-Spalte koennen durch eine echte Suche ersetzt werden.
+1. **Default-Ansicht auf "Spalten" (columns)** umstellen — systemweit
+2. **Gitterstruktur optisch verstaerken** — sichtbarere Trennlinien in Dark und Light Mode
+3. **MOD-07 Dokumente-Tab** visuell an MOD-11 Finanzierungsakte angleichen (gleicher Look, gleiche Aufteilung)
 
-## Aenderungen
+---
 
-### Datei: `FMEinreichung.tsx`
+## Teil 1: Default-Ansicht auf Spalten umstellen
 
-**1. Statische Platzhalter entfernen**
+### Aenderung in `StorageFileManager.tsx`
 
-Das hartcodierte `AI_SUGGESTIONS`-Array und das "Coming soon"-Badge werden entfernt.
+Zeile 102: `useState<ViewMode>('list')` aendern zu `useState<ViewMode>('columns')`
 
-**2. Google Places Suche einbauen**
+Damit wird ueberall im System, wo `StorageFileManager` eingesetzt wird (DMS, Miety, etc.), die Spaltenansicht als Startansicht geladen.
 
-- Beim Laden eines Falls wird automatisch eine Suche nach "Bank" + PLZ/Ort des Objekts ausgeloest (Radius: 50 km / 50000 m)
-- Die Suche ruft `supabase.functions.invoke('sot-places-search', { body: { query: 'Bank [PLZ Ort]', radius: 50000 } })` auf
-- Ergebnisse werden als klickbare Liste in der mittleren Spalte "KI-Vorschlaege" angezeigt
-- Jeder Eintrag zeigt: Name, Adresse, Telefon (falls vorhanden)
-- Beim Klick wird die Bank in die Auswahl uebernommen (Name + ggf. E-Mail manuell nachtragen)
+---
 
-**3. UI der mittleren Spalte**
+## Teil 2: Spaltenbreite konsistent und groessere Zeilenhoehe
+
+### Aenderung in `ColumnView.tsx`
+
+| Aenderung | Aktuell | Neu |
+|---|---|---|
+| Spaltenbreite | `w-[220px] min-w-[220px]` | `w-[260px] min-w-[260px]` |
+| Zeilenhoehe | `py-1.5` | `py-2.5` |
+| Icon-Groesse | `h-4 w-4` | `h-5 w-5` |
+| Text-Groesse | `text-sm` | `text-sm` (bleibt) |
+
+Die groesseren Zeilen erleichtern Drag-and-Drop-Operationen deutlich.
+
+### Aenderung in `ListView.tsx`
+
+| Aenderung | Aktuell | Neu |
+|---|---|---|
+| Zeilenhoehe Desktop | `py-2` | `py-3` |
+| Icon-Groesse | `h-4 w-4` | `h-5 w-5` |
+
+---
+
+## Teil 3: Gitterstruktur besser sichtbar machen
+
+### Aenderung in `ColumnView.tsx`
+
+Die Spalten-Trennlinie (`border-r border-border/30`) wird verstaerkt:
+- **Light Mode:** `border-r border-border/60` (dunkler/blauer)
+- **Dark Mode:** `dark:border-border/50` (heller)
+
+Die Zeilen-Trennlinien werden ebenfalls sichtbarer. Jede Zeile erhaelt einen unteren Border:
+- `border-b border-border/20 dark:border-border/30`
+
+### Aenderung in `ListView.tsx`
+
+Die bestehenden `border-b border-border/30` werden verstaerkt:
+- Header: `border-b border-border/50 dark:border-border/40`
+- Zeilen: `border-b border-border/40 dark:border-border/30`
+
+### Aenderung in `StorageFileManager.tsx`
+
+Der aeussere Container erhaelt deutlichere Grenzen:
+- Aktuell: `border border-border/40`
+- Neu: `border border-border/60 dark:border-border/40`
+
+---
+
+## Teil 4: MOD-07 Dokumente-Tab an MOD-11 angleichen
+
+### Problem
+
+MOD-07 `DokumenteTab` nutzt aktuell `FinanceDocumentsManager` — ein eigenes Layout mit Tree-Panel links und Checklist rechts, das sich grundlegend vom MOD-11 / DMS `StorageFileManager` unterscheidet.
+
+### Loesung
+
+`FinanceDocumentsManager.tsx` wird so umgebaut, dass es den gleichen `StorageFileManager` wie MOD-03 (DMS) nutzt. Da der Tenant bereits existiert und der DMS-Baum (inkl. MOD_07 Root-Ordner) schon erzeugt ist, wird dieser direkt verwendet.
+
+**Layout MOD-07 Dokumente (neu):**
 
 ```text
-+----------------------------------+
-| KI-Vorschlaege (50 km Umkreis)  |
-| [Lade Banken im Umkreis...]     |
-|                                  |
-| Sparkasse Musterstadt    [+]    |
-|   Hauptstr. 1, 12345 Musterst. |
-|                                  |
-| Volksbank Region XY      [+]    |
-|   Bahnhofstr. 5, 12346 Ort     |
-|                                  |
-| Deutsche Bank Filiale    [+]    |
-|   Marktplatz 2, 12345 Musterst.|
-|                                  |
-| [Erneut suchen]                  |
-+----------------------------------+
++------------------------------------------+
+| Dokumentenstatus (Progress-Bar + Badges) |
++------------------------------------------+
+| StorageFileManager                       |
+| (identischer Look wie DMS/MOD-11)        |
+| Default: Spaltenansicht                  |
+| Vorgefiltert auf MOD_07 Unterordner      |
++------------------------------------------+
 ```
 
-- Loading-State mit Spinner waehrend der Suche
-- Fehler-Handling mit Toast-Nachricht
-- "Erneut suchen"-Button fuer manuelle Aktualisierung
-- Da Google Places keine E-Mail liefert: Bei Uebernahme wird die Bank ohne E-Mail hinzugefuegt, der Nutzer kann die E-Mail dann manuell im Chip oder im E-Mail-Entwurf ergaenzen
+**Konkrete Aenderungen:**
+- `FinanceDocumentsManager.tsx` importiert und nutzt `StorageFileManager` statt der eigenen Tree+Checklist Kombination
+- Der Dokumentenstatus-Header (Progress-Bar) bleibt als Uebersicht erhalten
+- Die Daten werden aus `storage_nodes` gefiltert auf `module_code = 'MOD_07'`
+- Der bestehende `FinanceStorageTree` und `DocumentChecklistPanel` werden als sekundaere Referenz beibehalten, aber die Hauptansicht ist jetzt der `StorageFileManager`
 
-**4. Technische Details**
+---
 
-- Neuer State: `aiResults` (Array), `aiLoading` (boolean)
-- Suchparameter werden aus dem aktiven Fall extrahiert: `property?.postal_code`, `property?.city` oder Fallback auf `applicant?.object_address`
-- Die Suche wird via `useEffect` ausgeloest, wenn sich der aktive Fall aendert
-- Bank-Objekt aus Places-Ergebnis: `{ id: place_id, name, email: '', source: 'ki' }`
+## Technische Aenderungen
 
-### Keine weiteren Dateien betroffen
-
-Die Edge Function `sot-places-search` bleibt unveraendert — sie unterstuetzt bereits Freitext-Suche mit optionalem Radius.
-
-### Keine Datenbank-Aenderungen
-
-Reine Frontend-Aenderung in einer Datei.
-
+| Datei | Aenderung |
+|---|---|
+| `src/components/dms/StorageFileManager.tsx` | Default ViewMode von `'list'` auf `'columns'` aendern; Container-Border verstaerken |
+| `src/components/dms/views/ColumnView.tsx` | Spaltenbreite 260px; Zeilenhoehe py-2.5; Icon h-5; Border verstaerken; Zeilen-Trennlinien hinzufuegen |
+| `src/components/dms/views/ListView.tsx` | Zeilenhoehe py-3; Icon h-5; Border verstaerken |
+| `src/components/finanzierung/FinanceDocumentsManager.tsx` | Umbau auf `StorageFileManager` mit MOD_07-Filter; Dokumentenstatus-Header beibehalten |
