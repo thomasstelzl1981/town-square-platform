@@ -6,14 +6,17 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Calculator } from 'lucide-react';
+import { Calculator, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   finanzierungsbedarf: number;
   purchasePrice: number;
+  /** Called when user clicks "Eckdaten in Antrag übernehmen" */
+  onTransferToApplication?: () => void;
 }
 
 function TR({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,7 +40,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
 const fmt = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePrice }: Props) {
+export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePrice, onTransferToApplication }: Props) {
   const [termYears, setTermYears] = useState('10');
   const [repaymentRate, setRepaymentRate] = useState('1.5');
 
@@ -160,6 +163,19 @@ export default function FinanceCalculatorCard({ finanzierungsbedarf, purchasePri
             />
           </TableBody>
         </Table>
+
+        {onTransferToApplication && (
+          <div className="px-4 py-3 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 text-xs"
+              onClick={onTransferToApplication}
+            >
+              <ArrowDown className="h-3.5 w-3.5" /> Eckdaten in Antrag übernehmen
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
