@@ -127,6 +127,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "futureroom/finanzierungsmanager", component: "FutureRoomManagers", title: "Finanzierungsmanager" },
     { path: "futureroom/bankkontakte", component: "FutureRoomBanks", title: "Bankkontakte" },
     { path: "futureroom/monitoring", component: "FutureRoomMonitoring", title: "Monitoring" },
+    { path: "futureroom/vorlagen", component: "FutureRoomTemplates", title: "Vorlagen" },
     // Social Media (Kaufy Publishing + Partner-Mandatsverwaltung)
     { path: "social-media", component: "SocialMediaDashboard", title: "Social Media" },
     { path: "social-media/kampagnen", component: "SocialMediaKampagnen", title: "Kampagnen" },

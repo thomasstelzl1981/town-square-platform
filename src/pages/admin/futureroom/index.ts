@@ -5,3 +5,4 @@ export { default as FutureRoomZuweisung } from './FutureRoomZuweisung';
 export { default as FutureRoomManagers } from './FutureRoomManagers';
 export { default as FutureRoomBanks } from './FutureRoomBanks';
 export { default as FutureRoomMonitoring } from './FutureRoomMonitoring';
+export { default as FutureRoomTemplates } from './FutureRoomTemplates';
