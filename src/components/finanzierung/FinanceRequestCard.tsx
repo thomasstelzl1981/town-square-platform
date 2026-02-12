@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Euro, FileText, Save } from 'lucide-react';
+import { Euro, FileText, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface FinanceFormData {
@@ -25,6 +25,8 @@ export interface FinanceFormData {
   maxMonthlyRate: string;
 }
 
+export { type FinanceFormData as FinanceFormDataType };
+
 export const emptyFinanceData: FinanceFormData = {
   purpose: 'kauf',
   purchasePrice: '', modernization: '', notary: '', transferTax: '', broker: '',
@@ -36,6 +38,10 @@ interface Props {
   initialData?: Partial<FinanceFormData>;
   externalPurchasePrice?: string;
   readOnly?: boolean;
+  /** When true, hides Zinsbindung + Tilgung rows (used in MOD-11 with external calculator) */
+  showCalculator?: boolean;
+  /** Called when user clicks "Berechnen" next to Eigenkapital */
+  onCalculate?: (finanzierungsbedarf: number) => void;
 }
 
 function TR({ label, children }: { label: string; children: React.ReactNode }) {
@@ -58,7 +64,7 @@ function TRComputed({ label, value }: { label: string; value: string }) {
 
 const inputCls = "h-7 text-xs border-0 bg-transparent shadow-none";
 
-export default function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false }: Props) {
+export default function FinanceRequestCard({ storageKey, initialData, externalPurchasePrice, readOnly = false, showCalculator = false, onCalculate }: Props) {
   const key = `${storageKey}-finance`;
 
   const [data, setData] = useState<FinanceFormData>(() => {
@@ -169,32 +175,52 @@ export default function FinanceRequestCard({ storageKey, initialData, externalPu
         <Table>
           <TableBody>
             <TR label="Eigenkapital (€)">
-              <Input value={data.equity} onChange={e => set('equity', e.target.value)}
-                type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
+              <div className="flex items-center gap-1">
+                <Input value={data.equity} onChange={e => set('equity', e.target.value)}
+                  type="number" placeholder="0" className={`${inputCls} flex-1`} readOnly={readOnly} />
+                {showCalculator && !readOnly && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary"
+                    onClick={() => {
+                      const bedarf = finanzierungsbedarf;
+                      set('loanRequest', bedarf.toString());
+                      onCalculate?.(bedarf);
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3" /> Berechnen
+                  </Button>
+                )}
+              </div>
             </TR>
             <TR label="Darlehenswunsch (€)">
               <Input value={data.loanRequest} onChange={e => set('loanRequest', e.target.value)}
                 type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
             </TR>
-            <TR label="Zinsbindung (Jahre)">
-              <Select value={data.fixedRateYears} onValueChange={v => set('fixedRateYears', v)} disabled={readOnly}>
-                <SelectTrigger className={inputCls}>
-                  <SelectValue placeholder="Auswählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 Jahre</SelectItem>
-                  <SelectItem value="10">10 Jahre</SelectItem>
-                  <SelectItem value="15">15 Jahre</SelectItem>
-                  <SelectItem value="20">20 Jahre</SelectItem>
-                  <SelectItem value="25">25 Jahre</SelectItem>
-                  <SelectItem value="30">30 Jahre</SelectItem>
-                </SelectContent>
-              </Select>
-            </TR>
-            <TR label="Anfängliche Tilgung (%)">
-              <Input value={data.repayment} onChange={e => set('repayment', e.target.value)}
-                type="number" placeholder="z.B. 2" className={inputCls} readOnly={readOnly} />
-            </TR>
+            {!showCalculator && (
+              <>
+                <TR label="Zinsbindung (Jahre)">
+                  <Select value={data.fixedRateYears} onValueChange={v => set('fixedRateYears', v)} disabled={readOnly}>
+                    <SelectTrigger className={inputCls}>
+                      <SelectValue placeholder="Auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 Jahre</SelectItem>
+                      <SelectItem value="10">10 Jahre</SelectItem>
+                      <SelectItem value="15">15 Jahre</SelectItem>
+                      <SelectItem value="20">20 Jahre</SelectItem>
+                      <SelectItem value="25">25 Jahre</SelectItem>
+                      <SelectItem value="30">30 Jahre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TR>
+                <TR label="Anfängliche Tilgung (%)">
+                  <Input value={data.repayment} onChange={e => set('repayment', e.target.value)}
+                    type="number" placeholder="z.B. 2" className={inputCls} readOnly={readOnly} />
+                </TR>
+              </>
+            )}
             <TR label="Max. Monatsrate (€)">
               <Input value={data.maxMonthlyRate} onChange={e => set('maxMonthlyRate', e.target.value)}
                 type="number" placeholder="0" className={inputCls} readOnly={readOnly} />
