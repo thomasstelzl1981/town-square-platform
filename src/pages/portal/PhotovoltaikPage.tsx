@@ -20,21 +20,17 @@ const Loading = () => (
 
 export default function PhotovoltaikPage() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-auto">
-        <React.Suspense fallback={<Loading />}>
-          <Routes>
-            <Route index element={<Navigate to="anlagen" replace />} />
-            <Route path="anlagen" element={<AnlagenTab />} />
-            <Route path="monitoring" element={<MonitoringTab />} />
-            <Route path="dokumente" element={<DokumenteTab />} />
-            <Route path="einstellungen" element={<EinstellungenTab />} />
-            <Route path="neu" element={<PVCreateWizard />} />
-            <Route path=":pvPlantId" element={<PVPlantDetail />} />
-            <Route path="*" element={<Navigate to="/portal/photovoltaik" replace />} />
-          </Routes>
-        </React.Suspense>
-      </div>
-    </div>
+    <React.Suspense fallback={<Loading />}>
+      <Routes>
+        <Route index element={<Navigate to="anlagen" replace />} />
+        <Route path="anlagen" element={<AnlagenTab />} />
+        <Route path="monitoring" element={<MonitoringTab />} />
+        <Route path="dokumente" element={<DokumenteTab />} />
+        <Route path="einstellungen" element={<EinstellungenTab />} />
+        <Route path="neu" element={<PVCreateWizard />} />
+        <Route path=":pvPlantId" element={<PVPlantDetail />} />
+        <Route path="*" element={<Navigate to="/portal/photovoltaik" replace />} />
+      </Routes>
+    </React.Suspense>
   );
 }

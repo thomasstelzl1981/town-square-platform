@@ -64,21 +64,42 @@ gantt
 | MOD-04 Immobilien | Routes+SubTabs | ✅ | ✅ | ✅ Detail | GoldenPath | ✅ Sauber |
 | MOD-07 Finanzierung | 4 Tiles+Detail | ✅ | — | ✅ Detail | — | ✅ Sauber |
 | MOD-08 Investments | 6 Tiles+Exposé | ✅ | — | — | — | ✅ Sauber |
-| MOD-11 FM-Manager | Lazy Tabs+Cases | ⚠️ div only | — | ✅ All | ✅ finance_manager | ⚠️ Kein PageShell |
+| MOD-11 FM-Manager | Lazy Tabs+Cases | ✅ fixed | — | ✅ All | ✅ finance_manager | ✅ Fixed |
 | MOD-12 Akquise | FM-Pattern+Stepper | ✅ | — | — | — | ✅ Sauber |
 | MOD-13 Projekte | 4-Tile+Detail+Unit | ✅ | — | — | — | ✅ Sauber |
 
-**Findings:**
-- **MOD-11**: Wrapper ist `<div className="space-y-6">` statt `<PageShell>` — Standardisierungsverstoß
-- Alle anderen Module folgen konsistenten Architektur-Patterns
-- Keine hardcodierten Daten gefunden (Showcase Readiness ✅)
+### Welle 2-4 Analyse (14 Module)
+
+| Modul | Pattern | PageShell | Lazy | Bewertung |
+|-------|---------|-----------|------|-----------|
+| MOD-01 Stammdaten | 4 Tiles | ✅ (in Tabs) | — | ✅ Sauber |
+| MOD-02 KI-Office | 6 Tiles+MobileGuard | ✅ (in Tabs) | — | ✅ Sauber |
+| MOD-03 DMS | 4 Tiles | ✅ (in Tabs) | — | ✅ Sauber |
+| MOD-05 MSV | 4 Tiles+Detail | ✅ (in Tabs) | ✅ All | ✅ Sauber |
+| MOD-06 Verkauf | 5 Tiles+Exposé | ✅ (in Tabs) | ✅ All | ✅ Sauber |
+| MOD-09 Vertriebspartner | 4 Tiles+Details | ✅ (in Tabs) | ✅ All | ✅ Sauber |
+| MOD-10 Leads | 4 Tiles+SelfieAds | ✅ (ModuleTilePage) | ✅ SelfieAds | ✅ Sauber |
+| MOD-14 CommPro | 4 Tiles | ✅ | — | ✅ Sauber |
+| MOD-15 Fortbildung | 4 Tabs | ✅ | — | ✅ Sauber |
+| MOD-16 Shops | 3 Shops+Bestellungen | ✅ | — | ✅ Sauber |
+| MOD-17 Fuhrpark | 4 Tiles+Detail | ✅ (in Tabs) | — | ✅ Sauber |
+| MOD-18 Finanzanalyse | Blueprint/Stub | ✅ (ModuleTilePage) | — | ⏸️ Zurückgestellt |
+| MOD-19 PV | 4 Tiles+Detail | ✅ fixed | ✅ All | ✅ Fixed |
+| MOD-20 Miety | 6 Tiles | ⚠️ eigene TileShell | ✅ Dossier | ⚠️ Monolith (1089 Zeilen) |
+
+**Fixes angewendet:**
+- **MOD-11**: `<div className="space-y-6">` → direkte Routes (PageShell in Sub-Pages)
+- **MOD-19**: Unnötiger `<div className="flex flex-col h-full">` Wrapper entfernt
+
+**Offene Punkte:**
+- **MOD-20 Miety**: 1089-Zeilen Monolith mit eigener `TileShell` — Refactoring in eigenen Sprint
 
 ## Zurückgestellt (eigene Sprints)
 
 | Thema | Begründung |
 |-------|-----------|
 | MOD-18 Finanzanalyse | Blueprint/Stub — erfordert eigene Architektur-Entscheidung |
-| Mobile Test (vollständig) | Erfordert eingeloggten User für Portal-Bereiche |
-| Zone-2 Welle 2-4 | 14 weitere Module zu analysieren |
+| MOD-20 Miety Refactoring | 1089-Zeilen Monolith aufsplitten in Sub-Dateien |
+| Mobile Test (vollständig) | Erfordert eingeloggten User im Browser-Tool |
 | End-to-End Tests | Strategisch, eigener Sprint |
 | Performance-Audit | 85+ Edge Functions, eigener Sprint |
