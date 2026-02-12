@@ -37,6 +37,11 @@ import {
   Rocket,
   Quote,
   Radio,
+  ShoppingBag,
+  Landmark,
+  Building2,
+  Search,
+  Sun,
   GripVertical,
   Info,
   RotateCcw,
@@ -58,6 +63,11 @@ const ICON_MAP: Record<string, typeof Globe> = {
   Rocket,
   Quote,
   Radio,
+  ShoppingBag,
+  Landmark,
+  Building2,
+  Search,
+  Sun,
 };
 
 interface SortableWidgetItemProps {

@@ -30,7 +30,7 @@ import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
 import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
 import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
 import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
-import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
+import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings2, Inbox } from 'lucide-react';
@@ -49,6 +49,10 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.MINDSET.QUOTE': 'system_quote',
   'SYS.AUDIO.RADIO': 'system_radio',
   'SYS.PV.LIVE': 'system_pv_live',
+  'SYS.BRAND.KAUFY': 'system_brand_kaufy',
+  'SYS.BRAND.FUTUREROOM': 'system_brand_futureroom',
+  'SYS.BRAND.SOT': 'system_brand_sot',
+  'SYS.BRAND.ACQUIARY': 'system_brand_acquiary',
 };
 
 export default function PortalDashboard() {
@@ -124,6 +128,10 @@ export default function PortalDashboard() {
     if (widgetId === 'system_quote') return <QuoteWidget />;
     if (widgetId === 'system_radio') return <RadioWidget />;
     if (widgetId === 'system_pv_live') return <PVLiveWidget />;
+    if (widgetId === 'system_brand_kaufy') return <BrandLinkWidget code="SYS.BRAND.KAUFY" />;
+    if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
+    if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;
+    if (widgetId === 'system_brand_acquiary') return <BrandLinkWidget code="SYS.BRAND.ACQUIARY" />;
     
     // Task widgets from DB
     const taskWidget = taskWidgets.find(w => w.id === widgetId);
@@ -163,10 +171,6 @@ export default function PortalDashboard() {
         WELCOME ON BOARD
       </h1>
 
-      {/* Brand Widgets: Kaufy, FutureRoom, SoT */}
-      <div className="mb-6">
-        <BrandWidgets />
-      </div>
 
       <DashboardGrid widgetIds={visibleWidgetIds} onReorder={updateOrder}>
         {visibleWidgetIds.map(widgetId => {
