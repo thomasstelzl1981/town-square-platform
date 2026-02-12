@@ -4,12 +4,15 @@
  * Fokus: Rolle im System, fertiges Tooling, Orchestrierung
  * Keine klassische Vermittlung, sondern Systemarbeit
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ChevronRight, TrendingUp, Users, Building2, 
   Award, Clock, Wallet, Laptop, FolderCheck, 
-  Workflow, ShieldCheck, ArrowRight, CheckCircle2
+  Workflow, ShieldCheck, ArrowRight, CheckCircle2,
+  Send
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function FutureRoomKarriere() {
   const benefits = [
@@ -63,6 +66,39 @@ export default function FutureRoomKarriere() {
     'Kundenorientierte, eigenständige Arbeitsweise',
   ];
 
+  // Application form state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    has34i: '',
+    experience: '',
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.has34i) {
+      toast.error('Bitte füllen Sie die Pflichtfelder aus.');
+      return;
+    }
+    setIsSubmitting(true);
+    // Simulate submission (no backend yet)
+    await new Promise(r => setTimeout(r, 1200));
+    toast.success('Bewerbung erfolgreich gesendet! Wir melden uns innerhalb von 48 Stunden.');
+    setFormData({ name: '', email: '', phone: '', has34i: '', experience: '', message: '' });
+    setIsSubmitting(false);
+  };
+
+  const scrollToForm = () => {
+    document.getElementById('bewerbungsformular')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div>
       {/* Hero */}
@@ -80,7 +116,7 @@ export default function FutureRoomKarriere() {
             Übernehmen Sie vorbereitete Finanzierungsfälle aus unserem System. 
             Profitieren Sie von fertigen Unterlagen, direkten Bankzugängen und modernem Tooling.
           </p>
-          <button className="fr-btn fr-btn-primary text-lg">
+          <button onClick={scrollToForm} className="fr-btn fr-btn-primary text-lg">
             Jetzt bewerben
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -185,6 +221,132 @@ export default function FutureRoomKarriere() {
         </div>
       </section>
 
+      {/* Application Form */}
+      <section id="bewerbungsformular" className="fr-section">
+        <div className="fr-section-header">
+          <h2 className="fr-section-title">Bewerbungsformular</h2>
+          <p className="fr-section-subtitle">
+            Füllen Sie das Formular aus — wir melden uns innerhalb von 48 Stunden.
+          </p>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <div className="fr-card">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    placeholder="Max Mustermann"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    E-Mail <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    placeholder="max@beispiel.de"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Telefon
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="+49 123 456 789"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    §34i GewO Zulassung <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="has34i"
+                    value={formData.has34i}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent"
+                  >
+                    <option value="">Bitte wählen...</option>
+                    <option value="yes">Ja, vorhanden</option>
+                    <option value="in_progress">In Beantragung</option>
+                    <option value="no">Nein, nicht vorhanden</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Erfahrung in der Baufinanzierung
+                </label>
+                <select
+                  name="experience"
+                  value={formData.experience}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent"
+                >
+                  <option value="">Bitte wählen...</option>
+                  <option value="none">Keine / Quereinsteiger</option>
+                  <option value="1-3">1–3 Jahre</option>
+                  <option value="3-5">3–5 Jahre</option>
+                  <option value="5+">Mehr als 5 Jahre</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nachricht (optional)
+                </label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Erzählen Sie uns kurz etwas über sich..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(165,70%,36%)] focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="fr-btn fr-btn-primary w-full justify-center"
+              >
+                {isSubmitting ? (
+                  'Wird gesendet...'
+                ) : (
+                  <>
+                    Bewerbung absenden
+                    <Send className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="fr-cta">
         <div className="fr-cta-content">
@@ -192,7 +354,7 @@ export default function FutureRoomKarriere() {
           <p className="fr-cta-text">
             Bewerben Sie sich als Finanzierungsmanager und werden Sie Teil des FutureRoom-Netzwerks.
           </p>
-          <button className="fr-btn fr-btn-primary">
+          <button onClick={scrollToForm} className="fr-btn fr-btn-primary">
             Bewerbung starten
             <ChevronRight className="h-5 w-5" />
           </button>
