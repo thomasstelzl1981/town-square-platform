@@ -8,6 +8,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 import { 
   ArrowLeft, Download, FileText, MapPin, Calendar, 
   Building2, Maximize2, Handshake, MessageSquare, Zap,
@@ -168,14 +169,12 @@ const KatalogDetailPage = () => {
 
       const imagePromises = (links || []).map(async (link: any) => {
         const doc = link.documents;
-        const { data: urlData } = await supabase.storage
-          .from('tenant-documents')
-          .createSignedUrl(doc.file_path, 3600);
+        const url = await getCachedSignedUrl(doc.file_path);
 
         return {
           id: doc.id,
           name: doc.name,
-          url: urlData?.signedUrl || '',
+          url: url || '',
           is_cover: link.is_title_image || false,
         };
       });
@@ -217,12 +216,9 @@ const KatalogDetailPage = () => {
   });
 
   const handleDownload = async (doc: DocumentItem) => {
-    const { data } = await supabase.storage
-      .from('tenant-documents')
-      .createSignedUrl(doc.file_path, 3600);
-
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, '_blank');
+    const url = await getCachedSignedUrl(doc.file_path);
+    if (url) {
+      window.open(url, '_blank');
     }
   };
 

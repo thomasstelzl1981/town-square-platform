@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+
 
 interface ExposeImageGalleryProps {
   propertyId: string;
@@ -133,16 +134,16 @@ const ExposeImageGallery = ({ propertyId, unitId }: ExposeImageGalleryProps) => 
       
       const urlMap: Record<string, string> = {};
       
-        for (const img of images) {
+      await Promise.all(
+        images.map(async (img) => {
           if (img.file_path) {
-            const { data } = await supabase.storage
-              .from('tenant-documents')
-              .createSignedUrl(img.file_path, 3600);
-            if (data?.signedUrl) {
-              urlMap[img.id] = resolveStorageSignedUrl(data.signedUrl);
+            const url = await getCachedSignedUrl(img.file_path);
+            if (url) {
+              urlMap[img.id] = url;
             }
           }
-        }
+        })
+      );
       
       return urlMap;
     },

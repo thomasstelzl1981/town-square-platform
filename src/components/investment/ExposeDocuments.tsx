@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Download, FileCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 
 interface ExposeDocument {
   id: string;
@@ -93,13 +93,7 @@ export function ExposeDocuments({
 
   const handleDownload = async (doc: ExposeDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('tenant-documents')
-        .createSignedUrl(doc.file_path, 60);
-
-      if (error) throw error;
-
-      const url = resolveStorageSignedUrl(data?.signedUrl);
+      const url = await getCachedSignedUrl(doc.file_path, 'tenant-documents', 60);
       if (!url) throw new Error('Keine Download-URL erhalten');
 
       window.open(url, '_blank');

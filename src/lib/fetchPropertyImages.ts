@@ -1,9 +1,10 @@
 /**
  * Shared helper for fetching property images with signed URLs.
  * Used by MOD-08, MOD-09, and Zone 3 (KAUFY) for consistent image loading.
+ * Now uses centralized imageCache for deduplication and TTL caching.
  */
 import { supabase } from '@/integrations/supabase/client';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 
 interface DocumentLink {
   object_id: string;
@@ -52,21 +53,17 @@ export async function fetchPropertyImages(
 
     const propId = link.object_id;
     
-    // If no image yet, or this is a title image, use it
     if (!bestByProperty.has(propId) || link.is_title_image) {
       bestByProperty.set(propId, doc.file_path);
     }
   }
 
-  // 3. Generate signed URLs in parallel
+  // 3. Generate signed URLs in parallel (via cache)
   await Promise.all(
     Array.from(bestByProperty.entries()).map(async ([propId, filePath]) => {
-      const { data } = await supabase.storage
-        .from('tenant-documents')
-        .createSignedUrl(filePath, 3600); // 1 hour validity
-
-      if (data?.signedUrl) {
-        imageMap.set(propId, resolveStorageSignedUrl(data.signedUrl));
+      const url = await getCachedSignedUrl(filePath);
+      if (url) {
+        imageMap.set(propId, url);
       }
     })
   );

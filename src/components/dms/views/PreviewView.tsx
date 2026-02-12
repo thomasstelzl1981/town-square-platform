@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 import { toast } from 'sonner';
 import { getFileIcon, formatFileSize, formatDateTime, formatType } from '@/components/dms/storageHelpers';
 import type { FileManagerItem } from './ListView';
@@ -29,11 +28,9 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
         setPreviewUrl(null);
         return;
       }
-      const { data } = await supabase.storage
-        .from('tenant-documents')
-        .createSignedUrl(selectedItem.filePath, 300);
-      if (data?.signedUrl) {
-        setPreviewUrl(resolveStorageSignedUrl(data.signedUrl));
+      const url = await getCachedSignedUrl(selectedItem.filePath);
+      if (url) {
+        setPreviewUrl(url);
       }
     }
     loadPreview();

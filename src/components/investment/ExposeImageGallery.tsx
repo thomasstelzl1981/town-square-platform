@@ -6,14 +6,14 @@
  * - Prev/Next Navigation
  * - Dot-Indikatoren
  * - Fallback-Icon wenn keine Bilder
+ * - Uses centralized imageCache for signed-URL caching
  */
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight, Building2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
-
+import { getCachedSignedUrl } from '@/lib/imageCache';
 interface ListingImage {
   id: string;
   name: string;
@@ -71,21 +71,15 @@ export function ExposeImageGallery({
         return !!doc?.file_path && String(doc?.mime_type || '').startsWith('image/');
       });
 
-      // Generate signed URLs
+      // Generate signed URLs (via cache)
       const imagePromises = imageLinks.map(async (link: any) => {
         const doc = link.documents as any;
-        const { data: urlData, error: urlError } = await supabase.storage
-          .from('tenant-documents')
-          .createSignedUrl(doc.file_path, 3600);
-
-        if (urlError) {
-          console.warn('Signed URL error:', urlError);
-        }
+        const url = await getCachedSignedUrl(doc.file_path);
 
         return {
           id: doc.id,
           name: doc.name,
-          url: resolveStorageSignedUrl(urlData?.signedUrl),
+          url,
           is_cover: link.is_title_image || false,
         } satisfies ListingImage;
       });
