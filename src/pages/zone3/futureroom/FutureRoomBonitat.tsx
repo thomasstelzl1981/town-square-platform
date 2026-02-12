@@ -1,21 +1,23 @@
 /**
- * FutureRoomBonitat — 6-Step Financing Wizard
+ * FutureRoomBonitat — 7-Step Financing Wizard
  * 
- * Public wizard (no login required) with two exit paths:
- * Option A: Quick submit → Zone 1 (no account)
- * Option B: Create account → full Akte with documents
+ * Public wizard (no login required) — freely navigable.
+ * All steps can be browsed without filling in any data.
+ * Only the final "Finanzierung einreichen" button requires:
+ *   1. Contact data (name + email)
+ *   2. Bonitätsprüfung completed
  */
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronRight, ChevronLeft, CheckCircle2, 
   User, Building2, Calculator, BarChart3, Home as HomeIcon, 
-  Shield, Send, UserPlus, Sparkles
+  Shield, Send, UserPlus, Sparkles, AlertTriangle, XCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type Step = 'contact' | 'object' | 'request' | 'calculator' | 'household' | 'decision';
+type Step = 'contact' | 'object' | 'request' | 'calculator' | 'household' | 'bonitat' | 'decision';
 
 interface FormData {
   // Contact
@@ -65,6 +67,8 @@ export default function FutureRoomBonitat() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [publicId, setPublicId] = useState<string | null>(null);
+  const [bonitaetChecked, setBonitaetChecked] = useState(false);
+  const [bonitaetResult, setBonitaetResult] = useState<'positive' | 'marginal' | 'negative' | null>(null);
 
   const steps: { id: Step; label: string; icon: React.ReactNode }[] = [
     { id: 'contact', label: 'Kontakt', icon: <User className="h-4 w-4" /> },
@@ -72,6 +76,7 @@ export default function FutureRoomBonitat() {
     { id: 'request', label: 'Eckdaten', icon: <HomeIcon className="h-4 w-4" /> },
     { id: 'calculator', label: 'Kalkulation', icon: <Calculator className="h-4 w-4" /> },
     { id: 'household', label: 'Haushalt', icon: <BarChart3 className="h-4 w-4" /> },
+    { id: 'bonitat', label: 'Prüfung', icon: <Shield className="h-4 w-4" /> },
     { id: 'decision', label: 'Abschluss', icon: <Send className="h-4 w-4" /> },
   ];
 
@@ -81,6 +86,7 @@ export default function FutureRoomBonitat() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Free navigation — no validation blocks
   const handleNext = () => {
     if (currentStepIndex < steps.length - 1) {
       setCurrentStep(steps[currentStepIndex + 1].id);
@@ -89,7 +95,13 @@ export default function FutureRoomBonitat() {
 
   const handleBack = () => {
     if (currentStepIndex > 0) {
-      setCurrentStep(steps[currentStepIndex - 1].id);
+      const prevStep = steps[currentStepIndex - 1].id;
+      // Reset bonität check when going back to household
+      if (currentStep === 'bonitat') {
+        setBonitaetChecked(false);
+        setBonitaetResult(null);
+      }
+      setCurrentStep(prevStep);
     }
   };
 
@@ -111,16 +123,38 @@ export default function FutureRoomBonitat() {
   const currentRent = parseFloat(formData.currentRent) || 0;
   const otherCosts = parseFloat(formData.otherCosts) || 0;
   const totalIncome = netIncome + otherIncome;
-  const totalExpenses = otherCosts; // current rent drops away when buying
+  const totalExpenses = otherCosts;
   const availableForRate = totalIncome - totalExpenses;
   const kdfRatio = totalIncome > 0 ? (monthlyRate / totalIncome) * 100 : 0;
 
+  // Bonität check
+  const handleBonitaetCheck = () => {
+    if (kdfRatio <= 35) {
+      setBonitaetResult('positive');
+    } else if (kdfRatio <= 45) {
+      setBonitaetResult('marginal');
+    } else {
+      setBonitaetResult('negative');
+    }
+    setBonitaetChecked(true);
+  };
+
+  // Check readiness for final submit
+  const hasContactData = !!(formData.firstName && formData.email);
+  const canSubmit = hasContactData && bonitaetChecked;
+
+  // Checklist items for decision step
+  const checklistItems = [
+    { label: 'Kontaktdaten (Name + E-Mail)', done: hasContactData },
+    { label: 'Objektdaten', done: !!formData.objectType },
+    { label: 'Finanzierungseckdaten', done: !!formData.purchasePrice },
+    { label: 'Haushaltsdaten', done: !!formData.netIncome },
+    { label: 'Bonitätsprüfung durchgeführt', done: bonitaetChecked },
+  ];
+
   // Option A: Quick submit
   const handleQuickSubmit = useCallback(async () => {
-    if (!formData.email || !formData.firstName) {
-      toast.error('Bitte mindestens Name und E-Mail angeben.');
-      return;
-    }
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('sot-futureroom-public-submit', {
@@ -178,7 +212,7 @@ export default function FutureRoomBonitat() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, purchasePrice, equity, loanAmount, modernization, monthlyRate, interestRate, repaymentRate, transferTax, notaryCosts, totalCosts, netIncome, otherIncome, currentRent, otherCosts, kdfRatio, availableForRate]);
+  }, [formData, canSubmit, purchasePrice, equity, loanAmount, modernization, monthlyRate, interestRate, repaymentRate, transferTax, notaryCosts, totalCosts, netIncome, otherIncome, currentRent, otherCosts, kdfRatio, availableForRate]);
 
   // Option B: Save to localStorage and redirect to login
   const handleCreateAccount = () => {
@@ -243,7 +277,7 @@ export default function FutureRoomBonitat() {
             Finanzierungsanfrage starten
           </h1>
           <p className="text-gray-500">
-            Kostenlos und unverbindlich — Ihre erste Einschätzung in 48 Stunden.
+            Kostenlos und unverbindlich — klicken Sie sich durch alle Schritte, um einen Überblick zu erhalten.
           </p>
         </div>
 
@@ -402,15 +436,14 @@ export default function FutureRoomBonitat() {
                 <h2 className="text-xl font-bold mb-1" style={{ color: 'hsl(210 30% 15%)' }}>Überschlägige Kalkulation</h2>
                 <p className="text-gray-500 text-sm">Auf Basis Ihrer Angaben</p>
               </div>
-              {/* Calculation Summary */}
               <div className="p-5 rounded-xl space-y-3" style={{ background: 'hsl(210 25% 97%)' }}>
                 <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
                   <span className="text-gray-500">Kaufpreis</span>
-                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{formatCurrency(purchasePrice)} €</span>
+                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{purchasePrice > 0 ? `${formatCurrency(purchasePrice)} €` : '—'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
                   <span className="text-gray-500">Nebenkosten (ca. 8,5%)</span>
-                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{formatCurrency(transferTax + notaryCosts)} €</span>
+                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{purchasePrice > 0 ? `${formatCurrency(transferTax + notaryCosts)} €` : '—'}</span>
                 </div>
                 {modernization > 0 && (
                   <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
@@ -420,15 +453,14 @@ export default function FutureRoomBonitat() {
                 )}
                 <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
                   <span className="text-gray-500">Eigenkapital</span>
-                  <span className="font-medium" style={{ color: 'hsl(165 70% 36%)' }}>- {formatCurrency(equity)} €</span>
+                  <span className="font-medium" style={{ color: 'hsl(165 70% 36%)' }}>{equity > 0 ? `- ${formatCurrency(equity)} €` : '—'}</span>
                 </div>
                 <div className="flex justify-between py-2 font-bold text-lg" style={{ borderTop: '2px solid hsl(165 70% 36% / 0.3)' }}>
                   <span style={{ color: 'hsl(210 30% 15%)' }}>Darlehensbetrag</span>
-                  <span style={{ color: 'hsl(165 70% 36%)' }}>{formatCurrency(loanAmount)} €</span>
+                  <span style={{ color: 'hsl(165 70% 36%)' }}>{loanAmount > 0 ? `${formatCurrency(loanAmount)} €` : '—'}</span>
                 </div>
               </div>
 
-              {/* Monthly Rate */}
               <div className="p-5 rounded-xl" style={{ background: 'linear-gradient(135deg, hsl(165 70% 36% / 0.08) 0%, hsl(158 64% 52% / 0.04) 100%)', border: '1px solid hsl(165 70% 36% / 0.2)' }}>
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="h-5 w-5" style={{ color: 'hsl(165 70% 36%)' }} />
@@ -446,7 +478,7 @@ export default function FutureRoomBonitat() {
                   <div className="flex flex-col justify-end">
                     <span className="text-sm text-gray-500">Monatliche Rate</span>
                     <span className="text-2xl font-bold" style={{ color: 'hsl(165 70% 36%)' }}>
-                      {formatCurrency(Math.round(monthlyRate))} €
+                      {monthlyRate > 0 ? `${formatCurrency(Math.round(monthlyRate))} €` : '—'}
                     </span>
                   </div>
                 </div>
@@ -462,7 +494,6 @@ export default function FutureRoomBonitat() {
                 <p className="text-gray-500 text-sm">Ihre Einnahmen und Ausgaben</p>
               </div>
               <div className="grid gap-6 md:grid-cols-2">
-                {/* Einnahmen */}
                 <div className="space-y-4">
                   <h3 className="font-semibold text-sm" style={{ color: 'hsl(165 70% 36%)' }}>Einnahmen</h3>
                   <div>
@@ -474,7 +505,6 @@ export default function FutureRoomBonitat() {
                     <input type="number" value={formData.otherIncome} onChange={(e) => handleChange('otherIncome', e.target.value)} className="fr-input" />
                   </div>
                 </div>
-                {/* Ausgaben */}
                 <div className="space-y-4">
                   <h3 className="font-semibold text-sm" style={{ color: 'hsl(0 65% 51%)' }}>Ausgaben</h3>
                   <div>
@@ -505,74 +535,201 @@ export default function FutureRoomBonitat() {
                 </div>
               </div>
               {/* KDF Summary */}
-              <div className="p-4 rounded-xl" style={{ background: kdfRatio <= 35 ? 'hsl(165 70% 36% / 0.08)' : kdfRatio <= 45 ? 'hsl(45 100% 51% / 0.08)' : 'hsl(0 65% 51% / 0.08)' }}>
+              <div className="p-4 rounded-xl" style={{ background: totalIncome > 0 ? (kdfRatio <= 35 ? 'hsl(165 70% 36% / 0.08)' : kdfRatio <= 45 ? 'hsl(45 100% 51% / 0.08)' : 'hsl(0 65% 51% / 0.08)') : 'hsl(210 25% 97%)' }}>
                 <div className="grid gap-4 md:grid-cols-3 text-center">
                   <div>
                     <span className="text-sm text-gray-500">Einkommen gesamt</span>
-                    <div className="font-bold text-lg" style={{ color: 'hsl(165 70% 36%)' }}>{formatCurrency(totalIncome)} €</div>
+                    <div className="font-bold text-lg" style={{ color: 'hsl(165 70% 36%)' }}>{totalIncome > 0 ? `${formatCurrency(totalIncome)} €` : '—'}</div>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Rate / Einkommen</span>
-                    <div className="font-bold text-lg" style={{ color: kdfRatio <= 35 ? 'hsl(165 70% 36%)' : kdfRatio <= 45 ? 'hsl(45 100% 40%)' : 'hsl(0 65% 51%)' }}>
-                      {kdfRatio.toFixed(1)}%
+                    <div className="font-bold text-lg" style={{ color: totalIncome > 0 ? (kdfRatio <= 35 ? 'hsl(165 70% 36%)' : kdfRatio <= 45 ? 'hsl(45 100% 40%)' : 'hsl(0 65% 51%)') : 'hsl(210 30% 15%)' }}>
+                      {totalIncome > 0 ? `${kdfRatio.toFixed(1)}%` : '—'}
                     </div>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Verfügbar für Rate</span>
-                    <div className="font-bold text-lg" style={{ color: 'hsl(210 30% 15%)' }}>{formatCurrency(availableForRate)} €</div>
+                    <div className="font-bold text-lg" style={{ color: 'hsl(210 30% 15%)' }}>{totalIncome > 0 ? `${formatCurrency(availableForRate)} €` : '—'}</div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step: Decision */}
+          {/* Step: Bonität */}
+          {currentStep === 'bonitat' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1" style={{ color: 'hsl(210 30% 15%)' }}>Bonitätsprüfung</h2>
+                <p className="text-gray-500 text-sm">Prüfen Sie Ihre Finanzierbarkeit — optional, aber erforderlich für die Einreichung.</p>
+              </div>
+
+              {/* Summary of relevant values */}
+              <div className="p-5 rounded-xl space-y-3" style={{ background: 'hsl(210 25% 97%)' }}>
+                <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
+                  <span className="text-gray-500">Darlehensbetrag</span>
+                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{loanAmount > 0 ? `${formatCurrency(loanAmount)} €` : '—'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
+                  <span className="text-gray-500">Monatliche Rate</span>
+                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{monthlyRate > 0 ? `${formatCurrency(Math.round(monthlyRate))} €` : '—'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(210 20% 88%)' }}>
+                  <span className="text-gray-500">Nettoeinkommen</span>
+                  <span className="font-medium" style={{ color: 'hsl(210 30% 15%)' }}>{totalIncome > 0 ? `${formatCurrency(totalIncome)} €` : '—'}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-500">KDF-Quote</span>
+                  <span className="font-bold" style={{ color: totalIncome > 0 ? (kdfRatio <= 35 ? 'hsl(165 70% 36%)' : kdfRatio <= 45 ? 'hsl(45 100% 40%)' : 'hsl(0 65% 51%)') : 'hsl(210 30% 15%)' }}>
+                    {totalIncome > 0 && monthlyRate > 0 ? `${kdfRatio.toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Check Button */}
+              {!bonitaetChecked && (
+                <button
+                  onClick={handleBonitaetCheck}
+                  className="w-full p-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all hover:shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, hsl(165 70% 36%) 0%, hsl(158 64% 42%) 100%)' }}
+                >
+                  <Shield className="h-5 w-5" />
+                  Bonitätsprüfung starten
+                </button>
+              )}
+
+              {/* Result Banners */}
+              {bonitaetChecked && bonitaetResult === 'positive' && (
+                <div className="p-5 rounded-xl" style={{ background: 'hsl(165 70% 36% / 0.08)', border: '2px solid hsl(165 70% 36% / 0.3)' }}>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-6 w-6 flex-shrink-0 mt-0.5" style={{ color: 'hsl(165 70% 36%)' }} />
+                    <div>
+                      <h3 className="font-bold text-lg" style={{ color: 'hsl(165 70% 36%)' }}>Herzlichen Glückwunsch!</h3>
+                      <p className="text-sm mt-1" style={{ color: 'hsl(210 30% 30%)' }}>
+                        Ihre Bonitätsprüfung war positiv. Mit einer KDF-Quote von {kdfRatio.toFixed(1)}% liegt Ihre Belastung im grünen Bereich. 
+                        Sie können Ihre Finanzierung jetzt einreichen.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bonitaetChecked && bonitaetResult === 'marginal' && (
+                <div className="p-5 rounded-xl" style={{ background: 'hsl(45 100% 51% / 0.08)', border: '2px solid hsl(45 100% 51% / 0.3)' }}>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-6 w-6 flex-shrink-0 mt-0.5" style={{ color: 'hsl(45 100% 40%)' }} />
+                    <div>
+                      <h3 className="font-bold text-lg" style={{ color: 'hsl(45 100% 35%)' }}>Grenzwertig tragfähig</h3>
+                      <p className="text-sm mt-1" style={{ color: 'hsl(210 30% 30%)' }}>
+                        Ihre KDF-Quote von {kdfRatio.toFixed(1)}% liegt im Grenzbereich. Eine Finanzierung ist möglich, 
+                        aber ein Berater wird die Details genauer prüfen. Sie können trotzdem einreichen.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bonitaetChecked && bonitaetResult === 'negative' && (
+                <div className="p-5 rounded-xl" style={{ background: 'hsl(0 65% 51% / 0.08)', border: '2px solid hsl(0 65% 51% / 0.3)' }}>
+                  <div className="flex items-start gap-3">
+                    <XCircle className="h-6 w-6 flex-shrink-0 mt-0.5" style={{ color: 'hsl(0 65% 51%)' }} />
+                    <div>
+                      <h3 className="font-bold text-lg" style={{ color: 'hsl(0 65% 45%)' }}>Belastungsquote zu hoch</h3>
+                      <p className="text-sm mt-1" style={{ color: 'hsl(210 30% 30%)' }}>
+                        Ihre KDF-Quote von {kdfRatio.toFixed(1)}% übersteigt den üblichen Rahmen. 
+                        Prüfen Sie Ihre Angaben oder passen Sie Eigenkapital bzw. Kaufpreis an. 
+                        Sie können trotzdem einreichen — ein Berater wird sich Ihren Fall ansehen.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step: Decision (Abschluss) */}
           {currentStep === 'decision' && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-xl font-bold mb-1" style={{ color: 'hsl(210 30% 15%)' }}>Wie möchten Sie fortfahren?</h2>
-                <p className="text-gray-500 text-sm">Wählen Sie den für Sie passenden Weg</p>
+                <h2 className="text-xl font-bold mb-1" style={{ color: 'hsl(210 30% 15%)' }}>Finanzierung einreichen</h2>
+                <p className="text-gray-500 text-sm">Überprüfen Sie Ihre Angaben und reichen Sie Ihre Anfrage ein.</p>
               </div>
+
+              {/* Checklist */}
+              <div className="p-5 rounded-xl space-y-3" style={{ background: 'hsl(210 25% 97%)' }}>
+                <h3 className="font-semibold text-sm mb-3" style={{ color: 'hsl(210 30% 15%)' }}>Checkliste</h3>
+                {checklistItems.map((item) => (
+                  <div key={item.label} className="flex items-center gap-3 py-1.5">
+                    {item.done ? (
+                      <CheckCircle2 className="h-5 w-5 flex-shrink-0" style={{ color: 'hsl(165 70% 36%)' }} />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border-2 flex-shrink-0" style={{ borderColor: 'hsl(210 20% 80%)' }} />
+                    )}
+                    <span className={`text-sm ${item.done ? 'font-medium' : 'text-gray-400'}`} style={item.done ? { color: 'hsl(210 30% 15%)' } : {}}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Missing data hint */}
+              {!canSubmit && (
+                <div className="p-4 rounded-xl flex items-start gap-3" style={{ background: 'hsl(45 100% 51% / 0.08)', border: '1px solid hsl(45 100% 51% / 0.2)' }}>
+                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: 'hsl(45 100% 40%)' }} />
+                  <span className="text-sm" style={{ color: 'hsl(210 30% 30%)' }}>
+                    Bitte füllen Sie die offenen Schritte aus und führen Sie die Bonitätsprüfung durch, bevor Sie einreichen. 
+                    Sie können jederzeit über die Navigation zurückgehen.
+                  </span>
+                </div>
+              )}
 
               {/* Summary */}
               <div className="p-4 rounded-xl text-sm space-y-2" style={{ background: 'hsl(210 25% 97%)' }}>
-                <div className="flex justify-between"><span className="text-gray-500">Kontakt</span><span className="font-medium">{formData.firstName} {formData.lastName} ({formData.email})</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Kaufpreis</span><span className="font-medium">{formatCurrency(purchasePrice)} €</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Darlehen</span><span className="font-medium">{formatCurrency(loanAmount)} €</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Rate</span><span className="font-medium">{formatCurrency(Math.round(monthlyRate))} €/Monat</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">KDF-Quote</span><span className="font-medium">{kdfRatio.toFixed(1)}%</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Kontakt</span><span className="font-medium">{formData.firstName ? `${formData.firstName} ${formData.lastName} (${formData.email})` : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Kaufpreis</span><span className="font-medium">{purchasePrice > 0 ? `${formatCurrency(purchasePrice)} €` : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Darlehen</span><span className="font-medium">{loanAmount > 0 ? `${formatCurrency(loanAmount)} €` : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Rate</span><span className="font-medium">{monthlyRate > 0 ? `${formatCurrency(Math.round(monthlyRate))} €/Monat` : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">KDF-Quote</span><span className="font-medium">{totalIncome > 0 && monthlyRate > 0 ? `${kdfRatio.toFixed(1)}%` : '—'}</span></div>
+                {bonitaetChecked && (
+                  <div className="flex justify-between"><span className="text-gray-500">Bonitätsprüfung</span><span className="font-medium" style={{ color: bonitaetResult === 'positive' ? 'hsl(165 70% 36%)' : bonitaetResult === 'marginal' ? 'hsl(45 100% 40%)' : 'hsl(0 65% 51%)' }}>
+                    {bonitaetResult === 'positive' ? '✓ Positiv' : bonitaetResult === 'marginal' ? '⚠ Grenzwertig' : '✗ Hoch'}
+                  </span></div>
+                )}
               </div>
 
-              {/* Option A */}
+              {/* Submit Button */}
               <button
                 onClick={handleQuickSubmit}
-                disabled={submitting}
-                className="w-full p-6 rounded-xl text-left transition-all hover:shadow-lg"
+                disabled={!canSubmit || submitting}
+                className="w-full p-5 rounded-xl text-left transition-all"
                 style={{ 
-                  background: 'linear-gradient(135deg, hsl(165 70% 36% / 0.06) 0%, hsl(158 64% 52% / 0.03) 100%)',
-                  border: '2px solid hsl(165 70% 36% / 0.3)',
+                  background: canSubmit 
+                    ? 'linear-gradient(135deg, hsl(165 70% 36% / 0.06) 0%, hsl(158 64% 52% / 0.03) 100%)'
+                    : 'hsl(210 25% 97%)',
+                  border: `2px solid ${canSubmit ? 'hsl(165 70% 36% / 0.3)' : 'hsl(210 20% 88%)'}`,
+                  opacity: canSubmit ? 1 : 0.6,
+                  cursor: canSubmit ? 'pointer' : 'not-allowed',
                 }}
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'hsl(165 70% 36% / 0.15)' }}>
-                    <Send className="h-6 w-6" style={{ color: 'hsl(165 70% 36%)' }} />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: canSubmit ? 'hsl(165 70% 36% / 0.15)' : 'hsl(210 25% 92%)' }}>
+                    <Send className="h-6 w-6" style={{ color: canSubmit ? 'hsl(165 70% 36%)' : 'hsl(210 20% 70%)' }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg mb-1" style={{ color: 'hsl(210 30% 15%)' }}>
-                      {submitting ? 'Wird eingereicht...' : 'Direkt absenden'}
+                    <h3 className="font-bold text-lg mb-1" style={{ color: canSubmit ? 'hsl(210 30% 15%)' : 'hsl(210 20% 60%)' }}>
+                      {submitting ? 'Wird eingereicht...' : 'Finanzierung einreichen'}
                     </h3>
-                    <p className="text-gray-500 text-sm">
-                      Ein Finanzierungsmanager meldet sich innerhalb von 48 Stunden bei Ihnen. 
-                      Kein Konto nötig — wir kontaktieren Sie per E-Mail.
+                    <p className="text-sm" style={{ color: canSubmit ? 'hsl(210 15% 45%)' : 'hsl(210 15% 65%)' }}>
+                      Ein Finanzierungsmanager meldet sich innerhalb von 48 Stunden bei Ihnen.
                     </p>
                   </div>
                 </div>
               </button>
 
-              {/* Option B */}
+              {/* Account option */}
               <button
                 onClick={handleCreateAccount}
-                className="w-full p-6 rounded-xl text-left transition-all hover:shadow-lg"
+                className="w-full p-5 rounded-xl text-left transition-all hover:shadow-lg"
                 style={{ 
                   background: 'linear-gradient(135deg, hsl(210 60% 50% / 0.06) 0%, hsl(210 50% 60% / 0.03) 100%)',
                   border: '2px solid hsl(210 60% 50% / 0.3)',
@@ -587,11 +744,10 @@ export default function FutureRoomBonitat() {
                       Konto erstellen & Akte pflegen
                     </h3>
                     <p className="text-gray-500 text-sm">
-                      Erstellen Sie ein kostenloses Konto, füllen Sie die vollständige Selbstauskunft aus, 
-                      laden Sie Dokumente hoch und reichen Sie dann ein. Volle Kontrolle über Ihre Finanzierungsakte.
+                      Erstellen Sie ein kostenloses Konto, laden Sie Dokumente hoch und verfolgen Sie den Status Ihrer Finanzierung.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {['Selbstauskunft', 'Dokumenten-Upload', 'Status-Tracking', 'Finanzierungsordner'].map(tag => (
+                      {['Selbstauskunft', 'Dokumenten-Upload', 'Status-Tracking'].map(tag => (
                         <span key={tag} className="text-xs px-2 py-1 rounded-full" style={{ background: 'hsl(210 60% 50% / 0.1)', color: 'hsl(210 60% 50%)' }}>{tag}</span>
                       ))}
                     </div>
@@ -608,7 +764,7 @@ export default function FutureRoomBonitat() {
             </div>
           )}
 
-          {/* Navigation */}
+          {/* Navigation — always visible, always active */}
           {currentStep !== 'decision' && (
             <div className="flex justify-between mt-8 pt-6 border-t" style={{ borderColor: 'hsl(210 20% 88%)' }}>
               <button
@@ -630,7 +786,7 @@ export default function FutureRoomBonitat() {
             <div className="flex justify-start mt-6 pt-6 border-t" style={{ borderColor: 'hsl(210 20% 88%)' }}>
               <button onClick={handleBack} className="fr-btn" style={{ background: 'transparent', border: '2px solid hsl(210 20% 88%)', color: 'hsl(210 30% 15%)' }}>
                 <ChevronLeft className="h-4 w-4" />
-                Zurück zur Übersicht
+                Zurück
               </button>
             </div>
           )}
