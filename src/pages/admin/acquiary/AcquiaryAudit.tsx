@@ -104,7 +104,7 @@ export default function AcquiaryAudit() {
                               {config.label}
                             </Badge>
                             <span className="font-mono text-sm text-muted-foreground">
-                              {/* TODO: Show mandate code */}
+                              {event.mandate_id ? `M-${event.mandate_id.slice(0, 8)}` : ''}
                             </span>
                           </div>
                           {(event.payload as any)?.message && (

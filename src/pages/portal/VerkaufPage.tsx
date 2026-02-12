@@ -5,31 +5,12 @@
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import { ModuleTilePage } from '@/components/shared/ModuleTilePage';
-import { Settings } from 'lucide-react';
-
 // Lazy load tabs
 const ObjekteTab = lazy(() => import('./verkauf/ObjekteTab'));
 const ReportingTab = lazy(() => import('./verkauf/ReportingTab'));
 const VorgaengeTab = lazy(() => import('./verkauf/VorgaengeTab'));
 const AnfragenTab = lazy(() => import('./verkauf/AnfragenTab'));
 const ExposeDetail = lazy(() => import('./verkauf/ExposeDetail'));
-
-// Tile: Einstellungen
-function EinstellungenTile() {
-  return (
-    <ModuleTilePage
-      title="Einstellungen"
-      description="Verkaufseinstellungen und Präferenzen"
-      icon={Settings}
-      moduleBase="verkauf"
-      status="empty"
-      emptyTitle="Verkaufs-Einstellungen"
-      emptyDescription="Konfigurieren Sie Ihre Verkaufspräferenzen und Standardwerte."
-      emptyIcon={Settings}
-    />
-  );
-}
 
 const VerkaufPage = () => {
   return (
@@ -41,7 +22,7 @@ const VerkaufPage = () => {
       <Route path="anfragen" element={<AnfragenTab />} />
       <Route path="vorgaenge" element={<VorgaengeTab />} />
       <Route path="reporting" element={<ReportingTab />} />
-      <Route path="einstellungen" element={<EinstellungenTile />} />
+      {/* Einstellungen removed — was an empty stub (CI-003) */}
       
       {/* Detail routes - unitId für Einheit-basiertes Exposé */}
       <Route path="expose/:unitId" element={<ExposeDetail />} />

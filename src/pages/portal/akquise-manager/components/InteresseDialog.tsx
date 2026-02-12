@@ -117,7 +117,7 @@ export function InteresseDialog({
 
       if (activityError) throw activityError;
 
-      // 4. TODO: Notify client if requested (via separate function)
+      // STUB: Client notification will be implemented via Zone 1 Backbone (CONTRACT_ACQ_OUTBOUND_EMAIL)
 
       return { success: true, dataRoomFolderId };
     },

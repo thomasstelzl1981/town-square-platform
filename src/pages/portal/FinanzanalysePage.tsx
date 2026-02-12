@@ -1,5 +1,7 @@
 /**
- * Finanzanalyse Page (MOD-18) - Blueprint Ready
+ * Finanzanalyse Page (MOD-18) - BLUEPRINT MODULE
+ * Status: All tiles are intentional empty-state stubs pending feature implementation.
+ * This module is documented as a Blueprint in the tile catalog.
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
