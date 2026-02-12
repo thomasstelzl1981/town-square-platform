@@ -2,6 +2,9 @@
  * Project Publication Block (Block J)
  * Kaufy Integration & Landingpage
  * MOD-13 PROJEKTE
+ * 
+ * IMPORTANT: The Kaufy toggle here is READ-ONLY. 
+ * Actual listing control (with listing_publications) lives in SalesApprovalSection (VertriebTab).
  */
 
 import { useState } from 'react';
@@ -10,14 +13,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
   Globe, Sparkles, ExternalLink, Check, Copy, 
-  Megaphone, BarChart3, Users, Eye 
+  Megaphone, BarChart3, Users, Eye, Info
 } from 'lucide-react';
-import { useDevProjects } from '@/hooks/useDevProjects';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DevProject } from '@/types/projekte';
+import { useDevProjects } from '@/hooks/useDevProjects';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectPublicationBlockProps {
   project: DevProject;
@@ -27,13 +32,24 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
   const { updateProject } = useDevProjects();
   const [landingpageSlug, setLandingpageSlug] = useState(project.landingpage_slug || '');
 
-  const handleKaufyListedToggle = async (checked: boolean) => {
-    await updateProject.mutateAsync({
-      id: project.id,
-      kaufy_listed: checked,
-    });
-    toast.success(checked ? 'Auf Kaufy gelistet' : 'Von Kaufy entfernt');
-  };
+  // Check if Vertriebsauftrag is active (required for Kaufy)
+  const { data: salesRequest } = useQuery({
+    queryKey: ['sales-desk-request-blockj', project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('sales_desk_requests')
+        .select('status')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!project.id,
+  });
+
+  const isVertriebActive = salesRequest?.status === 'approved';
+  const isKaufyActive = project.kaufy_listed && isVertriebActive;
 
   const handleKaufyFeaturedToggle = async (checked: boolean) => {
     await updateProject.mutateAsync({
@@ -66,10 +82,6 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
     toast.success('URL kopiert');
   };
 
-  const landingpageUrl = project.landingpage_slug 
-    ? `https://${project.landingpage_slug}.kaufy.de`
-    : null;
-
   return (
     <Card>
       <CardHeader>
@@ -82,7 +94,7 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Kaufy Free Listing */}
+        {/* Kaufy Free Listing — READ-ONLY, controlled via Vertrieb-Tab */}
         <div className="p-4 border rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -99,12 +111,27 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
                 </p>
               </div>
             </div>
-            <Switch
-              checked={project.kaufy_listed || false}
-              onCheckedChange={handleKaufyListedToggle}
-            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={isKaufyActive}
+                      disabled
+                      aria-label="Kaufy-Status (nur lesend)"
+                    />
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-[240px]">
+                  <p className="text-xs">
+                    Die Kaufy-Veröffentlichung wird über den <strong>Vertriebsauftrag</strong> im Reiter „Vertrieb" gesteuert, um die korrekte Listing-Struktur sicherzustellen.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          {project.kaufy_listed && (
+          {isKaufyActive ? (
             <div className="mt-4 p-3 bg-green-50 rounded-lg flex items-center gap-2">
               <Check className="h-4 w-4 text-green-600" />
               <span className="text-sm text-green-700">
@@ -114,6 +141,15 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
                 <ExternalLink className="h-3 w-3 mr-1" />
                 Ansehen
               </Button>
+            </div>
+          ) : (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {!isVertriebActive
+                  ? 'Aktivieren Sie zuerst den Vertriebsauftrag im Reiter „Vertrieb".'
+                  : 'Schalten Sie die Kaufy-Veröffentlichung im Reiter „Vertrieb" frei.'}
+              </span>
             </div>
           )}
         </div>
@@ -131,7 +167,7 @@ export function ProjectPublicationBlock({ project }: ProjectPublicationBlockProp
               <Switch
                 checked={project.kaufy_featured || false}
                 onCheckedChange={handleKaufyFeaturedToggle}
-                disabled={!project.kaufy_listed}
+                disabled={!isKaufyActive}
               />
             </div>
             <ul className="space-y-1 text-sm text-muted-foreground">
