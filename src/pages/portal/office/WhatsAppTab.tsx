@@ -7,6 +7,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
@@ -188,11 +190,8 @@ export function WhatsAppTab() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight uppercase">WhatsApp</h1>
-        <p className="text-muted-foreground mt-1">Nachrichten und Konversationen verwalten</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="WhatsApp" description="Nachrichten und Konversationen verwalten" />
     <Card className="glass-card overflow-hidden flex h-[calc(100vh-320px)]">
       {/* Left: Conversation List */}
       <div className="w-80 border-r flex flex-col">
@@ -397,6 +396,6 @@ export function WhatsAppTab() {
         )}
       </div>
     </Card>
-    </div>
+    </PageShell>
   );
 }
