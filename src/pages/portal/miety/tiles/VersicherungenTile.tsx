@@ -10,7 +10,8 @@ import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
 import { ContractDrawer } from '../components/ContractDrawer';
 import { useHomesQuery } from '../shared/useHomesQuery';
 import { NoHomeBanner } from '../shared/NoHomeBanner';
-import { TileShell } from '../shared/TileShell';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Plus, Shield, FolderOpen } from 'lucide-react';
 
 export default function VersicherungenTile() {
@@ -51,7 +52,8 @@ export default function VersicherungenTile() {
   ];
 
   return (
-    <TileShell icon={Shield} title="Versicherungen" description="Hausrat, Haftpflicht & Vergleichsangebote">
+    <PageShell>
+      <ModulePageHeader title="Versicherungen" description="Hausrat, Haftpflicht & Vergleichsangebote" />
       {homes.length === 0 && <NoHomeBanner onCreateClick={() => setShowCreateForm(true)} />}
 
       {insuranceTypes.map(({ category, label, sollPrice, sollPriceComfort }) => {
@@ -139,6 +141,6 @@ export default function VersicherungenTile() {
       {homes.length > 0 && (
         <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
       )}
-    </TileShell>
+    </PageShell>
   );
 }

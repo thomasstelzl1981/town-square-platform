@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DictationButton } from '@/components/shared/DictationButton';
-import { TileShell } from '../shared/TileShell';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   MessageCircle, Users, Mail, Copy, Send, Languages, Phone,
 } from 'lucide-react';
@@ -46,7 +47,8 @@ export default function KommunikationTile() {
   ];
 
   return (
-    <TileShell icon={MessageCircle} title="Kommunikation" description="Kontakt zu Ihrem Vermieter">
+    <PageShell>
+      <ModulePageHeader title="Kommunikation" description="Kontakt zu Ihrem Vermieter" />
       {/* Vermieter-Kontaktdaten */}
       <Card className="glass-card border-primary/20 bg-primary/5">
         <CardContent className="p-5">
@@ -181,6 +183,6 @@ export default function KommunikationTile() {
           </div>
         </CardContent>
       </Card>
-    </TileShell>
+    </PageShell>
   );
 }
