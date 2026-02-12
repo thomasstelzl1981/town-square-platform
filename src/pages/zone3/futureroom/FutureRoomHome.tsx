@@ -54,18 +54,23 @@ export default function FutureRoomHome() {
   const processSteps = [
     { 
       step: '1', 
-      title: 'Daten erfassen', 
-      description: 'Füllen Sie Ihre Selbstauskunft digital aus — wir führen Sie Schritt für Schritt.' 
+      title: 'Anfrage stellen', 
+      description: 'Füllen Sie Ihre Selbstauskunft digital aus — direkt auf unserer Website oder aus einem Immobilienexposé heraus.' 
     },
     { 
       step: '2', 
-      title: 'Dokumente hochladen', 
-      description: 'Unser System prüft automatisch auf Vollständigkeit und bereitet bankfertig auf.' 
+      title: 'Vorprüfung erhalten', 
+      description: 'Sofortige Kapitaldienstfähigkeits-Einschätzung — Sie sehen live, ob Ihre Finanzierung tragfähig ist.' 
     },
     { 
       step: '3', 
+      title: 'Unterlagen einreichen', 
+      description: 'Nach Ihrer Anfrage erhalten Sie per E-Mail einen Link zu Ihrem persönlichen Datenraum. Dort laden Sie Ihre Unterlagen sicher hoch — alternativ auch per E-Mail.' 
+    },
+    { 
+      step: '4', 
       title: 'Finanzierung erhalten', 
-      description: 'Ihr Finanzierungsmanager orchestriert die Einreichung bei den passenden Banken.' 
+      description: 'Ihr Finanzierungsmanager bereitet alles bankfertig auf und orchestriert die Einreichung bei den passenden Banken.' 
     },
   ];
 
@@ -171,7 +176,7 @@ export default function FutureRoomHome() {
         <div className="fr-section-header">
           <h2 className="fr-section-title">So einfach funktioniert's</h2>
           <p className="fr-section-subtitle">
-            Drei Schritte zu Ihrer Finanzierung — wir begleiten Sie bei jedem.
+            Vier Schritte zu Ihrer Finanzierung — wir begleiten Sie bei jedem.
           </p>
         </div>
         <div className="fr-process-steps">

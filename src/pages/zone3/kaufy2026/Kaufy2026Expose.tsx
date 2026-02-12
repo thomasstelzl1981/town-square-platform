@@ -19,6 +19,7 @@ import {
   Calendar,
   Share2,
   Loader2,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,7 @@ import {
   FinanzierungSummary,
 } from '@/components/investment';
 import { ExposeLocationMap } from '@/components/verkauf';
+import KaufyFinanceRequestSheet, { type KaufyListingData, type KaufyEngineParams } from '@/components/zone3/KaufyFinanceRequestSheet';
 
 interface ListingData {
   id: string;
@@ -64,6 +66,7 @@ export default function Kaufy2026Expose() {
   const navigate = useNavigate();
   const [urlParams] = useSearchParams();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showFinanceRequest, setShowFinanceRequest] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
   // PHASE 2: Read search params from URL (persisted from Kaufy2026Home)
@@ -395,7 +398,7 @@ export default function Kaufy2026Expose() {
           {/* Right Column - Sticky Calculator */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-24 space-y-6">
-              <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+              <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-4">
                 <InvestmentSliderPanel
                   value={params}
                   onChange={setParams}
@@ -403,11 +406,49 @@ export default function Kaufy2026Expose() {
                   showAdvanced={true}
                   purchasePrice={listing.asking_price}
                 />
+                <Button
+                  onClick={() => setShowFinanceRequest(true)}
+                  className="w-full"
+                  size="lg"
+                  style={{ background: 'linear-gradient(135deg, hsl(165 70% 36%) 0%, hsl(158 64% 52%) 100%)' }}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Finanzierung beantragen
+                </Button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Mobile CTA */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t z-20">
+          <Button
+            onClick={() => setShowFinanceRequest(true)}
+            className="w-full"
+            size="lg"
+            style={{ background: 'linear-gradient(135deg, hsl(165 70% 36%) 0%, hsl(158 64% 52%) 100%)' }}
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Finanzierung beantragen
+          </Button>
+        </div>
       </div>
+
+      {/* Finance Request Sheet */}
+      <KaufyFinanceRequestSheet
+        open={showFinanceRequest}
+        onClose={() => setShowFinanceRequest(false)}
+        listing={listing as KaufyListingData}
+        engineParams={{
+          equity: params.equity,
+          interestRate: calcResult?.summary?.interestRate ?? 3.5,
+          repaymentRate: params.repaymentRate ?? 2,
+          monthlyRate: calcResult?.summary?.monthlyBurden ?? 0,
+          loanAmount: calcResult?.summary?.loanAmount ?? (listing.asking_price - params.equity),
+          purchasePrice: listing.asking_price,
+          totalCosts: calcResult?.summary?.totalInvestment ?? listing.asking_price,
+        }}
+      />
     </div>
   );
 }
