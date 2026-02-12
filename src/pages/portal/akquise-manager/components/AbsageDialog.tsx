@@ -107,8 +107,8 @@ export function AbsageDialog({
 
       if (activityError) throw activityError;
 
-      // 3. TODO: Actually send email via integration
-      // For now, we just log it
+      // STUB: Email sending will be implemented via Zone 1 Backbone (CONTRACT_ACQ_OUTBOUND_EMAIL)
+      // Activity is logged above; actual dispatch requires sot-acq-outbound edge function
 
       return { success: true };
     },

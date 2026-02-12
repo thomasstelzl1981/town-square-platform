@@ -5,9 +5,10 @@
  * UPDATED: Added Widgets tab (5th sub-tile)
  * MOBILE: E-Mail, Kontakte, Kalender are hidden on mobile (redirects to Brief)
  */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
 // Lazy imports for sub-tab code-splitting
 const EmailTab = lazy(() => import('./office/EmailTab').then(m => ({ default: m.EmailTab })));
@@ -23,8 +24,13 @@ function MobileGuard({ children, allowedOnMobile = false }: {
   allowedOnMobile?: boolean;
 }) {
   const isMobile = useIsMobile();
+  const toastShown = useRef(false);
   
   if (isMobile && !allowedOnMobile) {
+    if (!toastShown.current) {
+      toastShown.current = true;
+      toast.info('Diese Funktion ist auf dem Desktop verfügbar.');
+    }
     return <Navigate to="/portal/office/brief" replace />;
   }
   
