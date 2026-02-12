@@ -83,14 +83,14 @@ export function AcquiaryMonitoring() {
     : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`${DESIGN.CONTAINER.PADDING} ${DESIGN.SPACING.SECTION}`}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Activity className="h-6 w-6" />
+        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>
+          <Activity className="h-6 w-6 inline mr-2" />
           Monitoring
         </h2>
-        <p className="text-muted-foreground">
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>
           Pipeline-Gesundheit und Durchlaufzeiten
         </p>
       </div>

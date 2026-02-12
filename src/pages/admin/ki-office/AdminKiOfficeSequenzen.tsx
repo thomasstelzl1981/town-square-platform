@@ -3,6 +3,7 @@
  * Create and manage automated email sequences
  */
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,12 +143,12 @@ export default function AdminKiOfficeSequenzen() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className={`${DESIGN.CONTAINER.PADDING} ${DESIGN.SPACING.SECTION}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">E-Mail-Sequenzen</h1>
-          <p className="text-muted-foreground">
+          <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>E-Mail-Sequenzen</h1>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>
             Automatisierte Drip-Kampagnen erstellen und verwalten
           </p>
         </div>
