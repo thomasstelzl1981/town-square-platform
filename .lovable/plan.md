@@ -1,84 +1,102 @@
 
-# Zwischenueberschrift + Listing-Auswahl fuer MOD-11
+# MOD-11 Finanzierungsakte: Intelligente Suche + Finanzierungskalkulator
 
-## Aenderungen
+## Ueberblick
 
-### 1. Zwischenueberschrift in FMFinanzierungsakte.tsx (MOD-11)
+Drei Aenderungen am MOD-11 Finanzierungsmanager:
 
-Zwischen dem Selbstauskunft-Block (Zeile 157) und dem FinanceObjectCard (Zeile 160) wird eine CI-konforme Ueberschrift eingefuegt:
+1. **Intelligente Suche** statt Select-Dropdown: Freitext-Suchfeld, das Listings per Objekt-ID, Ort oder Strasse filtert und Vorschlaege anzeigt. "Kein Listing — manuell eingeben" entfaellt — wer nichts eingibt, fuellt manuell.
 
-```text
-Finanzierungsobjekt
-Hier erfassen Sie Ihr Finanzierungsobjekt.
+2. **FinanceRequestCard vereinfachen**: "Zinsbindung" und "Anfaengliche Tilgung" entfernen. Stattdessen: Eigenkapital-Feld bekommt einen "Berechnen"-Button. Klick darauf berechnet automatisch Darlehenswunsch (= Gesamtkosten - EK) und Finanzierungsbedarf mit Standard-Zinsbindung 10 Jahre.
+
+3. **Neue Kachel "Finanzierungskalkulator"**: Sitzt **neben** der FinanceRequestCard (2-spaltig, halbe Breite). Dort kann man Zinsbindung einstellen, sieht den Zinssatz aus dem `interest_rates`-Tableau (Zone 1), Tilgung ist auf 1,5% voreingestellt. Berechnung zeigt monatliche Rate, Gesamtkosten der Finanzierung und Restschuld am Ende der Zinsbindung.
+
+---
+
+## Aenderung 1: Intelligente Listing-Suche
+
+**Datei:** `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx`
+
+Der bisherige Select-Block (Zeilen 218-239) wird ersetzt durch ein Combobox-artiges Suchfeld:
+
+- Freitext-Input mit Lupe-Icon und Placeholder "Objekt suchen (ID, Ort, Strasse...)"
+- `v_public_listings` werden weiterhin per `useQuery` geladen
+- Eingabe filtert clientseitig (case-insensitive) ueber `public_id`, `title`, `city`, `postal_code`
+- Unterhalb des Inputs erscheint eine Dropdown-Liste mit maximal 8 Treffern
+- Jeder Treffer zeigt: Titel, Ort, Preis
+- Klick auf einen Treffer fuellt die Karten (wie bisher ueber externalData)
+- Kein Treffer / leeres Feld = manueller Modus, keine Meldung noetig
+- Die Kachel ("Objekt aus Marktplatz uebernehmen") bleibt als Container, nur der Select wird durch die Suche ersetzt
+
+---
+
+## Aenderung 2: FinanceRequestCard anpassen (nur MOD-11 Variante)
+
+**Datei:** `src/components/finanzierung/FinanceRequestCard.tsx`
+
+Neue Props:
+- `showCalculator?: boolean` — wenn true, werden "Zinsbindung" und "Anfaengliche Tilgung" ausgeblendet
+- `onCalculate?: (finanzierungsbedarf: number) => void` — Callback wenn "Berechnen" geklickt wird
+
+Aenderungen im Finanzierungsplan-Bereich:
+- Zeilen "Zinsbindung" und "Anfaengliche Tilgung" werden ausgeblendet wenn `showCalculator=true`
+- Beim Eigenkapital-Feld: rechts neben dem Input erscheint ein kleiner Button (Sparkles/Zap Icon) "Berechnen"
+- Klick setzt `loanRequest = gesamtkosten - equity` und ruft `onCalculate(finanzierungsbedarf)` auf
+
+MOD-07 nutzt weiterhin die Karte ohne `showCalculator` — dort bleiben alle Felder sichtbar.
+
+---
+
+## Aenderung 3: Neue Kachel "Finanzierungskalkulator"
+
+**Neue Datei:** `src/components/finanzierung/FinanceCalculatorCard.tsx`
+
+Eine kompakte Kachel die neben der FinanceRequestCard liegt (in einem `grid grid-cols-2 gap-4`-Layout).
+
+**Props:**
+- `finanzierungsbedarf: number` — der zu finanzierende Betrag
+- `purchasePrice: number` — Kaufpreis fuer Beleihungsauslauf-Berechnung
+
+**Inhalt (tabellarisch, gleicher Stil):**
+- **Darlehensbetrag** (readonly, aus Finanzierungsbedarf uebernommen)
+- **Zinsbindung** (Select: 5/10/15/20/25/30 Jahre, Default: 10)
+- **Zinssatz p.a.** (readonly, automatisch aus `interest_rates` geladen basierend auf Zinsbindung + Beleihungsauslauf)
+- **Tilgung p.a.** (Input, Default: 1,5%)
+- **Beleihungsauslauf (LTV)** (readonly, berechnet: Darlehensbetrag / Kaufpreis * 100, gerundet auf naechste 10er-Stufe fuer Zins-Lookup)
+- Trennlinie
+- **Monatsrate** (berechnet, bold: `Darlehensbetrag * (Zins + Tilgung) / 12`)
+- **Jahresrate** (berechnet: Monatsrate * 12)
+- **Restschuld nach Zinsbindung** (berechnet nach Annuitaetenformel)
+
+**Zins-Lookup:** Query auf `interest_rates` mit `term_years` und `ltv_percent`. LTV wird auf die naechste verfuegbare Stufe (60, 70, 80, 90, 100) aufgerundet. Beispiel: LTV 73% → Lookup mit ltv_percent=80.
+
+**Datenbank-Werte (bereits vorhanden):**
 ```
-
-Im gleichen Stil wie die bestehende Seiten-Headline (`text-2xl font-bold tracking-tight uppercase` + `text-sm text-muted-foreground`).
-
-### 2. Listing-Auswahl aus Kaufy-Marktplatz (nur MOD-11)
-
-Unterhalb der neuen Ueberschrift wird eine optionale Auswahlleiste eingefuegt — ein kompakter Balken mit:
-- Text: "Objekt aus Marktplatz uebernehmen"
-- Ein Select/Combobox das `v_public_listings` laedt (title, city, asking_price)
-- Bei Auswahl: FinanceObjectCard wird automatisch befuellt (city, postal_code, property_type, year_built, total_area_sqm, asking_price)
-- Alternativ: Keine Auswahl = manuell befuellen wie bisher
-
-Die Daten aus `v_public_listings` werden per Supabase-Query geladen:
-- `title` → Anzeige im Dropdown
-- `city` → city
-- `postal_code` → postalCode
-- `property_type` → objectType (Mapping noetig)
-- `year_built` → yearBuilt
-- `total_area_sqm` → livingArea
-- `asking_price` → Kaufpreis in FinanceRequestCard
-
-Um die Befuellung zu ermoeglichen, erhaelt `FinanceObjectCard` eine neue optionale Prop `externalData` — wenn gesetzt, wird der State ueberschrieben. Gleiches gilt fuer `FinanceRequestCard` (fuer den Kaufpreis).
-
-### 3. MOD-07 AnfrageTab — Keine Aenderung
-
-MOD-07 bekommt **keine** Listing-Auswahl. Der bestehende Flow (manuell befuellen, Objekt aus Portfolio bei Einreichung) bleibt unveraendert. Es wird lediglich die gleiche Zwischenueberschrift ergaenzt:
-
-```text
-Finanzierungsobjekt
-Hier erfassen Sie Ihr Finanzierungsobjekt.
+term_years | ltv_percent | interest_rate
+5          | 60          | 3.50
+5          | 70          | 3.70
+...
+10         | 80          | 4.10
+...
+30         | 100         | 5.20
 ```
 
 ---
 
-## Technische Details
+## Layout in FMFinanzierungsakte.tsx
 
-### FinanceObjectCard.tsx — Neue Prop `externalData`
+Die beiden unteren Kacheln (FinanceRequestCard + FinanceCalculatorCard) liegen nebeneinander:
 
-```typescript
-interface Props {
-  storageKey: string;
-  initialData?: Partial<ObjectFormData>;
-  externalData?: Partial<ObjectFormData>; // NEU: ueberschreibt State bei Aenderung
-  readOnly?: boolean;
-}
+```
+[Eckdaten — volle Breite]
+[Selbstauskunft — volle Breite]
+[Ueberschrift: Finanzierungsobjekt]
+[Listing-Suche — volle Breite]
+[FinanceObjectCard — volle Breite]
+[FinanceRequestCard | FinanceCalculatorCard]  ← grid-cols-2
 ```
 
-Ein `useEffect` reagiert auf `externalData`-Aenderungen und merged die Werte in den lokalen State.
-
-### FinanceRequestCard.tsx — Neue Prop `externalPurchasePrice`
-
-```typescript
-interface Props {
-  storageKey: string;
-  externalPurchasePrice?: string; // NEU: setzt Kaufpreis aus Listing
-  readOnly?: boolean;
-}
-```
-
-### FMFinanzierungsakte.tsx — Listing-Query + Mapping
-
-- `useQuery` laedt alle `v_public_listings` Eintraege
-- Bei Auswahl eines Listings wird ein Mapping erstellt:
-  - `city` → `city`
-  - `postal_code` → `postalCode`
-  - `property_type` → `objectType` (z.B. "apartment" → "eigentumswohnung")
-  - `year_built` → `yearBuilt`
-  - `total_area_sqm` → `livingArea`
-  - `asking_price` → wird an FinanceRequestCard weitergegeben
+Das `grid-cols-2`-Layout liegt innerhalb des bestehenden `max-w-7xl`-Containers, sodass die Gesamtbreite gleich bleibt.
 
 ---
 
@@ -86,11 +104,10 @@ interface Props {
 
 | Datei | Aenderung |
 |---|---|
-| `FMFinanzierungsakte.tsx` | Zwischenueberschrift + Listing-Select + externalData-Weiterleitung |
-| `FinanceObjectCard.tsx` | Neue Prop `externalData` mit useEffect-Merge |
-| `FinanceRequestCard.tsx` | Neue Prop `externalPurchasePrice` |
-| `AnfrageTab.tsx` | Zwischenueberschrift ergaenzen (keine Listing-Auswahl) |
+| `FMFinanzierungsakte.tsx` | Listing-Select durch Freitext-Suche ersetzen, 2-spaltiges Layout fuer Request+Kalkulator, State fuer Finanzierungsbedarf |
+| `FinanceRequestCard.tsx` | Neue Props `showCalculator` + `onCalculate`, Berechnen-Button am EK-Feld, Zinsbindung/Tilgung ausblendbar |
+| `FinanceCalculatorCard.tsx` | **NEU** — Kalkulator mit Zins-Lookup, Annuitaetenberechnung, Monatsrate |
 
 ## Keine DB-Migration
 
-`v_public_listings` existiert bereits als View.
+`interest_rates`-Tabelle existiert bereits mit allen benoetigten Zinsbindungen und LTV-Stufen.
