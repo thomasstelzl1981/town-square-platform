@@ -1,6 +1,7 @@
 /**
  * MOD-07: Finance Documents Manager
- * Two-panel layout: DMS Tree + Interactive Checklist with Upload
+ * Aligned with MOD-11 / DMS StorageFileManager look.
+ * Status header (progress bar) + StorageFileManager filtered to MOD_07 subtree.
  */
 
 import { useState, useMemo } from 'react';
@@ -10,12 +11,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderOpen, Bell, BellOff } from 'lucide-react';
-import { FinanceStorageTree } from './FinanceStorageTree';
-import { DocumentChecklistPanel } from './DocumentChecklistPanel';
+import { Loader2, FolderOpen } from 'lucide-react';
+import { StorageFileManager } from '@/components/dms/StorageFileManager';
 import { DocumentReminderToggle } from './DocumentReminderToggle';
-import { FinanceUploadZone } from './FinanceUploadZone';
-import { MOD04DocumentPicker } from './MOD04DocumentPicker';
+import { toast } from 'sonner';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
 export interface ChecklistItem {
   id: string;
@@ -35,14 +35,207 @@ export interface UploadedDoc {
   name: string;
 }
 
+interface StorageNode {
+  id: string;
+  tenant_id: string;
+  parent_id: string | null;
+  name: string;
+  node_type: string;
+  template_id: string | null;
+  scope_hint: string | null;
+  property_id: string | null;
+  unit_id: string | null;
+  module_code: string | null;
+  created_at: string;
+}
+
+interface Document {
+  id: string;
+  public_id: string;
+  name: string;
+  file_path: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+  uploaded_by: string | null;
+}
+
+interface DocumentLink {
+  id: string;
+  document_id: string;
+  node_id: string | null;
+  object_type: string | null;
+  object_id: string | null;
+}
+
 export function FinanceDocumentsManager() {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
-  const [showMOD04Picker, setShowMOD04Picker] = useState(false);
 
-  // Fetch persistent applicant profile
+  // ── Storage nodes (full tree, filtered to MOD_07 subtree) ──
+  const { data: allNodes = [], isLoading: nodesLoading } = useQuery({
+    queryKey: ['storage-nodes', activeTenantId],
+    queryFn: async (): Promise<StorageNode[]> => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('storage_nodes')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('name');
+      if (error) throw error;
+      return (data || []) as unknown as StorageNode[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Find MOD_07 root and filter subtree
+  const mod07Root = useMemo(() => allNodes.find(n => n.module_code === 'MOD_07' && !n.parent_id), [allNodes]);
+
+  // Collect all descendant node IDs under MOD_07 root
+  const mod07NodeIds = useMemo(() => {
+    if (!mod07Root) return new Set<string>();
+    const ids = new Set<string>([mod07Root.id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const n of allNodes) {
+        if (n.parent_id && ids.has(n.parent_id) && !ids.has(n.id)) {
+          ids.add(n.id);
+          changed = true;
+        }
+      }
+    }
+    return ids;
+  }, [allNodes, mod07Root]);
+
+  const filteredNodes = useMemo(() => {
+    if (!mod07Root) return [];
+    // Return MOD_07 children as top-level (re-parent to null so StorageFileManager shows them as roots)
+    return allNodes
+      .filter(n => mod07NodeIds.has(n.id))
+      .map(n => n.id === mod07Root.id ? { ...n, parent_id: null } : n);
+  }, [allNodes, mod07NodeIds, mod07Root]);
+
+  // ── Documents + Links ──
+  const { data: allDocuments = [] } = useQuery({
+    queryKey: ['all-documents', activeTenantId],
+    queryFn: async (): Promise<Document[]> => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, public_id, name, file_path, mime_type, size_bytes, created_at, uploaded_by')
+        .eq('tenant_id', activeTenantId);
+      if (error) throw error;
+      return (data || []) as unknown as Document[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: documentLinks = [] } = useQuery({
+    queryKey: ['document-links', activeTenantId],
+    queryFn: async (): Promise<DocumentLink[]> => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('document_links')
+        .select('id, document_id, node_id, object_type, object_id')
+        .eq('tenant_id', activeTenantId);
+      if (error) throw error;
+      return (data || []) as unknown as DocumentLink[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Documents in current folder
+  const currentDocuments = useMemo(() => {
+    if (!selectedNodeId) return [];
+    const docIds = documentLinks.filter(l => l.node_id === selectedNodeId).map(l => l.document_id);
+    return allDocuments.filter(d => docIds.includes(d.id));
+  }, [selectedNodeId, documentLinks, allDocuments]);
+
+  // ── Upload ──
+  const { uploadMultiple, isUploading } = useUniversalUpload();
+
+  const handleUploadFiles = async (files: File[]) => {
+    if (!activeTenantId || !selectedNodeId) {
+      toast.error('Bitte zuerst einen Ordner auswählen');
+      return;
+    }
+    await uploadMultiple(files, {
+      moduleCode: 'MOD_07',
+      parentNodeId: selectedNodeId,
+    });
+    queryClient.invalidateQueries({ queryKey: ['all-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['document-links'] });
+  };
+
+  // ── Download ──
+  const [isDownloading, setIsDownloading] = useState(false);
+  const handleDownload = async (documentId: string) => {
+    const doc = allDocuments.find(d => d.id === documentId);
+    if (!doc) return;
+    setIsDownloading(true);
+    try {
+      const { data, error } = await supabase.storage.from('tenant-documents').download(doc.file_path);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Download fehlgeschlagen');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ── Delete ──
+  const deleteMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const doc = allDocuments.find(d => d.id === documentId);
+      if (!doc) return;
+      await supabase.from('document_links').delete().eq('document_id', documentId);
+      await supabase.from('documents').delete().eq('id', documentId);
+      if (doc.file_path) {
+        await supabase.storage.from('tenant-documents').remove([doc.file_path]);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document-links'] });
+      toast.success('Dokument gelöscht');
+    },
+  });
+
+  const deleteFolder = useMutation({
+    mutationFn: async (nodeId: string) => {
+      await supabase.from('storage_nodes').delete().eq('id', nodeId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      toast.success('Ordner gelöscht');
+    },
+  });
+
+  const createFolder = useMutation({
+    mutationFn: async ({ name, parentId }: { name: string; parentId: string | null }) => {
+      if (!activeTenantId) return;
+      await supabase.from('storage_nodes').insert({
+        tenant_id: activeTenantId,
+        parent_id: parentId,
+        name,
+        node_type: 'folder',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      toast.success('Ordner erstellt');
+    },
+  });
+
+  // ── Checklist status (kept as overview) ──
   const { data: profile } = useQuery({
     queryKey: ['persistent-applicant-profile', activeTenantId],
     queryFn: async () => {
@@ -59,14 +252,13 @@ export function FinanceDocumentsManager() {
     enabled: !!activeTenantId,
   });
 
-  // Fetch active finance request (draft or submitted)
   const { data: activeRequest } = useQuery({
     queryKey: ['active-finance-request', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return null;
       const { data } = await supabase
         .from('finance_requests')
-        .select('id, public_id, property_id, object_address, status, storage_folder_id')
+        .select('id, public_id, property_id, object_address, status')
         .eq('tenant_id', activeTenantId)
         .in('status', ['draft', 'submitted', 'assigned', 'in_review'])
         .order('updated_at', { ascending: false })
@@ -77,8 +269,7 @@ export function FinanceDocumentsManager() {
     enabled: !!activeTenantId,
   });
 
-  // Fetch checklist items
-  const { data: checklistItems, isLoading: loadingChecklist } = useQuery({
+  const { data: checklistItems } = useQuery({
     queryKey: ['document-checklist-items'],
     queryFn: async () => {
       const { data } = await supabase
@@ -89,18 +280,13 @@ export function FinanceDocumentsManager() {
     },
   });
 
-  // Fetch uploaded documents (applicant profile)
   const { data: profileDocs } = useQuery({
     queryKey: ['applicant-profile-documents', profile?.id],
     queryFn: async () => {
       if (!profile?.id || !activeTenantId) return [];
       const { data } = await supabase
         .from('document_links')
-        .select(`
-          id,
-          document_id,
-          document:documents(id, name, doc_type)
-        `)
+        .select('id, document_id, document:documents(id, name, doc_type)')
         .eq('tenant_id', activeTenantId)
         .eq('object_type', 'applicant_profile')
         .eq('object_id', profile.id);
@@ -114,18 +300,13 @@ export function FinanceDocumentsManager() {
     enabled: !!profile?.id && !!activeTenantId,
   });
 
-  // Fetch uploaded documents (active request)
   const { data: requestDocs } = useQuery({
     queryKey: ['finance-request-documents', activeRequest?.id],
     queryFn: async () => {
       if (!activeRequest?.id || !activeTenantId) return [];
       const { data } = await supabase
         .from('document_links')
-        .select(`
-          id,
-          document_id,
-          document:documents(id, name, doc_type)
-        `)
+        .select('id, document_id, document:documents(id, name, doc_type)')
         .eq('tenant_id', activeTenantId)
         .eq('object_type', 'finance_request')
         .eq('object_id', activeRequest.id);
@@ -139,7 +320,7 @@ export function FinanceDocumentsManager() {
     enabled: !!activeRequest?.id && !!activeTenantId,
   });
 
-  // Filter checklist by employment type
+  // Completion stats
   const employmentType = profile?.employment_type || 'employed';
   const applicantChecklist = useMemo(() => {
     if (!checklistItems) return [];
@@ -154,35 +335,19 @@ export function FinanceDocumentsManager() {
     return checklistItems.filter(item => item.checklist_type === 'request');
   }, [checklistItems]);
 
-  // Calculate completion stats
-  const allDocs = [...(profileDocs || []), ...(requestDocs || [])];
   const requiredApplicant = applicantChecklist.filter(i => i.is_required);
   const requiredRequest = requestChecklist.filter(i => i.is_required);
-  
-  const uploadedApplicantCount = requiredApplicant.filter(item => 
+  const uploadedApplicantCount = requiredApplicant.filter(item =>
     (profileDocs || []).some(d => d.doc_type === item.doc_type)
   ).length;
-  
-  const uploadedRequestCount = requiredRequest.filter(item => 
+  const uploadedRequestCount = requiredRequest.filter(item =>
     (requestDocs || []).some(d => d.doc_type === item.doc_type)
   ).length;
-
   const totalRequired = requiredApplicant.length + (activeRequest ? requiredRequest.length : 0);
   const totalUploaded = uploadedApplicantCount + uploadedRequestCount;
   const completionPercent = totalRequired > 0 ? Math.round((totalUploaded / totalRequired) * 100) : 0;
 
-  const handleUploadClick = (docType: string, checklistType: 'applicant' | 'request') => {
-    setSelectedDocType(docType);
-    // TODO: Auto-select the correct folder node based on category
-  };
-
-  const handleUploadComplete = () => {
-    queryClient.invalidateQueries({ queryKey: ['applicant-profile-documents'] });
-    queryClient.invalidateQueries({ queryKey: ['finance-request-documents'] });
-    setSelectedDocType(null);
-  };
-
-  if (loadingChecklist) {
+  if (nodesLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -191,8 +356,8 @@ export function FinanceDocumentsManager() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Overall Status Header */}
+    <div className="space-y-4">
+      {/* Status Header */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -226,64 +391,26 @@ export function FinanceDocumentsManager() {
         </CardContent>
       </Card>
 
-      {/* Two-Column Layout */}
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        {/* Left: Storage Tree */}
-        <div className="space-y-4">
-          <FinanceStorageTree
-            profileId={profile?.id}
-            requestId={activeRequest?.id}
-            requestLabel={activeRequest?.object_address || activeRequest?.public_id}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={setSelectedNodeId}
-          />
-        </div>
-
-        {/* Right: Checklist + Upload */}
-        <div className="space-y-6">
-          {/* Applicant Checklist */}
-          <DocumentChecklistPanel
-            title="Bonitätsunterlagen"
-            subtitle="Permanent gespeichert für alle Anfragen"
-            items={applicantChecklist}
-            uploadedDocs={profileDocs || []}
-            onUploadClick={(docType) => handleUploadClick(docType, 'applicant')}
-            employmentType={employmentType}
-          />
-
-          {/* Request Checklist (if active) */}
-          {activeRequest && (
-            <DocumentChecklistPanel
-              title="Objektunterlagen"
-              subtitle={`Für Anfrage: ${activeRequest.object_address || activeRequest.public_id}`}
-              items={requestChecklist}
-              uploadedDocs={requestDocs || []}
-              onUploadClick={(docType) => handleUploadClick(docType, 'request')}
-              showMOD04Import={!!activeRequest.property_id}
-              onMOD04Import={() => setShowMOD04Picker(true)}
-            />
-          )}
-
-          {/* Upload Zone */}
-          <FinanceUploadZone
-            profileId={profile?.id}
-            requestId={activeRequest?.id}
-            selectedDocType={selectedDocType}
-            onComplete={handleUploadComplete}
-          />
-        </div>
-      </div>
-
-      {/* MOD-04 Document Picker Dialog */}
-      {showMOD04Picker && activeRequest?.property_id && (
-        <MOD04DocumentPicker
-          propertyId={activeRequest.property_id}
-          requestId={activeRequest.id}
-          open={showMOD04Picker}
-          onOpenChange={setShowMOD04Picker}
-          onComplete={handleUploadComplete}
-        />
-      )}
+      {/* StorageFileManager — same look as DMS/MOD-11 */}
+      <StorageFileManager
+        nodes={filteredNodes}
+        documents={currentDocuments}
+        allDocuments={allDocuments}
+        documentLinks={documentLinks}
+        onUploadFiles={handleUploadFiles}
+        onDownload={handleDownload}
+        onDeleteDocument={(id) => deleteMutation.mutate(id)}
+        onDeleteFolder={(id) => deleteFolder.mutate(id)}
+        onCreateFolder={(name, parentId) => createFolder.mutate({ name, parentId })}
+        onBulkDownload={(ids) => ids.forEach(id => handleDownload(id))}
+        onBulkDelete={(ids) => ids.forEach(id => deleteMutation.mutate(id))}
+        isUploading={isUploading}
+        isDownloading={isDownloading}
+        isDeleting={deleteMutation.isPending}
+        isCreatingFolder={createFolder.isPending}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={setSelectedNodeId}
+      />
     </div>
   );
 }

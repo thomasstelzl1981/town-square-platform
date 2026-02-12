@@ -141,7 +141,7 @@ export function ListView({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-2 bg-muted/20 border-b border-border/30 gap-2">
+      <div className="grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-2 bg-muted/20 border-b border-border/50 dark:border-border/40 gap-2">
         <Checkbox
           checked={allSelected}
           onCheckedChange={onToggleSelectAll}
@@ -171,7 +171,7 @@ export function ListView({
               <div
                 key={item.id}
                 className={cn(
-                  'group/row grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-2 border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer gap-2',
+                  'group/row grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-3 border-b border-border/40 dark:border-border/30 hover:bg-muted/30 transition-colors cursor-pointer gap-2',
                   isSelected && 'bg-primary/5',
                 )}
                 onClick={() => {
@@ -189,7 +189,7 @@ export function ListView({
                   className="justify-self-center"
                 />
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <IconComponent className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <IconComponent className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <span className="text-sm truncate">{item.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">{item.type === 'file' ? formatFileSize(item.size) : '—'}</span>

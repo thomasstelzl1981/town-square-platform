@@ -44,7 +44,7 @@ interface ColumnProps {
 
 function Column({ items, selectedId, onSelect, onDownload, onDelete, onNewSubfolder, onNavigateFolder, onPreview, isDownloading, isDeleting }: ColumnProps) {
   return (
-    <div className="w-[220px] min-w-[220px] border-r border-border/30 h-full flex flex-col">
+    <div className="w-[260px] min-w-[260px] border-r border-border/60 dark:border-border/50 h-full flex flex-col">
       <ScrollArea className="flex-1">
         <div className="py-1">
           {items.map(item => {
@@ -54,12 +54,12 @@ function Column({ items, selectedId, onSelect, onDownload, onDelete, onNewSubfol
               <div
                 key={item.id}
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/30 transition-colors text-left group/row cursor-pointer',
+                  'w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted/30 transition-colors text-left group/row cursor-pointer border-b border-border/20 dark:border-border/30',
                   isSelected && 'bg-muted text-foreground',
                 )}
                 onClick={() => onSelect(item)}
               >
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate">{item.name}</span>
                 {item.type === 'folder' && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground md:group-hover/row:hidden" />}
                 <div className="shrink-0" onClick={e => e.stopPropagation()}>
