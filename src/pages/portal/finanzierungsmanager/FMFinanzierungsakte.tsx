@@ -29,6 +29,7 @@ import { Table, TableBody } from '@/components/ui/table';
 import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } from '@/components/finanzierung/FinanceObjectCard';
 import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 import PropertyAssetsCard, { type PropertyAsset, createEmptyProperty } from '@/components/finanzierung/PropertyAssetsCard';
+import GenerateCaseCard from '@/components/finanzierung/GenerateCaseCard';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Simple label-value row for the top summary */
@@ -339,6 +340,25 @@ export default function FMFinanzierungsakte() {
         rentalIncome={eckdatenRentalIncome}
         livingArea={Number(externalObjectData?.livingArea) || 0}
         propertyAssets={propertyAssets}
+      />
+
+      {/* GenerateCaseCard — Finanzierungsfall anlegen */}
+      <GenerateCaseCard
+        formData={formData}
+        coFormData={coFormData}
+        propertyAssets={propertyAssets}
+        objectData={{
+          address: externalObjectData?.city ? `${externalObjectData.city}` : undefined,
+          type: externalObjectData?.objectType,
+          livingArea: externalObjectData?.livingArea,
+          yearBuilt: externalObjectData?.yearBuilt,
+          purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined,
+        }}
+        financeData={{
+          loanAmount: calculatorBedarf || undefined,
+          equityAmount: undefined,
+          purpose: eckdatenUsage || 'kauf',
+        }}
       />
 
       {/* Spacer to prevent floating button overlap */}
