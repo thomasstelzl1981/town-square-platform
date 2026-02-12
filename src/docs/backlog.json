@@ -3,10 +3,10 @@
     "version": "3.0",
     "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle 21 Module",
     "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 1 (MOD-01 bis MOD-05) — DONE",
+    "last_sprint": "Sprint 2 (MOD-06 bis MOD-10) — DONE",
     "total": 30,
-    "done": 11,
-    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte"
+    "done": 16,
+    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads"
   },
   "roadmap": [
     {
@@ -176,7 +176,8 @@
       "module": "MOD-06",
       "title": "Buchhaltung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
       "files": []
     },
     {
@@ -186,8 +187,8 @@
       "module": "MOD-07",
       "title": "Finanzierung: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/finanzierung/AnfrageTab.tsx"]
     },
     {
       "id": "DM-014",
@@ -196,7 +197,8 @@
       "module": "MOD-08",
       "title": "Kaufy Portal: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
       "files": []
     },
     {
@@ -206,7 +208,8 @@
       "module": "MOD-09",
       "title": "Vertriebspartner: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
+      "status": "done",
+      "note": "Verzeichnis existiert nicht — kein Migrationsbedarf",
       "files": []
     },
     {
@@ -216,8 +219,8 @@
       "module": "MOD-10",
       "title": "Leads: Widget-Grids auf WidgetGrid/WidgetCell migrieren",
       "effort": "S",
-      "status": "todo",
-      "files": []
+      "status": "done",
+      "files": ["src/pages/portal/leads/SelfieAdsStudio.tsx", "src/pages/portal/leads/SelfieAdsPlanen.tsx"]
     },
     {
       "id": "DM-017",
