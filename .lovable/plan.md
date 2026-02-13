@@ -1,90 +1,131 @@
 
-# Redirect-Fix: "Haus" wird "ZUHAUSE" — Einstieg in Immobilien korrigieren
+# Design-Harmonisierung: Alle 5 Fahrzeug-Tabs auf Manifest-Standard bringen
 
 ## Problem
 
-Wenn man im Seitenmenü auf "Haus" (Sub-Tile von MOD-04 Immobilien) klickt, navigiert der Browser zu `/portal/immobilien/haus`, was sofort nach `/portal/miety` weiterleitet. Das verlässt MOD-04 komplett und springt zu MOD-20 — die Navigation kollabiert, die Sidebar wechselt den aktiven Bereich, und es entsteht ein visueller Sprung.
+Alle fuenf Unterseiten (Autos, Bikes, Boote, Privatjet, Angebote) verwenden ad-hoc Tailwind-Grid-Klassen statt der vorgeschriebenen Shared-Komponenten `WidgetGrid` und `WidgetCell`. Die Kacheln haben unterschiedliche Hoehen, unterschiedliche Spaltenanzahlen und inkonsistente Header-Strukturen.
 
-Zusätzlich ist "Haus" als `default: true` markiert, aber der `index`-Route in ImmobilienPage leitet auf `portfolio` weiter — ein Widerspruch.
+### Konkrete Abweichungen
 
-## Lösung
+| Seite | Ist-Grid | Soll-Grid | Ist-Card-Hoehe | Soll |
+|-------|----------|-----------|----------------|------|
+| Autos | ad-hoc `xl:grid-cols-4` | `WidgetGrid` (4 Spalten) | `h-36` Bild + Content | `WidgetCell` (260px / aspect-square) |
+| Bikes | ad-hoc `xl:grid-cols-4` | `WidgetGrid` | `h-36` Bild + Content | `WidgetCell` |
+| Boote | ad-hoc `xl:grid-cols-4` | `WidgetGrid` | `h-40` Bild + Content | `WidgetCell` |
+| Privatjet | ad-hoc `xl:grid-cols-3` | `WidgetGrid` (4 Spalten!) | `h-44` Bild + Content | `WidgetCell` |
+| Angebote | ad-hoc `xl:grid-cols-3` | `WidgetGrid` (4 Spalten!) | `h-36`/`h-40` | `WidgetCell` |
 
-MOD-20 (Miety/Zuhause) wird direkt **innerhalb** von MOD-04 gerendert — kein Redirect mehr. Der "Haus"-Tab wird in "ZUHAUSE" umbenannt und bleibt der Einstiegspunkt von Immobilien.
-
----
-
-## Änderung 1: Manifest — Tile umbenennen, Default beibehalten
-
-**Datei:** `src/manifests/routesManifest.ts`
-
-- Zeile 251: `title: "Haus"` wird zu `title: "ZUHAUSE"`, `path: "haus"` wird zu `path: "zuhause"`
-- `default: true` bleibt — damit ist ZUHAUSE der Einstieg bei Klick auf "Immobilien"
-
-**Datei:** `src/manifests/areaConfig.ts`
-
-- Zeile 65: `'MOD-20': 'Haus'` wird zu `'MOD-20': 'ZUHAUSE'`
+### Weitere Inkonsistenzen
+- Boote und Privatjet haben grosse Provider-Header-Cards (Haller Experiences, NetJets), Autos und Bikes nicht
+- Angebote hat zwei Sektionen mit Provider-Headern, aber in einem anderen Stil (kein Bild-Overlay)
+- Privatjet nutzt nur 3 Spalten statt 4
+- Angebote nutzt nur 3 Spalten statt 4
 
 ---
 
-## Änderung 2: ImmobilienPage — Miety inline rendern statt Redirect
+## Loesung: Einheitliche Struktur fuer alle 5 Tabs
 
-**Datei:** `src/pages/portal/ImmobilienPage.tsx`
-
-- `index`-Route: Redirect von `portfolio` auf `zuhause` ändern
-- Route `path="haus"` mit `<Navigate to="/portal/miety">` entfernen
-- Neue Route `path="zuhause/*"` hinzufügen, die `MietyPortalPage` inline rendert (lazy-loaded)
-- Redirect von `path="haus"` auf `zuhause` (Legacy-Kompatibilität)
+### Gemeinsames Layout-Pattern (fuer alle Tabs identisch)
 
 ```text
-Routes (nach Umbau):
-  index         -> Navigate to "zuhause"
-  "zuhause/*"   -> MietyPortalPage (inline, kein Redirect)
-  "haus"        -> Navigate to "zuhause" (Legacy)
-  "portfolio"   -> PortfolioTab
-  "verwaltung"  -> VerwaltungTab
-  "sanierung/*" -> SanierungTab
-  ...rest
+PageShell
+  ModulePageHeader (Titel, Beschreibung, optionaler Action-Button)
+  [Optional: Provider-Header als ContentCard mit WidgetHeader-Stil]
+  WidgetGrid (variant="widget")
+    WidgetCell -> VehicleCard (Bild + Kennzeichen + Mini-KPIs)
+    WidgetCell -> VehicleCard
+    ...
+  [Optional: Inline-Detail unterhalb des Grids]
 ```
 
----
-
-## Änderung 3: Interne Miety-Links anpassen
-
-Alle Navigationen innerhalb der Miety-Tiles (`/portal/miety/...`) müssen auf `/portal/immobilien/zuhause/...` umgestellt werden, damit die Navigation im MOD-04-Kontext bleibt:
-
-**Dateien mit Änderungen (navigate/Link-Pfade):**
-- `src/pages/portal/miety/tiles/UebersichtTile.tsx` — `/portal/miety/zuhause/:homeId` wird `/portal/immobilien/zuhause/zuhause/:homeId`
-- `src/pages/portal/miety/tiles/VersorgungTile.tsx` — gleiche Anpassung
-- `src/pages/portal/miety/tiles/VersicherungenTile.tsx` — gleiche Anpassung
-- `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` — gleiche Anpassung
-- `src/pages/portal/miety/components/MietyDossierHeader.tsx` — Zurück-Link
-- `src/pages/portal/miety/MietyHomeDossier.tsx` — Fallback-Redirect
-- `src/pages/portal/MietyPortalPage.tsx` — Fallback-Redirect bei `zaehlerstaende`
+### Fuer alle Cards gilt
+- Eingebettet in `WidgetCell` (h-[260px] mobil, aspect-square Desktop)
+- Bild oben (~55% Hoehe), Content unten
+- Status-Badge oben links
+- Kennzeichen/Name unten links auf dem Bild
+- Mini-Info-Grid im Content-Bereich (2x2, max 4 KPIs)
 
 ---
 
-## Änderung 4: ManifestRouter — MOD-20 Route beibehalten als Redirect
+## Aenderung 1: CarsAutos.tsx
 
-**Datei:** `src/router/ManifestRouter.tsx`
-
-- `miety: MietyPortalPage` bleibt im `portalModulePageMap` für den Fall, dass jemand direkt `/portal/miety` aufruft
-- Optional: Legacy-Redirect von `/portal/miety/*` auf `/portal/immobilien/zuhause/*` hinzufügen
+**Aenderungen:**
+- `div.grid.grid-cols-1.md:grid-cols-2.xl:grid-cols-4.gap-4` ersetzen durch `<WidgetGrid>`
+- Jede `<Card>` in `<WidgetCell>` wrappen
+- Card-Bild-Hoehe auf `h-[55%]` relativ zur WidgetCell anpassen (statt festes `h-36`)
+- Card nutzt `h-full` um die WidgetCell voll auszufuellen
+- Import von `WidgetGrid` und `WidgetCell` hinzufuegen
 
 ---
 
-## Dateien-Übersicht
+## Aenderung 2: CarsBikes.tsx
+
+**Aenderungen:**
+- Gleiche Grid-Umstellung wie Autos
+- `div.grid` -> `WidgetGrid` + `WidgetCell`
+- Cards auf `h-full` + relative Bild/Content-Aufteilung
+- Import von `WidgetGrid`, `WidgetCell`
+
+---
+
+## Aenderung 3: CarsBoote.tsx
+
+**Aenderungen:**
+- Provider-Header (Haller Experiences) bleibt, wird aber als `ContentCard` mit `WidgetHeader`-Stil umgebaut (Icon-Box + Titel + Beschreibung + Action)
+- Boat-Grid: `div.grid` -> `WidgetGrid` + `WidgetCell`
+- Boat-Cards: `h-full`, Bild ~55%, Content unten mit Name, Laenge, Gaeste, Preis
+- 4 Spalten statt aktuell auch schon 4 (bleibt, aber ueber WidgetGrid)
+- Import von `WidgetGrid`, `WidgetCell`, `ContentCard`
+
+---
+
+## Aenderung 4: CarsPrivatjet.tsx
+
+**Aenderungen:**
+- Provider-Header (NetJets) analog zu Boote als `ContentCard` umbauen
+- Fleet-Grid: `xl:grid-cols-3` -> `WidgetGrid` (4 Spalten!)
+- Jet-Cards: In `WidgetCell` wrappen, `h-full`, Bild ~55%
+- Description-Text (`line-clamp-2`) wird kompakter, um in die quadratische Kachel zu passen
+- Import von `WidgetGrid`, `WidgetCell`, `ContentCard`
+
+---
+
+## Aenderung 5: CarsAngebote.tsx
+
+**Aenderungen:**
+- Beide Provider-Header (Miete24, BMW/MINI) als `ContentCard` mit konsistentem Stil
+- Beide Grids: `xl:grid-cols-3` -> `WidgetGrid` (4 Spalten!)
+- Alle Offer-Cards in `WidgetCell` wrappen, `h-full`
+- Bild-Bereich ~50%, Content unten mit Titel, Badges, Preis
+- Import von `WidgetGrid`, `WidgetCell`, `ContentCard`
+
+---
+
+## Provider-Header Standard (neu, einheitlich fuer Boote, Privatjet, Angebote)
+
+Statt ad-hoc Hero-Bilder mit absolutem Positioning wird ein konsistenter Provider-Header verwendet:
+
+```text
+ContentCard
+  icon={PartnerIcon}
+  title="Haller Experiences" / "NETJETS" / "miete24" / "BMW & MINI"
+  description="Premium Yacht Charter · Ibiza"
+  headerAction={<Button>Website</Button>}
+  [Optional: Kompakte KPI-Zeile mit Badges]
+```
+
+Das ist kompakter, manifest-konform und visuell einheitlich ueber alle Tabs.
+
+---
+
+## Dateien-Uebersicht
 
 | Aktion | Datei |
 |--------|-------|
-| EDIT | `src/manifests/routesManifest.ts` — "haus" -> "zuhause", Titel -> "ZUHAUSE" |
-| EDIT | `src/manifests/areaConfig.ts` — Label-Override "Haus" -> "ZUHAUSE" |
-| EDIT | `src/pages/portal/ImmobilienPage.tsx` — Index-Redirect auf "zuhause", MietyPortalPage inline |
-| EDIT | `src/pages/portal/miety/tiles/UebersichtTile.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/miety/tiles/VersorgungTile.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/miety/tiles/VersicherungenTile.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/miety/components/MietyDossierHeader.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/miety/MietyHomeDossier.tsx` — Pfad-Anpassung |
-| EDIT | `src/pages/portal/MietyPortalPage.tsx` — Fallback-Pfad-Anpassung |
+| EDIT | `src/components/portal/cars/CarsAutos.tsx` — WidgetGrid + WidgetCell |
+| EDIT | `src/components/portal/cars/CarsBikes.tsx` — WidgetGrid + WidgetCell |
+| EDIT | `src/components/portal/cars/CarsBoote.tsx` — WidgetGrid + WidgetCell + ContentCard Header |
+| EDIT | `src/components/portal/cars/CarsPrivatjet.tsx` — WidgetGrid + WidgetCell + ContentCard Header, 4 Spalten |
+| EDIT | `src/components/portal/cars/CarsAngebote.tsx` — WidgetGrid + WidgetCell + ContentCard Headers, 4 Spalten |
 
-Keine Datenbank-Änderungen nötig.
+Keine neuen Dateien. Keine Datenbank-Aenderungen. Reine UI-Harmonisierung mit bestehenden Shared-Komponenten.
