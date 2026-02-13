@@ -288,7 +288,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-08': {
     moduleCode: 'MOD-08',
-    title: 'Investment-Suche',
+    title: 'Immo Suche',
     oneLiner: 'Suchen, vergleichen, simulieren – Ihr Weg zum nächsten Investment.',
     benefits: [
       'Investment-Suche mit zVE + EK: Sehen Sie sofort Ihre monatliche Belastung.',

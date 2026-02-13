@@ -26,7 +26,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Missions',
     labelShort: 'Missions',
     icon: 'Target',
-    modules: ['MOD-04', 'MOD-20', 'MOD-06', 'MOD-07', 'MOD-08'],
+    modules: ['MOD-20', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08'],
   },
   {
     key: 'operations',
@@ -60,7 +60,8 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-05': 'KI-Telefon-Assistent', // MSV → KI-Telefon-Assistent (repurposed)
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
-  'MOD-20': 'Zuhause',            // Miety → Zuhause (display only)
+  'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche
+  'MOD-20': 'Haus',               // Miety → Haus (display only)
 };
 
 /**
