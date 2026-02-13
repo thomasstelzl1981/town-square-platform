@@ -120,10 +120,10 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     menuPointPaths: ['/portal/immobilien/verwaltung'],
     compliance: {
       modulePageHeader: true,
-      widgetGrid: false,
-      widgetCell: false,
-      demoWidget: false,
-      inlineFlow: false,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -144,7 +144,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'tenants', title: 'Mieterübersicht', component: 'TenantList', readOnlyInDemo: true },
       { id: 'costs', title: 'Nebenkosten', component: 'AncillaryCosts', readOnlyInDemo: true },
     ],
-    phase: '2A',
+    phase: 'done',
   },
   {
     id: 'GP-SANIERUNG',
@@ -159,7 +159,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -183,7 +183,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'costs', title: 'Kostenschätzung', component: 'SanierungCosts', readOnlyInDemo: false },
       { id: 'contractors', title: 'Dienstleister', component: 'SanierungContractors', readOnlyInDemo: false },
     ],
-    phase: '2A',
+    phase: 'done',
   },
 
   // ─── MOD-07: Finanzierung ───────────────────────────────
