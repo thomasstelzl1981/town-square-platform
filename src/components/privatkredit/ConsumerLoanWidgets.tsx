@@ -107,33 +107,32 @@ export function ConsumerLoanWidgets({ activeCaseId, onSelectCase }: ConsumerLoan
   return (
     <WidgetGrid variant="widget">
       {/* Demo-Widget an Position 0 */}
-      {showDemo && (
-        <WidgetCell>
-          <Card
-            className={cn(
-              `h-full cursor-pointer transition-all`,
-              DESIGN.DEMO_WIDGET.CARD,
-              DESIGN.DEMO_WIDGET.HOVER,
-              activeCaseId === '__demo__' ? 'ring-2 ring-emerald-500' : ''
-            )}
-            onClick={() => onSelectCase?.('__demo__')}
-          >
-            <div className="flex flex-col h-full p-4 justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
-                    {GP_PRIVATKREDIT.demoWidget.badgeLabel}
-                  </Badge>
-                </div>
-                <h3 className="font-semibold text-sm">25.000 €</h3>
-                <p className="text-xs text-muted-foreground mt-1">60 Monate · 4,9% eff.</p>
+      <WidgetCell>
+        <Card
+          className={cn(
+            'h-full transition-all',
+            showDemo
+              ? [DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER, 'cursor-pointer']
+              : 'opacity-50 grayscale cursor-default',
+            activeCaseId === '__demo__' && showDemo ? 'ring-2 ring-primary' : ''
+          )}
+          onClick={() => showDemo && onSelectCase?.('__demo__')}
+        >
+          <div className="flex flex-col h-full p-4 justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
+                  {GP_PRIVATKREDIT.demoWidget.badgeLabel}
+                </Badge>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">{GP_PRIVATKREDIT.demoWidget.subtitle}</p>
+              <h3 className="font-semibold text-sm">25.000 €</h3>
+              <p className="text-xs text-muted-foreground mt-1">60 Monate · 4,9% eff.</p>
             </div>
-          </Card>
-        </WidgetCell>
-      )}
+            <p className="text-[10px] text-muted-foreground mt-2">{GP_PRIVATKREDIT.demoWidget.subtitle}</p>
+          </div>
+        </Card>
+      </WidgetCell>
 
       {cases.map((c) => {
         const isActive = c.id === activeCaseId;
