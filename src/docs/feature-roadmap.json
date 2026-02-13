@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "version": "1.0",
+    "title": "Feature-Roadmap — System of a Town Platform",
+    "description": "Strategischer Fahrplan für neue Features, Business-Logik und Live-Daten-Integration. Nachfolger der Cleanup-Backlogs (backlog.json, mobile-backlog.json).",
+    "created": "2026-02-13",
+    "last_updated": "2026-02-13",
+    "source": "backlog.json roadmap_carried_forward + Code-Scan (Stubs, TODOs)",
+    "total_items": 10,
+    "phases": 3,
+    "status_legend": {
+      "planned": "Noch nicht begonnen",
+      "in_progress": "Aktuell in Bearbeitung",
+      "done": "Abgeschlossen und verifiziert",
+      "blocked": "Wartend auf externe Abhängigkeit"
+    }
+  },
+  "phases": [
+    {
+      "id": "PHASE-A",
+      "title": "Fundament — DB-Persistenz & Dokumentation",
+      "description": "Grundlagen schaffen: Frontend-Simulationen durch echte DB-Anbindung ersetzen und fehlende Modul-Spezifikationen nachdokumentieren.",
+      "priority": "Zuerst",
+      "items": [
+        {
+          "id": "FEAT-003",
+          "category": "db-persistenz",
+          "module": "MOD-08",
+          "title": "Investment-Favoriten in DB persistieren",
+          "description": "Aktuell werden Favoriten nur im Frontend-State gehalten. Eine investment_favorites Tabelle mit user_id, listing_id, created_at erstellen und die bestehende Favoriten-Logik auf Supabase umstellen.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "ROAD-003 (backlog.json)",
+          "acceptance_criteria": [
+            "investment_favorites Tabelle mit RLS-Policies existiert",
+            "Favoriten überleben Browser-Refresh und Session-Wechsel",
+            "Favoriten-Counter im UI zeigt DB-Werte"
+          ]
+        },
+        {
+          "id": "FEAT-004",
+          "category": "db-persistenz",
+          "module": "MOD-03",
+          "title": "DMS Storage-Usage Edge Function",
+          "description": "Echte Speicherplatz-Anzeige im DMS statt simulierter Werte. Edge Function berechnet die tatsächliche Bucket-Größe pro Tenant.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "ROAD-004 (backlog.json)",
+          "acceptance_criteria": [
+            "Edge Function sot-dms-storage-usage liefert Bytes pro Tenant",
+            "DMS-Dashboard zeigt echte Werte (GB used / GB total)",
+            "Berechnung ist gecacht (max 1x pro Stunde)"
+          ]
+        },
+        {
+          "id": "FEAT-007",
+          "category": "dokumentation",
+          "module": "GLOBAL",
+          "title": "Modul-Specs für 15 Module erstellen",
+          "description": "15 von 21 Modulen haben keine detaillierte Spezifikation. Specs im Memory-Format erstellen mit: Zweck, Tiles, Workflows, DB-Tabellen, Edge Functions, Abhängigkeiten.",
+          "effort": "L",
+          "status": "planned",
+          "origin": "ROAD-002 (backlog.json)",
+          "acceptance_criteria": [
+            "Jedes der 15 Module hat ein Memory-Dokument",
+            "Jede Spec enthält mindestens: Zweck, Tile-Struktur, DB-Tabellen, offene TODOs",
+            "Cross-Referenzen zwischen abhängigen Modulen sind dokumentiert"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-B",
+      "title": "Core Features — Stub-Module & Wizards",
+      "description": "Platzhalter-Module durch echte Business-Logik ersetzen und fehlende Workflows implementieren.",
+      "priority": "Nach Phase A",
+      "items": [
+        {
+          "id": "FEAT-001",
+          "category": "stub-module",
+          "module": "MOD-10",
+          "title": "Leads-Modul: 4 Stubs durch echte Workflows ersetzen",
+          "description": "LeadsInbox, MeineLeads, LeadsPipeline und LeadsWerbung sind aktuell ModuleTilePage-Stubs. Implementierung: Inbox mit Lead-Liste aus DB, Pipeline als Kanban-Board, Meine Leads als persönliche Arbeitsliste, Werbung als Kampagnen-Übersicht.",
+          "effort": "L",
+          "status": "planned",
+          "origin": "ROAD-001 / AUD-014 (backlog.json)",
+          "acceptance_criteria": [
+            "Alle 4 Tiles zeigen echte Daten aus der leads-Tabelle",
+            "Lead-Übernahme aus Inbox funktioniert",
+            "Pipeline zeigt Status-Progression",
+            "Werbung verlinkt korrekt zu SelfieAds"
+          ],
+          "stub_files": [
+            "src/pages/portal/leads/LeadsInbox.tsx",
+            "src/pages/portal/leads/MeineLeads.tsx",
+            "src/pages/portal/leads/LeadsPipeline.tsx",
+            "src/pages/portal/leads/LeadsWerbung.tsx"
+          ]
+        },
+        {
+          "id": "FEAT-002",
+          "category": "stub-module",
+          "module": "MOD-18",
+          "title": "Finanzanalyse: 4 Stubs implementieren",
+          "description": "DashboardTile, ReportsTile, SzenarienTile und EinstellungenTile sind leere Stubs. Implementierung: Dashboard mit Portfolio-KPIs, Reports mit Export-Funktion, Szenarien mit Was-wäre-wenn-Rechner, Einstellungen für Analyse-Parameter.",
+          "effort": "L",
+          "status": "planned",
+          "origin": "ROAD-006 / AUD-015 (backlog.json)",
+          "acceptance_criteria": [
+            "Dashboard zeigt aggregierte Finanzdaten",
+            "Reports können als PDF exportiert werden",
+            "Szenarien-Vergleich funktioniert mit mindestens 2 Szenarien",
+            "Einstellungen persistieren in DB"
+          ],
+          "stub_files": [
+            "src/pages/portal/finanzanalyse/DashboardTile.tsx",
+            "src/pages/portal/finanzanalyse/ReportsTile.tsx",
+            "src/pages/portal/finanzanalyse/SzenarienTile.tsx",
+            "src/pages/portal/finanzanalyse/EinstellungenTile.tsx"
+          ]
+        },
+        {
+          "id": "FEAT-005",
+          "category": "workflows",
+          "module": "MOD-12",
+          "title": "MandatCreateWizard für Akquise-Manager",
+          "description": "Desktop-only Wizard zur Mandatsanlage direkt im Akquise-Manager. Muss dem Contact-First Pattern folgen: Erst Kontakt anlegen/auswählen, dann Mandat-Parameter definieren.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "ROAD-005 (backlog.json)",
+          "acceptance_criteria": [
+            "Wizard ist Desktop-only (kein Modal)",
+            "Contact-First: Kontaktauswahl/-anlage als erster Schritt",
+            "Mandat wird in acq_mandates persistiert",
+            "TermsGate für externe Mandate integriert"
+          ]
+        },
+        {
+          "id": "FEAT-006",
+          "category": "workflows",
+          "module": "MOD-12",
+          "title": "Absage-E-Mail tatsächlich versenden",
+          "description": "Aktuell zeigt die Absage-Funktion nur einen Toast. Eine Edge Function soll die E-Mail via Resend tatsächlich versenden und in acq_outbound_messages protokollieren.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "Code-Scan (Toast-Stub in Akquise-Manager)",
+          "acceptance_criteria": [
+            "Edge Function sot-acq-send-rejection versendet E-Mail",
+            "E-Mail wird in acq_outbound_messages gespeichert",
+            "Template aus acq_email_templates verwendet",
+            "Fehler werden dem User angezeigt"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-C",
+      "title": "Integrations & Optimierung",
+      "description": "Externe Dienste anbinden und systemweite Performance-Optimierungen durchführen.",
+      "priority": "Nach Phase B",
+      "items": [
+        {
+          "id": "FEAT-008",
+          "category": "architektur",
+          "module": "GLOBAL",
+          "title": "Bundle-Analyse: ManifestRouter optimieren",
+          "description": "ManifestRouter hat 80+ lazy() Imports. Analyse ob Code-Splitting-Grenzen effektiv sind und ob Chunks zusammengefasst oder weiter aufgeteilt werden sollten.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "ROAD-007 / AUD-050 (backlog.json)",
+          "acceptance_criteria": [
+            "Bundle-Analyse Report erstellt (Chunk-Größen, Ladezeiten)",
+            "Top-5 größte Chunks identifiziert",
+            "Optimierungs-Empfehlungen dokumentiert",
+            "Mindestens 1 Optimierung umgesetzt"
+          ]
+        },
+        {
+          "id": "FEAT-009",
+          "category": "integration",
+          "module": "MOD-14",
+          "title": "HeyGen Video-Integration",
+          "description": "MOD-14 Social hat einen Stub-Job für HeyGen Video-Generierung. Echte API-Anbindung implementieren für automatisierte Video-Erstellung.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "Code-Scan (Stub-Job in MOD-14)",
+          "acceptance_criteria": [
+            "HeyGen API Key konfiguriert",
+            "Video-Generierung wird angestoßen und Status getrackt",
+            "Fertiges Video wird in Storage gespeichert",
+            "User erhält Benachrichtigung bei Fertigstellung"
+          ]
+        },
+        {
+          "id": "FEAT-010",
+          "category": "integration",
+          "module": "MOD-10",
+          "title": "SelfieAds Mandat-Checkout / Bezahl-Flow",
+          "description": "Der Checkout-Button im SelfieAds Studio zeigt aktuell nur einen Toast. Echter Bezahl-Flow mit Mandats-Erstellung und Prepayment implementieren.",
+          "effort": "M",
+          "status": "planned",
+          "origin": "Code-Scan (Toast-Stub in SelfieAds)",
+          "acceptance_criteria": [
+            "Checkout-Flow mit Zusammenfassung und Bestätigung",
+            "Mandat wird erstellt und an Zone 1 übermittelt",
+            "Bezahl-Status wird getrackt",
+            "Kampagne startet nach Zahlungseingang"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "phase_a": {
+      "items": 3,
+      "effort_total": "M + M + L",
+      "focus": "DB-Persistenz, Dokumentation"
+    },
+    "phase_b": {
+      "items": 4,
+      "effort_total": "L + L + M + M",
+      "focus": "Stub-Ablösung, Workflow-Implementierung"
+    },
+    "phase_c": {
+      "items": 3,
+      "effort_total": "M + M + M",
+      "focus": "Externe Integrations, Performance"
+    }
+  }
+}
