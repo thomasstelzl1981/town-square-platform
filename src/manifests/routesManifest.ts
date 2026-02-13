@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-20 Miety: 6 tiles)
+ * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 5 tiles + verwaltung, MOD-05: 1 tile placeholder, MOD-20 Miety: 5 tiles)
  * 3. Changes require explicit approval
  */
 
@@ -253,28 +253,26 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kontexte", component: "KontexteTab", title: "Vermietereinheit" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
+        // VERWALTUNG: Konsolidierte Mietverwaltung (ehemals MOD-05 MSV)
+        { path: "verwaltung", component: "VerwaltungTab", title: "Verwaltung" },
       ],
       dynamic_routes: [
         // Create flow: Modal in PortfolioTab, redirect to dossier after creation
         { path: "neu", component: "CreatePropertyRedirect", title: "Neue Immobilie", dynamic: false },
         // Canonical dossier route (SSOT)
         { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true, goldenPath: { moduleCode: 'MOD-04', entityIdParam: 'id' } },
+        // Rental expose detail (moved from MOD-05)
+        { path: "vermietung/:id", component: "RentalExposeDetail", title: "Miet-Exposé", dynamic: true },
       ],
     },
     "MOD-05": {
-      name: "MSV",
+      name: "KI-Telefon-Assistent",
       base: "msv",
-      icon: "FileText",
+      icon: "Phone",
       display_order: 5,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        { path: "objekte", component: "ObjekteTab", title: "Objekte" },
-        { path: "mieteingang", component: "MieteingangTab", title: "Mieteingang", premium: true },
-        { path: "vermietung", component: "VermietungTab", title: "Vermietung" },
-        { path: "einstellungen", component: "EinstellungenTab", title: "Einstellungen" },
-      ],
-      dynamic_routes: [
-        { path: "vermietung/:id", component: "RentalExposeDetail", title: "Miet-Exposé", dynamic: true },
+        { path: "uebersicht", component: "KiTelefonUebersicht", title: "Übersicht", default: true },
       ],
     },
     "MOD-06": {

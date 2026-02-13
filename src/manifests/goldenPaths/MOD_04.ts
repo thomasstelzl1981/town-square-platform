@@ -97,28 +97,28 @@ export const MOD_04_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 3: SICHTBARKEIT IN MOD-05
+    // PHASE 3: SICHTBARKEIT IN VERWALTUNG (ehemals MOD-05)
     {
-      id: 'mod05_visibility',
+      id: 'verwaltung_visibility',
       phase: 3,
-      label: 'Sichtbarkeit in Mietverwaltung (MOD-05)',
+      label: 'Sichtbarkeit in Verwaltung (MOD-04/Verwaltung)',
       type: 'system',
       task_kind: 'service_task',
-      camunda_key: 'MOD04_STEP_03_MOD05_VISIBILITY',
-      downstreamModules: ['MOD-05'],
+      camunda_key: 'MOD04_STEP_03_VERWALTUNG_VISIBILITY',
+      downstreamModules: [],
       preconditions: [
         { key: 'property_exists', source: 'properties', description: 'Property muss existieren' },
         { key: 'main_unit_exists', source: 'units', description: 'MAIN-Unit muss existieren' },
       ],
       completion: [
-        { key: 'unit_visible_in_mod05', source: 'units', check: 'exists', description: 'Einheit erscheint automatisch in MOD-05' },
+        { key: 'unit_visible_in_verwaltung', source: 'units', check: 'exists', description: 'Einheit erscheint automatisch im Verwaltung-Tab' },
       ],
       on_error: {
-        ledger_event: 'mod05.visibility.error',
+        ledger_event: 'verwaltung.visibility.error',
         status_update: 'error',
         recovery_strategy: 'retry',
         max_retries: 3,
-        description: 'MOD-05 Sichtbarkeit konnte nicht hergestellt werden',
+        description: 'Verwaltung-Tab Sichtbarkeit konnte nicht hergestellt werden',
       },
     },
 

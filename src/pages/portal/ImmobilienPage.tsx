@@ -1,5 +1,5 @@
 /**
- * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases
+ * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases, Verwaltung
  * 
  * OPTIMIZED: Lazy imports for sub-tab code-splitting
  * 
@@ -10,6 +10,8 @@
  * - /portal/immobilien/kontexte → Context Management
  * - /portal/immobilien/sanierung → Renovation (global)
  * - /portal/immobilien/bewertung → Valuation (global)
+ * - /portal/immobilien/verwaltung → Consolidated Property Management (ex-MSV)
+ * - /portal/immobilien/vermietung/:id → Rental Expose Detail
  * - /portal/immobilien/:id → Canonical Dossier (Immobilienakte)
  */
 import { lazy, Suspense } from 'react';
@@ -22,7 +24,9 @@ const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({
 const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ default: m.KontexteTab })));
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
+const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
+const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
 
 const ImmobilienPage = () => {
   return (
@@ -39,6 +43,12 @@ const ImmobilienPage = () => {
         <Route path="kontexte" element={<KontexteTab />} />
         <Route path="sanierung/*" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
+        
+        {/* VERWALTUNG: Consolidated property management (ex-MSV) */}
+        <Route path="verwaltung" element={<VerwaltungTab />} />
+        
+        {/* RENTAL: Expose detail (moved from MSV) */}
+        <Route path="vermietung/:id" element={<RentalExposeDetail />} />
         
         {/* CANONICAL: Property dossier (Immobilienakte) - :id must be LAST, guarded by GoldenPathGuard */}
         <Route path=":id" element={

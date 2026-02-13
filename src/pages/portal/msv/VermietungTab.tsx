@@ -237,7 +237,7 @@ const VermietungTab = () => {
         variant="ghost" 
         size="icon" 
         className="h-8 w-8"
-        onClick={() => navigate(`/portal/msv/vermietung/${row.id}`)}
+        onClick={() => navigate(`/portal/immobilien/vermietung/${row.id}`)}
         title="Exposé öffnen"
       >
         <Eye className="h-4 w-4" />
@@ -293,9 +293,9 @@ const VermietungTab = () => {
         emptyState={{
           message: 'Keine Vermietungsinserate — erstellen Sie ein Exposé',
           actionLabel: 'Neues Vermietungsexposé erstellen',
-          actionRoute: '/portal/msv/vermietung'
+          actionRoute: '/portal/immobilien/verwaltung'
         }}
-        onRowClick={(row) => navigate(`/portal/msv/vermietung/${row.id}`)}
+        onRowClick={(row) => navigate(`/portal/immobilien/vermietung/${row.id}`)}
         rowActions={renderRowActions}
         headerActions={
           <Button onClick={handleCreateNew}>

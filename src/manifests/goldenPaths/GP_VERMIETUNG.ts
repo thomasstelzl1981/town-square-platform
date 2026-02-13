@@ -27,7 +27,7 @@ export const GP_VERMIETUNG_GOLDEN_PATH: GoldenPathDefinition = {
     required_flags: ['lease_exists', 'invite_sent', 'invite_accepted', 'portal_active'],
     description: 'Mietvertrag aktiv, Mieter eingeladen und registriert, Portal-Zugang aktiv.',
   },
-  failure_redirect: '/portal/mietverwaltung',
+  failure_redirect: '/portal/immobilien/verwaltung',
 
   steps: [
     // PHASE 1: MIETVERTRAG ANLEGEN
@@ -55,7 +55,7 @@ export const GP_VERMIETUNG_GOLDEN_PATH: GoldenPathDefinition = {
       phase: 2,
       label: 'Mieter einladen',
       type: 'action',
-      routePattern: '/portal/mietverwaltung',
+      routePattern: '/portal/immobilien/verwaltung',
       task_kind: 'user_task',
       camunda_key: 'GP10_STEP_02_INVITE_RENTER',
       contract_refs: [
