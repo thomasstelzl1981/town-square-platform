@@ -97,7 +97,7 @@ export default function VersorgungTile() {
                           <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
                         )}
                         <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
-                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>Details →</Button>
+                          onClick={() => navigate(`/portal/immobilien/zuhause/zuhause/${contract.home_id}`)}>Details →</Button>
                       </>
                     ) : (
                       <>
@@ -126,7 +126,7 @@ export default function VersorgungTile() {
                       <p className="text-xs text-muted-foreground mt-1">Noch kein Stand erfasst</p>
                     )}
                     <Button size="sm" variant="ghost" className="text-xs mt-1 -ml-2 text-primary"
-                      onClick={() => homes.length > 0 ? navigate(`/portal/miety/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
+                      onClick={() => homes.length > 0 ? navigate(`/portal/immobilien/zuhause/zuhause/${homes[0].id}`) : setShowCreateForm(true)}>
                       <Plus className="h-3 w-3 mr-1" />Neuen Stand erfassen
                     </Button>
                   </div>

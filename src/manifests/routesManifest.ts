@@ -247,8 +247,8 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 4,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        // HAUS: Navigationslink zu MOD-20 (Miety) — Redirect auf /portal/miety
-        { path: "haus", component: "MietyRedirect", title: "Haus", default: true },
+        // ZUHAUSE: MOD-20 (Miety) inline gerendert innerhalb MOD-04
+        { path: "zuhause", component: "MietyInline", title: "ZUHAUSE", default: true },
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
         // VERWALTUNG: Konsolidierte Mietverwaltung (ehemals MOD-05 MSV)
         { path: "verwaltung", component: "VerwaltungTab", title: "Verwaltung" },

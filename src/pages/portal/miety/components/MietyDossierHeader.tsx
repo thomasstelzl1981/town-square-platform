@@ -33,7 +33,7 @@ export function MietyDossierHeader({ home, onOpenContractDrawer, onOpenMeterDraw
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/miety/uebersicht')} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/immobilien/zuhause/uebersicht')} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">

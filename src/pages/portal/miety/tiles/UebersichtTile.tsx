@@ -161,7 +161,7 @@ export default function UebersichtTile() {
                     </div>
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" variant="outline" onClick={() => setEditingHome(home)}>Bearbeiten</Button>
-                      <Button size="sm" onClick={() => navigate(`/portal/miety/zuhause/${home.id}`)}>
+                      <Button size="sm" onClick={() => navigate(`/portal/immobilien/zuhause/zuhause/${home.id}`)}>
                         <ArrowRight className="h-4 w-4 mr-1" />Öffnen
                       </Button>
                     </div>

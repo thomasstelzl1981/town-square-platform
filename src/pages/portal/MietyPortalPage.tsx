@@ -24,7 +24,7 @@ export default function MietyPortalPage() {
         <Route path="smarthome" element={<SmartHomeTile />} />
         <Route path="kommunikation" element={<KommunikationTile />} />
         <Route path="zuhause/:homeId" element={<MietyHomeDossier />} />
-        <Route path="zaehlerstaende" element={<Navigate to="/portal/miety/versorgung" replace />} />
+        <Route path="zaehlerstaende" element={<Navigate to="versorgung" replace />} />
       </Routes>
     </React.Suspense>
   );
