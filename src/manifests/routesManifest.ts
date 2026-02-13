@@ -253,6 +253,8 @@ export const zone2Portal: ZoneDefinition = {
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
         // VERWALTUNG: Konsolidierte Mietverwaltung (ehemals MOD-05 MSV)
         { path: "verwaltung", component: "VerwaltungTab", title: "Verwaltung" },
+        // HAUS: Navigationslink zu MOD-20 (Miety) — Redirect auf /portal/miety
+        { path: "haus", component: "MietyRedirect", title: "Haus" },
       ],
       dynamic_routes: [
         // Create flow: Modal in PortfolioTab, redirect to dossier after creation
