@@ -6304,6 +6304,72 @@ export type Database = {
           },
         ]
       }
+      hosting_contracts: {
+        Row: {
+          accepted_terms_at: string | null
+          cancelled_at: string | null
+          content_responsibility_confirmed: boolean
+          created_at: string
+          currency: string
+          id: string
+          plan: string
+          price_cents: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tenant_id: string
+          updated_at: string
+          website_id: string
+        }
+        Insert: {
+          accepted_terms_at?: string | null
+          cancelled_at?: string | null
+          content_responsibility_confirmed?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          plan?: string
+          price_cents?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string
+          website_id: string
+        }
+        Update: {
+          accepted_terms_at?: string | null
+          cancelled_at?: string | null
+          content_responsibility_confirmed?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          plan?: string
+          price_cents?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hosting_contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hosting_contracts_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_websites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_attachments: {
         Row: {
           created_at: string
@@ -13877,6 +13943,72 @@ export type Database = {
           },
         ]
       }
+      tenant_websites: {
+        Row: {
+          branding_json: Json
+          created_at: string
+          created_by: string
+          goal: string
+          id: string
+          industry: string | null
+          name: string
+          published_at: string | null
+          seo_json: Json
+          slug: string
+          status: string
+          target_audience: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          branding_json?: Json
+          created_at?: string
+          created_by: string
+          goal?: string
+          id?: string
+          industry?: string | null
+          name: string
+          published_at?: string | null
+          seo_json?: Json
+          slug: string
+          status?: string
+          target_audience?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          branding_json?: Json
+          created_at?: string
+          created_by?: string
+          goal?: string
+          id?: string
+          industry?: string | null
+          name?: string
+          published_at?: string | null
+          seo_json?: Json
+          slug?: string
+          status?: string
+          target_audience?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_websites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_websites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_data_registry: {
         Row: {
           batch_id: string
@@ -14593,6 +14725,160 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_pages: {
+        Row: {
+          created_at: string
+          id: string
+          is_published: boolean
+          slug: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          website_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          slug?: string
+          sort_order?: number
+          tenant_id: string
+          title: string
+          website_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          slug?: string
+          sort_order?: number
+          tenant_id?: string
+          title?: string
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_pages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_pages_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_websites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_sections: {
+        Row: {
+          content_json: Json
+          created_at: string
+          design_json: Json
+          id: string
+          is_visible: boolean
+          page_id: string
+          section_type: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_json?: Json
+          created_at?: string
+          design_json?: Json
+          id?: string
+          is_visible?: boolean
+          page_id: string
+          section_type: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_json?: Json
+          created_at?: string
+          design_json?: Json
+          id?: string
+          is_visible?: boolean
+          page_id?: string
+          section_type?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_sections_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "website_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_sections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_versions: {
+        Row: {
+          id: string
+          published_at: string
+          published_by: string
+          snapshot_json: Json
+          tenant_id: string
+          version_number: number
+          website_id: string
+        }
+        Insert: {
+          id?: string
+          published_at?: string
+          published_by: string
+          snapshot_json: Json
+          tenant_id: string
+          version_number: number
+          website_id: string
+        }
+        Update: {
+          id?: string
+          published_at?: string
+          published_by?: string
+          snapshot_json?: Json
+          tenant_id?: string
+          version_number?: number
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_versions_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_websites"
             referencedColumns: ["id"]
           },
         ]

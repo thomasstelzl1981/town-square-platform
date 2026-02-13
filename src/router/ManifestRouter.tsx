@@ -270,6 +270,11 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
+  // Website Hosting (MOD-21 Zone 1)
+  WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  WebHostingDomains: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  WebHostingAbuse: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  WebHostingTemplates: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
@@ -317,6 +322,7 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   finanzanalyse: FinanzanalysePage,
   photovoltaik: PhotovoltaikPage,
   miety: MietyPortalPage,
+  'website-builder': React.lazy(() => import('@/pages/portal/WebsiteBuilderPage')),
 };
 
 // =============================================================================
@@ -405,6 +411,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   SotLayout,
   AcquiaryLayout,
   ProjektLandingLayout,
+  TenantSiteLayout: React.lazy(() => import('@/pages/zone3/sites/TenantSiteLayout')),
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -414,6 +421,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
   projekt: { ProjektLandingPage },
+  sites: { TenantSiteRenderer: React.lazy(() => import('@/pages/website/TenantSiteRenderer')) },
 };
 
 // =============================================================================
