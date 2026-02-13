@@ -51,15 +51,18 @@ export function useExposeUpload() {
       if (uploadError) throw uploadError;
       setProgress(40);
 
-      // 2. Create acq_offer with mandate_id
+      // 2. Create acq_offer with optional mandate_id
+      const insertData: Record<string, unknown> = {
+        source_type: 'manual_upload',
+        status: 'new',
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        received_at: new Date().toISOString(),
+      };
+      if (mandateId) insertData.mandate_id = mandateId;
+
       const { data: offer, error: offerError } = await supabase
         .from('acq_offers')
-        .insert({
-          mandate_id: mandateId,
-          source_type: 'manual_upload',
-          status: 'new',
-          title: file.name.replace(/\.[^/.]+$/, ''),
-        } as any)
+        .insert(insertData as any)
         .select('id')
         .single();
 

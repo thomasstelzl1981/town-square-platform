@@ -19,7 +19,7 @@ export type AcqAnalysisStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface AcqOffer {
   id: string;
-  mandate_id: string;
+  mandate_id: string | null;
   source_type: AcqOfferSource;
   source_contact_id: string | null;
   source_inbound_id: string | null;
@@ -42,6 +42,9 @@ export interface AcqOffer {
   geomap_data: unknown;
   calc_bestand: unknown;
   calc_aufteiler: unknown;
+  provider_name: string | null;
+  provider_contact: string | null;
+  received_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +80,7 @@ export interface AcqAnalysisRun {
 }
 
 export interface CreateOfferData {
-  mandate_id: string;
+  mandate_id?: string | null;
   source_type?: AcqOfferSource;
   source_contact_id?: string;
   source_url?: string;
@@ -91,6 +94,8 @@ export interface CreateOfferData {
   area_sqm?: number;
   year_built?: number;
   notes?: string;
+  provider_name?: string;
+  provider_contact?: string;
 }
 
 // ============================================================================

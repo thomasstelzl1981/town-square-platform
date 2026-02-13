@@ -539,11 +539,14 @@ export type Database = {
           extraction_confidence: number | null
           geomap_data: Json | null
           id: string
-          mandate_id: string
+          mandate_id: string | null
           noi_indicated: number | null
           notes: string | null
           postal_code: string | null
           price_asking: number | null
+          provider_contact: string | null
+          provider_name: string | null
+          received_at: string | null
           source_contact_id: string | null
           source_inbound_id: string | null
           source_type: Database["public"]["Enums"]["acq_offer_source"]
@@ -569,11 +572,14 @@ export type Database = {
           extraction_confidence?: number | null
           geomap_data?: Json | null
           id?: string
-          mandate_id: string
+          mandate_id?: string | null
           noi_indicated?: number | null
           notes?: string | null
           postal_code?: string | null
           price_asking?: number | null
+          provider_contact?: string | null
+          provider_name?: string | null
+          received_at?: string | null
           source_contact_id?: string | null
           source_inbound_id?: string | null
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
@@ -599,11 +605,14 @@ export type Database = {
           extraction_confidence?: number | null
           geomap_data?: Json | null
           id?: string
-          mandate_id?: string
+          mandate_id?: string | null
           noi_indicated?: number | null
           notes?: string | null
           postal_code?: string | null
           price_asking?: number | null
+          provider_contact?: string | null
+          provider_name?: string | null
+          received_at?: string | null
           source_contact_id?: string | null
           source_inbound_id?: string | null
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
