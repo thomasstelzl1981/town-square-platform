@@ -241,12 +241,95 @@ serve(async (req) => {
       }]);
     }
 
+    // ========================================
+    // Auto-create acq_offers from routed inbound
+    // ========================================
+    let offerId: string | null = null;
+    if (mandateId && !needsRouting) {
+      try {
+        // Get tenant_id from the mandate
+        const { data: mandate } = await supabase
+          .from('acq_mandates')
+          .select('tenant_id')
+          .eq('id', mandateId)
+          .single();
+
+        const { data: offer, error: offerError } = await supabase
+          .from('acq_offers')
+          .insert([{
+            mandate_id: mandateId,
+            tenant_id: mandate?.tenant_id || null,
+            title: payload.subject || 'E-Mail-Eingang',
+            source_type: 'inbound_email',
+            source_inbound_id: inbound.id,
+            source_contact_id: contactId,
+            status: 'new',
+            notes: payload.text?.substring(0, 500) || null,
+          }])
+          .select('id')
+          .single();
+
+        if (offerError) {
+          console.error('Failed to create offer from inbound:', offerError);
+        } else {
+          offerId = offer.id;
+          console.log('Auto-created offer from inbound:', offerId);
+
+          // Link attachments as offer documents
+          for (const att of attachmentsMeta) {
+            await supabase.from('acq_offer_documents').insert([{
+              offer_id: offerId,
+              tenant_id: mandate?.tenant_id || null,
+              file_name: att.filename,
+              storage_path: att.storage_path,
+              mime_type: att.mime_type,
+              document_type: 'expose',
+            }]);
+          }
+
+          // Trigger AI extraction if PDF attachments exist
+          const pdfAttachments = attachmentsMeta.filter(a => 
+            a.mime_type === 'application/pdf'
+          );
+          if (pdfAttachments.length > 0) {
+            try {
+              await fetch(`${SUPABASE_URL}/functions/v1/sot-acq-offer-extract`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({ offerId, storagePath: pdfAttachments[0].storage_path }),
+              });
+              console.log('Triggered AI extraction for offer:', offerId);
+            } catch (extractError) {
+              console.error('Failed to trigger extraction:', extractError);
+            }
+          }
+
+          // Log offer creation event
+          await supabase.from('acq_mandate_events').insert([{
+            mandate_id: mandateId,
+            event_type: 'offer_created',
+            payload: {
+              offer_id: offerId,
+              source: 'inbound_email',
+              inbound_id: inbound.id,
+            },
+          }]);
+        }
+      } catch (offerCreateError) {
+        console.error('Error in offer creation flow:', offerCreateError);
+      }
+    }
+
     console.log('Inbound stored:', { 
       id: inbound.id, 
       mandateId, 
       needsRouting,
       routingMethod,
       attachments: attachmentsMeta.length,
+      offerId,
     });
 
     return new Response(

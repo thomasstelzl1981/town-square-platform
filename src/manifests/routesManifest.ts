@@ -145,13 +145,17 @@ export const zone1Admin: ZoneDefinition = {
     { path: "agents/instances", component: "AgentsInstances", title: "Agenten-Instanzen" },
     { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
     { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
-    // Acquiary (Akquise Governance)
+    // Acquiary (Akquise Governance) — 6-Tab Structure
     { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
+    { path: "acquiary/kontakte", component: "AcquiaryKontakte", title: "Kontakte" },
+    { path: "acquiary/datenbank", component: "AcquiaryDatenbank", title: "Datenbank" },
+    { path: "acquiary/mandate", component: "AcquiaryMandates", title: "Mandate" },
+    { path: "acquiary/needs-routing", component: "AcquiaryNeedsRouting", title: "Routing" },
+    { path: "acquiary/monitor", component: "AcquiaryMonitor", title: "Monitor" },
+    // Legacy Acquiary routes (kept for backward compatibility)
     { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
     { path: "acquiary/assignments", component: "AcquiaryAssignments", title: "Zuweisungen" },
-    { path: "acquiary/mandates", component: "AcquiaryMandates", title: "Mandate" },
     { path: "acquiary/audit", component: "AcquiaryAudit", title: "Audit" },
-    { path: "acquiary/needs-routing", component: "AcquiaryNeedsRouting", title: "Needs Routing" },
     // Sales Desk
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
@@ -402,6 +406,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "dashboard", component: "AkquiseDashboard", title: "Dashboard", default: true },
         { path: "mandate", component: "AkquiseMandate", title: "Mandate" },
         { path: "objekteingang", component: "AkquiseObjekteingang", title: "Objekteingang" },
+        { path: "datenbank", component: "AkquiseDatenbank", title: "Datenbank" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
       ],
       dynamic_routes: [
