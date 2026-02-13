@@ -1,13 +1,70 @@
 /**
  * Kaufy2026Hero — Hero Section with Floating Search
  * 
- * Design: Full-width hero image with rounded corners
- * Search card floats inside the hero at the bottom
+ * ARCHITECTURE NOTE (AUD-001):
+ * Uses inline style objects instead of zone3-theme.css classes.
+ * Reason: Tailwind @layer utilities override plain CSS classes regardless of
+ * source order. The lightModeVars on the Layout container don't cascade into
+ * nested elements reliably. Inline styles guarantee rendering correctness.
+ * 
+ * The style objects are centralized here for maintainability.
  */
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Kaufy2026SearchBar, type SearchParams, type ClassicSearchParams } from './Kaufy2026SearchBar';
 import heroBackground from '@/assets/kaufy2026/hero-background.png';
+
+// Centralized style objects — replaces scattered inline styles
+const heroStyles = {
+  section: { padding: 0 } as React.CSSProperties,
+  wrapper: {
+    position: 'relative',
+    width: 'calc(100% - 120px)',
+    height: 620,
+    margin: '60px 60px 0',
+    borderRadius: 20,
+    overflow: 'hidden',
+  } as React.CSSProperties,
+  image: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    filter: 'grayscale(20%) brightness(0.6)',
+  } as React.CSSProperties,
+  overlay: {
+    position: 'absolute',
+    zIndex: 2,
+    top: 0, left: 0, right: 0, bottom: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    padding: '40px 60px',
+  } as React.CSSProperties,
+  title: {
+    fontSize: '3rem',
+    fontWeight: 700,
+    color: 'white',
+    lineHeight: 1.1,
+    letterSpacing: '-0.02em',
+    maxWidth: 600,
+  } as React.CSSProperties,
+  subtitle: {
+    fontSize: '1.25rem',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: '1rem',
+  } as React.CSSProperties,
+  searchFloat: {
+    position: 'relative',
+    zIndex: 10,
+    maxWidth: 900,
+    width: '85%',
+    margin: '-60px auto 0',
+  } as React.CSSProperties,
+};
 
 interface Kaufy2026HeroProps {
   onInvestmentSearch: (params: SearchParams) => void;
@@ -21,62 +78,22 @@ export function Kaufy2026Hero({
   isLoading = false,
 }: Kaufy2026HeroProps) {
   return (
-    <section style={{ padding: 0 }}>
+    <section style={heroStyles.section}>
       {/* Hero Image Container */}
-      <div style={{
-        position: 'relative',
-        width: 'calc(100% - 120px)',
-        height: 620,
-        margin: '60px 60px 0',
-        borderRadius: 20,
-        overflow: 'hidden',
-      }}>
-        {/* Hero Image */}
+      <div style={heroStyles.wrapper}>
         <img
           src={heroBackground}
           alt="Kapitalanlageimmobilien"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            filter: 'grayscale(20%) brightness(0.6)',
-          }}
+          style={heroStyles.image}
         />
-
         {/* Overlay Content */}
-        <div style={{
-          position: 'absolute',
-          zIndex: 2,
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: '40px 60px',
-        }}>
-          <h1 style={{
-            fontSize: '3rem',
-            fontWeight: 700,
-            color: 'white',
-            lineHeight: 1.1,
-            letterSpacing: '-0.02em',
-            maxWidth: 600,
-          }}>
+        <div style={heroStyles.overlay}>
+          <h1 style={heroStyles.title}>
             Die KI-Plattform für
             <br />
             Kapitalanlageimmobilien.
           </h1>
-          <p style={{
-            fontSize: '1.25rem',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginTop: '1rem',
-          }}>
+          <p style={heroStyles.subtitle}>
             Marktplatz & digitale Mietsonderverwaltung
           </p>
           <Link to="/auth">
@@ -90,14 +107,8 @@ export function Kaufy2026Hero({
         </div>
       </div>
 
-      {/* Search Card — pulled up with negative margin to overlap hero */}
-      <div style={{
-        position: 'relative',
-        zIndex: 10,
-        maxWidth: 900,
-        width: '85%',
-        margin: '-60px auto 0',
-      }}>
+      {/* Search Card — negative margin overlap (AUD-003 fix) */}
+      <div style={heroStyles.searchFloat}>
         <Kaufy2026SearchBar
           onInvestmentSearch={onInvestmentSearch}
           onClassicSearch={onClassicSearch}

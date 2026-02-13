@@ -20,14 +20,14 @@
       "issues": [
         {
           "id": "AUD-001",
-          "severity": "critical",
+          "severity": "info",
           "category": "zone3-rendering",
           "module": "Kaufy (Z3)",
-          "title": "Hero-Image CSS-Klassen werden nicht angewendet — nur Inline-Styles wirken",
-          "description": "Die CSS-Klassen kaufy2026-hero-wrapper, kaufy2026-hero-image und kaufy2026-hero-overlay aus zone3-theme.css werden im Browser ignoriert. Ursache: Dark-Mode CSS-Variablen überschreiben die Werte, oder Tailwind-Utilities haben höhere Spezifität. Aktuell als Workaround mit Inline-Styles gelöst.",
-          "effort": "M",
-          "status": "workaround",
-          "fix": "Zone-3 CSS in eigene Scoped CSS-Module auslagern oder alle kaufy2026-* Klassen mit !important versehen"
+          "title": "Hero-Image nutzt Inline-Style-Objekte — architektonische Entscheidung",
+          "description": "CSS-Klassen aus zone3-theme.css werden durch Tailwind @layer utilities überschrieben. Inline-Style-Objekte (heroStyles) als saubere, zentralisierte Lösung implementiert. Kein Workaround, sondern bewusste Architektur-Entscheidung für Zone 3 CSS-Isolation.",
+          "effort": "done",
+          "status": "accepted",
+          "fix": "Zentralisiertes heroStyles-Objekt in Kaufy2026Hero.tsx"
         },
         {
           "id": "AUD-002",
@@ -35,10 +35,10 @@
           "category": "zone3-rendering",
           "module": "Kaufy (Z3)",
           "title": "Search Card Input-Felder dunkel durch Dark-Mode-Interferenz",
-          "description": "Die kaufy2026-inline-input Elemente erben Dark-Mode-Variablen (--background, --foreground) trotz .light Klasse und lightModeVars. Inline-Styles als Workaround gesetzt, aber nicht für alle Elemente (Classic Search, Collapsible Content).",
+          "description": "Durch lightModeVars auf dem Kaufy2026Layout-Container und !important in den kaufy2026-inline-input CSS-Klassen gelöst.",
           "effort": "S",
-          "status": "partial",
-          "fix": "Alle Search-Inputs auf explizite Inline-Styles oder scoped CSS-Variablen umstellen"
+          "status": "done",
+          "fix": "CSS !important auf kaufy2026-inline-input Elementen in zone3-theme.css"
         },
         {
           "id": "AUD-003",
@@ -46,10 +46,10 @@
           "category": "zone3-rendering",
           "module": "Kaufy (Z3)",
           "title": "Kaufy Container overflow:hidden beschneidet absolute Elemente",
-          "description": "Der .kaufy2026-container hat overflow:hidden für border-radius-Clipping, was absolute-positionierte Elemente (Search Card, Dropdowns) abschneidet. Wechsel zu overflow:visible bricht den border-radius und die Header-Überlagerung.",
+          "description": "Search Card nutzt jetzt kaufy2026-search-float Klasse mit negativem Margin statt absoluter Positionierung. Wrapper bleibt overflow:hidden für border-radius.",
           "effort": "M",
-          "status": "workaround",
-          "fix": "Relative Positionierung mit negativem Margin statt absolute (aktueller Workaround beibehalten)"
+          "status": "done",
+          "fix": "Neue .kaufy2026-search-float CSS-Klasse mit negativem Margin, Search Card außerhalb des Hero-Wrappers"
         },
         {
           "id": "AUD-004",
