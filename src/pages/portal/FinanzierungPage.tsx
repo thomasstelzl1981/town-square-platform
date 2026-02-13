@@ -11,6 +11,7 @@ const SelbstauskunftTab = lazy(() => import('./finanzierung/SelbstauskunftTab'))
 const DokumenteTab = lazy(() => import('./finanzierung/DokumenteTab'));
 const AnfrageTab = lazy(() => import('./finanzierung/AnfrageTab'));
 const StatusTab = lazy(() => import('./finanzierung/StatusTab'));
+const PrivatkreditTab = lazy(() => import('./finanzierung/PrivatkreditTab'));
 const AnfrageDetailPage = lazy(() => import('./finanzierung/AnfrageDetailPage'));
 
 const FinanzierungPage = () => {
@@ -24,6 +25,7 @@ const FinanzierungPage = () => {
         <Route path="dokumente" element={<DokumenteTab />} />
         <Route path="anfrage" element={<AnfrageTab />} />
         <Route path="status" element={<StatusTab />} />
+        <Route path="privatkredit" element={<PrivatkreditTab />} />
         
         {/* Detail routes */}
         <Route path="anfrage/:requestId" element={

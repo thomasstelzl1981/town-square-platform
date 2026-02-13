@@ -3682,6 +3682,113 @@ export type Database = {
         }
         Relationships: []
       }
+      consumer_loan_cases: {
+        Row: {
+          consent_credit_check: boolean
+          consent_data_correct: boolean
+          created_at: string
+          employment_status: string
+          id: string
+          provider: string
+          provider_case_ref: string | null
+          requested_amount: number | null
+          requested_term_months: number | null
+          selected_offer_data: Json | null
+          selected_offer_id: string | null
+          source_profile_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consent_credit_check?: boolean
+          consent_data_correct?: boolean
+          created_at?: string
+          employment_status?: string
+          id?: string
+          provider?: string
+          provider_case_ref?: string | null
+          requested_amount?: number | null
+          requested_term_months?: number | null
+          selected_offer_data?: Json | null
+          selected_offer_id?: string | null
+          source_profile_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consent_credit_check?: boolean
+          consent_data_correct?: boolean
+          created_at?: string
+          employment_status?: string
+          id?: string
+          provider?: string
+          provider_case_ref?: string | null
+          requested_amount?: number | null
+          requested_term_months?: number | null
+          selected_offer_data?: Json | null
+          selected_offer_id?: string | null
+          source_profile_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_loan_cases_source_profile_id_fkey"
+            columns: ["source_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_loan_cases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumer_loan_documents: {
+        Row: {
+          case_id: string
+          created_at: string
+          dms_document_id: string | null
+          document_type: string
+          id: string
+          status: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          dms_document_id?: string | null
+          document_type: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          dms_document_id?: string | null
+          document_type?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_loan_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "consumer_loan_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_candidates: {
         Row: {
           company: string | null

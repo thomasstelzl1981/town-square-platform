@@ -307,6 +307,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "dokumente", component: "DokumenteTab", title: "Dokumente" },
         { path: "anfrage", component: "AnfrageTab", title: "Anfrage" },
         { path: "status", component: "StatusTab", title: "Status" },
+        { path: "privatkredit", component: "PrivatkreditTab", title: "Privatkredit" },
       ],
       dynamic_routes: [
         { path: "anfrage/:requestId", component: "AnfrageDetailPage", title: "Anfrage-Details", dynamic: true },
