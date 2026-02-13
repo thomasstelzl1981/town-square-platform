@@ -107,19 +107,15 @@ export function ExposeDragDropUploader() {
       if (uploadError) throw uploadError;
       setProgress(40);
 
-      // 2. Create acq_offer record (mandate_id is required, so we need a fallback)
-      // For manual uploads, we create an offer linked to a placeholder/default mandate or allow null mandate
-      // Since mandate_id is required by the schema, we need to handle this case
-      // Option: Create offer with a special "unassigned" flow - using type assertion to handle the constraint
-      const insertData: Record<string, unknown> = {
-        source_type: 'manual_upload',
-        status: 'new',
-        title: file.name.replace(/\.[^/.]+$/, ''),
-      };
-
+      // 2. Create acq_offer record (mandate_id is now nullable for global pool)
       const { data: offer, error: offerError } = await supabase
         .from('acq_offers')
-        .insert(insertData as any)
+        .insert({
+          source_type: 'manual_upload' as any,
+          status: 'new' as any,
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          received_at: new Date().toISOString(),
+        })
         .select('id')
         .single();
 
