@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "version": "6.2",
+    "focus": "Golden Path Reparaturen (Teil A) + MOD-05 MSV Komplett-Neubau (Teil B)",
+    "created_at": "2026-02-13",
+    "predecessor": "backlog v6.1 (Golden Path Phase 2 — abgeschlossen)",
+    "methodology": "2 Teile: A = 5 Reparatur-Sprints, B = 9 MSV-Sprints. Nach jedem Sprint: Manifest updaten.",
+    "design_manifest": "V4.0 — WIDGET_GRID.FULL, WIDGET_CELL.DIMENSIONS, TYPOGRAPHY.PAGE_TITLE, SPACING.SECTION",
+    "current_phase": "in_progress",
+    "status": "IN_PROGRESS"
+  },
+  "teil_A": {
+    "title": "Reparaturen bestehender Golden Path Implementierung",
+    "beschreibung": "6 identifizierte Probleme aus dem GP-Audit, priorisiert nach P0→P2",
+    "sprints": [
+      {
+        "id": "A-1",
+        "priority": "P0",
+        "process": "GP-PORTFOLIO",
+        "module": "MOD-04",
+        "file": "src/pages/portal/immobilien/PortfolioTab.tsx",
+        "problem": "Demo-Widget hat keinen onClick-Handler. WidgetGrid in contexts.length > 0 Guard gewrappt — Seite leer ohne Kontexte.",
+        "status": "in_progress",
+        "tasks": [
+          "onClick-Handler auf Demo-Widget: setzt selectedDemoId State",
+          "WidgetGrid Guard entfernen — IMMER rendern (auch ohne Kontexte)",
+          "Inline-Detail unter Grid mit Demo-KPIs anzeigen",
+          "Schließen-Button im Inline-Detail"
+        ]
+      },
+      {
+        "id": "A-2",
+        "priority": "P1",
+        "process": "GP-SANIERUNG",
+        "module": "MOD-04",
+        "file": "src/pages/portal/immobilien/SanierungTab.tsx",
+        "problem": "Demo-Inline-Detail zeigt nur einfache Liste. Vollständige Sanierungsakte-Struktur fehlt (LV-Generator, Dienstleister, Stepper).",
+        "status": "todo",
+        "tasks": [
+          "Demo-Inline-Detail mit 2-Spalten FORM_GRID ersetzen",
+          "Links: Leistungsumfang (5 Positionen + Budget)",
+          "Rechts: Dienstleister (2 Angebote + Status)",
+          "Stepper-Badges: Scope → Suche → Ausschreibung → Angebote → Vergabe"
+        ]
+      },
+      {
+        "id": "A-3",
+        "priority": "P1",
+        "process": "GP-FAHRZEUG",
+        "module": "MOD-17",
+        "file": "src/components/portal/cars/CarsFahrzeuge.tsx",
+        "problem": "Kein dediziertes Demo-Widget an Position 0 — nur Array-Fallback.",
+        "status": "todo",
+        "tasks": [
+          "Dediziertes Demo-WidgetCell 'BMW M4 Competition' an Position 0",
+          "onClick öffnet Inline-Detail",
+          "useDemoToggles-Integration"
+        ]
+      },
+      {
+        "id": "A-4",
+        "priority": "P2",
+        "process": "GP-SIMULATION",
+        "module": "MOD-08",
+        "file": "src/pages/portal/investments/SimulationTab.tsx",
+        "problem": "Demo-Widget existiert ohne Click-Handler. Kein CTA-Widget.",
+        "status": "todo",
+        "tasks": [
+          "onClick-Handler hinzufügen",
+          "CTA-Widget 'Neue Simulation' als letztes Widget",
+          "Inline-Flow unter Grid mit Demo-Projektionsdaten"
+        ]
+      },
+      {
+        "id": "A-5",
+        "priority": "P2",
+        "process": "GP-PROJEKT",
+        "module": "MOD-13",
+        "file": "src/pages/portal/projekte/ProjekteDashboard.tsx",
+        "problem": "Demo als Array-Fallback statt eigenständiges Widget an Position 0.",
+        "status": "todo",
+        "tasks": [
+          "Separates Demo-WidgetCell an Position 0",
+          "Echte Projekte als separate Widgets danach",
+          "Inline-Flow für Demo-Projekt unter Grid"
+        ]
+      }
+    ]
+  },
+  "teil_B": {
+    "title": "MOD-05 Mietsonderverwaltung (MSV) — Komplett-Neubau",
+    "beschreibung": "MSV als sichtbarer, linearer Kontroll-Flow auf /portal/msv mit Mietkontrolle, Mahnung, BWA/Buchwert. Eine Seite, scrollbar.",
+    "design_regeln": {
+      "sichtbarkeit": "Jede Kachel IMMER gerendert. Leere Zustände mit Struktur + CTA. Premium = Lock-UI, nicht versteckt.",
+      "inline_flow": "Route /portal/msv — keine Modals, keine neuen Routen. Linear scrollbar.",
+      "ssot": "MOD-04 ist SSOT für Objekt/Unit/Lease/Mieter. MSV speichert nur modul-spezifische Records."
+    },
+    "sprints": [
+      {
+        "id": "B-1",
+        "title": "DB-Migration",
+        "status": "todo",
+        "tables": [
+          "msv_rent_payments (Mietzahlungen + Mahnstufen)",
+          "msv_action_notes (Lease-Notizen)",
+          "msv_book_values (Buchwert/AfA-Tabelle)",
+          "msv_bwa_entries (BWA-Buchungen SKR04)"
+        ],
+        "columns_existing": [
+          "leases.last_rent_increase_at (Date, nullable)",
+          "leases.rent_increase_cycle_months (int, default 36)"
+        ]
+      },
+      {
+        "id": "B-2",
+        "title": "MSV Hauptseite (MSVDashboard.tsx)",
+        "file": "src/pages/portal/msv/MSVDashboard.tsx",
+        "status": "todo",
+        "layout": "ModulePageHeader → WidgetGrid (Objekt-Widgets) → Kachel 1 → Kachel 2 → Kachel 3"
+      },
+      {
+        "id": "B-3",
+        "title": "Kachel 1: Mietliste",
+        "files": [
+          "src/components/msv/MietlisteTable.tsx",
+          "src/components/msv/MietlisteExpandPanel.tsx"
+        ],
+        "status": "todo",
+        "spalten": 14,
+        "features": ["Sticky linke Spalten", "Expand-Panel pro Zeile", "Monatsliste ab 01.01 Vorjahr", "Premium-Lock-Banner"]
+      },
+      {
+        "id": "B-4",
+        "title": "Kachel 2: Aufgaben (Mahnen + Mieterhöhung)",
+        "files": [
+          "src/components/msv/AufgabenSection.tsx",
+          "src/components/msv/DunningCards.tsx",
+          "src/components/msv/RentIncreaseCards.tsx"
+        ],
+        "status": "todo",
+        "features": ["Mahnstufen 0-3", "Konfigurierbare Fälligkeit/Grace", "36-Monats-Mieterhöhung", "Draft-Erzeugung MOD-02"]
+      },
+      {
+        "id": "B-5",
+        "title": "Kachel 3: BWA/Buchwert",
+        "files": [
+          "src/components/msv/BWAControllingSection.tsx",
+          "src/components/msv/BookValueTable.tsx",
+          "src/components/msv/BWASchemaTable.tsx"
+        ],
+        "status": "todo",
+        "features": ["14-Spalten Immobilienliste", "Inline-editierbar", "AfA-Recalc", "KI-Schätzung + Bestätigung", "BWA-Schema SKR04"]
+      },
+      {
+        "id": "B-6",
+        "title": "SKR04 Kontenplan SSOT",
+        "file": "src/manifests/bwaKontenplan.ts",
+        "status": "todo"
+      },
+      {
+        "id": "B-7",
+        "title": "Premium-Gating UI",
+        "file": "src/components/msv/PremiumLockBanner.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "B-8",
+        "title": "Routing + Manifests",
+        "files": [
+          "src/pages/portal/MSVPage.tsx",
+          "src/manifests/goldenPathProcesses.ts"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "B-9",
+        "title": "Demo-Widget MSV",
+        "status": "todo",
+        "demo": "MFH Düsseldorf an Position 0, Ampel gelb, useDemoToggles"
+      }
+    ]
+  },
+  "zusammenfassung": {
+    "teil_A_sprints": 5,
+    "teil_B_sprints": 9,
+    "neue_dateien": 12,
+    "editierte_dateien": 8,
+    "db_migrationen": 1
+  }
+}

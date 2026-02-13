@@ -655,6 +655,8 @@ export function PortfolioTab() {
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
+  const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null);
+
   if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -666,48 +668,52 @@ export function PortfolioTab() {
   return (
     <PageShell>
       <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung Ihrer Immobilien und Einheiten" />
-      {/* Portfolio Context Widgets — WidgetGrid */}
-      {contexts.length > 0 && (
-        <div className="space-y-4">
-          <WidgetGrid variant="widget">
-            {/* Demo Widget */}
-            {demoEnabled && (
-              <WidgetCell>
-                <button className={cn(
+      {/* Portfolio Context Widgets — WidgetGrid (IMMER sichtbar) */}
+      <div className="space-y-4">
+        <WidgetGrid variant="widget">
+          {/* Demo Widget — Position 0, IMMER klickbar */}
+          {demoEnabled && (
+            <WidgetCell>
+              <button
+                onClick={() => setSelectedDemoId(selectedDemoId === '__demo__' ? null : '__demo__')}
+                className={cn(
                   "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
                   DESIGN.CARD.BASE,
-                  "border-primary/20 hover:border-primary/40"
-                )}>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <span className="font-semibold text-sm">Vermietereinheit Berlin</span>
-                    </div>
+                  selectedDemoId === '__demo__'
+                    ? "ring-2 ring-primary border-primary shadow-sm"
+                    : "border-primary/20 hover:border-primary/40"
+                )}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
                   </div>
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Einheiten</span>
-                      <span className="text-sm font-semibold">3</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
-                      <span className="text-sm font-semibold">{formatCurrency(850000)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Restschuld</span>
-                      <span className="text-sm font-semibold">{formatCurrency(520000)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Nettovermögen</span>
-                      <span className="text-sm font-semibold text-primary">{formatCurrency(330000)}</span>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Vermietereinheit Berlin</span>
                   </div>
-                </button>
-              </WidgetCell>
-            )}
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className={DESIGN.TYPOGRAPHY.LABEL}>Einheiten</span>
+                    <span className="text-sm font-semibold">3</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
+                    <span className="text-sm font-semibold">{formatCurrency(850000)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={DESIGN.TYPOGRAPHY.LABEL}>Restschuld</span>
+                    <span className="text-sm font-semibold">{formatCurrency(520000)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={DESIGN.TYPOGRAPHY.LABEL}>Nettovermögen</span>
+                    <span className="text-sm font-semibold text-primary">{formatCurrency(330000)}</span>
+                  </div>
+                </div>
+              </button>
+            </WidgetCell>
+          )}
             {/* Widget 1: Alle Immobilien */}
             <WidgetCell>
               <button
@@ -817,6 +823,56 @@ export function PortfolioTab() {
             </WidgetCell>
           </WidgetGrid>
         </div>
+
+      {/* Demo Inline-Detail */}
+      {selectedDemoId === '__demo__' && (
+        <Card className={DESIGN.CARD.CONTENT}>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold tracking-tight">Demo: Vermietereinheit Berlin</h2>
+                <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Beispiel-Portfolio mit 3 Einheiten — Alle Daten sind Demo-Daten
+              </p>
+            </div>
+            <button onClick={() => setSelectedDemoId(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+          </div>
+          <div className={DESIGN.KPI_GRID.FULL}>
+            <StatCard title="Einheiten" value="3" icon={Building2} />
+            <StatCard title="Verkehrswert" value={formatCurrency(850000)} icon={TrendingUp} />
+            <StatCard title="Restschuld" value={formatCurrency(520000)} icon={Wallet} />
+            <StatCard title="Nettovermögen" value={formatCurrency(330000)} icon={PiggyBank} />
+          </div>
+          <div className="mt-4 space-y-2">
+            <h3 className="text-sm font-semibold">Einheiten-Übersicht</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Einheit</TableHead>
+                  <TableHead>Typ</TableHead>
+                  <TableHead>Fläche</TableHead>
+                  <TableHead className="text-right">Miete p.a.</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { nr: 'WE-01', typ: 'Wohnung', area: '72 m²', rent: '9.600 €' },
+                  { nr: 'WE-02', typ: 'Wohnung', area: '85 m²', rent: '12.000 €' },
+                  { nr: 'WE-03', typ: 'Gewerbe', area: '45 m²', rent: '12.000 €' },
+                ].map(u => (
+                  <TableRow key={u.nr}>
+                    <TableCell className="font-medium">{u.nr}</TableCell>
+                    <TableCell><Badge variant="outline">{u.typ}</Badge></TableCell>
+                    <TableCell>{u.area}</TableCell>
+                    <TableCell className="text-right font-semibold">{u.rent}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       )}
 
       {/* CreateContextDialog */}
