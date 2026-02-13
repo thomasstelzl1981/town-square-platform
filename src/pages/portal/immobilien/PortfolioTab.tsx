@@ -6,6 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
@@ -604,6 +607,40 @@ export function PortfolioTab() {
     return [...new Set(unitsWithProperties?.map(u => u.property_id) || [])].length;
   }, [unitsWithProperties]);
 
+  // Per-context KPI aggregation for widget cards
+  const contextKpis = useMemo(() => {
+    if (!unitsWithProperties) return new Map<string, { propertyCount: number; totalValue: number; avgYield: number }>();
+    
+    const kpis = new Map<string, { propertyCount: number; totalValue: number; avgYield: number }>();
+    
+    contexts.forEach(ctx => {
+      const assignedPropertyIds = contextAssignments
+        .filter(a => a.context_id === ctx.id)
+        .map(a => a.property_id);
+      
+      let ctxUnits: UnitWithProperty[];
+      if (assignedPropertyIds.length === 0 && ctx.is_default) {
+        const allAssignedIds = contextAssignments.map(a => a.property_id);
+        ctxUnits = unitsWithProperties.filter(u => !allAssignedIds.includes(u.property_id));
+      } else {
+        ctxUnits = unitsWithProperties.filter(u => assignedPropertyIds.includes(u.property_id));
+      }
+      
+      const uniqueProps = [...new Set(ctxUnits.map(u => u.property_id))];
+      const propValues = new Map<string, number>();
+      ctxUnits.forEach(u => {
+        if (u.market_value && !propValues.has(u.property_id)) propValues.set(u.property_id, u.market_value);
+      });
+      const totalValue = Array.from(propValues.values()).reduce((a, b) => a + b, 0);
+      const totalIncome = ctxUnits.reduce((sum, u) => sum + (u.annual_net_cold_rent || 0), 0);
+      const avgYield = totalValue > 0 ? (totalIncome / totalValue) * 100 : 0;
+      
+      kpis.set(ctx.id, { propertyCount: uniqueProps.length, totalValue, avgYield });
+    });
+    
+    return kpis;
+  }, [unitsWithProperties, contexts, contextAssignments]);
+
   const selectedContext = contexts.find(c => c.id === selectedContextId);
 
   const handleContextSelect = useCallback((contextId: string | null) => {
@@ -627,76 +664,109 @@ export function PortfolioTab() {
   return (
     <PageShell>
       <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung Ihrer Immobilien und Einheiten" />
-      {/* NEW: Context Selection Cards */}
+      {/* Portfolio Context Widgets — WidgetGrid */}
       {contexts.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Wählen Sie Ihre Vermietereinheit</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-            {/* "Alle" Card */}
-            <button
-              onClick={() => handleContextSelect(null)}
-              className={cn(
-                "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
-                !selectedContextId 
-                  ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm" 
-                  : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Alle</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {totalPropertyCount} Objekt{totalPropertyCount !== 1 ? 'e' : ''}
-              </span>
-            </button>
+        <div className="space-y-4">
+          <WidgetGrid variant="widget">
+            {/* Widget 1: Alle Immobilien */}
+            <WidgetCell>
+              <button
+                onClick={() => handleContextSelect(null)}
+                className={cn(
+                  "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                  DESIGN.CARD.BASE,
+                  !selectedContextId 
+                    ? "ring-2 ring-primary border-primary shadow-sm" 
+                    : "hover:border-primary/50 hover:shadow-md"
+                )}
+              >
+                <div>
+                  <WidgetHeader icon={Building2} title="Alle Immobilien" />
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Objekte</span>
+                      <span className="text-sm font-semibold">{totalPropertyCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
+                      <span className="text-sm font-semibold">
+                        {totals?.totalValue ? formatCurrency(totals.totalValue) : '–'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Ø Rendite</span>
+                      <span className="text-sm font-semibold">
+                        {totals?.avgYield ? `${totals.avgYield.toFixed(1)}%` : '–'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="outline" className="w-fit text-xs mt-3">Gesamtportfolio</Badge>
+              </button>
+            </WidgetCell>
 
-            {/* Context Cards */}
+            {/* Dynamic Context Widgets */}
             {contexts.map(ctx => {
-              const count = propertyCountByContext[ctx.id] || 0;
+              const kpi = contextKpis.get(ctx.id);
               const isActive = selectedContextId === ctx.id;
               return (
-                <button
-                  key={ctx.id}
-                  onClick={() => handleContextSelect(ctx.id)}
-                  className={cn(
-                    "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
-                    isActive 
-                      ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm" 
-                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
-                  )}
-                >
-                  <span className="font-medium truncate max-w-[140px]">{ctx.name}</span>
-                  <Badge 
-                    variant={ctx.context_type === 'PRIVATE' ? 'secondary' : 'default'} 
-                    className="w-fit text-xs"
+                <WidgetCell key={ctx.id}>
+                  <button
+                    onClick={() => handleContextSelect(ctx.id)}
+                    className={cn(
+                      "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                      DESIGN.CARD.BASE,
+                      isActive 
+                        ? "ring-2 ring-primary border-primary shadow-sm" 
+                        : "hover:border-primary/50 hover:shadow-md"
+                    )}
                   >
-                    {ctx.context_type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {count} Objekt{count !== 1 ? 'e' : ''}
-                  </span>
-                </button>
+                    <div>
+                      <WidgetHeader 
+                        icon={ctx.context_type === 'PRIVATE' ? Building2 : Building2} 
+                        title={ctx.name} 
+                      />
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className={DESIGN.TYPOGRAPHY.LABEL}>Objekte</span>
+                          <span className="text-sm font-semibold">{kpi?.propertyCount || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
+                          <span className="text-sm font-semibold">
+                            {kpi?.totalValue ? formatCurrency(kpi.totalValue) : '–'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={DESIGN.TYPOGRAPHY.LABEL}>Ø Rendite</span>
+                          <span className="text-sm font-semibold">
+                            {kpi?.avgYield ? `${kpi.avgYield.toFixed(1)}%` : '–'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant={ctx.context_type === 'PRIVATE' ? 'secondary' : 'default'} 
+                      className="w-fit text-xs mt-3"
+                    >
+                      {ctx.context_type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
+                    </Badge>
+                  </button>
+                </WidgetCell>
               );
             })}
-            {/* Verwalten Button */}
-            <button
+          </WidgetGrid>
+
+          {/* Action buttons below grid */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowContextManager(!showContextManager)}
-              className={cn(
-                "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
-                showContextManager
-                  ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm"
-                  : "border-dashed border-border bg-card hover:border-primary/50 hover:bg-muted/30"
-              )}
             >
-              <div className="flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Verwalten</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Einheiten bearbeiten
-              </span>
-            </button>
+              <Settings2 className="h-4 w-4 mr-1.5" />
+              Verwalten
+            </Button>
           </div>
 
           {/* Collapsible Context Manager Panel */}
