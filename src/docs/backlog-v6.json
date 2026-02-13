@@ -1,0 +1,574 @@
+{
+  "meta": {
+    "version": "6.0",
+    "focus": "MOD-21 Website Builder — Credits-basiert, Armstrong-gesteuert, 5 Design-Templates",
+    "created_at": "2026-02-13",
+    "updated_at": "2026-02-13T21:00:00Z",
+    "predecessor": "backlog v5.0 (Audit & Sync — abgeschlossen)",
+    "methodology": "2 Phasen. Phase 1: Fundament + KI-Generierung. Phase 2: Armstrong-Actions + Editor-Vollausbau + Audit-UI. Nach jedem Sprint: backlog lesen, aktualisieren, naechsten Sprint starten.",
+    "billing_model": "Credits (Pay-Per-Use via Armstrong-Actions). Kein Stripe. Payment-Modul kommt spaeter.",
+    "stripe_integration": "ENTFERNT — wird durch zentrales Payment-Modul ersetzt",
+    "current_sprint": "P1-S1",
+    "status": "IN_PROGRESS"
+  },
+  "ist_stand": {
+    "summary": "DB-Schema (5 Tabellen + RLS + Realtime) vorhanden. 8 Shared-Renderer fertig. 4 Edge Functions Code vorhanden aber NICHT deployt (fehlen in config.toml). Zone 2 UI (5 Tiles + Editor) grundlegend vorhanden. Zone 3 Renderer fertig. Editor hat nur 4/8 Section-Typen editierbar. Kein DnD. Stripe-Webhook vorhanden (muss geloescht werden). Kein Design-Template-System. Keine Armstrong-Actions fuer MOD-21.",
+    "fertig": [
+      "DB: tenant_websites, website_pages, website_sections, website_versions, hosting_contracts (mit RLS + Realtime)",
+      "Shared Renderer: SectionHero, SectionFeatures, SectionAbout, SectionServices, SectionTestimonials, SectionGallery, SectionContact, SectionFooter",
+      "Types: types.ts mit SectionType, WebsiteSection, WebsiteBranding, WebsiteSnapshot",
+      "SectionRenderer.tsx: Maps section_type zu Komponenten",
+      "Zone 2: WBWebsites (Dashboard + Create), WBEditor (Split-Pane), WBDesign (Stub), WBSeo (Stub), WBVertrag (Status-Anzeige)",
+      "Zone 3: TenantSiteRenderer (laedt Snapshot, rendert Sections)",
+      "Hooks: useWebsites, useWebsite, useWebsitePage, useSections (CRUD), useHostingContract",
+      "Routing: WebsiteBuilderPage.tsx mit 5 Routes, ManifestRouter Integration",
+      "Edge Function Code: sot-website-ai-generate, sot-website-publish, sot-website-lead-capture, sot-website-hosting-webhook"
+    ],
+    "kritische_luecken": [
+      "Edge Functions NICHT in config.toml — werden nicht deployt, KI + Publish funktionieren nicht",
+      "Editor: Features/Services/Testimonials/Gallery haben nur Title-Feld + 'Phase 2' Hinweis",
+      "Editor: Kein @dnd-kit DnD fuer Section-Reihenfolge (GripVertical-Icon ist da, aber nicht funktional)",
+      "Editor: window.location.reload() nach KI-Generierung statt Query-Invalidierung",
+      "sot-website-hosting-webhook: Stripe-basiert — muss geloescht werden",
+      "hosting_contracts: Hat stripe_subscription_id/stripe_customer_id — muessen entfernt werden",
+      "ContractBanner: Zeigt 'Kostenpflichtig abonnieren' (Stripe) — muss auf Credits umgestellt werden",
+      "Kein Design-Template-System (nur ein Standard-Look)",
+      "Keine Armstrong-Actions fuer MOD-21 in armstrongManifest.ts",
+      "Keine Versionshistorie-UI (website_versions existieren in DB, aber keine Anzeige)",
+      "WBDesign.tsx: Stub ('Phase 2')",
+      "WBSeo.tsx: Stub ('Phase 2')"
+    ]
+  },
+  "dateien_inventar": {
+    "zone2_tiles": [
+      "src/pages/portal/website-builder/WBWebsites.tsx",
+      "src/pages/portal/website-builder/WBEditor.tsx",
+      "src/pages/portal/website-builder/WBDesign.tsx",
+      "src/pages/portal/website-builder/WBSeo.tsx",
+      "src/pages/portal/website-builder/WBVertrag.tsx"
+    ],
+    "zone2_routing": [
+      "src/pages/portal/WebsiteBuilderPage.tsx"
+    ],
+    "shared_renderer": [
+      "src/shared/website-renderer/types.ts",
+      "src/shared/website-renderer/SectionRenderer.tsx",
+      "src/shared/website-renderer/SectionHero.tsx",
+      "src/shared/website-renderer/SectionFeatures.tsx",
+      "src/shared/website-renderer/SectionAbout.tsx",
+      "src/shared/website-renderer/SectionServices.tsx",
+      "src/shared/website-renderer/SectionTestimonials.tsx",
+      "src/shared/website-renderer/SectionGallery.tsx",
+      "src/shared/website-renderer/SectionContact.tsx",
+      "src/shared/website-renderer/SectionFooter.tsx",
+      "src/shared/website-renderer/index.ts"
+    ],
+    "zone3": [
+      "src/pages/website/TenantSiteRenderer.tsx"
+    ],
+    "hooks": [
+      "src/hooks/useWebsites.ts",
+      "src/hooks/useSections.ts",
+      "src/hooks/useHostingContract.ts"
+    ],
+    "edge_functions": [
+      "supabase/functions/sot-website-ai-generate/index.ts",
+      "supabase/functions/sot-website-publish/index.ts",
+      "supabase/functions/sot-website-lead-capture/index.ts",
+      "supabase/functions/sot-website-hosting-webhook/index.ts (ZU LOESCHEN)"
+    ],
+    "zu_erstellen": [
+      "src/shared/website-renderer/designTemplates.ts",
+      "supabase/functions/sot-website-update-section/index.ts"
+    ]
+  },
+  "phase_1": {
+    "title": "Fundament — Edge Functions deployen, Stripe entfernen, Design-Templates, Editor-Felder",
+    "ziel": "Website Builder ist Ende-zu-Ende funktional: Erstellen → KI generieren → Bearbeiten → Veroeffentlichen. Kein Stripe, 5 Design-Templates, alle 8 Section-Typen editierbar.",
+    "sprints": [
+      {
+        "id": "P1-S1",
+        "name": "Edge Functions + Stripe-Bereinigung",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P1-S1-01",
+            "title": "Edge Functions deployen",
+            "type": "deploy",
+            "status": "todo",
+            "detail": "supabase deploy fuer: sot-website-ai-generate, sot-website-publish, sot-website-lead-capture. Diese 3 Functions muessen aufrufbar sein.",
+            "files": []
+          },
+          {
+            "id": "P1-S1-02",
+            "title": "sot-website-hosting-webhook loeschen",
+            "type": "delete",
+            "status": "todo",
+            "detail": "Stripe-Webhook Edge Function komplett entfernen. Ordner supabase/functions/sot-website-hosting-webhook/ loeschen + deployed Function entfernen.",
+            "files": ["supabase/functions/sot-website-hosting-webhook/index.ts"]
+          },
+          {
+            "id": "P1-S1-03",
+            "title": "DB Migration: hosting_contracts Stripe-Felder entfernen",
+            "type": "db_migration",
+            "status": "todo",
+            "detail": "ALTER TABLE hosting_contracts DROP COLUMN IF EXISTS stripe_subscription_id, DROP COLUMN IF EXISTS stripe_customer_id; ADD COLUMN credits_charged integer DEFAULT 0;",
+            "sql": "ALTER TABLE public.hosting_contracts DROP COLUMN IF EXISTS stripe_subscription_id;\nALTER TABLE public.hosting_contracts DROP COLUMN IF EXISTS stripe_customer_id;\nALTER TABLE public.hosting_contracts ADD COLUMN IF NOT EXISTS credits_charged integer DEFAULT 0;"
+          },
+          {
+            "id": "P1-S1-04",
+            "title": "sot-website-publish: Stripe-Check durch Vertrags-Check ersetzen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Publish soll pruefen: hosting_contracts.status = 'active' UND content_responsibility_confirmed = true. Kein Stripe mehr. Falls kein Vertrag: einfach Vertragsbedingungen-Akzeptierung fordern.",
+            "files": ["supabase/functions/sot-website-publish/index.ts"]
+          },
+          {
+            "id": "P1-S1-05",
+            "title": "ContractBanner: Stripe entfernen, Credits-Text",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "In WBEditor.tsx den ContractBanner aendern: 'Kostenpflichtig abonnieren' → 'Hosting aktivieren'. Preis-Hinweis: 'Credits werden beim Veroeffentlichen abgebucht'. Kein Stripe-Checkout.",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          }
+        ]
+      },
+      {
+        "id": "P1-S2",
+        "name": "Design-Templates + KI-Generierung Fix",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P1-S2-01",
+            "title": "designTemplates.ts erstellen (5 Templates)",
+            "type": "new_file",
+            "status": "todo",
+            "detail": "Neues File src/shared/website-renderer/designTemplates.ts mit 5 Design-Presets: Modern (blau, Inter), Klassisch (dunkelblau, Serif), Minimalistisch (schwarz, System), Elegant (bronze, Playfair), Frisch (gruen, Poppins). Jedes Template hat: id, name, description, preview_gradient, branding (primary_color, font), section_defaults.",
+            "files": ["src/shared/website-renderer/designTemplates.ts"]
+          },
+          {
+            "id": "P1-S2-02",
+            "title": "WBWebsites.tsx: Template-Picker beim Erstellen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Im Erstellen-Formular einen Template-Picker als 5 Karten hinzufuegen (Gradient-Vorschau + Name). Auswahl wird als template_id im State gespeichert. Bei Website-Erstellung: branding_json aus Template setzen.",
+            "files": ["src/pages/portal/website-builder/WBWebsites.tsx"]
+          },
+          {
+            "id": "P1-S2-03",
+            "title": "sot-website-ai-generate: Template-Parameter + Query-Invalidierung",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Edge Function erhaelt template_id als Parameter. Prompt wird um Template-Tonalitaet erweitert (z.B. 'Stil: Modern, clean, professionell' vs 'Stil: Elegant, luxurioes, warm'). design_json pro Section wird aus Template-Defaults befuellt.",
+            "files": ["supabase/functions/sot-website-ai-generate/index.ts"]
+          },
+          {
+            "id": "P1-S2-04",
+            "title": "WBEditor: window.location.reload() durch queryClient.invalidateQueries ersetzen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "In handleAiGenerate: nach Erfolg queryClient.invalidateQueries aufrufen statt reload(). Import useQueryClient hinzufuegen.",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          }
+        ]
+      },
+      {
+        "id": "P1-S3",
+        "name": "Editor-Felder vervollstaendigen + DnD",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P1-S3-01",
+            "title": "renderContentFields: Features Items-Array editierbar",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Im WBEditor.tsx die renderContentFields-Funktion erweitern: case 'features' bekommt Items-Array-Editor (Icon, Title, Description pro Item). Buttons: Item hinzufuegen, Item entfernen. Items werden als content_json.items Array gespeichert.",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          },
+          {
+            "id": "P1-S3-02",
+            "title": "renderContentFields: Services Items-Array editierbar",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "case 'services' bekommt gleiche Items-Array-Logik wie features (Icon, Title, Description).",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          },
+          {
+            "id": "P1-S3-03",
+            "title": "renderContentFields: Testimonials Items-Array editierbar",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "case 'testimonials' bekommt Items-Array-Editor (Name, Zitat, Rolle pro Item).",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          },
+          {
+            "id": "P1-S3-04",
+            "title": "renderContentFields: Gallery Bilder-Array editierbar",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "case 'gallery' bekommt Bilder-URL-Array-Editor (URL pro Bild). Buttons: Bild hinzufuegen, Bild entfernen.",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          },
+          {
+            "id": "P1-S3-05",
+            "title": "@dnd-kit Integration fuer Section-Reihenfolge",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "In WBEditor.tsx: DndContext + SortableContext um den Section-Stack. Jede SectionEditorCard wird zu einem SortableItem. onDragEnd aktualisiert sort_order in DB via updateSection. @dnd-kit/core und @dnd-kit/sortable sind bereits installiert.",
+            "files": ["src/pages/portal/website-builder/WBEditor.tsx"]
+          }
+        ]
+      },
+      {
+        "id": "P1-S4",
+        "name": "WBDesign + WBSeo + WBVertrag Ausbau",
+        "priority": "P1",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P1-S4-01",
+            "title": "WBDesign.tsx: Template-Wechsel + Branding-Editor",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Stub ersetzen durch: Template-Wechsel (5 Karten wie beim Erstellen, wechselt branding_json), manuelle Branding-Felder (Primaerfarbe via ColorPicker-Input, Font-Auswahl, Logo-URL). Aenderungen speichern in tenant_websites.branding_json.",
+            "files": ["src/pages/portal/website-builder/WBDesign.tsx"]
+          },
+          {
+            "id": "P1-S4-02",
+            "title": "WBSeo.tsx: Meta-Daten Editor",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Stub ersetzen durch: SEO-Felder (Title, Description, OG-Image-URL). Speichert in tenant_websites.seo_json. Zeichenzaehler fuer Title (<60) und Description (<160).",
+            "files": ["src/pages/portal/website-builder/WBSeo.tsx"]
+          },
+          {
+            "id": "P1-S4-03",
+            "title": "WBVertrag.tsx: Credits-Anzeige statt Stripe",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Vertragskarte aktualisieren: Stripe-Felder entfernen, credits_charged anzeigen. Status-Text anpassen: 'active' = 'Aktiv (Credits-basiert)'. Vertragsabschluss-Flow: Nutzungsbedingungen akzeptieren → Status auf 'active' setzen.",
+            "files": ["src/pages/portal/website-builder/WBVertrag.tsx"]
+          }
+        ]
+      },
+      {
+        "id": "P1-S5",
+        "name": "Funktionstest Phase 1",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P1-S5-01",
+            "title": "E2E Test: Website erstellen + KI generieren",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) /portal/website-builder aufrufen. 2) 'Neue Website' klicken. 3) Template waehlen + Daten eingeben. 4) Im Editor 'KI generieren' klicken. 5) Pruefen: 6 Sections erscheinen in Editor + Preview."
+          },
+          {
+            "id": "P1-S5-02",
+            "title": "E2E Test: Sections bearbeiten + DnD",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) Section aufklappen. 2) Texte aendern → Live-Preview aktualisiert. 3) Section per DnD verschieben → sort_order aendert sich."
+          },
+          {
+            "id": "P1-S5-03",
+            "title": "E2E Test: Publish Flow",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) 'Veroeffentlichen' klicken ohne Vertrag → ContractBanner erscheint. 2) Bedingungen akzeptieren → Vertrag wird erstellt. 3) Erneut 'Veroeffentlichen' → Snapshot wird erstellt. 4) Zone 3 URL aufrufen → Website ist sichtbar."
+          }
+        ]
+      }
+    ]
+  },
+  "phase_2": {
+    "title": "Armstrong-Integration + Versionshistorie + Zone 1 Admin",
+    "ziel": "Website Builder wird primaer ueber Armstrong-Chat bedient. 7 Armstrong-Actions registriert und funktional. Versionshistorie mit Rollback. Zone 1 Admin-Dashboard.",
+    "sprints": [
+      {
+        "id": "P2-S1",
+        "name": "Armstrong-Actions Manifest + Edge Function",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P2-S1-01",
+            "title": "7 Armstrong-Actions in armstrongManifest.ts eintragen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "7 neue Actions im V2-Schema eintragen: ARM.MOD21.GENERATE_WEBSITE (5 Credits, execute_with_confirmation), ARM.MOD21.UPDATE_SECTION (1 Credit, execute), ARM.MOD21.ADD_SECTION (1 Credit, execute), ARM.MOD21.REMOVE_SECTION (free, execute_with_confirmation), ARM.MOD21.CHANGE_TEMPLATE (free, execute), ARM.MOD21.PUBLISH (10 Credits, execute_with_confirmation), ARM.MOD21.PREVIEW (free, readonly). Alle mit module: 'MOD-21', zones: ['Z2'].",
+            "files": ["src/manifests/armstrongManifest.ts"],
+            "armstrong_actions": [
+              {
+                "action_code": "ARM.MOD21.GENERATE_WEBSITE",
+                "title_de": "Website generieren",
+                "description_de": "Erstellt eine komplette Website-Struktur mit KI-generierten Texten basierend auf Firmenprofil und Design-Template",
+                "execution_mode": "execute_with_confirmation",
+                "risk_level": "medium",
+                "cost_model": "metered",
+                "cost_unit": "per_call",
+                "cost_hint_cents": 250,
+                "data_scopes_write": ["tenant_websites", "website_pages", "website_sections"],
+                "side_effects": ["external_api_call", "credits_consumed"],
+                "api_contract_endpoint": "sot-website-ai-generate"
+              },
+              {
+                "action_code": "ARM.MOD21.UPDATE_SECTION",
+                "title_de": "Section-Inhalt aendern",
+                "description_de": "Aendert den Inhalt einer Website-Section per KI basierend auf Freitext-Anweisung",
+                "execution_mode": "execute",
+                "risk_level": "low",
+                "cost_model": "metered",
+                "cost_unit": "per_call",
+                "cost_hint_cents": 50,
+                "data_scopes_write": ["website_sections"],
+                "side_effects": ["external_api_call", "credits_consumed"],
+                "api_contract_endpoint": "sot-website-update-section"
+              },
+              {
+                "action_code": "ARM.MOD21.ADD_SECTION",
+                "title_de": "Section hinzufuegen",
+                "description_de": "Fuegt eine neue Section zur Website hinzu mit KI-generierten Inhalten",
+                "execution_mode": "execute",
+                "risk_level": "low",
+                "cost_model": "metered",
+                "cost_unit": "per_call",
+                "cost_hint_cents": 50,
+                "data_scopes_write": ["website_sections"],
+                "side_effects": ["external_api_call", "credits_consumed"],
+                "api_contract_endpoint": "sot-website-update-section"
+              },
+              {
+                "action_code": "ARM.MOD21.REMOVE_SECTION",
+                "title_de": "Section entfernen",
+                "description_de": "Entfernt eine Section von der Website",
+                "execution_mode": "execute_with_confirmation",
+                "risk_level": "low",
+                "cost_model": "free",
+                "data_scopes_write": ["website_sections"],
+                "side_effects": [],
+                "api_contract_endpoint": null
+              },
+              {
+                "action_code": "ARM.MOD21.CHANGE_TEMPLATE",
+                "title_de": "Design-Template wechseln",
+                "description_de": "Wechselt das Design-Template der Website (Farben, Schriftart, Layout-Stil)",
+                "execution_mode": "execute",
+                "risk_level": "low",
+                "cost_model": "free",
+                "data_scopes_write": ["tenant_websites"],
+                "side_effects": [],
+                "api_contract_endpoint": null
+              },
+              {
+                "action_code": "ARM.MOD21.PUBLISH",
+                "title_de": "Website veroeffentlichen",
+                "description_de": "Erstellt einen Publish-Snapshot und macht die Website oeffentlich erreichbar",
+                "execution_mode": "execute_with_confirmation",
+                "risk_level": "medium",
+                "cost_model": "metered",
+                "cost_unit": "per_call",
+                "cost_hint_cents": 500,
+                "data_scopes_write": ["website_versions", "tenant_websites"],
+                "side_effects": ["credits_consumed", "public_exposure"],
+                "api_contract_endpoint": "sot-website-publish"
+              },
+              {
+                "action_code": "ARM.MOD21.PREVIEW",
+                "title_de": "Website-Vorschau",
+                "description_de": "Zeigt eine Vorschau der aktuellen Website-Entwurfsversion",
+                "execution_mode": "readonly",
+                "risk_level": "low",
+                "cost_model": "free",
+                "data_scopes_write": [],
+                "side_effects": [],
+                "api_contract_endpoint": null
+              }
+            ]
+          },
+          {
+            "id": "P2-S1-02",
+            "title": "Edge Function sot-website-update-section erstellen",
+            "type": "new_file",
+            "status": "todo",
+            "detail": "Neue Edge Function die per KI eine Section aktualisiert. Input: { website_id, section_id?, section_type?, instruction (Freitext) }. KI interpretiert die Anweisung und generiert neues content_json. Speichert direkt in website_sections.",
+            "files": ["supabase/functions/sot-website-update-section/index.ts"]
+          },
+          {
+            "id": "P2-S1-03",
+            "title": "Armstrong TOP_30 um MOD-21 Actions erweitern",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "ARM.MOD21.GENERATE_WEBSITE und ARM.MOD21.PUBLISH in TOP_30_MVP_ACTION_CODES aufnehmen.",
+            "files": ["src/manifests/armstrongManifest.ts"]
+          }
+        ]
+      },
+      {
+        "id": "P2-S2",
+        "name": "sot-armstrong-advisor: MOD-21 Intent-Handling",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P2-S2-01",
+            "title": "Armstrong Advisor: MOD-21 Intents erkennen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "In sot-armstrong-advisor die Intent-Classification erweitern: Wenn User 'Website erstellen', 'Homepage generieren', 'Webseite bauen', 'Design aendern', 'Section bearbeiten' etc. sagt → korrekte ARM.MOD21.* Action matchen. System-Prompt um Website-Builder-Kontext erweitern.",
+            "files": ["supabase/functions/sot-armstrong-advisor/index.ts"]
+          },
+          {
+            "id": "P2-S2-02",
+            "title": "Armstrong Advisor: Website-Context-Injection",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Wenn User im MOD-21 Kontext ist: aktive Website laden, aktuelle Sections als Kontext mitgeben. Armstrong kann dann sagen 'Ihre Hero-Headline ist aktuell X, soll ich sie aendern?'",
+            "files": ["supabase/functions/sot-armstrong-advisor/index.ts", "src/hooks/useArmstrongContext.ts"]
+          }
+        ]
+      },
+      {
+        "id": "P2-S3",
+        "name": "Versionshistorie + Audit-UI",
+        "priority": "P1",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P2-S3-01",
+            "title": "Versionshistorie-Komponente erstellen",
+            "type": "new_file",
+            "status": "todo",
+            "detail": "Neue Komponente die alle publizierten Versionen anzeigt (Datum, Versionsnummer, Published-By). Daten aus website_versions. Vorschau-Button (oeffnet Snapshot in neuem Tab). Rollback-Button (erstellt neue Version aus altem Snapshot).",
+            "files": ["src/pages/portal/website-builder/VersionHistory.tsx"]
+          },
+          {
+            "id": "P2-S3-02",
+            "title": "WBVertrag.tsx: Versionshistorie einbinden",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "VersionHistory-Komponente in WBVertrag.tsx unterhalb der Vertragskarte einbinden. Oder als separater Tab/Accordion.",
+            "files": ["src/pages/portal/website-builder/WBVertrag.tsx"]
+          },
+          {
+            "id": "P2-S3-03",
+            "title": "useVersionHistory Hook erstellen",
+            "type": "new_file",
+            "status": "todo",
+            "detail": "Hook der website_versions laedt, sortiert nach version_number DESC. Rollback-Mutation: laedt Snapshot, schreibt Sections neu in website_sections, erstellt neue Version.",
+            "files": ["src/hooks/useVersionHistory.ts"]
+          }
+        ]
+      },
+      {
+        "id": "P2-S4",
+        "name": "Zone 1 Admin Dashboard",
+        "priority": "P1",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P2-S4-01",
+            "title": "WebHostingDashboard.tsx: Alle Hosting-Vertraege anzeigen",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Admin-Dashboard mit: Tabelle aller hosting_contracts (Tenant, Website, Status, Credits). KPI-Cards (Gesamt-Vertraege, Aktive, Suspended). Filter nach Status.",
+            "files": ["src/pages/admin/website-hosting/WebHostingDashboard.tsx"]
+          },
+          {
+            "id": "P2-S4-02",
+            "title": "Admin: Suspendierungs-Tool",
+            "type": "code_fix",
+            "status": "todo",
+            "detail": "Admin kann Website suspendieren (setzt tenant_websites.status = 'suspended' + hosting_contracts.status = 'suspended'). Grund-Feld. Zone 3 zeigt 'Website nicht verfuegbar'.",
+            "files": ["src/pages/admin/website-hosting/WebHostingDashboard.tsx"]
+          }
+        ]
+      },
+      {
+        "id": "P2-S5",
+        "name": "Funktionstest Phase 2",
+        "priority": "P0",
+        "status": "todo",
+        "tasks": [
+          {
+            "id": "P2-S5-01",
+            "title": "Test: Armstrong Website generieren per Chat",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) Armstrong oeffnen. 2) 'Erstelle mir eine Website fuer mein Immobilienbuero' eingeben. 3) Armstrong fragt nach Details. 4) Website wird generiert. 5) Pruefen: Sections in DB, Preview korrekt."
+          },
+          {
+            "id": "P2-S5-02",
+            "title": "Test: Armstrong Section bearbeiten per Chat",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) 'Aendere die Hero-Headline zu XYZ'. 2) Armstrong aendert content_json. 3) Preview zeigt neue Headline."
+          },
+          {
+            "id": "P2-S5-03",
+            "title": "Test: Versionshistorie + Rollback",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) Website publishen. 2) Aenderungen machen. 3) Erneut publishen. 4) In Versionshistorie Version 1 waehlen. 5) Rollback klicken. 6) Pruefen: Sections entsprechen v1."
+          },
+          {
+            "id": "P2-S5-04",
+            "title": "Test: Zone 1 Admin Suspendierung",
+            "type": "test",
+            "status": "todo",
+            "detail": "1) Admin-Dashboard oeffnen. 2) Website suspendieren. 3) Zone 3 aufrufen → 'Nicht verfuegbar'. 4) Suspendierung aufheben → Website wieder erreichbar."
+          }
+        ]
+      }
+    ]
+  },
+  "armstrong_credit_tabelle": {
+    "beschreibung": "Armstrong-Actions und ihre Credit-Kosten. Basis fuer spaeteres Payment-Modul.",
+    "actions": [
+      { "code": "ARM.MOD21.GENERATE_WEBSITE", "credits": 5, "beschreibung": "Komplette Website generieren (6 Sections mit KI-Texten)" },
+      { "code": "ARM.MOD21.UPDATE_SECTION", "credits": 1, "beschreibung": "Section-Inhalt per KI aendern" },
+      { "code": "ARM.MOD21.ADD_SECTION", "credits": 1, "beschreibung": "Neue Section mit KI-Inhalt hinzufuegen" },
+      { "code": "ARM.MOD21.REMOVE_SECTION", "credits": 0, "beschreibung": "Section entfernen (kein KI)" },
+      { "code": "ARM.MOD21.CHANGE_TEMPLATE", "credits": 0, "beschreibung": "Design-Template wechseln (kein KI)" },
+      { "code": "ARM.MOD21.PUBLISH", "credits": 10, "beschreibung": "Website veroeffentlichen (Snapshot + Freigabe)" },
+      { "code": "ARM.MOD21.PREVIEW", "credits": 0, "beschreibung": "Vorschau anzeigen" }
+    ]
+  },
+  "design_templates": {
+    "beschreibung": "5 standardisierte Design-Presets. Fest in TypeScript definiert (kein DB-Tabelle noetig).",
+    "templates": [
+      { "id": "modern", "name": "Modern", "primary_color": "#2563EB", "font": "Inter", "stil": "Clean, viel Whitespace, abgerundete Karten, grosse Headlines" },
+      { "id": "classic", "name": "Klassisch", "primary_color": "#1E3A5F", "font": "Georgia", "stil": "Serioes, konservativ, dunkler Header, goldene Akzente" },
+      { "id": "minimal", "name": "Minimalistisch", "primary_color": "#000000", "font": "system-ui", "stil": "Schwarz-Weiss, reduziert, kein Hintergrundbild, maximale Klarheit" },
+      { "id": "elegant", "name": "Elegant", "primary_color": "#8B5E34", "font": "Playfair Display", "stil": "Luxurioes, warm, Gradient-Overlays, weiche Schatten" },
+      { "id": "fresh", "name": "Frisch", "primary_color": "#10B981", "font": "Poppins", "stil": "Jung, energetisch, lebhafte Farben, Icon-lastig" }
+    ]
+  },
+  "akzeptanzkriterien": {
+    "phase_1": [
+      "Website erstellen mit Template-Auswahl funktioniert",
+      "KI-Generierung laeuft fehlerfrei (keine Stripe-Abhaengigkeit)",
+      "Alle 8 Section-Typen sind im Editor editierbar (Items-Arrays fuer Features/Services/Testimonials/Gallery)",
+      "Sections sind per DnD umsortierbar",
+      "Publish ohne Stripe: Vertragsbedingungen akzeptieren → status 'active' → Publish moeglich",
+      "Zone 3 rendert publizierte Website korrekt",
+      "Design-Template-Wechsel in WBDesign.tsx funktioniert",
+      "SEO-Felder in WBSeo.tsx editierbar",
+      "Keine horizontale Scrollbar bei 1366x768"
+    ],
+    "phase_2": [
+      "Armstrong erkennt MOD-21 Intents und fuehrt Actions aus",
+      "Website kann komplett ueber Armstrong-Chat erstellt werden",
+      "Section-Inhalte koennen per Armstrong-Chat geaendert werden",
+      "Versionshistorie zeigt alle publizierten Versionen",
+      "Rollback auf fruehere Version funktioniert",
+      "Zone 1 Admin kann Websites suspendieren/freigeben",
+      "Alle 7 Armstrong-Actions werden in armstrong_billing_events protokolliert",
+      "Credits werden korrekt erfasst (5 fuer Generate, 1 fuer Update/Add, 10 fuer Publish)"
+    ]
+  }
+}
