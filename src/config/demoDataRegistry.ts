@@ -64,6 +64,41 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['properties', 'units', 'contacts', 'documents', 'leases', 'loans', 'landlord_contexts', 'applicant_profiles'],
     exports: ['SEED_IDS', 'ALL_MODULES'],
   },
+  {
+    path: 'src/hooks/useDemoListings.ts',
+    module: 'MOD-04',
+    type: 'hardcoded',
+    entities: ['listings', 'publications', 'mandates', 'project_listings'],
+    exports: ['useDemoListings', 'isDemoListingId', 'DEMO_LISTING_PREFIX'],
+  },
+  {
+    path: 'src/hooks/useDemoLocalEntity.ts',
+    module: 'SYSTEM',
+    type: 'hardcoded',
+    entities: ['generic_demo_guard'],
+    exports: ['useDemoLocalEntity', 'isDemoEntityId'],
+  },
+  {
+    path: 'src/hooks/useDemoFinanceCase.ts',
+    module: 'MOD-07',
+    type: 'hardcoded',
+    entities: ['finance_requests', 'fm_cases'],
+    exports: ['useDemoFinanceCase', 'isDemoFinanceId'],
+  },
+  {
+    path: 'src/hooks/useDemoAcquisition.ts',
+    module: 'MOD-08',
+    type: 'hardcoded',
+    entities: ['search_mandates', 'am_cases'],
+    exports: ['useDemoAcquisition', 'isDemoAcquisitionId'],
+  },
+  {
+    path: 'src/manifests/demoDataManifest.ts',
+    module: 'SYSTEM',
+    type: 'hardcoded',
+    entities: ['manifest_entries'],
+    exports: ['DEMO_DATA_MANIFEST', 'getDemoEntry', 'DEMO_MANIFEST_STATS'],
+  },
 ] as const;
 
 /** Total count of registered demo data sources */

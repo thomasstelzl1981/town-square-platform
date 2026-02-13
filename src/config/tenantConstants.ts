@@ -31,9 +31,18 @@ export const DEMO_PROPERTY_IDS = [
   'd0000000-0000-4000-a000-000000000003', // Hamburg Hafenblick
 ] as const;
 
+/** Demo project IDs for GP-PROJEKT (MOD-13) */
+export const DEMO_PROJECT_IDS = [
+  'd0000000-0000-4000-b000-000000000001', // Residenz am Stadtpark
+] as const;
+
 /** Check if a property ID is a demo property */
 export const isDemoProperty = (propertyId: string): boolean =>
   (DEMO_PROPERTY_IDS as readonly string[]).includes(propertyId);
+
+/** Check if a project ID is a demo project */
+export const isDemoProject = (projectId: string): boolean =>
+  (DEMO_PROJECT_IDS as readonly string[]).includes(projectId);
 
 // ============================================================================
 // Feature Flag: VITE_FORCE_DEV_TENANT

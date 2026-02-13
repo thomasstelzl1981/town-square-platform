@@ -2,16 +2,19 @@
  * useDemoListings — Central hook for synthetic demo listing data
  * 
  * Provides polymorphic demo listing shapes for all zones:
- * - salesDeskListings → Zone 1 Sales Desk
- * - kaufyListings → Zone 3 Kaufy Website
- * - partnerKatalog → MOD-09 Partner Katalog
+ * - salesDeskListings → Zone 1 Sales Desk (GP-PORTFOLIO + GP-PROJEKT)
+ * - kaufyListings → Zone 3 Kaufy Website (GP-PORTFOLIO + GP-PROJEKT)
+ * - partnerKatalog → MOD-09 Partner Katalog (GP-PORTFOLIO + GP-PROJEKT)
+ * - projectListings → Zone 2 Projekte Dashboard (GP-PROJEKT)
  * 
- * All data is purely client-side and disappears when GP-PORTFOLIO toggle is off.
+ * All data is purely client-side and disappears when toggles are off.
+ * 
+ * @see src/manifests/demoDataManifest.ts
  */
 
 import { useMemo } from 'react';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { DEMO_PROPERTY_IDS, DEV_TENANT_UUID } from '@/config/tenantConstants';
+import { DEMO_PROPERTY_IDS, DEMO_PROJECT_IDS, DEV_TENANT_UUID } from '@/config/tenantConstants';
 import type { SalesDeskListing } from '@/hooks/useSalesDeskListings';
 
 // ============================================================================
@@ -224,40 +227,145 @@ function toMandateListing(p: DemoPropertyBase): DemoMandateListing {
 }
 
 // ============================================================================
+// Shape: ProjectListing (Zone 2 — Projekte Dashboard, GP-PROJEKT)
+// ============================================================================
+
+export interface DemoProjectListing {
+  id: string;
+  publicId: string;
+  name: string;
+  city: string;
+  address: string;
+  unitsTotal: number;
+  unitsSold: number;
+  status: string;
+  developer: string;
+  priceRange: string;
+  createdAt: string;
+  isDemo: boolean;
+}
+
+const DEMO_PROJECT_BASE: DemoProjectListing = {
+  id: DEMO_PROJECT_IDS[0],
+  publicId: 'SOT-BT-DEMO',
+  name: 'Residenz am Stadtpark',
+  city: 'München',
+  address: 'Nymphenburger Str. 120, 80636 München',
+  unitsTotal: 24,
+  unitsSold: 8,
+  status: 'approved',
+  developer: 'Demo Bauträger GmbH',
+  priceRange: '285.000 – 720.000 €',
+  createdAt: '2025-01-10T10:00:00.000Z',
+  isDemo: true,
+};
+
+// ============================================================================
 // Main Hook
 // ============================================================================
 
 export function useDemoListings() {
   const { isEnabled } = useDemoToggles();
-  const active = isEnabled('GP-PORTFOLIO');
+  const portfolioActive = isEnabled('GP-PORTFOLIO');
+  const projektActive = isEnabled('GP-PROJEKT');
+  const active = portfolioActive; // backward compat
 
-  const salesDeskListings = useMemo<SalesDeskListing[]>(
-    () => active ? DEMO_PROPERTIES.map(toSalesDeskListing) : [],
-    [active]
-  );
+  const salesDeskListings = useMemo<SalesDeskListing[]>(() => {
+    const items: SalesDeskListing[] = [];
+    if (portfolioActive) items.push(...DEMO_PROPERTIES.map(toSalesDeskListing));
+    if (projektActive) {
+      items.push({
+        id: `${DEMO_LISTING_PREFIX}${DEMO_PROJECT_IDS[0]}`,
+        title: DEMO_PROJECT_BASE.name,
+        status: 'active',
+        asking_price: 450000,
+        commission_rate: 3.57,
+        partner_visibility: 'network',
+        is_blocked: false,
+        created_at: DEMO_PROJECT_BASE.createdAt,
+        property: {
+          id: DEMO_PROJECT_IDS[0],
+          code: 'SOT-BT-DEMO',
+          address: DEMO_PROJECT_BASE.address,
+          city: DEMO_PROJECT_BASE.city,
+        },
+        unit: null,
+        publications: [
+          { channel: 'partner_network', status: 'active' },
+          { channel: 'kaufy', status: 'active' },
+        ],
+        tenant: { id: DEV_TENANT_UUID, name: 'Demo Bauträger GmbH' },
+      });
+    }
+    return items;
+  }, [portfolioActive, projektActive]);
 
-  const kaufyListings = useMemo<DemoKaufyListing[]>(
-    () => active ? DEMO_PROPERTIES.map(toKaufyListing) : [],
-    [active]
-  );
+  const kaufyListings = useMemo<DemoKaufyListing[]>(() => {
+    const items: DemoKaufyListing[] = [];
+    if (portfolioActive) items.push(...DEMO_PROPERTIES.map(toKaufyListing));
+    if (projektActive) {
+      items.push({
+        listing_id: `${DEMO_LISTING_PREFIX}${DEMO_PROJECT_IDS[0]}`,
+        public_id: 'SOT-BT-DEMO',
+        title: DEMO_PROJECT_BASE.name,
+        asking_price: 450000,
+        property_type: 'new_construction',
+        address: DEMO_PROJECT_BASE.address,
+        city: DEMO_PROJECT_BASE.city,
+        postal_code: '80636',
+        total_area_sqm: 85,
+        unit_count: 24,
+        monthly_rent_total: 0,
+        hero_image_path: null,
+        isDemo: true,
+      });
+    }
+    return items;
+  }, [portfolioActive, projektActive]);
 
-  const partnerKatalog = useMemo<DemoPartnerListing[]>(
-    () => active ? DEMO_PROPERTIES.map(toPartnerListing) : [],
-    [active]
-  );
+  const partnerKatalog = useMemo<DemoPartnerListing[]>(() => {
+    const items: DemoPartnerListing[] = [];
+    if (portfolioActive) items.push(...DEMO_PROPERTIES.map(toPartnerListing));
+    if (projektActive) {
+      items.push({
+        id: `${DEMO_LISTING_PREFIX}${DEMO_PROJECT_IDS[0]}`,
+        public_id: 'SOT-BT-DEMO',
+        title: DEMO_PROJECT_BASE.name,
+        asking_price: 450000,
+        commission_rate: 3.57,
+        status: 'active',
+        property_address: DEMO_PROJECT_BASE.address,
+        property_city: DEMO_PROJECT_BASE.city,
+        property_type: 'new_construction',
+        total_area_sqm: 85,
+        kaufy_active: true,
+        gross_yield: null,
+        isDemo: true,
+      });
+    }
+    return items;
+  }, [portfolioActive, projektActive]);
 
   const mandateListings = useMemo<DemoMandateListing[]>(
-    () => active ? DEMO_PROPERTIES.map(toMandateListing) : [],
-    [active]
+    () => portfolioActive ? DEMO_PROPERTIES.map(toMandateListing) : [],
+    [portfolioActive]
+  );
+
+  const projectListings = useMemo<DemoProjectListing[]>(
+    () => projektActive ? [DEMO_PROJECT_BASE] : [],
+    [projektActive]
   );
 
   return {
     active,
+    portfolioActive,
+    projektActive,
     salesDeskListings,
     kaufyListings,
     partnerKatalog,
     mandateListings,
+    projectListings,
     /** Raw demo property data for detail pages */
-    demoProperties: active ? DEMO_PROPERTIES : [],
+    demoProperties: portfolioActive ? DEMO_PROPERTIES : [],
   };
 }
