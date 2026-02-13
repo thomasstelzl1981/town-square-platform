@@ -11295,6 +11295,226 @@ export type Database = {
           },
         ]
       }
+      research_billing_log: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          order_id: string
+          provider: string
+          tenant_id: string
+          units: number
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          order_id: string
+          provider: string
+          tenant_id: string
+          units?: number
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          provider?: string
+          tenant_id?: string
+          units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_billing_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "research_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_billing_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_order_results: {
+        Row: {
+          company_name: string | null
+          confidence_score: number
+          created_at: string
+          domain: string | null
+          email: string | null
+          entity_type: string
+          first_name: string | null
+          full_name: string | null
+          id: string
+          imported_contact_id: string | null
+          last_name: string | null
+          linkedin_url: string | null
+          location: string | null
+          order_id: string
+          phone: string | null
+          raw_json: Json | null
+          role: string | null
+          seniority: string | null
+          source_provider: string
+          source_refs_json: Json
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          confidence_score?: number
+          created_at?: string
+          domain?: string | null
+          email?: string | null
+          entity_type?: string
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          imported_contact_id?: string | null
+          last_name?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          order_id: string
+          phone?: string | null
+          raw_json?: Json | null
+          role?: string | null
+          seniority?: string | null
+          source_provider?: string
+          source_refs_json?: Json
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          company_name?: string | null
+          confidence_score?: number
+          created_at?: string
+          domain?: string | null
+          email?: string | null
+          entity_type?: string
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          imported_contact_id?: string | null
+          last_name?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          order_id?: string
+          phone?: string | null
+          raw_json?: Json | null
+          role?: string | null
+          seniority?: string | null
+          source_provider?: string
+          source_refs_json?: Json
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_order_results_imported_contact_id_fkey"
+            columns: ["imported_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_order_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "research_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_order_results_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_orders: {
+        Row: {
+          ai_summary_md: string | null
+          consent_confirmed: boolean
+          cost_cap: number
+          cost_estimate: number
+          cost_spent: number
+          created_at: string
+          created_by: string
+          icp_json: Json
+          id: string
+          intent_text: string
+          max_results: number
+          output_type: string
+          provider_plan_json: Json
+          results_count: number
+          status: string
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_summary_md?: string | null
+          consent_confirmed?: boolean
+          cost_cap?: number
+          cost_estimate?: number
+          cost_spent?: number
+          created_at?: string
+          created_by: string
+          icp_json?: Json
+          id?: string
+          intent_text?: string
+          max_results?: number
+          output_type?: string
+          provider_plan_json?: Json
+          results_count?: number
+          status?: string
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_summary_md?: string | null
+          consent_confirmed?: boolean
+          cost_cap?: number
+          cost_estimate?: number
+          cost_spent?: number
+          created_at?: string
+          created_by?: string
+          icp_json?: Json
+          id?: string
+          intent_text?: string
+          max_results?: number
+          output_type?: string
+          provider_plan_json?: Json
+          results_count?: number
+          status?: string
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_results: {
         Row: {
           created_at: string | null

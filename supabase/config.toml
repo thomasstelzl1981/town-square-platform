@@ -161,3 +161,15 @@ verify_jwt = false
 
 [functions.sot-videocall-end]
 verify_jwt = false
+
+[functions.sot-research-ai-assist]
+verify_jwt = false
+
+[functions.sot-research-firecrawl-extract]
+verify_jwt = false
+
+[functions.sot-research-run-order]
+verify_jwt = false
+
+[functions.sot-research-import-contacts]
+verify_jwt = false
