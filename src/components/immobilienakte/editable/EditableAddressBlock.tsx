@@ -9,14 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface EditableAddressBlockProps {
-  street: string;
+  // Address fields kept for AI generation context but NOT rendered here
+  street?: string;
   houseNumber?: string;
-  postalCode: string;
-  city: string;
+  postalCode?: string;
+  city?: string;
   locationLabel?: string;
   description?: string;
-  latitude?: number;
-  longitude?: number;
   // Property data for AI generation
   propertyType?: string;
   buildYear?: number;
@@ -34,8 +33,6 @@ export function EditableAddressBlock({
   city,
   locationLabel,
   description,
-  latitude,
-  longitude,
   propertyType,
   buildYear,
   totalAreaSqm,
@@ -49,7 +46,7 @@ export function EditableAddressBlock({
   const handleGenerateDescription = async () => {
     setIsGenerating(true);
     try {
-      const address = `${street} ${houseNumber || ''}`.trim();
+      const address = `${street || ''} ${houseNumber || ''}`.trim();
       
       const { data, error } = await supabase.functions.invoke('sot-expose-description', {
         body: { 
@@ -83,63 +80,26 @@ export function EditableAddressBlock({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
-          Lage & Beschreibung
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <MapPin className="h-3.5 w-3.5" />
+          Lage & Objektbeschreibung
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Straße</Label>
-            <Input 
-              value={street} 
-              onChange={(e) => onFieldChange('street', e.target.value)}
-              placeholder="Musterstraße"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Hausnr.</Label>
-            <Input 
-              value={houseNumber || ''} 
-              onChange={(e) => onFieldChange('houseNumber', e.target.value)}
-              placeholder="12a"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">PLZ</Label>
-            <Input 
-              value={postalCode} 
-              onChange={(e) => onFieldChange('postalCode', e.target.value)}
-              placeholder="12345"
-            />
-          </div>
-          <div className="col-span-2 space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Ort</Label>
-            <Input 
-              value={city} 
-              onChange={(e) => onFieldChange('city', e.target.value)}
-              placeholder="Berlin"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Lagebezeichnung (z.B. "Altbau am Prenzlauer Berg")</Label>
+      <CardContent className="space-y-2 px-4 pb-3">
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Lagebezeichnung</Label>
           <Input 
             value={locationLabel || ''} 
             onChange={(e) => onFieldChange('locationLabel', e.target.value)}
-            placeholder="Optionale Kurzbezeichnung"
+            placeholder="z.B. Altbau am Prenzlauer Berg"
+            className="h-7 text-xs"
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label className="text-xs text-muted-foreground">Objektbeschreibung</Label>
+            <Label className="text-[11px] text-muted-foreground">Objektbeschreibung</Label>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -159,31 +119,9 @@ export function EditableAddressBlock({
             value={description || ''} 
             onChange={(e) => onFieldChange('description', e.target.value)}
             placeholder="Strukturierte Beschreibung zu Lage, Mikrolage und Objekteigenschaften..."
-            rows={5}
+            rows={4}
+            className="text-xs"
           />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Breitengrad</Label>
-            <Input 
-              type="number"
-              step="any"
-              value={latitude || ''} 
-              onChange={(e) => onFieldChange('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="52.5200"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Längengrad</Label>
-            <Input 
-              type="number"
-              step="any"
-              value={longitude || ''} 
-              onChange={(e) => onFieldChange('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="13.4050"
-            />
-          </div>
         </div>
       </CardContent>
     </Card>

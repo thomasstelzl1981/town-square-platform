@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, ExternalLink } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { StatusIndicator, type ModuleStatus } from './StatusIndicator';
 import type { PropertyStatus, ReportingRegime } from '@/types/immobilienakte';
 
@@ -15,6 +15,12 @@ interface EditableIdentityBlockProps {
   reportingRegime: ReportingRegime;
   buildYear?: number;
   wegFlag?: boolean;
+  // Address fields (moved from AddressBlock)
+  street?: string;
+  houseNumber?: string;
+  postalCode?: string;
+  city?: string;
+  unitNumber?: string;
   onFieldChange: (field: string, value: any) => void;
 }
 
@@ -40,7 +46,6 @@ const REGIMES: { value: ReportingRegime; label: string }[] = [
   { value: 'SuSa_BWA', label: 'SuSa/BWA (Gewerblich)' },
 ];
 
-// Helper to derive module status from boolean flags
 function getModuleStatus(isEnabled: boolean): ModuleStatus {
   return isEnabled ? 'active' : 'inactive';
 }
@@ -54,6 +59,11 @@ export function EditableIdentityBlock({
   reportingRegime,
   buildYear,
   wegFlag,
+  street,
+  houseNumber,
+  postalCode,
+  city,
+  unitNumber,
   onFieldChange,
 }: EditableIdentityBlockProps) {
   return (
@@ -113,8 +123,61 @@ export function EditableIdentityBlock({
           </div>
         </div>
 
-        {/* Row 3: Reporting + WEG in one row */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Row 3: Straße + Hausnr. */}
+        <div className="grid grid-cols-3 gap-3 pt-1 border-t">
+          <div className="col-span-2 space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Straße</Label>
+            <Input 
+              value={street || ''} 
+              onChange={(e) => onFieldChange('street', e.target.value)}
+              placeholder="Musterstraße"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Hausnr.</Label>
+            <Input 
+              value={houseNumber || ''} 
+              onChange={(e) => onFieldChange('houseNumber', e.target.value)}
+              placeholder="12a"
+              className="h-7 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Row 4: PLZ + Ort + Whg.-Nr. */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">PLZ</Label>
+            <Input 
+              value={postalCode || ''} 
+              onChange={(e) => onFieldChange('postalCode', e.target.value)}
+              placeholder="12345"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Ort</Label>
+            <Input 
+              value={city || ''} 
+              onChange={(e) => onFieldChange('city', e.target.value)}
+              placeholder="Berlin"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Whg.-Nr.</Label>
+            <Input 
+              value={unitNumber || ''} 
+              onChange={(e) => onFieldChange('unitNumber', e.target.value)}
+              placeholder="z.B. 4.OG"
+              className="h-7 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Row 5: Reporting + WEG */}
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
           <div className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">Reporting</Label>
             <Select value={reportingRegime} onValueChange={(v) => onFieldChange('reportingRegime', v as ReportingRegime)}>
@@ -145,7 +208,7 @@ export function EditableIdentityBlock({
           </div>
         </div>
 
-        {/* Module Status — compact single line */}
+        {/* Module Status */}
         <div className="flex items-center gap-4 pt-1 border-t text-xs">
           <span className="text-muted-foreground">Module:</span>
           <StatusIndicator label="Verkauf" status={getModuleStatus(saleEnabled)} />

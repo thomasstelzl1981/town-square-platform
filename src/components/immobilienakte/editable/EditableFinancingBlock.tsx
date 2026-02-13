@@ -34,114 +34,123 @@ export function EditableFinancingBlock({
 }: EditableFinancingBlockProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Landmark className="h-4 w-4" />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Landmark className="h-3.5 w-3.5" />
           Finanzierung
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 px-4 pb-3">
         {/* Bank Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Bank</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Bank</Label>
             <Input 
               value={bankName || ''} 
               onChange={(e) => onFieldChange('bankName', e.target.value)}
               placeholder="z.B. Sparkasse"
+              className="h-7 text-xs"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Darlehens-Nr.</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Darlehens-Nr.</Label>
             <Input 
               value={loanNumber || ''} 
               onChange={(e) => onFieldChange('loanNumber', e.target.value)}
               placeholder="z.B. 12345678"
+              className="h-7 text-xs"
             />
           </div>
         </div>
 
         {/* Amounts */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Urspr. Darlehen (€)</Label>
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Urspr. Darlehen (€)</Label>
             <Input 
               type="number"
               step="0.01"
               value={originalAmountEur || ''} 
               onChange={(e) => onFieldChange('originalAmountEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className="h-7 text-xs"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Restschuld (€)</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Restschuld (€)</Label>
             <Input 
               type="number"
               step="0.01"
               value={outstandingBalanceEur || ''} 
               onChange={(e) => onFieldChange('outstandingBalanceEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className="h-7 text-xs"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Restschuld per</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Restschuld per</Label>
             <Input 
               type="date"
               value={outstandingBalanceAsof || ''} 
               onChange={(e) => onFieldChange('outstandingBalanceAsof', e.target.value)}
+              className="h-7 text-xs"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Rate mtl. (€)</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Rate mtl. (€)</Label>
             <Input 
               type="number"
               step="0.01"
               value={annuityMonthlyEur || ''} 
               onChange={(e) => onFieldChange('annuityMonthlyEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className="h-7 text-xs"
             />
           </div>
         </div>
 
         {/* Interest */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-            <Percent className="h-4 w-4" />
-            <span className="text-xs font-medium">Zinskonditionen</span>
+        <div className="pt-1 border-t">
+          <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+            <Percent className="h-3.5 w-3.5" />
+            <span className="text-[11px] font-medium">Zinskonditionen</span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Zinssatz (%)</Label>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Zinssatz (%)</Label>
               <Input 
                 type="number"
                 step="0.01"
                 value={interestRatePercent || ''} 
                 onChange={(e) => onFieldChange('interestRatePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Tilgung (%)</Label>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Tilgung (%)</Label>
               <Input 
                 type="number"
                 step="0.01"
                 value={repaymentRatePercent || ''} 
                 onChange={(e) => onFieldChange('repaymentRatePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Zinsbindung bis</Label>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Zinsbindung bis</Label>
               <Input 
                 type="date"
                 value={fixedInterestEndDate || ''} 
                 onChange={(e) => onFieldChange('fixedInterestEndDate', e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
           </div>
         </div>
 
         {/* Special Repayment */}
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Sondertilgungsrecht p.a. (€)</Label>
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Sondertilgungsrecht p.a. (€)</Label>
           <Input 
             type="number"
             step="0.01"
@@ -151,28 +160,32 @@ export function EditableFinancingBlock({
               amountEur: e.target.value ? parseFloat(e.target.value) : undefined 
             })}
             placeholder="z.B. 10000"
+            className="h-7 text-xs"
           />
         </div>
 
         {/* Contact */}
-        <div className="pt-2 border-t">
-          <Label className="text-xs text-muted-foreground mb-2 block">Ansprechpartner Bank</Label>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="pt-1 border-t">
+          <Label className="text-[11px] text-muted-foreground mb-1 block">Ansprechpartner Bank</Label>
+          <div className="grid grid-cols-3 gap-3">
             <Input 
               value={contactPerson?.name || ''} 
               onChange={(e) => onFieldChange('loanContactPerson', { ...contactPerson, name: e.target.value })}
               placeholder="Name"
+              className="h-7 text-xs"
             />
             <Input 
               value={contactPerson?.phone || ''} 
               onChange={(e) => onFieldChange('loanContactPerson', { ...contactPerson, phone: e.target.value })}
               placeholder="Telefon"
+              className="h-7 text-xs"
             />
             <Input 
               type="email"
               value={contactPerson?.email || ''} 
               onChange={(e) => onFieldChange('loanContactPerson', { ...contactPerson, email: e.target.value })}
               placeholder="E-Mail"
+              className="h-7 text-xs"
             />
           </div>
         </div>

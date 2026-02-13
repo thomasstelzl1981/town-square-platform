@@ -1,19 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -21,9 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, Edit2, History, Euro, Plus, FileText, TrendingUp } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -39,7 +35,6 @@ interface Lease {
   rent_increase: string | null;
   renter_org_id: string | null;
   tenant_contact_id: string;
-  // Extended fields
   lease_type?: string;
   rent_cold_eur?: number;
   nk_advance_eur?: number;
@@ -56,15 +51,6 @@ interface Contact {
   first_name: string;
   last_name: string;
   email: string | null;
-}
-
-interface RenterInvite {
-  id: string;
-  email: string;
-  status: string;
-  created_at: string;
-  expires_at: string;
-  accepted_at: string | null;
 }
 
 interface TenancyTabProps {
@@ -95,20 +81,38 @@ const RENT_MODELS = [
 
 type LetterType = 'kuendigung' | 'mieterhoehung' | 'abmahnung';
 
+// Track edits per lease
+interface LeaseEdits {
+  [leaseId: string]: Partial<{
+    lease_type: string;
+    rent_cold_eur: string;
+    nk_advance_eur: string;
+    heating_advance_eur: string;
+    deposit_amount_eur: string;
+    deposit_status: string;
+    payment_due_day: string;
+    rent_model: string;
+    next_rent_adjustment_date: string;
+    start_date: string;
+    end_date: string;
+    tenant_contact_id: string;
+  }>;
+}
+
 export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [allLeases, setAllLeases] = useState<(Lease & { tenant_contact?: Contact })[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [invites, setInvites] = useState<RenterInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Create/Edit lease dialog
-  const [leaseDialogOpen, setLeaseDialogOpen] = useState(false);
-  const [editingLease, setEditingLease] = useState<Lease | null>(null);
   const [saving, setSaving] = useState(false);
-  const [leaseForm, setLeaseForm] = useState({
+  const [edits, setEdits] = useState<LeaseEdits>({});
+  const [isCreating, setIsCreating] = useState(false);
+  const [historicalOpen, setHistoricalOpen] = useState(false);
+
+  // New lease form state
+  const [newLease, setNewLease] = useState({
     tenant_contact_id: '',
     lease_type: 'unbefristet',
     start_date: '',
@@ -122,90 +126,46 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     rent_model: 'FIX',
     next_rent_adjustment_date: '',
   });
-  
-  // Invite dialog
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviting, setInviting] = useState(false);
-  const [inviteLeaseId, setInviteLeaseId] = useState<string | null>(null);
-  const [inviteContact, setInviteContact] = useState<Contact | null>(null);
-  
-  // Quick contact creation dialog
-  const [quickContactDialogOpen, setQuickContactDialogOpen] = useState(false);
-  const [creatingContact, setCreatingContact] = useState(false);
-  const [newContactForm, setNewContactForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-  });
 
-  async function fetchData() {
-    if (!unitId) {
-      setLoading(false);
-      return;
-    }
-    
+  const fetchData = useCallback(async () => {
+    if (!unitId) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
-      // Fetch all leases for this unit with contact info
       const { data: leasesData } = await supabase
         .from('leases')
-        .select(`
-          *,
-          tenant_contact:contacts!leases_contact_fk(id, first_name, last_name, email)
-        `)
+        .select(`*, tenant_contact:contacts!leases_contact_fk(id, first_name, last_name, email)`)
         .eq('unit_id', unitId)
         .eq('tenant_id', tenantId)
         .order('start_date', { ascending: false });
 
-      // Map data to fix the array issue from Supabase joins
       const mappedLeases = (leasesData || []).map(lease => ({
         ...lease,
-        tenant_contact: Array.isArray(lease.tenant_contact) 
-          ? lease.tenant_contact[0] 
-          : lease.tenant_contact
+        tenant_contact: Array.isArray(lease.tenant_contact) ? lease.tenant_contact[0] : lease.tenant_contact,
       }));
       setAllLeases(mappedLeases);
 
-      // Fetch contacts for creating lease
       const { data: contactsData } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, email')
         .eq('tenant_id', tenantId)
         .order('last_name');
-
       setContacts(contactsData || []);
-
-      // Fetch invites for all leases
-      if (leasesData && leasesData.length > 0) {
-        const leaseIds = leasesData.map(l => l.id);
-        const { data: invitesData } = await supabase
-          .from('renter_invites')
-          .select('*')
-          .in('lease_id', leaseIds)
-          .eq('tenant_id', tenantId)
-          .order('created_at', { ascending: false });
-
-        setInvites(invitesData || []);
-      }
     } catch (err: any) {
       setError(err.message || 'Fehler beim Laden');
     }
     setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchData();
   }, [unitId, tenantId]);
 
-  // Separate active and historical leases
+  useEffect(() => { fetchData(); }, [fetchData]);
+
   const activeLeases = allLeases.filter(l => ['active', 'notice_given', 'draft'].includes(l.status));
   const historicalLeases = allLeases.filter(l => ['terminated', 'ended'].includes(l.status));
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
-  };
+  const isDirty = Object.keys(edits).length > 0;
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '–';
@@ -223,129 +183,123 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     }
   };
 
-  const getInviteStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending': return <Badge variant="secondary"><Clock className="mr-1 h-3 w-3" />Ausstehend</Badge>;
-      case 'accepted': return <Badge variant="default"><CheckCircle className="mr-1 h-3 w-3" />Angenommen</Badge>;
-      case 'expired': return <Badge variant="outline"><XCircle className="mr-1 h-3 w-3" />Abgelaufen</Badge>;
-      case 'revoked': return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />Widerrufen</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
+  // Get current field value (edit overrides DB value)
+  const getField = (lease: Lease, field: string): string => {
+    const leaseEdits = edits[lease.id];
+    if (leaseEdits && field in leaseEdits) return (leaseEdits as any)[field];
+    const val = (lease as any)[field];
+    return val != null ? String(val) : '';
   };
 
-  function openCreateDialog() {
-    setEditingLease(null);
-    setLeaseForm({
-      tenant_contact_id: '',
-      lease_type: 'unbefristet',
-      start_date: '',
-      end_date: '',
-      rent_cold_eur: '',
-      nk_advance_eur: '',
-      heating_advance_eur: '',
-      deposit_amount_eur: '',
-      deposit_status: 'OPEN',
-      payment_due_day: '1',
-      rent_model: 'FIX',
-      next_rent_adjustment_date: '',
-    });
-    setLeaseDialogOpen(true);
-  }
+  const updateLeaseField = (leaseId: string, field: string, value: string) => {
+    setEdits(prev => ({
+      ...prev,
+      [leaseId]: { ...prev[leaseId], [field]: value },
+    }));
+  };
 
-  function openEditDialog(lease: Lease) {
-    setEditingLease(lease);
-    setLeaseForm({
-      tenant_contact_id: lease.tenant_contact_id,
-      lease_type: lease.lease_type || 'unbefristet',
-      start_date: lease.start_date || '',
-      end_date: lease.end_date || '',
-      rent_cold_eur: lease.rent_cold_eur?.toString() || lease.monthly_rent?.toString() || '',
-      nk_advance_eur: lease.nk_advance_eur?.toString() || '',
-      heating_advance_eur: lease.heating_advance_eur?.toString() || '',
-      deposit_amount_eur: lease.deposit_amount_eur?.toString() || '',
-      deposit_status: lease.deposit_status || 'OPEN',
-      payment_due_day: lease.payment_due_day?.toString() || '1',
-      rent_model: lease.rent_model || 'FIX',
-      next_rent_adjustment_date: lease.next_rent_adjustment_date || '',
-    });
-    setLeaseDialogOpen(true);
-  }
-
-  async function handleSaveLease() {
-    if (!leaseForm.tenant_contact_id || !leaseForm.rent_cold_eur || !leaseForm.start_date) {
-      toast.error('Bitte alle Pflichtfelder ausfüllen');
-      return;
-    }
-
+  const handleSaveAll = async () => {
     setSaving(true);
     try {
-      const rentCold = parseFloat(leaseForm.rent_cold_eur) || 0;
-      const nkAdvance = parseFloat(leaseForm.nk_advance_eur) || 0;
-      const heatingAdvance = parseFloat(leaseForm.heating_advance_eur) || 0;
-      const monthlyRent = rentCold + nkAdvance + heatingAdvance;
+      for (const [leaseId, changes] of Object.entries(edits)) {
+        const rentCold = parseFloat(changes.rent_cold_eur || '') || undefined;
+        const nkAdvance = parseFloat(changes.nk_advance_eur || '') || undefined;
+        const heatingAdvance = parseFloat(changes.heating_advance_eur || '') || undefined;
 
-      const leaseData = {
-        tenant_id: tenantId,
-        unit_id: unitId,
-        tenant_contact_id: leaseForm.tenant_contact_id,
-        monthly_rent: monthlyRent,
-        start_date: leaseForm.start_date,
-        end_date: leaseForm.end_date || null,
-        lease_type: leaseForm.lease_type,
-        rent_cold_eur: rentCold,
-        nk_advance_eur: nkAdvance,
-        heating_advance_eur: heatingAdvance,
-        deposit_amount_eur: parseFloat(leaseForm.deposit_amount_eur) || null,
-        deposit_status: leaseForm.deposit_status,
-        payment_due_day: parseInt(leaseForm.payment_due_day) || 1,
-        rent_model: leaseForm.rent_model,
-        next_rent_adjustment_date: leaseForm.next_rent_adjustment_date || null,
-      };
+        const updateData: any = {};
+        if (changes.lease_type !== undefined) updateData.lease_type = changes.lease_type;
+        if (changes.rent_cold_eur !== undefined) updateData.rent_cold_eur = rentCold;
+        if (changes.nk_advance_eur !== undefined) updateData.nk_advance_eur = nkAdvance;
+        if (changes.heating_advance_eur !== undefined) updateData.heating_advance_eur = heatingAdvance;
+        if (changes.deposit_amount_eur !== undefined) updateData.deposit_amount_eur = parseFloat(changes.deposit_amount_eur) || null;
+        if (changes.deposit_status !== undefined) updateData.deposit_status = changes.deposit_status;
+        if (changes.payment_due_day !== undefined) updateData.payment_due_day = parseInt(changes.payment_due_day) || 1;
+        if (changes.rent_model !== undefined) updateData.rent_model = changes.rent_model;
+        if (changes.next_rent_adjustment_date !== undefined) updateData.next_rent_adjustment_date = changes.next_rent_adjustment_date || null;
+        if (changes.start_date !== undefined) updateData.start_date = changes.start_date;
+        if (changes.end_date !== undefined) updateData.end_date = changes.end_date || null;
 
-      if (editingLease) {
-        const { error: updateError } = await supabase
-          .from('leases')
-          .update(leaseData)
-          .eq('id', editingLease.id);
-        if (updateError) throw updateError;
-        toast.success('Mietvertrag aktualisiert');
-      } else {
-        const { error: insertError } = await supabase
-          .from('leases')
-          .insert({ ...leaseData, status: 'draft' });
-        if (insertError) throw insertError;
-        toast.success('Mietvertrag erstellt');
+        // Recalc monthly_rent if any rent field changed
+        if (rentCold !== undefined || nkAdvance !== undefined || heatingAdvance !== undefined) {
+          const lease = allLeases.find(l => l.id === leaseId);
+          const cold = rentCold ?? lease?.rent_cold_eur ?? 0;
+          const nk = nkAdvance ?? lease?.nk_advance_eur ?? 0;
+          const heat = heatingAdvance ?? lease?.heating_advance_eur ?? 0;
+          updateData.monthly_rent = cold + nk + heat;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          const { error } = await supabase.from('leases').update(updateData).eq('id', leaseId);
+          if (error) throw error;
+        }
       }
 
-      setLeaseDialogOpen(false);
+      setEdits({});
+      toast.success('Mietverträge gespeichert');
       await fetchData();
     } catch (err: any) {
       toast.error(err.message || 'Fehler beim Speichern');
     }
     setSaving(false);
-  }
+  };
 
-  async function handleActivateLease(leaseId: string) {
+  const handleCreateLease = async () => {
+    if (!newLease.tenant_contact_id || !newLease.rent_cold_eur || !newLease.start_date) {
+      toast.error('Bitte alle Pflichtfelder ausfüllen');
+      return;
+    }
+    setSaving(true);
     try {
-      const { error: updateError } = await supabase
-        .from('leases')
-        .update({ status: 'active' })
-        .eq('id', leaseId);
+      const rentCold = parseFloat(newLease.rent_cold_eur) || 0;
+      const nkAdvance = parseFloat(newLease.nk_advance_eur) || 0;
+      const heatingAdvance = parseFloat(newLease.heating_advance_eur) || 0;
 
-      if (updateError) throw updateError;
+      const { error } = await supabase.from('leases').insert({
+        tenant_id: tenantId,
+        unit_id: unitId,
+        tenant_contact_id: newLease.tenant_contact_id,
+        monthly_rent: rentCold + nkAdvance + heatingAdvance,
+        start_date: newLease.start_date,
+        end_date: newLease.end_date || null,
+        lease_type: newLease.lease_type,
+        rent_cold_eur: rentCold,
+        nk_advance_eur: nkAdvance,
+        heating_advance_eur: heatingAdvance,
+        deposit_amount_eur: parseFloat(newLease.deposit_amount_eur) || null,
+        deposit_status: newLease.deposit_status,
+        payment_due_day: parseInt(newLease.payment_due_day) || 1,
+        rent_model: newLease.rent_model,
+        next_rent_adjustment_date: newLease.next_rent_adjustment_date || null,
+        status: 'draft',
+      });
+      if (error) throw error;
+      toast.success('Mietvertrag erstellt');
+      setIsCreating(false);
+      setNewLease({
+        tenant_contact_id: '', lease_type: 'unbefristet', start_date: '', end_date: '',
+        rent_cold_eur: '', nk_advance_eur: '', heating_advance_eur: '', deposit_amount_eur: '',
+        deposit_status: 'OPEN', payment_due_day: '1', rent_model: 'FIX', next_rent_adjustment_date: '',
+      });
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Erstellen');
+    }
+    setSaving(false);
+  };
+
+  const handleActivateLease = async (leaseId: string) => {
+    try {
+      const { error } = await supabase.from('leases').update({ status: 'active' }).eq('id', leaseId);
+      if (error) throw error;
       toast.success('Mietvertrag aktiviert');
       await fetchData();
     } catch (err: any) {
       toast.error(err.message || 'Fehler beim Aktivieren');
     }
-  }
+  };
 
-  function handleOpenLetterGenerator(lease: Lease & { tenant_contact?: Contact }, letterType: LetterType) {
-    if (!lease.tenant_contact) {
-      toast.error('Kein Kontakt für diesen Mietvertrag hinterlegt');
-      return;
-    }
-
+  const handleOpenLetterGenerator = (lease: Lease & { tenant_contact?: Contact }, letterType: LetterType) => {
+    if (!lease.tenant_contact) { toast.error('Kein Kontakt hinterlegt'); return; }
     const templates: Record<LetterType, { subject: string; prompt: string }> = {
       kuendigung: {
         subject: 'Kündigung Ihres Mietvertrages',
@@ -353,114 +307,25 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       },
       mieterhoehung: {
         subject: 'Mieterhöhungsverlangen',
-        prompt: `Erstelle ein Mieterhöhungsverlangen für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Die aktuelle Kaltmiete beträgt ${formatCurrency(lease.rent_cold_eur || 0)}. Bitte begründe die Erhöhung mit dem örtlichen Mietspiegel.`,
+        prompt: `Erstelle ein Mieterhöhungsverlangen für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Die aktuelle Kaltmiete beträgt ${formatCurrency(lease.rent_cold_eur || 0)}.`,
       },
       abmahnung: {
         subject: 'Abmahnung wegen Vertragsverletzung',
-        prompt: `Erstelle eine Abmahnung für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}. Bitte frage mich nach dem konkreten Grund der Abmahnung.`,
+        prompt: `Erstelle eine Abmahnung für ${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}.`,
       },
     };
-
     const template = templates[letterType];
-
-    // Navigate to letter generator with pre-filled data
     const params = new URLSearchParams({
       contactId: lease.tenant_contact.id,
       subject: template.subject,
       prompt: template.prompt,
       leaseId: lease.id,
     });
-
     navigate(`/portal/office/brief?${params.toString()}`);
-  }
-
-  function openInviteDialog(lease: Lease & { tenant_contact?: Contact }) {
-    if (!lease.tenant_contact?.email) {
-      toast.error('Keine E-Mail-Adresse hinterlegt');
-      return;
-    }
-    setInviteLeaseId(lease.id);
-    setInviteContact(lease.tenant_contact);
-    setInviteOpen(true);
-  }
-
-  async function handleSendInvite() {
-    if (!inviteLeaseId || !inviteContact?.email) {
-      toast.error('Keine E-Mail-Adresse hinterlegt');
-      return;
-    }
-
-    setInviting(true);
-    try {
-      const { error: insertError } = await supabase
-        .from('renter_invites')
-        .insert({
-          tenant_id: tenantId,
-          lease_id: inviteLeaseId,
-          unit_id: unitId,
-          contact_id: inviteContact.id,
-          email: inviteContact.email,
-          created_by: user?.id,
-        });
-
-      if (insertError) throw insertError;
-
-      toast.success('Einladung erstellt');
-      setInviteOpen(false);
-      await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Erstellen der Einladung');
-    }
-    setInviting(false);
-  }
-
-  async function handleCreateQuickContact() {
-    if (!newContactForm.first_name || !newContactForm.last_name) {
-      toast.error('Bitte Vor- und Nachname eingeben');
-      return;
-    }
-
-    setCreatingContact(true);
-    try {
-      // Generate a public_id for the contact
-      const publicId = `KNT-${Date.now().toString(36).toUpperCase()}`;
-      
-      const { data: newContact, error: insertError } = await supabase
-        .from('contacts')
-        .insert([{
-          tenant_id: tenantId,
-          first_name: newContactForm.first_name,
-          last_name: newContactForm.last_name,
-          email: newContactForm.email || null,
-          phone: newContactForm.phone || null,
-          public_id: publicId,
-        }])
-        .select('id, first_name, last_name, email')
-        .single();
-
-      if (insertError) throw insertError;
-
-      toast.success('Kontakt erstellt');
-      
-      // Reload contacts and auto-select the new one
-      await fetchData();
-      setLeaseForm(prev => ({ ...prev, tenant_contact_id: newContact.id }));
-      
-      // Reset form and close dialog
-      setNewContactForm({ first_name: '', last_name: '', email: '', phone: '' });
-      setQuickContactDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Erstellen');
-    }
-    setCreatingContact(false);
-  }
-
-  const calculateWarmRent = () => {
-    const cold = parseFloat(leaseForm.rent_cold_eur) || 0;
-    const nk = parseFloat(leaseForm.nk_advance_eur) || 0;
-    const heating = parseFloat(leaseForm.heating_advance_eur) || 0;
-    return cold + nk + heating;
   };
+
+  const calculateWarmRent = (cold: string, nk: string, heating: string) =>
+    (parseFloat(cold) || 0) + (parseFloat(nk) || 0) + (parseFloat(heating) || 0);
 
   if (loading) {
     return (
@@ -472,513 +337,332 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
 
   if (!unitId) {
     return (
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>Keine Einheit für diese Immobilie gefunden.</AlertDescription>
-      </Alert>
+      <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>Keine Einheit gefunden.</AlertDescription></Alert>
     );
   }
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Mietverträge</h3>
-          <p className="text-sm text-muted-foreground">
-            Verwalten Sie alle Mietverträge für diese Immobilie
-          </p>
+  // Inline lease card renderer
+  const renderLeaseCard = (lease: Lease & { tenant_contact?: Contact }) => {
+    const cold = getField(lease, 'rent_cold_eur');
+    const nk = getField(lease, 'nk_advance_eur');
+    const heating = getField(lease, 'heating_advance_eur');
+    const warmRent = calculateWarmRent(cold, nk, heating);
+
+    return (
+      <Card key={lease.id}>
+        <CardHeader className="pb-2 pt-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              {lease.tenant_contact
+                ? `${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}`
+                : 'Kein Mieter'}
+            </CardTitle>
+            {getStatusBadge(lease.status)}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 px-4 pb-3">
+          {/* Row 1: Vertragsart + Mietmodell */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Vertragsart</Label>
+              <Select
+                value={getField(lease, 'lease_type') || 'unbefristet'}
+                onValueChange={(v) => updateLeaseField(lease.id, 'lease_type', v)}
+              >
+                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LEASE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Mietmodell</Label>
+              <Select
+                value={getField(lease, 'rent_model') || 'FIX'}
+                onValueChange={(v) => updateLeaseField(lease.id, 'rent_model', v)}
+              >
+                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RENT_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 2: Miete */}
+          <div className="grid grid-cols-3 gap-3 pt-1 border-t">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Kaltmiete (€)</Label>
+              <Input type="number" step="0.01" value={cold} onChange={(e) => updateLeaseField(lease.id, 'rent_cold_eur', e.target.value)} className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">NK-Vorausz. (€)</Label>
+              <Input type="number" step="0.01" value={nk} onChange={(e) => updateLeaseField(lease.id, 'nk_advance_eur', e.target.value)} className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Heizk.-VZ (€)</Label>
+              <Input type="number" step="0.01" value={heating} onChange={(e) => updateLeaseField(lease.id, 'heating_advance_eur', e.target.value)} className="h-7 text-xs" />
+            </div>
+          </div>
+
+          {/* Warmmiete computed */}
+          <div className="flex justify-between items-center text-xs bg-muted/50 rounded px-3 py-1.5">
+            <span className="text-muted-foreground">Warmmiete</span>
+            <span className="font-semibold">{warmRent.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</span>
+          </div>
+
+          {/* Row 3: Laufzeit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Mietbeginn</Label>
+              <Input type="date" value={getField(lease, 'start_date')} onChange={(e) => updateLeaseField(lease.id, 'start_date', e.target.value)} className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Mietende</Label>
+              <Input type="date" value={getField(lease, 'end_date')} onChange={(e) => updateLeaseField(lease.id, 'end_date', e.target.value)} className="h-7 text-xs" />
+            </div>
+          </div>
+
+          {/* Row 4: Kaution + Zahlung */}
+          <div className="grid grid-cols-3 gap-3 pt-1 border-t">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Kaution (€)</Label>
+              <Input type="number" step="0.01" value={getField(lease, 'deposit_amount_eur')} onChange={(e) => updateLeaseField(lease.id, 'deposit_amount_eur', e.target.value)} className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Kaution-Status</Label>
+              <Select value={getField(lease, 'deposit_status') || 'OPEN'} onValueChange={(v) => updateLeaseField(lease.id, 'deposit_status', v)}>
+                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DEPOSIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Zahlungstag</Label>
+              <Input type="number" min={1} max={31} value={getField(lease, 'payment_due_day')} onChange={(e) => updateLeaseField(lease.id, 'payment_due_day', e.target.value)} className="h-7 text-xs" />
+            </div>
+          </div>
+
+          {/* Row 5: Nächste Anpassung */}
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Nächste Mietanpassung</Label>
+            <Input type="date" value={getField(lease, 'next_rent_adjustment_date')} onChange={(e) => updateLeaseField(lease.id, 'next_rent_adjustment_date', e.target.value)} className="h-7 text-xs" />
+          </div>
+
+          {/* Actions footer */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            {lease.status === 'draft' && (
+              <Button size="sm" className="h-7 text-xs" onClick={() => handleActivateLease(lease.id)}>
+                Aktivieren
+              </Button>
+            )}
+            {(lease.status === 'active' || lease.status === 'notice_given') && (
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleOpenLetterGenerator(lease, 'kuendigung')}>
+                  <FileText className="mr-1 h-3 w-3" />Kündigung
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleOpenLetterGenerator(lease, 'mieterhoehung')}>
+                  <TrendingUp className="mr-1 h-3 w-3" />Mieterhöhung
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleOpenLetterGenerator(lease, 'abmahnung')}>
+                  <AlertTriangle className="mr-1 h-3 w-3" />Abmahnung
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // New lease inline card
+  const renderNewLeaseCard = () => (
+    <Card className="border-dashed border-primary/30">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Plus className="h-3.5 w-3.5" />
+          Neuer Mietvertrag
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pb-3">
+        {/* Mieter */}
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Mieter (Kontakt) *</Label>
+          <Select value={newLease.tenant_contact_id} onValueChange={(v) => setNewLease(prev => ({ ...prev, tenant_contact_id: v }))}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Kontakt auswählen" /></SelectTrigger>
+            <SelectContent>
+              {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.last_name}, {c.first_name} {c.email && `(${c.email})`}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-        <Button onClick={openCreateDialog}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Neuen Mietvertrag anlegen
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Vertragsart</Label>
+            <Select value={newLease.lease_type} onValueChange={(v) => setNewLease(prev => ({ ...prev, lease_type: v }))}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{LEASE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Mietmodell</Label>
+            <Select value={newLease.rent_model} onValueChange={(v) => setNewLease(prev => ({ ...prev, rent_model: v }))}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{RENT_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Mietbeginn *</Label>
+            <Input type="date" value={newLease.start_date} onChange={(e) => setNewLease(prev => ({ ...prev, start_date: e.target.value }))} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Mietende</Label>
+            <Input type="date" value={newLease.end_date} onChange={(e) => setNewLease(prev => ({ ...prev, end_date: e.target.value }))} className="h-7 text-xs" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 pt-1 border-t">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Kaltmiete (€) *</Label>
+            <Input type="number" step="0.01" value={newLease.rent_cold_eur} onChange={(e) => setNewLease(prev => ({ ...prev, rent_cold_eur: e.target.value }))} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">NK-Vorausz. (€)</Label>
+            <Input type="number" step="0.01" value={newLease.nk_advance_eur} onChange={(e) => setNewLease(prev => ({ ...prev, nk_advance_eur: e.target.value }))} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Heizk.-VZ (€)</Label>
+            <Input type="number" step="0.01" value={newLease.heating_advance_eur} onChange={(e) => setNewLease(prev => ({ ...prev, heating_advance_eur: e.target.value }))} className="h-7 text-xs" />
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center text-xs bg-muted/50 rounded px-3 py-1.5">
+          <span className="text-muted-foreground">Warmmiete</span>
+          <span className="font-semibold">
+            {calculateWarmRent(newLease.rent_cold_eur, newLease.nk_advance_eur, newLease.heating_advance_eur).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Kaution (€)</Label>
+            <Input type="number" step="0.01" value={newLease.deposit_amount_eur} onChange={(e) => setNewLease(prev => ({ ...prev, deposit_amount_eur: e.target.value }))} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Kaution-Status</Label>
+            <Select value={newLease.deposit_status} onValueChange={(v) => setNewLease(prev => ({ ...prev, deposit_status: v }))}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{DEPOSIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Zahlungstag</Label>
+            <Input type="number" min={1} max={31} value={newLease.payment_due_day} onChange={(e) => setNewLease(prev => ({ ...prev, payment_due_day: e.target.value }))} className="h-7 text-xs" />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t">
+          <Button size="sm" className="h-7 text-xs" onClick={handleCreateLease} disabled={saving}>
+            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            Anlegen
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsCreating(false)}>
+            Abbrechen
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Mietverträge</h3>
+        <Button size="sm" className="h-7 text-xs" onClick={() => setIsCreating(true)} disabled={isCreating}>
+          <UserPlus className="mr-1 h-3 w-3" />
+          Neuen Vertrag anlegen
         </Button>
       </div>
 
-      {/* Active Leases */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            Aktive Verträge ({activeLeases.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activeLeases.length > 0 ? (
-            <div className="space-y-4">
-              {activeLeases.map(lease => (
-                <div key={lease.id} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        {lease.tenant_contact?.last_name}, {lease.tenant_contact?.first_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {lease.tenant_contact?.email || 'Keine E-Mail'}
-                      </p>
-                    </div>
-                    {getStatusBadge(lease.status)}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Warmmiete</p>
-                      <p className="font-medium">{formatCurrency(lease.monthly_rent)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Mietbeginn</p>
-                      <p className="font-medium">{formatDate(lease.start_date)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Mietende</p>
-                      <p className="font-medium">{formatDate(lease.end_date)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Vertragsart</p>
-                      <p className="font-medium">
-                        {LEASE_TYPES.find(t => t.value === lease.lease_type)?.label || 'Unbefristet'}
-                      </p>
-                    </div>
-                  </div>
+      {/* New lease card */}
+      {isCreating && renderNewLeaseCard()}
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(lease)}>
-                      <Edit2 className="mr-1 h-3 w-3" />
-                      Bearbeiten
-                    </Button>
-                    
-                    {lease.status === 'draft' && (
-                      <Button size="sm" onClick={() => handleActivateLease(lease.id)}>
-                        Aktivieren
-                      </Button>
-                    )}
-                    
-                    {(lease.status === 'active' || lease.status === 'notice_given') && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleOpenLetterGenerator(lease, 'kuendigung')}
-                        >
-                          <FileText className="mr-1 h-3 w-3" />
-                          Kündigung
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleOpenLetterGenerator(lease, 'mieterhoehung')}
-                        >
-                          <TrendingUp className="mr-1 h-3 w-3" />
-                          Mieterhöhung
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleOpenLetterGenerator(lease, 'abmahnung')}
-                        >
-                          <AlertTriangle className="mr-1 h-3 w-3" />
-                          Abmahnung
-                        </Button>
-                        
-                        {!lease.renter_org_id && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openInviteDialog(lease)}
-                          >
-                            <Mail className="mr-1 h-3 w-3" />
-                            Einladen
-                          </Button>
-                        )}
-                        
-                        {lease.renter_org_id && (
-                          <Badge variant="default" className="h-7 px-3">
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            Portal-Zugang
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <UserPlus className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">Keine aktiven Mietverträge</p>
-              <p className="text-sm text-muted-foreground">Legen Sie einen neuen Mietvertrag an.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Active leases as inline-editable cards */}
+      {activeLeases.length > 0 ? (
+        <div className="space-y-4">
+          {activeLeases.map(renderLeaseCard)}
+        </div>
+      ) : !isCreating && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <UserPlus className="h-10 w-10 mx-auto text-muted-foreground/40" />
+            <p className="mt-2 text-sm text-muted-foreground">Keine aktiven Mietverträge</p>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Historical Leases */}
+      {/* Historical leases — Collapsible */}
       {historicalLeases.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              Historische Verträge ({historicalLeases.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {historicalLeases.map(lease => (
-                <div key={lease.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <p className="font-medium text-muted-foreground">
-                      {lease.tenant_contact?.last_name}, {lease.tenant_contact?.first_name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(lease.start_date)} – {formatDate(lease.end_date)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {getStatusBadge(lease.status)}
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {formatCurrency(lease.monthly_rent)}
-                    </p>
-                  </div>
+        <Collapsible open={historicalOpen} onOpenChange={setHistoricalOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between h-8 text-xs">
+              <span className="flex items-center gap-2">
+                <History className="h-3.5 w-3.5" />
+                Historische Verträge ({historicalLeases.length})
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${historicalOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-2">
+            {historicalLeases.map(lease => (
+              <div key={lease.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 text-xs">
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    {lease.tenant_contact?.last_name}, {lease.tenant_contact?.first_name}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {formatDate(lease.start_date)} – {formatDate(lease.end_date)}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="text-right">
+                  {getStatusBadge(lease.status)}
+                  <p className="text-muted-foreground mt-1">{formatCurrency(lease.monthly_rent)}</p>
+                </div>
+              </div>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      {/* Invites */}
-      {invites.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Einladungen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {invites.map(invite => (
-                <div key={invite.id} className="flex items-center justify-between text-sm p-3 rounded-lg border">
-                  <div>
-                    <p className="font-medium">{invite.email}</p>
-                    <p className="text-muted-foreground text-xs">
-                      Erstellt: {formatDate(invite.created_at)} • Gültig bis: {formatDate(invite.expires_at)}
-                    </p>
-                  </div>
-                  {getInviteStatusBadge(invite.status)}
-                </div>
-              ))}
+      {/* Sticky Save Bar (only when dirty) */}
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t p-3 z-50">
+          <div className="container mx-auto flex items-center justify-between max-w-7xl">
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              Ungespeicherte Änderungen
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setEdits({})}>Verwerfen</Button>
+              <Button size="sm" onClick={handleSaveAll} disabled={saving}>
+                {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+                Speichern
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-
-      {/* Create/Edit Lease Dialog */}
-      <Dialog open={leaseDialogOpen} onOpenChange={setLeaseDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingLease ? 'Mietvertrag bearbeiten' : 'Neuen Mietvertrag anlegen'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingLease 
-                ? 'Aktualisieren Sie die Vertragsdaten.'
-                : 'Wählen Sie einen Kontakt als Mieter und geben Sie die Vertragsdetails ein.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Mieter Auswahl mit Schnellanlage-Button */}
-            <div className="space-y-2">
-              <Label>Mieter (Kontakt) *</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={leaseForm.tenant_contact_id}
-                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, tenant_contact_id: v }))}
-                  disabled={!!editingLease}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Kontakt auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.last_name}, {c.first_name} {c.email && `(${c.email})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!editingLease && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => setQuickContactDialogOpen(true)}
-                    title="Neuen Mieter anlegen"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Wählen Sie einen bestehenden Kontakt oder legen Sie einen neuen Mieter an
-              </p>
-            </div>
-
-            {/* Vertragsdetails */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Vertragsart</Label>
-                <Select
-                  value={leaseForm.lease_type}
-                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, lease_type: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEASE_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Mietmodell</Label>
-                <Select
-                  value={leaseForm.rent_model}
-                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, rent_model: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RENT_MODELS.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Laufzeit */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Mietbeginn *</Label>
-                <Input
-                  type="date"
-                  value={leaseForm.start_date}
-                  onChange={(e) => setLeaseForm(prev => ({ ...prev, start_date: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Mietende</Label>
-                <Input
-                  type="date"
-                  value={leaseForm.end_date}
-                  onChange={(e) => setLeaseForm(prev => ({ ...prev, end_date: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* Miete */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Euro className="h-4 w-4 text-muted-foreground" />
-                <Label className="font-medium">Miete</Label>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Kaltmiete (€) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={leaseForm.rent_cold_eur}
-                    onChange={(e) => setLeaseForm(prev => ({ ...prev, rent_cold_eur: e.target.value }))}
-                    placeholder="750.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">NK-Vorauszahlung (€)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={leaseForm.nk_advance_eur}
-                    onChange={(e) => setLeaseForm(prev => ({ ...prev, nk_advance_eur: e.target.value }))}
-                    placeholder="150.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Heizkosten-VZ (€)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={leaseForm.heating_advance_eur}
-                    onChange={(e) => setLeaseForm(prev => ({ ...prev, heating_advance_eur: e.target.value }))}
-                    placeholder="100.00"
-                  />
-                </div>
-              </div>
-              <div className="p-2 bg-muted rounded text-sm flex justify-between">
-                <span className="font-medium">Warmmiete</span>
-                <span className="font-semibold text-foreground">
-                  {calculateWarmRent().toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
-                </span>
-              </div>
-            </div>
-
-            {/* Kaution & Zahlung */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs">Kaution (€)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={leaseForm.deposit_amount_eur}
-                  onChange={(e) => setLeaseForm(prev => ({ ...prev, deposit_amount_eur: e.target.value }))}
-                  placeholder="2250.00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Kaution-Status</Label>
-                <Select
-                  value={leaseForm.deposit_status}
-                  onValueChange={(v) => setLeaseForm(prev => ({ ...prev, deposit_status: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPOSIT_STATUSES.map(s => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Zahlungstag</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={leaseForm.payment_due_day}
-                  onChange={(e) => setLeaseForm(prev => ({ ...prev, payment_due_day: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* Nächste Anpassung */}
-            <div className="space-y-2">
-              <Label className="text-xs">Nächste Mietanpassung frühestens</Label>
-              <Input
-                type="date"
-                value={leaseForm.next_rent_adjustment_date}
-                onChange={(e) => setLeaseForm(prev => ({ ...prev, next_rent_adjustment_date: e.target.value }))}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLeaseDialogOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleSaveLease} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingLease ? 'Speichern' : 'Anlegen'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Invite Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mieter zum Portal einladen</DialogTitle>
-            <DialogDescription>
-              Eine Einladung wird an {inviteContact?.email} gesendet.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleSendInvite} disabled={inviting}>
-              {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Einladung senden
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Contact Creation Dialog */}
-      <Dialog open={quickContactDialogOpen} onOpenChange={setQuickContactDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Neuen Mieter anlegen</DialogTitle>
-            <DialogDescription>
-              Erstellen Sie schnell einen neuen Kontakt als Mieter.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Vorname *</Label>
-                <Input
-                  value={newContactForm.first_name}
-                  onChange={(e) => setNewContactForm(prev => ({ ...prev, first_name: e.target.value }))}
-                  placeholder="Max"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nachname *</Label>
-                <Input
-                  value={newContactForm.last_name}
-                  onChange={(e) => setNewContactForm(prev => ({ ...prev, last_name: e.target.value }))}
-                  placeholder="Mustermann"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>E-Mail</Label>
-              <Input
-                type="email"
-                value={newContactForm.email}
-                onChange={(e) => setNewContactForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="max@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefon</Label>
-              <Input
-                type="tel"
-                value={newContactForm.phone}
-                onChange={(e) => setNewContactForm(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="+49 123 456789"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuickContactDialogOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleCreateQuickContact} disabled={creatingContact}>
-              {creatingContact && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Anlegen & Auswählen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

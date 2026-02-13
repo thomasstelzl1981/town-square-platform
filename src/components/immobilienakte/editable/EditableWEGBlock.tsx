@@ -43,14 +43,14 @@ export function EditableWEGBlock({
   if (!wegFlag) {
     return (
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Building className="h-4 w-4" />
+        <CardHeader className="pb-2 pt-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Building className="h-3.5 w-3.5" />
             WEG & Hausgeld
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
+        <CardContent className="px-4 pb-3">
+          <p className="text-xs text-muted-foreground">
             Kein Wohnungseigentum (WEG-Flag nicht aktiv).
           </p>
         </CardContent>
@@ -60,52 +60,55 @@ export function EditableWEGBlock({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building className="h-4 w-4" />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Building className="h-3.5 w-3.5" />
           WEG & Hausgeld
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 px-4 pb-3">
         {/* MEA */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">MEA Anteil</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">MEA Anteil</Label>
             <Input 
               type="number"
               step="0.0001"
               value={meaShare || ''} 
               onChange={(e) => onFieldChange('meaShare', e.target.value ? parseFloat(e.target.value) : undefined)}
               placeholder="z.B. 42.5"
+              className="h-7 text-xs"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">MEA Gesamt</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">MEA Gesamt</Label>
             <Input 
               type="number"
               step="0.01"
               value={meaTotal || ''} 
               onChange={(e) => onFieldChange('meaTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
               placeholder="z.B. 1000"
+              className="h-7 text-xs"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Hausgeld mtl. (€)</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Hausgeld mtl. (€)</Label>
             <Input 
               type="number"
               step="0.01"
               value={hausgeldMonthlyEur || ''} 
               onChange={(e) => onFieldChange('hausgeldMonthlyEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className="h-7 text-xs"
             />
           </div>
         </div>
 
         {/* Allocation */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Standard-Umlageschlüssel</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Standard-Umlageschlüssel</Label>
             <Select value={allocationKeyDefault} onValueChange={(v) => onFieldChange('allocationKeyDefault', v as AllocationKey)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -115,60 +118,64 @@ export function EditableWEGBlock({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Aktuelle Periode</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Aktuelle Periode</Label>
             <Input 
               value={periodCurrent || ''} 
               disabled
-              className="bg-muted"
+              className="h-7 text-xs bg-muted"
               placeholder="Wird automatisch berechnet"
             />
           </div>
         </div>
 
         {/* Settlement */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-            <Calculator className="h-4 w-4" />
-            <span className="text-xs font-medium">Letzte Abrechnung</span>
+        <div className="pt-1 border-t">
+          <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+            <Calculator className="h-3.5 w-3.5" />
+            <span className="text-[11px] font-medium">Letzte Abrechnung</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Abrechnungsdatum</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Abrechnungsdatum</Label>
               <Input 
                 type="date"
                 value={lastSettlementDate || ''} 
                 onChange={(e) => onFieldChange('lastSettlementDate', e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Saldo (€)</Label>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Saldo (€)</Label>
               <Input 
                 type="number"
                 step="0.01"
                 value={lastSettlementBalanceEur || ''} 
                 onChange={(e) => onFieldChange('lastSettlementBalanceEur', e.target.value ? parseFloat(e.target.value) : undefined)}
                 placeholder="positiv = Nachzahlung"
+                className="h-7 text-xs"
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Umlagefähig p.a. (€)</Label>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Umlagefähig p.a. (€)</Label>
               <Input 
                 type="number"
                 step="0.01"
                 value={allocatablePaEur || ''} 
                 onChange={(e) => onFieldChange('allocatablePaEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Nicht umlagefähig p.a. (€)</Label>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Nicht umlagefähig p.a. (€)</Label>
               <Input 
                 type="number"
                 step="0.01"
                 value={nonAllocatablePaEur || ''} 
                 onChange={(e) => onFieldChange('nonAllocatablePaEur', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="h-7 text-xs"
               />
             </div>
           </div>
