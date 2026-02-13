@@ -176,6 +176,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/integrations", component: "ArmstrongIntegrations", title: "Widget-Integrationen" },
     // Landing Pages
     { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
+    // Fortbildung Management
+    { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
   ],
 };
 
