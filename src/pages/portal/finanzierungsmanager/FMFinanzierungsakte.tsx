@@ -347,11 +347,13 @@ export default function FMFinanzierungsakte() {
                   <h3 className="text-base font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Selbstauskunft</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller</p>
                 </div>
-                <div className="p-4 space-y-0">
-                  <Table><DualHeader /><TableBody /></Table>
-                  <PersonSection {...dualProps} hideHeader />
-                  <EmploymentSection {...dualProps} hideHeader />
-                  <BankSection {...dualProps} hideHeader />
+                <div className="p-4 space-y-0 overflow-x-auto">
+                  <div className="min-w-[600px]">
+                    <Table><DualHeader /><TableBody /></Table>
+                    <PersonSection {...dualProps} hideHeader />
+                    <EmploymentSection {...dualProps} hideHeader />
+                    <BankSection {...dualProps} hideHeader />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -361,12 +363,14 @@ export default function FMFinanzierungsakte() {
                   <h3 className="text-base font-semibold flex items-center gap-2"><Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller</p>
                 </div>
-                <div className="p-4 space-y-0">
-                  <Table><DualHeader /><TableBody /></Table>
-                  <IncomeSection {...dualProps} hideHeader />
-                  <ExpensesSection {...dualProps} hideHeader />
-                  <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
-                  <AssetsSection {...dualProps} hideHeader />
+                <div className="p-4 space-y-0 overflow-x-auto">
+                  <div className="min-w-[600px]">
+                    <Table><DualHeader /><TableBody /></Table>
+                    <IncomeSection {...dualProps} hideHeader />
+                    <ExpensesSection {...dualProps} hideHeader />
+                    <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
+                    <AssetsSection {...dualProps} hideHeader />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -486,12 +490,14 @@ export default function FMFinanzierungsakte() {
                 <h3 className="text-base font-semibold flex items-center gap-2"><User className="h-4 w-4" /> Selbstauskunft</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Persönliche Daten, Beschäftigung und Bankverbindung der Antragsteller</p>
               </div>
-              <div className="p-4 space-y-0">
-                <Table><DualHeader /><TableBody /></Table>
-                <PersonSection {...dualProps} hideHeader />
-                <EmploymentSection {...dualProps} hideHeader />
-                <BankSection {...dualProps} hideHeader />
-              </div>
+                <div className="p-4 space-y-0 overflow-x-auto">
+                  <div className="min-w-[600px]">
+                    <Table><DualHeader /><TableBody /></Table>
+                    <PersonSection {...dualProps} hideHeader />
+                    <EmploymentSection {...dualProps} hideHeader />
+                    <BankSection {...dualProps} hideHeader />
+                  </div>
+                </div>
             </CardContent>
           </Card>
 
@@ -501,13 +507,15 @@ export default function FMFinanzierungsakte() {
                 <h3 className="text-base font-semibold flex items-center gap-2"><Banknote className="h-4 w-4" /> Einnahmen, Ausgaben & Vermögen</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Monatliche Einnahmen/Ausgaben und Vermögenswerte der Antragsteller</p>
               </div>
-              <div className="p-4 space-y-0">
-                <Table><DualHeader /><TableBody /></Table>
-                <IncomeSection {...dualProps} hideHeader />
-                <ExpensesSection {...dualProps} hideHeader />
-                <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
-                <AssetsSection {...dualProps} hideHeader />
-              </div>
+                <div className="p-4 space-y-0 overflow-x-auto">
+                  <div className="min-w-[600px]">
+                    <Table><DualHeader /><TableBody /></Table>
+                    <IncomeSection {...dualProps} hideHeader />
+                    <ExpensesSection {...dualProps} hideHeader />
+                    <div className="pt-4"><Table><TableBody><SectionHeaderRow title="Vermögen und Verbindlichkeiten" /></TableBody></Table></div>
+                    <AssetsSection {...dualProps} hideHeader />
+                  </div>
+                </div>
             </CardContent>
           </Card>
 
