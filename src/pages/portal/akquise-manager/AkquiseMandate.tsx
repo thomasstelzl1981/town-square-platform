@@ -1,35 +1,60 @@
 /**
- * AkquiseMandate — Vollständiger Workflow nach FM-Vorbild (MOD-12)
+ * AkquiseMandate — 4-Kachel-Workflow (MOD-12)
  * 
- * ALLE 7 Sektionen sind IMMER sichtbar (durchlaufende Seite).
- * Sektionen 3-7 werden ausgegraut wenn kein Mandat erstellt wurde.
- * Split-View Toggle für volle Bildschirmbreite.
+ * Ansicht 1: Erfassung → Profil → Kontakte → E-Mail
+ * Sektionen 5-7 (Objekteingang, Analyse, Delivery) leben auf der Workbench-Seite.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
-import { AcqSectionHeader } from '@/components/akquise/AcqSectionHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Send, Sparkles, Search, Mail, Inbox, Brain, Package, LayoutList, LayoutPanelLeft } from 'lucide-react';
+import { 
+  Loader2, Send, Sparkles, Search, Mail, UserPlus, Database, Globe,
+  FileText, Download, Printer, BookOpen, LayoutList, LayoutPanelLeft,
+  CheckCircle2, XCircle, Clock, MailOpen, AlertCircle, Wand2, Phone, MapPin, ExternalLink,
+  Users
+} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAcqMandatesForManager, useCreateAcqMandate } from '@/hooks/useAcqMandate';
 import { ASSET_FOCUS_OPTIONS, type CreateAcqMandateData } from '@/types/acquisition';
 import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { 
+  useContactStaging, 
+  useCreateStagingContact, 
+  useApproveContact, 
+  useRejectContact,
+  useEnrichContact,
+  useBulkCreateStagingContacts,
+  useOutreachQueue,
+  useUserContactLinks,
+  type ContactStaging 
+} from '@/hooks/useAcqContacts';
 import {
-  SourcingTab, OutreachTab, InboundTab, AnalysisTab, DeliveryTab,
-} from './components';
+  useAcqOutboundMessages,
+  useSendOutreach,
+  useBulkSendOutreach,
+  useEmailTemplates,
+  renderTemplate,
+  type EmailTemplate
+} from '@/hooks/useAcqOutbound';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -44,50 +69,107 @@ interface ExtractedProfile {
   profile_text_long?: string;
 }
 
+// ── Source & Status configs ──
+const SOURCE_CONFIG = {
+  manual: { label: 'Manuell', icon: UserPlus, color: 'bg-gray-100 text-gray-700' },
+  apollo: { label: 'Apollo', icon: Database, color: 'bg-blue-100 text-blue-700' },
+  apify: { label: 'Apify', icon: Globe, color: 'bg-purple-100 text-purple-700' },
+  firecrawl: { label: 'Firecrawl', icon: Search, color: 'bg-orange-100 text-orange-700' },
+  geomap: { label: 'GeoMap', icon: MapPin, color: 'bg-green-100 text-green-700' },
+} as const;
+
+const MSG_STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
+  queued: { label: 'Warteschlange', icon: Clock, color: 'bg-gray-100 text-gray-700' },
+  sending: { label: 'Wird gesendet', icon: Loader2, color: 'bg-blue-100 text-blue-700' },
+  sent: { label: 'Gesendet', icon: Send, color: 'bg-blue-100 text-blue-700' },
+  delivered: { label: 'Zugestellt', icon: CheckCircle2, color: 'bg-green-100 text-green-700' },
+  opened: { label: 'Geöffnet', icon: MailOpen, color: 'bg-purple-100 text-purple-700' },
+  bounced: { label: 'Zurückgewiesen', icon: AlertCircle, color: 'bg-red-100 text-red-700' },
+  replied: { label: 'Beantwortet', icon: Mail, color: 'bg-green-100 text-green-700' },
+  failed: { label: 'Fehlgeschlagen', icon: XCircle, color: 'bg-red-100 text-red-700' },
+};
+
+const CONTACT_STATUS_CONFIG = {
+  pending: { label: 'Ausstehend', variant: 'secondary' as const },
+  approved: { label: 'Übernommen', variant: 'default' as const },
+  rejected: { label: 'Abgelehnt', variant: 'destructive' as const },
+  merged: { label: 'Zusammengeführt', variant: 'outline' as const },
+} as const;
+
 export default function AkquiseMandate() {
   const navigate = useNavigate();
   const { data: mandates, isLoading } = useAcqMandatesForManager();
   const createMandate = useCreateAcqMandate();
 
-  // Split-View state
   const [isSplitView, setIsSplitView] = useState(false);
 
-  // Active mandate (null = neues Mandat wird erstellt)
+  // Active mandate
   const [activeMandateId, setActiveMandateId] = useState<string | null>(null);
-  const [activeMandateCode, setActiveMandateCode] = useState<string>('');
+  const [activeMandateCode, setActiveMandateCode] = useState('');
 
-  // Phase 1: Free-text capture
+  // ─── Kachel 1: KI-Erfassung ───
   const [freeText, setFreeText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
 
-  // Phase 2: Editable profile (pre-filled from AI)
+  // Steuerfelder (Kachel 1 — optional)
+  const [steerPriceMin, setSteerPriceMin] = useState('');
+  const [steerPriceMax, setSteerPriceMax] = useState('');
+  const [steerRegion, setSteerRegion] = useState('');
+  const [steerAssetFocus, setSteerAssetFocus] = useState<string[]>([]);
+  const [steerYield, setSteerYield] = useState('');
+  const [steerExclusions, setSteerExclusions] = useState('');
+
+  // ─── Kunden-Zeile ───
   const [clientName, setClientName] = useState('');
-  const [region, setRegion] = useState('');
-  const [assetFocus, setAssetFocus] = useState<string[]>([]);
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [yieldTarget, setYieldTarget] = useState('');
-  const [exclusions, setExclusions] = useState('');
-  const [notes, setNotes] = useState('');
+
+  // ─── Kachel 2: Ankaufsprofil (OUTPUT) ───
+  const [profileGenerated, setProfileGenerated] = useState(false);
+  const [profileData, setProfileData] = useState<ExtractedProfile | null>(null);
   const [profileTextLong, setProfileTextLong] = useState('');
+
+  // ─── Kachel 3: Kontaktrecherche ───
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showApolloDialog, setShowApolloDialog] = useState(false);
+  const [showApifyDialog, setShowApifyDialog] = useState(false);
+  const [apolloLoading, setApolloLoading] = useState(false);
+  const [apifyLoading, setApifyLoading] = useState(false);
+  const [manualForm, setManualForm] = useState({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
+  const [apolloForm, setApolloForm] = useState({ jobTitles: 'Makler, Immobilienmakler, Geschäftsführer', locations: '', industries: 'Real Estate', limit: 25 });
+  const [apifyForm, setApifyForm] = useState({ portalUrl: '', searchType: 'brokers', limit: 50 });
+
+  // ─── Kachel 4: E-Mail ───
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+
+  // ── Hooks for Kachel 3+4 ──
+  const { data: contacts = [], isLoading: contactsLoading } = useContactStaging(activeMandateId || '');
+  const createContact = useCreateStagingContact();
+  const approveContact = useApproveContact();
+  const rejectContact = useRejectContact();
+  const enrichContact = useEnrichContact();
+  const bulkCreate = useBulkCreateStagingContacts();
+  const { data: sentMessages = [] } = useAcqOutboundMessages(activeMandateId || '');
+  const { data: templates = [] } = useEmailTemplates('outreach');
+  const sendOutreach = useSendOutreach();
+  const bulkSend = useBulkSendOutreach();
+
+  const approvedContacts = contacts.filter(c => c.status === 'approved');
+  const pendingContacts = contacts.filter(c => c.status === 'pending');
+
+  const selectedApprovedContacts = approvedContacts.filter(c => selectedContactIds.has(c.id));
 
   // ── Helpers ──
   const toggleAssetFocus = (value: string) => {
-    setAssetFocus(prev =>
-      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
-    );
+    setSteerAssetFocus(prev => prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]);
   };
 
-  const applyProfile = (p: ExtractedProfile) => {
-    if (p.client_name) setClientName(p.client_name);
-    if (p.region) setRegion(p.region);
-    if (p.asset_focus?.length) setAssetFocus(p.asset_focus);
-    if (p.price_min) setPriceMin(String(p.price_min));
-    if (p.price_max) setPriceMax(String(p.price_max));
-    if (p.yield_target) setYieldTarget(String(p.yield_target));
-    if (p.exclusions) setExclusions(p.exclusions);
-    if (p.notes) setNotes(p.notes);
-    if (p.profile_text_long) setProfileTextLong(p.profile_text_long);
+  const toggleContactSelection = (id: string) => {
+    setSelectedContactIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   // ── Phase 1: KI-Extraction ──
@@ -96,113 +178,251 @@ export default function AkquiseMandate() {
     setIsExtracting(true);
     try {
       const { data, error } = await supabase.functions.invoke('sot-acq-profile-extract', {
-        body: { freeText: freeText.trim() },
+        body: { 
+          freeText: freeText.trim(),
+          clientName: clientName.trim() || undefined,
+          steeringParams: {
+            priceMin: steerPriceMin ? Number(steerPriceMin) : undefined,
+            priceMax: steerPriceMax ? Number(steerPriceMax) : undefined,
+            region: steerRegion.trim() || undefined,
+            assetFocus: steerAssetFocus.length > 0 ? steerAssetFocus : undefined,
+            yieldTarget: steerYield ? Number(steerYield) : undefined,
+            exclusions: steerExclusions.trim() || undefined,
+          },
+        },
       });
       if (error) throw error;
       if (data?.profile) {
-        applyProfile(data.profile);
+        const p = data.profile as ExtractedProfile;
+        setProfileData(p);
+        setProfileTextLong(p.profile_text_long || '');
+        if (p.client_name && !clientName) setClientName(p.client_name);
+        setProfileGenerated(true);
         toast.success('Ankaufsprofil extrahiert');
       } else {
         throw new Error('Kein Profil extrahiert');
       }
     } catch (err) {
       console.error(err);
-      toast.error('KI-Analyse fehlgeschlagen — bitte manuell ausfüllen');
+      toast.error('KI-Analyse fehlgeschlagen');
     } finally {
       setIsExtracting(false);
     }
   };
 
-  // ── Phase 2: Mandat erstellen ──
-  const handleCreate = async () => {
-    if (!clientName.trim()) return;
+  // ── PDF Generation ──
+  const generatePdf = () => {
+    if (!profileData) return;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const margin = 20;
+    let y = margin;
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ANKAUFSPROFIL', margin, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')}`, margin, y);
+    y += 12;
+
+    doc.setDrawColor(200);
+    doc.line(margin, y, 190, y);
+    y += 8;
+
+    // Client
+    doc.setTextColor(0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(clientName || 'Investor', margin, y);
+    y += 10;
+
+    // Profile table
+    const rows: [string, string][] = [
+      ['Suchgebiet', profileData.region || '–'],
+      ['Asset-Fokus', profileData.asset_focus?.join(', ') || '–'],
+      ['Investitionsrahmen', formatPriceRange(profileData.price_min, profileData.price_max)],
+      ['Zielrendite', profileData.yield_target ? `${profileData.yield_target}%` : '–'],
+      ['Ausschlüsse', profileData.exclusions || '–'],
+    ];
+
+    doc.setFontSize(9);
+    rows.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100);
+      doc.text(label, margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0);
+      const lines = doc.splitTextToSize(value, 120);
+      doc.text(lines, margin + 50, y);
+      y += lines.length * 5 + 4;
+    });
+
+    y += 6;
+    doc.setDrawColor(200);
+    doc.line(margin, y, 190, y);
+    y += 8;
+
+    // Profile text
+    if (profileTextLong) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const textLines = doc.splitTextToSize(profileTextLong, 170);
+      doc.text(textLines, margin, y);
+    }
+
+    doc.save(`Ankaufsprofil_${clientName?.replace(/\s/g, '_') || 'Profil'}.pdf`);
+    toast.success('PDF exportiert');
+  };
+
+  // ── Create Mandate ──
+  const handleCreateMandate = async () => {
+    if (!clientName.trim()) { toast.error('Bitte Kundennamen eingeben'); return; }
+    if (!profileData) { toast.error('Bitte zuerst ein Profil generieren'); return; }
 
     const data: CreateAcqMandateData = {
       client_display_name: clientName.trim(),
-      search_area: { free_text: region.trim() || undefined },
-      asset_focus: assetFocus,
-      price_min: priceMin ? Number(priceMin) : null,
-      price_max: priceMax ? Number(priceMax) : null,
-      yield_target: yieldTarget ? Number(yieldTarget) : null,
-      exclusions: exclusions.trim() || undefined,
-      notes: notes.trim() || undefined,
+      search_area: { free_text: profileData.region || '', region: profileData.region },
+      asset_focus: profileData.asset_focus || [],
+      price_min: profileData.price_min || null,
+      price_max: profileData.price_max || null,
+      yield_target: profileData.yield_target || null,
+      exclusions: profileData.exclusions || undefined,
+      notes: [profileData.notes, profileTextLong].filter(Boolean).join('\n\n') || undefined,
     };
 
     const result = await createMandate.mutateAsync(data);
     if (result?.id) {
       setActiveMandateId(result.id);
       setActiveMandateCode(result.code || '');
-      toast.success('Mandat erstellt');
+      setEmailSubject(`${result.code} – Ankaufsprofil`);
+      setEmailBody(`Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser aktuelles Ankaufsprofil.\n\nWir suchen ${profileData.asset_focus?.join(', ') || 'Immobilien'} in ${profileData.region || 'ganz Deutschland'}.\n\nFür Rückfragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen`);
+      toast.success(`Mandat ${result.code} erstellt`);
     }
   };
 
-  // ── Select existing mandate ──
-  const handleSelectMandate = (mandate: { id: string; code: string }) => {
-    setActiveMandateId(mandate.id);
-    setActiveMandateCode(mandate.code);
+  // ── Sourcing Handlers ──
+  const handleManualSubmit = async () => {
+    if (!activeMandateId) return;
+    await createContact.mutateAsync({ mandate_id: activeMandateId, source: 'manual', ...manualForm });
+    setManualForm({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
+    setShowAddDialog(false);
+  };
+
+  const handleApolloSearch = async () => {
+    if (!activeMandateId) return;
+    setApolloLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
+        body: { mandateId: activeMandateId, jobTitles: apolloForm.jobTitles.split(',').map(s => s.trim()), locations: apolloForm.locations.split(',').map(s => s.trim()).filter(Boolean), industries: apolloForm.industries.split(',').map(s => s.trim()), limit: apolloForm.limit },
+      });
+      if (error) throw error;
+      if (data?.contacts?.length) {
+        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.contacts.map((c: any) => ({ source: 'apollo' as const, source_id: c.id, company_name: c.company, first_name: c.firstName, last_name: c.lastName, email: c.email, phone: c.phone, role_guess: c.title, service_area: c.location, quality_score: c.score || 50 })) });
+      }
+      setShowApolloDialog(false);
+    } catch (err) { toast.error('Apollo-Suche fehlgeschlagen'); } 
+    finally { setApolloLoading(false); }
+  };
+
+  const handleApifySearch = async () => {
+    if (!activeMandateId) return;
+    setApifyLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('sot-apify-portal-job', { body: { mandateId: activeMandateId, portalUrl: apifyForm.portalUrl, searchType: apifyForm.searchType, limit: apifyForm.limit } });
+      if (error) throw error;
+      toast.success('Apify-Job gestartet');
+      setShowApifyDialog(false);
+    } catch (err) { toast.error('Apify-Job fehlgeschlagen'); }
+    finally { setApifyLoading(false); }
+  };
+
+  // ── E-Mail Send ──
+  const handleSendEmails = async () => {
+    if (!activeMandateId || selectedApprovedContacts.length === 0) return;
+    const template = templates[0];
+    if (!template) { toast.error('Keine E-Mail-Vorlage verfügbar'); return; }
+
+    try {
+      await bulkSend.mutateAsync({
+        mandateId: activeMandateId,
+        contactIds: selectedApprovedContacts.map(c => c.id),
+        templateCode: template.code,
+        variables: {
+          mandate_code: activeMandateCode,
+          client_name: clientName,
+          search_area: profileData?.region || '',
+          asset_focus: profileData?.asset_focus?.join(', ') || '',
+          custom_subject: emailSubject,
+          custom_body: emailBody,
+        },
+      });
+      setSelectedContactIds(new Set());
+      toast.success(`${selectedApprovedContacts.length} E-Mails gesendet`);
+    } catch (err) {
+      toast.error('Versand fehlgeschlagen');
+    }
   };
 
   if (isLoading) {
-    return (
-      <PageShell>
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </PageShell>
-    );
+    return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
   }
+
+  const mandateCreated = !!activeMandateId;
 
   return (
     <PageShell fullWidth={isSplitView}>
       <ModulePageHeader
         title="MANDATE"
-        description="Ihre Akquise-Mandate verwalten"
+        description="Ankaufsprofile erstellen und Kontakte akquirieren"
         actions={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSplitView(v => !v)}
-            title={isSplitView ? 'Normale Ansicht' : 'Split-Ansicht'}
-          >
+          <Button variant="ghost" size="icon" onClick={() => setIsSplitView(v => !v)} title={isSplitView ? 'Normale Ansicht' : 'Split-Ansicht'}>
             {isSplitView ? <LayoutList className="h-4 w-4" /> : <LayoutPanelLeft className="h-4 w-4" />}
           </Button>
         }
       />
 
-      {/* ══════════════════════════════════════════════════════════════════
-          SEKTION A: Meine Mandate
-          ══════════════════════════════════════════════════════════════════ */}
+      {/* ═══ Meine Mandate ═══ */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Meine Mandate
-        </h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Meine Mandate</h2>
         {mandates && mandates.length > 0 ? (
           <WidgetGrid>
-            {mandates.map(mandate => (
-              <WidgetCell key={mandate.id}>
-                <MandateCaseCard
-                  mandate={mandate}
-                  onClick={() => handleSelectMandate(mandate)}
-                />
+            {mandates.map(m => (
+              <WidgetCell key={m.id}>
+                <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
               </WidgetCell>
             ))}
           </WidgetGrid>
         ) : (
-          <WidgetGrid>
-            <WidgetCell>
-              <MandateCaseCardPlaceholder />
-            </WidgetCell>
-          </WidgetGrid>
+          <WidgetGrid><WidgetCell><MandateCaseCardPlaceholder /></WidgetCell></WidgetGrid>
         )}
       </div>
 
       <Separator />
 
-      {/* ══════════════════════════════════════════════════════════════════
-          SEKTIONEN 1+2: KI-Erfassung + Ankaufsprofil (2-Spalten-Layout)
-          ══════════════════════════════════════════════════════════════════ */}
+      {/* ═══ KUNDEN-ZEILE ═══ */}
+      <div className="flex items-end gap-4">
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kunde / Mandant</Label>
+          <Input
+            placeholder="Name, Vorname oder Firma"
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+            className="text-base font-medium"
+          />
+        </div>
+        <Button variant="outline" size="sm" disabled>
+          <BookOpen className="h-4 w-4 mr-2" />
+          Kontaktbuch
+        </Button>
+      </div>
+
+      {/* ═══ KACHEL 1 + 2: KI-Erfassung + Ankaufsprofil ═══ */}
       <div className={DESIGN.FORM_GRID.FULL}>
-        {/* ── LINKS: KI-gestützte Erfassung ── */}
+        {/* ── KACHEL 1: KI-Erfassung (INPUT) ── */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -215,217 +435,512 @@ export default function AkquiseMandate() {
               placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
               value={freeText}
               onChange={e => setFreeText(e.target.value)}
-              rows={8}
+              rows={6}
               className="text-sm"
             />
-            <Button
-              className="w-full"
-              onClick={handleExtract}
-              disabled={!freeText.trim() || isExtracting}
-            >
-              {isExtracting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
+
+            {/* Optionale Steuerfelder */}
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Optionale Steuerparameter</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Preis ab (€)</Label>
+                  <Input type="number" placeholder="500.000" value={steerPriceMin} onChange={e => setSteerPriceMin(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Preis bis (€)</Label>
+                  <Input type="number" placeholder="5.000.000" value={steerPriceMax} onChange={e => setSteerPriceMax(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Region</Label>
+                <Input placeholder="z.B. Rhein-Main, Berlin" value={steerRegion} onChange={e => setSteerRegion(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Zielrendite (%)</Label>
+                  <Input type="number" step="0.1" placeholder="5.0" value={steerYield} onChange={e => setSteerYield(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Ausschlüsse</Label>
+                  <Input placeholder="z.B. kein Denkmalschutz" value={steerExclusions} onChange={e => setSteerExclusions(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Asset-Fokus</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ASSET_FOCUS_OPTIONS.map(opt => (
+                    <label key={opt.value} className="flex items-center gap-1 px-2 py-1 rounded border border-border hover:bg-accent/50 cursor-pointer text-xs">
+                      <Checkbox checked={steerAssetFocus.includes(opt.value)} onCheckedChange={() => toggleAssetFocus(opt.value)} className="h-3 w-3" />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <Button className="w-full" onClick={handleExtract} disabled={!freeText.trim() || isExtracting}>
+              {isExtracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Ankaufsprofil generieren
             </Button>
           </CardContent>
         </Card>
 
-        {/* ── RECHTS: Ankaufsprofil-Dokument ── */}
+        {/* ── KACHEL 2: Ankaufsprofil (OUTPUT) ── */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Ankaufsprofil</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4" />
+              Ankaufsprofil
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {/* KI-generiertes Profil */}
-            {profileTextLong && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-                <Label className="text-[10px] uppercase tracking-wider text-primary font-semibold">KI-Zusammenfassung</Label>
-                <Textarea
-                  value={profileTextLong}
-                  onChange={e => setProfileTextLong(e.target.value)}
-                  rows={3}
-                  className="bg-background text-sm"
-                />
+          <CardContent>
+            {!profileGenerated ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                <FileText className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-sm font-medium">Profil wird nach KI-Analyse hier angezeigt</p>
+                <p className="text-xs mt-1">Geben Sie links einen Freitext ein und klicken Sie "Generieren"</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Structured read-only data */}
+                <div className="divide-y rounded-lg border">
+                  <ProfileRow label="Kunde" value={clientName || '–'} />
+                  <ProfileRow label="Suchgebiet" value={profileData?.region || '–'} />
+                  <ProfileRow label="Asset-Fokus" value={profileData?.asset_focus?.join(', ') || '–'} />
+                  <ProfileRow label="Investitionsrahmen" value={formatPriceRange(profileData?.price_min, profileData?.price_max)} />
+                  <ProfileRow label="Zielrendite" value={profileData?.yield_target ? `${profileData.yield_target}%` : '–'} />
+                  <ProfileRow label="Ausschlüsse" value={profileData?.exclusions || '–'} />
+                </div>
+
+                {/* Editable summary */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Freitext-Zusammenfassung (editierbar)</Label>
+                  <Textarea
+                    value={profileTextLong}
+                    onChange={e => setProfileTextLong(e.target.value)}
+                    rows={4}
+                    className="text-sm"
+                  />
+                </div>
               </div>
             )}
-
-            {/* Tabular Form style */}
-            <div className={DESIGN.TABULAR_FORM.TABLE_BORDER}>
-              <div className={DESIGN.TABULAR_FORM.SECTION_ROW}>Stammdaten</div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Kontaktname *</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. Müller Family Office" value={clientName} onChange={e => setClientName(e.target.value)} />
-                </div>
-              </div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Suchgebiet</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. Rhein-Main, Berlin" value={region} onChange={e => setRegion(e.target.value)} />
-                </div>
-              </div>
-
-              <div className={DESIGN.TABULAR_FORM.SECTION_ROW}>Investitionskriterien</div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Preis ab (€)</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" placeholder="500.000" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-                </div>
-              </div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Preis bis (€)</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" placeholder="5.000.000" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
-                </div>
-              </div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Zielrendite (%)</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" step="0.1" placeholder="5.0" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} />
-                </div>
-              </div>
-              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
-                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Ausschlüsse</div>
-                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
-                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. kein Denkmalschutz" value={exclusions} onChange={e => setExclusions(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            {/* Asset-Fokus */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Asset-Fokus</Label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {ASSET_FOCUS_OPTIONS.map(opt => (
-                  <label key={opt.value} className="flex items-center gap-1.5 p-1.5 rounded border border-border hover:bg-accent/50 cursor-pointer text-xs">
-                    <Checkbox checked={assetFocus.includes(opt.value)} onCheckedChange={() => toggleAssetFocus(opt.value)} />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Notizen */}
-            <div className="space-y-1">
-              <Label className="text-xs">Notizen</Label>
-              <Textarea placeholder="Weitere Hinweise" value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-sm" />
-            </div>
-
-            {/* Mandat erstellen Button */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleCreate}
-              disabled={!clientName.trim() || createMandate.isPending}
-            >
-              {createMandate.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-4 w-4" />
-              )}
-              Mandat erstellen
-            </Button>
           </CardContent>
         </Card>
       </div>
 
-      <Separator />
+      {/* ═══ PDF-VORSCHAU ═══ */}
+      {profileGenerated && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4" />
+                Ankaufsprofil — PDF-Vorschau
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={generatePdf}>
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF exportieren
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { generatePdf(); }}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Drucken
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* DIN A4 Preview */}
+            <div className="mx-auto bg-white border rounded-lg shadow-sm p-8 max-w-[640px] aspect-[210/297] overflow-hidden">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-gray-900">ANKAUFSPROFIL</h2>
+                  <p className="text-xs text-gray-400 mt-1">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
+                </div>
+                <div className="border-t pt-4">
+                  <h3 className="text-base font-semibold text-gray-800">{clientName || 'Investor'}</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <PdfPreviewRow label="Suchgebiet" value={profileData?.region || '–'} />
+                  <PdfPreviewRow label="Asset-Fokus" value={profileData?.asset_focus?.join(', ') || '–'} />
+                  <PdfPreviewRow label="Investitionsrahmen" value={formatPriceRange(profileData?.price_min, profileData?.price_max)} />
+                  <PdfPreviewRow label="Zielrendite" value={profileData?.yield_target ? `${profileData.yield_target}%` : '–'} />
+                  <PdfPreviewRow label="Ausschlüsse" value={profileData?.exclusions || '–'} />
+                </div>
+                {profileTextLong && (
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{profileTextLong}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          SEKTIONEN 3-7: Operative Workflow-Sektionen (IMMER SICHTBAR)
-          Ausgegraut wenn kein activeMandateId vorhanden
-          ══════════════════════════════════════════════════════════════════ */}
+      {/* ═══ ANKAUFSPROFIL ANLEGEN BUTTON ═══ */}
+      {profileGenerated && !mandateCreated && (
+        <div className="flex justify-center">
+          <Button size="lg" onClick={handleCreateMandate} disabled={createMandate.isPending || !clientName.trim()}>
+            {createMandate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            Ankaufsprofil anlegen — Mandat erstellen
+          </Button>
+        </div>
+      )}
 
-      {/* ── 3. Kontaktrecherche ── */}
-      <AcqSectionHeader
-        number={3}
-        title="Kontaktrecherche"
-        description="Immobilienportale durchsuchen und passende Kontakte identifizieren"
-        icon={<Search className="h-5 w-5" />}
-      />
-      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
-        <SourcingTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
-      </div>
-      {!activeMandateId && (
-        <p className="text-sm text-muted-foreground italic">
-          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
-        </p>
+      {mandateCreated && (
+        <div className="flex items-center gap-2 justify-center">
+          <Badge variant="default" className="text-sm py-1 px-3">
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            Mandat {activeMandateCode} erstellt
+          </Badge>
+        </div>
       )}
 
       <Separator />
 
-      {/* ── 4. E-Mail-Versand ── */}
-      <AcqSectionHeader
-        number={4}
-        title="E-Mail-Versand"
-        description="Kontakte anschreiben und Angebote einholen"
-        icon={<Mail className="h-5 w-5" />}
-      />
-      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
-        <OutreachTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      {/* ═══ KACHEL 3 + 4: Kontaktrecherche + E-Mail-Versand ═══ */}
+      <div className={`${DESIGN.FORM_GRID.FULL} ${!mandateCreated ? 'opacity-40 pointer-events-none' : ''}`}>
+        {/* ── KACHEL 3: Kontaktrecherche ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Search className="h-4 w-4" />
+                Kontaktrecherche
+                {contacts.length > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-2">
+                    {approvedContacts.length} / {contacts.length}
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setShowApolloDialog(true)} title="Apollo">
+                  <Database className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowApifyDialog(true)} title="Portal Scraper">
+                  <Globe className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(true)} title="Manuell">
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {contacts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Noch keine Kontakte</p>
+                <p className="text-xs mt-1">Nutzen Sie Apollo, Portal Scraper oder manuelle Eingabe</p>
+              </div>
+            ) : (
+              <div className="space-y-1 max-h-[400px] overflow-y-auto">
+                {/* Pending contacts first */}
+                {pendingContacts.map(contact => (
+                  <div key={contact.id} className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/50 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {contact.first_name || contact.last_name ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : contact.company_name || 'Unbekannt'}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{contact.email || '–'}</div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => rejectContact.mutate(contact.id)}>
+                        <XCircle className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600" onClick={() => approveContact.mutate({ stagingId: contact.id, mandateId: activeMandateId! })}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {/* Approved contacts with checkboxes */}
+                {approvedContacts.map(contact => (
+                  <div key={contact.id} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 text-sm ${selectedContactIds.has(contact.id) ? 'bg-primary/5 border-primary/30' : ''}`} onClick={() => toggleContactSelection(contact.id)}>
+                    <Checkbox checked={selectedContactIds.has(contact.id)} className="h-4 w-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {contact.first_name || contact.last_name ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : contact.company_name || 'Unbekannt'}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{contact.email || '–'}</div>
+                    </div>
+                    <Badge variant="default" className="text-[10px]">Übernommen</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── KACHEL 4: E-Mail-Fenster ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4" />
+              E-Mail-Versand
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Recipients */}
+            <div className="space-y-1">
+              <Label className="text-xs">An:</Label>
+              <div className="flex flex-wrap gap-1 min-h-[32px] p-2 rounded-md border bg-muted/30">
+                {selectedApprovedContacts.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">Kontakte links auswählen...</span>
+                ) : (
+                  selectedApprovedContacts.map(c => (
+                    <Badge key={c.id} variant="secondary" className="text-xs">
+                      {c.first_name || c.last_name ? `${c.first_name || ''} ${c.last_name || ''}`.trim() : c.email}
+                      <button className="ml-1 hover:text-destructive" onClick={() => toggleContactSelection(c.id)}>×</button>
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-1">
+              <Label className="text-xs">Betreff:</Label>
+              <Input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Betreff eingeben..." className="text-sm" />
+            </div>
+
+            {/* Body */}
+            <div className="space-y-1">
+              <Label className="text-xs">Nachricht:</Label>
+              <Textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={6} className="text-sm" placeholder="E-Mail Text..." />
+            </div>
+
+            {/* Attachment */}
+            {profileGenerated && (
+              <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="text-xs flex-1">Ankaufsprofil_{clientName?.replace(/\s/g, '_') || 'Profil'}.pdf</span>
+                <Badge variant="outline" className="text-[10px]">Anhang</Badge>
+              </div>
+            )}
+
+            {/* Send */}
+            <Button className="w-full" onClick={handleSendEmails} disabled={selectedApprovedContacts.length === 0 || bulkSend.isPending || !emailSubject.trim()}>
+              {bulkSend.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Senden ({selectedApprovedContacts.length})
+            </Button>
+
+            {/* Recent sent messages */}
+            {sentMessages.length > 0 && (
+              <div className="border-t pt-3 space-y-1">
+                <Label className="text-xs text-muted-foreground">Letzte Nachrichten</Label>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {sentMessages.slice(0, 10).map(msg => {
+                    const sc = MSG_STATUS_CONFIG[msg.status] || MSG_STATUS_CONFIG.queued;
+                    const StatusIcon = sc.icon;
+                    return (
+                      <div key={msg.id} className="flex items-center gap-2 p-2 rounded text-xs border">
+                        <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 ${sc.color}`}>
+                          <StatusIcon className="h-3 w-3" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{msg.subject}</div>
+                          <div className="text-muted-foreground truncate">{(msg as any).contact?.email || '–'}</div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] flex-shrink-0">{sc.label}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-      {!activeMandateId && (
-        <p className="text-sm text-muted-foreground italic">
-          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+
+      {!mandateCreated && (
+        <p className="text-sm text-muted-foreground italic text-center">
+          Erstellen Sie zuerst ein Ankaufsprofil, um Kontaktrecherche und E-Mail-Versand zu nutzen.
         </p>
       )}
 
-      <Separator />
-
-      {/* ── 5. Objekteingang ── */}
-      <AcqSectionHeader
-        number={5}
-        title="Objekteingang"
-        description="Eingegangene Angebote bewerten und zuordnen"
-        icon={<Inbox className="h-5 w-5" />}
-      />
-      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
-        <InboundTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
-      </div>
-      {!activeMandateId && (
-        <p className="text-sm text-muted-foreground italic">
-          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
-        </p>
+      {/* ═══ DOKUMENTATION — E-Mail-Versand-Liste ═══ */}
+      {mandateCreated && sentMessages.length > 0 && (
+        <>
+          <Separator />
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Mail className="h-4 w-4" />
+                Dokumentation — E-Mail-Versand
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {sentMessages.map(msg => {
+                  const sc = MSG_STATUS_CONFIG[msg.status] || MSG_STATUS_CONFIG.queued;
+                  const StatusIcon = sc.icon;
+                  return (
+                    <div key={msg.id} className="flex items-center gap-4 px-4 py-3">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${sc.color}`}>
+                        <StatusIcon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{msg.subject}</div>
+                        <div className="text-xs text-muted-foreground">
+                          An: {(msg as any).contact?.email || '–'} • {formatDistanceToNow(new Date(msg.created_at), { locale: de, addSuffix: true })}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">{sc.label}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
-      <Separator />
+      {/* ═══ Dialoge (Apollo, Apify, Manuell) ═══ */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Kontakt manuell hinzufügen</DialogTitle>
+            <DialogDescription>Fügen Sie einen neuen Kontakt hinzu.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Vorname</Label><Input value={manualForm.first_name} onChange={e => setManualForm(f => ({ ...f, first_name: e.target.value }))} /></div>
+              <div className="space-y-2"><Label>Nachname</Label><Input value={manualForm.last_name} onChange={e => setManualForm(f => ({ ...f, last_name: e.target.value }))} /></div>
+            </div>
+            <div className="space-y-2"><Label>Firma</Label><Input value={manualForm.company_name} onChange={e => setManualForm(f => ({ ...f, company_name: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>E-Mail</Label><Input type="email" value={manualForm.email} onChange={e => setManualForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div className="space-y-2"><Label>Telefon</Label><Input type="tel" value={manualForm.phone} onChange={e => setManualForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Rolle</Label>
+                <Select value={manualForm.role_guess} onValueChange={v => setManualForm(f => ({ ...f, role_guess: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Auswählen..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Makler">Makler</SelectItem>
+                    <SelectItem value="Eigentümer">Eigentümer</SelectItem>
+                    <SelectItem value="Verwalter">Verwalter</SelectItem>
+                    <SelectItem value="Bauträger">Bauträger</SelectItem>
+                    <SelectItem value="Investor">Investor</SelectItem>
+                    <SelectItem value="Sonstiges">Sonstiges</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Region</Label><Input value={manualForm.service_area} onChange={e => setManualForm(f => ({ ...f, service_area: e.target.value }))} placeholder="z.B. Berlin" /></div>
+            </div>
+            <div className="space-y-2"><Label>Website</Label><Input type="url" value={manualForm.website_url} onChange={e => setManualForm(f => ({ ...f, website_url: e.target.value }))} placeholder="https://..." /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleManualSubmit} disabled={createContact.isPending}>
+              {createContact.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Hinzufügen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* ── 6. Analyse & Kalkulation ── */}
-      <AcqSectionHeader
-        number={6}
-        title="Analyse & Kalkulation"
-        description="Bestand- und Aufteiler-Kalkulationen durchführen"
-        icon={<Brain className="h-5 w-5" />}
-      />
-      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
-        <AnalysisTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
-      </div>
-      {!activeMandateId && (
-        <p className="text-sm text-muted-foreground italic">
-          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
-        </p>
-      )}
+      <Dialog open={showApolloDialog} onOpenChange={setShowApolloDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-blue-600" />Apollo Kontaktsuche</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2"><Label>Job-Titel</Label><Input value={apolloForm.jobTitles} onChange={e => setApolloForm(f => ({ ...f, jobTitles: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Standorte</Label><Input value={apolloForm.locations} onChange={e => setApolloForm(f => ({ ...f, locations: e.target.value }))} placeholder="Berlin, Hamburg" /></div>
+            <div className="space-y-2"><Label>Branchen</Label><Input value={apolloForm.industries} onChange={e => setApolloForm(f => ({ ...f, industries: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>Max. Ergebnisse</Label>
+              <Select value={String(apolloForm.limit)} onValueChange={v => setApolloForm(f => ({ ...f, limit: Number(v) }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApolloDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleApolloSearch} disabled={apolloLoading}>
+              {apolloLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Suchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Separator />
-
-      {/* ── 7. Delivery ── */}
-      <AcqSectionHeader
-        number={7}
-        title="Delivery & Präsentation"
-        description="Objekte dem Mandanten präsentieren"
-        icon={<Package className="h-5 w-5" />}
-      />
-      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
-        <DeliveryTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
-      </div>
-      {!activeMandateId && (
-        <p className="text-sm text-muted-foreground italic">
-          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
-        </p>
-      )}
+      <Dialog open={showApifyDialog} onOpenChange={setShowApifyDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-purple-600" />Portal Scraper (Apify)</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2"><Label>Portal-URL</Label><Input value={apifyForm.portalUrl} onChange={e => setApifyForm(f => ({ ...f, portalUrl: e.target.value }))} placeholder="https://immobilienscout24.de/..." /></div>
+            <div className="space-y-2">
+              <Label>Such-Typ</Label>
+              <Select value={apifyForm.searchType} onValueChange={v => setApifyForm(f => ({ ...f, searchType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="brokers">Makler-Kontakte</SelectItem>
+                  <SelectItem value="listings">Objekt-Listings</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Max. Ergebnisse</Label>
+              <Select value={String(apifyForm.limit)} onValueChange={v => setApifyForm(f => ({ ...f, limit: Number(v) }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApifyDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleApifySearch} disabled={apifyLoading}>
+              {apifyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Job starten
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
+}
+
+// ── Helper Components ──
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[140px_1fr] px-3 py-2 text-sm">
+      <span className="text-muted-foreground font-medium">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function PdfPreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-4">
+      <span className="text-gray-400 font-medium w-36 flex-shrink-0 text-xs">{label}</span>
+      <span className="text-gray-700 text-xs">{value}</span>
+    </div>
+  );
+}
+
+function formatPriceRange(min?: number | null, max?: number | null): string {
+  if (!min && !max) return '–';
+  const parts: string[] = [];
+  if (min) parts.push(`ab ${(min / 1000000).toFixed(1)}M €`);
+  if (max) parts.push(`bis ${(max / 1000000).toFixed(1)}M €`);
+  return parts.join(' – ');
 }

@@ -1,19 +1,27 @@
+/**
+ * AkquiseMandateDetail — Workbench-Ansicht (Sektionen 5-7)
+ * 
+ * Mandat-Widgets oben zum Switchen, dann Objekteingang, Analyse, Delivery.
+ */
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/shared/PageShell';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { MandateCaseCard } from '@/components/akquise/MandateCaseCard';
 import { TermsGatePanel } from '@/components/shared/TermsGatePanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Loader2, CheckCircle2, ArrowLeft, Search, Mail, Inbox, Brain, Send } from 'lucide-react';
-import { useAcqMandate, useAcceptAcqMandate } from '@/hooks/useAcqMandate';
+import { FileText, Loader2, CheckCircle2, ArrowLeft, Inbox, Brain, Send } from 'lucide-react';
+import { useAcqMandate, useAcceptAcqMandate, useAcqMandatesForManager } from '@/hooks/useAcqMandate';
 import { MANDATE_STATUS_CONFIG, canViewClientInfo } from '@/types/acquisition';
 import { AkquiseStepper } from '@/components/akquise/AkquiseStepper';
 import { AcqSectionHeader as SectionHeader } from '@/components/akquise/AcqSectionHeader';
-import { 
-  SourcingTab, OutreachTab, InboundTab, AnalysisTab, DeliveryTab 
-} from './components';
+import { DESIGN } from '@/config/designManifest';
+import { InboundTab, AnalysisTab, DeliveryTab } from './components';
 
 function TableRow({ label, value }: { label: string; value: string }) {
   return (
@@ -29,6 +37,7 @@ export default function AkquiseMandateDetail() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { data: mandate, isLoading } = useAcqMandate(mandateId);
+  const { data: allMandates = [] } = useAcqMandatesForManager();
   const acceptMandate = useAcceptAcqMandate();
 
   if (isLoading) {
@@ -41,7 +50,7 @@ export default function AkquiseMandateDetail() {
         <Card><CardContent className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold">Mandat nicht gefunden</h3>
-          <Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/dashboard')}>Zurück</Button>
+          <Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/mandate')}>Zurück</Button>
         </CardContent></Card>
       </PageShell>
     );
@@ -51,8 +60,9 @@ export default function AkquiseMandateDetail() {
 
   return (
     <PageShell>
+      {/* ═══ Header ═══ */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/dashboard')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/mandate')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -80,11 +90,28 @@ export default function AkquiseMandateDetail() {
         </div>
       </div>
 
+      {/* ═══ Mandat-Widgets zum Switchen ═══ */}
+      {allMandates.length > 1 && (
+        <WidgetGrid>
+          {allMandates.map(m => (
+            <WidgetCell key={m.id}>
+              <div className={m.id === mandateId ? 'ring-2 ring-primary rounded-xl' : ''}>
+                <MandateCaseCard
+                  mandate={m}
+                  onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)}
+                />
+              </div>
+            </WidgetCell>
+          ))}
+        </WidgetGrid>
+      )}
+
       <AkquiseStepper currentStatus={mandate.status} hasTermsGate={needsGate} />
 
+      {/* ═══ Terms Gate ═══ */}
       {needsGate && (
         <>
-          <SectionHeader number={1} title="Split-Bestätigung" description="Bestätigen Sie die Provisionsvereinbarung, um das Mandat zu aktivieren." icon={<CheckCircle2 className="h-5 w-5" />} />
+          <SectionHeader number={1} title="Split-Bestätigung" description="Bestätigen Sie die Provisionsvereinbarung." icon={<CheckCircle2 className="h-5 w-5" />} />
           <Card className="border-primary/30">
             <CardContent className="p-6">
               <TermsGatePanel
@@ -104,9 +131,7 @@ export default function AkquiseMandateDetail() {
                 grossCommissionPct={0}
                 commissionType="acquisition"
                 tenantId={mandate.tenant_id}
-                onAccept={async () => {
-                  await acceptMandate.mutateAsync(mandate.id);
-                }}
+                onAccept={async () => { await acceptMandate.mutateAsync(mandate.id); }}
                 isPending={acceptMandate.isPending}
               />
             </CardContent>
@@ -114,8 +139,10 @@ export default function AkquiseMandateDetail() {
         </>
       )}
 
+      {/* ═══ Workbench: Sektionen 5-7 ═══ */}
       {!needsGate && (
         <>
+          {/* Suchprofil-Zusammenfassung */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Suchprofil</CardTitle>
@@ -136,37 +163,20 @@ export default function AkquiseMandateDetail() {
                     : '–'
                 } />
                 <TableRow label="Zielrendite" value={mandate.yield_target ? `${mandate.yield_target}%` : '–'} />
-                {mandate.profile_text_long && (
-                  <TableRow label="Profil" value={mandate.profile_text_long} />
-                )}
               </div>
             </CardContent>
           </Card>
 
           <Separator />
-          <SectionHeader number={1} title="Sourcing & Recherche" description="Immobilienportale durchsuchen und passende Objekte identifizieren" icon={<Search className="h-5 w-5" />} />
-          <SourcingTab mandateId={mandate.id} mandateCode={mandate.code} />
-
-          <Separator />
-          <SectionHeader number={2} title="Outreach" description="Kontakte anschreiben und Angebote einholen" icon={<Mail className="h-5 w-5" />} />
-          <OutreachTab 
-            mandateId={mandate.id} 
-            mandateCode={mandate.code}
-            clientName={canViewClientInfo(mandate) ? mandate.client_display_name ?? undefined : undefined}
-            searchArea={(mandate.search_area as { region?: string } | null)?.region}
-            assetFocus={mandate.asset_focus ?? undefined}
-          />
-
-          <Separator />
-          <SectionHeader number={3} title="Objekteingang & Analyse" description="Eingegangene Angebote bewerten und analysieren" icon={<Inbox className="h-5 w-5" />} />
+          <SectionHeader number={5} title="Objekteingang & Analyse" description="Eingegangene Angebote bewerten und analysieren" icon={<Inbox className="h-5 w-5" />} />
           <InboundTab mandateId={mandate.id} mandateCode={mandate.code} />
 
           <Separator />
-          <SectionHeader number={4} title="Analyse & Kalkulation" description="Bestand- und Aufteiler-Kalkulationen durchführen" icon={<Brain className="h-5 w-5" />} />
+          <SectionHeader number={6} title="Analyse & Kalkulation" description="Bestand- und Aufteiler-Kalkulationen durchführen" icon={<Brain className="h-5 w-5" />} />
           <AnalysisTab mandateId={mandate.id} mandateCode={mandate.code} />
 
           <Separator />
-          <SectionHeader number={5} title="Delivery & Präsentation" description="Objekte dem Mandanten präsentieren" icon={<Send className="h-5 w-5" />} />
+          <SectionHeader number={7} title="Delivery & Präsentation" description="Objekte dem Mandanten präsentieren" icon={<Send className="h-5 w-5" />} />
           <DeliveryTab 
             mandateId={mandate.id} 
             mandateCode={mandate.code}
