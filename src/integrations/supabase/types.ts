@@ -10404,6 +10404,7 @@ export type Database = {
           heating_type: string | null
           id: string
           insurance_policy_no: string | null
+          is_demo: boolean
           is_public_listing: boolean
           land_register_court: string | null
           land_register_refs: Json | null
@@ -10460,6 +10461,7 @@ export type Database = {
           heating_type?: string | null
           id?: string
           insurance_policy_no?: string | null
+          is_demo?: boolean
           is_public_listing?: boolean
           land_register_court?: string | null
           land_register_refs?: Json | null
@@ -10516,6 +10518,7 @@ export type Database = {
           heating_type?: string | null
           id?: string
           insurance_policy_no?: string | null
+          is_demo?: boolean
           is_public_listing?: boolean
           land_register_court?: string | null
           land_register_refs?: Json | null
