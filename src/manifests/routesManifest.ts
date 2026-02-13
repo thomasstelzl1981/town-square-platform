@@ -543,12 +543,7 @@ export const zone2Portal: ZoneDefinition = {
       icon: "Globe",
       display_order: 21,
       visibility: { default: true, org_types: ["client", "partner"] },
-      tiles: [
-        { path: "websites", component: "WBWebsites", title: "Websites", default: true },
-        { path: "design", component: "WBDesign", title: "Design" },
-        { path: "seo", component: "WBSeo", title: "SEO" },
-        { path: "vertrag", component: "WBVertrag", title: "Vertrag" },
-      ],
+      tiles: [],
       dynamic_routes: [
         { path: ":websiteId/editor", component: "WBEditor", title: "Editor", dynamic: true },
       ],
