@@ -166,8 +166,8 @@
           "title": "Leads-Module: 4 von 5 Tiles nutzen ModuleTilePage (Stub) statt echter Implementierung",
           "description": "LeadsInbox, MeineLeads, LeadsPipeline, LeadsWerbung sind alle ModuleTilePage-Stubs ohne echte Logik. Nur SelfieAdsStudio hat Implementierung. Dies war bereits in ROAD-001 dokumentiert.",
           "effort": "L",
-          "status": "open",
-          "fix": "Stub-zu-Live Migration — Roadmap Item"
+          "status": "migrated_to_roadmap",
+          "fix": "→ FEAT-001 in src/docs/feature-roadmap.json (Phase B)"
         },
         {
           "id": "AUD-015",
@@ -177,8 +177,8 @@
           "title": "Finanzanalyse: Alle 4 Tiles sind ModuleTilePage-Stubs",
           "description": "DashboardTile, ReportsTile, SzenarienTile, EinstellungenTile sind alle leere Stubs. Modul hat keine funktionale Implementierung.",
           "effort": "L",
-          "status": "open",
-          "fix": "Stub-zu-Live Migration oder als Blueprint-Status dokumentieren"
+          "status": "migrated_to_roadmap",
+          "fix": "→ FEAT-002 in src/docs/feature-roadmap.json (Phase B)"
         },
         {
           "id": "AUD-016",
@@ -557,48 +557,5 @@
       "status": "done"
     }
   ],
-  "roadmap_carried_forward": [
-    {
-      "id": "ROAD-001",
-      "module": "MOD-10",
-      "title": "Leads: ModuleTilePage-Stubs durch echte Implementierung ersetzen (AUD-014)",
-      "effort": "L"
-    },
-    {
-      "id": "ROAD-002",
-      "module": "GLOBAL",
-      "title": "Fehlende Modul-Specs für 15 Module erstellen",
-      "effort": "L"
-    },
-    {
-      "id": "ROAD-003",
-      "module": "MOD-08",
-      "title": "investment_favorites DB-Persistenz",
-      "effort": "M"
-    },
-    {
-      "id": "ROAD-004",
-      "module": "MOD-03",
-      "title": "DMS Storage-Usage Edge Function",
-      "effort": "M"
-    },
-    {
-      "id": "ROAD-005",
-      "module": "MOD-12",
-      "title": "MandatCreateWizardManager implementieren",
-      "effort": "M"
-    },
-    {
-      "id": "ROAD-006",
-      "module": "MOD-18",
-      "title": "Finanzanalyse: Stub-zu-Live Migration (AUD-015)",
-      "effort": "L"
-    },
-    {
-      "id": "ROAD-007",
-      "module": "GLOBAL",
-      "title": "Bundle-Analyse ManifestRouter 80+ lazy() Imports (AUD-050)",
-      "effort": "M"
-    }
-  ]
+  "roadmap_carried_forward": "→ Migriert nach src/docs/feature-roadmap.json (10 Items, 3 Phasen)"
 }
