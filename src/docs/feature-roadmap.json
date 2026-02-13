@@ -166,7 +166,7 @@
           "title": "Bundle-Analyse: ManifestRouter optimieren",
           "description": "ManifestRouter hat 80+ lazy() Imports. Analyse ob Code-Splitting-Grenzen effektiv sind und ob Chunks zusammengefasst oder weiter aufgeteilt werden sollten.",
           "effort": "M",
-          "status": "planned",
+          "status": "done",
           "origin": "ROAD-007 / AUD-050 (backlog.json)",
           "acceptance_criteria": [
             "Bundle-Analyse Report erstellt (Chunk-Größen, Ladezeiten)",
