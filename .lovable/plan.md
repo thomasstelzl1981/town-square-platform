@@ -1,100 +1,68 @@
 
-# Privatkredit-Modul Redesign — Angleichung an Anfrage-Tab und Selbstauskunft
+# MOD-17: Autos + Bikes zusammenlegen zu "Fahrzeuge" (4 Tabs)
 
-## Analyse: Ist-Zustand vs. Soll-Zustand
+## Ziel
 
-### Problem-Zusammenfassung
-
-Der Privatkredit-Tab nutzt **keine** der systemweiten Design-Komponenten. Im Vergleich:
-
-| Aspekt | Anfrage-Tab (Referenz) | Privatkredit (Ist) |
-|--------|----------------------|-------------------|
-| Container | `PageShell` (max-w-7xl, einheitliches Padding) | Rohes `div` mit `space-y-2` |
-| Widget-Leiste | `WidgetGrid` + `WidgetCell` (4-Spalten, aspect-square) | Nicht vorhanden |
-| Formulare | `DESIGN.FORM_GRID.FULL` (2-Spalten-Grid) | Ad-hoc `grid-cols-1 sm:grid-cols-3` |
-| Karten | `glass-card` mit strukturiertem CardContent | Rohes `border + p-4` |
-| Typografie | `DESIGN.TYPOGRAPHY.*` Manifest-Klassen | Ad-hoc `text-lg font-semibold` |
-| Angebots-Liste | — | 4-Spalten-Grid mit kleinen Cards, keine Tabelle |
-| Selbstauskunft-Daten | Integriert via shared Cards (FinanceObjectCard, HouseholdCalculationCard) | Eigene `ApplicationPreview` mit direktem DB-Query |
-
-### Kern-Defizite
-
-1. **Kein PageShell** — Breite und Spacing stimmen nicht mit dem Rest des Moduls ueberein
-2. **Keine Widget-Leiste** — Bestehende Privatkredit-Faelle werden nicht als Kacheln angezeigt
-3. **Vergleichsrechner zu klein** — Angebote als winzige 4-Spalten-Cards statt als uebersichtliche Liste/Tabelle
-4. **Eingabefelder nicht im Manifest-Stil** — Kein `FORM_GRID`, keine `glass-card` Wrapper
-5. **Employment Gate** ist eine nackte RadioGroup ohne Card-Wrapper
-6. **Dokumente** und **Submit** haben keine Card-Wrapper
-
----
+Die bisherigen 5 Tabs (Autos, Bikes, Boote, Privatjet, Angebote) werden auf 4 reduziert, indem "Autos" und "Bikes" zu einem einzigen Tab **"Fahrzeuge"** zusammengefuehrt werden.
 
 ## Aenderungen
 
-### 1. PrivatkreditTab.tsx — PageShell + Widget-Leiste + Manifest-Layout
+### 1. routesManifest.ts — Tiles von 5 auf 4
 
-**Was aendert sich:**
-- `PageShell` als aeusserer Container (wie Anfrage/Selbstauskunft)
-- Neue `ConsumerLoanWidgets` Widget-Leiste oben (zeigt bestehende Faelle + "Neuer Kredit" CTA)
-- Alle Sektionen in `glass-card` Cards gewickelt
-- `DESIGN.FORM_GRID.FULL` fuer 2-Spalten-Layouts
-- `DESIGN.TYPOGRAPHY.*` fuer Ueberschriften
+Vorher:
+```
+tiles: [
+  { path: "autos",     title: "Autos" },
+  { path: "bikes",     title: "Bikes" },
+  { path: "boote",     title: "Boote" },
+  { path: "privatjet", title: "Privatjet" },
+  { path: "angebote",  title: "Angebote" },
+]
+```
 
-### 2. Neue Komponente: ConsumerLoanWidgets.tsx
+Nachher:
+```
+tiles: [
+  { path: "fahrzeuge",  component: "CarsFahrzeuge", title: "Fahrzeuge" },
+  { path: "boote",      component: "CarsBoote",     title: "Boote" },
+  { path: "privatjet",  component: "CarsPrivatjet",  title: "Privatjet" },
+  { path: "angebote",   component: "CarsAngebote",   title: "Angebote" },
+]
+```
 
-Analog zu `FinanceRequestWidgets`:
-- `WidgetGrid` + `WidgetCell` fuer bestehende `consumer_loan_cases`
-- Jede Kachel zeigt: Status-Badge, Kreditbetrag, Laufzeit, Datum
-- CTA-Kachel: "Neuer Privatkredit"
-- Klick auf Kachel laedt den entsprechenden Fall
+### 2. CarsPage.tsx — Routes anpassen
 
-### 3. EmploymentGate.tsx — Card-Wrapper
+- Entfernen: Routen fuer `autos` und `bikes`
+- Hinzufuegen: Route fuer `fahrzeuge`
+- Default-Redirect: `Navigate to="fahrzeuge"`
 
-- In `glass-card` (Card-Komponente) gewickelt
-- Titel ueber `DESIGN.TYPOGRAPHY.CARD_TITLE`
+### 3. Neue Komponente: CarsFahrzeuge.tsx
 
-### 4. LoanCalculator.tsx — Kompletter Umbau
+Basiert auf dem bestehenden `CarsAutos.tsx`, erweitert um die Bike-Daten:
 
-**Eingabebereich:**
-- 2-Spalten `FORM_GRID` statt 3-Spalten ad-hoc Grid
-- Kreditbetrag und Laufzeit als zwei Cards nebeneinander (wie Eckdaten + Kalkulator in Anfrage)
-- Button "Angebote berechnen" prominent in der zweiten Card
+- **Header**: "Fahrzeuge" (statt "Autos")
+- **Demo-Daten**: Die 3 Demo-Autos (BMW M4, Mercedes GLE, Porsche 911) + die 3 Demo-Bikes (BMW R 1300 GS, Ducati Panigale V4 S, Harley-Davidson Road Glide) werden in einer gemeinsamen Liste dargestellt
+- **Widget-Grid**: Alle 6 Fahrzeuge als Kacheln — Autos mit `Car`-Icon, Bikes mit `Bike`-Icon
+- **DB-Query**: Laedt weiterhin aus `cars_vehicles` (dort koennen sowohl Autos als auch Motorraeder gespeichert sein, unterscheidbar z.B. ueber `body_type` oder ein neues Feld)
+- **VehicleCreateDialog**: Bleibt unveraendert, "Fahrzeug hinzufuegen" deckt beides ab
+- **Inline-Akte**: Identisch zu CarsAutos, funktioniert fuer beide Typen
 
-**Angebots-Liste (neu: Tabellenformat):**
-- Statt 4 kleine Cards: Eine uebersichtliche **Tabelle** (`DESIGN.TABLE.*`)
-- Spalten: Bank | Effektivzins | Monatliche Rate | Gesamtbetrag | Aktion
-- "Empfohlen"-Badge in der Zeile
-- Selektierte Zeile mit `ring-2 ring-primary` hervorgehoben
-- Deutlich bessere Uebersicht fuer den Vergleich von 8 Angeboten
+### 4. index.ts — Exporte anpassen
 
-### 5. ApplicationPreview.tsx — Manifest-Klassen
+- Entfernen: `CarsAutos`, `CarsBikes`
+- Hinzufuegen: `CarsFahrzeuge`
 
-- Card-Wrapper mit `glass-card`
-- Grid-Bloecke mit `DESIGN.FORM_GRID.FULL` statt ad-hoc `grid-cols-4`
-- Felder in der gleichen Darstellung wie Selbstauskunft (Label/Value Paare)
+### 5. ManifestRouter / Component Map
 
-### 6. DocumentChecklist.tsx — Card-Wrapper
-
-- In `glass-card` Card gewickelt
-- Checklisten-Items mit `DESIGN.LIST.ROW` Klassen
-
-### 7. SubmitSection.tsx — Card-Wrapper
-
-- In `glass-card` Card gewickelt
-- Konsistenter Look mit dem Finanzierungsauftrag-Block der Anfrage
-
----
+Falls `CarsFahrzeuge` dort registriert werden muss, wird der Eintrag hinzugefuegt.
 
 ## Dateien-Uebersicht
 
 | Aktion | Datei |
 |--------|-------|
-| NEU | `src/components/privatkredit/ConsumerLoanWidgets.tsx` — Widget-Leiste fuer Privatkredit-Faelle |
-| EDIT | `src/pages/portal/finanzierung/PrivatkreditTab.tsx` — PageShell, Widget-Leiste, Manifest-Layout |
-| EDIT | `src/components/privatkredit/EmploymentGate.tsx` — Card-Wrapper, Manifest-Typografie |
-| EDIT | `src/components/privatkredit/LoanCalculator.tsx` — FORM_GRID, Tabellen-Angebotsliste |
-| EDIT | `src/components/privatkredit/MockOfferCard.tsx` — Wird zur Tabellenzeile (MockOfferRow) oder entfaellt zugunsten inline-Rendering |
-| EDIT | `src/components/privatkredit/ApplicationPreview.tsx` — Card-Wrapper, Manifest-Klassen |
-| EDIT | `src/components/privatkredit/DocumentChecklist.tsx` — Card-Wrapper, LIST-Klassen |
-| EDIT | `src/components/privatkredit/SubmitSection.tsx` — Card-Wrapper |
+| NEU | `src/components/portal/cars/CarsFahrzeuge.tsx` — Zusammengefuehrte Autos+Bikes Komponente |
+| EDIT | `src/manifests/routesManifest.ts` — 4 Tiles statt 5 |
+| EDIT | `src/pages/portal/CarsPage.tsx` — Routes aktualisieren |
+| EDIT | `src/components/portal/cars/index.ts` — Exporte anpassen |
 
-Keine Datenbank-Aenderungen noetig — die Tabellen sind bereits vorhanden.
+Die Dateien `CarsAutos.tsx` und `CarsBikes.tsx` bleiben im Dateisystem bestehen (koennen spaeter entfernt werden), werden aber nicht mehr importiert oder geroutet.
