@@ -1,26 +1,40 @@
 
+# MOD-05 umbenennen und KI-Telefonassistent unter Communication Pro anlegen
 
-# Operations-Area: Module neu sortieren
+## Aenderungen
 
-## Aenderung
+### 1. `src/manifests/routesManifest.ts` — MOD-05 umbenennen (Zeile 269)
 
-Nur eine Datei: `src/manifests/areaConfig.ts`, Zeile 36.
+Vorher: `name: "KI-Telefon-Assistent"`
+Nachher: `name: "Platzhalter"`
 
-### Aktuelle Reihenfolge
-`['MOD-09', 'MOD-13', 'MOD-10', 'MOD-11', 'MOD-12']`
-(Vertriebspartner, Projekte, Provisionen, Finanzierungsmanager, AkquiseManager)
+### 2. `src/manifests/routesManifest.ts` — MOD-14 Tiles erweitern (Zeile 443)
 
-### Neue Reihenfolge
-`['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10']`
+Neuer Tile-Eintrag nach "Agenten":
 
-| Nr. | Modul | Code |
-|-----|-------|------|
-| 1 | Projekte | MOD-13 |
-| 2 | Vertriebspartner | MOD-09 |
-| 3 | Finanzierungsmanager | MOD-11 |
-| 4 | AkquiseManager | MOD-12 |
-| 5 | Provisionen | MOD-10 |
+```text
+{ path: "ki-telefon", component: "CommProKiTelefon", title: "KI-Telefonassistent" }
+```
+
+Ergebnis MOD-14 Sub-Tabs: Serien-E-Mails | Recherche | Social | Agenten | **KI-Telefonassistent**
+
+### 3. `src/pages/portal/communication-pro/CommunicationProPage.tsx` — Neue Route
+
+Lazy-Import und Route fuer den KI-Telefonassistenten hinzufuegen:
+
+```text
+const KiTelefonPage = lazy(() => import('./ki-telefon/KiTelefonPage'));
+<Route path="ki-telefon" element={<KiTelefonPage />} />
+```
+
+### 4. Neue Datei: `src/pages/portal/communication-pro/ki-telefon/KiTelefonPage.tsx`
+
+Placeholder-Seite mit dem bestehenden Design aus `KiTelefonUebersicht.tsx` (Phone-Icon, "Kommt bald"-Hinweis), angepasst an den Communication-Pro-Kontext.
+
+### 5. `src/pages/portal/msv/KiTelefonUebersicht.tsx` — Inhalt anpassen
+
+Titel und Beschreibung auf "Platzhalter" aendern, um konsistent mit dem umbenannten Modul zu sein.
 
 ### Keine weiteren Aenderungen
-Routen, Komponenten und Datenbank bleiben unveraendert — nur die Anzeigereihenfolge in der Navigation aendert sich.
-
+- Routen von MOD-05 (`/portal/msv/*`) bleiben bestehen
+- Datenbank und RLS bleiben unveraendert
