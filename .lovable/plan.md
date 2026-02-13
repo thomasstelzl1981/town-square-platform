@@ -1,34 +1,80 @@
 
-# Datenbank-Seite: CI-konforme Breiten und Layout-Korrektur
+# Objektakte CI-Verfeinerung: Farben, Ausrichtung und Schnellanalyse
 
-## Problem
+## Probleme (aus Code-Analyse)
 
-Die `AkquiseDatenbank.tsx` (Zone 2) und `AcquiaryDatenbank.tsx` (Zone 1) nutzen keine `PageShell` und keinen `ModulePageHeader`. Dadurch fehlt die CI-konforme maximale Breite (`max-w-7xl`), das einheitliche Padding (`px-2 py-3 md:p-6`) und der Standard-Seitenheader. Die Seiten rendern als rohes `<div>` ohne Layout-Constraints.
+### 1. Schnellanalyse zu schmal — muss volle Breite haben
+Die "Schnellanalyse"-Karte steckt aktuell INNERHALB der `DESIGN.FORM_GRID.FULL` (2-Spalten-Grid), also in einer Haelfte. Sie muss ueber die gesamte Breite (oberhalb des 2-Spalten-Grids) stehen, damit Bestand und Aufteiler auf gleicher Hoehe beginnen.
+
+### 2. Kachel-Ausrichtung: Aufteiler startet zu hoch
+Bestand hat eine "Schnellanalyse"-Karte VOR den Slidern, Aufteiler nicht. Wenn die Schnellanalyse nach oben (volle Breite) gezogen wird, starten beide Kalkulationen auf gleicher Hoehe.
+
+### 3. Farben nicht CI-konform
+Folgende Hardcoded-Farben verletzen das Design-Manifest:
+- `text-green-600` → muss `text-status-success` bzw. `text-emerald-500` (Dark-Mode-sicher) werden
+- `text-blue-600` → muss `text-primary` werden
+- `text-amber-600` → muss `text-status-warn` werden
+- `bg-green-50/50` → muss `bg-status-success/5` oder `bg-emerald-500/5` werden (Dark-Mode!)
+- `bg-gradient-to-r from-primary/10 to-green-500/10` → muss `bg-primary/5 border-primary/20` (INFO_BANNER.PREMIUM) werden
+- `bg-primary/5 border-primary/20` (Schnellanalyse) → OK, aber muss `DESIGN.INFO_BANNER.PREMIUM` Token nutzen
+- `bg-amber-50 border-amber-200` (Hinweis-Banner in Aufteiler) → muss `DESIGN.INFO_BANNER.WARNING` werden
+
+### 4. Cards ohne CI-Basis-Klasse
+Die Karten in BestandCalculation und AufteilerCalculation nutzen nacktes `<Card>` ohne `className={DESIGN.CARD.BASE}`. Dadurch fehlt `glass-card`, `rounded-xl` und `overflow-hidden`.
+
+### 5. Typografie ad-hoc
+- `text-3xl font-bold` fuer KPI-Werte → sollte `DESIGN.TYPOGRAPHY.VALUE` oder aehnliches Token nutzen
+- `text-lg`, `text-xl font-bold` fuer Card-Ueberschriften → `DESIGN.TYPOGRAPHY.CARD_TITLE`
+- `text-xs text-muted-foreground` → `DESIGN.TYPOGRAPHY.HINT`
 
 ## Loesung
 
-Beide Datenbank-Seiten werden in die Standard-Shell-Komponenten eingebettet, wie es alle anderen Modul-Seiten (z.B. AkquiseMandate, ObjekteingangList) tun.
+### Datei 1: `ObjekteingangDetail.tsx`
 
-## Aenderungen
+**ROW 4 umstrukturieren:**
+- Schnellanalyse-Karte aus den Kinder-Komponenten herausnehmen und als eigene volle Breite ueber dem 2-Spalten-Grid rendern
+- Neue gemeinsame "Schnellanalyse"-Karte mit den 4 KPIs: Gesamtinvestition, Max. Finanzierbarkeit, EK-Bedarf, Bruttorendite (aus Bestand) PLUS Gewinn, Marge, ROI (aus Aufteiler) → 7 KPIs in einer Zeile oder 2 Zeilen
+- Alternativ (einfacher): Schnellanalyse als `prop` in BestandCalculation deaktivierbar machen (`showQuickAnalysis={false}`) und eine eigene Sektion darueber rendern
 
-### 1. `src/pages/portal/akquise-manager/AkquiseDatenbank.tsx` (Zone 2)
+**Gewaehlter Ansatz (minimal-invasiv):**
+- In `ObjekteingangDetail.tsx`: Eine eigene volle-Breite Schnellanalyse-Card vor dem FORM_GRID rendern mit den wichtigsten KPIs beider Szenarien
+- In `BestandCalculation.tsx`: Schnellanalyse-Card entfernen (oder ueber `hideQuickAnalysis` Prop steuern)
+- So starten beide Kalkulationen auf gleicher Hoehe
 
-- Aeusseres `<div>` durch `<PageShell>` ersetzen
-- `<h1>` + `<p>` Header durch `<ModulePageHeader title="DATENBANK" description="..." />` ersetzen
-- Imports fuer `PageShell` und `ModulePageHeader` ergaenzen
+### Datei 2: `BestandCalculation.tsx`
 
-### 2. `src/pages/admin/acquiary/AcquiaryDatenbank.tsx` (Zone 1)
+- Neue Prop `hideQuickAnalysis?: boolean` — wenn true, wird die Schnellanalyse-Karte nicht gerendert
+- Alle `text-green-600` → `text-emerald-500`
+- Alle `text-blue-600` → `text-primary`
+- Alle `text-amber-600` → `text-amber-500`
+- Schnellanalyse-Card: `bg-primary/5 border-primary/20` → `DESIGN.INFO_BANNER.PREMIUM`
+- Gradient-KPI-Card: `bg-gradient-to-r from-primary/10 to-green-500/10 border-primary/20` → `className={DESIGN.INFO_BANNER.PREMIUM}`
+- Alle nackten `<Card>` → `<Card className={DESIGN.CARD.BASE}>`
+- CardTitle: `text-lg` → `DESIGN.TYPOGRAPHY.CARD_TITLE`
+- KPI-Werte: `text-3xl font-bold` → `text-2xl font-bold` (DESIGN.TYPOGRAPHY.VALUE)
+- Labels: `text-xs text-muted-foreground` → `DESIGN.TYPOGRAPHY.HINT`
+- `text-sm text-muted-foreground` → `DESIGN.TYPOGRAPHY.MUTED`
+- Import DESIGN Token
 
-- Gleiches Muster: `<PageShell>` + `<ModulePageHeader>` einsetzen
-- Da Zone 1 innerhalb eines Tab-Panels rendert, wird hier ggf. nur `ModulePageHeader` ohne PageShell verwendet (je nachdem ob der Tab-Container bereits ein Layout vorgibt). Falls noetig wird PageShell mit angepasstem Styling genutzt.
+### Datei 3: `AufteilerCalculation.tsx`
 
-### 3. `src/components/akquise/ObjectSearchPanel.tsx`
+- Gleiche Farb-Korrekturen wie Bestand
+- `text-green-600` → `text-emerald-500`
+- `text-destructive` bleibt (ist bereits ein Token)
+- `text-amber-600` → `text-amber-500`
+- Result-Card: `border-green-500 bg-green-50/50` → `border-emerald-500/50 bg-emerald-500/5` (Dark-Mode-safe)
+- Result-Card negativ: `border-destructive bg-destructive/5` → bleibt (schon korrekt)
+- Hinweis-Banner: `bg-amber-50 border-amber-200` → `DESIGN.INFO_BANNER.WARNING`
+- Alle nackten `<Card>` → `<Card className={DESIGN.CARD.BASE}>`
+- Typography-Tokens anpassen wie bei Bestand
+- Import DESIGN Token
 
-- Keine Aenderungen noetig — die Breite wird durch den uebergeordneten PageShell-Container korrekt begrenzt.
+### Datei 4: Keine weiteren Dateien betroffen
 
 ## Ergebnis
 
-- Einheitliche maximale Breite (`max-w-7xl` = 1280px)
-- Konsistentes Padding und Spacing
-- Standard-Header mit Titel und Beschreibung
-- CI-konform mit allen anderen Modul-Seiten
+- Schnellanalyse ueber volle Breite → Bestand und Aufteiler starten auf gleicher Hoehe
+- Alle Farben Dark-Mode-sicher ueber CI-Tokens
+- Alle Cards mit `glass-card` Basis-Klasse
+- Einheitliche Typografie ueber DESIGN-Manifest
+- Kein visueller Versatz zwischen den beiden Kalkulationsspalten
