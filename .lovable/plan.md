@@ -1,181 +1,288 @@
 
 
-# MOD-14 Telefonassistent — MVP Umsetzungsplan
-
-## Ziel
-
-Den leeren "Kommt bald"-Platzhalter unter `/portal/communication-pro/ki-telefon` durch eine vollstaendige, durchscrollbare Inline-Seite ersetzen. Kein Provider-Connect, keine externe API. Konfiguration + Persistierung + Call-Log + Test-Event-Generator.
+# MOD-14 Recherche — Redesign v1.0
+## Widget-basiert, Inline-Flow, Async Jobs, Kontaktbuch-Uebergabe
 
 ---
 
-## 1. Datenbank (2 Tabellen + RLS)
+## 1. Ausgangslage
 
-### Tabelle: `commpro_phone_assistants`
+Die aktuelle Recherche-Seite (`/portal/communication-pro/recherche`) besteht aus 3 nebeneinanderliegenden Panels (ResearchFreeCard, ResearchProCard, ResearchCandidatesTray) mit hardcoded Demo-Daten, keiner Auftragslogik, keinem Billing-Gate und einem Layout, das auf schmalen Screens horizontal ueberlaeuft.
 
-```sql
-create table public.commpro_phone_assistants (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  display_name text not null default 'Mein Telefonassistent',
-  is_enabled boolean not null default false,
-  -- Voice
-  voice_provider text null,
-  voice_preset_key text not null default 'professional_warm',
-  voice_settings jsonb not null default '{"stability":70,"clarity":80,"speed":50}'::jsonb,
-  -- Content
-  first_message text not null default '',
-  behavior_prompt text not null default '',
-  -- Rules
-  rules jsonb not null default '{"ask_clarify_once":true,"collect_name":true,"confirm_callback_number":true,"collect_reason":true,"collect_urgency":false,"collect_preferred_times":false,"max_call_seconds":120}'::jsonb,
-  -- Documentation
-  documentation jsonb not null default '{"email_enabled":false,"email_target":"","portal_log_enabled":true,"auto_summary":true,"extract_tasks":true,"retention_days":90}'::jsonb,
-  -- Phone binding placeholder
-  forwarding_number_e164 text null,
-  binding_status text not null default 'pending',
-  -- Meta
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(user_id)
-);
-alter table public.commpro_phone_assistants enable row level security;
-create policy "Users manage own assistant" on public.commpro_phone_assistants
-  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-```
+**Bestehende DB-Tabellen:** `research_sessions` und `research_results` existieren bereits (Session-basiert, nicht Order-basiert). Die `contacts`-Tabelle ist vollstaendig vorhanden mit tenant_id, public_id, email, phone, company, city, etc.
 
-### Tabelle: `commpro_phone_call_sessions`
+**Verfuegbare Connectoren:** Firecrawl ist als Connector im Workspace vorhanden (nicht verlinkt). Kein Apollo/Epify-Key konfiguriert.
 
-```sql
-create table public.commpro_phone_call_sessions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  assistant_id uuid not null references public.commpro_phone_assistants(id) on delete cascade,
-  direction text not null default 'inbound',
-  from_number_e164 text not null,
-  to_number_e164 text null,
-  started_at timestamptz not null default now(),
-  ended_at timestamptz null,
-  duration_sec int null,
-  status text not null default 'logged',
-  transcript_text text null,
-  summary_text text null,
-  action_items jsonb not null default '[]'::jsonb,
-  match jsonb not null default '{"matched_type":"none","matched_id":null,"match_type":"none"}'::jsonb,
-  created_at timestamptz not null default now()
-);
-alter table public.commpro_phone_call_sessions enable row level security;
-create policy "Users manage own calls" on public.commpro_phone_call_sessions
-  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-create index idx_call_sessions_user on public.commpro_phone_call_sessions(user_id, started_at desc);
-create index idx_call_sessions_assistant on public.commpro_phone_call_sessions(assistant_id, started_at desc);
+---
+
+## 2. Architektur-Uebersicht
+
+```text
++------------------------------------------------------------------+
+|  ResearchTab (neue Seite, ersetzt altes 3-Panel-Layout)          |
+|                                                                  |
+|  [+Neu] [Auftrag A ■] [Auftrag B ●] [Auftrag C ✓]              |
+|  WidgetGrid (horizontal, responsive wrap)                        |
+|                                                                  |
+|  ┌────────────────────────────────────────────────────────────┐  |
+|  │  ResearchOrderInlineFlow (aktiver Auftrag)                 │  |
+|  │                                                            │  |
+|  │  Section 1: Auftrag definieren (Intent + ICP)              │  |
+|  │  Section 2: Trefferlimit & Kosten (HARD GATE)              │  |
+|  │  Section 3: Provider & Quellen (Toggle Cards)              │  |
+|  │  Section 4: KI-Assistent (4 Action Buttons)                │  |
+|  │  Section 5: Consent & Start                                │  |
+|  │  Section 6: Ergebnisse (Review + Bulk Import)              │  |
+|  └────────────────────────────────────────────────────────────┘  |
++------------------------------------------------------------------+
 ```
 
 ---
 
-## 2. Routing
+## 3. Datenbank-Aenderungen
 
-Keine Aenderungen noetig. Die Route `ki-telefon` existiert bereits im Manifest (MOD-14) und in `CommunicationProPage.tsx`. Wir ersetzen lediglich den Inhalt von `KiTelefonPage.tsx`.
+### 3a. Neue Tabelle: `research_orders`
 
----
+| Spalte | Typ | Default | Beschreibung |
+|--------|-----|---------|-------------|
+| id | uuid | gen_random_uuid() | PK |
+| tenant_id | uuid FK organizations | NOT NULL | Mandant |
+| created_by | uuid FK profiles | NOT NULL | Ersteller |
+| title | text | NULL | Auftragstitel |
+| intent_text | text | NOT NULL | Suchintent Freitext |
+| icp_json | jsonb | '{}' | {branche, region, role, keywords, domain} |
+| output_type | text | 'contacts' | 'contacts', 'companies', 'both' |
+| provider_plan_json | jsonb | '{}' | {firecrawl: bool, epify: bool, apollo: bool, settings: {}} |
+| max_results | int | 25 | Hartes Trefferlimit |
+| cost_estimate | numeric | 0 | Geschaetzte Kosten |
+| cost_cap | numeric | 0 | Bestaetigte Obergrenze |
+| cost_spent | numeric | 0 | Tatsaechlich verbraucht |
+| status | text | 'draft' | draft, queued, running, needs_review, done, failed, cancelled |
+| results_count | int | 0 | Anzahl Treffer |
+| consent_confirmed | bool | false | DSGVO/Business-Consent |
+| ai_summary_md | text | NULL | KI-Zusammenfassung |
+| created_at | timestamptz | now() | |
+| updated_at | timestamptz | now() | |
 
-## 3. UI-Architektur (eine Seite, 7 Sections)
+RLS: tenant_id = auth.jwt()->'user_metadata'->>'tenant_id' (SELECT, INSERT, UPDATE)
 
-Die Seite wird in `KiTelefonPage.tsx` komplett neu aufgebaut. Jede Section ist eine eigene Komponente in einem neuen Ordner `src/components/communication-pro/phone-assistant/`.
+### 3b. Neue Tabelle: `research_order_results`
 
-### Section A: Status und Rufweiterleitung
-**Komponente:** `StatusForwardingCard.tsx`
-- Toggle: "Assistent aktiv" (steuert `is_enabled`)
-- Read-only Feld: Weiterleitungsnummer (zeigt `forwarding_number_e164` oder Platzhalter "Wird nach Provider-Connect vergeben")
-- Badge: `pending` / `active` / `error`
-- Copy-Button (disabled im MVP, Tooltip "Noch nicht verfuegbar")
-- Info-Box mit Rufumleitungs-Empfehlung (GSM/Carrier)
+| Spalte | Typ | Default | Beschreibung |
+|--------|-----|---------|-------------|
+| id | uuid | gen_random_uuid() | PK |
+| order_id | uuid FK research_orders | NOT NULL | Zugehoeriger Auftrag |
+| tenant_id | uuid FK organizations | NOT NULL | Mandant |
+| entity_type | text | 'person' | person, company |
+| full_name | text | NULL | |
+| first_name | text | NULL | |
+| last_name | text | NULL | |
+| role | text | NULL | Titel/Rolle |
+| seniority | text | NULL | |
+| company_name | text | NULL | |
+| domain | text | NULL | |
+| location | text | NULL | |
+| email | text | NULL | |
+| phone | text | NULL | |
+| linkedin_url | text | NULL | |
+| source_provider | text | NOT NULL | firecrawl, epify, apollo, manual |
+| source_refs_json | jsonb | '{}' | URLs, Provider-IDs |
+| confidence_score | int | 0 | 0..100 |
+| raw_json | jsonb | NULL | Provider-Payload-Snapshot |
+| status | text | 'candidate' | candidate, accepted, rejected, imported |
+| imported_contact_id | uuid FK contacts | NULL | Nach Import: Kontakt-ID |
+| created_at | timestamptz | now() | |
 
-### Section B: Stimme
-**Komponente:** `VoiceSettingsCard.tsx`
-- Disabled Dropdown "Voice Provider (spaeter)" mit Hinweis "Connect folgt"
-- 6 selektierbare Preset-Cards in einem Grid:
-  - `professional_warm` (Default), `professional_crisp`, `friendly_calm`, `energetic_clear`, `serious_formal`, `soft_supportive`
-- 3 Slider (Radix Slider): Stabilitaet, Klarheit, Tempo (0-100)
-- Mini-Vorschau: Zeigt die `first_message` als Text-Preview ("So klingt es spaeter")
+RLS: tenant_id = auth.jwt()->'user_metadata'->>'tenant_id'
 
-### Section C: Begruessung und Verhalten
-**Komponente:** `ContentCard.tsx`
-- Input: "Erste Begruessung" mit Placeholder "Hallo! Du sprichst mit dem Assistenten von {Name}. Wie kann ich helfen?"
-- Textarea: "Verhalten (Kurz-Prompt)" max 2000 Zeichen mit Zeichenzaehler
-- Helper-Text: "Ziel: Anliegen erfassen, Rueckrufgrund + Dringlichkeit + Kontaktdaten."
+### 3c. Neue Tabelle: `research_billing_log`
 
-### Section D: Reaktionslogik
-**Komponente:** `RulesCard.tsx`
-- 6 Checkboxen (aus `rules` JSON):
-  - Einmal nachfragen wenn unverstaendlich
-  - Name erfassen
-  - Rueckrufnummer bestaetigen
-  - Grund des Anrufs erfassen
-  - Dringlichkeit abfragen
-  - Wunschzeiten abfragen
-- Select/Dropdown: Max. Gespraechsdauer (60/120/180 Sekunden)
+| Spalte | Typ | Default |
+|--------|-----|---------|
+| id | uuid | gen_random_uuid() |
+| order_id | uuid FK research_orders | NOT NULL |
+| tenant_id | uuid FK organizations | NOT NULL |
+| provider | text | NOT NULL |
+| units | int | 1 |
+| cost | numeric | 0 |
+| created_at | timestamptz | now() |
 
-### Section E: Dokumentation und Benachrichtigung
-**Komponente:** `DocumentationCard.tsx`
-- Toggle: E-Mail Benachrichtigung (wenn aktiv: Eingabefeld `email_target`)
-- Toggle: Portal-Eintrag erstellen (default ON)
-- Toggle: Automatische Zusammenfassung (default ON)
-- Toggle: Aufgaben extrahieren (default ON)
-- Dropdown: Aufbewahrung (30/90/365 Tage)
+RLS: tenant_id-scoped (SELECT only)
 
-### Section F: Test und Vorschau
-**Komponente:** `TestPreviewCard.tsx`
-- Button "Test-Anrufereignis erzeugen": Erstellt einen Dummy-Eintrag in `commpro_phone_call_sessions` mit `status = 'test'`, zufaelliger Nummer, kurzem Transkript, Summary und 2-4 Action-Items
-- Button "Testdaten loeschen": Loescht alle Eintraege mit `status = 'test'`
-- Toast-Feedback nach beiden Aktionen
+### 3d. Realtime aktivieren
 
-### Section G: Call-Log
-**Komponente:** `CallLogSection.tsx` + `CallDetailDrawer.tsx`
-- Tabelle (neueste oben): Datum/Uhrzeit, Anrufernummer, Summary (1 Zeile), Status-Badge (`test`/`processed`/`logged`), Button "Details"
-- Empty State: "Noch keine Anrufe dokumentiert." + Button "Test-Eintrag erzeugen"
-- Detail-Drawer (Sheet/Drawer, kein Seitenwechsel):
-  - Transkript (vollstaendig)
-  - Zusammenfassung
-  - Action-Items als Checkbox-Liste
-  - CTA "Zuordnen" (MVP: UI-Placeholder, speichert in `match` JSON)
-
----
-
-## 4. Hook: `usePhoneAssistant.ts`
-
-**Datei:** `src/hooks/usePhoneAssistant.ts`
-
-- **Auto-Create:** Beim ersten Laden pruefen, ob ein Eintrag in `commpro_phone_assistants` existiert. Falls nein: automatisch Default-Row anlegen.
-- **Autosave:** Aenderungen per Debounce (500ms) speichern. "Gespeichert"-Indicator in der UI.
-- **CRUD fuer Call-Sessions:** Query (neueste zuerst), Create (Test-Event), Delete (nur `status = 'test'`).
-- React Query fuer beide Tabellen.
-
----
-
-## 5. Dateien-Uebersicht
-
-| Aktion | Datei |
-|--------|-------|
-| DB | Migration: `commpro_phone_assistants` + `commpro_phone_call_sessions` + RLS |
-| EDIT | `src/pages/portal/communication-pro/ki-telefon/KiTelefonPage.tsx` — Komplett neu: PageShell + 7 Sections |
-| NEU | `src/components/communication-pro/phone-assistant/StatusForwardingCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/VoiceSettingsCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/ContentCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/RulesCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/DocumentationCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/TestPreviewCard.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/CallLogSection.tsx` |
-| NEU | `src/components/communication-pro/phone-assistant/CallDetailDrawer.tsx` |
-| NEU | `src/hooks/usePhoneAssistant.ts` |
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.research_orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.research_order_results;
+```
 
 ---
 
-## 6. Akzeptanzkriterien
+## 4. Edge Functions (Backend)
 
-1. Menuepunkt "KI-Telefonassistent" in MOD-14 zeigt vollstaendige, nutzbare UI statt Platzhalter
-2. Assistenten-Konfiguration wird in der Datenbank persistiert und bleibt nach Reload erhalten (Autosave)
-3. Test-Anrufereignis kann erzeugt, in der Liste angezeigt und im Drawer geoeffnet werden
-4. Testdaten koennen einzeln per "Testdaten loeschen" entfernt werden
-5. UI funktioniert vollstaendig ohne Provider/API und wirkt nicht "leer" (starke Empty States, Test-Button prominent)
-6. Voice-Provider-Dropdown ist sichtbar aber disabled — spaeterer Connect dockt hier an
-7. Binding-Status bleibt auf `pending` — spaetere Rufnummernvergabe aendert nur dieses Feld
+### 4a. `sot-research-run-order` (Orchestrator)
+
+- Empfaengt `{ order_id }`
+- Validiert: status=queued, max_results gesetzt, consent_confirmed
+- Fuehrt Provider-Plan sequenziell/parallel aus:
+  1. Apollo/Epify fetch (wenn aktiviert) -- Stub, Feature-Flag
+  2. Firecrawl extract (Impressum/Team-Seiten crawlen)
+  3. Dedupe + Merge
+  4. KI Scoring (Confidence via Lovable AI / Gemini Flash)
+  5. Finalize: Status auf done oder needs_review
+- Stop Conditions: results_count >= max_results ODER cost_spent >= cost_cap ODER Provider-Error
+- Idempotent via order_id + provider + cursor-hash
+
+### 4b. `sot-research-firecrawl-extract` (Provider Worker)
+
+- Nutzt Firecrawl Connector (muss verlinkt werden)
+- Crawlt target domains / query seeds
+- Extrahiert Kontakte aus Impressum/Teamseiten via KI (Gemini Flash)
+- Schreibt Ergebnisse in `research_order_results`
+- Schreibt Kosten in `research_billing_log`
+
+### 4c. `sot-research-ai-assist` (KI-Helfer)
+
+- Endpunkt fuer 4 KI-Aktionen:
+  - `suggest_filters`: Intent -> ICP-JSON (Branche, Keywords, Region)
+  - `optimize_plan`: Intent + ICP -> Provider-Empfehlung
+  - `score_results`: Ergebnisse bewerten (Confidence, Red Flags)
+  - `summarize`: Ergebnis-Zusammenfassung + naechste Schritte
+- Nutzt Lovable AI Gateway (Gemini 2.5 Flash), kein externer API-Key noetig
+
+### 4d. `sot-research-import-contacts` (Kontaktbuch-Import)
+
+- Empfaengt `{ order_id, result_ids[], duplicate_policy }`
+- Dedupe-Matching: email -> phone -> name+company+city
+- Bei Match: Option update oder skip
+- Upsert in `contacts`-Tabelle
+- Setzt `research_order_results.status` -> 'imported' + `imported_contact_id`
+- Schreibt Audit Event
+
+---
+
+## 5. Frontend-Komponenten
+
+### 5a. `ResearchTab.tsx` (komplett neu)
+
+Ersetzt das alte 3-Panel-Layout. Struktur:
+- WidgetGrid oben (research_orders laden)
+- ResearchOrderInlineFlow darunter (aktiver Auftrag)
+- max-w-5xl, responsive, kein horizontales Scrollen
+
+### 5b. `ResearchOrderWidget.tsx`
+
+Widget-Card fuer WidgetGrid:
+- Titel (gekuerzt), Status-Badge, Provider-Icons, max_results, results_count
+- Klick setzt aktiven Auftrag
+
+### 5c. `ResearchOrderInlineFlow.tsx`
+
+6 Sections als vertikaler, scrollbarer Flow:
+- Section 1-5 sichtbar im Status `draft`
+- Section 6 sichtbar ab Status `done` / `needs_review`
+- Sections 1-5 collapsed/readonly wenn Status != draft
+
+### 5d. `ResearchResultsTable.tsx`
+
+Full-width responsive Tabelle:
+- Spalten: Name, Firma, Rolle, Ort, Kontaktfelder, Quelle, Confidence, Select-Checkbox
+- Sticky Bulk-Action-Bar (Import, CSV Export)
+- Needs-Review-Queue: Treffer mit fehlender Email oder Confidence < 60 markiert
+
+### 5e. Hooks
+
+- `useResearchOrders()`: CRUD + Realtime-Subscription auf research_orders
+- `useResearchResults(orderId)`: Ergebnisse + Realtime
+- `useResearchAI()`: KI-Assist-Aktionen
+- `useResearchImport()`: Kontaktbuch-Import mit Dedupe
+
+### 5f. Zu loeschende Dateien
+
+- `ResearchFreeCard.tsx`
+- `ResearchProCard.tsx`
+- `ResearchCandidatesTray.tsx`
+- `CreditConfirmModal.tsx`
+- `CandidatePreviewDrawer.tsx`
+
+---
+
+## 6. Connector-Setup
+
+**Firecrawl** muss vor Nutzung mit dem Projekt verlinkt werden (Connector `firecrawl`, Connection `std_01ke3b71ryfhfvfx8gj42g4qn8`). Dies wird als erster Schritt durchgefuehrt.
+
+**Apollo / Epify**: Werden als Feature-Flag implementiert (`provider_plan_json`). Toggle-Cards in der UI sind sichtbar, aber deaktiviert mit Hinweis "API-Key in Einstellungen hinterlegen". Kein Blocker fuer MVP.
+
+---
+
+## 7. Mini Golden Path: GP_RESEARCH_TO_CONTACTS_V1
+
+Kein eigenstaendiger Golden Path, sondern ein Status-Validator:
+- Ein Order gilt als "erfolgreich abgeschlossen" nur wenn:
+  - (a) `status = done` UND `results_count > 0`, ODER
+  - (b) mindestens 1 Result hat `status = imported`
+- CTA-Logik: Bei `done` ohne Imports zeigt die UI einen prominenten "Kontakte uebernehmen"-Hinweis
+- Wird als einfache Utility-Funktion implementiert, keine neue Engine-Registrierung
+
+---
+
+## 8. Status-Machine
+
+```text
+  [draft] --Start--> [queued] --Worker--> [running]
+                                             |
+                              +--------------+--------------+
+                              |              |              |
+                         [done]     [needs_review]     [failed]
+                              |              |
+                              +--> [cancelled] <--+
+```
+
+Uebergaenge:
+- draft -> queued: User klickt "Start" (max_results + consent required)
+- queued -> running: Edge Function uebernimmt
+- running -> done: Alle Provider fertig, results_count > 0
+- running -> needs_review: Ergebnisse vorhanden, aber Confidence-Issues
+- running -> failed: Provider-Errors oder cost_cap erreicht ohne Ergebnisse
+- done/needs_review -> cancelled: User bricht ab
+
+---
+
+## 9. Responsive / CI
+
+- Container: `max-w-5xl mx-auto`
+- WidgetGrid: Standard 4-col Pattern (bestehendes `WidgetGrid` + `WidgetCell`)
+- Ergebnisliste: full-width, responsive Tabelle mit horizontalem Scroll nur innerhalb der Tabelle
+- Getestet auf 1366x768 ohne horizontale Scrollbar
+
+---
+
+## 10. Implementierungs-Reihenfolge
+
+| Schritt | Was | Abhaengigkeit |
+|---------|-----|--------------|
+| 1 | Firecrawl Connector verlinken | - |
+| 2 | DB Migration (3 Tabellen + Realtime) | - |
+| 3 | Edge Function: `sot-research-ai-assist` | Lovable AI |
+| 4 | Edge Function: `sot-research-firecrawl-extract` | Firecrawl Connector |
+| 5 | Edge Function: `sot-research-run-order` (Orchestrator) | Steps 3+4 |
+| 6 | Edge Function: `sot-research-import-contacts` | contacts-Tabelle |
+| 7 | Frontend Hooks (useResearchOrders, useResearchResults, etc.) | Step 2 |
+| 8 | Frontend UI (ResearchTab, Widgets, InlineFlow, ResultsTable) | Step 7 |
+| 9 | Alte Dateien loeschen (5 Dateien) | Step 8 |
+| 10 | E2E-Test auf 1366x768 | Step 9 |
+
+---
+
+## 11. Akzeptanzkriterien
+
+- Keine horizontale Scrollbar bei 1366x768
+- Widget-Grid oben, Inline-Flow darunter, alles auf einer Seite
+- "+" erstellt Draft, Start erzeugt RUNNING, danach wieder "+" verfuegbar
+- Start ohne max_results + Consent nicht moeglich (Button deaktiviert)
+- Auftrag stoppt bei max_results oder cost_cap
+- Apollo komplett ausblendbar wenn disabled
+- Bulk "Ins Kontaktbuch" fuehrt zu Upsert mit Dedupe
+- Import markiert Results als imported + schreibt Audit Event
+- KI startet keine kostenpflichtigen Schritte ohne User-CTA
 
