@@ -149,23 +149,7 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         />
       </div>
 
-      {/* ROW 2: Full-width — Lage & Objektbeschreibung */}
-      <EditableAddressBlock
-        street={formData.street}
-        houseNumber={formData.houseNumber}
-        postalCode={formData.postalCode}
-        city={formData.city}
-        locationLabel={formData.locationLabel}
-        description={formData.description}
-        propertyType={formData.propertyType}
-        buildYear={formData.buildYear}
-        totalAreaSqm={formData.areaLivingSqm}
-        heatingType={formData.heatingType}
-        energySource={formData.energySource}
-        onFieldChange={handleFieldChange}
-      />
-
-      {/* ROW 3: 2 columns — Legal | Financing */}
+      {/* ROW 2: 2 columns — Legal | Financing */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableLegalBlock
           landRegisterCourt={formData.landRegisterCourt}
@@ -197,7 +181,7 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         />
       </div>
 
-      {/* ROW 4: 2 columns — Tenancy | WEG */}
+      {/* ROW 3: 2 columns — Tenancy | WEG */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TenancySummaryBlock
           tenancyStatus={formData.tenancyStatus}
@@ -226,24 +210,24 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         />
       </div>
 
-      {/* ROW 5: Documents Checklist */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <DocumentChecklist documents={formData.documents} />
-        </div>
-        {(formData as any).leasesCount > 1 && (
-          <Card className="border-blue-200 bg-blue-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-sm text-blue-700">
-                <AlertTriangle className="h-4 w-4" />
-                <span>
-                  Diese Einheit hat {(formData as any).leasesCount} aktive Mietverträge.
-                  Die angezeigten Werte sind Summen aller Verträge.
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* ROW 4: 2 columns — Lage & Beschreibung | Dokumente */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <EditableAddressBlock
+          street={formData.street}
+          houseNumber={formData.houseNumber}
+          postalCode={formData.postalCode}
+          city={formData.city}
+          locationLabel={formData.locationLabel}
+          description={formData.description}
+          propertyType={formData.propertyType}
+          buildYear={formData.buildYear}
+          totalAreaSqm={formData.areaLivingSqm}
+          heatingType={formData.heatingType}
+          energySource={formData.energySource}
+          onFieldChange={handleFieldChange}
+        />
+
+        <DocumentChecklist documents={formData.documents} />
       </div>
 
       {/* Sticky Save Bar */}
