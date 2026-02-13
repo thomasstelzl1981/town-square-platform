@@ -7,7 +7,7 @@
     "predecessor": "backlog v4.0 (52 Issues, 5 Phases — abgeschlossen)",
     "audit_scope": "21 Module (MOD-00 bis MOD-20), tile_catalog SSOT, areaConfig, Component Maps, 13 fehlende Specs, API Contracts",
     "methodology": "Sprint-basiert. Nach jedem Sprint: backlog.json lesen, aktualisieren, naechsten Sprint vorbereiten.",
-    "current_sprint": "S4"
+    "current_sprint": "S6"
   },
   "metrics": {
     "total_tasks": 33,
@@ -278,23 +278,25 @@
       "id": "S5",
       "name": "Spec-Dokumentation",
       "priority": "P2",
-      "status": "pending",
+      "status": "done",
+      "completed_at": "2026-02-13T18:00:00Z",
+      "notes": "Alle 13 fehlenden Specs erstellt. Gesamt: 22 Spec-Dateien in spec/current/02_modules/ (9 bestehend + 13 neu).",
       "description": "13 fehlende Modul-Specs in spec/current/02_modules/ erstellen.",
       "existing_specs": ["mod-00", "mod-02", "mod-03", "mod-04", "mod-05", "mod-06", "mod-07", "mod-11", "zone1_futureroom"],
       "tasks": [
-        { "id": "S5-01", "module": "MOD-01", "title": "Spec Stammdaten", "status": "pending" },
-        { "id": "S5-02", "module": "MOD-08", "title": "Spec Investment-Suche", "status": "pending" },
-        { "id": "S5-03", "module": "MOD-09", "title": "Spec Vertriebspartner", "status": "pending" },
-        { "id": "S5-04", "module": "MOD-10", "title": "Spec Abrechnung", "status": "pending" },
-        { "id": "S5-05", "module": "MOD-12", "title": "Spec Akquise-Manager", "status": "pending" },
-        { "id": "S5-06", "module": "MOD-13", "title": "Spec Projekte", "status": "pending" },
-        { "id": "S5-07", "module": "MOD-14", "title": "Spec Communication Pro", "status": "pending" },
-        { "id": "S5-08", "module": "MOD-15", "title": "Spec Fortbildung", "status": "pending" },
-        { "id": "S5-09", "module": "MOD-16", "title": "Spec Shops", "status": "pending" },
-        { "id": "S5-10", "module": "MOD-17", "title": "Spec Car-Management", "status": "pending" },
-        { "id": "S5-11", "module": "MOD-18", "title": "Spec Finanzanalyse", "status": "pending" },
-        { "id": "S5-12", "module": "MOD-19", "title": "Spec Photovoltaik", "status": "pending" },
-        { "id": "S5-13", "module": "MOD-20", "title": "Spec Miety", "status": "pending" }
+        { "id": "S5-01", "module": "MOD-01", "title": "Spec Stammdaten", "status": "done" },
+        { "id": "S5-02", "module": "MOD-08", "title": "Spec Investment-Suche", "status": "done" },
+        { "id": "S5-03", "module": "MOD-09", "title": "Spec Vertriebspartner", "status": "done" },
+        { "id": "S5-04", "module": "MOD-10", "title": "Spec Provisionen", "status": "done" },
+        { "id": "S5-05", "module": "MOD-12", "title": "Spec Akquise-Manager", "status": "done" },
+        { "id": "S5-06", "module": "MOD-13", "title": "Spec Projekte", "status": "done" },
+        { "id": "S5-07", "module": "MOD-14", "title": "Spec Communication Pro", "status": "done" },
+        { "id": "S5-08", "module": "MOD-15", "title": "Spec Fortbildung", "status": "done" },
+        { "id": "S5-09", "module": "MOD-16", "title": "Spec Services", "status": "done" },
+        { "id": "S5-10", "module": "MOD-17", "title": "Spec Car-Management", "status": "done" },
+        { "id": "S5-11", "module": "MOD-18", "title": "Spec Finanzanalyse", "status": "done" },
+        { "id": "S5-12", "module": "MOD-19", "title": "Spec Photovoltaik", "status": "done" },
+        { "id": "S5-13", "module": "MOD-20", "title": "Spec Miety/Zuhause", "status": "done" }
       ]
     },
     {
