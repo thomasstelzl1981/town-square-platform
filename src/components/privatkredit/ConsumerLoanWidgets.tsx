@@ -1,6 +1,8 @@
 /**
  * ConsumerLoanWidgets — Widget bar for existing consumer loan cases + CTA
  * Mirrors FinanceRequestWidgets pattern.
+ * 
+ * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +12,10 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CreditCard, Loader2 } from 'lucide-react';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+
+const GP_PRIVATKREDIT = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-PRIVATKREDIT')!;
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -93,8 +99,37 @@ export function ConsumerLoanWidgets({ activeCaseId, onSelectCase }: ConsumerLoan
   const formatCurrency = (val: number | null) =>
     val ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val) : null;
 
+  const { isEnabled } = useDemoToggles();
+  const showDemo = isEnabled('GP-PRIVATKREDIT');
+
   return (
     <WidgetGrid variant="widget">
+      {/* Demo-Widget an Position 0 */}
+      {showDemo && (
+        <WidgetCell>
+          <Card
+            className={`h-full cursor-pointer transition-all hover:shadow-lg ${
+              activeCaseId === '__demo__' ? 'ring-2 ring-primary' : ''
+            }`}
+            onClick={() => onSelectCase?.('__demo__')}
+          >
+            <div className="flex flex-col h-full p-4 justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                    {GP_PRIVATKREDIT.demoWidget.badgeLabel}
+                  </Badge>
+                </div>
+                <h3 className="font-semibold text-sm">25.000 €</h3>
+                <p className="text-xs text-muted-foreground mt-1">60 Monate · 4,9% eff.</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">{GP_PRIVATKREDIT.demoWidget.subtitle}</p>
+            </div>
+          </Card>
+        </WidgetCell>
+      )}
+
       {cases.map((c) => {
         const isActive = c.id === activeCaseId;
         return (

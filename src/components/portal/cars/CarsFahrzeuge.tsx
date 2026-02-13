@@ -25,6 +25,10 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+
+const GP_FAHRZEUG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-FAHRZEUG')!;
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
 
@@ -139,7 +143,9 @@ export default function CarsFahrzeuge() {
     enabled: !!activeTenantId,
   });
 
-  const vehicles = dbVehicles?.length ? dbVehicles : DEMO_VEHICLES;
+  const { isEnabled } = useDemoToggles();
+  const showDemoWidget = isEnabled('GP-FAHRZEUG');
+  const vehicles = dbVehicles?.length ? dbVehicles : (showDemoWidget ? DEMO_VEHICLES : []);
   const isDemo = !dbVehicles?.length;
 
   const filteredVehicles = vehicles.filter((v: any) => {
