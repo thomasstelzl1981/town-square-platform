@@ -44,8 +44,11 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  MapPin
+  MapPin,
+  Settings,
+  RefreshCw,
 } from 'lucide-react';
+import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
 
 // Category configuration with colors
 const CATEGORIES = [
@@ -224,6 +227,7 @@ export function KontakteTab() {
   const [formData, setFormData] = useState<ContactFormData>(emptyFormData);
   const [emailEnrichEnabled, setEmailEnrichEnabled] = useState(false);
   const [postEnrichEnabled, setPostEnrichEnabled] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Fetch enrichment settings
   const { data: enrichSettings } = useQuery({
@@ -653,6 +657,10 @@ export function KontakteTab() {
           </div>
         </div>
 
+        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} title="Konto-Integrationen">
+          <Settings className="h-4 w-4" />
+        </Button>
+
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -850,6 +858,8 @@ export function KontakteTab() {
         )}
       </DetailDrawer>
     </Card>
+
+    <AccountIntegrationDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </PageShell>
   );
 }

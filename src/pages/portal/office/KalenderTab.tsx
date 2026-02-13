@@ -36,8 +36,10 @@ import {
   Building,
   Loader2,
   RefreshCw,
-  Video
+  Video,
+  Settings,
 } from 'lucide-react';
+import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
 
 interface CalendarEvent {
   id: string;
@@ -63,6 +65,7 @@ export function KalenderTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [withVideocall, setWithVideocall] = useState(false);
   const [vcInviteEmail, setVcInviteEmail] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -365,6 +368,9 @@ export function KalenderTab() {
               <Button variant="outline" size="sm" onClick={goToToday}>
                 Heute
               </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSettingsOpen(true)} title="Konto-Integrationen">
+                <Settings className="h-4 w-4" />
+              </Button>
               <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2" onClick={handleOpenCreate}>
@@ -661,6 +667,7 @@ export function KalenderTab() {
         </Card>
       </div>
       </div>
+      <AccountIntegrationDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </PageShell>
   );
 }
