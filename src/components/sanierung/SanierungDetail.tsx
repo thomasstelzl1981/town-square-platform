@@ -7,7 +7,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { X, HardHat, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList, Search, Mail, BarChart3, Save } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { X, Trash2, HardHat, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList, Search, Mail, BarChart3, Save } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { SectionCard } from '@/components/shared/SectionCard';
 import { SanierungStepper } from './SanierungStepper';
@@ -16,7 +21,7 @@ import { ScopeDefinitionPanel } from '@/components/portal/immobilien/sanierung/s
 import { ProviderSearchPanel, type SelectedProvider } from '@/components/portal/immobilien/sanierung/tender';
 import { TenderDraftPanel } from '@/components/portal/immobilien/sanierung/tender';
 import { OfferComparisonPanel } from '@/components/portal/immobilien/sanierung/offers';
-import { useServiceCases, type ServiceCaseCategory } from '@/hooks/useServiceCases';
+import { useServiceCases, useDeleteServiceCase, type ServiceCaseCategory } from '@/hooks/useServiceCases';
 import { DESIGN } from '@/config/designManifest';
 
 const CATEGORY_ICONS: Record<ServiceCaseCategory, React.ComponentType<{ className?: string }>> = {
@@ -51,6 +56,7 @@ export function SanierungDetailInline({ caseId, onClose }: { caseId: string; onC
 
 function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string; onClose: () => void; wrapInShell: boolean }) {
   const { data: cases, isLoading } = useServiceCases();
+  const deleteServiceCase = useDeleteServiceCase();
   const [selectedProviders, setSelectedProviders] = useState<SelectedProvider[]>([]);
 
   const serviceCase = cases?.find(c => c.id === caseId);
@@ -77,6 +83,8 @@ function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string
   }
 
   const CategoryIcon = CATEGORY_ICONS[serviceCase.category] || Package;
+
+  const canDelete = serviceCase.status === 'draft' || serviceCase.status === 'cancelled';
 
   const detail = (
     <div className={DESIGN.SPACING.SECTION}>
@@ -110,9 +118,40 @@ function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string
             )}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          {canDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sanierungsvorgang löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Möchten Sie den Vorgang <strong>"{serviceCase.title}"</strong>{' '}
+                    <span className="font-mono text-xs">({serviceCase.tender_id || serviceCase.public_id})</span>{' '}
+                    unwiderruflich löschen?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={deleteServiceCase.isPending}
+                    onClick={() => deleteServiceCase.mutate(serviceCase.id, { onSuccess: onClose })}
+                  >
+                    {deleteServiceCase.isPending ? 'Wird gelöscht…' : 'Endgültig löschen'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* ── Stepper ── */}
