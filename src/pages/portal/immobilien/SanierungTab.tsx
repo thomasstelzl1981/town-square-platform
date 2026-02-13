@@ -5,12 +5,13 @@
 import { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, HardHat } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
-import { DESIGN } from '@/config/designManifest';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { ServiceCaseCard, ServiceCaseCardPlaceholder } from '@/components/sanierung/ServiceCaseCard';
 import { ServiceCaseCreateDialog } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateDialog';
 import { SanierungDetail } from '@/components/sanierung/SanierungDetail';
@@ -30,37 +31,30 @@ function SanierungDashboard() {
       <ModulePageHeader
         title="Sanierung"
         description={`${activeCases.length} aktive Vorgänge — Ausschreibungen, Angebote und Dokumentation.`}
-        actions={
-          <Button onClick={() => setCreateDialogOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Sanierung starten
-          </Button>
-        }
       />
 
       {isLoading ? (
-        <div className={DESIGN.WIDGET_GRID.FULL}>
-          {[1, 2, 3].map(i => <Skeleton key={i} className="aspect-square rounded-lg" />)}
-        </div>
-      ) : activeCases.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <HardHat className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold mb-1">Erste Sanierung starten</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              Beschreiben Sie Ihr Vorhaben in wenigen Worten — die KI erstellt daraus ein 
-              strukturiertes Leistungsverzeichnis und Sie finden passende Dienstleister.
-            </p>
-            <Button size="lg" onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-5 w-5" />
-              Sanierung starten
-            </Button>
-          </CardContent>
-        </Card>
+        <WidgetGrid>
+          {[1, 2, 3].map(i => <WidgetCell key={i}><Skeleton className="h-full w-full rounded-lg" /></WidgetCell>)}
+        </WidgetGrid>
       ) : (
-        <div className={DESIGN.WIDGET_GRID.FULL}>
+        <WidgetGrid>
+          <WidgetCell>
+            <Card
+              className="h-full cursor-pointer border-dashed hover:border-primary/50 transition-colors flex flex-col"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <CardContent className="flex flex-col items-center justify-center flex-1 gap-3 p-6">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-semibold text-center">Neue Sanierung starten</p>
+                <p className="text-xs text-muted-foreground text-center">
+                  Vorhaben beschreiben — KI erstellt Leistungsverzeichnis
+                </p>
+              </CardContent>
+            </Card>
+          </WidgetCell>
           {activeCases.map(sc => (
             <ServiceCaseCard
               key={sc.id}
@@ -68,7 +62,7 @@ function SanierungDashboard() {
               onClick={() => navigate(`/portal/immobilien/sanierung/${sc.id}`)}
             />
           ))}
-        </div>
+        </WidgetGrid>
       )}
 
       <ServiceCaseCreateDialog
