@@ -370,19 +370,17 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b pb-4 pt-2 -mx-4 px-4 lg:-mx-6 lg:px-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Selbstauskunft</h1>
-            <Badge variant={completionPercent >= 80 ? 'default' : 'secondary'} className="gap-1">
-              {completionPercent >= 80 ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-              {completionPercent}% vollständig
-            </Badge>
             {hasCoData && (
-              <Badge variant="outline" className="gap-1">
+              <Badge variant="outline" className="gap-1 text-xs">
                 <Users className="h-3 w-3" />
                 2 Antragsteller
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-3">
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              {completionPercent}%
+            </Badge>
             {!readOnly && landlordContexts.length > 0 && (
               <Button variant="outline" size="sm" onClick={() => setShowContextPicker(true)}>
                 <Download className="h-4 w-4 mr-2" />Aus Vermietereinheit
@@ -396,7 +394,6 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
             )}
           </div>
         </div>
-        <Progress value={completionPercent} className="h-2 mt-4" />
       </div>
 
       {/* ===== SECTION 1: Person (3-column) ===== */}

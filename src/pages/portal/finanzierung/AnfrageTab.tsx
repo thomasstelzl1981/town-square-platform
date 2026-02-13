@@ -145,16 +145,32 @@ export default function AnfrageTab() {
                       className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors border-b last:border-b-0"
                       onMouseDown={() => handleListingSelect(l)}
                     >
-                      <div className="font-medium">{l.title ?? 'Ohne Titel'}</div>
+                      <div className="font-medium text-foreground">
+                        {l.public_id && <span className="text-muted-foreground mr-1.5">{l.public_id}</span>}
+                        {l.title ?? 'Ohne Titel'}
+                      </div>
                       <div className="text-muted-foreground">
-                        {l.city ?? ''}{l.postal_code ? ` (${l.postal_code})` : ''}
-                        {l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('de-DE')} €` : ''}
+                        {l.postal_code ?? ''} {l.city ?? ''}
+                      </div>
+                      <div className="text-muted-foreground flex items-center gap-2">
+                        {l.asking_price ? <span>{Number(l.asking_price).toLocaleString('de-DE')} €</span> : null}
+                        {l.total_area_sqm ? <span>{l.total_area_sqm} m²</span> : null}
+                        {l.property_type ? <span className="capitalize">{l.property_type}</span> : null}
                       </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full mt-2 gap-2"
+              onClick={() => { if (searchQuery.trim()) setShowDropdown(true); }}
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              Marktplatz durchsuchen
+            </Button>
           </CardContent>
         </Card>
       </div>
