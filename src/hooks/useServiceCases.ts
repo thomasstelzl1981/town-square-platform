@@ -237,6 +237,33 @@ export function useUpdateServiceCase() {
 }
 
 /**
+ * Delete a service case
+ */
+export function useDeleteServiceCase() {
+  const { activeTenantId } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('service_cases')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service_cases', activeTenantId] });
+      queryClient.invalidateQueries({ queryKey: ['service_case_stats', activeTenantId] });
+      toast.success('Sanierungsvorgang gelöscht');
+    },
+    onError: (error) => {
+      console.error('Error deleting service case:', error);
+      toast.error('Fehler beim Löschen des Vorgangs');
+    },
+  });
+}
+
+/**
  * Get statistics for service cases
  */
 export function useServiceCaseStats() {
