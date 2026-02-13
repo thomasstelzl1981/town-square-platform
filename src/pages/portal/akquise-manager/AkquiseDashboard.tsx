@@ -7,20 +7,113 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, Loader2, Plus, Inbox, User, Phone, Mail, MapPin, Pencil, Target, TrendingUp, BarChart3, Users } from 'lucide-react';
+import { Briefcase, Loader2, Plus, Inbox, User, Phone, Mail, MapPin, Pencil, Target, TrendingUp, BarChart3, Users, Building2, Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { 
   useAcqMandatesPending, 
   useAcqMandatesActive, 
 } from '@/hooks/useAcqMandate';
 import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+} from '@/components/ui/sheet';
+import { toast } from 'sonner';
+
+interface EditableProfile {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_mobile: string;
+  phone_landline: string;
+  street: string;
+  house_number: string;
+  postal_code: string;
+  city: string;
+  letterhead_company_line: string;
+  letterhead_website: string;
+}
+
+function EditRow({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div className={cn('flex flex-col gap-0.5 md:grid md:grid-cols-[180px_1fr] md:items-center', DESIGN.TABULAR_FORM.ROW_BORDER, 'py-1.5 px-1')}>
+      <Label className={DESIGN.TYPOGRAPHY.LABEL}>{label}</Label>
+      <Input className={DESIGN.TABULAR_FORM.INPUT} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
 
 export default function AkquiseDashboard() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editData, setEditData] = useState<EditableProfile>({
+    first_name: '', last_name: '', email: '', phone_mobile: '', phone_landline: '',
+    street: '', house_number: '', postal_code: '', city: '',
+    letterhead_company_line: '', letterhead_website: '',
+  });
+
+  const openEditSheet = () => {
+    if (profile) {
+      setEditData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+        phone_mobile: profile.phone_mobile || '',
+        phone_landline: profile.phone_landline || '',
+        street: profile.street || '',
+        house_number: profile.house_number || '',
+        postal_code: profile.postal_code || '',
+        city: profile.city || '',
+        letterhead_company_line: profile.letterhead_company_line || '',
+        letterhead_website: profile.letterhead_website || '',
+      });
+    }
+    setEditOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        first_name: editData.first_name || null,
+        last_name: editData.last_name || null,
+        email: editData.email || null,
+        phone_mobile: editData.phone_mobile || null,
+        phone_landline: editData.phone_landline || null,
+        street: editData.street || null,
+        house_number: editData.house_number || null,
+        postal_code: editData.postal_code || null,
+        city: editData.city || null,
+        letterhead_company_line: editData.letterhead_company_line || null,
+        letterhead_website: editData.letterhead_website || null,
+      } as any).eq('id', user.id);
+      if (error) throw error;
+      toast.success('Profil gespeichert');
+      setEditOpen(false);
+      window.location.reload();
+    } catch (err) {
+      toast.error('Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof EditableProfile) => (value: string) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
 
   if (loadingPending || loadingActive) {
     return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
@@ -66,6 +159,9 @@ export default function AkquiseDashboard() {
                     <h3 className="text-base font-bold">{fullName}</h3>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Akquise-Manager</p>
                   </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditSheet}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
 
                 <div className="space-y-0.5">
@@ -134,11 +230,48 @@ export default function AkquiseDashboard() {
         </Card>
       </div>
 
+      {/* Edit Sheet */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Profil bearbeiten</SheetTitle>
+            <SheetDescription>Kontaktdaten für Ihre Akquise-Visitenkarte</SheetDescription>
+          </SheetHeader>
+
+          <div className="py-4 space-y-4">
+            <div>
+              <h4 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'text-muted-foreground mb-2')}>Kontaktdaten</h4>
+              <div className="border rounded-lg">
+                <EditRow label="Vorname" value={editData.first_name} onChange={handleFieldChange('first_name')} />
+                <EditRow label="Nachname" value={editData.last_name} onChange={handleFieldChange('last_name')} />
+                <EditRow label="E-Mail" value={editData.email} onChange={handleFieldChange('email')} />
+                <EditRow label="Mobil" value={editData.phone_mobile} onChange={handleFieldChange('phone_mobile')} placeholder="+49 ..." />
+                <EditRow label="Festnetz" value={editData.phone_landline} onChange={handleFieldChange('phone_landline')} placeholder="+49 ..." />
+                <EditRow label="Straße" value={editData.street} onChange={handleFieldChange('street')} />
+                <EditRow label="Hausnummer" value={editData.house_number} onChange={handleFieldChange('house_number')} />
+                <EditRow label="PLZ" value={editData.postal_code} onChange={handleFieldChange('postal_code')} />
+                <EditRow label="Ort" value={editData.city} onChange={handleFieldChange('city')} />
+                <EditRow label="Firma" value={editData.letterhead_company_line} onChange={handleFieldChange('letterhead_company_line')} />
+                <EditRow label="Website" value={editData.letterhead_website} onChange={handleFieldChange('letterhead_website')} placeholder="https://..." />
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Abbrechen</Button>
+            <Button onClick={handleSaveProfile} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Speichern
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
       {/* ── Sektion A: Aktive Mandate ── */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Aktive Mandate
-        </h2>
+        </h3>
         {activeMandates && activeMandates.length > 0 ? (
           <WidgetGrid>
             {activeMandates.map(mandate => (
@@ -168,10 +301,10 @@ export default function AkquiseDashboard() {
       </div>
 
       {/* ── Sektion B: Neue Aufträge (Pending) ── */}
-      <div className="space-y-3 mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Neue Aufträge
-        </h2>
+        </h3>
         {pendingMandates && pendingMandates.length > 0 ? (
           <WidgetGrid>
             {pendingMandates.map(mandate => (
