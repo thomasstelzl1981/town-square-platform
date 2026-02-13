@@ -1,130 +1,109 @@
 
+# Golden Path Interaction Standard — Systemweite Prozess-Registry
 
-# UI-Korrektur: Einheitliches Scroll-Layout fuer MOD-21 + MOD-14
+## Design-Grundlage
 
-## Problem
+Alle Prozess-Seiten werden gemäß dem **Design Manifest V4.0** (`src/config/designManifest.ts`) umgesetzt:
 
-Beide Module verletzen das systemweite "Golden Path Interaction Standard":
-
-**MOD-21 (Website Builder):**
-- Hat 4 separate Routen (Websites, Design, SEO, Vertrag) mit Subbar-Navigation
-- User muss zwischen Tabs hin- und herklicken statt alles auf einer Seite zu sehen
-- Kein Demo-Widget zur Orientierung
-
-**MOD-14 (Recherche):**
-- Grundstruktur ist korrekt (Widget-Grid + Inline-Flow)
-- Aber: es fehlt `ModulePageHeader` mit CI-konformer Ueberschrift
-- Es fehlt ein Demo-Widget als Orientierungshilfe
-- Nutzt nicht `WidgetGrid`/`WidgetCell` aus dem Design-Manifest
+- **Layout**: `PageShell` → `ModulePageHeader` (TYPOGRAPHY.PAGE_TITLE) → `WidgetGrid` (WIDGET_GRID.FULL) → Inline-Detail-Flow
+- **Widget-Zellen**: `WidgetCell` (WIDGET_CELL.DIMENSIONS: h-[260px] / md:aspect-square)
+- **Cards**: CARD.BASE + CARD.INTERACTIVE für klickbare Widgets
+- **KPI-Zeilen**: KPI_GRID.FULL für kompakte Kennzahlen
+- **Formulare**: FORM_GRID.FULL für Detail-Sektionen
+- **Typografie**: TYPOGRAPHY.* — keine ad-hoc Tailwind-Klassen
+- **Spacing**: SPACING.SECTION zwischen Sektionen, SPACING.CARD innerhalb
+- **Banner**: INFO_BANNER.HINT für Demo-Hinweise
+- **Max 4 Spalten** auf Desktop — keine Ausnahme
 
 ---
 
-## Ziel-Layout (beide Module identisch)
+## Ziel-Layout (alle Prozess-Module identisch)
 
 ```text
-┌──────────────────────────────────────────────┐
-│  MODULNAME (UPPERCASE, bold, tracking-tight) │
-│  Beschreibung in Muted                       │
-├──────────────────────────────────────────────┤
-│                                              │
-│  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐        │
-│  │DEMO │  │Fall │  │Fall │  │ +   │        │
-│  │(hart│  │  1  │  │  2  │  │Neu  │        │
-│  │codet│  │     │  │     │  │     │        │
-│  └─────┘  └─────┘  └─────┘  └─────┘        │
-│                                              │
-│  ─── Inline-Detail aktiver Fall ───          │
-│  Design-Template / Branding                  │
-│  SEO-Einstellungen                           │
-│  Editor (Sections)                           │
-│  Vertrag / Versionshistorie                  │
-│  Publish-Button                              │
-│                                              │
-│  (alles scrollbar, kein Tab-Wechsel)         │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  MODULNAME (TYPOGRAPHY.PAGE_TITLE)                   │
+│  Beschreibung (TYPOGRAPHY.MUTED)                     │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  WidgetGrid (WIDGET_GRID.FULL, max 4 cols)           │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐ │
+│  │  DEMO   │  │  Fall 1 │  │  Fall 2 │  │  +Neu  │ │
+│  │(pos 0)  │  │         │  │         │  │  CTA   │ │
+│  │WidgetCell│  │WidgetCell│  │WidgetCell│  │WidgetCell│
+│  └─────────┘  └─────────┘  └─────────┘  └────────┘ │
+│                                                      │
+│  ─── Inline-Detail (SPACING.SECTION) ───             │
+│  Sektion 1 (CARD.CONTENT / FORM_GRID)                │
+│  Sektion 2                                           │
+│  Sektion N                                           │
+│  (alles scrollbar, kein Tab-Wechsel)                 │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## MOD-21 Website Builder — Umbau
+## Prozess-Registry (15 Prozesse)
 
-### Was sich aendert
+| # | Prozess-ID | Modul | Seite | Prozessname | MP | Compliance | Phase |
+|---|-----------|-------|-------|-------------|:--:|------------|-------|
+| 1 | GP-PORTFOLIO | MOD-04 | PortfolioTab | Immobilien-Portfolio | 1 | Demo fehlt | 2A |
+| 2 | GP-VERWALTUNG | MOD-04 | VerwaltungTab | Mietverwaltung | 1 | Demo fehlt | 2A |
+| 3 | GP-SANIERUNG | MOD-04 | SanierungTab | Sanierungsauftrag | 1 | Demo fehlt | 2A |
+| 4 | GP-FINANZIERUNG | MOD-07 | AnfrageTab | Finanzierungsanfrage | 2 | Demo fehlt | 2A |
+| 5 | GP-PRIVATKREDIT | MOD-07 | PrivatkreditTab | Privatkreditantrag | 1 | Demo fehlt | 2A |
+| 6 | GP-SUCHMANDAT | MOD-08 | MandatTab | Investment-Suchmandat | 1 | Umbau nötig | 2C |
+| 7 | GP-SIMULATION | MOD-08 | SimulationTab | Investment-Simulation | 1 | Demo fehlt | 2A |
+| 8 | GP-FM-FALL | MOD-11 | FMDashboard | Finanzierungsfall | 2 | Demo fehlt | 2B |
+| 9 | GP-AKQUISE-MANDAT | MOD-12 | AkquiseMandate | Akquisemandat | 2 | Demo fehlt | 2B |
+| 10 | GP-PROJEKT | MOD-13 | ProjekteDashboard | Projektanlage | 1 | Demo vorhanden | 2B |
+| 11 | GP-SERIEN-EMAIL | MOD-14 | SerienEmailsPage | Serien-E-Mail-Kampagne | 1 | Umbau nötig | 2C |
+| 12 | GP-RECHERCHE | MOD-14 | ResearchTab | Rechercheauftrag | 1 | ✅ KONFORM | — |
+| 13 | GP-FAHRZEUG | MOD-17 | CarsFahrzeuge | Fahrzeugverwaltung | 1 | Demo fehlt | 2A |
+| 14 | GP-PV-ANLAGE | MOD-19 | AnlagenTab | PV-Anlagenanlage | 1 | Umbau nötig | 2C |
+| 15 | GP-WEBSITE | MOD-21 | WBDashboard | Website-Auftrag | 1 | ✅ KONFORM | — |
 
-| Vorher | Nachher |
-|--------|---------|
-| 4 Routen (Websites/Design/SEO/Vertrag) mit Subbar | 1 Seite, alles vertikal scrollbar |
-| `WebsiteBuilderPage.tsx` mit Routes | Einfache Komponente ohne Routes |
-| Separate WBDesign.tsx, WBSeo.tsx, WBVertrag.tsx | Inline-Sektionen im Hauptflow |
-| Kein Demo-Widget | Erstes Widget = Demo (hartcodiert) |
-| "+Neue Website" als Button | "+Neue Website" als WidgetCell im Grid |
-
-### Neue Struktur von WebsiteBuilderPage.tsx
-
-Eine einzige Seite mit:
-1. `ModulePageHeader` — "WEBSITE BUILDER" + Beschreibung
-2. `WidgetGrid` mit `WidgetCell`:
-   - Position 0: **Demo-Widget** (hartcodiert, zeigt Beispiel-Website "Muster GmbH", Status "Demo", nicht editierbar, dient zur Orientierung)
-   - Position 1-N: Echte Website-Widgets (Name, Status-Badge, Template-Name)
-   - Letzte Position: **CTA-Widget "+Neue Website"**
-3. Wenn ein Widget aktiv ist: Inline-Flow darunter mit allen Sektionen:
-   - Sektion "Design" (Template-Picker + Branding-Felder, aus WBDesign.tsx extrahiert)
-   - Sektion "SEO" (Meta-Daten, aus WBSeo.tsx extrahiert)
-   - Sektion "Editor" (Section-Stack mit Live-Preview, aus WBEditor.tsx)
-   - Sektion "Vertrag + Versionen" (Vertragsstatus + Versionshistorie, aus WBVertrag.tsx)
-   - Publish-Bar (sticky oder am Ende)
-
-### Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/WebsiteBuilderPage.tsx` | Komplett neu: Keine Routes mehr, eine scrollbare Seite mit WidgetGrid + Inline-Flow |
-| `src/pages/portal/website-builder/WBWebsites.tsx` | Wird aufgeloest — Widget-Erstellung und Grid wandern in WebsiteBuilderPage |
-| `src/pages/portal/website-builder/WBDesign.tsx` | Wird zu Inline-Sektion (exportiert als Komponente ohne eigene PageShell) |
-| `src/pages/portal/website-builder/WBSeo.tsx` | Wird zu Inline-Sektion |
-| `src/pages/portal/website-builder/WBVertrag.tsx` | Wird zu Inline-Sektion |
-| `src/pages/portal/website-builder/WBEditor.tsx` | Bleibt als Kern-Komponente, wird inline eingebettet |
-| `src/manifests/routesManifest.ts` | MOD-21 tiles entfernen, nur noch eine Route |
-
-### Demo-Widget (hartcodiert)
-
-```text
-{
-  name: "Muster GmbH",
-  slug: "muster-gmbh",
-  status: "demo",
-  template: "Modern",
-  description: "So sieht ein fertiger Website-Auftrag aus"
-}
-```
-
-Klick auf Demo-Widget oeffnet den Inline-Flow mit vorausgefuellten Demo-Daten (alle Felder disabled), damit der User sieht, wie ein vollstaendiger Prozess aussieht.
+**MP** = Menüpunkte (1 = alles in einem Tab, 2 = über zwei Tabs)
 
 ---
 
-## MOD-14 Recherche — Korrektur
+## Demo-Daten-Konzept
 
-### Was sich aendert
+### Prinzipien (gemäß Design Manifest)
 
-| Vorher | Nachher |
-|--------|---------|
-| Kein `ModulePageHeader` | CI-konformer Header "RECHERCHE" + Beschreibung |
-| Ad-hoc Grid-Klassen | `WidgetGrid` + `WidgetCell` aus Design-Manifest |
-| Kein Demo-Widget | Erstes Widget = Demo-Rechercheauftrag (hartcodiert) |
+1. Demo-Widget ist **IMMER Position 0** im WidgetGrid
+2. ID ist **IMMER `__demo__`** (String, keine UUID)
+3. Status-Badge: `bg-primary/10 text-primary` mit Label "Demo"
+4. Alle Felder sind editierbar (User experimentiert)
+5. Bei Schließen/Wechsel: **Reset auf hartcodierten Standard**
+6. Rein clientseitig — **kein DB-Speichern**
+7. Toggle über `useDemoToggles` Hook (localStorage)
 
-### Aenderungen an ResearchTab.tsx
+### Steuerung
 
-1. `ModulePageHeader` hinzufuegen: Titel "RECHERCHE", Beschreibung "Asynchrone Lead-Engine — Rechercheauftraege anlegen, durchfuehren und Kontakte uebernehmen."
-2. Grid umstellen auf `WidgetGrid` + `WidgetCell`
-3. Demo-Widget als erstes Widget einfuegen:
-   - Titel: "Demo: Hausverwaltungen NRW"
-   - Status: "demo" (eigenes Badge)
-   - Zeigt exemplarisch, wie ein abgeschlossener Auftrag aussieht
-   - Klick oeffnet den Inline-Flow mit Demo-Daten (read-only)
-4. ResearchOrderCreateWidget und ResearchOrderWidget in `WidgetCell` wrappen
+Neuer Stammdaten-Tab **"Demo-Daten"** in MOD-01 mit:
+- Globaler Toggle (alle an/aus)
+- Individueller Toggle pro Prozess
+- Compliance-Badge pro Prozess
+- Persistenz via localStorage (`gp_demo_toggles`)
 
 ---
 
-## Auswirkung auf andere Module
+## Implementierungsphasen
 
-Dieses Pattern muss spaeter auch auf alle anderen Service-Module angewendet werden. Dieser Schritt korrigiert nur MOD-21 und MOD-14 als Referenz-Implementierung.
+### Phase 1: Infrastruktur (aktueller Schritt)
+- `src/manifests/goldenPathProcesses.ts` — SSOT für alle 15 Prozesse
+- `src/hooks/useDemoToggles.ts` — localStorage Toggle-Hook
+- `src/pages/portal/stammdaten/DemoDatenTab.tsx` — Management-UI
+- Routing in StammdatenPage + routesManifest
 
+### Phase 2A: Demo-Widgets nachrüsten (bereits konformes Layout)
+GP-PORTFOLIO, GP-VERWALTUNG, GP-SANIERUNG, GP-FINANZIERUNG, GP-PRIVATKREDIT, GP-SIMULATION, GP-FAHRZEUG
+
+### Phase 2B: Widget-Anpassung + Demo
+GP-FM-FALL, GP-AKQUISE-MANDAT, GP-PROJEKT
+
+### Phase 2C: Komplett-Umbau auf WidgetGrid
+GP-SUCHMANDAT, GP-SERIEN-EMAIL, GP-PV-ANLAGE
+
+### Phase 3: Validator-Integration
+DEV-Modus-Check für Compliance aller registrierten Prozesse

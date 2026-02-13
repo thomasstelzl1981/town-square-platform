@@ -16,6 +16,7 @@ const ProfilTab = lazy(() => import('./stammdaten/ProfilTab').then(m => ({ defau
 const VertraegeTab = lazy(() => import('./stammdaten/VertraegeTab').then(m => ({ default: m.VertraegeTab })));
 const AbrechnungTab = lazy(() => import('./stammdaten/AbrechnungTab').then(m => ({ default: m.AbrechnungTab })));
 const SicherheitTab = lazy(() => import('./stammdaten/SicherheitTab').then(m => ({ default: m.SicherheitTab })));
+const DemoDatenTab = lazy(() => import('./stammdaten/DemoDatenTab').then(m => ({ default: m.DemoDatenTab })));
 
 const StammdatenPage = () => {
   return (
@@ -26,6 +27,7 @@ const StammdatenPage = () => {
         <Route path="vertraege" element={<VertraegeTab />} />
         <Route path="abrechnung" element={<AbrechnungTab />} />
         <Route path="sicherheit" element={<SicherheitTab />} />
+        <Route path="demo-daten" element={<DemoDatenTab />} />
         {/* Legacy redirects */}
         <Route path="firma" element={<Navigate to="/portal/stammdaten/vertraege" replace />} />
         <Route path="personen" element={<Navigate to="/portal/stammdaten/profil" replace />} />
