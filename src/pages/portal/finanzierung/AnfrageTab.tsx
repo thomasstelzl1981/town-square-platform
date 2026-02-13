@@ -1,8 +1,7 @@
 /**
  * MOD-07: Anfrage Tab
- * Mirrors MOD-11 tile structure: MagicIntake, Kaufy search, Eckdaten,
- * Calculator, Offer, Household Calculation + Submit button.
- * No bank submission — customer-side data capture only.
+ * Widget-Leiste for multi-request management + full capture flow + Finanzierungsauftrag.
+ * Follows Manager-Module pattern: persistent widgets at top, form below, submit at bottom.
  */
 import * as React from 'react';
 import { PageShell } from '@/components/shared/PageShell';
@@ -12,7 +11,7 @@ import { useRef, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Save, Send, ShoppingBag, Loader2 } from 'lucide-react';
+import { Save, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +23,8 @@ import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import HouseholdCalculationCard from '@/components/finanzierung/HouseholdCalculationCard';
 import MagicIntakeCard, { type MagicIntakeResult } from '@/components/finanzierung/MagicIntakeCard';
 import type { CalcData } from '@/components/finanzierung/FinanceCalculatorCard';
-import { useSubmitFinanceRequest } from '@/hooks/useSubmitFinanceRequest';
+import { FinanceRequestWidgets } from '@/components/finanzierung/FinanceRequestWidgets';
+import { FinanzierungsauftragBlock } from '@/components/finanzierung/FinanzierungsauftragBlock';
 
 /** Map v_public_listings property_type to ObjectFormData objectType */
 function mapPropertyType(pt: string | null): string {
@@ -40,7 +40,6 @@ export default function AnfrageTab() {
   const { activeTenantId } = useAuth();
   const objectCardRef = useRef<FinanceObjectCardHandle>(null);
   const requestCardRef = useRef<FinanceRequestCardHandle>(null);
-  const submitMutation = useSubmitFinanceRequest();
 
   // Listing search
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,6 +57,24 @@ export default function AnfrageTab() {
 
   // Magic Intake
   const [magicIntakeResult, setMagicIntakeResult] = useState<MagicIntakeResult | null>(null);
+
+  // Active draft request (latest draft for the auftrag block)
+  const { data: activeDraft } = useQuery({
+    queryKey: ['active-draft-request', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return null;
+      const { data } = await supabase
+        .from('finance_requests')
+        .select('id, status, object_address, purchase_price, loan_amount_requested')
+        .eq('tenant_id', activeTenantId)
+        .in('status', ['draft', 'collecting'])
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!activeTenantId,
+  });
 
   // Listing data from Kaufy
   const { data: listings } = useQuery({
@@ -113,6 +130,9 @@ export default function AnfrageTab() {
   return (
     <PageShell>
       <ModulePageHeader title="Finanzierungsanfrage" description="Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch" />
+
+      {/* Widget-Leiste: All requests + CTA */}
+      <FinanceRequestWidgets activeRequestId={activeDraft?.id} />
 
       {/* Top row: Magic Intake + Kaufy Search */}
       <div className={DESIGN.FORM_GRID.FULL}>
@@ -231,6 +251,17 @@ export default function AnfrageTab() {
         livingArea={Number(externalObjectData?.livingArea) || 0}
         propertyAssets={[]}
       />
+
+      {/* Finanzierungsauftrag — Einreichung */}
+      {activeDraft && (
+        <FinanzierungsauftragBlock
+          requestId={activeDraft.id}
+          objectAddress={activeDraft.object_address}
+          purchasePrice={activeDraft.purchase_price ? Number(activeDraft.purchase_price) : null}
+          loanAmount={activeDraft.loan_amount_requested ? Number(activeDraft.loan_amount_requested) : null}
+          status={activeDraft.status}
+        />
+      )}
 
       {/* Spacer */}
       <div className="h-20" />
