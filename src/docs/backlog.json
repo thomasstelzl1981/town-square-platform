@@ -1,119 +1,592 @@
 {
   "meta": {
-    "version": "3.0",
-    "focus": "Design Manifest V3 — Einheitliches Widget-Grid-System über alle Module",
-    "last_scan": "2026-02-12",
-    "last_sprint": "Sprint 5 (Admin, Kalender, Einstellungen, Doku) — DONE ✅",
-    "total": 30,
-    "done": 30,
-    "scan_coverage": "Dashboard-Widgets, designManifest.ts, WidgetGrid, WidgetCell, DashboardGrid, Stammdaten, Office, DMS, Immobilien, Kontakte, Buchhaltung, Finanzierung, Kaufy, Partner, Leads, FinanzierungsManager, AkquiseManager, Projekte, CommunicationPro, Fortbildung, Services, Cars, Finanzanalyse, Photovoltaik, Miety, Admin/Zone1, Kalender, Einstellungen"
+    "version": "4.0",
+    "focus": "Post-Architecture-Optimization Full Audit — Zone 2, Zone 3, Golden Paths, Design, Security",
+    "last_scan": "2026-02-13",
+    "audit_scope": "21 Module (MOD-00 bis MOD-20), 6 Zone-3 Websites, Zone-1 Admin, Golden Paths, Design Manifest V4, Mobile UX",
+    "phases": 5,
+    "total_issues": 52,
+    "critical": 8,
+    "high": 16,
+    "medium": 18,
+    "low": 10
   },
-  "roadmap": [
+  "phases": [
+    {
+      "id": "PHASE-1",
+      "title": "Kritische Fehler & Rendering-Blockaden",
+      "priority": "P0 — Sofort",
+      "description": "Funktionsblockaden, Crash-Ursachen, fehlende Komponenten",
+      "issues": [
+        {
+          "id": "AUD-001",
+          "severity": "critical",
+          "category": "zone3-rendering",
+          "module": "Kaufy (Z3)",
+          "title": "Hero-Image CSS-Klassen werden nicht angewendet — nur Inline-Styles wirken",
+          "description": "Die CSS-Klassen kaufy2026-hero-wrapper, kaufy2026-hero-image und kaufy2026-hero-overlay aus zone3-theme.css werden im Browser ignoriert. Ursache: Dark-Mode CSS-Variablen überschreiben die Werte, oder Tailwind-Utilities haben höhere Spezifität. Aktuell als Workaround mit Inline-Styles gelöst.",
+          "effort": "M",
+          "status": "workaround",
+          "fix": "Zone-3 CSS in eigene Scoped CSS-Module auslagern oder alle kaufy2026-* Klassen mit !important versehen"
+        },
+        {
+          "id": "AUD-002",
+          "severity": "critical",
+          "category": "zone3-rendering",
+          "module": "Kaufy (Z3)",
+          "title": "Search Card Input-Felder dunkel durch Dark-Mode-Interferenz",
+          "description": "Die kaufy2026-inline-input Elemente erben Dark-Mode-Variablen (--background, --foreground) trotz .light Klasse und lightModeVars. Inline-Styles als Workaround gesetzt, aber nicht für alle Elemente (Classic Search, Collapsible Content).",
+          "effort": "S",
+          "status": "partial",
+          "fix": "Alle Search-Inputs auf explizite Inline-Styles oder scoped CSS-Variablen umstellen"
+        },
+        {
+          "id": "AUD-003",
+          "severity": "critical",
+          "category": "zone3-rendering",
+          "module": "Kaufy (Z3)",
+          "title": "Kaufy Container overflow:hidden beschneidet absolute Elemente",
+          "description": "Der .kaufy2026-container hat overflow:hidden für border-radius-Clipping, was absolute-positionierte Elemente (Search Card, Dropdowns) abschneidet. Wechsel zu overflow:visible bricht den border-radius und die Header-Überlagerung.",
+          "effort": "M",
+          "status": "workaround",
+          "fix": "Relative Positionierung mit negativem Margin statt absolute (aktueller Workaround beibehalten)"
+        },
+        {
+          "id": "AUD-004",
+          "severity": "critical",
+          "category": "orphaned-code",
+          "module": "MOD-11",
+          "title": "Verwaiste Dateien FMFaelle.tsx, FMStatus.tsx, FMKommunikation.tsx im FM-Modul",
+          "description": "Diese 3 Dateien existieren im Verzeichnis finanzierungsmanager/, werden aber von keiner Route in FinanzierungsmanagerPage.tsx referenziert. Sie sind nur über den index.ts Export erreichbar, werden aber nirgends importiert. Dead Code nach Tile-Umstrukturierung.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Dateien löschen oder in aktive Tiles integrieren, index.ts bereinigen"
+        },
+        {
+          "id": "AUD-005",
+          "severity": "critical",
+          "category": "manifest-drift",
+          "module": "MOD-06",
+          "title": "VerkaufPage hat 'Einstellungen' Tile im Manifest aber nicht in Routes",
+          "description": "routesManifest definiert 5 Tiles für MOD-06 (objekte, anfragen, vorgaenge, reporting, einstellungen), aber VerkaufPage.tsx hat nur 4 Routes (einstellungen fehlt, wurde als 'empty stub CI-003' entfernt). Manifest/Code-Drift.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Entweder Tile aus Manifest entfernen oder Stub-Route in VerkaufPage hinzufügen"
+        },
+        {
+          "id": "AUD-006",
+          "severity": "critical",
+          "category": "manifest-drift",
+          "module": "MOD-02",
+          "title": "OfficePage default Route 'email' wird auf Mobile zu 'brief' redirected — Manifest zeigt Email als Standard",
+          "description": "Das Manifest definiert 'email' als erste Tile, aber auf Mobile wird per MobileGuard auf 'brief' umgeleitet. SubTabs zeigt trotzdem 'email' als erste Option, was zu sofortigem Redirect-Loop führen kann.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Mobile-Default auf 'brief' setzen (conditional Navigate in index route)"
+        },
+        {
+          "id": "AUD-007",
+          "severity": "critical",
+          "category": "suspense",
+          "module": "MOD-05, MOD-06, MOD-09, MOD-10, MOD-17",
+          "title": "5 Module nutzen React.lazy ohne Suspense-Boundary",
+          "description": "MSVPage, VerkaufPage, VertriebspartnerPage, LeadsPage und CarsPage verwenden lazy() ohne eigene <Suspense>. Sie verlassen sich auf die ManifestRouter-Suspense, was bei schnellen Tab-Wechseln zu 'unmounted' Fehlern führen kann.",
+          "effort": "S",
+          "status": "open",
+          "fix": "P0-FIX Standard: Suspense fallback={null} gemäß Architektur-Memory hinzufügen"
+        },
+        {
+          "id": "AUD-008",
+          "severity": "critical",
+          "category": "zone3-routing",
+          "module": "FutureRoom (Z3)",
+          "title": "FutureRoomAuthGuard als Inline-Komponente in ManifestRouter (nicht lazy-kompatibel)",
+          "description": "In ManifestRouter.tsx Zeile 368-370 wird FutureRoomAkte mit einem inline Arrow-Function-Wrapper versehen. Dies ist nicht React.lazy-kompatibel und kann bei jedem Render eine neue Komponente erstellen.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Eigene lazy-Wrapper-Komponente FutureRoomAkteGuarded erstellen"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-2",
+      "title": "Design-Konsistenz & Mobile UX (Instagram-Standard)",
+      "priority": "P1 — Diese Woche",
+      "description": "Design Manifest V4 Compliance, Mobile-Layout, Kachel-Konsistenz",
+      "issues": [
+        {
+          "id": "AUD-010",
+          "severity": "high",
+          "category": "design-consistency",
+          "module": "MOD-15",
+          "title": "FortbildungPage hat PageShell + ModulePageHeader direkt in der Page — doppelt mit SubTabs",
+          "description": "FortbildungPage wrapped seinen Content in PageShell + ModulePageHeader, während alle anderen Module dies den Tiles selbst überlassen. Dies führt dazu, dass der Header auch bei Tab-Wechsel stehen bleibt (gewünscht?), aber es ist inkonsistent mit dem Muster der anderen 20 Module.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Prüfen ob dies beabsichtigt ist (persistent header) oder in Tab-Level verschieben"
+        },
+        {
+          "id": "AUD-011",
+          "severity": "high",
+          "category": "design-consistency",
+          "module": "MOD-16",
+          "title": "ServicesPage hat unnötigen Wrapper div mit flex/overflow — andere Module haben das nicht",
+          "description": "ServicesPage wrapped in <div className='flex flex-col h-full'><div className='flex-1 overflow-auto'> — kein anderes Modul nutzt dieses Pattern. Kann zu Scroll-Problemen führen.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Wrapper entfernen, Routes direkt zurückgeben wie alle anderen Module"
+        },
+        {
+          "id": "AUD-012",
+          "severity": "high",
+          "category": "design-consistency",
+          "module": "MOD-12",
+          "title": "AkquiseManagerPage hat <div className='h-full overflow-auto'> Wrapper",
+          "description": "Ähnlich wie MOD-16, inkonsistent mit dem Muster der anderen Module.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Wrapper entfernen, Routes direkt zurückgeben"
+        },
+        {
+          "id": "AUD-013",
+          "severity": "high",
+          "category": "mobile-ux",
+          "module": "GLOBAL",
+          "title": "Mobile Instagram-Standard: Prüfung ob alle Tiles h-[260px] und scroll-snap nutzen",
+          "description": "Das Design Manifest definiert h-[260px] für Mobile-Widgets. Es muss geprüft werden ob alle 21 Module-Tiles diesen Standard einhalten und ob scroll-snapping in PortalLayout aktiviert ist.",
+          "effort": "L",
+          "status": "open",
+          "fix": "Systematisches Audit aller Tiles auf WIDGET_CELL.DIMENSIONS Nutzung"
+        },
+        {
+          "id": "AUD-014",
+          "severity": "high",
+          "category": "design-consistency",
+          "module": "MOD-10",
+          "title": "Leads-Module: 4 von 5 Tiles nutzen ModuleTilePage (Stub) statt echter Implementierung",
+          "description": "LeadsInbox, MeineLeads, LeadsPipeline, LeadsWerbung sind alle ModuleTilePage-Stubs ohne echte Logik. Nur SelfieAdsStudio hat Implementierung. Dies war bereits in ROAD-001 dokumentiert.",
+          "effort": "L",
+          "status": "open",
+          "fix": "Stub-zu-Live Migration — Roadmap Item"
+        },
+        {
+          "id": "AUD-015",
+          "severity": "high",
+          "category": "design-consistency",
+          "module": "MOD-18",
+          "title": "Finanzanalyse: Alle 4 Tiles sind ModuleTilePage-Stubs",
+          "description": "DashboardTile, ReportsTile, SzenarienTile, EinstellungenTile sind alle leere Stubs. Modul hat keine funktionale Implementierung.",
+          "effort": "L",
+          "status": "open",
+          "fix": "Stub-zu-Live Migration oder als Blueprint-Status dokumentieren"
+        },
+        {
+          "id": "AUD-016",
+          "severity": "high",
+          "category": "zone3-ux",
+          "module": "Kaufy (Z3)",
+          "title": "PerspektivenKarten Links noch auf /kaufy2026/ Prefix — partial fix",
+          "description": "Die Links in PerspektivenKarten wurden teilweise auf /website/kaufy/ migriert, aber evtl. existieren weitere Legacy-Links in Sub-Seiten (Vermieter, Verkäufer, Vertrieb).",
+          "effort": "S",
+          "status": "partial",
+          "fix": "Alle Zone-3 Kaufy Komponenten auf /website/kaufy/ Prefix scannen"
+        },
+        {
+          "id": "AUD-017",
+          "severity": "high",
+          "category": "zone3-ux",
+          "module": "Kaufy (Z3)",
+          "title": "KaufyPinGate noch aktiv — Zugangscode 4409 blockiert öffentlichen Zugang",
+          "description": "Die Kaufy-Website hat einen PIN-Gate, der alle Besucher blockiert. Für Production muss dieser entfernt oder per Feature-Flag gesteuert werden.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "PIN-Gate als ENV-gesteuertes Feature-Flag umbauen"
+        },
+        {
+          "id": "AUD-018",
+          "severity": "medium",
+          "category": "zone3-design",
+          "module": "Kaufy (Z3)",
+          "title": "Klassische Suche (Classic Tab) nicht getestet — evtl. gleiche Dark-Mode Probleme",
+          "description": "Nur der Investment-Tab wurde visuell geprüft. Der Classic-Suche Tab hat eigene Inputs die wahrscheinlich die gleichen Dark-Mode-Interferenzen zeigen.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Classic-Tab Inputs mit gleichen Inline-Styles versehen"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-3",
+      "title": "Golden Path Compliance & Workflow-Integrität",
+      "priority": "P1 — Diese Woche",
+      "description": "Golden Path Engine Registrierung, Guard-Coverage, Flow-Konsistenz",
+      "issues": [
+        {
+          "id": "AUD-020",
+          "severity": "high",
+          "category": "golden-path",
+          "module": "MOD-04",
+          "title": "MOD-04 ist das einzige Modul mit GoldenPathGuard — alle anderen fehlen",
+          "description": "Nur ImmobilienPage nutzt <GoldenPathGuard moduleCode='MOD-04'>. Laut Architektur sollten MOD-07/11 (Finanzierung), MOD-12 (Akquise), MOD-13 (Projekte), MOD-19 (PV) ebenfalls Guards haben. Die routesManifest goldenPath-Config ist nur für MOD-04 definiert.",
+          "effort": "M",
+          "status": "open",
+          "fix": "GoldenPathGuard für alle Module mit Dynamic-Routes und Entity-Detail-Seiten einrichten"
+        },
+        {
+          "id": "AUD-021",
+          "severity": "high",
+          "category": "golden-path",
+          "module": "MOD-11",
+          "title": "FM-Workflow Muster (Dashboard → Detail → Einreichung) muss als Standard-Template für andere Manager-Module validiert werden",
+          "description": "MOD-11 definiert das 3-Stufen-Muster (Dashboard-Widgets → Split-View-Akte → Einreichungs-Aktion). MOD-12 folgt diesem teilweise, aber MOD-04/Sanierung und MOD-13 weichen ab.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Workflow-Pattern-Compliance für MOD-04/Sanierung, MOD-12, MOD-13 dokumentieren"
+        },
+        {
+          "id": "AUD-022",
+          "severity": "medium",
+          "category": "golden-path",
+          "module": "MOD-07",
+          "title": "Finanzierung Anfrage-Flow: Kein Guard auf anfrage/:requestId Route",
+          "description": "Die Detail-Seite für Finanzierungsanfragen (AnfrageDetailPage) hat keinen GoldenPathGuard. Direkt-Zugriff auf die URL ist möglich ohne Validierung.",
+          "effort": "S",
+          "status": "open",
+          "fix": "GoldenPathGuard mit moduleCode='MOD-07' entityIdParam='requestId' hinzufügen"
+        },
+        {
+          "id": "AUD-023",
+          "severity": "medium",
+          "category": "golden-path",
+          "module": "MOD-17",
+          "title": "CarsPage :id Route ohne Guard — Vehicle-Detail direkt zugreifbar",
+          "description": "Ähnlich wie MOD-07, kein Guard auf der dynamischen Route.",
+          "effort": "S",
+          "status": "open",
+          "fix": "GoldenPathGuard hinzufügen"
+        },
+        {
+          "id": "AUD-024",
+          "severity": "medium",
+          "category": "golden-path",
+          "module": "MOD-19",
+          "title": "PhotovoltaikPage :pvPlantId Route ohne Guard",
+          "description": "PV-Detail direkt zugreifbar ohne Entity-Validierung.",
+          "effort": "S",
+          "status": "open",
+          "fix": "GoldenPathGuard hinzufügen"
+        },
+        {
+          "id": "AUD-025",
+          "severity": "medium",
+          "category": "golden-path",
+          "module": "MOD-13",
+          "title": "ProjektePage :projectId Route ohne Guard",
+          "description": "Projektdetail direkt zugreifbar ohne Entity-Validierung.",
+          "effort": "S",
+          "status": "open",
+          "fix": "GoldenPathGuard hinzufügen"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-4",
+      "title": "Code-Hygiene & Architektur-Bereinigung",
+      "priority": "P2 — Nächste Woche",
+      "description": "Dead Code, Inkonsistente Patterns, Duplikate, Import-Bereinigung",
+      "issues": [
+        {
+          "id": "AUD-030",
+          "severity": "medium",
+          "category": "dead-code",
+          "module": "MOD-11",
+          "title": "finanzierungsmanager/index.ts exportiert ungenutzte Komponenten",
+          "description": "index.ts exportiert FMFaelle, FMKommunikation, FMStatus — keine davon wird importiert. Toter Export-Code.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "index.ts bereinigen, nur aktive Exporte belassen"
+        },
+        {
+          "id": "AUD-031",
+          "severity": "medium",
+          "category": "inconsistency",
+          "module": "GLOBAL",
+          "title": "Suspense-Pattern inkonsistent: 11 Module mit <Suspense>, 10 ohne",
+          "description": "StammdatenPage, OfficePage, DMSPage, ImmobilienPage, FinanzierungPage, InvestmentsPage, CommunicationProPage, FortbildungPage, PhotovoltaikPage, MietyPortalPage, FinanzanalysePage haben eigene Suspense. MSVPage, VerkaufPage, VertriebspartnerPage, LeadsPage, CarsPage, AkquiseManagerPage, ProjektePage, ServicesPage haben keine.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Einheitliches Pattern: Entweder ALLE mit Suspense fallback={null} oder KEINER (ManifestRouter reicht)"
+        },
+        {
+          "id": "AUD-032",
+          "severity": "medium",
+          "category": "architecture",
+          "module": "MOD-10",
+          "title": "SelfieAds-Routen nutzen Flat-Pfade statt verschachtelter Struktur",
+          "description": "selfie-ads-planen, selfie-ads-summary etc. sind Flat-Routes statt selfie-ads/planen. Inkonsistent mit dem Rest der Plattform, der verschachtelte Pfade nutzt.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Auf verschachtelte Pfade migrieren: selfie-ads/planen, selfie-ads/summary etc."
+        },
+        {
+          "id": "AUD-033",
+          "severity": "medium",
+          "category": "architecture",
+          "module": "MOD-09",
+          "title": "VertriebspartnerPage hat Dynamic-Routes (katalog/:publicId, beratung/objekt/:publicId) nicht im Manifest deklariert",
+          "description": "Diese 2 dynamischen Routen existieren im Code aber nicht in routesManifest.ts dynamic_routes.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "dynamic_routes in routesManifest.ts für MOD-09 ergänzen"
+        },
+        {
+          "id": "AUD-034",
+          "severity": "medium",
+          "category": "architecture",
+          "module": "MOD-10",
+          "title": "SelfieAds 6 Sub-Routes nicht im Manifest deklariert",
+          "description": "selfie-ads-planen, selfie-ads-summary, selfie-ads-kampagnen, selfie-ads-performance, selfie-ads-abrechnung existieren im Code aber nicht im Manifest.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "dynamic_routes im Manifest für MOD-10 ergänzen"
+        },
+        {
+          "id": "AUD-035",
+          "severity": "medium",
+          "category": "architecture",
+          "module": "MOD-17",
+          "title": "CarsPage hat Dynamic-Route ':id' für VehicleDetailPage nicht im Manifest",
+          "description": "Die Route existiert im Code aber nicht in routesManifest.ts.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "dynamic_routes für MOD-17 im Manifest ergänzen"
+        },
+        {
+          "id": "AUD-036",
+          "severity": "medium",
+          "category": "architecture",
+          "module": "MOD-13",
+          "title": "ProjektePage hat versteckte 'kontexte' Route nicht im Manifest",
+          "description": "Der Route-Pfad 'kontexte' existiert in ProjektePage.tsx aber nicht in routesManifest tiles oder dynamic_routes.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Entweder als hidden tile oder dynamic_route im Manifest ergänzen"
+        },
+        {
+          "id": "AUD-037",
+          "severity": "low",
+          "category": "dead-code",
+          "module": "Zone 1",
+          "title": "ManifestRouter importiert FinanceDesk aber es wird auf FutureRoom redirected",
+          "description": "FinanceDesk ist in adminDeskMap registriert, aber die Route finance-desk ist als Legacy-Redirect definiert. Toter Import.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "FinanceDesk Import und adminDeskMap Eintrag entfernen"
+        },
+        {
+          "id": "AUD-038",
+          "severity": "low",
+          "category": "dead-code",
+          "module": "Zone 1",
+          "title": "MasterContacts importiert in ManifestRouter aber nicht im adminComponentMap registriert",
+          "description": "Import existiert (Zeile 63) aber wird nirgends verwendet.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Import entfernen"
+        },
+        {
+          "id": "AUD-039",
+          "severity": "low",
+          "category": "dead-code",
+          "module": "Zone 1",
+          "title": "AuditLog importiert aber nicht in adminComponentMap verwendet (AuditHub ersetzt)",
+          "description": "AuditLog wurde durch AuditHub ersetzt, Import ist veraltet.",
+          "effort": "XS",
+          "status": "open",
+          "fix": "Import entfernen"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-5",
+      "title": "Zone 3 Website-Funktionalität & Enterprise-Readiness",
+      "priority": "P2 — Nächste Woche",
+      "description": "FutureRoom Karriere-Wizard, Kaufy Suche, SoT Module, Security",
+      "issues": [
+        {
+          "id": "AUD-040",
+          "severity": "high",
+          "category": "zone3-function",
+          "module": "FutureRoom (Z3)",
+          "title": "FutureRoom Karriere-Wizard: Bewerbungs-Flow visuell und funktional testen",
+          "description": "Laut Memory existiert ein funktionaler Bewerbungs-Wizard mit Toast-Feedback. Visueller Test ausstehend.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Browser-Test durchführen"
+        },
+        {
+          "id": "AUD-041",
+          "severity": "high",
+          "category": "zone3-function",
+          "module": "FutureRoom (Z3)",
+          "title": "FutureRoom Bonität: Vorcheck-Flow testen",
+          "description": "Die Bonitäts-Seite soll einen 2-stufigen Vorcheck implementieren. Funktionstest ausstehend.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Browser-Test durchführen"
+        },
+        {
+          "id": "AUD-042",
+          "severity": "high",
+          "category": "zone3-function",
+          "module": "Kaufy (Z3)",
+          "title": "Kaufy Vermieter/Verkäufer/Vertrieb Sub-Seiten: Dark-Mode-Interferenz prüfen",
+          "description": "Die Sub-Seiten (Kaufy2026Vermieter, Kaufy2026Verkaeufer, Kaufy2026Vertrieb) teilen das Kaufy2026Layout und könnten die gleichen Dark-Mode-Probleme haben wie die Startseite.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Alle Sub-Seiten visuell testen, Light-Mode CSS-Variablen verifizieren"
+        },
+        {
+          "id": "AUD-043",
+          "severity": "medium",
+          "category": "zone3-function",
+          "module": "SoT (Z3)",
+          "title": "SoT Modul-Detail: Dynamic ICON_MAP und Kontext-Navigation testen",
+          "description": "SotModuleDetail nutzt eine dynamische Icon-Auflösung und auto-generierte Navigation. Funktionstest ausstehend.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Browser-Test durchführen"
+        },
+        {
+          "id": "AUD-044",
+          "severity": "medium",
+          "category": "zone3-function",
+          "module": "Acquiary (Z3)",
+          "title": "Acquiary Karriere/Objekt-anbieten Seiten: Funktionstest",
+          "description": "Diese Seiten haben Formulare die getestet werden müssen.",
+          "effort": "S",
+          "status": "open",
+          "fix": "Browser-Test durchführen"
+        },
+        {
+          "id": "AUD-045",
+          "severity": "medium",
+          "category": "zone3-function",
+          "module": "Miety (Z3)",
+          "title": "Miety Website: 9 Seiten — vollständiger Funktionstest ausstehend",
+          "description": "MietyHome, MietyLeistungen, MietyVermieter, MietyApp, MietyPreise, MietySoFunktioniert, MietyKontakt, MietyRegistrieren, MietyInvite — alle müssen visuell geprüft werden.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Browser-Tests durchführen"
+        },
+        {
+          "id": "AUD-046",
+          "severity": "medium",
+          "category": "security",
+          "module": "GLOBAL",
+          "title": "RLS-Policies Audit für neue Tabellen aus Architecture-Optimierung",
+          "description": "Nach den Architektur-Änderungen muss geprüft werden ob alle relevanten Tabellen RLS-Policies haben und ob die Policies korrekt konfiguriert sind.",
+          "effort": "M",
+          "status": "open",
+          "fix": "supabase--linter ausführen und Ergebnisse dokumentieren"
+        },
+        {
+          "id": "AUD-047",
+          "severity": "low",
+          "category": "zone3-seo",
+          "module": "Kaufy (Z3)",
+          "title": "Kaufy fehlt Meta-Tags, Open Graph und strukturierte Daten",
+          "description": "Die Kaufy-Website hat keine SEO-Optimierung (Title, Description, OG-Tags, JSON-LD).",
+          "effort": "M",
+          "status": "open",
+          "fix": "React Helmet oder meta-Tags in Kaufy2026Layout einbauen"
+        },
+        {
+          "id": "AUD-048",
+          "severity": "low",
+          "category": "zone3-seo",
+          "module": "FutureRoom (Z3)",
+          "title": "FutureRoom fehlt Meta-Tags und SEO",
+          "description": "Gleich wie Kaufy — keine SEO-Optimierung.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Meta-Tags in FutureRoomLayout einbauen"
+        },
+        {
+          "id": "AUD-049",
+          "severity": "low",
+          "category": "zone3-seo",
+          "module": "SoT (Z3)",
+          "title": "SoT Marketing-Website: SEO-Optimierung ausstehend",
+          "description": "Keine meta-Tags, kein JSON-LD für die Produkt-Seiten.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Meta-Tags in SotLayout einbauen"
+        },
+        {
+          "id": "AUD-050",
+          "severity": "low",
+          "category": "performance",
+          "module": "GLOBAL",
+          "title": "ManifestRouter hat 80+ lazy() Imports — Bundle-Analyse ausstehend",
+          "description": "ManifestRouter.tsx lädt über 80 Komponenten via React.lazy. Es muss geprüft werden ob die Code-Splitting-Grenzen effektiv sind.",
+          "effort": "M",
+          "status": "open",
+          "fix": "Vite bundle-analyzer einsetzen, Chunk-Größen validieren"
+        }
+      ]
+    }
+  ],
+  "quick_fixes_done": [
+    {
+      "id": "QF-001",
+      "title": "Kaufy Hero: Inline-Styles für brightness(0.6), border-radius, 60px margins",
+      "date": "2026-02-13",
+      "status": "done"
+    },
+    {
+      "id": "QF-002",
+      "title": "Kaufy SearchCard: Inline-Styles für Light-Mode Inputs",
+      "date": "2026-02-13",
+      "status": "done"
+    },
+    {
+      "id": "QF-003",
+      "title": "PerspektivenKarten: Links auf /website/kaufy/ Prefix migriert",
+      "date": "2026-02-12",
+      "status": "done"
+    }
+  ],
+  "roadmap_carried_forward": [
     {
       "id": "ROAD-001",
       "module": "MOD-10",
       "title": "Leads: ModuleTilePage-Stubs durch echte Implementierung ersetzen",
-      "effort": "L",
-      "origin": "V1 CI-001"
+      "effort": "L"
     },
     {
       "id": "ROAD-002",
       "module": "GLOBAL",
       "title": "Fehlende Modul-Specs für 15 Module erstellen",
-      "effort": "L",
-      "origin": "V1 SPEC-002"
+      "effort": "L"
     },
     {
       "id": "ROAD-003",
       "module": "MOD-08",
       "title": "investment_favorites DB-Persistenz",
-      "effort": "M",
-      "origin": "V1 DATA-001"
+      "effort": "M"
     },
     {
       "id": "ROAD-004",
       "module": "MOD-03",
       "title": "DMS Storage-Usage Edge Function",
-      "effort": "M",
-      "origin": "V1 DATA-002"
+      "effort": "M"
     },
     {
       "id": "ROAD-005",
       "module": "MOD-12",
       "title": "MandatCreateWizardManager implementieren",
-      "effort": "M",
-      "origin": "V1 UX-003"
-    }
-  ],
-  "issues": [
-    { "id": "DM-001", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "designManifest.ts erstellen — SSOT für Layout-Regeln", "effort": "S", "status": "done", "files": ["src/config/designManifest.ts"] },
-    { "id": "DM-002", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "WidgetGrid.tsx erstellen — Grid-Container Komponente", "effort": "S", "status": "done", "files": ["src/components/shared/WidgetGrid.tsx"] },
-    { "id": "DM-003", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "WidgetCell.tsx erstellen — Zellen-Wrapper Komponente", "effort": "S", "status": "done", "files": ["src/components/shared/WidgetCell.tsx"] },
-    { "id": "DM-004", "sprint": 0, "category": "foundation", "module": "Dashboard", "title": "DashboardGrid.tsx auf festes 4-Spalten-Grid migrieren", "effort": "S", "status": "done", "files": ["src/components/dashboard/DashboardGrid.tsx"] },
-    { "id": "DM-005", "sprint": 0, "category": "dashboard", "module": "Dashboard", "title": "Alle 12 Dashboard-Widgets: h-Klassen vereinheitlichen", "effort": "M", "status": "done", "files": [] },
-    { "id": "DM-006", "sprint": 0, "category": "foundation", "module": "GLOBAL", "title": "shared/index.ts Export von WidgetGrid + WidgetCell", "effort": "XS", "status": "done", "files": ["src/components/shared/index.ts"] },
-    { "id": "DM-007", "sprint": 1, "category": "module-migration", "module": "MOD-01", "title": "Stammdaten migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/stammdaten/ProfilTab.tsx", "src/pages/portal/stammdaten/AbrechnungTab.tsx"] },
-    { "id": "DM-008", "sprint": 1, "category": "module-migration", "module": "MOD-02", "title": "Office migrieren", "effort": "S", "status": "done", "note": "Keine Widget-Grids, App-Layouts (grid-cols-12)", "files": [] },
-    { "id": "DM-009", "sprint": 1, "category": "module-migration", "module": "MOD-03", "title": "DMS migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/dms/SortierenTab.tsx", "src/pages/portal/dms/EinstellungenTab.tsx"] },
-    { "id": "DM-010", "sprint": 1, "category": "module-migration", "module": "MOD-04", "title": "Immobilien migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/immobilien/SanierungTab.tsx", "src/pages/portal/immobilien/PortfolioTab.tsx", "src/pages/portal/immobilien/BewertungTab.tsx"] },
-    { "id": "DM-011", "sprint": 1, "category": "module-migration", "module": "MOD-05", "title": "Kontakte migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-012", "sprint": 2, "category": "module-migration", "module": "MOD-06", "title": "Buchhaltung migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-013", "sprint": 2, "category": "module-migration", "module": "MOD-07", "title": "Finanzierung migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/finanzierung/AnfrageTab.tsx"] },
-    { "id": "DM-014", "sprint": 2, "category": "module-migration", "module": "MOD-08", "title": "Kaufy Portal migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-015", "sprint": 2, "category": "module-migration", "module": "MOD-09", "title": "Vertriebspartner migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-016", "sprint": 2, "category": "module-migration", "module": "MOD-10", "title": "Leads migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/leads/SelfieAdsStudio.tsx", "src/pages/portal/leads/SelfieAdsPlanen.tsx"] },
-    { "id": "DM-017", "sprint": 3, "category": "module-migration", "module": "MOD-11", "title": "Finanzierungsmanager migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-018", "sprint": 3, "category": "module-migration", "module": "MOD-12", "title": "Akquise Manager migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/akquise-manager/components/AnalysisTab.tsx", "src/pages/portal/akquise-manager/components/ExposeDragDropUploader.tsx"] },
-    { "id": "DM-019", "sprint": 3, "category": "module-migration", "module": "MOD-13", "title": "Projekte migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/projekte/PortfolioTab.tsx", "src/pages/portal/projekte/ProjekteDashboard.tsx", "src/pages/portal/projekte/LandingPageTab.tsx", "src/pages/portal/projekte/VertriebTab.tsx", "src/pages/portal/projekte/ProjectDetailPage.tsx"] },
-    { "id": "DM-020", "sprint": 3, "category": "module-migration", "module": "MOD-14", "title": "Communication Pro migrieren", "effort": "S", "status": "done", "files": [] },
-    { "id": "DM-021", "sprint": 3, "category": "module-migration", "module": "MOD-15", "title": "Fortbildung migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-022", "sprint": 4, "category": "module-migration", "module": "MOD-16", "title": "Services migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/services/ShopTab.tsx", "src/pages/portal/services/BestellungenTab.tsx"] },
-    { "id": "DM-023", "sprint": 4, "category": "module-migration", "module": "MOD-17", "title": "Cars migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-024", "sprint": 4, "category": "module-migration", "module": "MOD-18", "title": "Finanzanalyse migrieren", "effort": "S", "status": "done", "note": "Kein Migrationsbedarf", "files": [] },
-    { "id": "DM-025", "sprint": 4, "category": "module-migration", "module": "MOD-19", "title": "Photovoltaik migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/photovoltaik/MonitoringTab.tsx", "src/pages/portal/photovoltaik/AnlagenTab.tsx", "src/pages/portal/photovoltaik/DokumenteTab.tsx", "src/pages/portal/photovoltaik/PVPlantDetail.tsx"] },
-    { "id": "DM-026", "sprint": 4, "category": "module-migration", "module": "MOD-20", "title": "Miety migrieren", "effort": "S", "status": "done", "files": ["src/pages/portal/miety/tiles/KommunikationTile.tsx", "src/pages/portal/miety/tiles/SmartHomeTile.tsx", "src/pages/portal/miety/components/MietyContractsSection.tsx", "src/pages/portal/miety/components/MietyMeterSection.tsx"] },
-    {
-      "id": "DM-027",
-      "sprint": 5,
-      "category": "module-migration",
-      "module": "Zone 1 Admin",
-      "title": "Admin/Zone 1: Alle Grid-Verstöße auf DESIGN-Konstanten migriert",
-      "effort": "M",
-      "status": "done",
-      "files": ["src/pages/admin/Dashboard.tsx", "src/pages/admin/MasterTemplates.tsx", "src/pages/admin/Inbox.tsx", "src/pages/admin/acquiary/AcquiaryMonitoring.tsx", "src/pages/admin/social-media/SocialMediaDashboard.tsx", "src/pages/admin/armstrong/ArmstrongIntegrations.tsx", "src/pages/admin/Integrations.tsx", "src/pages/admin/futureroom/FutureRoomBanks.tsx", "src/pages/admin/MasterTemplatesPhotovoltaikakte.tsx", "src/pages/admin/MasterTemplatesFinanzierungsakte.tsx"],
-      "note": "5-Spalten-Verstöße (AcquiaryMonitoring, SocialMedia Templates) auf 4-Spalten-Max gekappt"
-    },
-    {
-      "id": "DM-028",
-      "sprint": 5,
-      "category": "module-migration",
-      "module": "Kalender",
-      "title": "Kalender: Grid-Audit — kein Migrationsbedarf",
-      "effort": "XS",
-      "status": "done",
-      "note": "grid-cols-7 (Wochentage) und grid-cols-12 (Layout-Split) sind semantische Grids, keine Widget-Grid-Verstöße",
-      "files": []
-    },
-    {
-      "id": "DM-029",
-      "sprint": 5,
-      "category": "module-migration",
-      "module": "Einstellungen",
-      "title": "Einstellungen: Grid-Audit — kein separater Bereich, kein Migrationsbedarf",
-      "effort": "XS",
-      "status": "done",
-      "note": "Einstellungen sind modulintern (z.B. DMS/EinstellungenTab, MSV/EinstellungenTab) und wurden bereits in den jeweiligen Modul-Sprints migriert",
-      "files": []
-    },
-    {
-      "id": "DM-030",
-      "sprint": 5,
-      "category": "documentation",
-      "module": "GLOBAL",
-      "title": "Design Manifest Abschluss-Dokumentation — 30/30 DONE ✅",
-      "effort": "XS",
-      "status": "done",
-      "files": ["src/docs/backlog.json", "src/config/designManifest.ts"]
+      "effort": "M"
     }
   ]
 }
