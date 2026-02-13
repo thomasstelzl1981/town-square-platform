@@ -203,10 +203,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
+        // P0-SESSION-FIX: Only clear user state on explicit SIGNED_OUT event.
+        // During token refresh cycles, session can briefly be null — we must NOT
+        // reset state in that case, or it triggers unwanted redirects to /auth.
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setMemberships([]);
+          setActiveOrganization(null);
+          setIsLoading(false);
+          return;
+        }
+
         if (session?.user) {
+          setSession(session);
+          setUser(session.user);
           setTimeout(() => {
             fetchUserData(session.user.id);
           }, 0);
@@ -214,15 +226,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setActiveOrgStable(DEV_MOCK_ORG);
           setMemberships([DEV_MOCK_MEMBERSHIP]);
           setProfile(DEV_MOCK_PROFILE);
-          
           setTimeout(() => {
             fetchDevelopmentData();
           }, 0);
-        } else {
-          setProfile(null);
-          setMemberships([]);
-          setActiveOrganization(null);
         }
+        // else: transient null state during refresh — do NOT touch user/session
         setIsLoading(false);
       }
     );
