@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "version": "6.1",
+    "focus": "Golden Path Interaction Standard — Phase 2: Demo-Widgets + Layout-Konformität",
+    "created_at": "2026-02-13",
+    "updated_at": "2026-02-13",
+    "predecessor": "backlog v6.0 (Website Builder), Phase 1 (Manifest + Toggle-System) abgeschlossen",
+    "methodology": "4 Sub-Phasen (2A→2D). Pro Prozess: Demo-Widget einfügen, useDemoToggles integrieren, ggf. Layout auf WidgetGrid umbauen. Nach jedem Schritt: goldenPathProcesses.ts updaten.",
+    "design_manifest": "V4.0 — WIDGET_GRID.FULL, WIDGET_CELL.DIMENSIONS, TYPOGRAPHY.PAGE_TITLE, SPACING.SECTION",
+    "current_phase": "2A",
+    "status": "IN_PROGRESS"
+  },
+  "referenz_implementierungen": [
+    "src/pages/portal/communication-pro/ResearchTab.tsx (GP-RECHERCHE, phase: done)",
+    "src/pages/portal/WebsiteBuilderPage.tsx (GP-WEBSITE, phase: done)"
+  ],
+  "phase_2A": {
+    "title": "Demo-Widget nachrüsten (Layout bereits konform)",
+    "aufwand": "Klein — nur Demo-Widget + Toggle einfügen",
+    "sprints": [
+      {
+        "id": "2A-1",
+        "process": "GP-SANIERUNG",
+        "module": "MOD-04",
+        "file": "src/pages/portal/immobilien/SanierungTab.tsx",
+        "status": "in_progress",
+        "tasks": [
+          "Import useDemoToggles + GOLDEN_PATH_PROCESSES",
+          "DEMO_SANIERUNG Objekt mit __demo__ ID hardcoden",
+          "Demo-WidgetCell VOR CTA-Widget im WidgetGrid einfügen",
+          "Klick setzt selectedCaseId = '__demo__'",
+          "SanierungDetailInline: Fallback für __demo__ mit Demo-Daten"
+        ]
+      },
+      {
+        "id": "2A-2",
+        "process": "GP-FINANZIERUNG",
+        "module": "MOD-07",
+        "file": "src/components/finanzierung/FinanceRequestWidgets.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2A-3",
+        "process": "GP-PRIVATKREDIT",
+        "module": "MOD-07",
+        "file": "src/components/privatkredit/ConsumerLoanWidgets.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2A-4",
+        "process": "GP-SIMULATION",
+        "module": "MOD-08",
+        "file": "src/pages/portal/investments/SimulationTab.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2A-5",
+        "process": "GP-FAHRZEUG",
+        "module": "MOD-17",
+        "file": "src/components/portal/cars/CarsFahrzeuge.tsx",
+        "status": "todo"
+      }
+    ]
+  },
+  "phase_2B": {
+    "title": "Widget-Anpassung + Demo (mittlerer Aufwand)",
+    "aufwand": "Mittel — Widget + Inline-Anpassungen",
+    "sprints": [
+      {
+        "id": "2B-1",
+        "process": "GP-FM-FALL",
+        "module": "MOD-11",
+        "file": "src/pages/portal/finanzierungsmanager/FMDashboard.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2B-2",
+        "process": "GP-AKQUISE-MANDAT",
+        "module": "MOD-12",
+        "file": "src/pages/portal/akquise-manager/AkquiseMandate.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2B-3",
+        "process": "GP-PROJEKT",
+        "module": "MOD-13",
+        "file": "src/pages/portal/projekte/ProjekteDashboard.tsx",
+        "status": "todo"
+      }
+    ]
+  },
+  "phase_2C": {
+    "title": "Komplett-Umbau auf WidgetGrid (großer Aufwand)",
+    "aufwand": "Groß — Layout-Refactor von Liste/Tabelle auf WidgetGrid",
+    "sprints": [
+      {
+        "id": "2C-1",
+        "process": "GP-SUCHMANDAT",
+        "module": "MOD-08",
+        "file": "src/pages/portal/investments/MandatTab.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2C-2",
+        "process": "GP-PV-ANLAGE",
+        "module": "MOD-19",
+        "file": "src/pages/portal/photovoltaik/AnlagenTab.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2C-3",
+        "process": "GP-SERIEN-EMAIL",
+        "module": "MOD-14",
+        "file": "src/pages/portal/communication-pro/SerienEmailsPage.tsx",
+        "status": "todo"
+      }
+    ]
+  },
+  "phase_2D": {
+    "title": "Dashboard-Prozesse mit Demo (Portfolio + Verwaltung)",
+    "aufwand": "Mittel-Groß — Portfolio Demo + Verwaltung Tabs→WidgetGrid",
+    "sprints": [
+      {
+        "id": "2D-1",
+        "process": "GP-PORTFOLIO",
+        "module": "MOD-04",
+        "file": "src/pages/portal/immobilien/PortfolioTab.tsx",
+        "status": "todo"
+      },
+      {
+        "id": "2D-2",
+        "process": "GP-VERWALTUNG",
+        "module": "MOD-04",
+        "file": "src/pages/portal/immobilien/VerwaltungTab.tsx",
+        "status": "in_progress",
+        "tasks": [
+          "Tabs-Layout entfernen → vertikaler Scroll-Flow",
+          "WidgetGrid mit Demo-Widget 'MFH Düsseldorf' + CTA 'Neues Mietobjekt'",
+          "Sektionen vertikal: Mieterobjekte, Mieteingang, Vermietung",
+          "useDemoToggles integrieren"
+        ]
+      }
+    ]
+  },
+  "manifest_update": {
+    "file": "src/manifests/goldenPathProcesses.ts",
+    "regel": "Nach jedem abgeschlossenen Sprint: compliance-Flags + phase auf 'done' setzen"
+  },
+  "zusammenfassung": {
+    "total_prozesse": 13,
+    "total_dateien": 14,
+    "phasen": {
+      "2A": { "prozesse": 5, "aufwand": "klein" },
+      "2B": { "prozesse": 3, "aufwand": "mittel" },
+      "2C": { "prozesse": 3, "aufwand": "gross" },
+      "2D": { "prozesse": 2, "aufwand": "mittel-gross" }
+    }
+  }
+}
