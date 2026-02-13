@@ -74,6 +74,35 @@ export function CreatePropertyDialog({ open, onOpenChange }: CreatePropertyDialo
 
       if (error) throw error;
 
+      // Auto-create inbox sort container for this property
+      try {
+        const addressParts = [formData.address, formData.city].filter(Boolean);
+        const keywords = addressParts.flatMap(p => p.split(/[\s,]+/).filter(w => w.length > 2));
+
+        const { data: container } = await supabase
+          .from('inbox_sort_containers')
+          .insert({
+            tenant_id: activeOrganization.id,
+            name: `${formData.address}, ${formData.city}`,
+            is_enabled: true,
+            property_id: data.id,
+          } as any)
+          .select('id')
+          .single();
+
+        if (container?.id && keywords.length > 0) {
+          await supabase.from('inbox_sort_rules').insert({
+            container_id: container.id,
+            field: 'subject',
+            operator: 'contains',
+            keywords_json: keywords,
+          } as any);
+        }
+      } catch (sortErr) {
+        // Non-critical — don't block property creation
+        console.warn('Auto-Sortierkachel konnte nicht erstellt werden:', sortErr);
+      }
+
       toast.success('Immobilie angelegt – Akte wird geöffnet');
       onOpenChange(false);
       

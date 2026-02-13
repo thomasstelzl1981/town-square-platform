@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { PropertyMap } from './PropertyMap';
 import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
 import ExposeHeadlineCard from '@/components/verkauf/ExposeHeadlineCard';
 import ExposeDescriptionDisplay from '@/components/verkauf/ExposeDescriptionDisplay';
+import { MapPin, ImageOff } from 'lucide-react';
 import type { UnitDossierData } from '@/types/immobilienakte';
 
 interface Property {
@@ -58,7 +62,6 @@ interface ExposeTabProps {
   property: Property & { id: string };
   financing: PropertyFinancing[];
   unit: Unit | null;
-  /** SSOT Dossier-Daten mit korrekten Mietwerten aus Leases */
   dossierData?: UnitDossierData | null;
 }
 
@@ -114,10 +117,10 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
         </CardHeader>
       </Card>
 
-      {/* Bildergalerie - immer sichtbar */}
+      {/* Bildergalerie */}
       <ExposeImageGallery propertyId={property.id} />
 
-      {/* Objektbeschreibung + Karte - 2-Spalten-Layout */}
+      {/* Beschreibung + Google Maps Embed */}
       <div className="grid gap-6 md:grid-cols-2">
         <ExposeDescriptionDisplay description={property.description} />
         <PropertyMap
@@ -129,20 +132,25 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
         />
       </div>
 
+      {/* Street View + Lage & Mikrolage (NEU) */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Lage & Mikrolage - nur wenn vorhanden */}
-        {property.location_notes && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <StreetViewCard address={property.address} city={property.city} postalCode={property.postal_code} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {property.location_notes ? (
               <p className="text-sm whitespace-pre-wrap">{property.location_notes}</p>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <p className="text-sm text-muted-foreground">Keine Lagedetails hinterlegt</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Baujahr & Zustand */}
+      {/* Baujahr & Zustand + Miete */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Baujahr & Zustand</CardTitle>
@@ -155,58 +163,6 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
           </CardContent>
         </Card>
 
-        {/* Grundbuch */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Grundbuch</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow label="Grundbuch von" value={property.land_register_court} />
-            <InfoRow label="Grundbuchblatt" value={property.land_register_sheet} />
-            <InfoRow label="Band" value={property.land_register_volume} />
-            <InfoRow label="Flurstück" value={property.parcel_number} />
-            <InfoRow label="TE-Nummer" value={property.unit_ownership_nr} />
-            <InfoRow label="Notartermin" value={formatDate(property.notary_date)} />
-          </CardContent>
-        </Card>
-
-        {/* Finanzierung (Bestand) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Finanzierung (Bestand)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow label="Kaufpreis" value={formatCurrency(property.purchase_price)} />
-            {activeFinancing ? (
-              <>
-                <Separator className="my-2" />
-                <InfoRow label="Darlehensnr." value={activeFinancing.loan_number} />
-                <InfoRow label="Bank" value={activeFinancing.bank_name} />
-                <InfoRow label="Urspr. Darlehen" value={formatCurrency(activeFinancing.original_amount)} />
-                <InfoRow label="Restschuld" value={formatCurrency(activeFinancing.current_balance)} />
-                <InfoRow label="Zins" value={formatPercent(activeFinancing.interest_rate)} />
-                <InfoRow label="Zinsbindung bis" value={formatDate(activeFinancing.fixed_until)} />
-                <InfoRow label="Zinsbelastung ca." value={formatCurrency(activeFinancing.annual_interest)} />
-                <InfoRow label="Rate" value={formatCurrency(activeFinancing.monthly_rate)} />
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Keine aktive Finanzierung hinterlegt</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Energie & Heizung */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Energie & Heizung</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow label="Energieträger" value={property.energy_source} />
-            <InfoRow label="Heizart" value={property.heating_type} />
-          </CardContent>
-        </Card>
-
-        {/* Miete - SSOT aus dossierData (Leases) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Miete</CardTitle>
@@ -235,7 +191,106 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
           </CardContent>
         </Card>
       </div>
+
+      {/* Finanzierung + Grundbuch (nach unten gerutscht) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Finanzierung (Bestand)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow label="Kaufpreis" value={formatCurrency(property.purchase_price)} />
+            {activeFinancing ? (
+              <>
+                <Separator className="my-2" />
+                <InfoRow label="Darlehensnr." value={activeFinancing.loan_number} />
+                <InfoRow label="Bank" value={activeFinancing.bank_name} />
+                <InfoRow label="Urspr. Darlehen" value={formatCurrency(activeFinancing.original_amount)} />
+                <InfoRow label="Restschuld" value={formatCurrency(activeFinancing.current_balance)} />
+                <InfoRow label="Zins" value={formatPercent(activeFinancing.interest_rate)} />
+                <InfoRow label="Zinsbindung bis" value={formatDate(activeFinancing.fixed_until)} />
+                <InfoRow label="Zinsbelastung ca." value={formatCurrency(activeFinancing.annual_interest)} />
+                <InfoRow label="Rate" value={formatCurrency(activeFinancing.monthly_rate)} />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Keine aktive Finanzierung hinterlegt</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Grundbuch</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow label="Grundbuch von" value={property.land_register_court} />
+            <InfoRow label="Grundbuchblatt" value={property.land_register_sheet} />
+            <InfoRow label="Band" value={property.land_register_volume} />
+            <InfoRow label="Flurstück" value={property.parcel_number} />
+            <InfoRow label="TE-Nummer" value={property.unit_ownership_nr} />
+            <InfoRow label="Notartermin" value={formatDate(property.notary_date)} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Energie & Heizung (nach unten gerutscht) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Energie & Heizung</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <InfoRow label="Energieträger" value={property.energy_source} />
+          <InfoRow label="Heizart" value={property.heating_type} />
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+/** Street View Card — Google Street View Static API via edge function */
+function StreetViewCard({ address, city, postalCode }: { address: string; city: string; postalCode: string | null }) {
+  const [imgError, setImgError] = useState(false);
+
+  const { data: mapsApiKey } = useQuery({
+    queryKey: ['google-maps-api-key'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sot-google-maps-key');
+      if (error) throw error;
+      return data?.key as string || '';
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const fullAddress = `${address}, ${postalCode ?? ''} ${city}`.trim();
+  const streetViewUrl = mapsApiKey
+    ? `https://maps.googleapis.com/maps/api/streetview?size=600x280&location=${encodeURIComponent(fullAddress)}&key=${mapsApiKey}`
+    : null;
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <MapPin className="h-4 w-4" />
+          Street View
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {streetViewUrl && !imgError ? (
+          <img
+            src={streetViewUrl}
+            alt={`Street View: ${fullAddress}`}
+            className="w-full h-[220px] object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-[220px] bg-muted/30 text-muted-foreground gap-2">
+            <ImageOff className="h-8 w-8" />
+            <p className="text-xs">Street View nicht verfügbar</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

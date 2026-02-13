@@ -6708,6 +6708,7 @@ export type Database = {
           id: string
           is_enabled: boolean
           name: string
+          property_id: string | null
           tenant_id: string
           updated_at: string
         }
@@ -6716,6 +6717,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           name: string
+          property_id?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -6724,10 +6726,18 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           name?: string
+          property_id?: string | null
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inbox_sort_containers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inbox_sort_containers_tenant_id_fkey"
             columns: ["tenant_id"]
