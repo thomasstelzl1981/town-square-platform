@@ -159,7 +159,7 @@ const FutureRoomKarriere = React.lazy(() => import('@/pages/zone3/futureroom/Fut
 const FutureRoomFAQ = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomFAQ'));
 const FutureRoomLogin = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLogin'));
 const FutureRoomAkte = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkte'));
-const FutureRoomAuthGuard = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAuthGuard'));
+// FutureRoomAuthGuard now handled by FutureRoomAkteGuarded (AUD-008)
 
 // Zone 3: System of a Town Website (lazy loaded)
 const SotLayout = React.lazy(() => import('@/pages/zone3/sot/SotLayout'));
@@ -365,9 +365,7 @@ const futureroomComponentMap: Record<string, React.ComponentType> = {
   FutureRoomKarriere,
   FutureRoomFAQ,
   FutureRoomLogin,
-  FutureRoomAkte: (props: any) => (
-    <FutureRoomAuthGuard><FutureRoomAkte {...props} /></FutureRoomAuthGuard>
-  ),
+  FutureRoomAkte: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkteGuarded')),
 };
 
 // =============================================================================

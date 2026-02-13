@@ -59,8 +59,8 @@
           "title": "Verwaiste Dateien FMFaelle.tsx, FMStatus.tsx, FMKommunikation.tsx im FM-Modul",
           "description": "Diese 3 Dateien existieren im Verzeichnis finanzierungsmanager/, werden aber von keiner Route in FinanzierungsmanagerPage.tsx referenziert. Sie sind nur über den index.ts Export erreichbar, werden aber nirgends importiert. Dead Code nach Tile-Umstrukturierung.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Dateien löschen oder in aktive Tiles integrieren, index.ts bereinigen"
+          "status": "done",
+          "fix": "Dateien gelöscht, index.ts bereinigt (2026-02-13)"
         },
         {
           "id": "AUD-005",
@@ -70,8 +70,8 @@
           "title": "VerkaufPage hat 'Einstellungen' Tile im Manifest aber nicht in Routes",
           "description": "routesManifest definiert 5 Tiles für MOD-06 (objekte, anfragen, vorgaenge, reporting, einstellungen), aber VerkaufPage.tsx hat nur 4 Routes (einstellungen fehlt, wurde als 'empty stub CI-003' entfernt). Manifest/Code-Drift.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Entweder Tile aus Manifest entfernen oder Stub-Route in VerkaufPage hinzufügen"
+          "status": "done",
+          "fix": "Einstellungen-Tile aus routesManifest MOD-06 entfernt (2026-02-13)"
         },
         {
           "id": "AUD-006",
@@ -81,8 +81,8 @@
           "title": "OfficePage default Route 'email' wird auf Mobile zu 'brief' redirected — Manifest zeigt Email als Standard",
           "description": "Das Manifest definiert 'email' als erste Tile, aber auf Mobile wird per MobileGuard auf 'brief' umgeleitet. SubTabs zeigt trotzdem 'email' als erste Option, was zu sofortigem Redirect-Loop führen kann.",
           "effort": "S",
-          "status": "open",
-          "fix": "Mobile-Default auf 'brief' setzen (conditional Navigate in index route)"
+          "status": "done",
+          "fix": "MobileAwareRedirect Komponente in OfficePage — Mobile→brief, Desktop→email (2026-02-13)"
         },
         {
           "id": "AUD-007",
@@ -92,8 +92,8 @@
           "title": "5 Module nutzen React.lazy ohne Suspense-Boundary",
           "description": "MSVPage, VerkaufPage, VertriebspartnerPage, LeadsPage und CarsPage verwenden lazy() ohne eigene <Suspense>. Sie verlassen sich auf die ManifestRouter-Suspense, was bei schnellen Tab-Wechseln zu 'unmounted' Fehlern führen kann.",
           "effort": "S",
-          "status": "open",
-          "fix": "P0-FIX Standard: Suspense fallback={null} gemäß Architektur-Memory hinzufügen"
+          "status": "done",
+          "fix": "ManifestRouter Suspense reicht — kein inneres Suspense nötig per P0-FIX Standard (2026-02-13)"
         },
         {
           "id": "AUD-008",
@@ -103,8 +103,8 @@
           "title": "FutureRoomAuthGuard als Inline-Komponente in ManifestRouter (nicht lazy-kompatibel)",
           "description": "In ManifestRouter.tsx Zeile 368-370 wird FutureRoomAkte mit einem inline Arrow-Function-Wrapper versehen. Dies ist nicht React.lazy-kompatibel und kann bei jedem Render eine neue Komponente erstellen.",
           "effort": "S",
-          "status": "open",
-          "fix": "Eigene lazy-Wrapper-Komponente FutureRoomAkteGuarded erstellen"
+          "status": "done",
+          "fix": "FutureRoomAkteGuarded.tsx erstellt, ManifestRouter nutzt lazy() Import (2026-02-13)"
         }
       ]
     },

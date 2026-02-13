@@ -280,7 +280,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "anfragen", component: "AnfragenTab", title: "Anfragen" },
         { path: "vorgaenge", component: "VorgaengeTab", title: "Vorgänge" },
         { path: "reporting", component: "ReportingTab", title: "Reporting" },
-        { path: "einstellungen", component: "EinstellungenTab", title: "Einstellungen" },
       ],
       dynamic_routes: [
         { path: "expose/:unitId", component: "ExposeDetail", title: "Verkaufs-Exposé", dynamic: true },
