@@ -21,7 +21,7 @@ export default function LeadsTab() {
   return (
     <PageShell>
       <ModulePageHeader 
-        title="Leads" 
+        title="Leadeingang" 
         description="Lead-Generierung und -Verwaltung für Ihren Vertrieb"
         actions={
           <Button onClick={() => navigate('/portal/vertriebspartner/selfie-ads')} className="gap-2">

@@ -344,7 +344,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "beratung", component: "BeratungTab", title: "Beratung" },
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
-        { path: "leads", component: "LeadsTab", title: "Leads" },
+        { path: "leads", component: "LeadsTab", title: "Leadeingang" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
