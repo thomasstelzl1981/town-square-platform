@@ -11,6 +11,9 @@ import { Anchor, ExternalLink, MapPin, Users, Ruler, X, Star } from 'lucide-reac
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { ContentCard } from '@/components/shared/ContentCard';
 
 interface BoatOffer {
   id: string;
@@ -96,58 +99,47 @@ export default function CarsBoote() {
       />
 
       {/* Provider Header */}
-      <Card className="glass-card border-primary/10 overflow-hidden">
-        <div className="relative h-40 bg-gradient-to-r from-cyan-900/80 to-blue-900/80 overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=1200&h=400&fit=crop"
-            alt="Ibiza Yacht Charter"
-            className="w-full h-full object-cover mix-blend-overlay"
-          />
-          <div className="absolute inset-0 flex items-center justify-between px-8">
-            <div>
-              <Badge className="mb-2 bg-white/20 text-white border-white/30">Ibiza</Badge>
-              <h2 className="text-2xl font-bold text-white">Haller Experiences</h2>
-              <p className="text-white/80 text-sm mt-1">Premium Yacht Charter · Ibiza & Formentera</p>
-            </div>
-            <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
-              <a href="https://hallerexperiences.com/en/collections/yachten-boote-mieten-ibiza" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" /> Website
-              </a>
-            </Button>
-          </div>
+      <ContentCard
+        icon={Anchor}
+        title="Haller Experiences"
+        description="Premium Yacht Charter · Ibiza & Formentera"
+        headerAction={
+          <Button variant="outline" size="sm" asChild>
+            <a href="https://hallerexperiences.com/en/collections/yachten-boote-mieten-ibiza" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Website
+            </a>
+          </Button>
+        }
+      >
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1"><Star className="h-4 w-4 text-amber-500" /> 4.9/5 (149 Reviews)</span>
+          <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> Ibiza, Formentera</span>
+          <span className="flex items-center gap-1"><Anchor className="h-4 w-4" /> {IBIZA_BOATS.length} Boote verfügbar</span>
         </div>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><Star className="h-4 w-4 text-amber-500" /> 4.9/5 (149 Reviews)</span>
-            <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> Ibiza, Formentera</span>
-            <span className="flex items-center gap-1"><Anchor className="h-4 w-4" /> {IBIZA_BOATS.length} Boote verfügbar</span>
-          </div>
-        </CardContent>
-      </Card>
+      </ContentCard>
 
       {/* Boat Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <WidgetGrid>
         {IBIZA_BOATS.map((boat) => {
           const isSelected = selectedId === boat.id;
           return (
-            <Card
-              key={boat.id}
-              className={cn(
-                "glass-card overflow-hidden cursor-pointer group transition-all",
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
-              )}
-              onClick={() => setSelectedId(isSelected ? null : boat.id)}
-            >
-              <div className="relative h-40 overflow-hidden">
-                <img src={boat.image} alt={boat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">{boat.type}</Badge>
-                <div className="absolute bottom-2 left-3 right-3">
-                  <h3 className="font-bold text-sm text-foreground">{boat.name}</h3>
+            <WidgetCell key={boat.id}>
+              <Card
+                className={cn(
+                  "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
+                )}
+                onClick={() => setSelectedId(isSelected ? null : boat.id)}
+              >
+                <div className="relative h-[55%] overflow-hidden">
+                  <img src={boat.image} alt={boat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">{boat.type}</Badge>
+                  <div className="absolute bottom-2 left-3 right-3">
+                    <h3 className="font-bold text-sm text-foreground">{boat.name}</h3>
+                  </div>
                 </div>
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
+                <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Ruler className="h-3 w-3" />{boat.length}</span>
                     <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{boat.guests} Gäste</span>
@@ -156,12 +148,12 @@ export default function CarsBoote() {
                     <p className="text-[9px] text-muted-foreground">ab</p>
                     <p className="text-sm font-bold">€{boat.priceFrom}<span className="text-[9px] font-normal text-muted-foreground">/Tag</span></p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </WidgetCell>
           );
         })}
-      </div>
+      </WidgetGrid>
 
       {/* Inline Detail */}
       {selected && (

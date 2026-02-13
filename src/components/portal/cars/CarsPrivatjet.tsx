@@ -7,10 +7,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Plane, ExternalLink, Users, Clock, MapPin, X, Globe } from 'lucide-react';
+import { Plane, ExternalLink, Users, Clock, X, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { ContentCard } from '@/components/shared/ContentCard';
 
 interface JetModel {
   id: string;
@@ -83,71 +86,59 @@ export default function CarsPrivatjet() {
       />
 
       {/* NetJets Provider Header */}
-      <Card className="glass-card border-primary/10 overflow-hidden">
-        <div className="relative h-40 bg-gradient-to-r from-amber-900/60 to-stone-900/80 overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=1200&h=400&fit=crop"
-            alt="NetJets Private Aviation"
-            className="w-full h-full object-cover mix-blend-overlay"
-          />
-          <div className="absolute inset-0 flex items-center justify-between px-8">
-            <div>
-              <p className="text-amber-200/80 text-xs font-semibold tracking-[0.3em] uppercase mb-1">Partner</p>
-              <h2 className="text-3xl font-bold text-white tracking-wide">NETJETS</h2>
-              <p className="text-white/70 text-sm mt-1">Besserer Zugang zu erstklassigen Privatjets</p>
-            </div>
-            <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
-              <a href="https://www.netjets.com/de-de/vergleiche-privatjets" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" /> netjets.com
-              </a>
-            </Button>
-          </div>
+      <ContentCard
+        icon={Plane}
+        title="NETJETS"
+        description="Besserer Zugang zu erstklassigen Privatjets"
+        headerAction={
+          <Button variant="outline" size="sm" asChild>
+            <a href="https://www.netjets.com/de-de/vergleiche-privatjets" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> netjets.com
+            </a>
+          </Button>
+        }
+      >
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1"><Plane className="h-4 w-4 text-amber-500" /> {NETJETS_FLEET.length} Flugzeugmodelle</span>
+          <span className="flex items-center gap-1"><Globe className="h-4 w-4" /> Weltweit verfügbar</span>
+          <span className="flex items-center gap-1"><Users className="h-4 w-4" /> Share, Lease & Jet Card Programme</span>
         </div>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><Plane className="h-4 w-4 text-amber-500" /> {NETJETS_FLEET.length} Flugzeugmodelle</span>
-            <span className="flex items-center gap-1"><Globe className="h-4 w-4" /> Weltweit verfügbar</span>
-            <span className="flex items-center gap-1"><Users className="h-4 w-4" /> Share, Lease & Jet Card Programme</span>
-          </div>
-        </CardContent>
-      </Card>
+      </ContentCard>
 
-      {/* Fleet Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* Fleet Grid — 4 Spalten */}
+      <WidgetGrid>
         {NETJETS_FLEET.map((jet) => {
           const isSelected = selectedId === jet.id;
           return (
-            <Card
-              key={jet.id}
-              className={cn(
-                "glass-card overflow-hidden cursor-pointer group transition-all",
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
-              )}
-              onClick={() => setSelectedId(isSelected ? null : jet.id)}
-            >
-              <div className="relative h-44 overflow-hidden">
-                <img src={jet.image} alt={`${jet.manufacturer} ${jet.name}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
-                <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">{jet.category}</Badge>
-                <div className="absolute bottom-3 left-3">
-                  <p className="text-[10px] text-muted-foreground">{jet.manufacturer}</p>
-                  <h3 className="font-bold text-base text-foreground">{jet.name}</h3>
+            <WidgetCell key={jet.id}>
+              <Card
+                className={cn(
+                  "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
+                )}
+                onClick={() => setSelectedId(isSelected ? null : jet.id)}
+              >
+                <div className="relative h-[55%] overflow-hidden">
+                  <img src={jet.image} alt={`${jet.manufacturer} ${jet.name}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
+                  <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">{jet.category}</Badge>
+                  <div className="absolute bottom-2 left-3">
+                    <p className="text-[10px] text-muted-foreground">{jet.manufacturer}</p>
+                    <h3 className="font-bold text-sm text-foreground">{jet.name}</h3>
+                  </div>
                 </div>
-              </div>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-xs text-muted-foreground line-clamp-2">{jet.description}</p>
-                <div className="flex items-center justify-between">
+                <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{jet.passengers}</span>
                     <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{jet.range}</span>
                   </div>
                   <p className="text-xs font-semibold text-primary">{jet.estimatedHourly}</p>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </WidgetCell>
           );
         })}
-      </div>
+      </WidgetGrid>
 
       {/* Inline Detail */}
       {selected && (
