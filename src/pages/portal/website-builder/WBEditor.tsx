@@ -129,7 +129,7 @@ export default function WBEditor() {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-background shrink-0">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/portal/website-builder/websites')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/portal/website-builder')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <span className={TYPOGRAPHY.CARD_TITLE}>{website?.name || 'Editor'}</span>
