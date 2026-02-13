@@ -1,8 +1,8 @@
 /**
  * AcqProfilePreview — DIN-A4 CI-konforme Vorschau des Ankaufsprofils
  * 
- * Read-only Vorschau, exakt wie das exportierte PDF.
- * DIN-A4-Proportionen, Armstrong-Logo, professionelle Typografie.
+ * Immer sichtbar: Zeigt leeren CI-Grundentwurf wenn keine Daten vorhanden,
+ * wird befüllt wenn Daten über "Ankaufsprofil übernehmen" übertragen werden.
  */
 
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
@@ -52,7 +52,7 @@ export function AcqProfilePreview({ clientName, profileData, profileTextLong, lo
   const logo = logoUrl || logoLight;
   const today = new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  if (!profileData) return null;
+  const hasData = !!profileData;
 
   return (
     <div
@@ -91,27 +91,29 @@ export function AcqProfilePreview({ clientName, profileData, profileTextLong, lo
 
         {/* ── Client ── */}
         <h2 className="text-[14px] font-semibold text-gray-800 mb-[16px]">
-          Mandant: {clientName || 'Investor'}
+          Mandant: {clientName || '–'}
         </h2>
 
         {/* ── Profile data table ── */}
         <div className="mb-[20px]">
-          <DataRow label="Suchgebiet" value={profileData.region || '–'} />
-          <DataRow label="Asset-Fokus" value={profileData.asset_focus?.join(', ') || '–'} />
-          <DataRow label="Investitionsrahmen" value={formatPriceRange(profileData.price_min, profileData.price_max)} />
-          <DataRow label="Zielrendite" value={profileData.yield_target ? `${profileData.yield_target} %` : '–'} />
-          <DataRow label="Ausschlüsse" value={profileData.exclusions || '–'} />
+          <DataRow label="Suchgebiet" value={hasData ? (profileData.region || '–') : '–'} />
+          <DataRow label="Asset-Fokus" value={hasData ? (profileData.asset_focus?.join(', ') || '–') : '–'} />
+          <DataRow label="Investitionsrahmen" value={hasData ? formatPriceRange(profileData.price_min, profileData.price_max) : '–'} />
+          <DataRow label="Zielrendite" value={hasData && profileData.yield_target ? `${profileData.yield_target} %` : '–'} />
+          <DataRow label="Ausschlüsse" value={hasData ? (profileData.exclusions || '–') : '–'} />
         </div>
 
         {/* ── Divider ── */}
         <div className="w-full h-[1px] bg-gray-200 mb-[16px]" />
 
         {/* ── Summary text ── */}
-        {profileTextLong && (
-          <p className="text-[10px] leading-[1.7] text-gray-700 whitespace-pre-wrap flex-1">
-            {profileTextLong}
-          </p>
-        )}
+        <p className="text-[10px] leading-[1.7] text-gray-700 whitespace-pre-wrap flex-1">
+          {profileTextLong || (
+            <span className="text-gray-300 italic">
+              Freitext-Zusammenfassung wird nach Übernahme hier angezeigt…
+            </span>
+          )}
+        </p>
 
         {/* ── Footer spacer ── */}
         <div className="mt-auto pt-[24px]">
