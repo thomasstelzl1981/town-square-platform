@@ -5,11 +5,11 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { PropertyMap } from './PropertyMap';
 import ExposeImageGallery from '@/components/verkauf/ExposeImageGallery';
 import ExposeHeadlineCard from '@/components/verkauf/ExposeHeadlineCard';
 import ExposeDescriptionDisplay from '@/components/verkauf/ExposeDescriptionDisplay';
-import { MapPin, ImageOff } from 'lucide-react';
+import { MapPin, ImageOff, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { UnitDossierData } from '@/types/immobilienakte';
 
 interface Property {
@@ -123,13 +123,7 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
       {/* Beschreibung + Google Maps Embed */}
       <div className="grid gap-6 md:grid-cols-2">
         <ExposeDescriptionDisplay description={property.description} />
-        <PropertyMap
-          address={property.address}
-          city={property.city}
-          postalCode={property.postal_code}
-          country={property.country}
-          height="280px"
-        />
+        <SatelliteMapCard address={property.address} city={property.city} postalCode={property.postal_code} />
       </div>
 
       {/* Street View + Lage & Mikrolage (NEU) */}
@@ -247,6 +241,63 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
   );
 }
 
+/** Satellite Map Card — Google Maps Embed API with satellite view */
+function SatelliteMapCard({ address, city, postalCode }: { address: string; city: string; postalCode: string | null }) {
+  const { data: mapsApiKey } = useQuery({
+    queryKey: ['google-maps-api-key'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sot-google-maps-key');
+      if (error) throw error;
+      return data?.key as string || '';
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const fullAddress = `${address}, ${postalCode ?? ''} ${city}`.trim();
+  const encodedAddress = encodeURIComponent(fullAddress);
+  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+
+  // Use Embed API with satellite maptype when API key is available, otherwise fall back to simple embed
+  const embedUrl = mapsApiKey
+    ? `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodedAddress}&maptype=satellite&zoom=18`
+    : `https://www.google.com/maps?q=${encodedAddress}&output=embed`;
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Standort
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <a href={mapsLink} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1" />
+              In Maps öffnen
+            </a>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="relative w-full rounded-lg overflow-hidden border" style={{ height: '280px' }}>
+          <iframe
+            src={embedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`Karte: ${address}`}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">{fullAddress}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Street View Card — Google Street View Static API via edge function */
 function StreetViewCard({ address, city, postalCode }: { address: string; city: string; postalCode: string | null }) {
   const [imgError, setImgError] = useState(false);
@@ -266,14 +317,23 @@ function StreetViewCard({ address, city, postalCode }: { address: string; city: 
   const streetViewUrl = mapsApiKey
     ? `https://maps.googleapis.com/maps/api/streetview?size=600x280&location=${encodeURIComponent(fullAddress)}&key=${mapsApiKey}`
     : null;
+  const streetViewLink = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=&query=${encodeURIComponent(fullAddress)}`;
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
-          Street View
-        </CardTitle>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Street View
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <a href={streetViewLink} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Street View öffnen
+            </a>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {streetViewUrl && !imgError ? (
