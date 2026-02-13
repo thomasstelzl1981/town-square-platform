@@ -1,51 +1,65 @@
 
-# Objekteingang: Mandate-Widgets + Tabelle CI-konform
 
-## Was sich aendert
+# Objekteingang: Widget-Upload-Flow und "Alle Eingaenge"-Widget
 
-### 1. Mandate-Widgets oben (wie am Dashboard)
+## Konzept
 
-Aktuell fehlen im Objekteingang die Mandate-Kacheln komplett. Das wird korrigiert:
+Die Widget-Leiste im Objekteingang bekommt eine Doppelfunktion:
 
 ```text
 +------------------+------------------+------------------+
-| + NEUES MANDAT   | ACQ-2026-00001   | (weitere...)     |
-| (Platzhalter)    | Fam. Investorius |                  |
+| ALLE EINGAENGE   | ACQ-2026-00001   | (weitere...)     |
+| 12 Objekte       | Fam. Investorius |                  |
+| (Filter: alle)   | [Drop-Zone]      | [Drop-Zone]      |
 +------------------+------------------+------------------+
 ```
 
-- Links immer die `MandateCaseCardNew`-Kachel (leere Kalkulation / neues Mandat)
-- Daneben die existierenden Mandate als `MandateCaseCard` (inkl. Seed-Daten-Mandat)
-- Klick auf ein Mandat filtert die Tabelle auf dessen Objekte; Klick auf "Neues Mandat" navigiert zur Mandate-Erstellung
-- Verwendung von `WidgetGrid` + `WidgetCell` (CI-Standard)
+1. **Klick** auf ein Widget = Tabelle filtern (wie bisher)
+2. **Drag-and-Drop** auf ein Mandate-Widget = Expose direkt diesem Mandat zuordnen
+3. **"Alle Eingaenge"**-Widget oben links = zeigt alle Objekte (kein Filter)
 
-### 2. Tabelle immer ausgeklappt (starr, kein Collapsible)
+## Aenderungen
 
-Die Tabelle ist aktuell in einer `Card` gewrappt, aber nicht eingeklappt. Die Filter-Chips und die Tabelle werden jedoch CI-konform ueberarbeitet:
+### 1. "Neues Mandat"-Widget entfernen
 
-- **Wrapper**: `TABLE.WRAPPER` (glass-card rounded-xl overflow-hidden) statt generischer Card
-- **Header-Zeile**: `TABLE.HEADER_BG` + `TABLE.HEADER_CELL` Klassen
-- **Body-Zeilen**: `TABLE.ROW_HOVER` + `TABLE.ROW_BORDER` + `TABLE.BODY_CELL`
-- Tabelle ist immer sichtbar, kein Collapse-Mechanismus
+Das `MandateCaseCardNew`-Widget wird aus `ObjekteingangList.tsx` entfernt — es existiert bereits im Dashboard und in Mandate.
 
-### 3. Filter-Chips bleiben oberhalb der Tabelle
+### 2. Neues "Alle Eingaenge"-Widget (Position 1)
 
-Die bestehenden Filter-Chips (Alle, Eingegangen, In Analyse, etc.) und die Suchleiste bleiben erhalten — sie passen ins CI.
+Ein neues Widget an erster Stelle zeigt die Gesamtanzahl aller Objekteingaenge. Klick darauf setzt `selectedMandateId` auf `null` → Tabelle zeigt alles. Optisch analog zu den Mandate-Kacheln, aber mit einem Inbox-Icon und der Gesamtzahl.
+
+### 3. Mandate-Widgets mit Upload-Funktion
+
+Jedes Mandate-Widget bekommt eine Drag-and-Drop-Zone. Der Ablauf:
+
+- User zieht ein PDF/Bild auf ein Mandate-Widget
+- Das Widget zeigt visuelles Feedback (Rahmen, Farbaenderung)
+- Die Datei wird hochgeladen und automatisch diesem Mandat (`mandate_id`) zugeordnet
+- Die KI-Extraktion wird ausgeloest
+- Der neue Eintrag erscheint sofort in der Tabelle
+
+Zusaetzlich: Ein kleines Upload-Icon am Widget signalisiert, dass Drag-and-Drop moeglich ist.
+
+### 4. Upload-Logik aus ExposeDragDropUploader extrahieren
+
+Die Upload-Logik (Datei → Storage → acq_offers → KI-Extraktion) wird aus der bestehenden `ExposeDragDropUploader`-Komponente in einen wiederverwendbaren Hook `useExposeUpload` extrahiert. Dieser Hook akzeptiert eine `mandateId` als Parameter, damit der Upload korrekt zugeordnet wird.
 
 ## Technische Umsetzung
 
-### Datei: `src/pages/portal/akquise-manager/ObjekteingangList.tsx`
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/akquise-manager/ObjekteingangList.tsx` | `MandateCaseCardNew` entfernen; "Alle Eingaenge"-Widget als erstes Element; Mandate-Widgets mit Drag-and-Drop-Wrapper versehen; Upload-Status-Anzeige (Toast + Tabellenrefresh) |
+| `src/hooks/useExposeUpload.ts` | Neuer Hook: extrahiert Upload-Logik (processFile) aus ExposeDragDropUploader; akzeptiert `mandateId` Parameter; gibt `{ upload, isUploading, progress }` zurueck |
+| `src/components/akquise/MandateUploadWidget.tsx` | Neuer Wrapper um MandateCaseCard: fuegt onDragOver/onDrop hinzu; zeigt Upload-Fortschritt als Overlay; nutzt useExposeUpload Hook |
 
-| Bereich | Aenderung |
-|---------|-----------|
-| Imports | `WidgetGrid`, `WidgetCell`, `MandateCaseCard`, `MandateCaseCardNew` und `DESIGN`/`TABLE` hinzufuegen |
-| Neuer State | `selectedMandateId` (null = alle Mandate) fuer Widget-Filter |
-| Vor Filter-Chips | Neuer Abschnitt "Mandate" mit `WidgetGrid` — `MandateCaseCardNew` links + alle Mandate als `MandateCaseCard` |
-| Filter-Logik | `filteredOffers` erweitern um optionalen `selectedMandateId`-Filter |
-| Tabelle Wrapper | `Card` → `div className={TABLE.WRAPPER}` |
-| Tabelle Header | Grid-Zeile bekommt `TABLE.HEADER_BG` + `TABLE.HEADER_CELL` |
-| Tabelle Rows | `TABLE.ROW_HOVER` + `TABLE.ROW_BORDER` + `TABLE.BODY_CELL` |
+## Was passiert bei neuen Objekteingaengen
 
-### Keine weiteren Dateien betroffen
+- **Manueller Upload**: User zieht Datei auf das passende Mandate-Widget → sofortige Zuordnung
+- **E-Mail-Eingang**: Laeuft weiterhin ueber den bestehenden Inbound-Webhook mit automatischem Routing (Token/Absender/Thread). Erscheint automatisch in der Tabelle beim naechsten Laden
+- **Header-Button "Expose hochladen"**: Wird durch den neuen Widget-Upload-Flow ersetzt (Button entfaellt oder wird zum Fallback ohne Mandate-Zuordnung)
 
-Die `MandateCaseCard` und `MandateCaseCardNew` Komponenten existieren bereits und werden nur importiert.
+## Nicht betroffen
+
+- `ExposeDragDropUploader.tsx` bleibt als eigenstaendige Komponente unter `/tools` bestehen
+- Backend-Logik (Edge Functions, Tabellen) bleibt unveraendert
+- E-Mail-Inbound-Flow bleibt unveraendert
