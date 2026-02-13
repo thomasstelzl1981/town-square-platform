@@ -51,8 +51,69 @@ export default function AcquiaryNeedsRouting() {
 
   const handleRoute = async () => {
     if (!selectedMessageId || !selectedMandateId) return;
-    // STUB: Routing mutation not yet implemented
-    toast.info('Zuordnung wird gespeichert…', { description: 'Diese Funktion wird in einem kommenden Update aktiviert.' });
+    try {
+      // 1. Update inbound message: assign mandate, clear needs_routing
+      const { error: updateError } = await supabase
+        .from('acq_inbound_messages')
+        .update({
+          mandate_id: selectedMandateId,
+          needs_routing: false,
+          routed_at: new Date().toISOString(),
+          routing_method: 'manual',
+        })
+        .eq('id', selectedMessageId);
+
+      if (updateError) throw updateError;
+
+      // 2. Get mandate tenant_id
+      const { data: mandate } = await supabase
+        .from('acq_mandates')
+        .select('tenant_id')
+        .eq('id', selectedMandateId)
+        .single();
+
+      // 3. Get inbound message details for offer creation
+      const { data: inbound } = await supabase
+        .from('acq_inbound_messages')
+        .select('subject, body_text, contact_id, attachments')
+        .eq('id', selectedMessageId)
+        .single();
+
+      // 4. Create acq_offers entry
+      const { data: offer } = await supabase
+        .from('acq_offers')
+        .insert([{
+          mandate_id: selectedMandateId,
+          tenant_id: mandate?.tenant_id || null,
+          title: inbound?.subject || 'Manuell zugeordnet',
+          source_type: 'inbound_email',
+          source_inbound_id: selectedMessageId,
+          source_contact_id: inbound?.contact_id || null,
+          status: 'new',
+          notes: inbound?.body_text?.substring(0, 500) || null,
+        }])
+        .select('id')
+        .single();
+
+      // 5. Link attachments if any
+      if (offer && Array.isArray(inbound?.attachments)) {
+        for (const att of inbound.attachments as any[]) {
+          await supabase.from('acq_offer_documents').insert([{
+            offer_id: offer.id,
+            tenant_id: mandate?.tenant_id || null,
+            file_name: att.filename,
+            storage_path: att.storage_path,
+            mime_type: att.mime_type,
+            document_type: 'expose',
+          }]);
+        }
+      }
+
+      toast.success('E-Mail erfolgreich zugeordnet', { description: 'Objekt wurde angelegt.' });
+    } catch (err) {
+      console.error('Routing failed:', err);
+      toast.error('Zuordnung fehlgeschlagen');
+    }
     setSelectedMessageId(null);
     setSelectedMandateId('');
   };
