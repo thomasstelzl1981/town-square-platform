@@ -1,11 +1,8 @@
 /**
  * AkquiseMandate — Vollständiger Workflow nach FM-Vorbild (MOD-12)
  * 
- * Sektion A: Meine Mandate (WidgetGrid)
- * Sektion B: Neues Mandat — Durchlaufender Workflow
- *   Phase 1: KI-gestützte Freitext-Erfassung
- *   Phase 2: Ankaufsprofil aufbereiten & Mandat erstellen
- *   Phase 3-7: Operative Sektionen (Sourcing, Outreach, Inbound, Analysis, Delivery)
+ * ALLE 7 Sektionen sind IMMER sichtbar (durchlaufende Seite).
+ * Sektionen 3-7 werden ausgegraut wenn kein Mandat erstellt wurde.
  */
 
 import { useState } from 'react';
@@ -45,15 +42,12 @@ interface ExtractedProfile {
   profile_text_long?: string;
 }
 
-type WorkflowPhase = 'capture' | 'profile' | 'active';
-
 export default function AkquiseMandate() {
   const navigate = useNavigate();
   const { data: mandates, isLoading } = useAcqMandatesForManager();
   const createMandate = useCreateAcqMandate();
 
-  // Workflow state
-  const [phase, setPhase] = useState<WorkflowPhase>('capture');
+  // Active mandate (null = neues Mandat wird erstellt)
   const [activeMandateId, setActiveMandateId] = useState<string | null>(null);
   const [activeMandateCode, setActiveMandateCode] = useState<string>('');
 
@@ -102,7 +96,6 @@ export default function AkquiseMandate() {
       if (error) throw error;
       if (data?.profile) {
         applyProfile(data.profile);
-        setPhase('profile');
         toast.success('Ankaufsprofil extrahiert');
       } else {
         throw new Error('Kein Profil extrahiert');
@@ -110,14 +103,9 @@ export default function AkquiseMandate() {
     } catch (err) {
       console.error(err);
       toast.error('KI-Analyse fehlgeschlagen — bitte manuell ausfüllen');
-      setPhase('profile');
     } finally {
       setIsExtracting(false);
     }
-  };
-
-  const handleSkipToManual = () => {
-    setPhase('profile');
   };
 
   // ── Phase 2: Mandat erstellen ──
@@ -139,32 +127,14 @@ export default function AkquiseMandate() {
     if (result?.id) {
       setActiveMandateId(result.id);
       setActiveMandateCode(result.code || '');
-      setPhase('active');
+      toast.success('Mandat erstellt');
     }
   };
 
-  // ── Select existing mandate to view workflow ──
-  const handleSelectMandate = (mandate: { id: string; code: string; client_display_name: string | null; search_area: Record<string, unknown>; asset_focus: string[]; }) => {
+  // ── Select existing mandate ──
+  const handleSelectMandate = (mandate: { id: string; code: string }) => {
     setActiveMandateId(mandate.id);
     setActiveMandateCode(mandate.code);
-    setPhase('active');
-  };
-
-  // ── Reset to new mandate ──
-  const handleNewMandate = () => {
-    setPhase('capture');
-    setActiveMandateId(null);
-    setActiveMandateCode('');
-    setFreeText('');
-    setClientName('');
-    setRegion('');
-    setAssetFocus([]);
-    setPriceMin('');
-    setPriceMax('');
-    setYieldTarget('');
-    setExclusions('');
-    setNotes('');
-    setProfileTextLong('');
   };
 
   if (isLoading) {
@@ -211,227 +181,243 @@ export default function AkquiseMandate() {
         )}
       </div>
 
+      <Separator />
+
       {/* ══════════════════════════════════════════════════════════════════
-          SEKTION B: Neues Mandat — Workflow oder aktives Mandat
+          SEKTION 1: KI-gestützte Erfassung (IMMER SICHTBAR)
+          ══════════════════════════════════════════════════════════════════ */}
+      <AcqSectionHeader
+        number={1}
+        title="KI-gestützte Erfassung"
+        description="Beschreiben Sie in eigenen Worten, was Ihr Mandant sucht. Die KI erstellt ein strukturiertes Ankaufsprofil."
+        icon={<Sparkles className="h-5 w-5" />}
+      />
+      <div className="space-y-4">
+        <Textarea
+          placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
+          value={freeText}
+          onChange={e => setFreeText(e.target.value)}
+          rows={5}
+          className="text-base"
+        />
+        <div className="flex justify-end">
+          <Button
+            onClick={handleExtract}
+            disabled={!freeText.trim() || isExtracting}
+          >
+            {isExtracting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Ankaufsprofil generieren
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* ══════════════════════════════════════════════════════════════════
+          SEKTION 2: Ankaufsprofil aufbereiten (IMMER SICHTBAR)
+          ══════════════════════════════════════════════════════════════════ */}
+      <AcqSectionHeader
+        number={2}
+        title="Ankaufsprofil aufbereiten"
+        description="Prüfen und ergänzen Sie die Daten. Wird durch KI vorausgefüllt oder manuell befüllt."
+      />
+      <div className="space-y-6">
+        {/* KI-generiertes Profil */}
+        {profileTextLong && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-primary font-semibold">KI-generiertes Ankaufsprofil</Label>
+            <Textarea
+              value={profileTextLong}
+              onChange={e => setProfileTextLong(e.target.value)}
+              rows={4}
+              className="bg-background"
+            />
+          </div>
+        )}
+
+        {/* Kontaktname */}
+        <div className="space-y-2">
+          <Label htmlFor="clientName">Kontaktname / Mandant *</Label>
+          <Input
+            id="clientName"
+            placeholder="z.B. Müller Family Office"
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+          />
+        </div>
+
+        {/* Suchgebiet */}
+        <div className="space-y-2">
+          <Label htmlFor="region">Suchgebiet / Region</Label>
+          <Input
+            id="region"
+            placeholder="z.B. Rhein-Main, Berlin, NRW"
+            value={region}
+            onChange={e => setRegion(e.target.value)}
+          />
+        </div>
+
+        {/* Asset-Fokus */}
+        <div className="space-y-2">
+          <Label>Asset-Fokus</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {ASSET_FOCUS_OPTIONS.map(opt => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-accent/50 cursor-pointer transition-colors text-sm"
+              >
+                <Checkbox
+                  checked={assetFocus.includes(opt.value)}
+                  onCheckedChange={() => toggleAssetFocus(opt.value)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Preisspanne + Rendite */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="priceMin">Preis ab (€)</Label>
+            <Input id="priceMin" type="number" placeholder="500.000" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="priceMax">Preis bis (€)</Label>
+            <Input id="priceMax" type="number" placeholder="5.000.000" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="yieldTarget">Zielrendite (%)</Label>
+            <Input id="yieldTarget" type="number" step="0.1" placeholder="5.0" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Ausschlüsse */}
+        <div className="space-y-2">
+          <Label htmlFor="exclusions">Ausschlüsse</Label>
+          <Textarea id="exclusions" placeholder="z.B. keine Erbbau-Grundstücke, kein Denkmalschutz" value={exclusions} onChange={e => setExclusions(e.target.value)} rows={2} />
+        </div>
+
+        {/* Notizen */}
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notizen</Label>
+          <Textarea id="notes" placeholder="Weitere Hinweise zum Suchprofil" value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
+        </div>
+
+        {/* Mandat erstellen Button */}
+        <div className="flex justify-end pt-4 border-t border-border">
+          <Button
+            size="lg"
+            onClick={handleCreate}
+            disabled={!clientName.trim() || createMandate.isPending}
+          >
+            {createMandate.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Mandat erstellen
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* ══════════════════════════════════════════════════════════════════
+          SEKTIONEN 3-7: Operative Workflow-Sektionen (IMMER SICHTBAR)
+          Ausgegraut wenn kein activeMandateId vorhanden
           ══════════════════════════════════════════════════════════════════ */}
 
-      {/* ── Active mandate: show full operative workflow ── */}
-      {phase === 'active' && activeMandateId && (
-        <div className="space-y-6 mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Mandat {activeMandateCode} — Workflow
-            </h2>
-            <Button variant="outline" size="sm" onClick={handleNewMandate}>
-              + Neues Mandat
-            </Button>
-          </div>
-
-          <AcqSectionHeader number={1} title="Sourcing & Recherche" description="Immobilienportale durchsuchen und passende Objekte identifizieren" icon={<Search className="h-5 w-5" />} />
-          <SourcingTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
-
-          <Separator />
-          <AcqSectionHeader number={2} title="Outreach" description="Kontakte anschreiben und Angebote einholen" icon={<Mail className="h-5 w-5" />} />
-          <OutreachTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
-
-          <Separator />
-          <AcqSectionHeader number={3} title="Objekteingang & Analyse" description="Eingegangene Angebote bewerten und analysieren" icon={<Inbox className="h-5 w-5" />} />
-          <InboundTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
-
-          <Separator />
-          <AcqSectionHeader number={4} title="Analyse & Kalkulation" description="Bestand- und Aufteiler-Kalkulationen durchführen" icon={<Brain className="h-5 w-5" />} />
-          <AnalysisTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
-
-          <Separator />
-          <AcqSectionHeader number={5} title="Delivery & Präsentation" description="Objekte dem Mandanten präsentieren" icon={<Package className="h-5 w-5" />} />
-          <DeliveryTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
-        </div>
+      {/* ── 3. Kontaktrecherche ── */}
+      <AcqSectionHeader
+        number={3}
+        title="Kontaktrecherche"
+        description="Immobilienportale durchsuchen und passende Kontakte identifizieren"
+        icon={<Search className="h-5 w-5" />}
+      />
+      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+        <SourcingTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      </div>
+      {!activeMandateId && (
+        <p className="text-sm text-muted-foreground italic">
+          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+        </p>
       )}
 
-      {/* ── Phase 1: KI-gestützte Erfassung ── */}
-      {phase === 'capture' && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Neues Mandat — KI-gestützte Erfassung
-            </CardTitle>
-            <CardDescription>
-              Beschreiben Sie in eigenen Worten, was Ihr Mandant sucht. Die KI analysiert den Text und erstellt ein strukturiertes Ankaufsprofil.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte. Bevorzugt Bestandsimmobilien mit Wertsteigerungspotenzial."
-              value={freeText}
-              onChange={e => setFreeText(e.target.value)}
-              rows={6}
-              className="text-base"
-            />
-            <div className="flex items-center justify-between pt-2">
-              <Button variant="ghost" size="sm" onClick={handleSkipToManual}>
-                Manuell ausfüllen →
-              </Button>
-              <Button
-                size="lg"
-                onClick={handleExtract}
-                disabled={!freeText.trim() || isExtracting}
-              >
-                {isExtracting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Ankaufsprofil generieren
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <Separator />
+
+      {/* ── 4. E-Mail-Versand ── */}
+      <AcqSectionHeader
+        number={4}
+        title="E-Mail-Versand"
+        description="Kontakte anschreiben und Angebote einholen"
+        icon={<Mail className="h-5 w-5" />}
+      />
+      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+        <OutreachTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      </div>
+      {!activeMandateId && (
+        <p className="text-sm text-muted-foreground italic">
+          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+        </p>
       )}
 
-      {/* ── Phase 2: Ankaufsprofil aufbereiten ── */}
-      {phase === 'profile' && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Ankaufsprofil aufbereiten</CardTitle>
-            <CardDescription>
-              Prüfen und ergänzen Sie die extrahierten Daten. Das Mandat wird erst beim Absenden angelegt.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Generiertes Profil (wenn vorhanden) */}
-            {profileTextLong && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
-                <Label className="text-xs uppercase tracking-wider text-primary font-semibold">KI-generiertes Ankaufsprofil</Label>
-                <Textarea
-                  value={profileTextLong}
-                  onChange={e => setProfileTextLong(e.target.value)}
-                  rows={4}
-                  className="bg-background"
-                />
-              </div>
-            )}
+      <Separator />
 
-            {/* Kontaktname */}
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Kontaktname / Mandant *</Label>
-              <Input
-                id="clientName"
-                placeholder="z.B. Müller Family Office"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-              />
-            </div>
+      {/* ── 5. Objekteingang ── */}
+      <AcqSectionHeader
+        number={5}
+        title="Objekteingang"
+        description="Eingegangene Angebote bewerten und zuordnen"
+        icon={<Inbox className="h-5 w-5" />}
+      />
+      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+        <InboundTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      </div>
+      {!activeMandateId && (
+        <p className="text-sm text-muted-foreground italic">
+          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+        </p>
+      )}
 
-            {/* Suchgebiet */}
-            <div className="space-y-2">
-              <Label htmlFor="region">Suchgebiet / Region</Label>
-              <Input
-                id="region"
-                placeholder="z.B. Rhein-Main, Berlin, NRW"
-                value={region}
-                onChange={e => setRegion(e.target.value)}
-              />
-            </div>
+      <Separator />
 
-            {/* Asset-Fokus */}
-            <div className="space-y-2">
-              <Label>Asset-Fokus</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {ASSET_FOCUS_OPTIONS.map(opt => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-accent/50 cursor-pointer transition-colors text-sm"
-                  >
-                    <Checkbox
-                      checked={assetFocus.includes(opt.value)}
-                      onCheckedChange={() => toggleAssetFocus(opt.value)}
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+      {/* ── 6. Analyse & Kalkulation ── */}
+      <AcqSectionHeader
+        number={6}
+        title="Analyse & Kalkulation"
+        description="Bestand- und Aufteiler-Kalkulationen durchführen"
+        icon={<Brain className="h-5 w-5" />}
+      />
+      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+        <AnalysisTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      </div>
+      {!activeMandateId && (
+        <p className="text-sm text-muted-foreground italic">
+          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+        </p>
+      )}
 
-            {/* Preisspanne + Rendite */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="priceMin">Preis ab (€)</Label>
-                <Input
-                  id="priceMin"
-                  type="number"
-                  placeholder="500.000"
-                  value={priceMin}
-                  onChange={e => setPriceMin(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="priceMax">Preis bis (€)</Label>
-                <Input
-                  id="priceMax"
-                  type="number"
-                  placeholder="5.000.000"
-                  value={priceMax}
-                  onChange={e => setPriceMax(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="yieldTarget">Zielrendite (%)</Label>
-                <Input
-                  id="yieldTarget"
-                  type="number"
-                  step="0.1"
-                  placeholder="5.0"
-                  value={yieldTarget}
-                  onChange={e => setYieldTarget(e.target.value)}
-                />
-              </div>
-            </div>
+      <Separator />
 
-            {/* Ausschlüsse */}
-            <div className="space-y-2">
-              <Label htmlFor="exclusions">Ausschlüsse</Label>
-              <Textarea
-                id="exclusions"
-                placeholder="z.B. keine Erbbau-Grundstücke, kein Denkmalschutz"
-                value={exclusions}
-                onChange={e => setExclusions(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            {/* Notizen */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notizen</Label>
-              <Textarea
-                id="notes"
-                placeholder="Weitere Hinweise zum Suchprofil"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-border">
-              <Button variant="ghost" onClick={() => setPhase('capture')}>
-                ← Zurück zur Freitext-Erfassung
-              </Button>
-              <Button
-                size="lg"
-                onClick={handleCreate}
-                disabled={!clientName.trim() || createMandate.isPending}
-              >
-                {createMandate.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="mr-2 h-4 w-4" />
-                )}
-                Mandat erstellen
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ── 7. Delivery ── */}
+      <AcqSectionHeader
+        number={7}
+        title="Delivery & Präsentation"
+        description="Objekte dem Mandanten präsentieren"
+        icon={<Package className="h-5 w-5" />}
+      />
+      <div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+        <DeliveryTab mandateId={activeMandateId!} mandateCode={activeMandateCode} />
+      </div>
+      {!activeMandateId && (
+        <p className="text-sm text-muted-foreground italic">
+          Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+        </p>
       )}
     </PageShell>
   );
