@@ -40,14 +40,14 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Base',
     labelShort: 'Base',
     icon: 'Layers',
-    modules: ['MOD-05', 'MOD-03', 'MOD-16', 'MOD-01'],
+    modules: ['MOD-03', 'MOD-18', 'MOD-19', 'MOD-01'],
   },
   {
     key: 'services',
     label: 'Service',
     labelShort: 'Service',
     icon: 'Grid',
-    modules: ['MOD-14', 'MOD-15', 'MOD-17', 'MOD-18', 'MOD-19'],
+    modules: ['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16', 'MOD-17'],
   },
 ];
 
@@ -61,6 +61,7 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche
+  'MOD-18': 'Finanzmanager',      // Finanzanalyse → Finanzmanager
   'MOD-20': 'Haus',               // Miety → Haus (display only)
 };
 
