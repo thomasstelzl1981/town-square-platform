@@ -1,128 +1,181 @@
 
 
-# Privatkredit-Modul: Editierbarer Antrag + Bank-Beispiele Widget
+# MOD-14 Telefonassistent — MVP Umsetzungsplan
 
-## Ueberblick
+## Ziel
 
-Zwei grosse Aenderungen am Privatkredit-Modul:
-
-1. **ApplicationPreview wird zum editierbaren Antragsformular** — Alle Felder (Person, Beschaeftigung, Haushalt) sind direkt bearbeitbar. Ein Button "Aus Selbstauskunft uebernehmen" fuellt die Felder vor, aber der Antrag funktioniert auch komplett ohne Selbstauskunft. Die Felder starten mit sinnvollen Platzhaltern (z.B. "Max", "Mustermann", "Musterstadt").
-
-2. **Neue grosse Kachel: Markt-Beispiele** — Eine prominente Card oberhalb des Rechners zeigt aktuelle Privatkredit-Konditionen realer Banken als Orientierung (SWK Bank, SKG Bank, DKB, Targobank, ING, Commerzbank, etc. mit realistischen Zinssaetzen Stand 02/2026). Diese dienen als Referenz und werden durch die persoenliche Berechnung ueberschrieben.
-
-3. **Bessere Platzhalter im Rechner** — Kreditbetrag und Laufzeit zeigen vorab Beispielwerte (z.B. 10.000 EUR, 48 Monate) als Placeholder, die beim Eintippen ueberschrieben werden.
+Den leeren "Kommt bald"-Platzhalter unter `/portal/communication-pro/ki-telefon` durch eine vollstaendige, durchscrollbare Inline-Seite ersetzen. Kein Provider-Connect, keine externe API. Konfiguration + Persistierung + Call-Log + Test-Event-Generator.
 
 ---
 
-## Aenderung 1: ApplicationPreview.tsx -> Editierbares Formular
+## 1. Datenbank (2 Tabellen + RLS)
 
-### Was aendert sich
+### Tabelle: `commpro_phone_assistants`
 
-Die bisherige **Read-Only-Ansicht** (`ApplicationPreview`) wird zu einem **voll editierbaren Inline-Formular** umgebaut:
-
-- Alle Felder (Vorname, Nachname, Geburtsdatum, Adresse, Arbeitgeber, Einkommen, Miete, etc.) werden zu Input-Feldern
-- Jedes Feld hat einen **Placeholder** als Beispiel (z.B. `placeholder="Max"`, `placeholder="Mustermann"`, `placeholder="50.000"`)
-- Der Nutzer kann direkt hineinschreiben, auch ohne vorherige Selbstauskunft
-- Ein Button **"Daten aus Selbstauskunft laden"** holt die Daten aus `applicant_profiles` und befuellt die Felder — diese bleiben danach weiterhin editierbar
-- Die Formular-Daten werden im State des `PrivatkreditTab` verwaltet und beim Submit mitgesendet
-- Die 3 Bloecke (Persoenlich, Beschaeftigung, Haushalt) bleiben erhalten, nutzen aber Input-Felder statt Text-Anzeige
-
-### Felder mit Beispiel-Platzhaltern
-
-| Feld | Placeholder |
-|------|------------|
-| Vorname | Max |
-| Nachname | Mustermann |
-| Geburtsdatum | 15.03.1985 |
-| Anrede | Herr |
-| Strasse | Musterstr. 12 |
-| PLZ | 10115 |
-| Stadt | Berlin |
-| E-Mail | max@beispiel.de |
-| Telefon | 0170 1234567 |
-| Nationalitaet | Deutsch |
-| Arbeitgeber | Musterfirma GmbH |
-| Beschaeftigt seit | 01.01.2020 |
-| Vertragsart | Unbefristet |
-| Position | Sachbearbeiter |
-| Netto-Einkommen | 2.800 |
-| Miete | 850 |
-| Familienstand | Ledig |
-| Kinder | 0 |
-
-### Props-Aenderung
-
-```
-// Vorher
-interface ApplicationPreviewProps {
-  disabled?: boolean;
-}
-
-// Nachher
-interface ApplicationFormProps {
-  disabled?: boolean;
-  formData: ConsumerLoanFormData;
-  onFormDataChange: (data: ConsumerLoanFormData) => void;
-}
+```sql
+create table public.commpro_phone_assistants (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  display_name text not null default 'Mein Telefonassistent',
+  is_enabled boolean not null default false,
+  -- Voice
+  voice_provider text null,
+  voice_preset_key text not null default 'professional_warm',
+  voice_settings jsonb not null default '{"stability":70,"clarity":80,"speed":50}'::jsonb,
+  -- Content
+  first_message text not null default '',
+  behavior_prompt text not null default '',
+  -- Rules
+  rules jsonb not null default '{"ask_clarify_once":true,"collect_name":true,"confirm_callback_number":true,"collect_reason":true,"collect_urgency":false,"collect_preferred_times":false,"max_call_seconds":120}'::jsonb,
+  -- Documentation
+  documentation jsonb not null default '{"email_enabled":false,"email_target":"","portal_log_enabled":true,"auto_summary":true,"extract_tasks":true,"retention_days":90}'::jsonb,
+  -- Phone binding placeholder
+  forwarding_number_e164 text null,
+  binding_status text not null default 'pending',
+  -- Meta
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id)
+);
+alter table public.commpro_phone_assistants enable row level security;
+create policy "Users manage own assistant" on public.commpro_phone_assistants
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 ```
 
-Ein neuer Typ `ConsumerLoanFormData` in `useConsumerLoan.ts` mit allen relevanten Feldern.
+### Tabelle: `commpro_phone_call_sessions`
+
+```sql
+create table public.commpro_phone_call_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  assistant_id uuid not null references public.commpro_phone_assistants(id) on delete cascade,
+  direction text not null default 'inbound',
+  from_number_e164 text not null,
+  to_number_e164 text null,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz null,
+  duration_sec int null,
+  status text not null default 'logged',
+  transcript_text text null,
+  summary_text text null,
+  action_items jsonb not null default '[]'::jsonb,
+  match jsonb not null default '{"matched_type":"none","matched_id":null,"match_type":"none"}'::jsonb,
+  created_at timestamptz not null default now()
+);
+alter table public.commpro_phone_call_sessions enable row level security;
+create policy "Users manage own calls" on public.commpro_phone_call_sessions
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create index idx_call_sessions_user on public.commpro_phone_call_sessions(user_id, started_at desc);
+create index idx_call_sessions_assistant on public.commpro_phone_call_sessions(assistant_id, started_at desc);
+```
 
 ---
 
-## Aenderung 2: Neue Komponente — BankExamplesCard.tsx
+## 2. Routing
 
-Eine grosse, prominente Card **oberhalb des Rechners**, die aktuelle Markt-Beispiele zeigt:
-
-### Inhalt (recherchierte Daten, Stand 02/2026)
-
-| Bank | Effektivzins | Beispiel-Betrag | Beispiel-Laufzeit | Monatliche Rate |
-|------|-------------|----------------|-------------------|----------------|
-| SWK Bank | 5,79 % | 10.000 EUR | 60 Monate | 191,67 EUR |
-| SKG Bank | 5,89 % | 10.000 EUR | 60 Monate | 192,11 EUR |
-| DKB | 6,29 % | 10.000 EUR | 60 Monate | 193,87 EUR |
-| Targobank | 6,95 % | 10.000 EUR | 60 Monate | 196,78 EUR |
-| ING | 6,49 % | 10.000 EUR | 60 Monate | 194,75 EUR |
-| Commerzbank | 7,49 % | 10.000 EUR | 60 Monate | 199,16 EUR |
-| Santander | 7,99 % | 10.000 EUR | 60 Monate | 201,36 EUR |
-| Postbank | 6,99 % | 10.000 EUR | 60 Monate | 196,96 EUR |
-
-### Design
-
-- `glass-card` mit `DESIGN.CARD.BASE`
-- Titel: "Aktuelle Marktkonditionen (Orientierung)"
-- Hinweis-Text: "Zweidrittelzins, Stand 02/2026 — Ihre persoenlichen Konditionen koennen abweichen"
-- Tabelle im `DESIGN.TABLE.*` Format
-- Badge "Guenstigster" bei SWK Bank
-- Die Tabelle ist rein informativ, keine Auswahl-Buttons
+Keine Aenderungen noetig. Die Route `ki-telefon` existiert bereits im Manifest (MOD-14) und in `CommunicationProPage.tsx`. Wir ersetzen lediglich den Inhalt von `KiTelefonPage.tsx`.
 
 ---
 
-## Aenderung 3: Bessere Platzhalter im LoanCalculator
+## 3. UI-Architektur (eine Seite, 7 Sections)
 
-- Kreditbetrag: `placeholder="10.000"` (statt "z.B. 15.000")
-- Laufzeit: `placeholder="48"` (statt "z.B. 48")
-- Die Mock-Offer-Berechnung nutzt jetzt realistischere Zinssaetze (angepasst an 02/2026 Marktniveau: 5,79% - 7,99%)
+Die Seite wird in `KiTelefonPage.tsx` komplett neu aufgebaut. Jede Section ist eine eigene Komponente in einem neuen Ordner `src/components/communication-pro/phone-assistant/`.
+
+### Section A: Status und Rufweiterleitung
+**Komponente:** `StatusForwardingCard.tsx`
+- Toggle: "Assistent aktiv" (steuert `is_enabled`)
+- Read-only Feld: Weiterleitungsnummer (zeigt `forwarding_number_e164` oder Platzhalter "Wird nach Provider-Connect vergeben")
+- Badge: `pending` / `active` / `error`
+- Copy-Button (disabled im MVP, Tooltip "Noch nicht verfuegbar")
+- Info-Box mit Rufumleitungs-Empfehlung (GSM/Carrier)
+
+### Section B: Stimme
+**Komponente:** `VoiceSettingsCard.tsx`
+- Disabled Dropdown "Voice Provider (spaeter)" mit Hinweis "Connect folgt"
+- 6 selektierbare Preset-Cards in einem Grid:
+  - `professional_warm` (Default), `professional_crisp`, `friendly_calm`, `energetic_clear`, `serious_formal`, `soft_supportive`
+- 3 Slider (Radix Slider): Stabilitaet, Klarheit, Tempo (0-100)
+- Mini-Vorschau: Zeigt die `first_message` als Text-Preview ("So klingt es spaeter")
+
+### Section C: Begruessung und Verhalten
+**Komponente:** `ContentCard.tsx`
+- Input: "Erste Begruessung" mit Placeholder "Hallo! Du sprichst mit dem Assistenten von {Name}. Wie kann ich helfen?"
+- Textarea: "Verhalten (Kurz-Prompt)" max 2000 Zeichen mit Zeichenzaehler
+- Helper-Text: "Ziel: Anliegen erfassen, Rueckrufgrund + Dringlichkeit + Kontaktdaten."
+
+### Section D: Reaktionslogik
+**Komponente:** `RulesCard.tsx`
+- 6 Checkboxen (aus `rules` JSON):
+  - Einmal nachfragen wenn unverstaendlich
+  - Name erfassen
+  - Rueckrufnummer bestaetigen
+  - Grund des Anrufs erfassen
+  - Dringlichkeit abfragen
+  - Wunschzeiten abfragen
+- Select/Dropdown: Max. Gespraechsdauer (60/120/180 Sekunden)
+
+### Section E: Dokumentation und Benachrichtigung
+**Komponente:** `DocumentationCard.tsx`
+- Toggle: E-Mail Benachrichtigung (wenn aktiv: Eingabefeld `email_target`)
+- Toggle: Portal-Eintrag erstellen (default ON)
+- Toggle: Automatische Zusammenfassung (default ON)
+- Toggle: Aufgaben extrahieren (default ON)
+- Dropdown: Aufbewahrung (30/90/365 Tage)
+
+### Section F: Test und Vorschau
+**Komponente:** `TestPreviewCard.tsx`
+- Button "Test-Anrufereignis erzeugen": Erstellt einen Dummy-Eintrag in `commpro_phone_call_sessions` mit `status = 'test'`, zufaelliger Nummer, kurzem Transkript, Summary und 2-4 Action-Items
+- Button "Testdaten loeschen": Loescht alle Eintraege mit `status = 'test'`
+- Toast-Feedback nach beiden Aktionen
+
+### Section G: Call-Log
+**Komponente:** `CallLogSection.tsx` + `CallDetailDrawer.tsx`
+- Tabelle (neueste oben): Datum/Uhrzeit, Anrufernummer, Summary (1 Zeile), Status-Badge (`test`/`processed`/`logged`), Button "Details"
+- Empty State: "Noch keine Anrufe dokumentiert." + Button "Test-Eintrag erzeugen"
+- Detail-Drawer (Sheet/Drawer, kein Seitenwechsel):
+  - Transkript (vollstaendig)
+  - Zusammenfassung
+  - Action-Items als Checkbox-Liste
+  - CTA "Zuordnen" (MVP: UI-Placeholder, speichert in `match` JSON)
 
 ---
 
-## Aenderung 4: PrivatkreditTab.tsx — State-Management
+## 4. Hook: `usePhoneAssistant.ts`
 
-- Neuer State `formData` fuer das editierbare Antragsformular
-- `BankExamplesCard` wird zwischen Widget-Leiste und Employment Gate eingefuegt
-- `ApplicationPreview` (umbenannt zu `ApplicationForm`) erhaelt `formData` + `onFormDataChange` Props
+**Datei:** `src/hooks/usePhoneAssistant.ts`
+
+- **Auto-Create:** Beim ersten Laden pruefen, ob ein Eintrag in `commpro_phone_assistants` existiert. Falls nein: automatisch Default-Row anlegen.
+- **Autosave:** Aenderungen per Debounce (500ms) speichern. "Gespeichert"-Indicator in der UI.
+- **CRUD fuer Call-Sessions:** Query (neueste zuerst), Create (Test-Event), Delete (nur `status = 'test'`).
+- React Query fuer beide Tabellen.
 
 ---
 
-## Dateien-Uebersicht
+## 5. Dateien-Uebersicht
 
 | Aktion | Datei |
 |--------|-------|
-| NEU | `src/components/privatkredit/BankExamplesCard.tsx` — Markt-Beispiele Kachel |
-| EDIT | `src/components/privatkredit/ApplicationPreview.tsx` — Read-Only zu editierbarem Formular |
-| EDIT | `src/components/privatkredit/LoanCalculator.tsx` — Bessere Platzhalter + realistischere Zinsen |
-| EDIT | `src/pages/portal/finanzierung/PrivatkreditTab.tsx` — FormData-State, BankExamplesCard einbinden |
-| EDIT | `src/hooks/useConsumerLoan.ts` — ConsumerLoanFormData Typ + aktualisierte MOCK_BANKS Zinssaetze |
+| DB | Migration: `commpro_phone_assistants` + `commpro_phone_call_sessions` + RLS |
+| EDIT | `src/pages/portal/communication-pro/ki-telefon/KiTelefonPage.tsx` — Komplett neu: PageShell + 7 Sections |
+| NEU | `src/components/communication-pro/phone-assistant/StatusForwardingCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/VoiceSettingsCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/ContentCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/RulesCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/DocumentationCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/TestPreviewCard.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/CallLogSection.tsx` |
+| NEU | `src/components/communication-pro/phone-assistant/CallDetailDrawer.tsx` |
+| NEU | `src/hooks/usePhoneAssistant.ts` |
 
-Keine Datenbank-Aenderungen noetig.
+---
+
+## 6. Akzeptanzkriterien
+
+1. Menuepunkt "KI-Telefonassistent" in MOD-14 zeigt vollstaendige, nutzbare UI statt Platzhalter
+2. Assistenten-Konfiguration wird in der Datenbank persistiert und bleibt nach Reload erhalten (Autosave)
+3. Test-Anrufereignis kann erzeugt, in der Liste angezeigt und im Drawer geoeffnet werden
+4. Testdaten koennen einzeln per "Testdaten loeschen" entfernt werden
+5. UI funktioniert vollstaendig ohne Provider/API und wirkt nicht "leer" (starke Empty States, Test-Button prominent)
+6. Voice-Provider-Dropdown ist sichtbar aber disabled — spaeterer Connect dockt hier an
+7. Binding-Status bleibt auf `pending` — spaetere Rufnummernvergabe aendert nur dieses Feld
 
