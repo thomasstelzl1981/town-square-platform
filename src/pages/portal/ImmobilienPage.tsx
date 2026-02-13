@@ -14,6 +14,7 @@ const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
 const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
 const MietyPortalPage = lazy(() => import('./MietyPortalPage'));
+const MietyHomeDossier = lazy(() => import('./miety/MietyHomeDossier'));
 
 const ImmobilienPage = () => {
   return (
@@ -25,8 +26,13 @@ const ImmobilienPage = () => {
         {/* DEFAULT: Redirect to ZUHAUSE */}
         <Route index element={<Navigate to="zuhause" replace />} />
         
-        {/* ZUHAUSE: MOD-20 Miety rendered inline */}
-        <Route path="zuhause/*" element={<MietyPortalPage />} />
+        {/* ZUHAUSE: MOD-20 Miety rendered inline (no sub-router) */}
+        <Route path="zuhause" element={<MietyPortalPage />} />
+        
+        {/* ZUHAUSE DOSSIER: Individual home detail */}
+        <Route path="zuhause/:homeId" element={
+          <Suspense fallback={null}><MietyHomeDossier /></Suspense>
+        } />
         
         {/* LEGACY: Old "haus" path redirects to "zuhause" */}
         <Route path="haus" element={<Navigate to="/portal/immobilien/zuhause" replace />} />
