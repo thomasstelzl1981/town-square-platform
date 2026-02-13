@@ -1,88 +1,49 @@
 
 
-# Portfolio-Redesign: 3-Widget-Ansicht statt Kontext-Leiste
+# Portfolio-Redesign: Exakt 3 Widgets
 
-## Problem
+## Das Problem
 
-Die aktuelle Portfolio-Seite hat eine redundante Struktur:
-- Oben: Kleine Kontext-Auswahl-Kacheln ("Alle", "Familie Mustermann", Firma, "Verwalten")
-- Darunter: KPI-Zeile (5 StatCards)
-- Darunter: Charts und Tabelle
+Aktuell werden dynamisch N+1 Widgets erzeugt (1x "Alle" + N Kontexte) plus ein separater "Verwalten"-Button. Das fuehrt zu einer ueberladenen, doppelten Struktur.
 
-Die kleinen Kacheln oben und die Widgets unten sind doppelt. Der User moechte stattdessen **3 grosse Widgets** im WidgetGrid sehen, die als Schritte fungieren.
-
-## Neues Layout
+## Neues Layout — Genau 3 Widgets
 
 ```text
-+--------------------------------------------------+
-| PageShell: PORTFOLIO                             |
-+--------------------------------------------------+
-|                                                  |
-|  +-----------+  +-----------+  +-----------+     |
-|  |  WIDGET 1 |  |  WIDGET 2 |  |  WIDGET 3 |     |
-|  |           |  |           |  |           |     |
-|  |   Alle    |  |  Familie  |  |  Firma    |     |
-|  | Immobilien|  | Mustermann|  |  GmbH     |     |
-|  |           |  |           |  |           |     |
-|  | 5 Objekte |  | 3 Objekte |  | 2 Objekte |     |
-|  | KPIs      |  | KPIs      |  | KPIs      |     |
-|  +-----------+  +-----------+  +-----------+     |
-|                                                  |
-|  [+ Vermietereinheit]  [Verwalten]               |
-|                                                  |
-|  --- Ab hier: Detail fuer gewaehlten Kontext --- |
-|  KPI-Zeile (5 Cards)                             |
-|  Charts (Vermoegen + EUeR)                       |
-|  Tabelle (Immobilienportfolio)                    |
-|  Investment-Kalkulation                           |
-+--------------------------------------------------+
++-----------+  +-----------+  +-----------+
+|  WIDGET 1 |  |  WIDGET 2 |  |  WIDGET 3 |
+|           |  |           |  |           |
+|   Alle    |  |  Familie  |  |    +      |
+| Immobilien|  | Mustermann|  |   Neue    |
+|           |  |           |  | Vermieter-|
+| 5 Objekte |  | 3 Objekte |  |  einheit  |
+| KPIs      |  | KPIs      |  |  anlegen  |
++-----------+  +-----------+  +-----------+
 ```
 
-## Design-Konzept
+- **Widget 1**: "Alle Immobilien" — Gesamtportfolio-KPIs (Objekte, Verkehrswert, Rendite). Immer vorhanden.
+- **Widget 2**: Erster vorhandener Kontext (z.B. "Familie Mustermann") — kontext-spezifische KPIs. Bei Klick wird gefiltert.
+- **Widget 3**: "Neue Vermietereinheit anlegen" — Plus-Icon, Klick oeffnet den CreateContextDialog. Kein KPI-Inhalt, sondern ein Call-to-Action-Widget im gleichen Design.
 
-Jedes der 3 Widgets ist eine grosse Kachel im `WidgetGrid` (max 4 Spalten, `aspect-square` Desktop, `h-[260px]` Mobile):
+Falls mehr als 1 Kontext existiert, werden Widget 2..N dynamisch eingefuegt und das "Anlegen"-Widget rutscht ans Ende (max 4 Spalten im Grid).
 
-- **Widget 1 "Alle Immobilien"**: Zeigt Gesamtportfolio-KPIs (Objekte, Verkehrswert, Rendite). Klick = kein Kontext-Filter (alle Daten).
-- **Widget 2 "Familie Mustermann"** (oder andere private Kontexte): Zeigt kontext-spezifische KPIs. Klick = filtert auf diesen Kontext.
-- **Widget 3 "Firma XY GmbH"** (geschaeftliche Kontexte): Analog zu Widget 2.
+## Aenderung
 
-Bei Klick auf ein Widget wird dieses visuell hervorgehoben (ring-2, border-primary) und die darunter liegenden KPIs, Charts und Tabelle aktualisieren sich auf den gewaehlten Kontext — genau wie bisher, aber ohne die kleinen redundanten Kacheln.
+Nur eine Datei: `src/pages/portal/immobilien/PortfolioTab.tsx`
 
-## Betroffene Dateien
+### Was wird entfernt
+- Der separate "Verwalten"-Button (Zeilen 761-770)
+- Das Collapsible ContextManager-Panel (Zeilen 772-778)
+- Die Collapsible/ContextManager-Imports und der `showContextManager`-State
 
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/immobilien/PortfolioTab.tsx` | Kompletter Umbau der Kontext-Auswahl: Kleine Kacheln (Zeilen 631-709) ersetzen durch WidgetGrid mit 3 grossen WidgetCells. KPI-Zeile (Zeilen 718-745) bleibt, wandert unter die Widget-Auswahl. "Verwalten"-Button wird als kleine Aktion unter den Widgets platziert |
+### Was wird geaendert
+- Die dynamische Widget-Schleife (Zeilen 709-757) bleibt, aber nach dem letzten Kontext-Widget kommt ein **festes drittes Widget** als "Neue Vermietereinheit anlegen" (Plus-Icon, gleiche Card-Groesse, gleicher WidgetHeader-Stil)
+- Klick auf das dritte Widget oeffnet direkt den `CreateContextDialog` (bereits importiert und vorhanden in KontexteTab/ContextManager)
+- Fuer die Verwaltung bestehender Kontexte: Klick auf ein Kontext-Widget waehlt es aus UND zeigt optional einen kleinen "Bearbeiten"-Link im Widget selbst (statt separatem Panel)
 
-## Keine weiteren Dateien betroffen
+### Technisch
 
-- Keine Manifest-Aenderung (Tiles/Routen bleiben gleich)
-- Keine DB-Migration (tile_catalog unveraendert)
-- Keine Spec/Audit-Aenderung (rein visuelles Redesign innerhalb PortfolioTab)
-- ContextManager-Collapsible bleibt funktional
-
-## Technische Umsetzung
-
-### Widget-Karten Inhalt
-
-Jede Widget-Karte zeigt:
-- **Header**: Icon-Box + Kontext-Name (via WidgetHeader)
-- **Badge**: "Privat" oder "Geschaeftlich"
-- **Mini-KPIs**: Objekte, Verkehrswert, Rendite (3 kompakte Zeilen)
-- **Visueller Zustand**: Ausgewaehlte Karte hat `ring-2 ring-primary border-primary`
-
-### Dynamisches Grid
-
-- 1 Kontext = 1 Widget (Spalte)
-- "Alle" ist immer Widget 1
-- Kontexte werden dynamisch aus der DB geladen (wie bisher)
-- Bei mehr als 3 Kontexten: 4. Spalte nutzen (max 4 im Grid)
-- "Verwalten" und "+ Neue Einheit" als Buttons unterhalb des Grids
-
-### Imports
-
-Nutzt bestehende Shared-Komponenten:
-- `WidgetGrid` (variant="widget")
-- `WidgetCell`
-- `WidgetHeader`
+- `WidgetGrid`, `WidgetCell`, `WidgetHeader` werden weiterhin genutzt
+- Das "Anlegen"-Widget nutzt `WidgetHeader` mit `Plus`-Icon und Title "Neue Vermietereinheit"
+- Der `CreateContextDialog` wird direkt in PortfolioTab importiert und per State gesteuert
+- `ContextManager`-Import und Collapsible werden entfernt
 
