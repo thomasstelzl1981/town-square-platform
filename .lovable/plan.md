@@ -1,80 +1,65 @@
 
-# Reparaturplan: Demo-Widgets Privatkredit und Finanzierungsanfrage
+# Reparaturplan: Sanierung Demo-Daten an echtes MOD-04 Objekt koppeln
 
-## Problem 1: GP-PRIVATKREDIT — Demo-Widget nicht klickbar
+## Ist-Zustand
 
-**Ursache:** `ConsumerLoanWidgets` hat eine `onSelectCase`-Prop mit `onClick={() => onSelectCase?.('__demo__')}`. Aber `PrivatkreditTab.tsx` rendert `<ConsumerLoanWidgets />` ohne diese Prop zu uebergeben. Der Klick laeuft ins Leere.
+Das Demo-Widget und die Inline-Akte zeigen ein frei erfundenes "EFH Berlin, Prenzlauer Allee 88" mit energetischer Sanierung (Fassade, Fenster, Dach, Waermepumpe). Dieses Objekt existiert nicht in der Datenbank.
 
-**Loesung:** In `PrivatkreditTab.tsx` einen `activeCaseId`-State einfuehren und `onSelectCase` an `ConsumerLoanWidgets` uebergeben. Wenn `__demo__` ausgewaehlt wird, werden die darunterliegenden Formular-Sektionen mit Demo-Daten (25.000 EUR, 60 Monate, 4,9%) vorbefuellt und als Demo-Modus markiert.
+## Soll-Zustand
 
-**Aenderungen:**
-- `src/pages/portal/finanzierung/PrivatkreditTab.tsx`: State `activeCaseId` hinzufuegen, `onSelectCase` und `activeCaseId` an `ConsumerLoanWidgets` durchreichen. Bei `__demo__`-Auswahl Demo-Werte in die Formularfelder setzen.
+Die Demo-Sanierung referenziert das echte MOD-04-Demo-Objekt **BER-01** (Schadowstr., 10117 Berlin, ETW, 85 m², WE-B01) und zeigt eine **Kernsanierung der Wohnung** mit neuen Boeden und neuen Baedern im mittleren Standard.
 
----
+## Aenderungen
 
-## Problem 2: Demo-Widgets verschwinden bei Toggle-Deaktivierung
+### 1. goldenPathProcesses.ts — Widget-Metadaten aktualisieren
 
-**Ursache:** Beide Widget-Dateien verwenden `{showDemo && (<WidgetCell>...</WidgetCell>)}`. Wenn der Toggle aus ist, wird das gesamte Widget aus dem DOM entfernt — statt nur die Demo-Daten zu entfernen.
+Die `demoWidget`-Felder fuer `GP-SANIERUNG` anpassen:
+- **title**: "Demo: Kernsanierung BER-01" (statt "Sanierung EFH Berlin")
+- **subtitle**: "Schadowstr., Berlin — Boeden und Baeder, mittlerer Standard"
+- **badgeLabel**: bleibt "DEMO"
 
-**Erwartetes Verhalten:** Das Demo-Widget bleibt immer sichtbar und schaltbar. Der Toggle steuert nur, ob die Demo-Daten unterhalb (Formulare, Detail-Ansichten) angezeigt werden.
+### 2. SanierungTab.tsx — Inline-Detail komplett ueberarbeiten
 
-**Loesung:** In beiden Dateien die Bedingung aendern:
-- Das Widget wird **immer** gerendert (ohne `{showDemo && ...}`)
-- Wenn der Toggle **aus** ist: Das Widget zeigt einen "deaktiviert"-Zustand (ausgegraut, kein `cursor-pointer`, kein `onClick`)
-- Wenn der Toggle **an** ist: Normales interaktives Verhalten mit smaragdgruenem Demo-Styling
+Die hartkodierten Demo-Daten (Zeilen 138-227) ersetzen durch realistische Kernsanierung fuer BER-01:
 
-**Aenderungen:**
-- `src/components/privatkredit/ConsumerLoanWidgets.tsx` (Zeilen 110-136): `{showDemo && ...}` ersetzen durch permanentes Rendering mit bedingtem Styling
-- `src/components/finanzierung/FinanceRequestWidgets.tsx` (Zeilen 88-115): Gleiches Muster
+**Header:**
+- Titel: "Kernsanierung WE-B01 — Schadowstr., Berlin"
+- Adresse: Schadowstr., 10117 Berlin, ETW, 85 m²
+- Kategorie: Kernsanierung (statt "Energetisch")
 
----
+**Leistungsverzeichnis (linke Spalte) — 5 Positionen, mittlerer Standard:**
 
-## Technische Details
+| Pos | Leistung | Kosten |
+|-----|----------|--------|
+| 1 | Bodenbelag Wohnraeume (Eiche Landhausdiele, 65 m²) | 5.850 EUR |
+| 2 | Bodenbelag Nassraeume (Feinsteinzeug 60x60, 20 m²) | 2.400 EUR |
+| 3 | Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen) | 8.500 EUR |
+| 4 | Gaeste-WC Sanierung (WC, Handwaschbecken, Spiegel) | 3.200 EUR |
+| 5 | Malerarbeiten Waende und Decken (85 m² Wohnflaeche) | 2.550 EUR |
+| | **Gesamt** | **22.500 EUR** |
 
-### ConsumerLoanWidgets.tsx — Vorher:
-```
-{showDemo && (
-  <WidgetCell>
-    <Card onClick={() => onSelectCase?.('__demo__')}>
-      ...
-    </Card>
-  </WidgetCell>
-)}
-```
+**Dienstleister und Angebote (rechte Spalte):**
 
-### ConsumerLoanWidgets.tsx — Nachher:
-```
-<WidgetCell>
-  <Card
-    className={cn(
-      'h-full transition-all',
-      showDemo
-        ? [DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER, 'cursor-pointer']
-        : 'opacity-50 grayscale cursor-default'
-    )}
-    onClick={() => showDemo && onSelectCase?.('__demo__')}
-  >
-    ...
-  </Card>
-</WidgetCell>
-```
+| Firma | Status | Betrag |
+|-------|--------|--------|
+| Berliner Badsanierung GmbH | Angebot erhalten | 21.800 EUR |
+| Boden- und Fliesenwerk Mitte | Angebot erhalten | 23.900 EUR |
+| Sanierung Plus Berlin | Ausstehend | – |
 
-### FinanceRequestWidgets.tsx — Gleiches Muster:
-- Widget immer sichtbar
-- Bei Toggle aus: ausgegraut, kein Klick-Handler
-- Bei Toggle an: Navigation zu `__demo__`-Route
+Bestes Angebot: Berliner Badsanierung GmbH — 21.800 EUR (3% unter Budget)
 
-### PrivatkreditTab.tsx — Demo-Interaktivitaet:
-- Neuer State: `const [activeCaseId, setActiveCaseId] = useState<string | undefined>()`
-- Widget-Aufruf: `<ConsumerLoanWidgets activeCaseId={activeCaseId} onSelectCase={setActiveCaseId} />`
-- Wenn `activeCaseId === '__demo__'`: Formularfelder mit Demo-Werten befuellen (amount=25000, term=60)
+**Widget-Footer:** Budget: 22.500 EUR, 5 Positionen
+
+### 3. demoDataManifest.ts — Beschreibung anpassen
+
+Consumer-Description aendern von "Demo-Guard fuer EFH Berlin" auf "Demo: Kernsanierung BER-01 Schadowstr."
 
 ---
 
-## Zusammenfassung
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `ConsumerLoanWidgets.tsx` | Widget immer rendern, bedingtes Styling |
-| `FinanceRequestWidgets.tsx` | Widget immer rendern, bedingtes Styling |
-| `PrivatkreditTab.tsx` | `activeCaseId` + `onSelectCase` Props durchreichen, Demo-Daten bei Klick laden |
+| `src/manifests/goldenPathProcesses.ts` | Widget title/subtitle |
+| `src/pages/portal/immobilien/SanierungTab.tsx` | Komplettes Inline-Detail (Zeilen 66-227) |
+| `src/manifests/demoDataManifest.ts` | Consumer-Description |
