@@ -7,8 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
-import { UnitDossierView } from '@/components/immobilienakte';
-import type { UnitDossierData } from '@/types/immobilienakte';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -184,11 +182,6 @@ export function PortfolioTab() {
         .eq('tenant_id', activeTenantId)
         .eq('properties.status', 'active');
       
-      // Filter out demo properties when demo toggle is off
-      if (!demoEnabled) {
-        unitsQuery = unitsQuery.eq('properties.is_demo', false);
-      }
-      
       const { data: units, error: unitsError } = await unitsQuery;
 
       if (unitsError) {
@@ -222,11 +215,6 @@ export function PortfolioTab() {
           .from('loans')
           .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
           .eq('tenant_id', activeTenantId);
-        
-        // Filter out demo property loans when demo toggle is off
-        if (!demoEnabled) {
-          loansQuery = loansQuery.not('property_id', 'in', '(d0000000-0000-4000-a000-000000000001,d0000000-0000-4000-a000-000000000002,d0000000-0000-4000-a000-000000000003)');
-        }
         
         const { data: loansResult, error: loansError } = await loansQuery;
         
@@ -276,8 +264,27 @@ export function PortfolioTab() {
         }
       });
 
+      // Post-fetch filter: remove demo properties when demo is off
+      let filteredUnitsData = units || [];
+      if (!demoEnabled) {
+        filteredUnitsData = filteredUnitsData.filter(u => !(u.properties as any)?.is_demo);
+      }
+
+      // Also filter loans post-fetch
+      if (!demoEnabled) {
+        const demoPropertyIds = new Set(
+          filteredUnitsData.length === (units?.length || 0) ? [] :
+          (units || []).filter(u => (u.properties as any)?.is_demo).map(u => (u.properties as any)?.id)
+        );
+        // Remove loans for demo properties
+        const demoPropIds = (units || [])
+          .filter(u => (u.properties as any)?.is_demo)
+          .map(u => (u.properties as any)?.id);
+        loans = loans.filter(l => !demoPropIds.includes(l.property_id));
+      }
+
       // Transform to flat structure with ANNUAL values
-      return units?.map(u => {
+      return filteredUnitsData.map(u => {
         const prop = u.properties as any;
         const loan = loanMap.get(prop.id);
         const leaseInfo = leaseMap.get(u.id);
@@ -322,7 +329,7 @@ export function PortfolioTab() {
           tenant_name: tenantName,
           leases_count: leasesCount,
         } as UnitWithProperty;
-      }) || [];
+      });
     },
     enabled: !!activeTenantId,
   });
@@ -673,96 +680,6 @@ export function PortfolioTab() {
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
-  const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null);
-
-  // Hardcoded Demo Dossier Data for UnitDossierView
-  const DEMO_DOSSIER_DATA: UnitDossierData = {
-    unitCode: 'WE-B01',
-    address: 'Schadowstr. 12, 10117 Berlin',
-    locationLabel: 'Berlin-Mitte',
-    status: 'VERMIETET',
-    asofDate: '2026-02-01',
-    dataQuality: 'OK',
-    propertyId: 'd0000000-0000-4000-a000-000000000001',
-    unitId: 'd0000000-0000-4000-b000-000000000001',
-    tenantId: 'a0000000-0000-4000-a000-000000000001',
-    publicId: 'DEMO-B01',
-    propertyType: 'MFH',
-    category: 'einzelobjekt',
-    propertyStatus: 'aktiv',
-    saleEnabled: false,
-    rentalManaged: true,
-    reportingRegime: 'VuV',
-    street: 'Schadowstr.',
-    houseNumber: '12',
-    postalCode: '10117',
-    city: 'Berlin',
-    buildYear: 1912,
-    usageType: 'wohnen',
-    areaLivingSqm: 202,
-    roomsCount: 7,
-    bathroomsCount: 3,
-    heatingType: 'zentralheizung',
-    energySource: 'gas',
-    energyCertValue: 128,
-    energyCertValidUntil: '2030-06-15',
-    featuresTags: ['Altbau', 'Stuck', 'Dielen', 'Balkon', 'Aufzug'],
-    wegFlag: true,
-    meaOrTeNo: '125/1000',
-    meaShare: 125,
-    meaTotal: 1000,
-    tenancyStatus: 'ACTIVE',
-    leaseType: 'unbefristet',
-    startDate: '2021-03-01',
-    rentColdEur: 850,
-    nkAdvanceEur: 180,
-    heatingAdvanceEur: 120,
-    rentWarmEur: 1150,
-    paymentDueDay: 3,
-    depositAmountEur: 2550,
-    depositStatus: 'PAID',
-    rentModel: 'INDEX',
-    nextRentAdjustmentDate: '2027-03-01',
-    periodCurrent: '2025',
-    allocationKeyDefault: 'MEA',
-    lastSettlementDate: '2025-06-30',
-    lastSettlementBalanceEur: -145,
-    hausgeldMonthlyEur: 380,
-    allocatablePaEur: 2800,
-    nonAllocatablePaEur: 1760,
-    topCostBlocks: { 'Heizung': 1200, 'Wasser': 480, 'Müll': 360, 'Versicherung': 520, 'Verwalter': 600 },
-    bankName: 'Sparkasse Berlin',
-    loanNumber: 'SPK-2021-44821',
-    outstandingBalanceEur: 520000,
-    outstandingBalanceAsof: '2026-01-31',
-    interestRatePercent: 2.8,
-    fixedInterestEndDate: '2031-02-28',
-    annuityMonthlyEur: 2080,
-    specialRepaymentRight: { enabled: true, amountEur: 26000 },
-    contactPerson: { name: 'Hr. Breitner', phone: '+49 30 1234-5678', email: 'breitner@spk-berlin.de' },
-    purchasePriceEur: 750000,
-    purchaseCostsEur: 82500,
-    valuationEur: 850000,
-    netColdRentPaEur: 10200,
-    nonAllocCostsPaEur: 1760,
-    cashflowPreTaxMonthlyEur: -1378,
-    grossYieldPercent: 3.95,
-    netYieldPercent: 3.27,
-    landRegisterShort: 'AG Mitte, Blatt 4821',
-    managerContact: { name: 'WEG Hausverwaltung Berlin GmbH', phone: '+49 30 9988-7766' },
-    afaMethod: 'linear',
-    coaVersion: 'SKR04',
-    documents: [
-      { docType: 'kaufvertrag', label: 'Kaufvertrag', status: 'complete' },
-      { docType: 'grundbuch', label: 'Grundbuchauszug', status: 'complete' },
-      { docType: 'teilungserklaerung', label: 'Teilungserklärung', status: 'complete' },
-      { docType: 'mietvertrag', label: 'Mietvertrag', status: 'complete' },
-      { docType: 'energieausweis', label: 'Energieausweis', status: 'review' },
-      { docType: 'wohngeldabrechnung', label: 'Wohngeldabrechnung 2024', status: 'complete' },
-      { docType: 'darlehensvertrag', label: 'Darlehensvertrag', status: 'missing' },
-      { docType: 'versicherung', label: 'Gebäudeversicherung', status: 'review' },
-    ],
-  };
 
   if (unitsLoading) {
     return (
@@ -778,18 +695,14 @@ export function PortfolioTab() {
       {/* Portfolio Context Widgets — WidgetGrid (IMMER sichtbar) */}
       <div className="space-y-4">
         <WidgetGrid variant="widget">
-          {/* Demo Widget — Position 0, IMMER klickbar */}
+          {/* Demo Widget — Position 0, visueller Indikator (kein Dossier) */}
           {demoEnabled && (
             <WidgetCell>
-              <button
-                onClick={() => setSelectedDemoId(selectedDemoId === 'd0000000-0000-4000-a000-000000000001' ? null : 'd0000000-0000-4000-a000-000000000001')}
+              <div
                 className={cn(
-                  "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                  "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left",
                   DESIGN.DEMO_WIDGET.CARD,
-                  DESIGN.DEMO_WIDGET.HOVER,
-                   selectedDemoId === 'd0000000-0000-4000-a000-000000000001'
-                    ? "ring-2 ring-emerald-500 border-emerald-400 shadow-sm"
-                    : ""
+                  "ring-2 ring-emerald-500 border-emerald-400 shadow-sm"
                 )}
               >
                 <div>
@@ -819,7 +732,7 @@ export function PortfolioTab() {
                     <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(330000)}</span>
                   </div>
                 </div>
-              </button>
+              </div>
             </WidgetCell>
           )}
             {/* Widget 1: Alle Immobilien */}
@@ -932,15 +845,6 @@ export function PortfolioTab() {
           </WidgetGrid>
         </div>
 
-      {/* Demo Inline-Detail — Vollständige Immobilienakte */}
-      {selectedDemoId === 'd0000000-0000-4000-a000-000000000001' && (
-        <div className="pt-2">
-          <div className="flex justify-end mb-2">
-            <button onClick={() => setSelectedDemoId(null)} className="text-muted-foreground hover:text-foreground text-sm">✕ Schließen</button>
-          </div>
-          <UnitDossierView data={DEMO_DOSSIER_DATA} />
-        </div>
-      )}
 
       {/* CreateContextDialog */}
       <CreateContextDialog 
