@@ -1,5 +1,6 @@
 /**
  * BestandCalculation — 30-Year Hold Projection with Charts
+ * CI-konform: DESIGN Tokens für Farben, Typografie, Cards
  */
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, TrendingUp, Loader2, RefreshCcw } from 'lucide-react';
 import { useRunCalcBestand } from '@/hooks/useAcqOffers';
+import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Line
@@ -23,7 +26,8 @@ interface BestandCalculationProps {
     units?: number;
     areaSqm?: number;
   };
-  temporary?: boolean; // For standalone calculator (no DB save)
+  temporary?: boolean;
+  hideQuickAnalysis?: boolean;
 }
 
 interface CalcParams {
@@ -49,7 +53,7 @@ interface YearlyData {
   equity: number;
 }
 
-export function BestandCalculation({ offerId, initialData, temporary = false }: BestandCalculationProps) {
+export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false }: BestandCalculationProps) {
   const runCalc = useRunCalcBestand();
   
   const [params, setParams] = React.useState<CalcParams>({
@@ -115,10 +119,8 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
       });
     }
 
-    // Find year when fully repaid
     const fullRepaymentYear = yearlyData.findIndex(d => d.remainingDebt <= 0) + 1 || 30;
 
-    // 40-year values for highlight KPIs
     let value40 = purchasePrice;
     for (let i = 0; i < 40; i++) {
       value40 *= (1 + valueIncreaseRate / 100);
@@ -128,26 +130,16 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
     const roi = equity > 0 ? ((wealthGrowth / equity) * 100) : 0;
 
     return {
-      totalInvestment,
-      equity,
-      loanAmount,
-      yearlyAnnuity,
-      monthlyRate,
-      grossYield,
-      maxFinancing,
-      yearlyData,
-      fullRepaymentYear,
-      totalInterest,
-      totalRepayment,
+      totalInvestment, equity, loanAmount, yearlyAnnuity, monthlyRate,
+      grossYield, maxFinancing, yearlyData, fullRepaymentYear,
+      totalInterest, totalRepayment,
       value10: yearlyData[9]?.propertyValue || 0,
       value20: yearlyData[19]?.propertyValue || 0,
       debt10: yearlyData[9]?.remainingDebt || 0,
       debt20: yearlyData[19]?.remainingDebt || 0,
       wealth10: yearlyData[9]?.equity || 0,
       wealth20: yearlyData[19]?.equity || 0,
-      value40,
-      wealthGrowth,
-      roi,
+      value40, wealthGrowth, roi,
     };
   }, [params]);
 
@@ -161,161 +153,116 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
 
   return (
     <div className="space-y-6">
-      {/* Quick Analysis */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Schnellanalyse</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground">Gesamtinvestition</div>
-              <div className="text-xl font-bold">{formatCurrency(calculation.totalInvestment)}</div>
+      {/* Quick Analysis — only if not hidden by parent */}
+      {!hideQuickAnalysis && (
+        <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
+          <CardHeader className="pb-2">
+            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
+                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.totalInvestment)}</div>
+              </div>
+              <div>
+                <div className={DESIGN.TYPOGRAPHY.HINT}>Max. Finanzierbarkeit</div>
+                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.maxFinancing)}</div>
+              </div>
+              <div>
+                <div className={DESIGN.TYPOGRAPHY.HINT}>EK-Bedarf</div>
+                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.equity)}</div>
+              </div>
+              <div>
+                <div className={DESIGN.TYPOGRAPHY.HINT}>Bruttorendite</div>
+                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{calculation.grossYield.toFixed(2)}%</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Max. Finanzierbarkeit</div>
-              <div className="text-xl font-bold">{formatCurrency(calculation.maxFinancing)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">EK-Bedarf</div>
-              <div className="text-xl font-bold">{formatCurrency(calculation.equity)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Bruttorendite</div>
-              <div className="text-xl font-bold">{calculation.grossYield.toFixed(2)}%</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sliders */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
             <Calculator className="h-5 w-5" />
             Finanzierungsparameter
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Equity */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Eigenkapital</Label>
-                <span className="text-sm font-medium">{params.equityPercent}% ({formatCurrency(calculation.equity)})</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.equityPercent}% ({formatCurrency(calculation.equity)})</span>
               </div>
-              <Slider
-                value={[params.equityPercent]}
-                min={5}
-                max={50}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, equityPercent: v }))}
-              />
+              <Slider value={[params.equityPercent]} min={5} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, equityPercent: v }))} />
             </div>
-
-            {/* Interest Rate */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Zinssatz p.a.</Label>
-                <span className="text-sm font-medium">{params.interestRate.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.interestRate.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.interestRate * 10]}
-                min={10}
-                max={80}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, interestRate: v / 10 }))}
-              />
+              <Slider value={[params.interestRate * 10]} min={10} max={80} step={1} onValueChange={([v]) => setParams(p => ({ ...p, interestRate: v / 10 }))} />
             </div>
-
-            {/* Repayment Rate */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Tilgung p.a.</Label>
-                <span className="text-sm font-medium">{params.repaymentRate.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.repaymentRate.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.repaymentRate * 10]}
-                min={5}
-                max={50}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, repaymentRate: v / 10 }))}
-              />
+              <Slider value={[params.repaymentRate * 10]} min={5} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, repaymentRate: v / 10 }))} />
             </div>
-
-            {/* Rent Increase */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Mietsteigerung p.a.</Label>
-                <span className="text-sm font-medium">{params.rentIncreaseRate.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.rentIncreaseRate.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.rentIncreaseRate * 10]}
-                min={0}
-                max={50}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, rentIncreaseRate: v / 10 }))}
-              />
+              <Slider value={[params.rentIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, rentIncreaseRate: v / 10 }))} />
             </div>
-
-            {/* Value Increase */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Wertsteigerung p.a.</Label>
-                <span className="text-sm font-medium">{params.valueIncreaseRate.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.valueIncreaseRate.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.valueIncreaseRate * 10]}
-                min={0}
-                max={50}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, valueIncreaseRate: v / 10 }))}
-              />
+              <Slider value={[params.valueIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, valueIncreaseRate: v / 10 }))} />
             </div>
-
-            {/* Management Costs */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Verwaltungskosten</Label>
-                <span className="text-sm font-medium">{params.managementCostPercent}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.managementCostPercent}%</span>
               </div>
-              <Slider
-                value={[params.managementCostPercent]}
-                min={10}
-                max={40}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, managementCostPercent: v }))}
-              />
+              <Slider value={[params.managementCostPercent]} min={10} max={40} step={1} onValueChange={([v]) => setParams(p => ({ ...p, managementCostPercent: v }))} />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Financing Overview */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle>Finanzierungsübersicht</CardTitle>
+          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Finanzierungsübersicht</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-5 gap-4 text-center">
             <div>
-              <div className="text-xs text-muted-foreground">Gesamtinvest.</div>
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvest.</div>
               <div className="font-bold">{formatCurrency(calculation.totalInvestment)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Eigenkapital</div>
-              <div className="font-bold text-green-600">{formatCurrency(calculation.equity)}</div>
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Eigenkapital</div>
+              <div className="font-bold text-emerald-500">{formatCurrency(calculation.equity)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Darlehen</div>
-              <div className="font-bold text-blue-600">{formatCurrency(calculation.loanAmount)}</div>
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Darlehen</div>
+              <div className="font-bold text-primary">{formatCurrency(calculation.loanAmount)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Annuität p.a.</div>
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Annuität p.a.</div>
               <div className="font-bold">{formatCurrency(calculation.yearlyAnnuity)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Rate mtl.</div>
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Rate mtl.</div>
               <div className="font-bold">{formatCurrency(calculation.monthlyRate)}</div>
             </div>
           </div>
@@ -323,9 +270,9 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
       </Card>
 
       {/* Amortization Chart */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle>Tilgungsplan (30 Jahre)</CardTitle>
+          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Tilgungsplan (30 Jahre)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80">
@@ -335,10 +282,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
                 <XAxis dataKey="year" />
                 <YAxis yAxisId="left" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                 <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelFormatter={(label) => `Jahr ${label}`}
-                />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Zinsen" />
                 <Bar yAxisId="left" dataKey="repayment" stackId="a" fill="hsl(var(--primary))" name="Tilgung" />
@@ -350,9 +294,9 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
       </Card>
 
       {/* Wealth Chart */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
             <TrendingUp className="h-5 w-5" />
             Vermögensentwicklung (30 Jahre)
           </CardTitle>
@@ -364,10 +308,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
                 <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelFormatter={(label) => `Jahr ${label}`}
-                />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
                 <Legend />
                 <Area type="monotone" dataKey="propertyValue" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" name="Objektwert" />
                 <Area type="monotone" dataKey="remainingDebt" fill="hsl(var(--destructive))" fillOpacity={0.3} stroke="hsl(var(--destructive))" name="Restschuld" />
@@ -380,9 +321,9 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
 
       {/* Summary */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card>
+        <Card className={DESIGN.CARD.BASE}>
           <CardHeader>
-            <CardTitle>Finanzierung</CardTitle>
+            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Finanzierung</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
@@ -404,9 +345,9 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={DESIGN.CARD.BASE}>
           <CardHeader>
-            <CardTitle>Vermögensentwicklung</CardTitle>
+            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Vermögensentwicklung</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
@@ -417,11 +358,11 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
               <span className="text-muted-foreground">Restschuld nach 20J</span>
               <span className="font-medium">{formatCurrency(calculation.debt20)}</span>
             </div>
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-emerald-500">
               <span>Vermögen nach 10J</span>
               <span className="font-medium">{formatCurrency(calculation.wealth10)}</span>
             </div>
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-emerald-500">
               <span>Vermögen nach 20J</span>
               <span className="font-medium">{formatCurrency(calculation.wealth20)}</span>
             </div>
@@ -430,26 +371,26 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
       </div>
 
       {/* Highlight KPIs */}
-      <Card className="bg-gradient-to-r from-primary/10 to-green-500/10 border-primary/20">
+      <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
         <CardContent className="py-6">
           <div className="grid grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Objektwert nach 40J</div>
-              <div className="text-3xl font-bold text-primary">{formatCurrency(calculation.value40)}</div>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Objektwert nach 40J</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-primary')}>{formatCurrency(calculation.value40)}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Vermögenszuwachs gesamt</div>
-              <div className="text-3xl font-bold text-green-600">{formatCurrency(calculation.wealthGrowth)}</div>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Vermögenszuwachs gesamt</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-emerald-500')}>{formatCurrency(calculation.wealthGrowth)}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground mb-1">ROI auf EK</div>
-              <div className="text-3xl font-bold text-amber-600">{calculation.roi.toFixed(1)}%</div>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>ROI auf EK</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-amber-500')}>{calculation.roi.toFixed(1)}%</div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Save Button (only for non-temporary) */}
+      {/* Save Button */}
       {!temporary && offerId && (
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => setParams(p => ({ ...p }))}>
@@ -464,9 +405,9 @@ export function BestandCalculation({ offerId, initialData, temporary = false }: 
       )}
 
       {temporary && (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.WARNING)}>
           <CardContent className="py-3">
-            <p className="text-sm text-amber-700">
+            <p className={DESIGN.TYPOGRAPHY.MUTED}>
               <strong>Hinweis:</strong> Diese Kalkulation wird nicht gespeichert. 
               Um sie zu speichern, erstellen Sie einen Objekteingang.
             </p>

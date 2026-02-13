@@ -1,5 +1,6 @@
 /**
  * AufteilerCalculation — Flip/Partition Calculation
+ * CI-konform: DESIGN Tokens für Farben, Typografie, Cards
  */
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, TrendingUp, Loader2, RefreshCcw, ArrowRight, Euro } from 'lucide-react';
 import { useRunCalcAufteiler } from '@/hooks/useAcqOffers';
+import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, Cell
@@ -54,7 +57,6 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
     projectCosts: 0,
   });
 
-  // Calculate everything
   const calculation = React.useMemo(() => {
     const {
       purchasePrice, yearlyRent, targetYield, salesCommission,
@@ -62,33 +64,23 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       equityPercent, projectCosts
     } = params;
 
-    // Costs
     const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
     const totalAcquisitionCosts = purchasePrice + ancillaryCosts + projectCosts;
-    
-    // Financing during holding
     const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
     const equity = totalAcquisitionCosts * (equityPercent / 100);
     const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-    
-    // Income during holding
     const rentIncome = yearlyRent * (holdingPeriodMonths / 12);
-    
-    // Net costs
     const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
 
-    // Sales
     const salesPriceGross = yearlyRent / (targetYield / 100);
     const factor = salesPriceGross / yearlyRent;
     const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
     const salesPriceNet = salesPriceGross - salesCommissionAmount;
 
-    // Result
     const profit = salesPriceNet - netCosts;
     const profitMargin = salesPriceNet > 0 ? (profit / salesPriceNet) * 100 : 0;
     const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
 
-    // Sensitivity analysis
     const sensitivityData = [
       { yield: targetYield - 0.5, label: `${(targetYield - 0.5).toFixed(1)}%` },
       { yield: targetYield, label: `${targetYield.toFixed(1)}%` },
@@ -98,32 +90,14 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       const comm = price * (salesCommission / 100);
       const net = price - comm;
       const prof = net - netCosts;
-      return {
-        ...item,
-        salesPrice: price,
-        profit: prof,
-      };
+      return { ...item, salesPrice: price, profit: prof };
     });
 
     return {
-      // Costs
-      ancillaryCosts,
-      totalAcquisitionCosts,
-      loanAmount,
-      equity,
-      interestCosts,
-      rentIncome,
-      netCosts,
-      // Sales
-      salesPriceGross,
-      factor,
-      salesCommissionAmount,
-      salesPriceNet,
-      // Result
-      profit,
-      profitMargin,
-      roiOnEquity,
-      sensitivityData,
+      ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
+      interestCosts, rentIncome, netCosts,
+      salesPriceGross, factor, salesCommissionAmount, salesPriceNet,
+      profit, profitMargin, roiOnEquity, sensitivityData,
     };
   }, [params]);
 
@@ -135,71 +109,39 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
     runCalc.mutate({ offerId, params: params as unknown as Record<string, unknown> });
   };
 
-  // Chart data for costs vs revenue
-  const chartData = [
-    { name: 'Kaufpreis', value: params.purchasePrice, type: 'cost' },
-    { name: 'Nebenkosten', value: calculation.ancillaryCosts, type: 'cost' },
-    { name: 'Projektkosten', value: params.projectCosts, type: 'cost' },
-    { name: 'Zinskosten', value: calculation.interestCosts, type: 'cost' },
-    { name: 'Mieteinnahmen', value: -calculation.rentIncome, type: 'income' },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Sliders */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
             <Calculator className="h-5 w-5" />
             Stellschrauben
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Target Yield */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Zielrendite Endkunde</Label>
-                <span className="text-sm font-medium">{params.targetYield.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.targetYield.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.targetYield * 10]}
-                min={30}
-                max={60}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, targetYield: v / 10 }))}
-              />
-              <div className="text-xs text-muted-foreground">Faktor: {(100 / params.targetYield).toFixed(1)}x</div>
+              <Slider value={[params.targetYield * 10]} min={30} max={60} step={1} onValueChange={([v]) => setParams(p => ({ ...p, targetYield: v / 10 }))} />
+              <div className={DESIGN.TYPOGRAPHY.HINT}>Faktor: {(100 / params.targetYield).toFixed(1)}x</div>
             </div>
-
-            {/* Sales Commission */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Vertriebsprovision</Label>
-                <span className="text-sm font-medium">{params.salesCommission.toFixed(1)}%</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.salesCommission.toFixed(1)}%</span>
               </div>
-              <Slider
-                value={[params.salesCommission * 10]}
-                min={30}
-                max={150}
-                step={5}
-                onValueChange={([v]) => setParams(p => ({ ...p, salesCommission: v / 10 }))}
-              />
+              <Slider value={[params.salesCommission * 10]} min={30} max={150} step={5} onValueChange={([v]) => setParams(p => ({ ...p, salesCommission: v / 10 }))} />
             </div>
-
-            {/* Holding Period */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Vertriebsdauer</Label>
-                <span className="text-sm font-medium">{params.holdingPeriodMonths} Monate</span>
+                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.holdingPeriodMonths} Monate</span>
               </div>
-              <Slider
-                value={[params.holdingPeriodMonths]}
-                min={6}
-                max={48}
-                step={1}
-                onValueChange={([v]) => setParams(p => ({ ...p, holdingPeriodMonths: v }))}
-              />
+              <Slider value={[params.holdingPeriodMonths]} min={6} max={48} step={1} onValueChange={([v]) => setParams(p => ({ ...p, holdingPeriodMonths: v }))} />
             </div>
           </div>
 
@@ -207,45 +149,29 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
 
           <div className="grid md:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <Label className="text-xs">Erwerbsnebenkosten (%)</Label>
-              <Input
-                type="number"
-                value={params.ancillaryCostPercent}
-                onChange={(e) => setParams(p => ({ ...p, ancillaryCostPercent: parseFloat(e.target.value) || 0 }))}
-              />
+              <Label className={DESIGN.TYPOGRAPHY.HINT}>Erwerbsnebenkosten (%)</Label>
+              <Input type="number" value={params.ancillaryCostPercent} onChange={(e) => setParams(p => ({ ...p, ancillaryCostPercent: parseFloat(e.target.value) || 0 }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Zinssatz p.a. (%)</Label>
-              <Input
-                type="number"
-                value={params.interestRate}
-                onChange={(e) => setParams(p => ({ ...p, interestRate: parseFloat(e.target.value) || 0 }))}
-              />
+              <Label className={DESIGN.TYPOGRAPHY.HINT}>Zinssatz p.a. (%)</Label>
+              <Input type="number" value={params.interestRate} onChange={(e) => setParams(p => ({ ...p, interestRate: parseFloat(e.target.value) || 0 }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Eigenkapitalanteil (%)</Label>
-              <Input
-                type="number"
-                value={params.equityPercent}
-                onChange={(e) => setParams(p => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))}
-              />
+              <Label className={DESIGN.TYPOGRAPHY.HINT}>Eigenkapitalanteil (%)</Label>
+              <Input type="number" value={params.equityPercent} onChange={(e) => setParams(p => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Projektkosten (EUR)</Label>
-              <Input
-                type="number"
-                value={params.projectCosts}
-                onChange={(e) => setParams(p => ({ ...p, projectCosts: parseFloat(e.target.value) || 0 }))}
-              />
+              <Label className={DESIGN.TYPOGRAPHY.HINT}>Projektkosten (EUR)</Label>
+              <Input type="number" value={params.projectCosts} onChange={(e) => setParams(p => ({ ...p, projectCosts: parseFloat(e.target.value) || 0 }))} />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Costs Section */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle className="text-destructive">Kosten</CardTitle>
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'text-destructive')}>Kosten</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -270,7 +196,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
               <span>+ Zinskosten ({params.holdingPeriodMonths} Mo.)</span>
               <span className="font-medium">+{formatCurrency(calculation.interestCosts)}</span>
             </div>
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-emerald-500">
               <span>− Mieteinnahmen ({params.holdingPeriodMonths} Mo.)</span>
               <span className="font-medium">−{formatCurrency(calculation.rentIncome)}</span>
             </div>
@@ -284,9 +210,9 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       </Card>
 
       {/* Revenue Section */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle className="text-green-600">Erlöse</CardTitle>
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'text-emerald-500')}>Erlöse</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -303,7 +229,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
               <span>Verkaufserlös brutto</span>
               <span>{formatCurrency(calculation.salesPriceGross)}</span>
             </div>
-            <div className="text-xs text-muted-foreground text-right">
+            <div className={cn(DESIGN.TYPOGRAPHY.HINT, 'text-right')}>
               = Miete / Rendite, Faktor {calculation.factor.toFixed(1)}x
             </div>
             <div className="flex justify-between text-destructive">
@@ -311,7 +237,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
               <span className="font-medium">−{formatCurrency(calculation.salesCommissionAmount)}</span>
             </div>
             <Separator />
-            <div className="flex justify-between text-lg font-bold text-green-600">
+            <div className="flex justify-between text-lg font-bold text-emerald-500">
               <span>Verkaufserlös netto</span>
               <span>{formatCurrency(calculation.salesPriceNet)}</span>
             </div>
@@ -320,24 +246,28 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       </Card>
 
       {/* Result */}
-      <Card className={`border-2 ${calculation.profit >= 0 ? 'border-green-500 bg-green-50/50' : 'border-destructive bg-destructive/5'}`}>
+      <Card className={cn(
+        DESIGN.CARD.BASE,
+        'border-2',
+        calculation.profit >= 0 ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-destructive bg-destructive/5'
+      )}>
         <CardContent className="py-6">
           <div className="grid grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Gewinn</div>
-              <div className={`text-3xl font-bold ${calculation.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Gewinn</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, calculation.profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>
                 {formatCurrency(calculation.profit)}
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Gewinnmarge auf Erlös</div>
-              <div className={`text-3xl font-bold ${calculation.profitMargin >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Gewinnmarge auf Erlös</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, calculation.profitMargin >= 0 ? 'text-emerald-500' : 'text-destructive')}>
                 {calculation.profitMargin.toFixed(1)}%
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground mb-1">ROI auf EK</div>
-              <div className={`text-3xl font-bold ${calculation.roiOnEquity >= 0 ? 'text-amber-600' : 'text-destructive'}`}>
+              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>ROI auf EK</div>
+              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, calculation.roiOnEquity >= 0 ? 'text-amber-500' : 'text-destructive')}>
                 {calculation.roiOnEquity.toFixed(1)}%
               </div>
             </div>
@@ -346,10 +276,10 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       </Card>
 
       {/* Sensitivity Analysis */}
-      <Card>
+      <Card className={DESIGN.CARD.BASE}>
         <CardHeader>
-          <CardTitle>Sensitivitätsanalyse</CardTitle>
-          <CardDescription>Auswirkung der Zielrendite auf den Gewinn</CardDescription>
+          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Sensitivitätsanalyse</CardTitle>
+          <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>Auswirkung der Zielrendite auf den Gewinn</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -361,10 +291,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Bar dataKey="profit" name="Gewinn">
                   {calculation.sensitivityData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.profit >= 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))'} 
-                    />
+                    <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -374,7 +301,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
             {calculation.sensitivityData.map((item, idx) => (
               <div key={idx} className="p-2 rounded bg-muted/50">
                 <div className="text-muted-foreground">Bei {item.label} Rendite</div>
-                <div className={`font-semibold ${item.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                <div className={cn('font-semibold', item.profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>
                   {formatCurrency(item.profit)}
                 </div>
               </div>
@@ -398,9 +325,9 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
       )}
 
       {temporary && (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.WARNING)}>
           <CardContent className="py-3">
-            <p className="text-sm text-amber-700">
+            <p className={DESIGN.TYPOGRAPHY.MUTED}>
               <strong>Hinweis:</strong> Diese Kalkulation wird nicht gespeichert. 
               Um sie zu speichern, erstellen Sie einen Objekteingang.
             </p>
