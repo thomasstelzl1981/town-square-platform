@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -430,18 +432,21 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Fälle in Bearbeitung
         </h3>
-        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-4">
+        <WidgetGrid>
           {activeCases.map(c => (
-            <FinanceCaseCard
-              key={c.id}
-              caseData={c}
-              onClick={handleCaseClick}
-            />
+            <WidgetCell key={c.id}>
+              <FinanceCaseCard
+                caseData={c}
+                onClick={handleCaseClick}
+              />
+            </WidgetCell>
           ))}
           {activeCases.length === 0 && (
-            <FinanceCaseCardPlaceholder />
+            <WidgetCell>
+              <FinanceCaseCardPlaceholder />
+            </WidgetCell>
           )}
-        </div>
+        </WidgetGrid>
       </div>
 
       {/* Section B: Finanzierungsmandate */}
@@ -454,14 +459,21 @@ export default function FMDashboard({ cases, isLoading }: Props) {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : pendingMandates.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Inbox className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Keine neuen Mandate vorhanden.</p>
-            </CardContent>
-          </Card>
+          <WidgetGrid>
+            <WidgetCell>
+              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
+                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+                    <Inbox className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Keine neuen Mandate</p>
+                  <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          </WidgetGrid>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <WidgetGrid>
             {pendingMandates.map((m: any) => {
               const req = m.finance_requests;
               const ap = req?.applicant_profiles?.[0];
@@ -470,42 +482,44 @@ export default function FMDashboard({ cases, isLoading }: Props) {
                 : 'Unbekannt';
               const loan = ap?.loan_amount_requested;
               return (
-                <Card key={m.id} className="border-primary/20">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs text-muted-foreground">{m.public_id || m.id.slice(0, 8)}</span>
-                      <Badge variant="outline">{m.status === 'delegated' ? 'Zugewiesen' : 'Angefragt'}</Badge>
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{name}</p>
-                      {loan && <p className="text-xs text-muted-foreground">{eurFormat.format(loan)}</p>}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleAcceptMandate(m.id)}
-                        disabled={acceptMandate.isPending}
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        Annehmen
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => handleDeclineMandate(m.id)}
-                        disabled={updateStatus.isPending}
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Ablehnen
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <WidgetCell key={m.id}>
+                  <Card className="border-primary/20 h-full">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs text-muted-foreground">{m.public_id || m.id.slice(0, 8)}</span>
+                        <Badge variant="outline">{m.status === 'delegated' ? 'Zugewiesen' : 'Angefragt'}</Badge>
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{name}</p>
+                        {loan && <p className="text-xs text-muted-foreground">{eurFormat.format(loan)}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleAcceptMandate(m.id)}
+                          disabled={acceptMandate.isPending}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Annehmen
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleDeclineMandate(m.id)}
+                          disabled={updateStatus.isPending}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Ablehnen
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </WidgetCell>
               );
             })}
-          </div>
+          </WidgetGrid>
         )}
       </div>
     </PageShell>
