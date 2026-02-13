@@ -55,6 +55,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
+import logoLight from '@/assets/logos/armstrong_logo_light.png';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -217,16 +219,21 @@ export default function AkquiseMandate() {
     const margin = 20;
     let y = margin;
 
+    // Logo (top right)
+    try {
+      doc.addImage(logoLight, 'PNG', 150, margin, 40, 14);
+    } catch { /* logo optional */ }
+
     // Header
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('ANKAUFSPROFIL', margin, y);
-    y += 10;
+    doc.text('ANKAUFSPROFIL', margin, y + 4);
+    y += 14;
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')}`, margin, y);
+    doc.setTextColor(160);
+    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, y);
     y += 12;
 
     doc.setDrawColor(200);
@@ -529,21 +536,21 @@ export default function AkquiseMandate() {
         </Card>
       </div>
 
-      {/* ═══ PDF-VORSCHAU ═══ */}
+      {/* ═══ CI-VORSCHAU — Vollbreite Kachel ═══ */}
       {profileGenerated && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <FileText className="h-4 w-4" />
-                Ankaufsprofil — PDF-Vorschau
+                CI-Vorschau — Ankaufsprofil
               </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={generatePdf}>
                   <Download className="h-4 w-4 mr-2" />
                   PDF exportieren
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => { generatePdf(); }}>
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
                   <Printer className="h-4 w-4 mr-2" />
                   Drucken
                 </Button>
@@ -551,30 +558,11 @@ export default function AkquiseMandate() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* DIN A4 Preview */}
-            <div className="mx-auto bg-white border rounded-lg shadow-sm p-8 max-w-[640px] aspect-[210/297] overflow-hidden">
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight text-gray-900">ANKAUFSPROFIL</h2>
-                  <p className="text-xs text-gray-400 mt-1">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
-                </div>
-                <div className="border-t pt-4">
-                  <h3 className="text-base font-semibold text-gray-800">{clientName || 'Investor'}</h3>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <PdfPreviewRow label="Suchgebiet" value={profileData?.region || '–'} />
-                  <PdfPreviewRow label="Asset-Fokus" value={profileData?.asset_focus?.join(', ') || '–'} />
-                  <PdfPreviewRow label="Investitionsrahmen" value={formatPriceRange(profileData?.price_min, profileData?.price_max)} />
-                  <PdfPreviewRow label="Zielrendite" value={profileData?.yield_target ? `${profileData.yield_target}%` : '–'} />
-                  <PdfPreviewRow label="Ausschlüsse" value={profileData?.exclusions || '–'} />
-                </div>
-                {profileTextLong && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{profileTextLong}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <AcqProfilePreview
+              clientName={clientName}
+              profileData={profileData}
+              profileTextLong={profileTextLong}
+            />
           </CardContent>
         </Card>
       )}
