@@ -1,0 +1,1 @@
+ALTER TABLE public.calendar_events ADD COLUMN IF NOT EXISTS video_call_id uuid REFERENCES public.video_calls(id);
