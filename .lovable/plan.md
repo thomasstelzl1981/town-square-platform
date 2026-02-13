@@ -1,33 +1,62 @@
 
 
-# Sanierungsakte loeschen
+# Immobilien-Menuestruktur aendern und Bewertung in die Akte verschieben
 
-## Was wird gebaut
+## Aktuelle Reihenfolge der Tiles (Level 3)
+1. Portfolio (default)
+2. Sanierung
+3. Bewertung
+4. Verwaltung
+5. Haus
 
-Ein Loeschen-Button im Header der geoeffneten Sanierungsakte mit Bestaetigungsdialog. Nach dem Loeschen schliesst sich die Akte und die Widget-Uebersicht wird aktualisiert.
+## Neue Reihenfolge
+1. Haus
+2. Portfolio
+3. Verwaltung
+4. Sanierung
+5. ~~Bewertung~~ (entfaellt als eigener Menuepunkt)
+
+## Wo geht die Bewertung hin?
+
+Die Bewertungsfunktion wird als neuer Tab **"Bewertung"** in die **Immobilienakte** (`PropertyDetailPage.tsx`) integriert — direkt neben dem bestehenden Tab "Verkaufsauftrag". Das ist logisch, weil die Bewertung immer objektbezogen ist.
+
+```text
+Akte | Simulation | Expose | Verkaufsauftrag | Bewertung | Mietverhaeltnis | Datenraum
+```
 
 ## Aenderungen
 
-### 1. `src/hooks/useServiceCases.ts` — Neuer `useDeleteServiceCase` Hook
+### 1. `src/manifests/routesManifest.ts` — Tiles umordnen, Bewertung entfernen
 
-- Neuer `useMutation`-Hook, der `supabase.from('service_cases').delete().eq('id', id)` ausfuehrt
-- Invalidiert `service_cases` Query nach Erfolg
-- Toast: "Sanierungsvorgang geloescht" / Fehler-Toast
+- Tile-Reihenfolge aendern zu: Haus, Portfolio, Verwaltung, Sanierung
+- `{ path: "haus", ... }` an Position 1 setzen und `default: true` geben
+- `{ path: "portfolio", ... }` an Position 2 (default entfernen)
+- `{ path: "verwaltung", ... }` an Position 3
+- `{ path: "sanierung", ... }` an Position 4
+- Bewertung-Tile komplett entfernen
+- Kommentar in Zeile 9 aktualisieren (nun 4 Tiles)
 
-### 2. `src/components/sanierung/SanierungDetail.tsx` — Loeschen-Button + Dialog
+### 2. `src/pages/portal/ImmobilienPage.tsx` — Bewertung-Route entfernen
 
-- Im Header neben dem X-Button: Ein Trash2-Icon-Button (ghost, destructive)
-- Oeffnet einen `AlertDialog` mit Bestaetigungstext: "Moechten Sie diesen Sanierungsvorgang unwiderruflich loeschen?"
-- Titel und Public-ID im Dialog anzeigen
-- Bei Bestaetigung: `deleteServiceCase` aufrufen, danach `onClose()` ausfuehren
-- Nur bei Status `draft` oder `cancelled` sichtbar (laufende Vorgaenge sollen nicht geloescht werden koennen)
+- Lazy-Import fuer `BewertungTab` entfernen
+- `<Route path="bewertung" ...>` entfernen
 
-### 3. Keine Datenbank-Aenderungen
+### 3. `src/pages/portal/immobilien/PropertyDetailPage.tsx` — Neuer "Bewertung"-Tab
 
-RLS-Policies erlauben bereits DELETE fuer Tenant-Mitglieder auf `service_cases`. Es sind keine Schema-Aenderungen noetig.
+- Neuen Tab "Bewertung" in die TabsList einfuegen (nach "Verkaufsauftrag")
+- `BewertungTab`-Inhalt als `TabsContent` rendern, jedoch ohne eigene PageShell/ModulePageHeader (die kommen von PropertyDetailPage)
+- Dazu eine neue schlanke Inline-Komponente `PropertyValuationTab` erstellen, die die Queries aus `BewertungTab.tsx` nutzt, aber nur fuer die aktuelle Property (gefiltert auf `property.id`)
 
-## Technische Details
+### 4. `src/pages/portal/immobilien/index.ts` — Export bereinigen
 
-- Dialog nutzt `AlertDialog` von Radix (bereits im Projekt)
-- Der Hook gibt `isPending` zurueck, um den Button waehrend des Loeschvorgangs zu deaktivieren
-- Nach erfolgreichem Loeschen wird `onClose()` aufgerufen, was `selectedCaseId` auf `null` setzt und die Widgets-Ansicht zurueckbringt
+- `BewertungTab` Export entfernen
+
+### 5. `src/pages/portal/immobilien/BewertungTab.tsx` — Kann bestehen bleiben oder entfernt werden
+
+- Datei wird nicht mehr referenziert; perspektivisch entfernen
+- Fuer jetzt: Import entfernen reicht
+
+### Keine Datenbank-Aenderungen
+
+Rein navigatorisches und UI-Refactoring.
+
