@@ -3,18 +3,52 @@ import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, FileText, Upload, Clock, X, Plus } from 'lucide-react';
+import { Package, FileText, Upload, Clock, Plus } from 'lucide-react';
 
 const ORDER_STATUSES = ['Entwurf', 'Eingereicht', 'Bestellt', 'Versendet', 'Abgeschlossen', 'Storniert'];
 const SHOP_OPTIONS = ['Amazon Business', 'OTTO Office', 'Miete24'];
 const POSITION_COLUMNS = ['Pos', 'Artikel', 'SKU', 'Menge', 'Einheit', 'EP netto', 'MwSt%', 'Σ netto', 'Σ brutto', 'Link', 'Bemerkung'];
+
+interface Order {
+  id: string;
+  label: string;
+  status: string;
+}
+
+function OrderWidget({ order, isActive, onClick }: { order: Order; isActive: boolean; onClick: () => void }) {
+  return (
+    <Card
+      className={`glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 ${isActive ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40'}`}
+      onClick={onClick}
+    >
+      <FileText className="h-6 w-6 text-primary" />
+      <span className="text-sm font-semibold">{order.label}</span>
+      <Badge variant={order.status === 'Entwurf' ? 'secondary' : 'default'} className="text-[10px]">
+        {order.status}
+      </Badge>
+    </Card>
+  );
+}
+
+function NewOrderWidget({ onClick }: { onClick: () => void }) {
+  return (
+    <Card
+      className="glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 border-dashed hover:ring-1 hover:ring-primary/40"
+      onClick={onClick}
+    >
+      <Plus className="h-6 w-6 text-muted-foreground" />
+      <span className="text-sm font-medium text-muted-foreground">Neue Bestellung</span>
+    </Card>
+  );
+}
 
 function OrderDetail() {
   return (
@@ -167,33 +201,42 @@ function OrderDetail() {
 }
 
 export default function BestellungenTab() {
-  const [activeTab, setActiveTab] = useState('order-1');
+  const [orders] = useState<Order[]>([
+    { id: 'order-1', label: 'Bestellung #—', status: 'Entwurf' },
+  ]);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>('order-1');
+
+  const handleNewOrder = () => {
+    toast.info('Bestellformular wird vorbereitet…');
+  };
 
   return (
     <PageShell>
       <ModulePageHeader
         title="Bestellungen"
         description="Verwalten Sie Ihre Bestellungen als Widgets"
-        actions={
-          <Button size="sm" className="gap-2" onClick={() => toast.info('Bestellformular wird vorbereitet…')}>
-            <Plus className="h-4 w-4" />
-            Neue Bestellung
-          </Button>
-        }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-auto flex-wrap gap-1 bg-muted/30 p-1">
-          <TabsTrigger value="order-1" className="gap-2 text-xs px-3">
-            <FileText className="h-3 w-3" />
-            Bestellung #—
-            <X className="h-3 w-3 ml-1 opacity-40" />
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="order-1" className="mt-4">
+      <WidgetGrid>
+        {orders.map((order) => (
+          <WidgetCell key={order.id}>
+            <OrderWidget
+              order={order}
+              isActive={activeOrderId === order.id}
+              onClick={() => setActiveOrderId(order.id)}
+            />
+          </WidgetCell>
+        ))}
+        <WidgetCell>
+          <NewOrderWidget onClick={handleNewOrder} />
+        </WidgetCell>
+      </WidgetGrid>
+
+      {activeOrderId && (
+        <div className="mt-6">
           <OrderDetail />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </PageShell>
   );
 }

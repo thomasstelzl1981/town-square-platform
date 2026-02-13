@@ -111,6 +111,12 @@ export default function AkquiseMandate() {
   const [activeMandateId, setActiveMandateId] = useState<string | null>(null);
   const [activeMandateCode, setActiveMandateCode] = useState('');
 
+  // Consent state for mandate creation
+  const [acqConsentData, setAcqConsentData] = useState(false);
+  const [acqConsentResearch, setAcqConsentResearch] = useState(false);
+  const [acqConsentDsgvo, setAcqConsentDsgvo] = useState(false);
+  const acqAllConsents = acqConsentData && acqConsentResearch && acqConsentDsgvo;
+
   // ─── Kachel 1: KI-Erfassung ───
   const [freeText, setFreeText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -670,12 +676,40 @@ export default function AkquiseMandate() {
 
       {/* ═══ ANKAUFSPROFIL ANLEGEN BUTTON ═══ */}
       {profileGenerated && !mandateCreated && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={handleCreateMandate} disabled={createMandate.isPending || !clientName.trim()}>
-            {createMandate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            Ankaufsprofil anlegen — Mandat erstellen
-          </Button>
-        </div>
+        <Card className="glass-card border-primary/20">
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Einwilligung & Mandatserteilung</h3>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <Checkbox id="acq-consent-data" checked={acqConsentData} onCheckedChange={(v) => setAcqConsentData(v === true)} className="mt-0.5" />
+                <Label htmlFor="acq-consent-data" className="text-xs leading-relaxed cursor-pointer">
+                  Ich bestätige die Richtigkeit der eingegebenen Daten und des Ankaufsprofils.
+                </Label>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Checkbox id="acq-consent-research" checked={acqConsentResearch} onCheckedChange={(v) => setAcqConsentResearch(v === true)} className="mt-0.5" />
+                <Label htmlFor="acq-consent-research" className="text-xs leading-relaxed cursor-pointer">
+                  Ich genehmige die automatisierte Kontaktrecherche und Datenverarbeitung im Rahmen dieses Mandats.
+                </Label>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Checkbox id="acq-consent-dsgvo" checked={acqConsentDsgvo} onCheckedChange={(v) => setAcqConsentDsgvo(v === true)} className="mt-0.5" />
+                <Label htmlFor="acq-consent-dsgvo" className="text-xs leading-relaxed cursor-pointer">
+                  Ich stimme der Verarbeitung personenbezogener Daten gemäß DSGVO zu.
+                </Label>
+              </div>
+            </div>
+            <div className="flex justify-center pt-2">
+              <Button size="lg" onClick={handleCreateMandate} disabled={createMandate.isPending || !clientName.trim() || !acqAllConsents}>
+                {createMandate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Ankaufsprofil anlegen — Mandat erstellen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {mandateCreated && (
