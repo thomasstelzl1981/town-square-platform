@@ -1,33 +1,25 @@
 import { useNavigate } from 'react-router-dom';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Briefcase, Loader2, Clock, ArrowRight, Plus } from 'lucide-react';
-import { InfoBanner } from '@/components/shared/InfoBanner';
-import { DESIGN } from '@/config/designManifest';
+import { Briefcase, Loader2, Plus, Inbox } from 'lucide-react';
 import { 
   useAcqMandatesPending, 
   useAcqMandatesActive, 
-  useMyAcqMandates,
 } from '@/hooks/useAcqMandate';
-import { MandateCaseCard } from '@/components/akquise/MandateCaseCard';
+import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
 
 export default function AkquiseDashboard() {
   const navigate = useNavigate();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
-  const { data: myMandates, isLoading: loadingMy } = useMyAcqMandates();
 
-  const selfCreatedMandates = myMandates?.filter(m => 
-    m.status === 'draft' || m.status === 'submitted_to_zone1'
-  ) || [];
-
-  if (loadingPending || loadingActive || loadingMy) {
+  if (loadingPending || loadingActive) {
     return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
   }
-
-  const hasMandates = (pendingMandates?.length || 0) + (activeMandates?.length || 0) + selfCreatedMandates.length > 0;
 
   return (
     <PageShell>
@@ -35,57 +27,78 @@ export default function AkquiseDashboard() {
         title="AKQUISE-MANAGER" 
         description="Ihre Akquise-Mandate im Überblick"
         actions={
-          <Button onClick={() => navigate('/portal/akquise-manager/mandate/neu')} size="sm">
+          <Button onClick={() => navigate('/portal/akquise-manager/mandate')} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Neues Mandat
           </Button>
         }
       />
 
-      {(pendingMandates?.length || 0) > 0 && (
-        <InfoBanner
-          variant="warning"
-          icon={Clock}
-          title={`${pendingMandates?.length} Mandate warten auf Ihre Annahme`}
-          action={
-            <Button size="sm" variant="outline" onClick={() => {
-              if (pendingMandates?.[0]) navigate(`/portal/akquise-manager/mandate/${pendingMandates[0].id}`);
-            }}>
-              Ansehen <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          }
-        />
-      )}
+      {/* ── Sektion A: Aktive Mandate ── */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Aktive Mandate
+        </h2>
+        {activeMandates && activeMandates.length > 0 ? (
+          <WidgetGrid>
+            {activeMandates.map(mandate => (
+              <WidgetCell key={mandate.id}>
+                <MandateCaseCard
+                  mandate={mandate}
+                  onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+                />
+              </WidgetCell>
+            ))}
+          </WidgetGrid>
+        ) : (
+          <WidgetGrid>
+            <WidgetCell>
+              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
+                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Keine aktiven Mandate</p>
+                  <p className="text-[10px] text-muted-foreground">Erstellen Sie ein Mandat oder warten Sie auf Zuweisungen</p>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          </WidgetGrid>
+        )}
+      </div>
 
-      {hasMandates ? (
-        <div className={DESIGN.KPI_GRID.FULL}>
-          {activeMandates?.map(mandate => (
-            <MandateCaseCard key={mandate.id} mandate={mandate} onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)} />
-          ))}
-          {pendingMandates?.map(mandate => (
-            <MandateCaseCard key={mandate.id} mandate={mandate} onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)} />
-          ))}
-          {selfCreatedMandates.map(mandate => (
-            <MandateCaseCard key={mandate.id} mandate={mandate} onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)} />
-          ))}
-        </div>
-      ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Briefcase className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold mb-1">Keine aktiven Mandate</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              Erstellen Sie ein eigenes Mandat oder warten Sie auf Zuweisungen.
-            </p>
-            <Button size="lg" onClick={() => navigate('/portal/akquise-manager/mandate/neu')}>
-              <Plus className="mr-2 h-5 w-5" />
-              Erstes Mandat erstellen
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {/* ── Sektion B: Neue Aufträge (Pending) ── */}
+      <div className="space-y-3 mt-8">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Neue Aufträge
+        </h2>
+        {pendingMandates && pendingMandates.length > 0 ? (
+          <WidgetGrid>
+            {pendingMandates.map(mandate => (
+              <WidgetCell key={mandate.id}>
+                <MandateCaseCard
+                  mandate={mandate}
+                  onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+                />
+              </WidgetCell>
+            ))}
+          </WidgetGrid>
+        ) : (
+          <WidgetGrid>
+            <WidgetCell>
+              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
+                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+                    <Inbox className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Keine neuen Aufträge</p>
+                  <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          </WidgetGrid>
+        )}
+      </div>
     </PageShell>
   );
 }
