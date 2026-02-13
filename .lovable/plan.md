@@ -1,140 +1,149 @@
 
-# Widget-Loeschfunktion + Archiv-Strategie
+# MOD-15 Fortbildung — Zone 1 Management-Modul + Seed-Daten-Aktualisierung
 
 ## Ueberblick
 
-Es wird eine einheitliche Loesch-Interaktion fuer alle Widget-Karten (WidgetCell) eingefuehrt. Per Mouse-Over erscheint ein kleiner Papierkorb-Button. Beim Klick oeffnet sich ein AlertDialog zur Bestaetigung. Die Loeschung folgt dem bestehenden Architektur-Muster des Projekts.
+Es werden zwei Dinge umgesetzt:
 
-## Bestehende Loesch-/Archiv-Architektur (Analyse)
-
-Das Projekt nutzt **zwei verschiedene Strategien**, je nach Entitaetstyp:
-
-| Strategie | Tabellen | Mechanismus |
-|-----------|----------|-------------|
-| **Soft-Delete (DSGVO)** | `contacts`, `profiles`, `applicant_profiles`, `self_disclosures`, `leads`, `renter_invites`, `partner_deals`, `finance_bank_contacts`, `dms_documents`, `dms_nodes` | `deleted_at TIMESTAMPTZ` Spalte |
-| **Status-Transition** | `service_cases`, `finance_requests`, `acq_mandates`, `task_widgets` | Status wird auf `cancelled`/`archived` gesetzt |
-
-Fuer die Business-Entitaeten (Finanzierung, Sanierung, Akquise) gibt es **kein Hard-Delete**. Sie nutzen Status-basierte State-Machines mit DB-seitigem Trigger-Schutz. Das bedeutet: Loeschen = Status auf `cancelled` setzen. Die Daten bleiben fuer Audit/Archiv erhalten.
-
-**Empfehlung:** Wir folgen dem bestehenden Muster — `cancelled` fuer Geschaeftsvorgaenge, `deleted_at` nur fuer PII-Tabellen.
+1. **Zone 1 Admin-Seite** (`/admin/fortbildung`) zur Verwaltung aller kuratierten Fortbildungsinhalte (CRUD: Anlegen, Bearbeiten, Loeschen, Sortieren, Aktivieren/Deaktivieren)
+2. **Seed-Daten-Aktualisierung** mit echten, verifizierten Daten von den vier Providern (Amazon, Udemy, Eventbrite, YouTube)
 
 ---
 
-## Aenderung 1: Wiederverwendbare Delete-Overlay-Komponente (NEUE DATEI)
+## Bestandsanalyse
 
-**Datei:** `src/components/shared/WidgetDeleteOverlay.tsx`
+### Vorhandene Seed-Daten (bereits realistisch)
+Die Tabelle `fortbildung_curated_items` enthaelt bereits **80 Eintraege** (4 Tabs x 4 Topics x 5 Items). Stichproben zeigen echte Daten:
 
-Eine kleine Overlay-Komponente, die in jede Widget-Karte eingebettet werden kann:
+| Tab | Beispiel-Eintraege |
+|-----|-------------------|
+| **Buecher** | "Rich Dad Poor Dad" (Kiyosaki, 14,99 EUR), "Erfolg mit Wohnimmobilien" (Knedel, 24,99 EUR), "Betongold" (Bauer, 30 EUR) |
+| **Fortbildungen** | "Real Estate Financial Modeling Bootcamp" (Udemy, 84,99 EUR), "Immobilien-Investment Kompakt" (immlab, 49,99 EUR) |
+| **Vortraege** | "immocation Festival 2026" (ab 149 EUR), "Betongoldabend München", "Immobilienabend Hamburg" |
+| **Kurse** | "Immobilien-Investment Komplettkurs" (immocation, kostenlos), "Immobilien als Kapitalanlage" (Finanzfluss, kostenlos) |
 
-```text
-+---------------------------+
-| [Karten-Inhalt]           |
-|                           |
-|              [Papierkorb] |  <-- nur bei Hover sichtbar (oben rechts)
-+---------------------------+
+Die Daten sind bereits gut. Fehlende Elemente: `image_url` ist bei allen NULL.
+
+### Gescrapte Echtdaten fuer Anreicherung
+
+**Eventbrite (Live-Events Deutschland):**
+- Immobilien-Stammtisch NoLimitClub (Karlsruhe)
+- Immobilien Stammtisch Essen
+- Das kleine Immobilien-Seminar Stuttgart (Konzept + Grundbesitz GmbH)
+- Betongoldabend - Immobilientalk & Networking (Muenchen)
+- Immobilienabend Hamburg
+
+**YouTube-Kanaele (verifiziert):**
+- immocation (Vermögensaufbau, 300k+ Abonnenten)
+- Finanzfluss (Thomas Kehl, 1M+ Abonnenten)
+- Immo Tommy (Europas groesster Immobilien-Creator)
+- Gerald Hoerhan / Investmentpunk
+- Vermietertagebuch
+- Finanztip
+
+**Amazon-Buecher (verifiziert):**
+- "Immogame" (Tobias Claessens, SPIEGEL-Bestseller)
+- "Bau keinen Scheiss" (SPIEGEL-Bestseller)
+- "Immobilien Investitionen leicht gemacht" (Stephan Gerlach, 24,99 EUR)
+
+---
+
+## Aenderung 1: Route im Admin-Manifest registrieren
+
+**Datei:** `src/manifests/routesManifest.ts`
+
+Neue Route in `zone1Admin.routes[]`:
+```
+{ path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" }
 ```
 
-- Papierkorb-Icon (`Trash2`, 16px) oben rechts, `absolute` positioniert
-- Nur bei Mouse-Over der gesamten Karte sichtbar (`opacity-0 group-hover:opacity-100`)
-- Klick stoppt Event-Propagation (verhindert Karten-Klick)
-- Oeffnet einen `AlertDialog` mit:
-  - Titel: "Widget loeschen?"
-  - Beschreibung: "Moechten Sie dieses Widget wirklich loeschen? Der Vorgang wird archiviert."
-  - Buttons: "Abbrechen" / "Loeschen" (destructive)
-- `onConfirmDelete` Callback fuer die uebergeordnete Komponente
+---
 
-### Props
-- `title: string` — Name des Widgets fuer die Bestaetigung
-- `onConfirmDelete: () => void` — Wird nach Bestaetigung aufgerufen
-- `isDeleting?: boolean` — Zeigt Spinner waehrend der Ausfuehrung
-- `disabled?: boolean` — Deaktiviert den Button (z.B. bei geschuetzten Status)
+## Aenderung 2: Admin-Seite (NEUE DATEI)
+
+**Datei:** `src/pages/admin/AdminFortbildung.tsx`
+
+Eine tabellarische Verwaltungsseite mit:
+
+### Oberer Bereich
+- ModulePageHeader: "Fortbildung verwalten"
+- Tab-Filter: Buecher | Fortbildungen | Vortraege | Kurse (analog zu Zone 2)
+- Topic-Filter: Immobilien | Finanzen | Erfolg | Persoenlichkeit
+- Button: "+ Neuen Eintrag anlegen"
+
+### Tabelle (Hauptbereich)
+| Sortierung | Titel | Autor/Kanal | Provider | Topic | Preis | Bewertung | Aktiv | Aktionen |
+|------------|-------|-------------|----------|-------|-------|-----------|-------|----------|
+| Drag-Handle | Text | Text | Badge | Badge | Text | Text | Switch | Edit / Delete |
+
+- Sortierung per Drag-and-Drop (`@dnd-kit/sortable`, bereits installiert)
+- Aktiv/Inaktiv per Switch-Toggle (sofortige DB-Aktualisierung)
+- Loeschen mit AlertDialog-Bestaetigung (Hard-Delete, da kuratierte Inhalte kein Audit benoetigen)
+
+### Drawer: Eintrag anlegen/bearbeiten
+
+**Datei:** `src/pages/admin/AdminFortbildungDrawer.tsx` (NEUE DATEI)
+
+Formular-Drawer (Sheet) mit allen Feldern der Tabelle:
+- Tab (Select: books/trainings/talks/courses)
+- Topic (Select: immobilien/finanzen/erfolg/persoenlichkeit)
+- Provider (Select: amazon/udemy/eventbrite/youtube/impact)
+- Titel (Text, required)
+- Autor/Kanal (Text)
+- Beschreibung (Textarea)
+- Affiliate-Link (URL, required)
+- Preis-Text (Text)
+- Bewertung-Text (Text)
+- Dauer-Text (Text)
+- Bild-URL (Text)
+- Externe ID (Text)
+- Sortierung (Number)
+- Aktiv (Checkbox)
 
 ---
 
-## Aenderung 2: ServiceCaseCard (Sanierung) — Delete-Overlay integrieren
+## Aenderung 3: Admin-Hook fuer CRUD (NEUE DATEI)
 
-**Datei:** `src/components/sanierung/ServiceCaseCard.tsx`
+**Datei:** `src/hooks/useAdminFortbildung.ts`
 
-- `WidgetDeleteOverlay` als Overlay in die Card einbauen
-- Neue Props: `onDelete?: (id: string) => void`, `isDeleting?: boolean`
-- Delete nur anzeigen wenn Status `draft` oder `cancelled` ist (Memory: Sanierung erlaubt Loeschung nur bei diesen Status)
-- Die Card benoetigt `group` Klasse (bereits vorhanden) und `relative` fuer die Positionierung
-
----
-
-## Aenderung 3: FinanceCaseCard (Finanzierung) — Delete-Overlay integrieren
-
-**Datei:** `src/components/finanzierungsmanager/FinanceCaseCard.tsx`
-
-- Gleiche Integration wie ServiceCaseCard
-- Neue Props: `onDelete?: (requestId: string) => void`, `isDeleting?: boolean`
-- Delete nur bei Status `draft` anzeigen (eingereichte Antraege koennen nicht geloescht werden)
+- `useAdminFortbildungItems(tab, topic?)` — Query mit Filtern
+- `useCreateFortbildungItem()` — Insert-Mutation
+- `useUpdateFortbildungItem()` — Update-Mutation (inkl. `is_active` Toggle und `sort_order`)
+- `useDeleteFortbildungItem()` — Delete-Mutation (Hard-Delete)
+- `useReorderFortbildungItems()` — Batch-Update der `sort_order` nach Drag-and-Drop
 
 ---
 
-## Aenderung 4: MandateCaseCard (Akquise) — Delete-Overlay integrieren
+## Aenderung 4: Seed-Daten aktualisieren (Migration)
 
-**Datei:** `src/components/akquise/MandateCaseCard.tsx`
+SQL-Migration zum Aktualisieren/Ergaenzen der bestehenden 80 Eintraege:
 
-- Gleiche Integration
-- Neue Props: `onDelete?: (id: string) => void`, `isDeleting?: boolean`
-- Delete nur bei Status `draft` anzeigen
+### Neue Eventbrite-Events ersetzen Platzhalter (Tab: talks)
+- "Immobilien-Stammtisch NoLimitClub" (Karlsruhe, kostenlos, Eventbrite-Link)
+- "Das kleine Immobilien-Seminar Stuttgart" (Konzept + Grundbesitz, ab 29 EUR)
+- "Betongoldabend - Immobilientalk & Networking" (Muenchen, kostenlos)
 
----
+### Neue YouTube-Kanaele/Videos ergaenzen (Tab: courses)
+- "Immo Tommy — Erste Immobilie kaufen" (Immo Tommy, kostenlos)
+- "Finanzfluss — ETF vs. Immobilien Vergleich" (Finanzfluss, kostenlos)
+- "Finanztip — Immobilie als Kapitalanlage" (Finanztip, kostenlos)
 
-## Aenderung 5: Hook-Erweiterungen fuer Cancel/Archive
+### Neue Amazon-Buecher ergaenzen (Tab: books)
+- "Immogame" (Tobias Claessens, 19,99 EUR, SPIEGEL-Bestseller)
+- "Bau keinen Scheiss" (SPIEGEL-Bestseller)
+- "Immobilien Investitionen leicht gemacht" (Stephan Gerlach, 24,99 EUR)
 
-### useServiceCases — Cancel-Mutation hinzufuegen
-
-**Datei:** `src/hooks/useServiceCases.ts`
-
-- Neue exportierte Mutation `useCancelServiceCase()`:
-  - Update: `status = 'cancelled'`, `completed_at = now()`
-  - Invalidiert Query-Cache
-
-### useFinanceCases — Cancel-Mutation (oder bestehenden Hook erweitern)
-
-Relevante Hook-Datei identifizieren und Cancel-Mutation hinzufuegen:
-- Update: `finance_requests.status = 'cancelled'`
-
-### useAcqMandates — Cancel-Mutation
-
-Relevante Hook-Datei identifizieren und Cancel-Mutation hinzufuegen:
-- Update: `acq_mandates.status = 'cancelled'`
+Die Migration wird als UPSERT formuliert, um bestehende Eintraege nicht zu duplizieren.
 
 ---
 
-## Aenderung 6: Dashboard-Integration
+## Aenderung 5: RLS-Policy fuer Admin-Zugriff
 
-### SanierungTab
+Die Tabelle `fortbildung_curated_items` benoetigt RLS-Policies:
+- **SELECT**: Alle authentifizierten Benutzer (fuer Zone 2 Anzeige)
+- **INSERT/UPDATE/DELETE**: Nur `platform_admin` Rolle (fuer Zone 1 Verwaltung)
 
-**Datei:** `src/pages/portal/immobilien/SanierungTab.tsx`
-
-- `onDelete` Prop an `ServiceCaseCard` durchreichen
-- `useCancelServiceCase` Hook nutzen
-
-### Finanzierungsmanager Dashboard
-
-Relevante Datei: Die Seite, die `FinanceCaseCard` als Widgets rendert
-- `onDelete` Prop durchreichen
-
-### Akquise-Manager Dashboard
-
-Relevante Datei: Die Seite, die `MandateCaseCard` als Widgets rendert
-- `onDelete` Prop durchreichen
-
----
-
-## Zusammenfassung der Loesch-Logik
-
-| Modul | Tabelle | Loesch-Aktion | Erlaubte Status |
-|-------|---------|---------------|-----------------|
-| Sanierung | `service_cases` | `status -> cancelled` | `draft`, `cancelled` |
-| Finanzierung | `finance_requests` | `status -> cancelled` | `draft` |
-| Akquise | `acq_mandates` | `status -> cancelled` | `draft` |
-| Task Widgets | `task_widgets` | `status -> cancelled` | `pending` (bereits implementiert) |
-
-Kein Hard-Delete. Alle "geloeschten" Vorgaenge bleiben in der DB mit Status `cancelled` fuer Audit-Zwecke. Die Dashboard-Filter zeigen sie nicht mehr an (bestehender Filter `!['completed', 'cancelled']`).
+Pruefung: Ob RLS bereits aktiviert ist oder noch eingerichtet werden muss.
 
 ---
 
@@ -142,15 +151,9 @@ Kein Hard-Delete. Alle "geloeschten" Vorgaenge bleiben in der DB mit Status `can
 
 | Aktion | Datei |
 |--------|-------|
-| NEU | `src/components/shared/WidgetDeleteOverlay.tsx` — Wiederverwendbare Hover-Papierkorb + AlertDialog Komponente |
-| EDIT | `src/components/sanierung/ServiceCaseCard.tsx` — Delete-Overlay integrieren |
-| EDIT | `src/components/finanzierungsmanager/FinanceCaseCard.tsx` — Delete-Overlay integrieren |
-| EDIT | `src/components/akquise/MandateCaseCard.tsx` — Delete-Overlay integrieren |
-| EDIT | `src/hooks/useServiceCases.ts` — Cancel-Mutation hinzufuegen |
-| EDIT | Finanzierungs-Hook — Cancel-Mutation hinzufuegen |
-| EDIT | Akquise-Hook — Cancel-Mutation hinzufuegen |
-| EDIT | `src/pages/portal/immobilien/SanierungTab.tsx` — onDelete durchreichen |
-| EDIT | FM-Dashboard — onDelete durchreichen |
-| EDIT | AM-Dashboard — onDelete durchreichen |
-
-Keine Datenbank-Migration noetig. Die bestehenden Status-Felder und State-Machine-Trigger decken `cancelled` bereits ab.
+| EDIT | `src/manifests/routesManifest.ts` — Route `/admin/fortbildung` hinzufuegen |
+| NEU | `src/pages/admin/AdminFortbildung.tsx` — Verwaltungsseite mit Tabelle, Filtern, Drag-and-Drop |
+| NEU | `src/pages/admin/AdminFortbildungDrawer.tsx` — Formular-Drawer fuer Anlegen/Bearbeiten |
+| NEU | `src/hooks/useAdminFortbildung.ts` — CRUD-Hooks + Reorder-Mutation |
+| MIGRATION | Seed-Daten mit echten Eventbrite-Events, YouTube-Kanaelen und Amazon-Buechern aktualisieren |
+| MIGRATION | RLS-Policies fuer `fortbildung_curated_items` (Admin: full CRUD, User: read-only) |
