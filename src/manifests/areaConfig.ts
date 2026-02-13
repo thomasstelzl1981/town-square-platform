@@ -26,7 +26,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Missions',
     labelShort: 'Missions',
     icon: 'Target',
-    modules: ['MOD-04', 'MOD-05', 'MOD-06', 'MOD-07', 'MOD-08'],
+    modules: ['MOD-04', 'MOD-20', 'MOD-06', 'MOD-07', 'MOD-08'],
   },
   {
     key: 'operations',
@@ -40,7 +40,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Base',
     labelShort: 'Base',
     icon: 'Layers',
-    modules: ['MOD-20', 'MOD-02', 'MOD-03', 'MOD-16', 'MOD-01'],
+    modules: ['MOD-05', 'MOD-02', 'MOD-03', 'MOD-16', 'MOD-01'],
   },
   {
     key: 'services',
@@ -57,9 +57,10 @@ export const areaConfig: AreaDefinition[] = [
  */
 export const moduleLabelOverrides: Record<string, string> = {
   'MOD-03': 'Dokumente',           // DMS → Dokumente
-  'MOD-05': 'Mietverwaltung',      // MSV → Mietverwaltung
+  'MOD-05': 'KI-Telefon-Assistent', // MSV → KI-Telefon-Assistent (repurposed)
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
+  'MOD-20': 'Zuhause',            // Miety → Zuhause (display only)
 };
 
 /**

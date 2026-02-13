@@ -166,6 +166,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       'Vermieter-Kontexte organisieren (Portfolio-Logik)',
       'Sanierung & Maßnahmen dokumentieren',
       'Bewertung & Wertentwicklung nachvollziehen',
+      'Verwaltung: Mieteingang, Vermietung und Mahnwesen',
     ],
     flows: [
       {
@@ -173,58 +174,43 @@ export const moduleContents: Record<string, HowItWorksContent> = {
         steps: ['Portfolio', 'Objekt anlegen', 'Einheiten ergänzen', 'Mietbestand pflegen', 'Dokumente verknüpfen'],
       },
       {
-        title: 'Daten für Verkauf vorbereiten',
-        steps: ['Objekt öffnen', 'Exposé prüfen', 'Bilder/Dokumente ergänzen', 'an Verkauf übergeben'],
-      },
-      {
-        title: 'Daten für Finanzierung nutzen',
-        steps: ['Objekt öffnen', 'Kennzahlen prüfen', 'an Finanzierung übergeben'],
+        title: 'Verwaltung nutzen',
+        steps: ['Verwaltung öffnen', 'Mieteingang prüfen', 'Vermietungsexposé erstellen', 'Einstellungen konfigurieren'],
       },
     ],
     cta: 'Pflegen Sie zuerst die Immobilienakte – alles Weitere baut darauf auf.',
-    hint: 'Operative Mietprozesse (Mieteingang, Mahnwesen, Vermietungsvorgänge) passieren in MSV (MOD-05).',
     subTiles: [
       { title: 'Kontexte', route: '/portal/immobilien/kontexte', icon: FolderTree },
       { title: 'Portfolio', route: '/portal/immobilien/portfolio', icon: LayoutGrid },
       { title: 'Sanierung', route: '/portal/immobilien/sanierung', icon: Hammer },
       { title: 'Bewertung', route: '/portal/immobilien/bewertung', icon: TrendingUp },
+      { title: 'Verwaltung', route: '/portal/immobilien/verwaltung', icon: Building2 },
     ],
   },
 
   'MOD-05': {
     moduleCode: 'MOD-05',
-    title: 'MSV',
-    oneLiner: 'Die Workbench für operative Mietprozesse – basierend auf dem Datenbestand aus MOD-04.',
+    title: 'KI-Telefon-Assistent',
+    oneLiner: 'Ihr intelligenter Telefonassistent — automatisierte Anrufbearbeitung rund um die Uhr.',
     benefits: [
-      'Kontrolle über Soll/Ist und offene Posten ohne Excel.',
-      'Vermietungsvorgänge strukturiert bis zum Vertrag.',
-      'Standardisierte Kommunikation (Mahnung, Erinnerungen) ohne Zeitverlust.',
+      'Eingehende Anrufe werden automatisch beantwortet und kategorisiert.',
+      'Wichtige Anliegen werden priorisiert an Sie weitergeleitet.',
+      'Rund um die Uhr erreichbar — auch außerhalb der Geschäftszeiten.',
     ],
     whatYouDo: [
-      'Mieteingänge prüfen und zuordnen',
-      'Offene Posten managen und Mahnungen auslösen',
-      'Vermietung starten: Inserat → Interessenten → Auswahl → Vertrag',
-      'Übergaben und Protokolle dokumentieren',
-      'Einstellungen für Fristen/Regeln verwalten',
-      'Prozesse sauber dokumentieren',
+      'Telefonassistenten konfigurieren',
+      'Anrufprotokolle und Zusammenfassungen einsehen',
+      'Weiterleitungsregeln festlegen',
     ],
     flows: [
       {
-        title: 'Rückstand bearbeiten',
-        steps: ['Mieteingang', 'Abweichung erkennen', 'Erinnerung/Mahnung', 'Dokumentation im DMS'],
-      },
-      {
-        title: 'Neuvermietung',
-        steps: ['Vermietung', 'Inserat', 'Bewerber', 'Entscheidung', 'Vertrag', 'Übergabe'],
+        title: 'Assistent einrichten',
+        steps: ['Übersicht öffnen', 'Begrüßung konfigurieren', 'Weiterleitungsregeln setzen', 'Aktivieren'],
       },
     ],
-    cta: 'Starten Sie mit dem Mieteingang – das schafft sofort Übersicht.',
-    hint: 'MSV arbeitet auf dem Daten-Bestand aus MOD-04 (Immobilienakte: Objekte/Einheiten/Mietdaten-Bestand).',
+    cta: 'Konfigurieren Sie Ihren KI-Telefonassistenten — Coming Soon.',
     subTiles: [
-      { title: 'Objekte', route: '/portal/msv/objekte', icon: Building2 },
-      { title: 'Mieteingang', route: '/portal/msv/mieteingang', icon: Wallet },
-      { title: 'Vermietung', route: '/portal/msv/vermietung', icon: Users },
-      { title: 'Einstellungen', route: '/portal/msv/einstellungen', icon: Settings },
+      { title: 'Übersicht', route: '/portal/msv/uebersicht', icon: Building2 },
     ],
   },
 

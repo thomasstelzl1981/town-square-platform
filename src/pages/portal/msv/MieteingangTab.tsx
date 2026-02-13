@@ -314,7 +314,7 @@ const MieteingangTab = () => {
                     <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                       Sobald aktive Mietverträge bestehen, erscheinen hier die Zahlungseingänge und Sollmieten.
                     </p>
-                    <Button className="mt-4" onClick={() => navigate('/portal/msv/objekte')}>
+                    <Button className="mt-4" onClick={() => navigate('/portal/immobilien/verwaltung')}>
                       Objekte & Mietverträge verwalten
                     </Button>
                   </div>

@@ -1,31 +1,26 @@
 /**
- * MSV Page (MOD-05) - Routes Pattern with How It Works
- * P0-FIX: Removed inner Suspense to prevent nested Suspense deadlock
+ * MSV Page (MOD-05) - Repurposed as KI-Telefon-Assistent
+ * 
+ * Former MSV functionality has been consolidated into MOD-04 Immobilien > Verwaltung tab.
+ * This module now serves as the future home of the AI Phone Assistant.
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-
-// Lazy load sub-page components
-const ObjekteTab = lazy(() => import('./msv/ObjekteTab'));
-const MieteingangTab = lazy(() => import('./msv/MieteingangTab'));
-const VermietungTab = lazy(() => import('./msv/VermietungTab'));
-const EinstellungenTab = lazy(() => import('./msv/EinstellungenTab'));
-const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
+const KiTelefonUebersicht = lazy(() => import('./msv/KiTelefonUebersicht'));
 
 const MSVPage = () => {
   return (
     <Routes>
-      <Route index element={<Navigate to="objekte" replace />} />
+      <Route index element={<Navigate to="uebersicht" replace />} />
+      <Route path="uebersicht" element={<KiTelefonUebersicht />} />
       
-      {/* Tile routes */}
-      <Route path="objekte" element={<ObjekteTab />} />
-      <Route path="mieteingang" element={<MieteingangTab />} />
-      <Route path="vermietung" element={<VermietungTab />} />
-      <Route path="einstellungen" element={<EinstellungenTab />} />
-      
-      {/* Detail routes */}
-      <Route path="vermietung/:id" element={<RentalExposeDetail />} />
+      {/* Legacy redirects: old MSV routes → Immobilien/Verwaltung */}
+      <Route path="objekte" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
+      <Route path="mieteingang" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
+      <Route path="vermietung" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
+      <Route path="einstellungen" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
+      <Route path="vermietung/:id" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/msv" replace />} />
