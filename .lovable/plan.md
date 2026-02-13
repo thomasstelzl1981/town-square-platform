@@ -1,43 +1,43 @@
 
-# Fix: Datenraum leer — Root-Node Re-Parenting fehlt
 
-## Ursache
+# Homogenes 8-Kachel-Layout fuer die Immobilienakte
 
-Die `ColumnView` im `StorageFileManager` zeigt als erste Spalte nur Ordner, deren `parent_id = null` ist (Zeile 111-112 in `ColumnView.tsx`). 
+## Aktueller Zustand
 
-Der Property-Root-Ordner (z.B. "DEMO-001 - Leipziger Strasse 42") hat aber `parent_id = 4e1c6b44-...` (den MOD_04 DMS-Root). Dieser uebergeordnete Knoten wird nicht mit abgefragt, daher findet `ColumnView` keinen einzigen Root-Ordner und zeigt eine leere Ansicht.
+Das Layout hat 5 Reihen mit unterschiedlichen Breiten:
+- ROW 1: Identitaet | Gebaeude (2-spaltig)
+- ROW 2: Lage & Beschreibung (full-width)
+- ROW 3: Grundbuch | Finanzierung (2-spaltig)
+- ROW 4: Mietverhaeltnis | WEG (2-spaltig)
+- ROW 5: Dokumente (2/3-Breite)
 
-Das `FinanceDocumentsManager` (MOD-07) loest genau dieses Problem korrekt: Es setzt `parent_id` des Modul-Root-Knotens auf `null`, damit `StorageFileManager` ihn als Root erkennt.
+Das erzeugt ein unruhiges Bild durch die Full-Width-Beschreibung und die schmalere Dokumenten-Kachel.
 
-Beim Umbau der `DatenraumTab.tsx` auf `StorageFileManager` wurde dieses Re-Parenting vergessen.
-
-## Loesung
-
-### `src/components/portfolio/DatenraumTab.tsx`
-
-1. **Property-Root-Node identifizieren**: Der Ordner, dessen `parent_id` NICHT in der Liste der abgefragten Nodes ist (oder alternativ: der Node, der als einziger kein Elternteil innerhalb der Ergebnismenge hat).
-
-2. **Re-Parenting**: Analog zu `FinanceDocumentsManager` den Root-Node mit `parent_id: null` ueberschreiben, damit `ColumnView` ihn als Wurzel erkennt.
-
-3. **Children als Roots zeigen**: Alternativ (und besser fuer die UX): Die Kinder des Property-Root-Ordners direkt als Top-Level anzeigen, indem der Root-Node selbst uebersprungen wird und seine direkten Kinder `parent_id: null` bekommen. So sieht der Nutzer sofort "00_Projektdokumentation", "01_Expose Ankauf" etc. statt eines uebergeordneten Property-Ordners.
-
-Konkret wird ein `useMemo` eingefuegt:
+## Neues Layout: 4 Reihen x 2 Spalten = 8 gleich grosse Kacheln
 
 ```text
-1. rootNode = nodes.find(n => !nodes.some(other => other.id === n.parent_id))
-2. displayNodes = nodes
-     .filter(n => n.id !== rootNode.id)
-     .map(n => n.parent_id === rootNode.id ? { ...n, parent_id: null } : n)
+ROW 1: [Identitaet & Stammdaten] [Gebaeude & Flaechen]
+ROW 2: [Grundbuch & Erwerb]      [Finanzierung]
+ROW 3: [Mietverhaeltnis]         [WEG & Hausgeld]
+ROW 4: [Lage & Beschreibung]     [Dokumente]
 ```
 
-Das ist ein Einzeiler-Fix in einer einzigen Datei.
+Alle Kacheln haben exakt die gleiche Breite (50/50). Auf Mobile stapeln sie sich 1-spaltig — volle Homogenitaet.
 
-## Betroffene Datei
+## Aenderungen
+
+### `EditableUnitDossierView.tsx`
+
+1. **ROW 2 (Beschreibung full-width) entfernen** — die `EditableAddressBlock`-Komponente wird nach ROW 4 verschoben
+2. **ROW 3 (Legal/Financing) rueckt auf zu ROW 2**
+3. **ROW 4 (Tenancy/WEG) rueckt auf zu ROW 3**
+4. **Neue ROW 4**: `EditableAddressBlock` (links) neben `DocumentChecklist` (rechts) — beide in einem `grid-cols-2`
+5. **DocumentChecklist**: Von `lg:col-span-2` auf normale halbe Breite aendern (den umgebenden 3-Spalten-Grid entfernen)
+6. Den bedingten Hinweis zu mehreren Mietvertraegen (bisher in ROW 5) als kleine Inline-Notiz in die TenancySummaryBlock-Kachel verschieben oder entfernen
+
+Keine Aenderungen an den Komponenten selbst — nur die Anordnung in der View-Datei wird umgestellt.
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/portfolio/DatenraumTab.tsx` | `useMemo` fuer Node-Re-Parenting einfuegen, analog zu `FinanceDocumentsManager` |
+| `EditableUnitDossierView.tsx` | Grid-Reihenfolge umstellen: 4x2 statt gemischte Breiten |
 
-## Keine weiteren Aenderungen
-
-Keine Datenbank-, Routing- oder Schema-Aenderungen noetig.
