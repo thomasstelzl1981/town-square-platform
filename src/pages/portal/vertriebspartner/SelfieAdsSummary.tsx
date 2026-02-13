@@ -67,7 +67,7 @@ export default function SelfieAdsSummary() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/portal/leads/selfie-ads-planen')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/portal/vertriebspartner/selfie-ads-planen')}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Zurück zur Planung
         </Button>
       </div>

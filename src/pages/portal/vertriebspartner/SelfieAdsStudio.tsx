@@ -1,5 +1,5 @@
 /**
- * Selfie Ads Studio — Überblick (Zone 2, unter /portal/leads/selfie-ads)
+ * Selfie Ads Studio — Überblick (Zone 2, unter /portal/vertriebspartner/selfie-ads)
  * Clean empty-state when no campaigns exist, showcase-ready
  */
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +22,7 @@ export default function SelfieAdsStudio() {
           title="Selfie Ads Studio"
           description="Kaufy Social-Media-Kampagnen beauftragen"
         />
-        <Button onClick={() => navigate('/portal/leads/selfie-ads-planen')} className="gap-2">
+        <Button onClick={() => navigate('/portal/vertriebspartner/selfie-ads-planen')} className="gap-2">
           <Plus className="h-4 w-4" />
           Kampagne planen
         </Button>
@@ -37,7 +37,7 @@ export default function SelfieAdsStudio() {
             description="Planen Sie Ihre erste Selfie Ads Kampagne — Kaufy veröffentlicht sie auf Social Media und liefert Leads direkt in Ihre Inbox."
             action={{
               label: 'Erste Kampagne planen',
-              onClick: () => navigate('/portal/leads/selfie-ads-planen'),
+              onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),
             }}
           />
         </CardContent>
@@ -45,7 +45,7 @@ export default function SelfieAdsStudio() {
 
       {/* Quick Navigation */}
       <div className={DESIGN.WIDGET_GRID.FULL}>
-        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-kampagnen')}>
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/vertriebspartner/selfie-ads-kampagnen')}>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <FileText className="h-4 w-4 text-primary" />
@@ -58,7 +58,7 @@ export default function SelfieAdsStudio() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-performance')}>
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/vertriebspartner/selfie-ads-performance')}>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <BarChart3 className="h-4 w-4 text-primary" />
@@ -71,7 +71,7 @@ export default function SelfieAdsStudio() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/leads/selfie-ads-abrechnung')}>
+        <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => navigate('/portal/vertriebspartner/selfie-ads-abrechnung')}>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <CreditCard className="h-4 w-4 text-primary" />

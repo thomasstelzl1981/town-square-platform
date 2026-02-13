@@ -150,7 +150,7 @@ export default function SelfieAdsPlanen() {
   const handleNavigateToSummary = () => {
     // Store form data for summary page
     sessionStorage.setItem('selfieAdsPlanData', JSON.stringify(form));
-    navigate('/portal/leads/selfie-ads-summary');
+    navigate('/portal/vertriebspartner/selfie-ads-summary');
   };
 
   const formatBudget = (cents: number) => {

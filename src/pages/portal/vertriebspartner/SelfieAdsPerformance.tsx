@@ -25,7 +25,7 @@ export default function SelfieAdsPerformance() {
             description="Sobald Ihre erste Kampagne live ist, erscheinen hier Leads, CPL und Conversion-Daten in Echtzeit."
             action={{
               label: 'Kampagne planen',
-              onClick: () => navigate('/portal/leads/selfie-ads-planen'),
+              onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),
             }}
           />
         </CardContent>
