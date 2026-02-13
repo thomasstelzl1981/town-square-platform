@@ -1,9 +1,8 @@
 /**
- * SanierungTab — Dashboard + Sub-routing for renovation workflow
- * Pattern: Dashboard with widget cards → Detail Akte → Vergabe
+ * SanierungTab — Dashboard with widget cards + inline detail below
+ * Pattern: Widgets always visible at top, selected Akte opens below
  */
 import { useState } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus } from 'lucide-react';
@@ -13,13 +12,11 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { ServiceCaseCard } from '@/components/sanierung/ServiceCaseCard';
 import { ServiceCaseCreateInline } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateInline';
-import { SanierungDetail } from '@/components/sanierung/SanierungDetail';
-import { SanierungVergabe } from '@/components/sanierung/SanierungVergabe';
+import { SanierungDetailInline } from '@/components/sanierung/SanierungDetail';
 import { useServiceCases } from '@/hooks/useServiceCases';
 
-// Dashboard view with widget tiles
-function SanierungDashboard() {
-  const navigate = useNavigate();
+export function SanierungTab() {
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: cases, isLoading } = useServiceCases();
 
@@ -41,7 +38,7 @@ function SanierungDashboard() {
           <WidgetCell>
             <Card
               className="h-full cursor-pointer border-dashed hover:border-primary/50 transition-colors flex flex-col"
-              onClick={() => setShowCreateForm(true)}
+              onClick={() => { setShowCreateForm(true); setSelectedCaseId(null); }}
             >
               <CardContent className="flex flex-col items-center justify-center flex-1 gap-3 p-6">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -58,7 +55,8 @@ function SanierungDashboard() {
             <ServiceCaseCard
               key={sc.id}
               serviceCase={sc}
-              onClick={() => navigate(`/portal/immobilien/sanierung/${sc.id}`)}
+              isSelected={selectedCaseId === sc.id}
+              onClick={() => { setSelectedCaseId(sc.id); setShowCreateForm(false); }}
             />
           ))}
         </WidgetGrid>
@@ -69,20 +67,17 @@ function SanierungDashboard() {
           onCancel={() => setShowCreateForm(false)}
           onSuccess={(caseId) => {
             setShowCreateForm(false);
-            navigate(`/portal/immobilien/sanierung/${caseId}`);
+            setSelectedCaseId(caseId);
           }}
         />
       )}
-    </PageShell>
-  );
-}
 
-export function SanierungTab() {
-  return (
-    <Routes>
-      <Route index element={<SanierungDashboard />} />
-      <Route path=":caseId" element={<SanierungDetail />} />
-      <Route path="vergabe" element={<SanierungVergabe />} />
-    </Routes>
+      {selectedCaseId && (
+        <SanierungDetailInline
+          caseId={selectedCaseId}
+          onClose={() => setSelectedCaseId(null)}
+        />
+      )}
+    </PageShell>
   );
 }

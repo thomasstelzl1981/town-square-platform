@@ -37,39 +37,55 @@ const CATEGORY_LABELS: Record<ServiceCaseCategory, string> = {
 export function SanierungDetail() {
   const { caseId } = useParams();
   const navigate = useNavigate();
+
+  return (
+    <SanierungDetailInner
+      caseId={caseId!}
+      onClose={() => navigate('/portal/immobilien/sanierung')}
+      wrapInShell
+    />
+  );
+}
+
+/** Inline variant — rendered inside the SanierungTab below the widgets */
+export function SanierungDetailInline({ caseId, onClose }: { caseId: string; onClose: () => void }) {
+  return <SanierungDetailInner caseId={caseId} onClose={onClose} wrapInShell={false} />;
+}
+
+function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string; onClose: () => void; wrapInShell: boolean }) {
   const { data: cases, isLoading } = useServiceCases();
   const [selectedProviders, setSelectedProviders] = useState<SelectedProvider[]>([]);
 
   const serviceCase = cases?.find(c => c.id === caseId);
 
   if (isLoading) {
-    return (
-      <PageShell>
+    const content = (
+      <>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
-      </PageShell>
+      </>
     );
+    return wrapInShell ? <PageShell>{content}</PageShell> : <div className="space-y-4 pt-6">{content}</div>;
   }
 
   if (!serviceCase) {
-    return (
-      <PageShell>
-        <Card><CardContent className="p-12 text-center">
-          <HardHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Vorgang nicht gefunden</h3>
-          <Button className="mt-4" onClick={() => navigate('/portal/immobilien/sanierung')}>Zurück</Button>
-        </CardContent></Card>
-      </PageShell>
+    const content = (
+      <Card><CardContent className="p-12 text-center">
+        <HardHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold">Vorgang nicht gefunden</h3>
+        <Button className="mt-4" onClick={onClose}>Schließen</Button>
+      </CardContent></Card>
     );
+    return wrapInShell ? <PageShell>{content}</PageShell> : <div className="pt-6">{content}</div>;
   }
 
   const CategoryIcon = CATEGORY_ICONS[serviceCase.category] || Package;
 
-  return (
-    <PageShell>
+  const detail = (
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/portal/immobilien/sanierung')}>
+        <Button variant="ghost" size="icon" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -127,7 +143,7 @@ export function SanierungDetail() {
       <SectionHeader number={1} title="Leistungsumfang" description="KI-Analyse, Positionen bearbeiten, Kostenschätzung" />
       <ScopeDefinitionPanel
         serviceCase={serviceCase}
-        onBack={() => navigate('/portal/immobilien/sanierung')}
+        onBack={onClose}
         onNext={() => {}}
       />
 
@@ -157,8 +173,10 @@ export function SanierungDetail() {
       {/* Section 4: Angebote & Vergabe */}
       <SectionHeader number={4} title="Angebote vergleichen & vergeben" description="Eingehende Angebote bewerten und Auftrag vergeben" />
       <OfferComparisonPanel serviceCase={serviceCase} />
-    </PageShell>
+    </div>
   );
+
+  return wrapInShell ? <PageShell>{detail}</PageShell> : <div className="pt-6">{detail}</div>;
 }
 
 function SectionHeader({ number, title, description }: { number: number; title: string; description: string }) {
