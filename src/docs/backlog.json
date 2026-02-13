@@ -229,8 +229,8 @@
           "title": "MOD-04 ist das einzige Modul mit GoldenPathGuard — alle anderen fehlen",
           "description": "Nur ImmobilienPage nutzt <GoldenPathGuard moduleCode='MOD-04'>. Laut Architektur sollten MOD-07/11 (Finanzierung), MOD-12 (Akquise), MOD-13 (Projekte), MOD-19 (PV) ebenfalls Guards haben. Die routesManifest goldenPath-Config ist nur für MOD-04 definiert.",
           "effort": "M",
-          "status": "open",
-          "fix": "GoldenPathGuard für alle Module mit Dynamic-Routes und Entity-Detail-Seiten einrichten"
+          "status": "done",
+          "fix": "GoldenPathGuard für MOD-07, MOD-12, MOD-13, MOD-17, MOD-19 implementiert (2026-02-13)"
         },
         {
           "id": "AUD-021",
@@ -240,8 +240,8 @@
           "title": "FM-Workflow Muster (Dashboard → Detail → Einreichung) muss als Standard-Template für andere Manager-Module validiert werden",
           "description": "MOD-11 definiert das 3-Stufen-Muster (Dashboard-Widgets → Split-View-Akte → Einreichungs-Aktion). MOD-12 folgt diesem teilweise, aber MOD-04/Sanierung und MOD-13 weichen ab.",
           "effort": "M",
-          "status": "open",
-          "fix": "Workflow-Pattern-Compliance für MOD-04/Sanierung, MOD-12, MOD-13 dokumentieren"
+          "status": "documented",
+          "fix": "MOD-11 ist Referenz-Implementierung. MOD-12 folgt dem Muster. MOD-04/MOD-13 haben eigene valide Patterns — als akzeptierte Varianten dokumentiert (2026-02-13)"
         },
         {
           "id": "AUD-022",
@@ -251,8 +251,8 @@
           "title": "Finanzierung Anfrage-Flow: Kein Guard auf anfrage/:requestId Route",
           "description": "Die Detail-Seite für Finanzierungsanfragen (AnfrageDetailPage) hat keinen GoldenPathGuard. Direkt-Zugriff auf die URL ist möglich ohne Validierung.",
           "effort": "S",
-          "status": "open",
-          "fix": "GoldenPathGuard mit moduleCode='MOD-07' entityIdParam='requestId' hinzufügen"
+          "status": "done",
+          "fix": "GoldenPathGuard moduleCode='MOD-07' entityIdParam='requestId' hinzugefügt (2026-02-13)"
         },
         {
           "id": "AUD-023",
@@ -262,8 +262,8 @@
           "title": "CarsPage :id Route ohne Guard — Vehicle-Detail direkt zugreifbar",
           "description": "Ähnlich wie MOD-07, kein Guard auf der dynamischen Route.",
           "effort": "S",
-          "status": "open",
-          "fix": "GoldenPathGuard hinzufügen"
+          "status": "done",
+          "fix": "GoldenPathGuard moduleCode='MOD-17' entityIdParam='id' hinzugefügt (2026-02-13)"
         },
         {
           "id": "AUD-024",
@@ -273,8 +273,8 @@
           "title": "PhotovoltaikPage :pvPlantId Route ohne Guard",
           "description": "PV-Detail direkt zugreifbar ohne Entity-Validierung.",
           "effort": "S",
-          "status": "open",
-          "fix": "GoldenPathGuard hinzufügen"
+          "status": "done",
+          "fix": "GoldenPathGuard moduleCode='MOD-19' entityIdParam='pvPlantId' hinzugefügt (2026-02-13)"
         },
         {
           "id": "AUD-025",
@@ -284,8 +284,8 @@
           "title": "ProjektePage :projectId Route ohne Guard",
           "description": "Projektdetail direkt zugreifbar ohne Entity-Validierung.",
           "effort": "S",
-          "status": "open",
-          "fix": "GoldenPathGuard hinzufügen"
+          "status": "done",
+          "fix": "GoldenPathGuard moduleCode='MOD-13' entityIdParam='projectId' für Project + Unit Detail hinzugefügt (2026-02-13)"
         }
       ]
     },

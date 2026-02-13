@@ -5,6 +5,7 @@
 
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 const CarsFahrzeuge = lazy(() => import('@/components/portal/cars/CarsFahrzeuge'));
 const CarsVersicherungen = lazy(() => import('@/components/portal/cars/CarsVersicherungen'));
@@ -24,7 +25,11 @@ export default function CarsPage() {
       <Route path="angebote" element={<CarsAngebote />} />
       
       {/* CANONICAL: Vehicle detail (Fahrzeugakte) - :id must be LAST */}
-      <Route path=":id" element={<VehicleDetailPage />} />
+      <Route path=":id" element={
+        <GoldenPathGuard moduleCode="MOD-17" entityIdParam="id">
+          <VehicleDetailPage />
+        </GoldenPathGuard>
+      } />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/cars" replace />} />

@@ -5,6 +5,7 @@
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 const SelbstauskunftTab = lazy(() => import('./finanzierung/SelbstauskunftTab'));
 const DokumenteTab = lazy(() => import('./finanzierung/DokumenteTab'));
@@ -25,7 +26,11 @@ const FinanzierungPage = () => {
         <Route path="status" element={<StatusTab />} />
         
         {/* Detail routes */}
-        <Route path="anfrage/:requestId" element={<AnfrageDetailPage />} />
+        <Route path="anfrage/:requestId" element={
+          <GoldenPathGuard moduleCode="MOD-07" entityIdParam="requestId">
+            <AnfrageDetailPage />
+          </GoldenPathGuard>
+        } />
         
         {/* Legacy redirects */}
         <Route path="vorgaenge" element={<Navigate to="/portal/finanzierung/anfrage" replace />} />

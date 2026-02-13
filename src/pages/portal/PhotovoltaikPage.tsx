@@ -2,6 +2,7 @@
  * Photovoltaik Page (MOD-19) — Full implementation
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 import React from 'react';
 
@@ -22,7 +23,11 @@ export default function PhotovoltaikPage() {
         <Route path="dokumente" element={<DokumenteTab />} />
         <Route path="einstellungen" element={<EinstellungenTab />} />
         <Route path="neu" element={<PVCreateWizard />} />
-        <Route path=":pvPlantId" element={<PVPlantDetail />} />
+        <Route path=":pvPlantId" element={
+          <GoldenPathGuard moduleCode="MOD-19" entityIdParam="pvPlantId">
+            <PVPlantDetail />
+          </GoldenPathGuard>
+        } />
         <Route path="*" element={<Navigate to="/portal/photovoltaik" replace />} />
       </Routes>
     </React.Suspense>
