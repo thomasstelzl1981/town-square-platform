@@ -1,18 +1,17 @@
 /**
- * ObjekteingangDetail — Continuous vertical Akte (no tabs) with Stepper
- * Redesigned to match FM pattern: Bank-table metadata, sections, stepper
+ * ObjekteingangDetail — CI-konformes Objektakte-Layout
+ * Redesign: KPI-Zeile, Side-by-Side Kalkulation, Collapsible Extrahierte Daten
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   ArrowLeft, Loader2, Building2, MapPin, Euro, X, ThumbsUp, MessageSquare, 
-  FileText, Upload, Check
+  FileText, Upload, Check, ChevronDown, TrendingUp, Ruler, Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
@@ -26,6 +25,8 @@ import { PreisvorschlagDialog } from './components/PreisvorschlagDialog';
 import { InteresseDialog } from './components/InteresseDialog';
 import { SourceEmailViewer } from './components/SourceEmailViewer';
 import { ActivityLogPanel } from './components/ActivityLogPanel';
+import { PageShell } from '@/components/shared/PageShell';
+import { DESIGN } from '@/config/designManifest';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' },
@@ -37,7 +38,6 @@ const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'archived', label: 'Archiviert' },
 ];
 
-// Stepper
 const OFFER_STEPS = [
   { key: 'erfassung', label: 'Erfassung' },
   { key: 'analyse', label: 'Analyse' },
@@ -56,10 +56,10 @@ export function ObjekteingangDetail() {
   const { data: mandate } = useAcqMandate(offer?.mandate_id);
   const updateStatus = useUpdateOfferStatus();
   
-  const [calcTab, setCalcTab] = React.useState<'bestand' | 'aufteiler'>('bestand');
   const [absageOpen, setAbsageOpen] = React.useState(false);
   const [preisOpen, setPreisOpen] = React.useState(false);
   const [interesseOpen, setInteresseOpen] = React.useState(false);
+  const [extractedOpen, setExtractedOpen] = React.useState(false);
 
   if (isLoading) {
     return <div className="p-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -67,13 +67,13 @@ export function ObjekteingangDetail() {
 
   if (!offer) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-6">
+      <PageShell>
         <Card><CardContent className="p-12 text-center">
           <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold">Objekt nicht gefunden</h3>
           <Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/objekteingang')}>Zurück zur Übersicht</Button>
         </CardContent></Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -85,7 +85,7 @@ export function ObjekteingangDetail() {
   const currentStepIdx = STATUS_TO_STEP[offer.status] ?? 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+    <PageShell>
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/objekteingang')}>
@@ -93,7 +93,7 @@ export function ObjekteingangDetail() {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold truncate">{offer.title || offer.address || 'Objekteingang'}</h1>
+            <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>OBJEKTDATEN</h1>
             <Select 
               value={offer.status} 
               onValueChange={(v) => updateStatus.mutate({ offerId: offer.id, status: v as AcqOfferStatus })}
@@ -109,11 +109,11 @@ export function ObjekteingangDetail() {
             </Select>
           </div>
           {mandate && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <p className={DESIGN.TYPOGRAPHY.MUTED + ' mt-1 flex items-center gap-2'}>
               <Badge variant="outline" className="font-mono">{mandate.code}</Badge>
-              <span>•</span>
+              <span>·</span>
               <span>Eingang {format(new Date(offer.created_at), 'dd.MM.yyyy', { locale: de })}</span>
-            </div>
+            </p>
           )}
         </div>
         
@@ -165,151 +165,158 @@ export function ObjekteingangDetail() {
         </div>
       </div>
 
-      {/* Section 1: KPIs — Bank table instead of 5 cards */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Übersicht</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y">
-            <DataRow label="Kaufpreis" value={formatPrice(offer.price_asking)} />
-            <DataRow label="Einheiten" value={offer.units_count?.toString() || '–'} />
-            <DataRow label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
-            <DataRow label="Rendite" value={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}%` : '–'} />
-            <DataRow label="Faktor" value={offer.yield_indicated ? (100 / offer.yield_indicated).toFixed(1) : '–'} />
-            <DataRow label="Quelle" value={offer.source_type === 'inbound_email' ? 'E-Mail' : offer.source_type} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Section 2: Objektdaten */}
-      <SectionHeader number={1} title="Objektdaten" description="Basisdaten, Lage und Investment-Kennzahlen" />
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Basisdaten</CardTitle></CardHeader>
-          <CardContent className="p-0"><div className="divide-y">
-            <DataRow label="Titel" value={offer.title || '–'} />
-            <DataRow label="Baujahr" value={offer.year_built?.toString() || '–'} />
-            <DataRow label="Einheiten" value={offer.units_count?.toString() || '–'} />
-            <DataRow label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
-          </div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><MapPin className="h-3 w-3" />Lage</CardTitle></CardHeader>
-          <CardContent className="p-0"><div className="divide-y">
-            <DataRow label="Straße" value={offer.address || '–'} />
-            <DataRow label="PLZ" value={offer.postal_code || '–'} />
-            <DataRow label="Stadt" value={offer.city || '–'} />
-          </div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Euro className="h-3 w-3" />Investment</CardTitle></CardHeader>
-          <CardContent className="p-0"><div className="divide-y">
-            <DataRow label="Kaufpreis" value={formatPrice(offer.price_asking)} />
-            <DataRow label="Jahresmiete (IST)" value={offer.noi_indicated ? formatPrice(offer.noi_indicated) : '–'} />
-            <DataRow label="Rendite" value={offer.yield_indicated ? `${offer.yield_indicated.toFixed(2)}%` : '–'} />
-            <DataRow label="Faktor" value={offer.yield_indicated ? (100 / offer.yield_indicated).toFixed(1) : '–'} />
-          </div></CardContent>
-        </Card>
+      {/* ROW 1: 4 kompakte KPI-Kacheln */}
+      <div className={DESIGN.KPI_GRID.FULL}>
+        <KPICard icon={<Euro className="h-4 w-4" />} label="Kaufpreis" value={formatPrice(offer.price_asking)} />
+        <KPICard icon={<Home className="h-4 w-4" />} label="Einheiten" value={offer.units_count?.toString() || '–'} />
+        <KPICard icon={<Ruler className="h-4 w-4" />} label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
+        <KPICard icon={<TrendingUp className="h-4 w-4" />} label="Rendite / Faktor" value={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}% · ${(100 / offer.yield_indicated).toFixed(1)}x` : '–'} />
       </div>
 
-      {offer.extracted_data && (
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Extrahierte Daten</CardTitle>
-            <CardDescription>Automatisch aus dem Exposé extrahiert{offer.extraction_confidence && ` (Konfidenz: ${offer.extraction_confidence}%)`}</CardDescription>
+      {/* ROW 2: Basisdaten + Lage (2 Spalten) */}
+      <div className={DESIGN.FORM_GRID.FULL}>
+        <Card className={DESIGN.CARD.BASE}>
+          <CardHeader className={DESIGN.CARD.SECTION_HEADER}>
+            <CardTitle className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Basisdaten</CardTitle>
           </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">{JSON.stringify(offer.extracted_data, null, 2)}</pre>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/30">
+              <DataRow label="Titel" value={offer.title || '–'} />
+              <DataRow label="Baujahr" value={offer.year_built?.toString() || '–'} />
+              <DataRow label="Einheiten" value={offer.units_count?.toString() || '–'} />
+              <DataRow label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
+              <DataRow label="Kaufpreis" value={formatPrice(offer.price_asking)} />
+              <DataRow label="Jahresmiete (IST)" value={offer.noi_indicated ? formatPrice(offer.noi_indicated) : '–'} />
+            </div>
           </CardContent>
         </Card>
-      )}
-
-      <Separator />
-
-      {/* Section 3: Kalkulation */}
-      <SectionHeader number={2} title="Kalkulation" description="Bestand- und Aufteiler-Kalkulationen" />
-      <div className="mb-4">
-        <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as 'bestand' | 'aufteiler')}>
-          <TabsList>
-            <TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger>
-            <TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <Card className={DESIGN.CARD.BASE}>
+          <CardHeader className={DESIGN.CARD.SECTION_HEADER}>
+            <CardTitle className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'flex items-center gap-2')}>
+              <MapPin className="h-3 w-3" /> Lage
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/30">
+              <DataRow label="Straße" value={offer.address || '–'} />
+              <DataRow label="PLZ" value={offer.postal_code || '–'} />
+              <DataRow label="Stadt" value={offer.city || '–'} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      {calcTab === 'bestand' ? (
-        <BestandCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: offer.noi_indicated ? offer.noi_indicated / 12 : 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
-      ) : (
-        <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, yearlyRent: offer.noi_indicated || 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
-      )}
 
-      <Separator />
-
-      {/* Section 4: Quelle */}
-      <SectionHeader number={3} title="E-Mail / Quelle" description="Ursprüngliche Kommunikation und Exposé-Quelle" />
-      <SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} />
-
-      <Separator />
-
-      {/* Section 5: Dokumente */}
-      <SectionHeader number={4} title="Dokumente" description="Exposés und zugehörige Unterlagen" />
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div><CardTitle className="text-sm">Dokumente</CardTitle></div>
-          <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-2" />Hochladen</Button>
-        </CardHeader>
-        <CardContent>
-          {offer.documents && offer.documents.length > 0 ? (
-            <div className="space-y-2">
-              {offer.documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium text-sm">{doc.file_name}</div>
-                      <div className="text-xs text-muted-foreground">{doc.document_type}</div>
+      {/* ROW 3: Quelle + Dokumente (2 Spalten) */}
+      <div className={DESIGN.FORM_GRID.FULL}>
+        <div className="space-y-2">
+          <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>E-Mail / Quelle</h2>
+          <SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} />
+        </div>
+        <div className="space-y-2">
+          <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Dokumente</h2>
+          <Card className={DESIGN.CARD.BASE}>
+            <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
+              <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Dateien</CardTitle>
+              <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-2" />Hochladen</Button>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {offer.documents && offer.documents.length > 0 ? (
+                <div className={DESIGN.LIST.GAP}>
+                  {offer.documents.map(doc => (
+                    <div key={doc.id} className={DESIGN.LIST.ROW}>
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <div className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{doc.file_name}</div>
+                          <div className={DESIGN.TYPOGRAPHY.HINT}>{doc.document_type}</div>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm">Öffnen</Button>
                     </div>
-                  </div>
-                  <Button variant="outline" size="sm">Öffnen</Button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2" />
-              <p>Keine Dokumente vorhanden</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Section 6: Aktivitäten */}
-      <SectionHeader number={5} title="Aktivitäten" description="Chronologischer Verlauf aller Aktionen" />
-      <ActivityLogPanel offerId={offer.id} />
-    </div>
-  );
-}
-
-function SectionHeader({ number, title, description }: { number: number; title: string; description: string }) {
-  return (
-    <div className="flex items-start gap-3 pt-2">
-      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-        {number}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-8 w-8 mx-auto mb-2" />
+                  <p className={DESIGN.TYPOGRAPHY.MUTED}>Keine Dokumente vorhanden</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* ROW 4: Kalkulation — Bestand + Aufteiler NEBENEINANDER */}
       <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-3')}>Kalkulation</h2>
+        <div className={DESIGN.FORM_GRID.FULL}>
+          <div className="space-y-2">
+            <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
+              <span className="text-base">🏠</span> Bestand (Hold)
+            </h3>
+            <BestandCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: offer.noi_indicated ? offer.noi_indicated / 12 : 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+          </div>
+          <div className="space-y-2">
+            <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
+              <span className="text-base">📊</span> Aufteiler (Flip)
+            </h3>
+            <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, yearlyRent: offer.noi_indicated || 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* ROW 5: Aktivitäten */}
+      <div>
+        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-3')}>Aktivitäten</h2>
+        <ActivityLogPanel offerId={offer.id} />
+      </div>
+
+      {/* ROW 6: Extrahierte Daten — collapsible, ganz unten */}
+      {offer.extracted_data && (
+        <Collapsible open={extractedOpen} onOpenChange={setExtractedOpen}>
+          <Card className={DESIGN.CARD.BASE}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className={cn(DESIGN.CARD.SECTION_HEADER, 'cursor-pointer flex flex-row items-center justify-between')}>
+                <div>
+                  <CardTitle className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>KI-Extraktion</CardTitle>
+                  <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>
+                    Automatisch aus dem Exposé extrahiert{offer.extraction_confidence && ` · Konfidenz: ${offer.extraction_confidence}%`}
+                  </CardDescription>
+                </div>
+                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', extractedOpen && 'rotate-180')} />
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-4">
+                <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">{JSON.stringify(offer.extracted_data, null, 2)}</pre>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+    </PageShell>
   );
 }
 
+/* ─── KPI Card ─────────────────────────────────────────── */
+function KPICard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <Card className={DESIGN.CARD.BASE}>
+      <CardContent className="p-4 flex flex-col gap-1">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          {icon}
+          <span className={DESIGN.TYPOGRAPHY.LABEL}>{label}</span>
+        </div>
+        <span className="text-lg font-bold tracking-tight">{value}</span>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Data Row ─────────────────────────────────────────── */
 function DataRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] px-4 py-2 text-sm">
+    <div className="grid grid-cols-[140px_1fr] px-4 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value || '–'}</span>
     </div>
