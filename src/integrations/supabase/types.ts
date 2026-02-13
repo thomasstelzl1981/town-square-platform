@@ -7638,6 +7638,7 @@ export type Database = {
           id: string
           index_base_month: string | null
           last_rent_adjustment_date: string | null
+          last_rent_increase_at: string | null
           lease_type: string | null
           monthly_rent: number
           next_rent_adjustment_earliest_date: string | null
@@ -7647,6 +7648,7 @@ export type Database = {
           public_id: string | null
           rent_cold_eur: number | null
           rent_increase: string | null
+          rent_increase_cycle_months: number | null
           rent_model: string | null
           renter_org_id: string | null
           staffel_schedule: Json | null
@@ -7668,6 +7670,7 @@ export type Database = {
           id?: string
           index_base_month?: string | null
           last_rent_adjustment_date?: string | null
+          last_rent_increase_at?: string | null
           lease_type?: string | null
           monthly_rent: number
           next_rent_adjustment_earliest_date?: string | null
@@ -7677,6 +7680,7 @@ export type Database = {
           public_id?: string | null
           rent_cold_eur?: number | null
           rent_increase?: string | null
+          rent_increase_cycle_months?: number | null
           rent_model?: string | null
           renter_org_id?: string | null
           staffel_schedule?: Json | null
@@ -7698,6 +7702,7 @@ export type Database = {
           id?: string
           index_base_month?: string | null
           last_rent_adjustment_date?: string | null
+          last_rent_increase_at?: string | null
           lease_type?: string | null
           monthly_rent?: number
           next_rent_adjustment_earliest_date?: string | null
@@ -7707,6 +7712,7 @@ export type Database = {
           public_id?: string | null
           rent_cold_eur?: number | null
           rent_increase?: string | null
+          rent_increase_cycle_months?: number | null
           rent_model?: string | null
           renter_org_id?: string | null
           staffel_schedule?: Json | null
@@ -8989,6 +8995,47 @@ export type Database = {
           },
         ]
       }
+      msv_action_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          lease_id: string | null
+          property_id: string | null
+          tenant_id: string
+          text: string
+          unit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lease_id?: string | null
+          property_id?: string | null
+          tenant_id: string
+          text: string
+          unit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lease_id?: string | null
+          property_id?: string | null
+          tenant_id?: string
+          text?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_action_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       msv_bank_accounts: {
         Row: {
           account_name: string
@@ -9029,6 +9076,139 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "msv_bank_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_book_values: {
+        Row: {
+          afa_begin_date: string | null
+          afa_rate_percent: number | null
+          ak_ancillary: number | null
+          ak_building: number | null
+          ak_ground: number | null
+          book_value_confirmed_at: string | null
+          book_value_confirmed_by: string | null
+          book_value_date: string | null
+          book_value_estimate: number | null
+          book_value_status: string
+          created_at: string
+          cumulative_afa: number | null
+          id: string
+          interest_rate: number | null
+          loan_id: string | null
+          outstanding_balance: number | null
+          property_id: string
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+          usage_type: string | null
+        }
+        Insert: {
+          afa_begin_date?: string | null
+          afa_rate_percent?: number | null
+          ak_ancillary?: number | null
+          ak_building?: number | null
+          ak_ground?: number | null
+          book_value_confirmed_at?: string | null
+          book_value_confirmed_by?: string | null
+          book_value_date?: string | null
+          book_value_estimate?: number | null
+          book_value_status?: string
+          created_at?: string
+          cumulative_afa?: number | null
+          id?: string
+          interest_rate?: number | null
+          loan_id?: string | null
+          outstanding_balance?: number | null
+          property_id: string
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+          usage_type?: string | null
+        }
+        Update: {
+          afa_begin_date?: string | null
+          afa_rate_percent?: number | null
+          ak_ancillary?: number | null
+          ak_building?: number | null
+          ak_ground?: number | null
+          book_value_confirmed_at?: string | null
+          book_value_confirmed_by?: string | null
+          book_value_date?: string | null
+          book_value_estimate?: number | null
+          book_value_status?: string
+          created_at?: string
+          cumulative_afa?: number | null
+          id?: string
+          interest_rate?: number | null
+          loan_id?: string | null
+          outstanding_balance?: number | null
+          property_id?: string
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+          usage_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_book_values_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_bwa_entries: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          amount: number
+          bwa_category: string
+          created_at: string
+          id: string
+          note: string | null
+          period_month: number
+          period_year: number
+          property_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          amount?: number
+          bwa_category: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          period_month: number
+          period_year: number
+          property_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          amount?: number
+          bwa_category?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          period_month?: number
+          period_year?: number
+          property_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_bwa_entries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -9202,6 +9382,83 @@ export type Database = {
           },
           {
             foreignKeyName: "msv_readiness_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msv_rent_payments: {
+        Row: {
+          created_at: string
+          dunning_channel: string | null
+          dunning_last_sent_at: string | null
+          dunning_next_due_at: string | null
+          dunning_notes: string | null
+          dunning_stage: number
+          expected_amount: number | null
+          id: string
+          lease_id: string | null
+          note: string | null
+          period_month: number
+          period_year: number
+          property_id: string
+          received_amount: number | null
+          received_date: string | null
+          source: string
+          status: string
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dunning_channel?: string | null
+          dunning_last_sent_at?: string | null
+          dunning_next_due_at?: string | null
+          dunning_notes?: string | null
+          dunning_stage?: number
+          expected_amount?: number | null
+          id?: string
+          lease_id?: string | null
+          note?: string | null
+          period_month: number
+          period_year: number
+          property_id: string
+          received_amount?: number | null
+          received_date?: string | null
+          source?: string
+          status?: string
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dunning_channel?: string | null
+          dunning_last_sent_at?: string | null
+          dunning_next_due_at?: string | null
+          dunning_notes?: string | null
+          dunning_stage?: number
+          expected_amount?: number | null
+          id?: string
+          lease_id?: string | null
+          note?: string | null
+          period_month?: number
+          period_year?: number
+          property_id?: string
+          received_amount?: number | null
+          received_date?: string | null
+          source?: string
+          status?: string
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msv_rent_payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
