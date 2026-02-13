@@ -15,7 +15,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { MandateCaseCard, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
+import { MandateUploadWidget } from '@/components/akquise/MandateUploadWidget';
 import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,20 +105,53 @@ export function ObjekteingangList() {
 
       {/* Mandate Widgets */}
       <WidgetGrid>
+        {/* "Alle Eingänge" widget — always first */}
         <WidgetCell>
-          <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
+          <Card
+            className={cn(
+              'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02]',
+              'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
+              !selectedMandateId && 'ring-2 ring-primary shadow-glow'
+            )}
+            onClick={() => setSelectedMandateId(null)}
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 md:hidden">
+              <Inbox className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0 md:hidden">
+              <p className="font-semibold text-sm">Alle Eingänge</p>
+              <p className="text-[11px] text-muted-foreground">{allOffers.length} Objekte</p>
+            </div>
+            <CardContent className="hidden md:flex p-4 flex-col h-full justify-between">
+              <div className="flex items-start justify-between">
+                <Badge variant="default" className="text-[10px] font-medium">Gesamt</Badge>
+              </div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
+                  <Inbox className="h-5 w-5 text-primary" />
+                </div>
+                <p className="font-semibold text-sm">Alle Eingänge</p>
+                <p className="text-[11px] text-muted-foreground">{allOffers.length} Objekte</p>
+              </div>
+              <div />
+            </CardContent>
+          </Card>
         </WidgetCell>
-        {mandates.map(m => (
-          <WidgetCell key={m.id}>
-            <div className={selectedMandateId === m.id ? 'ring-2 ring-primary rounded-xl' : ''}>
-              <MandateCaseCard
+
+        {/* Mandate widgets with upload drop zones */}
+        {mandates.map(m => {
+          const count = allOffers.filter(o => o.mandate_id === m.id).length;
+          return (
+            <WidgetCell key={m.id} className="group">
+              <MandateUploadWidget
                 mandate={m}
+                offerCount={count}
                 isSelected={selectedMandateId === m.id}
                 onClick={() => setSelectedMandateId(prev => prev === m.id ? null : m.id)}
               />
-            </div>
-          </WidgetCell>
-        ))}
+            </WidgetCell>
+          );
+        })}
       </WidgetGrid>
 
       {/* Filter Chips */}
