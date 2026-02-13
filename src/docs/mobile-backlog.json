@@ -172,17 +172,19 @@
           "id": "MOB-030",
           "severity": "low",
           "title": "FMFinanzierungsakte: Tabular-Form Mobile-Optimierung",
-          "description": "Die Dual-Column Selbstauskunft (AS1/AS2) ist auf Mobile schwer bedienbar. Benötigt ein vertikales Stack-Layout.",
+          "description": "Die Dual-Column Selbstauskunft (AS1/AS2) ist auf Mobile schwer bedienbar. overflow-x-auto mit min-w-[600px] wrapper implementiert.",
           "effort": "L",
-          "status": "deferred"
+          "status": "done",
+          "fix": "overflow-x-auto + min-w-[600px] wrapper für alle 4 Selbstauskunft-Tabellen (Standard + Split-View) (2026-02-13)"
         },
         {
           "id": "MOB-031",
           "severity": "low",
           "title": "PV AnlagenTab: Weitere Spalten responsive ausblenden",
-          "description": "Hat bereits hidden md:table-cell, könnte aber mehr Spalten auf Mobile ausblenden.",
+          "description": "Hat bereits hidden md:table-cell und hidden lg:table-cell. Zusätzlich overflow-x-auto auf CardContent.",
           "effort": "S",
-          "status": "deferred"
+          "status": "done",
+          "fix": "overflow-x-auto auf CardContent + bestehende hidden md/lg:table-cell Klassen reichen aus (2026-02-13)"
         }
       ]
     }
