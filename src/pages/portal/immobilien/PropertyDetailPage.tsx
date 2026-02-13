@@ -8,6 +8,8 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { isDemoProperty } from '@/config/tenantConstants';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -156,6 +158,9 @@ export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { activeOrganization, activeTenantId } = useAuth();
   const { toast } = useToast();
+  const { isEnabled } = useDemoToggles();
+  const isDemo = id ? isDemoProperty(id) : false;
+  const demoEnabled = isEnabled('GP-PORTFOLIO');
   const [property, setProperty] = useState<Property | null>(null);
   const [financing, setFinancing] = useState<PropertyFinancing[]>([]);
   const [unit, setUnit] = useState<Unit | null>(null);
@@ -166,6 +171,9 @@ export default function PropertyDetailPage() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [splitView, setSplitView] = useState(false);
   const contentRef = usePdfContentRef();
+
+  // Guard: if this is a demo property and demo mode is off, show not-found
+  const blockedByDemoToggle = isDemo && !demoEnabled;
 
   // Load the new Immobilienakte data
   const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
@@ -308,8 +316,8 @@ export default function PropertyDetailPage() {
     );
   }
 
-  // Empty state: Property not found (but route is valid)
-  if (error || !property) {
+  // Empty state: Property not found OR demo blocked
+  if (error || !property || blockedByDemoToggle) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" asChild>
@@ -324,12 +332,16 @@ export default function PropertyDetailPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <Building2 className="h-8 w-8 text-muted-foreground" />
             </div>
-            <CardTitle>Immobilie nicht gefunden</CardTitle>
+            <CardTitle>
+              {blockedByDemoToggle ? 'Demo-Daten deaktiviert' : 'Immobilie nicht gefunden'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Die Immobilie mit der ID <code className="bg-muted px-2 py-1 rounded">{id}</code> existiert nicht 
-              oder Sie haben keinen Zugriff darauf.
+              {blockedByDemoToggle 
+                ? 'Diese Demo-Immobilie ist nicht sichtbar, da die Demo-Daten deaktiviert sind. Aktivieren Sie die Demo-Daten unter Stammdaten → Demo-Daten.'
+                : `Die Immobilie mit der ID ${id} existiert nicht oder Sie haben keinen Zugriff darauf.`
+              }
             </p>
             <Button asChild>
               <Link to="/portal/immobilien/portfolio">Zum Portfolio</Link>
@@ -357,7 +369,7 @@ export default function PropertyDetailPage() {
   return (
     <PageShell fullWidth={splitView}>
       <div ref={contentRef}>
-        {/* Header: Back + Split-View Toggle */}
+        {/* Header: Back + Demo Badge + Split-View Toggle */}
         <div className="flex items-center gap-2 mb-4">
           <Button variant="ghost" size="sm" asChild className="no-print">
             <Link to="/portal/immobilien/portfolio">
@@ -365,6 +377,12 @@ export default function PropertyDetailPage() {
             </Link>
           </Button>
           <span className="text-sm text-muted-foreground flex-1">Zurück zur Übersicht</span>
+          
+          {isDemo && (
+            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs">
+              DEMO
+            </Badge>
+          )}
 
           {/* Split-View Toggle — lg+ only */}
           <div className="hidden lg:flex items-center gap-1 border rounded-md p-0.5 bg-muted/30 no-print">

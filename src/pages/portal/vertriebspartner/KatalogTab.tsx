@@ -4,6 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +76,9 @@ const KatalogTab = () => {
   const [commissionRange, setCommissionRange] = useState<[number, number]>([0, 15]);
   const [yieldRange, setYieldRange] = useState<[number, number]>([0, 15]);
   
+  // Demo listings
+  const { partnerKatalog: demoPartnerListings } = useDemoListings();
+
   // Exclusions (ausgeblendete Objekte)
   // NEUE LOGIK: Alle Objekte sind standardmäßig sichtbar, ♥ blendet aus
   const { data: selections = [] } = usePartnerSelections();
@@ -144,15 +148,17 @@ const KatalogTab = () => {
     }
   });
 
-  // Get unique cities for filter
+  // Get unique cities for filter (including demo)
+  const allListings = useMemo(() => [...(demoPartnerListings as any[]), ...listings], [demoPartnerListings, listings]);
+  
   const uniqueCities = useMemo(() => {
-    const cities = [...new Set(listings.map(l => l.property_city).filter(Boolean))];
+    const cities = [...new Set(allListings.map((l: any) => l.property_city).filter(Boolean))];
     return cities.sort();
-  }, [listings]);
+  }, [allListings]);
 
   // Apply filters
   const filteredListings = useMemo(() => {
-    return listings.filter(listing => {
+    return allListings.filter((listing: any) => {
       // Search filter
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -183,7 +189,7 @@ const KatalogTab = () => {
       
       return true;
     });
-  }, [listings, searchTerm, cityFilter, typeFilter, priceRange, commissionRange, yieldRange]);
+  }, [allListings, searchTerm, cityFilter, typeFilter, priceRange, commissionRange, yieldRange]);
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -207,7 +213,7 @@ const KatalogTab = () => {
       key: 'title',
       header: 'Objekt',
       minWidth: '220px',
-      render: (_, row) => (
+      render: (_: any, row: any) => (
         <div className="flex items-center gap-2">
           {excludedIds.has(row.id) && (
             <Heart className="h-4 w-4 fill-muted-foreground text-muted-foreground flex-shrink-0 line-through" />
@@ -216,6 +222,11 @@ const KatalogTab = () => {
             address={row.title} 
             subtitle={`${row.property_address}, ${row.property_city}`} 
           />
+          {row.isDemo && (
+            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px] px-1.5 py-0">
+              DEMO
+            </Badge>
+          )}
         </div>
       )
     },
@@ -341,7 +352,7 @@ const KatalogTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            {filteredListings.length} von {listings.length} Objekt{listings.length !== 1 ? 'en' : ''} 
+            {filteredListings.length} von {allListings.length} Objekt{allListings.length !== 1 ? 'en' : ''} 
             {excludedIds.size > 0 && ` • ${excludedIds.size} ausgeblendet`}
           </p>
         </div>

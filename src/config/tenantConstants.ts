@@ -21,6 +21,21 @@ type Organization = Tables<'organizations'>;
 export const DEV_TENANT_UUID = 'a0000000-0000-4000-a000-000000000001';
 
 // ============================================================================
+// Demo Property IDs — used for Golden Path demo data filtering
+// ============================================================================
+
+/** The 3 seeded demo properties (Berlin, München, Hamburg) */
+export const DEMO_PROPERTY_IDS = [
+  'd0000000-0000-4000-a000-000000000001', // Berlin Altbau
+  'd0000000-0000-4000-a000-000000000002', // München Gartenhaus
+  'd0000000-0000-4000-a000-000000000003', // Hamburg Hafenblick
+] as const;
+
+/** Check if a property ID is a demo property */
+export const isDemoProperty = (propertyId: string): boolean =>
+  (DEMO_PROPERTY_IDS as readonly string[]).includes(propertyId);
+
+// ============================================================================
 // Feature Flag: VITE_FORCE_DEV_TENANT
 // ============================================================================
 
