@@ -1,40 +1,27 @@
 
-# MOD-05 umbenennen und KI-Telefonassistent unter Communication Pro anlegen
 
-## Aenderungen
+# "Operations" umbenennen in "Partners"
 
-### 1. `src/manifests/routesManifest.ts` — MOD-05 umbenennen (Zeile 269)
+## Aenderung
 
-Vorher: `name: "KI-Telefon-Assistent"`
-Nachher: `name: "Platzhalter"`
+Nur eine Datei betroffen: `src/manifests/areaConfig.ts`
 
-### 2. `src/manifests/routesManifest.ts` — MOD-14 Tiles erweitern (Zeile 443)
+### Zeile 34-35: Label und labelShort aendern
 
-Neuer Tile-Eintrag nach "Agenten":
-
-```text
-{ path: "ki-telefon", component: "CommProKiTelefon", title: "KI-Telefonassistent" }
+Vorher:
+```
+label: 'Operations',
+labelShort: 'Ops',
 ```
 
-Ergebnis MOD-14 Sub-Tabs: Serien-E-Mails | Recherche | Social | Agenten | **KI-Telefonassistent**
-
-### 3. `src/pages/portal/communication-pro/CommunicationProPage.tsx` — Neue Route
-
-Lazy-Import und Route fuer den KI-Telefonassistenten hinzufuegen:
-
-```text
-const KiTelefonPage = lazy(() => import('./ki-telefon/KiTelefonPage'));
-<Route path="ki-telefon" element={<KiTelefonPage />} />
+Nachher:
 ```
-
-### 4. Neue Datei: `src/pages/portal/communication-pro/ki-telefon/KiTelefonPage.tsx`
-
-Placeholder-Seite mit dem bestehenden Design aus `KiTelefonUebersicht.tsx` (Phone-Icon, "Kommt bald"-Hinweis), angepasst an den Communication-Pro-Kontext.
-
-### 5. `src/pages/portal/msv/KiTelefonUebersicht.tsx` — Inhalt anpassen
-
-Titel und Beschreibung auf "Platzhalter" aendern, um konsistent mit dem umbenannten Modul zu sein.
+label: 'Partners',
+labelShort: 'Partners',
+```
 
 ### Keine weiteren Aenderungen
-- Routen von MOD-05 (`/portal/msv/*`) bleiben bestehen
-- Datenbank und RLS bleiben unveraendert
+- Der interne Key `operations` bleibt unveraendert (keine Routing-Auswirkung)
+- Alle Module innerhalb der Area bleiben gleich
+- Routen, Komponenten und Datenbank bleiben unveraendert
+
