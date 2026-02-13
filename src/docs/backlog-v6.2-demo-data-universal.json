@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "version": "6.2",
+    "focus": "Universelles Demo-Daten-Framework — Manifest + Hooks + Guards für alle 15 Golden Paths",
+    "created_at": "2026-02-13",
+    "updated_at": "2026-02-13",
+    "predecessor": "backlog v6.1 (Golden Path Phase 2: Demo-Widgets + Layout-Konformität) — COMPLETED",
+    "methodology": "7 Schritte: 1) Manifest, 2) Guard-Hook, 3) Z2-only Module, 4) GP-PROJEKT, 5) GP-FINANZIERUNG, 6) GP-SUCHMANDAT, 7) Registry",
+    "design_principle": "Rein clientseitig/synthetisch — keine DB-Einträge, kein Seeding. Toggle ON = Daten sichtbar, Toggle OFF = Daten verschwinden.",
+    "current_step": "all",
+    "status": "IN_PROGRESS"
+  },
+  "step_1": {
+    "title": "Demo-Daten-Manifest erstellen",
+    "file": "src/manifests/demoDataManifest.ts",
+    "status": "todo",
+    "description": "Zentrales Manifest mit allen 15 Golden Path Demo-Daten-Einträgen. Definiert pro Prozess: toggleKey, dataHook, entities, zones, consumers, status."
+  },
+  "step_2": {
+    "title": "Generischer Guard-Hook erstellen",
+    "file": "src/hooks/useDemoLocalEntity.ts",
+    "status": "todo",
+    "description": "Universeller Hook für Z2-only Prozesse. Liefert isDemoEntity, showDemo, DemoBadge-Komponente. Redirect wenn Toggle OFF und Demo-Entity aktiv."
+  },
+  "step_3": {
+    "title": "Zone-2-only Module mit Guard ausstatten",
+    "status": "todo",
+    "description": "10 reine Z2-Prozesse erhalten den useDemoLocalEntity Guard: GP-VERWALTUNG, GP-SANIERUNG, GP-PRIVATKREDIT, GP-SIMULATION, GP-SERIEN-EMAIL, GP-RECHERCHE, GP-FAHRZEUG, GP-PV-ANLAGE, GP-WEBSITE, GP-FM-FALL, GP-AKQUISE-MANDAT",
+    "modules": [
+      {"id": "GP-VERWALTUNG", "module": "MOD-04", "scope": "Z2-only"},
+      {"id": "GP-SANIERUNG", "module": "MOD-04", "scope": "Z2-only"},
+      {"id": "GP-PRIVATKREDIT", "module": "MOD-07", "scope": "Z2-only"},
+      {"id": "GP-SIMULATION", "module": "MOD-08", "scope": "Z2-only"},
+      {"id": "GP-FM-FALL", "module": "MOD-11", "scope": "Z1-Manager"},
+      {"id": "GP-AKQUISE-MANDAT", "module": "MOD-12", "scope": "Z1-Manager"},
+      {"id": "GP-SERIEN-EMAIL", "module": "MOD-14", "scope": "Z2-only"},
+      {"id": "GP-RECHERCHE", "module": "MOD-14", "scope": "Z2-only"},
+      {"id": "GP-FAHRZEUG", "module": "MOD-17", "scope": "Z2-only"},
+      {"id": "GP-PV-ANLAGE", "module": "MOD-19", "scope": "Z2-only"},
+      {"id": "GP-WEBSITE", "module": "MOD-21", "scope": "Z2-only"}
+    ]
+  },
+  "step_4": {
+    "title": "GP-PROJEKT in useDemoListings erweitern",
+    "file": "src/hooks/useDemoListings.ts",
+    "status": "todo",
+    "description": "Projekt-Listing-Shapes für Sales Desk (Z1), Kaufy (Z3) und MOD-09 Katalog hinzufügen. Analog zu GP-PORTFOLIO mit eigenen Demo-Projekt-IDs."
+  },
+  "step_5": {
+    "title": "GP-FINANZIERUNG Cross-Zone Hook",
+    "file": "src/hooks/useDemoFinanceCase.ts",
+    "status": "todo",
+    "description": "Synthetische Finanzierungsdaten: financeRequest (Z2), fmCase (Z1 FM-Cockpit), futureRoomEntry (Z3). Toggle: GP-FINANZIERUNG."
+  },
+  "step_6": {
+    "title": "GP-SUCHMANDAT Cross-Zone Hook",
+    "file": "src/hooks/useDemoAcquisition.ts",
+    "status": "todo",
+    "description": "Synthetische Akquisedaten: searchMandate (Z2), amCase (Z1 AM-Cockpit). Toggle: GP-SUCHMANDAT."
+  },
+  "step_7": {
+    "title": "demoDataRegistry aktualisieren",
+    "file": "src/config/demoDataRegistry.ts",
+    "status": "todo",
+    "description": "Alle neuen Hooks registrieren: useDemoLocalEntity, useDemoFinanceCase, useDemoAcquisition, demoDataManifest."
+  },
+  "dateien_uebersicht": {
+    "neue_dateien": [
+      "src/manifests/demoDataManifest.ts",
+      "src/hooks/useDemoLocalEntity.ts",
+      "src/hooks/useDemoFinanceCase.ts",
+      "src/hooks/useDemoAcquisition.ts"
+    ],
+    "geaenderte_dateien": [
+      "src/hooks/useDemoListings.ts",
+      "src/config/demoDataRegistry.ts",
+      "src/config/tenantConstants.ts"
+    ],
+    "keine_db_aenderungen": true
+  }
+}
