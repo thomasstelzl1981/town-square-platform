@@ -1,67 +1,77 @@
 
-# Sprint 3: Final Cleanup Round
 
-## Ziel
-Alle verbleibenden Code-Qualitaets-Issues aus den Backlogs schliessen und die aktuellen Console-Fehler beheben. Danach ist das System "sauber" und nur noch Feature-Roadmap-Items bleiben uebrig.
+# Feature-Roadmap: Was ist das und wie erstellen wir sie?
 
-## Umfang (7 Fixes)
+## Was ist eine Feature-Roadmap?
 
-### 1. forwardRef-Warnung beheben (Console-Fehler)
-- **Datei:** `src/components/portal/cars/VehicleCreateDialog.tsx`
-- **Problem:** React warnt, dass Function Components keine Refs erhalten koennen
-- **Fix:** Dialog-Komponente korrekt wrappen oder Ref-Weitergabe entfernen
-- **Betrifft auch:** `src/components/ui/dialog.tsx` (DialogContent forwardRef)
+Eine Feature-Roadmap ist dein strategischer Fahrplan fuer die Weiterentwicklung des Systems. Waehrend die bisherigen Backlogs (backlog.json, mobile-backlog.json) sich auf **Bereinigung und technische Schulden** konzentriert haben — also darauf, das Bestehende sauber zu machen — beschreibt die Feature-Roadmap **was als Naechstes gebaut wird**.
 
-### 2. AUD-013 abschliessen: Mobile Tile h-[260px] Audit
-- **Problem:** Noch als "open" markiert im Backlog
-- **Fix:** Systematisch alle 21 Module pruefen ob Dashboard-Widgets den MOBILE Standard einhalten, Backlog-Eintrag auf "done" setzen
+Stell es dir so vor:
+- **Backlog** = Aufraeumen, Reparieren, Optimieren (erledigt!)
+- **Feature-Roadmap** = Neue Funktionen, echte Business-Logik, Live-Daten
 
-### 3. MOB-030: FM Finanzierungsakte Mobile-Layout (P2)
-- **Problem:** Dual-Column Selbstauskunft auf Mobile schwer bedienbar
-- **Fix:** Responsive Stack-Layout (flex-col auf Mobile, flex-row auf Desktop)
+## Ausgangslage
 
-### 4. MOB-031: PV AnlagenTab Spalten (P2)
-- **Problem:** Zu viele Spalten auf Mobile sichtbar
-- **Fix:** Weitere Spalten mit `hidden md:table-cell` versehen
+Nach 3 Sprints ist das System sauber: 0 offene Cleanup-Issues. Im backlog.json stehen bereits 7 "roadmap_carried_forward" Items, die den Kern der Roadmap bilden. Zusaetzlich gibt es 2 offene Issues (AUD-014, AUD-015), die Stub-Module betreffen.
 
-### 5. AUD-032: SelfieAds Flat-Routes dokumentieren (deferred)
-- **Fix:** Status auf "accepted" aendern mit Begruendung (kein Breaking Change)
+## Was die Roadmap enthalten wird
 
-### 6. AUD-041: FutureRoom Bonitaet als "accepted" markieren
-- **Fix:** Visueller Test ist bestanden, E2E mit Testdaten ist Feature-Arbeit
+### Datei: `src/docs/feature-roadmap.json`
 
-### 7. Backlog-Konsolidierung
-- Beide JSON-Dateien aktualisieren: alle "deferred" Items entweder als "accepted" oder in roadmap_carried_forward verschieben
-- Finale Statistik: 0 offene Cleanup-Items
+Eine neue, strukturierte JSON-Datei mit folgenden Bereichen:
 
-## Was NICHT in diesem Sprint ist
-Diese Items sind bewusst Feature-Arbeit und kein Cleanup:
-- ROAD-001: Leads Stubs implementieren (L)
-- ROAD-002: 15 Modul-Specs erstellen (L)
-- ROAD-003: Investment Favorites DB (M)
-- ROAD-004: DMS Storage Edge Function (M)
-- ROAD-005: Mandat Wizard (M)
-- AUD-050: Bundle-Analyse (M)
+### Kategorie 1: Stub-Module live schalten
+Module, die aktuell nur Platzhalter-Seiten zeigen und echte Implementierung brauchen:
 
-## Technische Details
+| ID | Modul | Beschreibung | Aufwand |
+|----|-------|-------------|---------|
+| FEAT-001 | MOD-10 Leads | 4 Stubs (Inbox, Pipeline, Werbung, Meine Leads) mit echten Workflows ersetzen | L |
+| FEAT-002 | MOD-18 Finanzanalyse | 4 Stubs (Dashboard, Reports, Szenarien, Einstellungen) implementieren | L |
 
-### forwardRef Fix (Punkt 1)
-Die Warnung entsteht weil Radix Dialog einen Ref an eine Function Component weitergibt. Loesung:
-- `VehicleCreateDialog` mit `React.forwardRef` wrappen, oder
-- Den Dialog-Trigger so umstrukturieren, dass kein Ref an die aeussere Komponente noetig ist
+### Kategorie 2: Datenbank-Persistenz
+Features, die aktuell nur im Frontend simuliert werden und DB-Anbindung brauchen:
 
-### Mobile FM-Layout (Punkt 3)
-```text
-Desktop:          Mobile:
-+------+------+   +------+
-| AS1  | AS2  |   | AS1  |
-+------+------+   +------+
-                  | AS2  |
-                  +------+
-```
+| ID | Modul | Beschreibung | Aufwand |
+|----|-------|-------------|---------|
+| FEAT-003 | MOD-08 Investments | Favoriten in DB persistieren (investment_favorites Tabelle) | M |
+| FEAT-004 | MOD-03 DMS | Storage-Usage Edge Function fuer echte Speicherplatz-Anzeige | M |
 
-### Ergebnis nach Sprint 3
-- 0 offene Cleanup-Issues in backlog.json
-- 0 offene Issues in mobile-backlog.json
-- 0 Console-Warnungen
-- Nur Feature-Roadmap bleibt uebrig
+### Kategorie 3: Workflows und Wizards
+Komplexe Business-Logik, die noch fehlt:
+
+| ID | Modul | Beschreibung | Aufwand |
+|----|-------|-------------|---------|
+| FEAT-005 | MOD-12 Akquise | MandatCreateWizard fuer Akquise-Manager implementieren | M |
+| FEAT-006 | MOD-12 Akquise | Absage-E-Mail tatsaechlich versenden (Edge Function) | M |
+
+### Kategorie 4: Dokumentation und Architektur
+Systemweite Verbesserungen:
+
+| ID | Modul | Beschreibung | Aufwand |
+|----|-------|-------------|---------|
+| FEAT-007 | GLOBAL | Modul-Specs fuer 15 Module ohne detaillierte Spezifikation erstellen | L |
+| FEAT-008 | GLOBAL | Bundle-Analyse: ManifestRouter 80+ lazy() Imports optimieren | M |
+
+### Kategorie 5: Integrations-Stubs
+Externe Dienste, die vorbereitet aber noch nicht angebunden sind:
+
+| ID | Modul | Beschreibung | Aufwand |
+|----|-------|-------------|---------|
+| FEAT-009 | MOD-14 Social | HeyGen Video-Integration (aktuell Stub-Job) | M |
+| FEAT-010 | MOD-10 SelfieAds | Mandat-Checkout / Bezahl-Flow (aktuell Toast-Stub) | M |
+
+### Priorisierung
+
+Die Roadmap wird in 3 Phasen gegliedert:
+- **Phase A (Fundament):** DB-Persistenz + fehlende Specs (FEAT-003, 004, 007)
+- **Phase B (Core Features):** Stub-Module live + Wizards (FEAT-001, 002, 005, 006)
+- **Phase C (Integrations):** Externe Dienste + Optimierung (FEAT-008, 009, 010)
+
+## Technische Umsetzung
+
+1. Neue Datei `src/docs/feature-roadmap.json` im gleichen Format wie die Backlogs erstellen
+2. Die 7 bestehenden ROAD-Items aus backlog.json als Basis uebernehmen
+3. Zusaetzliche Items aus dem Code-Scan (Stubs, TODOs) ergaenzen
+4. Backlog.json um einen Verweis auf die Roadmap ergaenzen
+5. Status-Tracking: Jedes Item bekommt `status: "planned"` und wird bei Umsetzung auf `"in_progress"` / `"done"` gesetzt
+
