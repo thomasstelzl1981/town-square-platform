@@ -1,228 +1,86 @@
 
-# MOD-07 Untermodul "Privatkredit" — Inline Flow (API-Ready)
+# Privatkredit-Modul Redesign — Angleichung an Anfrage-Tab und Selbstauskunft
 
-## Ueberblick
+## Analyse: Ist-Zustand vs. Soll-Zustand
 
-Ein neuer fuenfter Tile "Privatkredit" wird in MOD-07 (Finanzierung) ergaenzt. Die gesamte Seite folgt dem Inline-Flow-Standard: Ein langer, scrollbarer Seitenaufbau ohne Wizard, Tabs oder Stepper. Alle fuenf Bereiche (Employment Gate, Vergleichsrechner, Antrag, Dokumente, Submit) sind gleichzeitig sichtbar.
+### Problem-Zusammenfassung
 
-Die Selbstauskunft-Daten werden aus der bestehenden `applicant_profiles`-Tabelle geladen (SSOT). Die Europace-API wird als Adapter-Stub vorbereitet, sodass spaeter nur die API-Anbindung aktiviert werden muss.
+Der Privatkredit-Tab nutzt **keine** der systemweiten Design-Komponenten. Im Vergleich:
 
----
+| Aspekt | Anfrage-Tab (Referenz) | Privatkredit (Ist) |
+|--------|----------------------|-------------------|
+| Container | `PageShell` (max-w-7xl, einheitliches Padding) | Rohes `div` mit `space-y-2` |
+| Widget-Leiste | `WidgetGrid` + `WidgetCell` (4-Spalten, aspect-square) | Nicht vorhanden |
+| Formulare | `DESIGN.FORM_GRID.FULL` (2-Spalten-Grid) | Ad-hoc `grid-cols-1 sm:grid-cols-3` |
+| Karten | `glass-card` mit strukturiertem CardContent | Rohes `border + p-4` |
+| Typografie | `DESIGN.TYPOGRAPHY.*` Manifest-Klassen | Ad-hoc `text-lg font-semibold` |
+| Angebots-Liste | — | 4-Spalten-Grid mit kleinen Cards, keine Tabelle |
+| Selbstauskunft-Daten | Integriert via shared Cards (FinanceObjectCard, HouseholdCalculationCard) | Eigene `ApplicationPreview` mit direktem DB-Query |
 
-## Datenbank
+### Kern-Defizite
 
-### Neue Tabelle: `consumer_loan_cases`
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | UUID PK | |
-| tenant_id | UUID FK | Mandanten-Zuordnung |
-| user_id | UUID | Ersteller |
-| source_profile_id | UUID FK nullable | Referenz auf `applicant_profiles.id` |
-| employment_status | TEXT | 'employed' oder 'self_employed' |
-| requested_amount | NUMERIC | Kreditbetrag EUR |
-| requested_term_months | INTEGER | Laufzeit in Monaten |
-| selected_offer_id | TEXT nullable | ID des gewaehlten Mock-Angebots |
-| selected_offer_data | JSONB nullable | Snapshot des gewaehlten Angebots |
-| status | TEXT DEFAULT 'draft' | State Machine (draft, offers_ready, docs_missing, ready_to_submit, submitted, in_review, approved, rejected, signed, paid_out, cancelled) |
-| provider | TEXT DEFAULT 'europace' | |
-| provider_case_ref | TEXT nullable | Europace-Referenz |
-| consent_data_correct | BOOLEAN DEFAULT false | |
-| consent_credit_check | BOOLEAN DEFAULT false | |
-| created_at | TIMESTAMPTZ | |
-| updated_at | TIMESTAMPTZ | |
-
-RLS-Policies:
-- SELECT/INSERT/UPDATE: Nur eigener Tenant (`tenant_id = get_active_tenant_id()`)
-- DELETE: Nicht erlaubt (Status-Transition statt Loeschung)
-
-### Neue Tabelle: `consumer_loan_documents` (Link-Tabelle)
-
-| Spalte | Typ |
-|--------|-----|
-| id | UUID PK |
-| case_id | UUID FK -> consumer_loan_cases |
-| document_type | TEXT | ('payslip', 'bank_statement', 'id_document') |
-| dms_document_id | UUID FK nullable -> dms_documents |
-| status | TEXT DEFAULT 'missing' | ('missing', 'uploaded', 'verified') |
-| created_at | TIMESTAMPTZ |
-
-RLS: Gleich wie consumer_loan_cases (tenant-basiert).
+1. **Kein PageShell** — Breite und Spacing stimmen nicht mit dem Rest des Moduls ueberein
+2. **Keine Widget-Leiste** — Bestehende Privatkredit-Faelle werden nicht als Kacheln angezeigt
+3. **Vergleichsrechner zu klein** — Angebote als winzige 4-Spalten-Cards statt als uebersichtliche Liste/Tabelle
+4. **Eingabefelder nicht im Manifest-Stil** — Kein `FORM_GRID`, keine `glass-card` Wrapper
+5. **Employment Gate** ist eine nackte RadioGroup ohne Card-Wrapper
+6. **Dokumente** und **Submit** haben keine Card-Wrapper
 
 ---
 
-## Route & Manifest
+## Aenderungen
 
-### routesManifest.ts — MOD-07 Tiles erweitern
+### 1. PrivatkreditTab.tsx — PageShell + Widget-Leiste + Manifest-Layout
 
-Aktuell 4 Tiles. Wird auf 5 erweitert:
+**Was aendert sich:**
+- `PageShell` als aeusserer Container (wie Anfrage/Selbstauskunft)
+- Neue `ConsumerLoanWidgets` Widget-Leiste oben (zeigt bestehende Faelle + "Neuer Kredit" CTA)
+- Alle Sektionen in `glass-card` Cards gewickelt
+- `DESIGN.FORM_GRID.FULL` fuer 2-Spalten-Layouts
+- `DESIGN.TYPOGRAPHY.*` fuer Ueberschriften
 
-```
-tiles: [
-  { path: "selbstauskunft", ... },
-  { path: "dokumente", ... },
-  { path: "anfrage", ... },
-  { path: "status", ... },
-  { path: "privatkredit", component: "PrivatkreditTab", title: "Privatkredit" },  // NEU
-]
-```
+### 2. Neue Komponente: ConsumerLoanWidgets.tsx
 
-### FinanzierungPage.tsx — Route hinzufuegen
+Analog zu `FinanceRequestWidgets`:
+- `WidgetGrid` + `WidgetCell` fuer bestehende `consumer_loan_cases`
+- Jede Kachel zeigt: Status-Badge, Kreditbetrag, Laufzeit, Datum
+- CTA-Kachel: "Neuer Privatkredit"
+- Klick auf Kachel laedt den entsprechenden Fall
 
-Neuer lazy-Import und Route fuer `privatkredit`.
+### 3. EmploymentGate.tsx — Card-Wrapper
 
-### ManifestRouter.tsx — Component Map
+- In `glass-card` (Card-Komponente) gewickelt
+- Titel ueber `DESIGN.TYPOGRAPHY.CARD_TITLE`
 
-Lazy-Import fuer `PrivatkreditTab` in `portalDynamicComponentMap` hinzufuegen (falls noetig, abhaengig davon ob FinanzierungPage eigene Routes verwaltet — ja, tut es, also nur in FinanzierungPage.tsx).
+### 4. LoanCalculator.tsx — Kompletter Umbau
 
----
+**Eingabebereich:**
+- 2-Spalten `FORM_GRID` statt 3-Spalten ad-hoc Grid
+- Kreditbetrag und Laufzeit als zwei Cards nebeneinander (wie Eckdaten + Kalkulator in Anfrage)
+- Button "Angebote berechnen" prominent in der zweiten Card
 
-## Seitenaufbau: PrivatkreditTab.tsx (NEUE DATEI)
+**Angebots-Liste (neu: Tabellenformat):**
+- Statt 4 kleine Cards: Eine uebersichtliche **Tabelle** (`DESIGN.TABLE.*`)
+- Spalten: Bank | Effektivzins | Monatliche Rate | Gesamtbetrag | Aktion
+- "Empfohlen"-Badge in der Zeile
+- Selektierte Zeile mit `ring-2 ring-primary` hervorgehoben
+- Deutlich bessere Uebersicht fuer den Vergleich von 8 Angeboten
 
-Eine einzige scrollbare Seite mit 5 logisch getrennten Inline-Bereichen:
+### 5. ApplicationPreview.tsx — Manifest-Klassen
 
-```text
-+=========================================+
-| ModulePageHeader: "Privatkredit"        |
-| "Kredit beantragen — powered by        |
-|  Europace"                              |
-+=========================================+
+- Card-Wrapper mit `glass-card`
+- Grid-Bloecke mit `DESIGN.FORM_GRID.FULL` statt ad-hoc `grid-cols-4`
+- Felder in der gleichen Darstellung wie Selbstauskunft (Label/Value Paare)
 
-+-----------------------------------------+
-| 1. EMPLOYMENT GATE                      |
-|                                         |
-| Sind Sie angestellt oder selbstaendig?  |
-| ( ) Angestellt  ( ) Selbstaendig        |
-|                                         |
-| [Bei Selbstaendig: Info-Box + CTA]      |
-+-----------------------------------------+
+### 6. DocumentChecklist.tsx — Card-Wrapper
 
-+-----------------------------------------+
-| 2. VERGLEICHSRECHNER                    |
-|                                         |
-| Kreditbetrag: [______] EUR              |
-| Laufzeit:     [______] Monate           |
-| [Angebote berechnen]                    |
-|                                         |
-| --- Angebotskarten (Grid) ---           |
-| | Bank A | Bank B | Bank C |            |
-| | 3.49%  | 3.89%  | 4.12%  |           |
-| | 342 €  | 358 €  | 367 €  |           |
-| | [Waehlen] [Waehlen] [Waehlen] |       |
-+-----------------------------------------+
+- In `glass-card` Card gewickelt
+- Checklisten-Items mit `DESIGN.LIST.ROW` Klassen
 
-+-----------------------------------------+
-| 3. ANTRAG (Read-Only, Selbstauskunft)   |
-|                                         |
-| A) Persoenliche Daten (aus Profil)      |
-| B) Beschaeftigung (aus Profil)          |
-| C) Haushalt (aus Profil)               |
-|                                         |
-| [Selbstauskunft bearbeiten ->]          |
-+-----------------------------------------+
+### 7. SubmitSection.tsx — Card-Wrapper
 
-+-----------------------------------------+
-| 4. DOKUMENTE                            |
-|                                         |
-| Checkliste:                             |
-| [x] Gehaltsabrechnungen (3 Monate)     |
-| [ ] Kontoauszuege (3 Monate)           |
-| [ ] Ausweisdokument                    |
-|                                         |
-| [Upload-Dropzone]                       |
-+-----------------------------------------+
-
-+-----------------------------------------+
-| 5. BESTAETIGEN & ABSCHICKEN             |
-|                                         |
-| [ ] Richtigkeit bestaetigt             |
-| [ ] Bonitaetspruefung eingewilligt     |
-|                                         |
-| [An Europace uebermitteln]              |
-|                                         |
-| Status: "Eingereicht — wird geprueft"   |
-+-----------------------------------------+
-```
-
-### Deaktivierungs-Logik bei "Selbstaendig"
-
-Wenn `employment_status === 'self_employed'`:
-- Bereiche 2-5 erhalten `opacity-50 pointer-events-none`
-- Info-Box erscheint mit Hinweis und CTA "Spezialisten anfordern"
-
----
-
-## Komponenten-Aufbau (NEUE DATEIEN)
-
-### `src/pages/portal/finanzierung/PrivatkreditTab.tsx`
-Hauptseite. Laedt/erstellt `consumer_loan_case` fuer den aktuellen Tenant. Rendert die 5 Inline-Sektionen.
-
-### `src/components/privatkredit/EmploymentGate.tsx`
-RadioGroup mit 2 Optionen. Steuert `disabled`-State fuer den Rest der Seite. Info-Box fuer Selbstaendige.
-
-### `src/components/privatkredit/LoanCalculator.tsx`
-Inputs fuer Betrag + Laufzeit. Button "Angebote berechnen". Rendert Mock-Angebotskarten darunter.
-
-### `src/components/privatkredit/MockOfferCard.tsx`
-Einzelne Angebotskarte mit Effektivzins, Rate, Laufzeit, Gesamtbetrag, "empfohlen"-Badge, "Waehlen"-Button.
-
-### `src/components/privatkredit/ApplicationPreview.tsx`
-Read-Only-Darstellung der Selbstauskunft-Daten in 3 Bloecken (Persoenlich, Beschaeftigung, Haushalt). Button "Selbstauskunft bearbeiten" navigiert zu `/portal/finanzierung/selbstauskunft`.
-
-### `src/components/privatkredit/DocumentChecklist.tsx`
-Checkliste mit Status-Indikatoren. Upload-Dropzone (react-dropzone, bereits installiert). Verknuepfung mit DMS.
-
-### `src/components/privatkredit/SubmitSection.tsx`
-Consent-Checkboxen + Submit-Button. Status-Anzeige nach Einreichung. Button nur aktiv wenn alle Voraussetzungen erfuellt.
-
----
-
-## Hook: `useConsumerLoan.ts` (NEUE DATEI)
-
-```
-useConsumerLoanCase(tenantId)     — Query: Laedt/erstellt draft Case
-useUpdateConsumerLoan()           — Mutation: Update Case-Felder
-useCalculateOffers(amount, term)  — Mock: Generiert 5-10 simulierte Angebote
-useSubmitConsumerLoan()           — Mutation: Status -> submitted (Adapter-Stub)
-```
-
-### Mock-Angebote (Adapter-Stub)
-
-Die Funktion `calculateMockOffers(amount, termMonths)` generiert 6-8 realistische Angebote:
-
-| Bank (Mock) | Zinssatz-Range |
-|-------------|---------------|
-| Sparkasse | 3.29% - 4.49% |
-| Deutsche Bank | 3.49% - 4.69% |
-| ING | 2.99% - 4.19% |
-| Commerzbank | 3.59% - 4.79% |
-| DKB | 2.89% - 3.99% |
-| Targobank | 3.99% - 5.49% |
-| HypoVereinsbank | 3.39% - 4.59% |
-| Santander | 4.19% - 5.99% |
-
-Formeln: Annuitaet = P * r / (1 - (1+r)^(-n)), Gesamtbetrag = Rate * Laufzeit.
-
-Spaeterer Austausch: `europace_calculate_offers(case_id)` und `europace_submit_consumer_loan_case(case_id)` als exportierte Stub-Funktionen in `src/services/europace/consumerLoanAdapter.ts`.
-
----
-
-## Adapter-Stub: `src/services/europace/consumerLoanAdapter.ts` (NEUE DATEI)
-
-Zwei Funktionen, die spaeter durch echte API-Calls ersetzt werden:
-
-```typescript
-// Stub: Spaeter durch Europace API ersetzen
-export async function europace_calculate_offers(caseId: string) {
-  // TODO: POST /api/europace/consumer-loan/offers
-  throw new Error('Europace API not yet connected');
-}
-
-export async function europace_submit_consumer_loan_case(caseId: string) {
-  // TODO: POST /api/europace/consumer-loan/submit
-  throw new Error('Europace API not yet connected');
-}
-```
+- In `glass-card` Card gewickelt
+- Konsistenter Look mit dem Finanzierungsauftrag-Block der Anfrage
 
 ---
 
@@ -230,16 +88,13 @@ export async function europace_submit_consumer_loan_case(caseId: string) {
 
 | Aktion | Datei |
 |--------|-------|
-| MIGRATION | `consumer_loan_cases` Tabelle + RLS |
-| MIGRATION | `consumer_loan_documents` Link-Tabelle + RLS |
-| EDIT | `src/manifests/routesManifest.ts` — 5. Tile "Privatkredit" |
-| EDIT | `src/pages/portal/FinanzierungPage.tsx` — Route + Lazy Import |
-| NEU | `src/pages/portal/finanzierung/PrivatkreditTab.tsx` — Hauptseite |
-| NEU | `src/components/privatkredit/EmploymentGate.tsx` |
-| NEU | `src/components/privatkredit/LoanCalculator.tsx` |
-| NEU | `src/components/privatkredit/MockOfferCard.tsx` |
-| NEU | `src/components/privatkredit/ApplicationPreview.tsx` |
-| NEU | `src/components/privatkredit/DocumentChecklist.tsx` |
-| NEU | `src/components/privatkredit/SubmitSection.tsx` |
-| NEU | `src/hooks/useConsumerLoan.ts` — CRUD + Mock-Offers |
-| NEU | `src/services/europace/consumerLoanAdapter.ts` — API-Stubs |
+| NEU | `src/components/privatkredit/ConsumerLoanWidgets.tsx` — Widget-Leiste fuer Privatkredit-Faelle |
+| EDIT | `src/pages/portal/finanzierung/PrivatkreditTab.tsx` — PageShell, Widget-Leiste, Manifest-Layout |
+| EDIT | `src/components/privatkredit/EmploymentGate.tsx` — Card-Wrapper, Manifest-Typografie |
+| EDIT | `src/components/privatkredit/LoanCalculator.tsx` — FORM_GRID, Tabellen-Angebotsliste |
+| EDIT | `src/components/privatkredit/MockOfferCard.tsx` — Wird zur Tabellenzeile (MockOfferRow) oder entfaellt zugunsten inline-Rendering |
+| EDIT | `src/components/privatkredit/ApplicationPreview.tsx` — Card-Wrapper, Manifest-Klassen |
+| EDIT | `src/components/privatkredit/DocumentChecklist.tsx` — Card-Wrapper, LIST-Klassen |
+| EDIT | `src/components/privatkredit/SubmitSection.tsx` — Card-Wrapper |
+
+Keine Datenbank-Aenderungen noetig — die Tabellen sind bereits vorhanden.
